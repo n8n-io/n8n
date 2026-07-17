@@ -63,12 +63,14 @@ export function useCompareData(detail: Ref<EvaluationCollectionDetail | null>) {
 	});
 
 	const metricGroups = computed<CompareMetricGroup[]>(() =>
-		buildScoreShapedMetricGroups(detail.value?.runs ?? []).map(({ key, values }) => ({
-			key,
-			label: formatMetricLabel(key),
-			values,
-			bestIndex: indexOfMax(values),
-		})),
+		buildScoreShapedMetricGroups(detail.value?.runs ?? [], detail.value?.metricScales).map(
+			({ key, values }) => ({
+				key,
+				label: formatMetricLabel(key),
+				values,
+				bestIndex: indexOfMax(values),
+			}),
+		),
 	);
 
 	const bestVersionIndex = computed<number | null>(() =>

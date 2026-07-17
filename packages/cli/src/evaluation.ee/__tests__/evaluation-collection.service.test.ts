@@ -418,6 +418,55 @@ describe('EvaluationCollectionService', () => {
 		});
 	});
 
+	describe('getCollectionDetail', () => {
+		it('scores custom-named 1–5 judge metrics via the config scale and surfaces metricScales', async () => {
+			// The bug: a 1–5 judge metric named anything other than
+			// correctness/helpfulness scored null everywhere. Resolving the scale
+			// from the config (not the name) fixes both avgScore and metricScales.
+			const config = makeConfig({
+				metrics: [
+					{
+						id: 'm1',
+						name: 'Markdown Formatting',
+						type: 'llm_judge',
+						config: {
+							preset: 'correctness',
+							provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							credentialId: 'cred-1',
+							model: 'gpt-4o',
+							outputType: 'numeric',
+							inputs: { actualAnswer: 'a', expectedAnswer: 'b' },
+						},
+					},
+				],
+			});
+			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(config);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [makeTestRun({ id: 'tr-1', metrics: { 'Markdown Formatting': 5 } })],
+			});
+
+			const detail = await service.getCollectionDetail('wf-1', 'col-1');
+
+			expect(detail.metricScales).toEqual({ 'Markdown Formatting': 'oneToFive' });
+			expect(detail.runs[0].avgScore).toBe(1); // 5 / 5
+		});
+
+		it('returns an empty metricScales map when the config is gone (name-based fallback)', async () => {
+			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(null);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [makeTestRun({ id: 'tr-1', metrics: { correctness: 5 } })],
+			});
+
+			const detail = await service.getCollectionDetail('wf-1', 'col-1');
+
+			expect(detail.metricScales).toEqual({});
+			// correctness still scores via the name-based fallback.
+			expect(detail.runs[0].avgScore).toBe(1);
+		});
+	});
+
 	describe('getEvalVersions', () => {
 		it('annotates the highest-scoring version as best and runs below 0.6 as critical', async () => {
 			const versions: WorkflowHistory[] = [

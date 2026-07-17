@@ -130,10 +130,12 @@ const versionChips = computed(() =>
 // surfaces can't drift; the raw metric key doubles as the compact label here.
 const groups = computed(() =>
 	props.detail
-		? buildScoreShapedMetricGroups(props.detail.runs).map(({ key, values }) => ({
-				label: key,
-				values,
-			}))
+		? buildScoreShapedMetricGroups(props.detail.runs, props.detail.metricScales).map(
+				({ key, values }) => ({
+					label: key,
+					values,
+				}),
+			)
 		: [],
 );
 

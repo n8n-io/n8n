@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { EvaluationMetric } from '../dto/evaluations/evaluation-config.dto';
 import { Z } from '../zod-class';
 
 // Mirrors the `TestRunStatus` union in `@n8n/db`. Duplicated here so
@@ -26,30 +27,104 @@ export const RESERVED_METRIC_KEYS = [
 	'executionTime',
 ] as const;
 
-// User-defined metrics whose LLM-as-judge handlers return a 1–5 rating (rather
-// than a 0–1 fraction). Every other user metric is assumed already normalized
-// to [0, 1]. Single-sourced so FE and BE agree; the FE's `getMetricCategory`
-// derives its `aiBased` category from this list.
+// Preset LLM-as-judge metric names that historically returned a 1–5 rating.
+// Kept as the NAME-based fallback for `normalizeMetricScore` (callers that
+// can't resolve the metric's config) and as the source the FE's
+// `getMetricCategory` uses to derive its `aiBased` category.
 export const ONE_TO_FIVE_METRIC_KEYS = ['correctness', 'helpfulness'] as const;
+
+/**
+ * The scale a metric's raw value is expressed on, used to normalize it to a
+ * [0, 1] score:
+ *  - `unit`      — already a 0–1 fraction (deterministic scorers, expression
+ *                  metrics returning a ratio).
+ *  - `oneToFive` — a 1–5 rating (LLM-as-judge numeric metrics) → value / 5.
+ *  - `boolean`   — a pass/fail outcome coerced to 0/1 (or an averaged pass
+ *                  rate), clamped to [0, 1].
+ *
+ * Derived from the eval config via {@link metricScaleFromConfig}, not from the
+ * metric's name, so a 1–5 judge metric works regardless of what the user named
+ * it. Shared FE/BE so a "score" means the same thing everywhere.
+ */
+export type MetricScale = 'unit' | 'oneToFive' | 'boolean';
+
+/**
+ * Resolve the {@link MetricScale} for a metric from its eval-config definition:
+ *  - a boolean-output metric (expression or LLM judge) → `boolean`
+ *  - any other LLM judge (numeric 1–5 rating) → `oneToFive`
+ *  - everything else (deterministic scorers, numeric expressions) → `unit`
+ *
+ * `config.outputType` only exists on the `expression` and `llm_judge` variants
+ * of the discriminated union, so it's accessed behind a `type` guard.
+ */
+export function metricScaleFromConfig(metric: EvaluationMetric): MetricScale {
+	if (
+		(metric.type === 'expression' || metric.type === 'llm_judge') &&
+		metric.config.outputType === 'boolean'
+	) {
+		return 'boolean';
+	}
+	if (metric.type === 'llm_judge') return 'oneToFive';
+	return 'unit';
+}
+
+/**
+ * Build a metric-name → {@link MetricScale} map from an eval config's metrics.
+ * The map keys `normalizeMetricScore` calls so scores normalize by scale
+ * regardless of what the user named the metric. Shared by the FE + BE scoring
+ * paths so a "score" means the same thing everywhere.
+ */
+export function metricScalesFromConfig(metrics: EvaluationMetric[]): Record<string, MetricScale> {
+	const scaleByMetric: Record<string, MetricScale> = {};
+	for (const metric of metrics) {
+		scaleByMetric[metric.name] = metricScaleFromConfig(metric);
+	}
+	return scaleByMetric;
+}
 
 /**
  * Normalize a raw metric value to a [0, 1] "score", or return null when the
  * metric isn't a score we can chart/average:
  *  - reserved operational metrics (token counts, execution time) → null
- *  - 1–5 AI-judge metrics → value / 5
- *  - any other metric → passed through only if already in [0, 1]; an
- *    unknown-scale value outside that range can't be meaningfully scaled, so
- *    it's excluded rather than rendered as a bogus percentage.
+ *  - NaN → null
+ *  - `oneToFive` scale → value / 5
+ *  - `boolean` scale → clamped to [0, 1] (a coerced 0/1 or an averaged pass rate)
+ *  - `unit` scale → passed through only if already in [0, 1]; an unknown-scale
+ *    value outside that range can't be meaningfully scaled, so it's excluded
+ *    rather than rendered as a bogus percentage.
+ *
+ * `scale` is resolved from the eval config by callers that have it. When
+ * omitted it falls back to the legacy NAME-based heuristic (the preset judge
+ * keys are 1–5, everything else is unit) so callers without config context —
+ * and existing tests — keep their behavior.
  *
  * Shared by the FE compare surfaces and the BE avg-score/insights derivation
  * so a "score" means the same thing everywhere.
  */
-export function normalizeMetricScore(key: string, value: number): number | null {
+export function normalizeMetricScore(
+	key: string,
+	value: number,
+	scale?: MetricScale,
+): number | null {
 	if ((RESERVED_METRIC_KEYS as readonly string[]).includes(key)) return null;
 	if (Number.isNaN(value)) return null;
-	const normalized = (ONE_TO_FIVE_METRIC_KEYS as readonly string[]).includes(key)
-		? value / 5
-		: value;
+
+	const resolvedScale: MetricScale =
+		scale ?? ((ONE_TO_FIVE_METRIC_KEYS as readonly string[]).includes(key) ? 'oneToFive' : 'unit');
+
+	let normalized: number;
+	switch (resolvedScale) {
+		case 'oneToFive':
+			normalized = value / 5;
+			break;
+		case 'boolean':
+			normalized = Math.min(1, Math.max(0, value));
+			break;
+		case 'unit':
+			normalized = value;
+			break;
+	}
+
 	return normalized >= 0 && normalized <= 1 ? normalized : null;
 }
 
@@ -126,6 +201,12 @@ export type EvaluationCollectionRunSummary = {
 
 export type EvaluationCollectionDetail = EvaluationCollectionRecord & {
 	runs: EvaluationCollectionRunSummary[];
+	// Per-metric scale (metric name → scale) derived from the collection's eval
+	// config. Lets the FE normalize scores by scale instead of by metric name,
+	// so a 1–5 judge metric renders correctly whatever it's named. Optional:
+	// absent for legacy/config-less responses, where callers fall back to the
+	// name-based heuristic in `normalizeMetricScore`.
+	metricScales?: Record<string, MetricScale>;
 };
 
 // Versions-picker endpoint response. The setup wizard renders one row per

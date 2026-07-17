@@ -3,6 +3,10 @@ import {
 	normalizeMetricScore,
 	ONE_TO_FIVE_METRIC_KEYS,
 	RESERVED_METRIC_KEYS,
+	// Aliased so it doesn't clash with this file's display-formatting `MetricScale`
+	// ('oneToFive' | 'normalized'). This one ('unit' | 'oneToFive' | 'boolean') is
+	// the scoring scale resolved from the eval config, keyed by metric name.
+	type MetricScale as MetricScoringScale,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { JsonValue } from 'n8n-workflow';
@@ -157,6 +161,7 @@ export function deriveRunsStatus(
 // max=1 and an absolute count would render a meaningless maxed-out bar).
 export function buildScoreShapedMetricGroups(
 	runs: Array<{ metrics: Record<string, number> | null }>,
+	scaleByMetric?: Record<string, MetricScoringScale>,
 ): Array<{ key: string; values: Array<number | null> }> {
 	const orderedKeys: string[] = [];
 	const seen = new Set<string>();
@@ -173,7 +178,9 @@ export function buildScoreShapedMetricGroups(
 			runs.some((run) => run.metrics?.[key] !== undefined) &&
 			runs.every((run) => {
 				const value = run.metrics?.[key];
-				return value === undefined || normalizeMetricScore(key, value) !== null;
+				return (
+					value === undefined || normalizeMetricScore(key, value, scaleByMetric?.[key]) !== null
+				);
 			}),
 	);
 
@@ -181,7 +188,9 @@ export function buildScoreShapedMetricGroups(
 		key,
 		values: runs.map((run) => {
 			const value = run.metrics?.[key];
-			return typeof value === 'number' ? normalizeMetricScore(key, value) : null;
+			return typeof value === 'number'
+				? normalizeMetricScore(key, value, scaleByMetric?.[key])
+				: null;
 		}),
 	}));
 }
@@ -192,10 +201,11 @@ export function buildScoreShapedMetricGroups(
 // disagree on what a case/run scored.
 export function averageNormalizedScore(
 	metrics: Record<string, number> | null | undefined,
+	scaleByMetric?: Record<string, MetricScoringScale>,
 ): number | null {
 	if (!metrics) return null;
 	const values = Object.entries(metrics)
-		.map(([key, value]) => normalizeMetricScore(key, value))
+		.map(([key, value]) => normalizeMetricScore(key, value, scaleByMetric?.[key]))
 		.filter((value): value is number => value !== null);
 	if (values.length === 0) return null;
 	return values.reduce((sum, value) => sum + value, 0) / values.length;

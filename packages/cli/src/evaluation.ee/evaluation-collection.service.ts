@@ -5,9 +5,10 @@ import type {
 	EvaluationCollectionDetail,
 	EvaluationCollectionRecord,
 	EvaluationCollectionRunSummary,
+	MetricScale,
 	UpdateEvaluationCollectionPayload,
 } from '@n8n/api-types';
-import { normalizeMetricScore } from '@n8n/api-types';
+import { metricScalesFromConfig, normalizeMetricScore } from '@n8n/api-types';
 import type { TestRun, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
@@ -217,8 +218,16 @@ export class EvaluationCollectionService {
 		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
 		if (!detail) throw new NotFoundError('Collection not found');
 
-		const runs = detail.runs.map((r) => this.toRunSummary(r));
-		return { ...this.toRecord(detail.collection, runs.length), runs };
+		// Resolve each metric's scale from the eval config so scores normalize by
+		// scale rather than by metric name (a 1–5 judge metric works whatever it's
+		// named). Passed through to the FE via `metricScales` and applied here when
+		// deriving per-run avg scores.
+		const scaleByMetric = await this.buildScaleByMetric(
+			detail.collection.evaluationConfigId,
+			workflowId,
+		);
+		const runs = detail.runs.map((r) => this.toRunSummary(r, scaleByMetric));
+		return { ...this.toRecord(detail.collection, runs.length), runs, metricScales: scaleByMetric };
 	}
 
 	async updateCollectionMeta(
@@ -352,6 +361,10 @@ export class EvaluationCollectionService {
 			throw new NotFoundError('EvaluationConfig not found for this workflow');
 		}
 
+		// Per-metric scale for the versions-table avg-score annotations, so the
+		// %/best/critical badges match the compare view's scoring.
+		const scaleByMetric = metricScalesFromConfig(config.metrics);
+
 		// Cheap metadata-only load: `WorkflowHistory.nodes` / `connections` are
 		// fat JSON columns we never reference from the wizard's versions
 		// table. Excluding them keeps response payloads small and avoids
@@ -422,7 +435,7 @@ export class EvaluationCollectionService {
 							testRunId: lastRun.id,
 							runAt: (lastRun.runAt ?? lastRun.createdAt).toISOString(),
 							status: lastRun.status,
-							avgScore: this.computeAvgScore(lastRun),
+							avgScore: this.computeAvgScore(lastRun, scaleByMetric),
 							isBest: false, // overwritten below
 							isCritical: false, // overwritten below
 						}
@@ -465,31 +478,48 @@ export class EvaluationCollectionService {
 		};
 	}
 
-	private toRunSummary(run: TestRun): EvaluationCollectionRunSummary {
+	private toRunSummary(
+		run: TestRun,
+		scaleByMetric: Record<string, MetricScale>,
+	): EvaluationCollectionRunSummary {
 		return {
 			testRunId: run.id,
 			workflowVersionId: run.workflowVersionId,
 			status: run.status,
 			runAt: run.runAt ? run.runAt.toISOString() : null,
 			completedAt: run.completedAt ? run.completedAt.toISOString() : null,
-			avgScore: this.computeAvgScore(run),
+			avgScore: this.computeAvgScore(run, scaleByMetric),
 			metrics: this.coerceMetrics(run.metrics),
 		};
 	}
 
-	private computeAvgScore(run: TestRun): number | null {
+	private computeAvgScore(run: TestRun, scaleByMetric: Record<string, MetricScale>): number | null {
 		const coerced = this.coerceMetrics(run.metrics);
 		if (!coerced) return null;
 		// A "score" is a user-defined metric normalized to [0, 1] by its scale
-		// (AI-judge metrics are 1–5 → /5). Operational metrics (token counts,
-		// execution time) normalize to null and are excluded. Mirrors the FE's
-		// score model so the versions table's %/best/critical annotations match
-		// the compare view; null when a run reports no score metric.
+		// (resolved from the eval config; AI-judge metrics are 1–5 → /5).
+		// Operational metrics (token counts, execution time) normalize to null and
+		// are excluded. Mirrors the FE's score model so the versions table's
+		// %/best/critical annotations match the compare view; null when a run
+		// reports no score metric.
 		const scores = Object.entries(coerced)
-			.map(([key, value]) => normalizeMetricScore(key, value))
+			.map(([key, value]) => normalizeMetricScore(key, value, scaleByMetric[key]))
 			.filter((value): value is number => value !== null);
 		if (scores.length === 0) return null;
 		return scores.reduce((acc, value) => acc + value, 0) / scores.length;
+	}
+
+	/**
+	 * Loads the collection's eval config and maps each metric name to its scale.
+	 * Returns an empty map (name-based fallback in `normalizeMetricScore`) when
+	 * the config can't be found — e.g. a legacy config-less collection.
+	 */
+	private async buildScaleByMetric(
+		evaluationConfigId: string,
+		workflowId: string,
+	): Promise<Record<string, MetricScale>> {
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+		return config ? metricScalesFromConfig(config.metrics) : {};
 	}
 
 	private coerceMetrics(

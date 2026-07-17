@@ -163,7 +163,7 @@ export function useCompareCases(
 					inputs: record?.inputs,
 					outputs: record?.outputs,
 					metrics: record?.metrics,
-					score: averageNormalizedScore(record?.metrics),
+					score: averageNormalizedScore(record?.metrics, detail.value?.metricScales),
 				};
 			});
 

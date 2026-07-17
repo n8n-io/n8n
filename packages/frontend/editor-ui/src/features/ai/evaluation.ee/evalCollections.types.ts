@@ -20,6 +20,7 @@ export type {
 	EvaluationCollectionRecord,
 	EvaluationCollectionRunSummary,
 	GenerateInsightsPayload,
+	MetricScale,
 	UpdateEvaluationCollectionPayload,
 } from '@n8n/api-types';
 

@@ -505,6 +505,73 @@ export class TestRunnerService {
 	}
 
 	/**
+	 * Per-case `inputs`: the Set Inputs node's evaluationData when present,
+	 * otherwise the dataset row fed to the evaluated slice's start. Config-compiled
+	 * runs have no Set Inputs node, so their per-case input is the dataset row
+	 * (`testCase`, the eval trigger's injected row) — without this the compare
+	 * Cases input column is blank. `startNodeName` is defined only for
+	 * config-compiled runs; direct/legacy runs pass it undefined and keep their
+	 * current behavior.
+	 */
+	private resolveCaseInputs(
+		execution: IRun,
+		workflow: IWorkflowBase,
+		testCase: INodeExecutionData,
+		startNodeName: string | undefined,
+	): JsonObject {
+		const inputs = this.getEvaluationData(execution, workflow, 'setInputs');
+		if (Object.keys(inputs).length > 0 || !startNodeName) return inputs;
+		return this.datasetRowToJsonObject(testCase);
+	}
+
+	/**
+	 * The dataset row's JSON as a plain object. Returns an empty object when the
+	 * row isn't a JSON object.
+	 */
+	private datasetRowToJsonObject(testCase: INodeExecutionData): JsonObject {
+		const json = testCase.json;
+		const out: JsonObject = {};
+		if (json && typeof json === 'object' && !Array.isArray(json)) {
+			Object.assign(out, json);
+		}
+		return out;
+	}
+
+	/**
+	 * Per-case `outputs`: the Set Outputs node's evaluationData when present,
+	 * otherwise the evaluated slice's end-node output. Config-compiled runs have
+	 * no Set Outputs node, so their per-case output comes from the end node
+	 * instead — without this the compare Outputs tab is always blank. Direct /
+	 * legacy runs pass `endNodeName` undefined, so their behavior is unchanged.
+	 */
+	private resolveCaseOutputs(
+		execution: IRun,
+		workflow: IWorkflowBase,
+		endNodeName: string | undefined,
+	): JsonObject {
+		const outputs = this.getEvaluationData(execution, workflow, 'setOutputs');
+		if (Object.keys(outputs).length > 0 || !endNodeName) return outputs;
+		return this.getEndNodeOutputs(execution, endNodeName);
+	}
+
+	/**
+	 * The evaluated slice's end-node output for a single case: the first main
+	 * output item's JSON. Returns an empty object when the node did not produce a
+	 * JSON object (e.g. an untaken IF/Switch branch).
+	 */
+	private getEndNodeOutputs(execution: IRun, endNodeName: string): JsonObject {
+		const json =
+			execution.data.resultData.runData[endNodeName]?.[0]?.data?.[
+				NodeConnectionTypes.Main
+			]?.[0]?.[0]?.json;
+		const out: JsonObject = {};
+		if (json && typeof json === 'object' && !Array.isArray(json)) {
+			Object.assign(out, json);
+		}
+		return out;
+	}
+
+	/**
 	 * Evaluation result is collected from all Evaluation Metrics nodes
 	 */
 	private extractUserDefinedMetrics(execution: IRun, workflow: IWorkflowBase): IDataObject {
@@ -659,7 +726,16 @@ export class TestRunnerService {
 
 		const runType = configToCompile ? 'config' : 'direct';
 
+		// Config-compiled runs have no Set Inputs / Set Outputs nodes, so per-case
+		// inputs come from the dataset row and outputs from the evaluated slice's
+		// end node instead. Set inside the config branch below; both undefined for
+		// direct/legacy runs (behavior unchanged).
+		let startNodeName: string | undefined;
+		let endNodeName: string | undefined;
+
 		if (configToCompile) {
+			startNodeName = configToCompile.startNodeName;
+			endNodeName = configToCompile.endNodeName;
 			// `compile` injects its own __eval_trigger + metric nodes and neutralises
 			// any pre-existing evaluation nodes the saved workflow already had.
 			try {
@@ -687,6 +763,8 @@ export class TestRunnerService {
 			runType,
 			via: options?.via,
 			rowIndices: options?.rowIndices,
+			startNodeName,
+			endNodeName,
 		});
 
 		return { testRun, finished };
@@ -702,6 +780,8 @@ export class TestRunnerService {
 		runType,
 		via = 'ui',
 		rowIndices,
+		startNodeName,
+		endNodeName,
 	}: {
 		user: User;
 		workflowId: string;
@@ -712,6 +792,8 @@ export class TestRunnerService {
 		runType: 'config' | 'direct';
 		via?: 'ui' | 'public-api';
 		rowIndices?: number[];
+		startNodeName?: string;
+		endNodeName?: string;
 	}): Promise<void> {
 		// Initialize telemetry metadata
 		const telemetryMeta = {
@@ -1047,8 +1129,13 @@ export class TestRunnerService {
 										...predefinedContribution.addedMetrics,
 									};
 
-									const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
-									const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
+									const inputs = this.resolveCaseInputs(
+										testCaseExecution,
+										workflow,
+										testCase,
+										startNodeName,
+									);
+									const outputs = this.resolveCaseOutputs(testCaseExecution, workflow, endNodeName);
 
 									this.logger.debug(
 										'Test case metrics extracted (user-defined)',

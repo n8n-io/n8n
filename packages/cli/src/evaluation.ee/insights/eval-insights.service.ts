@@ -1,8 +1,12 @@
-import type { AiInsightsPayload, AiInsightsResponse } from '@n8n/api-types';
-import { aiInsightsResponseSchema, normalizeMetricScore } from '@n8n/api-types';
+import type { AiInsightsPayload, AiInsightsResponse, MetricScale } from '@n8n/api-types';
+import {
+	aiInsightsResponseSchema,
+	metricScalesFromConfig,
+	normalizeMetricScore,
+} from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { TestRun, User } from '@n8n/db';
-import { EvaluationCollectionRepository } from '@n8n/db';
+import { EvaluationCollectionRepository, EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -54,6 +58,7 @@ type RunSummary = {
 export class EvalInsightsService {
 	constructor(
 		private readonly collectionRepo: EvaluationCollectionRepository,
+		private readonly evalConfigRepo: EvaluationConfigRepository,
 		private readonly licenseState: LicenseState,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
@@ -104,10 +109,18 @@ export class EvalInsightsService {
 		// otherwise the insights response calls the third run "B" while the
 		// frontend shows it as "C", and the user sees the winner / regression
 		// attributed to the wrong workflow version.
+		// Resolve each metric's scale from the eval config so scores normalize by
+		// scale rather than by metric name (a 1–5 judge metric works whatever it's
+		// named). Falls back to the name-based heuristic when the config is gone.
+		const scaleByMetric = await this.buildScaleByMetric(
+			detail.collection.evaluationConfigId,
+			workflowId,
+		);
+
 		const summaries: RunSummary[] = [];
 		detail.runs.forEach((run, originalIndex) => {
 			if (run.status === 'completed' && run.metrics) {
-				summaries.push(this.summariseRun(run, originalIndex));
+				summaries.push(this.summariseRun(run, originalIndex, scaleByMetric));
 			}
 		});
 		if (summaries.length < 2) {
@@ -158,8 +171,12 @@ export class EvalInsightsService {
 
 	// ---- internals ----
 
-	private summariseRun(run: TestRun, index: number): RunSummary {
-		const scores = this.scoreMetrics(run.metrics);
+	private summariseRun(
+		run: TestRun,
+		index: number,
+		scaleByMetric: Record<string, MetricScale>,
+	): RunSummary {
+		const scores = this.scoreMetrics(run.metrics, scaleByMetric);
 		const values = Object.values(scores);
 		const avgScore =
 			values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
@@ -169,23 +186,38 @@ export class EvalInsightsService {
 		return { versionLabel, workflowVersionId: run.workflowVersionId, avgScore, scores };
 	}
 
-	// Per-metric scores normalized to [0, 1] by their scale (AI-judge metrics
-	// are 1–5 → /5); operational metrics (token counts, execution time) and
-	// unknown-scale values are dropped. Booleans coerce to 0/1. Shares the
-	// `normalizeMetricScore` contract with the FE + versions-table scoring so
-	// winner/regressions reflect the same "score" the user sees.
+	// Per-metric scores normalized to [0, 1] by their scale (resolved from the
+	// eval config; AI-judge metrics are 1–5 → /5); operational metrics (token
+	// counts, execution time) and unknown-scale values are dropped. Booleans
+	// coerce to 0/1. Shares the `normalizeMetricScore` contract with the FE +
+	// versions-table scoring so winner/regressions reflect the same "score" the
+	// user sees.
 	private scoreMetrics(
 		metrics: Record<string, number | boolean> | null | undefined,
+		scaleByMetric: Record<string, MetricScale>,
 	): Record<string, number> {
 		if (!metrics) return {};
 		const out: Record<string, number> = {};
 		for (const [key, raw] of Object.entries(metrics)) {
 			const value = typeof raw === 'boolean' ? (raw ? 1 : 0) : raw;
 			if (typeof value !== 'number') continue;
-			const score = normalizeMetricScore(key, value);
+			const score = normalizeMetricScore(key, value, scaleByMetric[key]);
 			if (score !== null) out[key] = score;
 		}
 		return out;
+	}
+
+	/**
+	 * Loads the collection's eval config and maps each metric name to its scale.
+	 * Returns an empty map (name-based fallback in `normalizeMetricScore`) when
+	 * the config can't be found.
+	 */
+	private async buildScaleByMetric(
+		evaluationConfigId: string,
+		workflowId: string,
+	): Promise<Record<string, MetricScale>> {
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+		return config ? metricScalesFromConfig(config.metrics) : {};
 	}
 
 	/**
