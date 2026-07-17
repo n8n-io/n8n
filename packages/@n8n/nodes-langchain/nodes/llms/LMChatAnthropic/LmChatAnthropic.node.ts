@@ -127,8 +127,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
-		defaultVersion: 1.5,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+		defaultVersion: 1.6,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -477,6 +477,36 @@ export class LmChatAnthropic implements INodeType {
 						description:
 							'Whether the model should stream its response over Server-Sent Events instead of returning a single non-streamed payload. Final output shape is unchanged.',
 					},
+					{
+						displayName: 'Enable Prompt Caching',
+						name: 'enablePromptCaching',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to cache the system prompt, tool definitions, and conversation history between requests using <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">Anthropic prompt caching</a>',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.6 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Cache TTL',
+						name: 'cacheTtl',
+						type: 'options',
+						default: '5m',
+						description: 'How long cached content stays valid before it needs to be written again',
+						options: [
+							{ name: '5 Minutes', value: '5m' },
+							{ name: '1 Hour', value: '1h' },
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.6 } }],
+								enablePromptCaching: [true],
+							},
+						},
+					},
 				],
 			},
 		],
@@ -513,6 +543,8 @@ export class LmChatAnthropic implements INodeType {
 			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
 			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 			streaming?: boolean;
+			enablePromptCaching?: boolean;
+			cacheTtl?: '5m' | '1h';
 		};
 
 		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
@@ -558,6 +590,16 @@ export class LmChatAnthropic implements INodeType {
 				top_k: undefined,
 				top_p: undefined,
 				temperature: undefined,
+			};
+		}
+
+		if (version >= 1.6 && options.enablePromptCaching) {
+			// Anthropic's top-level cache_control caches the last cacheable block and the whole prefix
+			// before it, so the system prompt, tools and conversation history are reused across turns.
+			// Passed through invocationKwargs as a top-level request param.
+			invocationKwargs.cache_control = {
+				type: 'ephemeral',
+				ttl: options.cacheTtl === '1h' ? '1h' : '5m',
 			};
 		}
 
