@@ -86,6 +86,35 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
+	describe('includeVariableValues', () => {
+		it('defaults to true when omitted', () => {
+			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1'] });
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeVariableValues).toBe(true);
+		});
+
+		it.each([true, false])('accepts explicit %s', (includeVariableValues) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeVariableValues,
+			});
+			expect(result.success).toBe(true);
+			if (result.success) expect(result.data.includeVariableValues).toBe(includeVariableValues);
+		});
+
+		it.each([
+			{ name: 'string value', includeVariableValues: 'false' },
+			{ name: 'numeric value', includeVariableValues: 0 },
+			{ name: 'null value', includeVariableValues: null },
+		])('rejects $name', ({ includeVariableValues }) => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				includeVariableValues,
+			});
+			expect(result.success).toBe(false);
+		});
+	});
+
 	describe('missingWorkflowDependencyPolicy', () => {
 		it.each(['fail', 'reference-only', 'include-in-package'])(
 			'accepts %s',

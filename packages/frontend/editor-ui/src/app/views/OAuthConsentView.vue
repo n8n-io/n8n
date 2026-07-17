@@ -203,6 +203,7 @@ onMounted(async () => {
 							v-model="selectedScopes"
 							:available-scopes="availableScopes"
 							:groups="MCP_SCOPE_GROUPS"
+							:scope-tools="clientDetails?.scopeTools"
 							i18n-key-prefix="oauth.consentView.scopes"
 							root-test-id="consent-scopes"
 						/>

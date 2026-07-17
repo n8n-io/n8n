@@ -1,4 +1,9 @@
-import { Agent, Memory } from '@n8n/agents';
+import {
+	Agent,
+	createObservationLogObserveFn,
+	createObservationLogReflectFn,
+	Memory,
+} from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
@@ -193,11 +198,17 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens } =
+			const { observerThresholdTokens, reflectorThresholdTokens, onTaskUsage } =
 				memoryConfig.observationalMemory;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
+				...(onTaskUsage
+					? {
+							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),
+							reflect: createObservationLogReflectFn(modelId, { onUsage: onTaskUsage }),
+						}
+					: {}),
 			});
 		}
 

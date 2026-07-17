@@ -44,7 +44,7 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:typescript"
   },
   "dependencies": {
     "ast-types": "^0.16.1",
