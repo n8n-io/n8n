@@ -19,6 +19,7 @@ import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { UpdateNodeGroupCommand } from '@/app/models/history';
 import { deleteGroupWithHistory } from '@/features/workflows/canvas/nodeGroups.utils';
+import { useCanvasNodeGroupTelemetry } from '@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useSelectionValidation } from './useSelectionValidation';
 
@@ -51,6 +52,7 @@ export function useWorkflowExtraction() {
 	const canvasOperations = useCanvasOperations();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
+	const groupTelemetry = useCanvasNodeGroupTelemetry();
 	const { expandSelectionWithSubNodes, isSelectionExtractable } = useSelectionValidation();
 
 	function showError(message: string) {
@@ -453,6 +455,7 @@ export function useWorkflowExtraction() {
 		// group is invalid, so dissolve the group and leave the Execute node ungrouped.
 		if (remainingGroupMembers.length === 0) {
 			deleteGroupWithHistory(groupBeforeReplacements, workflowDocumentStore.value, historyStore);
+			groupTelemetry.trackUngrouped(groupBeforeReplacements, 'sub-workflow-extraction');
 			return;
 		}
 

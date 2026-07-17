@@ -11,6 +11,7 @@ const {
 	mockNodeTypesStore,
 	mockCanvasOperations,
 	mockTelemetry,
+	mockGroupTelemetry,
 	mockHistoryStore,
 	mockUIStore,
 } = vi.hoisted(() => ({
@@ -55,6 +56,9 @@ const {
 	},
 	mockTelemetry: {
 		track: vi.fn(),
+	},
+	mockGroupTelemetry: {
+		trackUngrouped: vi.fn(),
 	},
 	mockHistoryStore: {
 		startRecordingUndo: vi.fn(),
@@ -101,6 +105,10 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue(mockTelemetry),
+}));
+
+vi.mock('@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry', () => ({
+	useCanvasNodeGroupTelemetry: vi.fn().mockReturnValue(mockGroupTelemetry),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -160,6 +168,7 @@ describe('useWorkflowExtraction', () => {
 		mockCanvasOperations.deleteNodes.mockClear();
 		mockCanvasOperations.replaceNodeParameters.mockClear();
 		mockTelemetry.track.mockClear();
+		mockGroupTelemetry.trackUngrouped.mockClear();
 		mockUIStore.resetLastInteractedWith.mockClear();
 		mockUIStore.markStateDirty.mockClear();
 		mockUIStore.openModalWithData.mockClear();
@@ -368,6 +377,11 @@ describe('useWorkflowExtraction', () => {
 				| undefined;
 			expect(removeCommand).toBeInstanceOf(RemoveNodeGroupCommand);
 			expect(removeCommand?.group.nodeIds).toEqual([nodeA.id, nodeB.id]);
+
+			expect(mockGroupTelemetry.trackUngrouped).toHaveBeenCalledWith(
+				expect.objectContaining({ id: group.id }),
+				'sub-workflow-extraction',
+			);
 		});
 
 		it('keeps the group when only some members are extracted', async () => {
@@ -403,6 +417,7 @@ describe('useWorkflowExtraction', () => {
 			]);
 
 			expect(mockWorkflowDocumentStore.deleteGroup).not.toHaveBeenCalled();
+			expect(mockGroupTelemetry.trackUngrouped).not.toHaveBeenCalled();
 		});
 
 		it('copies shared sub-nodes into the sub-workflow but keeps them in the parent', async () => {
