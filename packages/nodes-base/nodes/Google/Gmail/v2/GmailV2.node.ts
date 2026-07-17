@@ -185,8 +185,6 @@ export class GmailV2 implements INodeType {
 		const instanceId = this.getInstanceId();
 
 		if (resource === 'message' && operation === SEND_AND_WAIT_OPERATION) {
-			const { email, threadId } = await createSendAndWaitEmail(this);
-
 			try {
 				const { email, threadId } = await createSendAndWaitEmail(this);
 				await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', {
