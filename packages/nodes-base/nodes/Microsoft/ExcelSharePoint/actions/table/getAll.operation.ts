@@ -13,9 +13,9 @@ import { resolveWorkbookRoot } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [
-	workbookRLC,
 	siteRLC,
 	libraryRLC,
+	workbookRLC,
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
