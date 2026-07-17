@@ -68,7 +68,7 @@ export async function microsoftApiRequestAllItems<T extends IDataObject = IDataO
 					{},
 					{ ...qs, $top: 100 },
 				);
-		returnData.push(...(response.value ?? []));
+		returnData.push.apply(returnData, response.value ?? []);
 		uri = response['@odata.nextLink'];
 	} while (uri !== undefined);
 

@@ -9,7 +9,7 @@ export const workbookRLC: INodeProperties = {
 	type: 'resourceLocator',
 	required: true,
 	default: { mode: 'url', value: '' },
-	description: 'The workbook to operate on. Choosing it by URL needs no site or library.',
+	description: 'Pick the workbook by URL (no site or library needed) or by ID',
 	modes: [
 		{
 			displayName: 'By URL',
@@ -116,7 +116,6 @@ export const worksheetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	required: true,
 	default: { mode: 'list', value: '' },
-	description: 'The sheet to operate on',
 	modes: [
 		{
 			displayName: 'From List',
@@ -142,7 +141,6 @@ export const tableRLC: INodeProperties = {
 	type: 'resourceLocator',
 	required: true,
 	default: { mode: 'list', value: '' },
-	description: 'The table to operate on',
 	modes: [
 		{
 			displayName: 'From List',

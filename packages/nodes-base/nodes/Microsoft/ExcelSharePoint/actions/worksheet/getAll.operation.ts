@@ -51,7 +51,7 @@ const properties: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by ,.',
+				description: 'Fields to include in the response. Separate multiple fields with a comma.',
 			},
 		],
 	},
