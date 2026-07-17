@@ -1,0 +1,53 @@
+# Trigger-service PoC services. Mains and workers run as LOCAL processes
+# (run-main.sh / run-worker.sh) for fast iteration and easy kill -9 / SIGSTOP
+# chaos demos; this compose only provides the shared infrastructure.
+#
+# Ports are offset from the defaults to avoid clashing with other local stacks
+# (e.g. ~/n8n-multi-main): postgres 5433, redis 6380. RabbitMQ uses the
+# standard 5672 (+ management UI on 15672, guest/guest).
+name: n8n-poc
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: n8n
+      POSTGRES_DB: n8n
+    volumes:
+      # Named volume so the n8n license activates once and only renews after.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U n8n -d n8n']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '6380:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 5s
+      timeout: 10s
+      retries: 20
+
+volumes:
+  pgdata:
