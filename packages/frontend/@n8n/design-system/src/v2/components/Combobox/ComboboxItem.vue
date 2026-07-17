@@ -18,7 +18,7 @@ const $style = useCssModule();
 	<ComboboxItem
 		:class="$style.root"
 		:disabled="props.disabled"
-		:value="props.value ?? null"
+		:value="props.value ?? ''"
 		:text-value="props.textValue ?? props.label"
 		:data-disabled="props.disabled || undefined"
 	>

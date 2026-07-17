@@ -101,7 +101,7 @@ Non-prop attributes (e.g. `aria-label`, `data-test-id`) fall through to `Combobo
 `ComboboxItem` is either a primitive value or an object:
 
 ```typescript
-type AcceptableValue = string | number | bigint | Record<string, unknown> | null | undefined;
+type AcceptableValue = string | Record<string, unknown>;
 
 type ComboboxListItem = {
   value?: AcceptableValue;

@@ -11,14 +11,14 @@ Freeform tag entry field. Users type values and create tags via delimiter (defau
 
 **Props**
 
-- `modelValue?: TagsInputValue[]` - Controlled tags. Bind with `v-model`
+- `modelValue?: TagsInputValue[]` - Controlled tags. Bind with `v-model`. `TagsInputValue` is `string | number | bigint | Record | null`
 - `defaultValue?: TagsInputValue[]` - Initial tags when uncontrolled
 - `placeholder?: string` - Shown when empty. Default: `'Add a tag...'`
 - `disabled?: boolean` - When `true`, prevents interaction and dims the field. Default: `false`
 - `id?: string` - Applied to the text input
 - `autoFocus?: boolean` - Focus the input on mount
 - `delimiter?: string | RegExp` - Creates a tag from typed input. Default: `','`. Pass `''` to disable delimiter splitting
-- `displayValue?: (value: TagsInputValue) => string` - Label for object tags. Falls back to string value or `value.label`
+- `displayValue?: (value: TagsInputValue) => string` - Label for tags. Falls back to string/number/bigint/`'null'`, or `value.label` for objects
 - `convertValue?: (value: string) => TagsInputValue` - Required when tags are objects
 - `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Sets `--input--height`. Tag height is `height − 2× inset`; inset/gap share `--tags-input--padding`. Default: `'large'`
 - `embedded?: boolean` - When `true`, drops the field chrome so a parent (e.g. Combobox) owns the border/background. Default: `false`

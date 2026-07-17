@@ -70,20 +70,12 @@ const rootProps = useForwardPropsEmits(
 	emit,
 );
 
-function isPrimitiveComboboxValue(item: ComboboxItem): item is string | number | bigint | null {
-	return item === null || typeof item !== 'object';
+function isPrimitiveComboboxValue(item: ComboboxItem): item is string {
+	return typeof item === 'string';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function stringifyAcceptableValue(value: string | number | bigint | null): string {
-	if (typeof value === 'string') {
-		return value;
-	}
-
-	return value === null ? 'null' : value.toString();
 }
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
@@ -109,18 +101,16 @@ const groups = computed<ComboboxListItem[]>(() => {
 	if (!props.items?.length) return [];
 	return props.items.map((item) => {
 		if (isPrimitiveComboboxValue(item)) {
-			const label = stringifyAcceptableValue(item);
-
 			return {
 				value: item,
-				label,
-				textValue: label,
+				label: item,
+				textValue: item,
 			};
 		}
 
 		return {
 			...item,
-			value: get<AcceptableValue>(item, props.valueKey) ?? null,
+			value: get<AcceptableValue>(item, props.valueKey) ?? '',
 			label: get<string>(item, props.labelKey),
 			textValue: get<string>(item, props.labelKey),
 		};
@@ -149,18 +139,7 @@ function getDisplayValue(value: unknown): string {
 		return value;
 	}
 
-	if (typeof value === 'number' || typeof value === 'bigint') {
-		return value.toString();
-	}
-
 	return '';
-}
-
-function isTagsInputValue(value: AcceptableValue): value is TagsInputValue {
-	return (
-		typeof value === 'string' ||
-		(typeof value === 'object' && value !== null && !Array.isArray(value))
-	);
 }
 
 function getTagLabel(value: TagsInputValue): string {
@@ -172,7 +151,7 @@ const selectedTags = computed<TagsInputValue[]>(() => {
 		return [];
 	}
 
-	return props.modelValue.filter(isTagsInputValue);
+	return props.modelValue;
 });
 
 const hasValue = computed(() => {

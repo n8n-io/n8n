@@ -7,7 +7,7 @@ import type {
 	ComboboxRootProps,
 } from '../../utils/reka-ui';
 
-export type AcceptableValue = string | number | bigint | Record<string, unknown> | null | undefined;
+export type AcceptableValue = string | Record<string, unknown>;
 
 export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'openOnFocus'> &
 	Pick<ComboboxContentProps, 'side' | 'sideOffset' | 'align'> & {
@@ -26,7 +26,7 @@ export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'op
 		portalTarget?: string | HTMLElement;
 	};
 
-export type ComboboxEmits = ComboboxRootEmits<AcceptableValue | AcceptableValue[]>;
+export type ComboboxEmits = ComboboxRootEmits<AcceptableValue | AcceptableValue[] | undefined>;
 
 export type ComboboxListItem = ComboboxItemProps & {
 	label?: string;
@@ -34,7 +34,7 @@ export type ComboboxListItem = ComboboxItemProps & {
 	icon?: IconName;
 };
 
-export type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListItem;
+export type ComboboxItem = AcceptableValue | ComboboxListItem;
 
 export type ComboboxSizes = InputSize;
 
