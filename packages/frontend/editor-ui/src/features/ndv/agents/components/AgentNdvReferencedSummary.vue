@@ -9,14 +9,7 @@
  */
 import { computed, inject, watch } from 'vue';
 import type { AgentCapabilitySummary } from '@n8n/api-types';
-import {
-	N8nLink,
-	N8nLoading,
-	N8nMarkdown,
-	N8nSectionHeader,
-	N8nText,
-	N8nButton,
-} from '@n8n/design-system';
+import { N8nLoading, N8nMarkdown, N8nText, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -122,9 +115,6 @@ async function onEditInBuilder() {
 		:class="$style.summary"
 		data-test-id="agent-ndv-referenced-summary"
 	>
-		<N8nSectionHeader :title="i18n.baseText('agentNode.ndv.section.agent')" bordered>
-		</N8nSectionHeader>
-
 		<!-- Terminal state: the referenced agent was deleted or access was lost. -->
 		<N8nText
 			v-if="isUnavailable"
@@ -141,50 +131,54 @@ async function onEditInBuilder() {
 
 		<template v-else-if="config">
 			<div :class="$style.config">
-				<N8nButton
-					v-if="!isUnavailable"
-					size="small"
-					icon="external-link"
-					variant="subtle"
-					:class="$style.editButton"
-					data-test-id="agent-ndv-edit-in-builder"
-					@click="onEditInBuilder"
-				>
-					{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}
-				</N8nButton>
-				<header :class="$style.header">
-					<AgentPersonalisationIcon :personalisation="config.personalisation" :size="48" />
-					<div :class="$style.identityRow">
-						<N8nText bold step="2xl" data-test-id="agent-ndv-summary-name">{{
-							config.name
-						}}</N8nText>
-						<div :class="$style.modelRow" data-test-id="agent-ndv-summary-model">
-							<CredentialIcon
-								v-if="modelCredentialType"
-								:credential-type-name="modelCredentialType"
-								:size="16"
-							/>
-							<N8nText bold color="text-light">
-								{{ modelName || i18n.baseText('agentNode.card.noModel') }}
-							</N8nText>
+				<div :class="$style.configContent">
+					<N8nButton
+						v-if="!isUnavailable"
+						size="small"
+						icon="external-link"
+						variant="subtle"
+						:class="$style.editButton"
+						data-test-id="agent-ndv-edit-in-builder"
+						@click="onEditInBuilder"
+					>
+						{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}
+					</N8nButton>
+					<header :class="$style.header">
+						<AgentPersonalisationIcon :personalisation="config.personalisation" :size="48" />
+						<div :class="$style.identityRow">
+							<N8nText bold step="2xl" data-test-id="agent-ndv-summary-name">{{
+								config.name
+							}}</N8nText>
+							<div :class="$style.modelRow" data-test-id="agent-ndv-summary-model">
+								<CredentialIcon
+									v-if="modelCredentialType"
+									:credential-type-name="modelCredentialType"
+									:size="16"
+								/>
+								<N8nText bold color="text-light">
+									{{ modelName || i18n.baseText('agentNode.card.noModel') }}
+								</N8nText>
+							</div>
 						</div>
-					</div>
-				</header>
+					</header>
 
-				<N8nMarkdown
-					v-if="instructions"
-					:content="instructions"
-					:class="$style.instructions"
-					data-test-id="agent-ndv-summary-instructions"
-				/>
+					<N8nMarkdown
+						v-if="instructions"
+						:content="instructions"
+						:class="$style.instructions"
+						data-test-id="agent-ndv-summary-instructions"
+					/>
 
-				<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+					<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+				</div>
 			</div>
 		</template>
 	</div>
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins' as ds-mixins;
+
 .header {
 	display: flex;
 	flex-direction: column;
@@ -201,20 +195,38 @@ async function onEditInBuilder() {
 
 .editButton {
 	position: absolute;
-	top: 12px;
-	right: 12px;
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
 }
 
 .config {
 	position: relative;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: calc(var(--spacing--lg) * 1.2) var(--spacing--lg);
 	border: var(--border);
 	border-radius: var(--radius);
 	background-color: var(--background--surface);
 	box-shadow: var(--shadow--xs);
+	aspect-ratio: 16/9;
+	overflow: hidden;
+}
+
+.configContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	height: 100%;
+	padding: var(--spacing--xl) var(--spacing--lg);
+	overflow: auto;
+	scrollbar-gutter: stable;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
+	mask-image: linear-gradient(
+		to bottom,
+		black 0,
+		black calc(100% - var(--spacing--sm)),
+		transparent 100%
+	);
+
+	@include ds-mixins.scroll-bar;
 }
 
 .unavailable {
