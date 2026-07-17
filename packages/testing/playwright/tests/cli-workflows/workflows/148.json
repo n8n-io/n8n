@@ -37,11 +37,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData ='n8n (ausgesprochen n-eight-n) hilft Ihnen, jede App mit einer API auf der Welt miteinander zu verbinden, um ihre Daten ohne eine einzige Zeile Code zu teilen und zu manipulieren. Es ist ein einfach zu bedienender, benutzerfreundlicher und hochgradig anpassbarer Dienst.'\nif(items[0].json['text'] !== testData){\n  throw new Error('Problem in DeepL node')\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData ='n8n (ausgesprochen n-eight-n) hilft Ihnen, jede App mit einer API auf der Welt miteinander zu verbinden, um ihre Daten ohne eine einzige Zeile Code zu teilen und zu manipulieren. Es ist ein einfach zu bedienender, benutzerfreundlicher und hochgradig anpassbarer Dienst.'\nif($input.all()[0].json['text'] !== testData){\n  throw new Error('Problem in DeepL node')\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [650, 300],
 			"id": "2672ca93-3052-4bc7-9145-f0f25405378d"
 		}

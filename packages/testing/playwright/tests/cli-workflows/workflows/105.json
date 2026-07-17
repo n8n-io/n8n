@@ -39,11 +39,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "items = [\n{\njson:{},\nbinary: {\n\tdata: {\n\t\tdata: 'VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl',\n\t\tfileExtension: 'txt', \n\t\tfileName: 'file.txt', \n\t}\n}\n}\n\n];\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = [\n{\njson:{},\nbinary: {\n\tdata: {\n\t\tdata: 'VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl',\n\t\tfileExtension: 'txt', \n\t\tfileName: 'file.txt', \n\t}\n}\n}\n\n];\nreturn items;"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [460, 300],
 			"notesInFlow": true,
 			"notes": "Prepare file data",
@@ -51,11 +52,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData ='VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl';\n\nif(items[0].binary.data.data !== testData){\n  throw new Error('Error in Write Binary File node');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData ='VGVzdCBXcml0ZSBCaW5hcnkgRmlsZSBub2Rl';\n\nif($input.all()[0].binary.data.data !== testData){\n  throw new Error('Error in Write Binary File node');\n}\nreturn $input.all();"
 			},
 			"name": "Function1",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [1020, 300],
 			"notesInFlow": true,
 			"notes": "Verify file data",
