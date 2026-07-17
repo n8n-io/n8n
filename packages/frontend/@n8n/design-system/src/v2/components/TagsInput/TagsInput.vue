@@ -24,12 +24,27 @@ defineOptions({ inheritAttrs: false });
 
 const $style = useCssModule();
 
-const props = withDefaults(defineProps<TagsInputProps>(), {
-	placeholder: 'Add a tag...',
-	size: 'large',
-	delimiter: ',',
-	disabled: false,
-});
+/*
+ * `embedded` is also listed as a type-literal key here. Vue's defineProps resolver is
+ * AST-based: keys that only exist on a complex imported intersection
+ * (`TagsInputRootProps & … & { embedded? }`) can be dropped at runtime, while a
+ * local type literal in this file is always registered. `size` happens to resolve
+ * from the imported type; `embedded` did not — keep it explicit.
+ */
+const props = withDefaults(
+	defineProps<
+		TagsInputProps & {
+			embedded?: boolean;
+		}
+	>(),
+	{
+		placeholder: 'Add a tag...',
+		size: 'large',
+		delimiter: ',',
+		disabled: false,
+		embedded: false,
+	},
+);
 
 const emit = defineEmits<TagsInputEmits>();
 
@@ -153,11 +168,11 @@ function getInputClass(isEmpty: boolean): string {
 </script>
 
 <template>
-	<div ref="root" :class="[$style.root, sizes[props.size]]">
+	<div ref="root" :class="[props.embedded ? $style.embedded : $style.root, sizes[props.size]]">
 		<TagsInputRoot
 			v-bind="{ ...$attrs, ...rootProps }"
 			:display-value="getDisplayValue"
-			:class="$style.tags"
+			:class="[$style.tags, props.embedded && $style.tagsEmbedded]"
 			@invalid="onInvalid"
 		>
 			<template #default="{ modelValue }">
@@ -250,6 +265,15 @@ function getInputClass(isEmpty: boolean): string {
 	}
 }
 
+.embedded {
+	@include input-mixin.size-variables('large');
+	@include input-mixin.theme-variables(var(--border-color));
+
+	--tags-input--gap: calc(var(--tags-input--padding) - 1px);
+	--tag--height: calc(var(--input--height) - 2 * var(--tags-input--padding));
+	width: 100%;
+}
+
 .mini {
 	@include input-mixin.size-variables('mini');
 
@@ -317,6 +341,10 @@ function getInputClass(isEmpty: boolean): string {
 	width: 100%;
 	padding: calc(var(--tags-input--padding) - 1px);
 	overflow: auto;
+}
+
+.tagsEmbedded {
+	padding: 0;
 }
 
 .tag {

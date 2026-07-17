@@ -13,6 +13,7 @@ export type TagsInputSizes = InputSize;
 export type TagsInputProps = TagsInputRootProps<TagsInputValue> &
 	Pick<TagsInputInputProps, 'placeholder' | 'autoFocus'> & {
 		size?: TagsInputSizes;
+		embedded?: boolean;
 	};
 
 export type TagsInputEmits = TagsInputRootEmits<TagsInputValue>;
