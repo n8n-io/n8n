@@ -685,8 +685,11 @@ Delegates agent building to the agents-module builder chat
 turn per call. Registered in `createOrchestrationTools` only when the host
 provides `builderDelegate` (agents module active). The builder's own prompt
 and tools drive the build, including its interactive tools (`ask_questions`,
-`ask_credential`, `ask_embedding_credential`, `configure_channel`) — the
-sub-agent session no longer excludes them. Builder session state is keyed to
+`ask_credential`, `ask_embedding_credential`, `configure_channel`) and
+lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
+the sub-agent session no longer excludes them. Forward publish/unpublish/
+activate/make-live intents to `build-agent`; never tell the user to open the
+agent editor and click Publish. Builder session state is keyed to
 instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and never
 appears in the agents-module builder UI.
 

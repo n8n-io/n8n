@@ -9,8 +9,9 @@
  */
 export const BUILDER_TOOLS = {
 	READ_CONFIG: 'read_config',
-	// WRITE_CONFIG / PATCH_CONFIG values must match `CONFIG_MUTATION_TOOL_NAMES`
-	// in `@n8n/api-types` (agents/agent-interaction.schema.ts).
+	// WRITE_CONFIG / PATCH_CONFIG / PUBLISH_AGENT / UNPUBLISH_AGENT values must
+	// match `CONFIG_MUTATION_TOOL_NAMES` in `@n8n/api-types`
+	// (agents/agent-interaction.schema.ts).
 	WRITE_CONFIG: 'write_config',
 	PATCH_CONFIG: 'patch_config',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
@@ -19,6 +20,8 @@ export const BUILDER_TOOLS = {
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
+	PUBLISH_AGENT: 'publish_agent',
+	UNPUBLISH_AGENT: 'unpublish_agent',
 	RESOLVE_LLM: 'resolve_llm',
 	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',
