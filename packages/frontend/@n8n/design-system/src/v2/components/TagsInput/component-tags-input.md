@@ -21,6 +21,7 @@ Freeform tag entry field. Users type values and create tags via delimiter (defau
 - `displayValue?: (value: TagsInputValue) => string` - Label for object tags. Falls back to string value or `value.label`
 - `convertValue?: (value: string) => TagsInputValue` - Required when tags are objects
 - `size?: 'mini' | 'small' | 'medium' | 'large' | 'xlarge'` - Sets `--input--height`. Tag height is `height − 2× inset`; inset/gap share `--tags-input--padding`. Default: `'large'`
+- `embedded?: boolean` - When `true`, drops the field chrome so a parent (e.g. Combobox) owns the border/background. Default: `false`
 - `addOnPaste?: boolean` / `addOnBlur?: boolean` / `addOnTab?: boolean` - Extra ways to commit a tag
 - `max?: number` - Max tags. Reka treats `0` as unlimited
 - `duplicate?: boolean` - When `true`, allow duplicate tags. When `false` (default), adding an existing tag moves it to the end of the list

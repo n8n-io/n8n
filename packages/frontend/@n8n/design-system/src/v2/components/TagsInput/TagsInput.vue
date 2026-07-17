@@ -11,10 +11,11 @@ import {
 	TagsInputItemText,
 	TagsInputRoot,
 	useForwardPropsEmits,
+	type TagsInputRootProps,
 } from './reka-ui';
 import type {
 	TagsInputEmits,
-	TagsInputProps,
+	TagsInputOwnProps,
 	TagsInputSizes,
 	TagsInputSlots,
 	TagsInputValue,
@@ -24,27 +25,13 @@ defineOptions({ inheritAttrs: false });
 
 const $style = useCssModule();
 
-/*
- * `embedded` is also listed as a type-literal key here. Vue's defineProps resolver is
- * AST-based: keys that only exist on a complex imported intersection
- * (`TagsInputRootProps & … & { embedded? }`) can be dropped at runtime, while a
- * local type literal in this file is always registered. `size` happens to resolve
- * from the imported type; `embedded` did not — keep it explicit.
- */
-const props = withDefaults(
-	defineProps<
-		TagsInputProps & {
-			embedded?: boolean;
-		}
-	>(),
-	{
-		placeholder: 'Add a tag...',
-		size: 'large',
-		delimiter: ',',
-		disabled: false,
-		embedded: false,
-	},
-);
+const props = withDefaults(defineProps<TagsInputOwnProps & TagsInputRootProps<TagsInputValue>>(), {
+	placeholder: 'Add a tag...',
+	size: 'large',
+	delimiter: ',',
+	disabled: false,
+	embedded: false,
+});
 
 const emit = defineEmits<TagsInputEmits>();
 
@@ -87,15 +74,7 @@ const rootProps = computed(() => {
 });
 
 function getTagKey(value: TagsInputValue, index: number): string {
-	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') {
-		return `${value.toString()}-${index}`;
-	}
-
-	if (value === null) {
-		return `null-${index}`;
-	}
-
-	return `tag-${index}`;
+	return typeof value === 'string' ? `${value}-${index}` : `tag-${index}`;
 }
 
 function getDisplayValue(value: TagsInputValue): string {
@@ -105,14 +84,6 @@ function getDisplayValue(value: TagsInputValue): string {
 
 	if (typeof value === 'string') {
 		return value;
-	}
-
-	if (typeof value === 'number' || typeof value === 'bigint') {
-		return value.toString();
-	}
-
-	if (value === null) {
-		return 'null';
 	}
 
 	if ('label' in value && typeof value.label === 'string') {
