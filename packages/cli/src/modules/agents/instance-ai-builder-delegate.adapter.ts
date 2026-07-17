@@ -24,7 +24,9 @@ export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.`;
+The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.
+
+You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.`;
 
 function isTextDeltaChunk(
 	chunk: StreamChunk,
