@@ -10,7 +10,7 @@ import type {
 	BridgeExecutionContext,
 	PlatformAgentContext,
 } from './agent-chat-integration';
-import { ChatIntegrationRegistry } from './agent-chat-integration';
+import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
 import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
@@ -273,6 +273,7 @@ export class AgentChatBridge {
 			),
 			this.messageContextBridge.resolveSubject(message),
 		]);
+		const statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
 		try {
 			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
 				messageId: message.id,
@@ -300,17 +301,16 @@ export class AgentChatBridge {
 
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: bridgeExecutionContext.forceBuffered,
-				statusHandle: bridgeExecutionContext.statusHandle,
+				statusHandle,
 			});
 		} finally {
+			statusRetry.abort();
 			// The stream consumer clears the status right before the first response;
 			// this clear covers failures before/outside consumption, which would
 			// otherwise leave a status indicator (e.g. Telegram's typing keepalive)
-			// running after the error reply. It must run before the abort below:
-			// handles use an aborted statusRetry as the "already cleared" marker
-			// and skip their remote clear once it is set.
-			await bridgeExecutionContext.statusHandle?.clearBeforeResponse();
-			statusRetry.abort();
+			// running after the error reply. The once-wrapped handle makes this a
+			// no-op await of the consumer's clear when that already ran.
+			await statusHandle?.clearBeforeResponse();
 		}
 	}
 
