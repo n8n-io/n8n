@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -18,6 +18,10 @@ import type { FrontendModuleSettings } from '@n8n/api-types';
 
 const PERSONAL_PROJECT_ID = 'personal-project-id';
 
+// Reactive so the component's `watch(() => route.query[...])` fires on mutation,
+// matching vue-router's real reactive `route.query` behavior.
+const routeQuery = reactive({}) as Record<string, string | undefined>;
+
 const {
 	experimentMocks,
 	promptSuggestionsV2,
@@ -29,8 +33,14 @@ const {
 	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
+	templateExamplesStoreMock,
+	templateExamplesEnabled,
 	telemetryTrack,
 } = vi.hoisted(() => ({
+	templateExamplesStoreMock: {
+		hasLoadFailed: false,
+	},
+	templateExamplesEnabled: { value: false },
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
@@ -222,6 +232,39 @@ vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	getPreviewWorkflow: () => null,
 }));
 
+vi.mock('@/experiments/instanceAiTemplateExamples', async () => {
+	const { computed, h } = await import('vue');
+	type VueSetupContext = {
+		emit: (event: string, ...args: unknown[]) => void;
+	};
+	return {
+		useInstanceAiTemplateExamplesExperiment: () => ({
+			isFeatureEnabled: computed(() => templateExamplesEnabled.value),
+			currentVariant: computed(() => (templateExamplesEnabled.value ? 'variant' : 'control')),
+		}),
+		useInstanceAiTemplateExamplesStore: () => templateExamplesStoreMock,
+		TEMPLATE_PROMPT_SUFFIX:
+			'\n\nAsk me questions to narrow down my use case and the tools I use to best personalize the example for my needs.',
+		TemplateExamplesCatalog: {
+			name: 'TemplateExamplesCatalogStub',
+			emits: ['hover-prompt', 'hover-end', 'select-prompt'],
+			setup(_props: Record<string, unknown>, { emit }: VueSetupContext) {
+				return () =>
+					h('div', { 'data-test-id': 'template-examples-catalog' }, [
+						h(
+							'button',
+							{
+								'data-test-id': 'template-example-card',
+								onClick: () => emit('select-prompt', 'Build me an invoice automation'),
+							},
+							'example card',
+						),
+					]);
+			},
+		},
+	};
+});
+
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
@@ -252,6 +295,7 @@ vi.mock('uuid', () => ({
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
+	useRoute: () => ({ query: routeQuery }),
 	useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
 }));
 
@@ -272,14 +316,19 @@ const InstanceAiInputStub = defineComponent({
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
 		const i18n = useI18n();
+		const currentText = ref('');
 		expose({
 			focus: vi.fn(),
+			setText: (text: string) => {
+				currentText.value = text;
+			},
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
 			submitSuggestion: (payload: { promptKey: BaseTextKey }) =>
 				emit('submit', i18n.baseText(payload.promptKey)),
 		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
+				h('span', { 'data-test-id': 'instance-ai-input-text' }, currentText.value),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-suggestions' },
@@ -328,7 +377,7 @@ const InstanceAiInputStub = defineComponent({
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
-						onClick: () => emit('submit', 'hello'),
+						onClick: () => emit('submit', currentText.value || 'hello'),
 					},
 					'submit',
 				),
@@ -367,6 +416,7 @@ describe('InstanceAiEmptyView', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn(),
 			setItem: vi.fn(),
@@ -406,6 +456,8 @@ describe('InstanceAiEmptyView', () => {
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
+		templateExamplesStoreMock.hasLoadFailed = false;
+		templateExamplesEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -774,6 +826,41 @@ describe('InstanceAiEmptyView', () => {
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
+	it('preselects the project from ?projectId= without starting a thread on mount', async () => {
+		const redirectedProjectId = 'team-project-42';
+		routeQuery.projectId = redirectedProjectId;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+		await flushPromises();
+
+		expect(store.syncThread).not.toHaveBeenCalled();
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(replaceMock).not.toHaveBeenCalled();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', redirectedProjectId);
+	});
+
+	it('falls back to the personal project when the ?projectId= query is cleared', async () => {
+		const redirectedProjectId = 'team-project-42';
+		routeQuery.projectId = redirectedProjectId;
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+		await flushPromises();
+
+		routeQuery.projectId = undefined;
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+	});
+
 	it('shows a toast and stays on the empty view when syncThread rejects', async () => {
 		store.syncThread.mockRejectedValue(new Error('persist failed'));
 		const { getByTestId } = renderView();
@@ -808,5 +895,20 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	it('injects the prompt into the input when a template example card is clicked', async () => {
+		templateExamplesEnabled.value = true;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('template-examples-catalog')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('template-example-card'));
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
+			'Build me an invoice automation',
+		);
 	});
 });

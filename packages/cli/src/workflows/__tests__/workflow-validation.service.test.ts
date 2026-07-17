@@ -742,7 +742,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('dynamic credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain('resolver');
 		});
@@ -816,7 +816,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('dynamic credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain('identity extractor');
 		});
@@ -842,7 +842,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('dynamic credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('identity extractor');
 		});
 
@@ -867,7 +867,7 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('private credentials');
+			expect(result.error).toContain('end-user credentials');
 			expect(result.error).toContain('"My OAuth2"');
 			expect(result.error).toContain('manually');
 		});
@@ -893,6 +893,34 @@ describe('WorkflowValidationService', () => {
 			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
+		});
+
+		it('should return invalid when a compatible trigger is combined with an unsupported trigger', async () => {
+			const nodes: INode[] = [
+				createNode('Manual', 'n8n-nodes-base.manualTrigger'),
+				createNode('Schedule', 'n8n-nodes-base.scheduleTrigger'),
+				createNode('HTTP', 'n8n-nodes-base.httpRequest', {
+					credentials: { oAuth2Api: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'My OAuth2' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.manualTrigger' || type === 'n8n-nodes-base.scheduleTrigger')
+					return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain('end-user credentials');
+			expect(result.error).toContain('"My OAuth2"');
+			expect(result.error).toContain('manually');
 		});
 
 		it('should return valid when a system-resolved credential is used under an Execute Workflow Trigger', async () => {

@@ -14,8 +14,6 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import type { IWorkflowDb } from '@/Interface';
 import * as vueuse from '@vueuse/core';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -98,11 +96,6 @@ describe('WorkflowCanvas', () => {
 	});
 
 	it('should render workflow node groups from the workflow document store collapsed by default', async () => {
-		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
-
 		const workflow = createTestWorkflow({
 			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
 			connections: {},
@@ -121,11 +114,6 @@ describe('WorkflowCanvas', () => {
 	});
 
 	it('expands every group when groupExpansionMode is "all"', async () => {
-		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
-
 		const workflow = createTestWorkflow({
 			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
 			connections: {},
@@ -140,11 +128,6 @@ describe('WorkflowCanvas', () => {
 	});
 
 	it('keeps groups without an errored node collapsed when groupExpansionMode is "errored"', async () => {
-		const posthogStore = usePostHog();
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockImplementation(
-			(name) => name === CANVAS_NODES_GROUPING_EXPERIMENT.name,
-		);
-
 		const workflow = createTestWorkflow({
 			nodes: [createTestNode({ id: '1', name: 'Node 1' })],
 			connections: {},

@@ -61,14 +61,19 @@ function shouldStringifyBody<T>(value: T, headers: IDataObject): boolean {
  * @returns The SigV4 signing service name
  */
 function getAwsSigningService(service: string): string {
+	// FIPS endpoints (`<service>-fips.<region>.amazonaws.com`) sign with the base
+	// service name; e.g. `s3-fips` signed as-is fails with SignatureDoesNotMatch.
+	const baseService = service.replace(/-fips$/, '');
 	// Virtual-hosted-style S3 requests arrive as `<bucket>.s3` (the node builds the
 	// endpoint `<bucket>.s3.<region>.amazonaws.com`). They all sign under the `s3`
-	// signing name. aws4 derived this by inspecting the host; smithy does not, so we
+	// signing name, as do S3 access-point (`s3-accesspoint`) and S3 Control
+	// (`s3-control`) endpoints — bare or with a bucket/access-point qualifier
+	// prefix. aws4 derived this by inspecting the host; smithy does not, so we
 	// normalize it here.
-	if (service === 's3' || service.endsWith('.s3')) {
+	if (/(^|\.)s3(-accesspoint|-control|-accelerate)?$/.test(baseService)) {
 		return 's3';
 	}
-	switch (service) {
+	switch (baseService) {
 		// Mirror AWS SDK Bedrock signing for HTTP Request node AWS credentials:
 		// these endpoint families are signed with the `bedrock` service namespace.
 		// https://docs.aws.amazon.com/bedrock/latest/APIReference/welcome.html#API_Reference_Endpoints
@@ -79,8 +84,16 @@ function getAwsSigningService(service: string): string {
 		case 'bedrock-data-automation':
 		case 'bedrock-data-automation-runtime':
 			return 'bedrock';
+		// Legacy region-first SQS endpoints (`<region>.queue.amazonaws.com`).
+		case 'queue':
+			return 'sqs';
+		// SES (v1 and v2) endpoints are `email.<region>.amazonaws.com` but sign
+		// under `ses`. aws4 remapped this inside its RequestSigner; smithy signs
+		// the name it is given, so the mapping must live here.
+		case 'email':
+			return 'ses';
 		default:
-			return service;
+			return baseService;
 	}
 }
 
@@ -176,30 +189,225 @@ export const awsCredentialsTest: ICredentialTestRequest = {
 };
 
 /**
+ * PrivateLink (VPC interface endpoint) hostnames shift the service and region
+ * one label to the right compared to public endpoints, e.g.
+ * `vpce-0abc123[-az].bedrock-runtime.us-east-1.vpce.amazonaws.com`. The optional
+ * `.cn` suffix covers the China regions, whose endpoints use `vpce.amazonaws.com.cn`.
+ *
+ * Only the endpoint-specific hostname (which starts with the `vpce-` id label) is
+ * matched. S3's bucket/access-point/control interface endpoints prefix another
+ * label before the id (e.g. `bucket.vpce-0abc123.s3.us-east-1.vpce.amazonaws.com`)
+ * and are intentionally not covered here.
+ *
+ * @see {@link https://docs.aws.amazon.com/vpc/latest/privatelink/privatelink-share-your-services.html AWS PrivateLink}
+ */
+const VPCE_HOSTNAME_PATTERN = /^vpce-[^.]+\.([^.]+)\.([^.]+)\.vpce\.amazonaws\.com(?:\.cn)?$/;
+
+function isSupportedAwsRegion(region: string): region is AWSRegion {
+	return SUPPORTED_AWS_REGIONS.has(region);
+}
+
+/**
+ * Matches genuine AWS endpoint hosts (public and China partitions). Custom
+ * hostnames (API Gateway custom domains, proxies, S3-compatible stores) don't
+ * match, so labels mis-parsed as a region from them must not fail the request.
+ */
+function isAwsEndpointHostname(hostname: string): boolean {
+	return /\.amazonaws\.com(\.cn)?$/i.test(hostname);
+}
+
+/**
  * Ensures the region value belongs to the supported AWS regions list before it
  * is interpolated into request URLs or signing options. Anything outside the
  * known set is rejected with a controlled error.
  */
 export function assertSupportedAwsRegion(region: unknown): asserts region is AWSRegion {
-	if (typeof region !== 'string' || !SUPPORTED_AWS_REGIONS.has(region)) {
+	if (typeof region !== 'string' || !isSupportedAwsRegion(region)) {
 		throw new UserError('Unsupported AWS region');
 	}
 }
 
 /**
+ * Validates a user-supplied Bedrock endpoint override and returns the resolved URL.
+ * Substitutes the `{region}` placeholder after the region itself is validated, and
+ * requires an `http:`/`https:` scheme. The value is credential-holder-configured and
+ * treated as trusted; no host allow-listing / SSRF check is applied on this path.
+ *
+ * @throws {UserError} When the region is unsupported, the URL is malformed, or the scheme is not http/https.
+ */
+export function validateBedrockEndpointOverride(override: string, region: AWSRegion): string {
+	assertSupportedAwsRegion(region);
+	const resolved = override.replace(/\{region\}/g, region);
+	let url: URL;
+	try {
+		url = new URL(resolved);
+	} catch {
+		// Don't echo the raw value; it may contain URL userinfo (user:pass@host).
+		throw new UserError('Bedrock endpoint is not a valid URL');
+	}
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+		throw new UserError('Bedrock endpoint must use the http or https scheme');
+	}
+	// Strip a trailing slash only: on the SDK client's `endpoint` it would serialize
+	// operation paths as `//model/...`. Everything else the user configured is preserved.
+	return url.toString().replace(/\/$/, '');
+}
+
+/**
+ * Shape of an AWS region label: a 2-4 letter partition prefix (`us`, `eusc`),
+ * one or more word components, and a numeric suffix (`us-east-1`,
+ * `us-gov-west-1`, `eusc-de-east-1`). Deliberately shape-only: a mistyped or
+ * not-yet-supported region must reach the caller's validation instead of
+ * being silently dropped.
+ */
+export const AWS_REGION_SHAPE_PATTERN = /^[a-z]{2,4}(-[a-z]+)+-\d+$/;
+
+/**
+ * Legacy dash-region S3 endpoints (`[<bucket>.]s3-<region>.amazonaws.com`)
+ * encode the region inside the s3 label. Returns that region, or null when
+ * the label doesn't carry one (`s3-accelerate`, `s3-external-1`).
+ */
+function parseLegacyS3DashRegion(label: string): string | null {
+	if (!label.startsWith('s3-')) return null;
+	const rest = label.slice(3);
+	return AWS_REGION_SHAPE_PATTERN.test(rest) ? rest : null;
+}
+
+/**
  * Parses an AWS service URL to extract the service name and region.
- * Some AWS services are global and don't have a region.
+ * Some AWS services are global and don't have a region. PrivateLink
+ * endpoints (`vpce-<id>.<service>.<region>.vpce.amazonaws.com`) return their
+ * positional service and region labels verbatim.
+ *
+ * On all other hostnames (public AWS endpoints, including dual-stack and
+ * FIPS variants, and custom hosts) the region is the rightmost region-shaped
+ * label, or null when no label matches. The service is the label right of
+ * the region when the region is second-to-last on an AWS host (region-middle
+ * and legacy region-first shapes: `<domain>.<region>.es`, `<region>.queue`);
+ * otherwise the label left of the region (skipping a `dualstack` qualifier)
+ * when qualifier labels such as a bucket name or API id precede it;
+ * otherwise a trailing legacy region-less S3 service label (`<bucket>.s3`,
+ * `<bucket>.s3-accelerate[.dualstack]`); otherwise the first label. Legacy
+ * S3 shapes are special-cased: a region-shaped first label in front of
+ * `s3`/`s3-accelerate` is a bucket name (null region), and dash-region
+ * labels (`[<bucket>.]s3-<region>`) yield service `s3` with the embedded
+ * region. The region is not validated against the supported region list;
+ * callers must check it (e.g. with {@link assertSupportedAwsRegion}) before
+ * using it for signing.
  *
  * @param url - The AWS service URL to parse
  * @returns Object containing the service name and region (null for global services)
  *
  * @see {@link https://docs.aws.amazon.com/general/latest/gr/rande.html#global-endpoints AWS Global Endpoints}
  */
-export function parseAwsUrl(url: URL): { region: AWSRegion | null; service: string } {
+export function parseAwsUrl(url: URL): { region: string | null; service: string } {
 	const hostname = url.hostname;
+	const vpceMatch = hostname.match(VPCE_HOSTNAME_PATTERN);
+	if (vpceMatch) {
+		const [, service, region] = vpceMatch;
+		return { service, region };
+	}
 	// Handle both .amazonaws.com and .amazonaws.com.cn domains
-	const [service, region] = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
+	const labels = hostname.replace(/\.amazonaws\.com.*$/, '').split('.');
+	// The region is the rightmost region-shaped label: AWS puts the region closest to
+	// the domain suffix, and supported-ness is the caller's decision — checking it here
+	// would let a bucket/qualifier label that happens to be a known region shadow a
+	// mistyped or not-yet-supported label in the real region slot.
+	let regionIdx = -1;
+	for (let i = labels.length - 1; i >= 0; i--) {
+		if (AWS_REGION_SHAPE_PATTERN.test(labels[i])) {
+			regionIdx = i;
+			break;
+		}
+	}
+	const region = regionIdx === -1 ? null : labels[regionIdx];
+	let service = labels[0];
+	if (
+		regionIdx !== -1 &&
+		regionIdx === labels.length - 2 &&
+		isAwsEndpointHostname(hostname) &&
+		labels[regionIdx + 1] !== 'vpce'
+	) {
+		const next = labels[regionIdx + 1];
+		if (regionIdx === 0) {
+			// S3 never had a region-first shape, so a shaped first label in front of
+			// an S3 service label is a bucket name, not the region.
+			if (next === 's3' || next === 's3-accelerate') {
+				return { service: next, region: null };
+			}
+			const dashRegion = parseLegacyS3DashRegion(next);
+			if (dashRegion) {
+				return { service: 's3', region: dashRegion };
+			}
+		}
+		// On AWS hosts the region is otherwise always the last label before the domain
+		// suffix, so a second-to-last region marks the region-middle and region-first
+		// shapes (`<domain>.<region>.es.amazonaws.com`, `<region>.queue.amazonaws.com`),
+		// which put the service right of the region. Bucket-qualified S3 interface
+		// endpoints (`<bucket>.vpce-<id>.s3.<region>.vpce.amazonaws.com`) also carry a
+		// second-to-last region but their trailing `vpce` label is not a service.
+		service = next;
+	} else if (regionIdx >= 2) {
+		// AWS hostnames place the service label immediately left of the region
+		// (qualifiers like bucket/API-id/access-point names sit further left);
+		// dual-stack endpoints interpose a 'dualstack' qualifier — skip it.
+		let serviceIdx = regionIdx - 1;
+		if (labels[serviceIdx] === 'dualstack') serviceIdx--;
+		service = labels[serviceIdx];
+	} else if (regionIdx === -1) {
+		// Legacy region-less S3 hosts (`<bucket>.s3.amazonaws.com`,
+		// `<bucket>.s3-accelerate[.dualstack].amazonaws.com`) put the service last.
+		// The family is closed, so only adopt a trailing label that belongs to it —
+		// a host with a typo'd (non-region-shaped) region keeps its first-label service.
+		let serviceIdx = labels.length - 1;
+		if (labels[serviceIdx] === 'dualstack' && serviceIdx > 0) serviceIdx--;
+		const candidate = labels[serviceIdx];
+		const dashRegion = parseLegacyS3DashRegion(candidate);
+		if (dashRegion) {
+			return { service: 's3', region: dashRegion };
+		}
+		if (serviceIdx > 0 && (candidate === 's3' || candidate === 's3-accelerate')) {
+			service = candidate;
+		}
+	}
 	return { service, region };
+}
+
+/**
+ * Derives the signing service and region from a request URL, without
+ * regressing a caller-supplied value.
+ *
+ * - `service` is only taken from the URL when the caller didn't already
+ *   supply one (e.g. via qs.service). This lets callers force a signing
+ *   service that URL parsing can't reliably infer, without regressing
+ *   callers that rely on the URL as the source of truth (the common case:
+ *   no qs.service is set).
+ * - `region` is only taken from the URL when it's a recognized AWS region. On
+ *   an AWS endpoint host, an unrecognized label (a malformed/mistyped host, or
+ *   an odd endpoint shape the parser mis-split) throws a UserError, so the
+ *   request fails fast with a clear message instead of signing with a bad
+ *   region. On a custom (non-AWS) host, an unrecognized region-shaped label
+ *   is not authoritative (proxies and S3-compatible stores use their own
+ *   region names), so the credential region is kept instead.
+ */
+function resolveServiceAndRegion(
+	url: URL,
+	service: string,
+	region: AWSRegion,
+): { service: string; region: AWSRegion } {
+	const parsed = parseAwsUrl(url);
+	const resolvedService = service || parsed.service;
+	let resolvedRegion = region;
+	if (parsed.region) {
+		if (isSupportedAwsRegion(parsed.region)) {
+			resolvedRegion = parsed.region;
+		} else if (isAwsEndpointHostname(url.hostname)) {
+			throw new UserError(
+				`Unsupported AWS region "${parsed.region}" parsed from endpoint host ${url.hostname}`,
+			);
+		}
+	}
+	return { service: resolvedService, region: resolvedRegion };
 }
 
 /**
@@ -250,12 +458,12 @@ export function awsGetSignInOptionsAndUpdateRequest(
 			} catch (err) {
 				console.error(err);
 			}
+		} else {
+			// UI Query Parameters are stored at the top level of requestOptions.qs, not under
+			// a nested `query` key, so merge the whole object to sign and send them.
+			query = requestWithUri.qs as IDataObject;
 		}
-		const parsed = parseAwsUrl(endpoint);
-		service = parsed.service;
-		if (parsed.region) {
-			region = parsed.region;
-		}
+		({ service, region } = resolveServiceAndRegion(endpoint, service, region));
 	} else {
 		if (!requestOptions.baseURL && !requestOptions.url) {
 			let endpointString: string;
@@ -281,10 +489,18 @@ export function awsGetSignInOptionsAndUpdateRequest(
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path}`);
-			const parsed = parseAwsUrl(customUrl);
-			service = parsed.service;
-			if (parsed.region) {
-				region = parsed.region;
+			({ service, region } = resolveServiceAndRegion(customUrl, service, region));
+			// Swap only the host: signing service and region stay derived from the default
+			// host above, so a custom endpoint can never change how the request is signed.
+			if (service === 'bedrock' && credentials.bedrockEndpoint) {
+				const override = new URL(
+					validateBedrockEndpointOverride(credentials.bedrockEndpoint, region),
+				);
+				customUrl.protocol = override.protocol;
+				customUrl.host = override.host;
+				if (override.pathname !== '/') {
+					customUrl.pathname = override.pathname.replace(/\/+$/, '') + customUrl.pathname;
+				}
 			}
 			if (service === 'sts') {
 				try {
@@ -521,8 +737,9 @@ export async function signOptions(
 
 	const httpRequest = buildSmithyHttpRequest(signOpts, method);
 
-	// signOpts.service is set only when the signing name differs from the endpoint name
-	// (e.g. bedrock-runtime → bedrock). Fall back to the first label of the hostname.
+	// awsGetSignInOptionsAndUpdateRequest always sets signOpts.service to the resolved
+	// signing name; the raw first-hostname-label fallback is defensive only and does
+	// not normalize (e.g. bedrock-runtime → bedrock).
 	const service = signOpts.service ?? httpRequest.hostname.split('.')[0];
 	const region = signOpts.region ?? 'us-east-1';
 

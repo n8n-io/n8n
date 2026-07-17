@@ -7,6 +7,7 @@ import type {
 } from './chat-hub';
 import type { QuickConnectOption } from './quick-connect';
 import type { InsightsDateRange } from './schemas/insights.schema';
+import type { WorkflowReviewsPolicy } from './workflow-reviews-policy';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -67,6 +68,7 @@ export interface IEnterpriseSettings {
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
 	otelCustomSpanAttributes: boolean;
+	workflowReviews: boolean;
 }
 
 export interface FrontendSettings {
@@ -215,6 +217,7 @@ export interface FrontendSettings {
 		enabled: boolean;
 		enforced: boolean;
 	};
+	workflowReviews?: WorkflowReviewsPolicy;
 	folders: {
 		enabled: boolean;
 	};
@@ -285,6 +288,8 @@ export type FrontendModuleSettings = {
 		mcpAccessEnabled: boolean;
 		/** Whether MCP settings are managed via environment variables. */
 		mcpManagedByEnv: boolean;
+		/** Public URL of the instance MCP server endpoint. */
+		serverUrl?: string;
 	};
 
 	/**
@@ -354,9 +359,10 @@ export type FrontendModuleSettings = {
 		 */
 		modules: string[];
 		/**
-		 * Whether the agent knowledge base is enabled. Requires
-		 * `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
-		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+		 * Whether the agent knowledge base is enabled. True when the backend's
+		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
+		 * proxy is available.
 		 */
 		knowledgeBaseEnabled: boolean;
 	};

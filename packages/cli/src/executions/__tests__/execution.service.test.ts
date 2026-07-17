@@ -4,6 +4,7 @@ import type {
 	IExecutionDb,
 	IExecutionResponse,
 	ExecutionRepository,
+	Project,
 	User,
 	WorkflowHistoryRepository,
 } from '@n8n/db';
@@ -17,6 +18,8 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
@@ -24,6 +27,7 @@ import type { ExecutionRequest } from '@/executions/execution.types';
 import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -38,6 +42,7 @@ describe('ExecutionService', () => {
 	const globalConfig = Container.get(GlobalConfig);
 	const executionRedactionServiceProxy = mock<ExecutionRedactionServiceProxy>();
 	const executionStopService = mock<ExecutionStopService>();
+	const ownershipService = mock<OwnershipService>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -57,14 +62,17 @@ describe('ExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
 		executionRedactionServiceProxy,
 		executionStopService,
+		ownershipService,
 	);
 
 	beforeEach(() => {
 		globalConfig.executions.mode = 'regular';
 		vi.clearAllMocks();
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Test Project' }),
+		);
 	});
 
 	describe('findOne', () => {
@@ -121,6 +129,30 @@ describe('ExecutionService', () => {
 				expect.objectContaining({ redactExecutionData: undefined }),
 			);
 		});
+
+		it('should surface missing execution data as a user-facing not-found error', async () => {
+			executionPersistence.findIfSharedUnflatten.mockRejectedValue(
+				new MissingExecutionDataError({ workflowId: 'workflow-1', executionId: '123' }),
+			);
+
+			const req = mock<ExecutionRequest.GetOne>({ params: { id: '123' }, query: {} });
+
+			const promise = executionService.findOne(req, ['workflow-1']);
+
+			await expect(promise).rejects.toThrow(NotFoundError);
+			await expect(promise).rejects.toThrow(
+				'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+			);
+		});
+
+		it('should rethrow errors other than missing execution data unchanged', async () => {
+			const error = new Error('boom');
+			executionPersistence.findIfSharedUnflatten.mockRejectedValue(error);
+
+			const req = mock<ExecutionRequest.GetOne>({ params: { id: '123' }, query: {} });
+
+			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
+		});
 	});
 
 	describe('retry', () => {
@@ -168,9 +200,9 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
-				mock(),
 				localExecutionRedactionProxy,
 				executionStopService,
+				ownershipService,
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -253,9 +285,9 @@ describe('ExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
-				mock(),
 				redactionProxy,
 				mock(),
+				ownershipService,
 			);
 
 			workflowRunner.run.mockResolvedValue('retried-123');

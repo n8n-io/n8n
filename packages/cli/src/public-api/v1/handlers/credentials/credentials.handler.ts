@@ -1,6 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity } from '@n8n/db';
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { z } from 'zod';
@@ -161,6 +161,19 @@ const credentialsHandlers: CredentialsHandlers = {
 				}
 			}
 
+			if (
+				req.body.isResolvable !== undefined &&
+				req.body.isResolvable !== Boolean(existingCredential.isResolvable)
+			) {
+				const owningProjectId = existingCredential.shared?.find(
+					(sharing) => sharing.role === 'credential:owner',
+				)?.projectId;
+				await Container.get(CredentialsService).ensureCanManageEndUserCredential(
+					req.user,
+					owningProjectId,
+				);
+			}
+
 			try {
 				const updatedCredential = await updateCredential(existingCredential, req.user, req.body);
 
@@ -208,6 +221,16 @@ const credentialsHandlers: CredentialsHandlers = {
 
 			if (!credential) {
 				throw new NotFoundError('Not Found');
+			}
+
+			if (credential.isResolvable) {
+				const owningProject = await Container.get(
+					SharedCredentialsRepository,
+				).findCredentialOwningProject(credentialId);
+				await Container.get(CredentialsService).ensureCanManageEndUserCredential(
+					req.user,
+					owningProject?.id,
+				);
 			}
 
 			await removeCredential(req.user, credential);

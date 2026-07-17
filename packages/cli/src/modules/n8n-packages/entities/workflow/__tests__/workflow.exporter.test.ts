@@ -7,6 +7,12 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { CredentialRequirementsExtractor } from '../../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../../credential/credential.types';
+import { DataTableRequirementsExtractor } from '../../data-table/data-table-requirements.extractor';
+import type { WorkflowDataTableRequirement } from '../../data-table/data-table.types';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '../../package-export.errors';
 import { WorkflowExporter } from '../workflow.exporter';
 import { WorkflowSerializer } from '../workflow.serializer';
 
@@ -27,13 +33,19 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 	} as unknown as WorkflowEntity;
 }
 
-function makeExporter(returned: WorkflowEntity[], extractor?: CredentialRequirementsExtractor) {
+function makeExporter(
+	returned: WorkflowEntity[],
+	credentialExtractor?: CredentialRequirementsExtractor,
+	dataTableExtractor?: DataTableRequirementsExtractor,
+) {
 	const finder = mock<WorkflowFinderService>();
 	finder.findWorkflowsByIdsForUser.mockResolvedValue(returned);
+	finder.findExistingWorkflowIds.mockResolvedValue(new Set());
 	const exporter = new WorkflowExporter(
 		finder,
 		new WorkflowSerializer(),
-		extractor ?? new CredentialRequirementsExtractor(),
+		credentialExtractor ?? new CredentialRequirementsExtractor(),
+		dataTableExtractor ?? new DataTableRequirementsExtractor(),
 	);
 	return { exporter, finder };
 }
@@ -66,6 +78,40 @@ describe('WorkflowExporter', () => {
 				writer,
 			}),
 		).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
+	});
+
+	it('throws PackageEntityNotFoundError when the missing id does not exist at all', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter, finder } = makeExporter([present]);
+		finder.findExistingWorkflowIds.mockResolvedValue(new Set());
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
+	});
+
+	it('throws PackageEntityAccessDeniedError when the missing id exists but is inaccessible', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter, finder } = makeExporter([present]);
+		finder.findExistingWorkflowIds.mockResolvedValue(new Set(['denied-1']));
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, workflowIds: ['present-1', 'denied-1'], writer }),
+		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
+	});
+
+	it('checks existence only for the missing ids, not the ones already found', async () => {
+		const present = makeWorkflow({ id: 'present-1' });
+		const { exporter, finder } = makeExporter([present]);
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, workflowIds: ['present-1', 'missing'], writer }),
+		).rejects.toThrow();
+
+		expect(finder.findExistingWorkflowIds).toHaveBeenCalledWith(['missing']);
 	});
 
 	it('writes one entry per finder-returned workflow, even if the request repeats an id', async () => {
@@ -196,6 +242,29 @@ describe('WorkflowExporter', () => {
 				credentialName: 'wf-b',
 				credentialType: 'httpHeaderAuth',
 			},
+		]);
+	});
+
+	it('runs the data-table extractor on each workflow and concatenates the results into requirements.dataTables', async () => {
+		const a = makeWorkflow({ id: 'wf-a' });
+		const b = makeWorkflow({ id: 'wf-b' });
+		const extractor = mock<DataTableRequirementsExtractor>();
+		extractor.extract.mockImplementation((workflow) => [
+			{ workflowId: workflow.id, dataTableId: `dt-from-${workflow.id}` },
+		]);
+		const { exporter } = makeExporter([a, b], undefined, extractor);
+		const writer = new CapturingWriter();
+
+		const { requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+		});
+
+		expect(extractor.extract).toHaveBeenCalledTimes(2);
+		expect(requirements.dataTables).toEqual<WorkflowDataTableRequirement[]>([
+			{ workflowId: 'wf-a', dataTableId: 'dt-from-wf-a' },
+			{ workflowId: 'wf-b', dataTableId: 'dt-from-wf-b' },
 		]);
 	});
 });

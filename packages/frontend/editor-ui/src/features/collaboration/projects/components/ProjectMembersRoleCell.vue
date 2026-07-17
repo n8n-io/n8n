@@ -3,7 +3,7 @@ import type { AllRolesMap, Role } from '@n8n/permissions';
 import { computed } from 'vue';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { ProjectMemberData } from '../projects.types';
 import RoleSelectDropdown from '@/features/roles/components/RoleSelectDropdown.vue';
 
@@ -18,13 +18,12 @@ const emit = defineEmits<{
 }>();
 
 const settingsStore = useSettingsStore();
-const usersStore = useUsersStore();
 
 const selectedRole = computed(() => props.roles.find((role) => role.slug === props.data.role));
 const isEditable = computed(() => props.data.role !== 'project:personalOwner');
 
 const hasCustomRolesLicense = computed(() => settingsStore.isCustomRolesFeatureEnabled);
-const isAdminOrOwner = computed(() => usersStore.isInstanceOwner || usersStore.isAdmin);
+const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
 
 const systemRoles = computed(() => props.roles.filter((role) => role.systemRole));
 const customRoles = computed(() => props.roles.filter((role) => !role.systemRole));
@@ -41,7 +40,7 @@ const onRoleUpdate = (role: string) => {
 		:custom-roles="customRoles"
 		:current-role="data.role"
 		:has-custom-roles-license="hasCustomRolesLicense"
-		:is-admin-or-owner="isAdminOrOwner"
+		:can-manage-roles="canManageRoles"
 		:add-custom-role-route-name="VIEWS.PROJECT_NEW_ROLE"
 		test-id="project-member-role-dropdown"
 		@update:role="onRoleUpdate"

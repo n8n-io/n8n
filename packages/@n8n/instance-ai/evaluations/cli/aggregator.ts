@@ -56,6 +56,35 @@ function computePassMetrics(
 	return { passAtKValues, passHatKValues };
 }
 
+/**
+ * Aggregates one measured unit (a build expectation) across runs.
+ * `incomplete` verdicts are excluded from the count (denominator = evaluated runs).
+ */
+function aggregateUnit<T extends { pass: boolean; incomplete?: boolean }>(
+	perRun: Array<T | undefined>,
+): {
+	runs: T[];
+	evaluatedCount: number;
+	passCount: number;
+	passRate: number;
+	passAtK: number[];
+	passHatK: number[];
+} {
+	const runs = perRun.filter((v): v is T => v !== undefined);
+	const evaluated = runs.filter((v) => !v.incomplete);
+	const passCount = evaluated.filter((v) => v.pass).length;
+	const n = evaluated.length;
+	const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
+	return {
+		runs,
+		evaluatedCount: n,
+		passCount,
+		passRate: n > 0 ? passCount / n : 0,
+		passAtK: passAtKValues,
+		passHatK: passHatKValues,
+	};
+}
+
 export function aggregateResults(
 	allRunResults: WorkflowTestCaseResult[][],
 	totalRuns: number,
@@ -82,43 +111,43 @@ export function aggregateResults(
 						reasoning: 'Build failed — scenario not executed',
 					},
 			);
-			const passCount = scenarioRuns.filter((sr) => sr.success).length;
-			const { passAtKValues, passHatKValues } = computePassMetrics(totalRuns, passCount);
+			// Verifier-incomplete runs carry no verdict — excluded from the count,
+			// mirroring build expectations (denominator = evaluated runs).
+			const evaluated = scenarioRuns.filter((sr) => !sr.incomplete);
+			const passCount = evaluated.filter((sr) => sr.success).length;
+			const n = evaluated.length;
+			const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
 
 			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
+				evaluatedCount: n,
 				passCount,
-				passRate: totalRuns > 0 ? passCount / totalRuns : 0,
+				passRate: n > 0 ? passCount / n : 0,
 				passAtK: passAtKValues,
 				passHatK: passHatKValues,
 			});
 		}
 
 		// Aggregate each build expectation as a measured unit alongside scenarios.
-		// `incomplete` verdicts are excluded from the count (denominator = evaluated runs).
 		const buildExpectations: BuildExpectationAggregation[] = collectExpectations(testCase).map(
-			(expectation) => {
-				const expRuns = runs
-					.map((r) => (r.buildExpectationResults ?? []).find((e) => e.expectation === expectation))
-					.filter((e): e is BuildExpectationResult => e !== undefined);
-				const evaluated = expRuns.filter((e) => !e.incomplete);
-				const passCount = evaluated.filter((e) => e.pass).length;
-				const n = evaluated.length;
-				const { passAtKValues, passHatKValues } = computePassMetrics(n, passCount);
-				return {
-					expectation,
-					runs: expRuns,
-					evaluatedCount: n,
-					passCount,
-					passRate: n > 0 ? passCount / n : 0,
-					passAtK: passAtKValues,
-					passHatK: passHatKValues,
-				};
-			},
+			(expectation) => ({
+				expectation,
+				...aggregateUnit<BuildExpectationResult>(
+					runs.map((r) =>
+						(r.buildExpectationResults ?? []).find((e) => e.expectation === expectation),
+					),
+				),
+			}),
 		);
 
-		testCases.push({ testCase, runs, buildSuccessCount, executionScenarios, buildExpectations });
+		testCases.push({
+			testCase,
+			runs,
+			buildSuccessCount,
+			executionScenarios,
+			buildExpectations,
+		});
 	}
 
 	return { totalRuns, testCases };

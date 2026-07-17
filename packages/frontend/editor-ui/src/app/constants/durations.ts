@@ -26,16 +26,6 @@ export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
 
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
-/**
- * Get debounce time with optional multiplier from sessionStorage.
- * Reads 'N8N_DEBOUNCE_MULTIPLIER' - defaults to 1 if not set.
- */
-export function getDebounceTime(time: number): number {
-	const stored = sessionStorage.getItem('N8N_DEBOUNCE_MULTIPLIER');
-	const multiplier = stored !== null ? parseFloat(stored) : 1;
-	return Math.round(time * (Number.isNaN(multiplier) ? 1 : multiplier));
-}
-
 /** Centralized debounce timing constants. Use with getDebounceTime(). */
 export const DEBOUNCE_TIME = {
 	/** UI responsiveness - very fast feedback */
@@ -88,3 +78,10 @@ export const DEBOUNCE_TIME = {
 		WEBSOCKET_DISCONNECT: 500,
 	},
 } as const;
+
+/**
+ * `getDebounceTime` lives in `@n8n/composables`, colocated with `useDebounce`
+ * (its only consumer). Re-exported here so existing `@/app/constants/durations`
+ * and `@/app/constants` call sites keep working unchanged.
+ */
+export { getDebounceTime } from '@n8n/composables/useDebounce';

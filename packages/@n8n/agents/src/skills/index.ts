@@ -33,11 +33,13 @@ export {
 export {
 	createRuntimeSkillRegistry,
 	createRuntimeSkillSource,
+	filterRuntimeSkillSource,
 	formatSkillValidationErrors,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
 	loadRuntimeSkillSourceFromDirectory,
 } from './registry';
+export type { LoadRuntimeSkillSourceFromDirectoryOptions } from './registry';
 export {
 	appendSkillCatalogToInstructions,
 	renderSkillCatalogPrompt,

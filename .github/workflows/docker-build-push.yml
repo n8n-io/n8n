@@ -29,6 +29,16 @@ on:
         required: false
         type: boolean
         default: true
+      ref:
+        description: 'Git ref (branch/tag/sha) to build from. Empty checks out the triggering ref.'
+        required: false
+        type: string
+        default: ''
+      date_tag:
+        description: 'Optional date suffix for an extra <version>-<date> tag (e.g. 20260625)'
+        required: false
+        type: string
+        default: ''
 
   workflow_dispatch:
     inputs:
@@ -52,9 +62,18 @@ jobs:
       push_enabled: ${{ steps.context.outputs.push_enabled }}
       push_to_docker: ${{ steps.context.outputs.push_to_docker }}
       build_matrix: ${{ steps.context.outputs.build_matrix }}
+      short_sha: ${{ steps.sha.outputs.short_sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve built commit SHA
+        id: sha
+        # From the checked-out working tree (honours `ref`), not GITHUB_SHA — which
+        # is the triggering ref (e.g. master) and would mislabel a ref-override build.
+        run: echo "short_sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Determine build context
         id: context
@@ -87,10 +106,14 @@ jobs:
       n8n_sha_manifest_tag: ${{ steps.determine-tags.outputs.n8n_sha_primary_tag }}
       runners_sha_manifest_tag: ${{ steps.determine-tags.outputs.runners_sha_primary_tag }}
       runners_distroless_sha_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_sha_primary_tag }}
+      n8n_date_manifest_tag: ${{ steps.determine-tags.outputs.n8n_date_primary_tag }}
+      runners_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_date_primary_tag }}
+      runners_distroless_date_manifest_tag: ${{ steps.determine-tags.outputs.runners_distroless_date_primary_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: ${{ inputs.ref }}
           fetch-depth: 0
 
       - name: Setup and Build
@@ -104,12 +127,21 @@ jobs:
 
       - name: Determine Docker tags for all images
         id: determine-tags
+        env:
+          DATE_TAG: ${{ inputs.date_tag }}
+          SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
         run: |
+          # Build the optional --date flag in shell (not via a template expansion) so
+          # the caller-supplied input never expands directly into the command line.
+          DATE_ARGS=()
+          if [ -n "${DATE_TAG:-}" ]; then DATE_ARGS=(--date "$DATE_TAG"); fi
+
           node .github/scripts/docker/docker-tags.mjs \
             --all \
             --version "${{ needs.determine-build-context.outputs.n8n_version }}" \
             --platform "${{ matrix.docker_platform }}" \
-            --sha "${GITHUB_SHA::7}" \
+            --sha "$SHORT_SHA" \
+            "${DATE_ARGS[@]}" \
             ${{ needs.determine-build-context.outputs.push_to_docker == 'true' && '--include-docker' || '' }}
 
           echo "=== Generated Docker Tags ==="
@@ -204,6 +236,10 @@ jobs:
           dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Create GHCR multi-arch manifests
+        env:
+          N8N_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_date_manifest_tag }}
+          RUNNERS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_date_manifest_tag }}
+          RUNNERS_DISTROLESS_DATE_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.runners_distroless_date_manifest_tag }}
         run: |
           RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
 
@@ -242,10 +278,19 @@ jobs:
           create_manifest "runners (sha)" "${{ needs.build-and-push-docker.outputs.runners_sha_manifest_tag }}"
           create_manifest "runners-distroless (sha)" "${{ needs.build-and-push-docker.outputs.runners_distroless_sha_manifest_tag }}"
 
+          # Create date-tagged manifests. The *_DATE_MANIFEST_TAG vars are empty unless the
+          # date_tag input was set (e.g. nightly), and create_manifest skips empty tags —
+          # so these calls are no-ops on non-dated builds.
+          create_manifest "n8n (date)" "$N8N_DATE_MANIFEST_TAG"
+          create_manifest "runners (date)" "$RUNNERS_DATE_MANIFEST_TAG"
+          create_manifest "runners-distroless (date)" "$RUNNERS_DISTROLESS_DATE_MANIFEST_TAG"
+
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DATE_TAG: ${{ inputs.date_tag }}
+          SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
           DOCKER_BASE="$DOCKER_USERNAME"
@@ -256,8 +301,6 @@ jobs:
             ["runners"]="${VERSION}"
             ["runners-distroless"]="${VERSION}-distroless"
           )
-
-          SHORT_SHA="${GITHUB_SHA::7}"
 
           for image in "${!images[@]}"; do
             TAG_SUFFIX="${images[$image]}"
@@ -282,6 +325,21 @@ jobs:
               --tag "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-amd64" \
               "${DOCKER_BASE}/${IMAGE_NAME}:${SHA_SUFFIX}-arm64"
+
+            # Create date-tagged manifest when a date suffix was provided (e.g. v3-nightly-20260625)
+            # Mirrors the SHA suffix placement: <version>-<date> and <version>-<date>-distroless
+            if [[ -n "$DATE_TAG" ]]; then
+              if [[ "$image" == *"-distroless"* ]]; then
+                DATE_SUFFIX="${VERSION}-${DATE_TAG}-distroless"
+              else
+                DATE_SUFFIX="${TAG_SUFFIX}-${DATE_TAG}"
+              fi
+              echo "Creating Docker Hub date manifest for $image: ${DATE_SUFFIX}"
+              docker buildx imagetools create \
+                --tag "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}" \
+                "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}-amd64" \
+                "${DOCKER_BASE}/${IMAGE_NAME}:${DATE_SUFFIX}-arm64"
+            fi
           done
 
       - name: Get manifest digests for attestation

@@ -8,6 +8,7 @@ import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store'
 // surviving teardown have caused post-teardown rejections on Node 24.
 const { mocks } = vi.hoisted(() => ({
 	mocks: {
+		workflowId: 'workflow-id' as string | undefined,
 		allNodes: [] as Array<{ name: string; type: string }>,
 		isNewWorkflow: false,
 		showError: vi.fn(),
@@ -22,7 +23,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({
 		value: {
 			get workflowId() {
-				return 'workflow-id';
+				return mocks.workflowId;
 			},
 			get name() {
 				return 'My Workflow';
@@ -109,6 +110,7 @@ function makeConfig(overrides: Partial<EvaluationConfigDto> = {}): EvaluationCon
 describe('useWizardHydration', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		mocks.workflowId = 'workflow-id';
 		mocks.allNodes = [
 			{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
 			{ name: 'Pre-process', type: 'n8n-nodes-base.set' },
@@ -135,6 +137,66 @@ describe('useWizardHydration', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 		// Skipping hydration leaves the store's default pre-selection untouched.
 		expect(store.selectedMetricKeys).toEqual(['correctness']);
+	});
+
+	it('dedupes concurrent hydrate calls so awaiting one waits for the applied rows', async () => {
+		mocks.listEvaluationConfigs.mockResolvedValue([makeConfig()]);
+		mocks.getDataTableRowsApi.mockResolvedValue({ data: [{ id: 1, question: 'q1' }] });
+
+		const store = useEvaluationsWizardSidepanelStore();
+		const { hydrate } = useWizardHydration();
+
+		// Two overlapping callers share one in-flight run: the config + rows are
+		// fetched once, and both resolve only after the rows are applied.
+		await Promise.all([hydrate(), hydrate()]);
+
+		expect(mocks.listEvaluationConfigs).toHaveBeenCalledTimes(1);
+		expect(mocks.getDataTableRowsApi).toHaveBeenCalledTimes(1);
+		expect(store.inputs).toEqual({ question: 'q1' });
+
+		// Once settled, a later call starts a fresh run.
+		await hydrate();
+		expect(mocks.listEvaluationConfigs).toHaveBeenCalledTimes(2);
+	});
+
+	it('toasts a hydration failure for the still-active workflow', async () => {
+		mocks.listEvaluationConfigs.mockRejectedValue(new Error('boom'));
+
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		expect(mocks.showError).toHaveBeenCalled();
+	});
+
+	it('does not toast a hydration failure for a workflow the user already left', async () => {
+		// The request rejects, but by then the active workflow has changed.
+		mocks.listEvaluationConfigs.mockImplementation(async () => {
+			mocks.workflowId = 'other-workflow-id';
+			throw new Error('boom');
+		});
+
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		expect(mocks.showError).not.toHaveBeenCalled();
+	});
+
+	it('discards hydration results when the workflow switches mid-flight', async () => {
+		// The active workflow changes while the config request is in flight.
+		mocks.listEvaluationConfigs.mockImplementation(async () => {
+			mocks.workflowId = 'other-workflow-id';
+			return [makeConfig()];
+		});
+		mocks.getDataTableRowsApi.mockResolvedValue({ count: 1, data: [{ id: 1, question: 'q1' }] });
+
+		const store = useEvaluationsWizardSidepanelStore();
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		// Config + rows belonged to the previous workflow — neither is applied, and
+		// the now-stale dataset fetch is skipped.
+		expect(store.inputs).toEqual({});
+		expect(mocks.getDataTableRowsApi).not.toHaveBeenCalled();
 	});
 
 	describe('restoring the last run', () => {
@@ -268,7 +330,9 @@ describe('useWizardHydration', () => {
 		});
 	});
 
-	it('drops a non-canned LLM judge metric — those are no longer surfaced in the wizard', async () => {
+	it('surfaces an LLM judge metric by its preset regardless of its display name', async () => {
+		// A config created outside the wizard (agent/API) names the judge freely
+		// ("My LLM check"); it must still hydrate as its canned preset.
 		mocks.listEvaluationConfigs.mockResolvedValue([
 			makeConfig({
 				metrics: [
@@ -295,7 +359,12 @@ describe('useWizardHydration', () => {
 		await hydrate();
 
 		expect(store.customChecks).toEqual([]);
-		expect(store.selectedMetricKeys).toEqual([]);
+		expect(store.selectedMetricKeys).toEqual(['helpfulness']);
+		expect(store.judgeSelectionByMetric.helpfulness).toEqual({
+			provider: 'anthropic',
+			credentialId: 'cred-anthropic',
+			model: 'claude-opus',
+		});
 	});
 
 	it('uses single-AI-node mode when endNodeName matches an AI root node', async () => {
@@ -410,6 +479,73 @@ describe('useWizardHydration', () => {
 			{ expectedAnswer: 'a1' },
 			{ expectedAnswer: 'a2' },
 		]);
+	});
+
+	it('hydrates input values for every dataset row, indexed by position', async () => {
+		mocks.listEvaluationConfigs.mockResolvedValue([
+			makeConfig({
+				metrics: [
+					{
+						id: 'm',
+						name: 'correctness',
+						type: 'llm_judge',
+						config: {
+							preset: 'correctness',
+							provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							credentialId: 'c',
+							model: 'm',
+							outputType: 'numeric',
+							inputs: { actualAnswer: '=', expectedAnswer: '=' },
+						},
+					},
+				],
+			}),
+		]);
+		mocks.getDataTableRowsApi.mockResolvedValue({
+			count: 2,
+			data: [
+				{ id: 1, createdAt: 't', updatedAt: 't', query: 'q1', expectedAnswer: 'a1' },
+				{ id: 2, createdAt: 't', updatedAt: 't', query: 'q2', expectedAnswer: 'a2' },
+			],
+		});
+
+		const store = useEvaluationsWizardSidepanelStore();
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		// First row still seeds the Step-2 form.
+		expect(store.inputs).toEqual({ query: 'q1' });
+		// Every row's input values are kept, in dataset order.
+		expect(store.datasetInputsByRow).toEqual([{ query: 'q1' }, { query: 'q2' }]);
+		// Expected values are unaffected by this addition.
+		expect(store.datasetExpectedByRow).toEqual([
+			{ expectedAnswer: 'a1' },
+			{ expectedAnswer: 'a2' },
+		]);
+	});
+
+	it('captures per-row case names without clobbering the open case name', async () => {
+		mocks.listEvaluationConfigs.mockResolvedValue([makeConfig()]);
+		mocks.getDataTableRowsApi.mockResolvedValue({
+			count: 2,
+			data: [
+				{ id: 1, createdAt: 't', updatedAt: 't', query: 'q1', caseName: '' },
+				{ id: 2, createdAt: 't', updatedAt: 't', query: 'q2', caseName: 'greeting' },
+			],
+		});
+
+		const store = useEvaluationsWizardSidepanelStore();
+		// A case is open in the detail view; its name must survive a late hydrate.
+		store.caseName = 'greeting';
+
+		const { hydrate } = useWizardHydration();
+		await hydrate();
+
+		// Names are captured per row for the overview and kept out of the inputs.
+		expect(store.datasetNamesByRow).toEqual(['', 'greeting']);
+		expect(store.datasetInputsByRow).toEqual([{ query: 'q1' }, { query: 'q2' }]);
+		// Hydrate must not reset the open case's name to row 0's.
+		expect(store.caseName).toBe('greeting');
 	});
 
 	it('does nothing when there is no existing config', async () => {

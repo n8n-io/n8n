@@ -9,7 +9,7 @@ import {
 describe('formatToolNameForDisplay', () => {
 	it('formats snake_case builder tool names as readable labels', () => {
 		expect(formatToolNameForDisplay('create_skill')).toBe('Create skill');
-		expect(formatToolNameForDisplay('ask_llm')).toBe('Ask LLM');
+		expect(formatToolNameForDisplay('resolve_llm')).toBe('Resolve LLM');
 		expect(formatToolNameForDisplay('build_custom_tool')).toBe('Build custom tool');
 		expect(formatToolNameForDisplay('update_memory')).toBe('Update memory');
 	});

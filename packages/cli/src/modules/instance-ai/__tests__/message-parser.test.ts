@@ -267,7 +267,9 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			expect(result[1].content).toBe('Hello');
-			expect(result[1].agentTree?.timeline).toEqual([{ type: 'text', content: 'Hello' }]);
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'text', content: 'Hello', responseId: 'msg-a' },
+			]);
 		});
 
 		it('should parse reasoning from native parts', () => {
@@ -293,6 +295,173 @@ describe('parseStoredMessages', () => {
 
 			expect(result[1].reasoning).toBe('Reasoning part');
 			expect(result[1].content).toBe('Answer');
+			// Reasoning keeps its chronological slot in the timeline
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Reasoning part', responseId: 'msg-a' },
+				{ type: 'text', content: 'Answer', responseId: 'msg-a' },
+			]);
+		});
+
+		it('should build agentTree for reasoning-only assistant messages', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Think only',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'reasoning', text: 'Just reasoning' }],
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result[1].reasoning).toBe('Just reasoning');
+			expect(result[1].content).toBe('');
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Just reasoning', responseId: 'msg-a' },
+			]);
+		});
+
+		it('should bracket reconstructed tool calls with adjacent message timestamps', () => {
+			// Snapshot-less reloads have no real per-call timestamps; the interval
+			// between stored rows approximates them so thinking blocks can still
+			// derive a "Thought for Xs" duration.
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build it',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-done',
+							toolName: 'search-nodes',
+							input: {},
+							state: 'resolved',
+							output: {},
+						},
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-pending',
+							toolName: 'build-workflow',
+							input: {},
+							state: 'pending',
+						},
+					],
+					createdAt: makeDate(12_000),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const toolCalls = result[1].agentTree?.toolCalls ?? [];
+			expect(toolCalls[0]).toMatchObject({
+				toolCallId: 'tc-done',
+				startedAt: makeDate().toISOString(),
+				completedAt: makeDate(12_000).toISOString(),
+			});
+			// An unresolved call gets no completedAt — it never finished.
+			expect(toolCalls[1].startedAt).toBe(makeDate().toISOString());
+			expect(toolCalls[1].completedAt).toBeUndefined();
+		});
+
+		it('should group each assistant row under its own synthetic responseId', () => {
+			// One stored assistant row = one LLM response. The synthetic per-row
+			// responseId lets the frontend fold narration (text followed by trace
+			// content in the same response) into thinking blocks after a reload
+			// where no snapshot survived.
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Build it',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a1',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'Checking the nodes first.' },
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'search-nodes',
+							input: {},
+							state: 'resolved',
+							output: {},
+						},
+					],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Done — here is the workflow.' }],
+					createdAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'text', content: 'Checking the nodes first.', responseId: 'msg-a1' },
+				{ type: 'tool-call', toolCallId: 'tc-1', responseId: 'msg-a1' },
+			]);
+			expect(result[2].agentTree?.timeline).toEqual([
+				{ type: 'text', content: 'Done — here is the workflow.', responseId: 'msg-a2' },
+			]);
+		});
+
+		it('should normalize legacy aggregate reasoning into the timeline on reload', () => {
+			const messages: StoredAgentMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Think',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Answer' }],
+					createdAt: makeDate(1),
+				},
+			];
+			const snapshotTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'Answer',
+				reasoning: 'Legacy aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'Answer' }],
+			};
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: snapshotTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			]);
+
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Legacy aggregate reasoning' },
+				{ type: 'text', content: 'Answer' },
+			]);
 		});
 
 		it('should use agentTree snapshot when available', () => {
@@ -1075,7 +1244,7 @@ describe('parseStoredMessages', () => {
 			const result = parseStoredMessages(messages);
 
 			const toolCalls = result[1].agentTree?.toolCalls ?? [];
-			expect(toolCalls[0].renderHint).toBe('delegate');
+			expect(toolCalls[0].renderHint).toBe('default');
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('planner');
 		});

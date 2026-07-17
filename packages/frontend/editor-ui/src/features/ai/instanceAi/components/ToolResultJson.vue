@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { saveAs } from 'file-saver';
-import { N8nButton } from '@n8n/design-system';
+import { N8nAiActivityStepResultSection, N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 /**
@@ -80,7 +80,7 @@ function downloadFullJson() {
 </script>
 
 <template>
-	<div>
+	<N8nAiActivityStepResultSection>
 		<!-- eslint-disable-next-line vue/no-v-html -->
 		<pre :class="$style.json" v-html="highlighted" />
 		<div v-if="isTruncated" :class="$style.truncatedNotice">
@@ -94,7 +94,7 @@ function downloadFullJson() {
 				@click="downloadFullJson"
 			/>
 		</div>
-	</div>
+	</N8nAiActivityStepResultSection>
 </template>
 
 <style lang="scss" module>

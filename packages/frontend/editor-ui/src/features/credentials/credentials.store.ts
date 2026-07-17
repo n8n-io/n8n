@@ -407,11 +407,15 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	const disconnectMyConnection = async ({ id }: { id: string }) => {
 		await credentialsApi.disconnectMyConnection(rootStore.restApiContext, id);
+		setConnectedByMe(id, false);
+	};
+
+	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
 				...state.value.credentials,
-				[id]: { ...existing, connectedByMe: false },
+				[id]: { ...existing, connectedByMe },
 			};
 		}
 	};
@@ -430,13 +434,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (data.id) {
 			credentialTestResults.value.set(data.id, 'pending');
 		}
-		const result = await credentialsApi.testCredential(rootStore.restApiContext, {
-			credentials: data,
-		});
-		if (data.id) {
-			credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+		try {
+			const result = await credentialsApi.testCredential(rootStore.restApiContext, {
+				credentials: data,
+			});
+			if (data.id) {
+				credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+			}
+			return result;
+		} catch (error) {
+			// A rejected request must not leave the credential stuck in 'pending' —
+			// consumers gate on reaching a definitive result.
+			if (data.id) {
+				credentialTestResults.value.set(data.id, 'error');
+			}
+			throw error;
 		}
-		return result;
 	};
 
 	const getNewCredentialName = async (params: {
@@ -522,6 +535,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		setCredentials,
 		deleteCredential,
 		disconnectMyConnection,
+		setConnectedByMe,
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,

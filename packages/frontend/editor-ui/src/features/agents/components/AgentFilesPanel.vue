@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import { computed, useTemplateRef } from 'vue';
 import {
-	N8nActionBox,
-	N8nCard,
+	N8nActionDropdown,
+	N8nButton,
 	N8nIcon,
-	N8nIconButton,
-	N8nLoading,
-	N8nScrollArea,
-	N8nText,
+	N8nTableBase,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import {
-	ALLOWED_AGENT_FILE_EXTENSIONS,
-	MAX_AGENT_FILE_SIZE_MB,
-	MAX_AGENT_FILES_PER_UPLOAD,
-	MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
-	type AgentFileDto,
-} from '@n8n/api-types';
+import type { ActionDropdownItem } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { ElSkeletonItem } from 'element-plus';
+import { ALLOWED_AGENT_FILE_EXTENSIONS, type AgentFileDto } from '@n8n/api-types';
+
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 const props = withDefaults(
 	defineProps<{
@@ -26,6 +21,7 @@ const props = withDefaults(
 		loading?: boolean;
 		uploading?: boolean;
 		deletingFileId?: string | null;
+		isPublished: boolean;
 	}>(),
 	{
 		disabled: false,
@@ -40,27 +36,25 @@ const emit = defineEmits<{
 	'delete-file': [file: AgentFileDto];
 }>();
 
+type FileAction = 'delete';
+
 const i18n = useI18n();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
-const totalCount = computed(() => props.files.length);
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
-const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
+const isUploadDisabled = computed(
+	() => props.disabled || props.loading || isMutating.value || !props.isPublished,
+);
+const uploadLabel = computed(() => i18n.baseText('agents.builder.files.addFile' as BaseTextKey));
+const uploadTooltip = computed(() =>
+	props.isPublished ? uploadLabel.value : i18n.baseText('agents.builder.files.publishRequired'),
+);
 
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
-const description = computed(() =>
-	i18n.baseText('agents.builder.files.description', {
-		interpolate: {
-			maxFiles: MAX_AGENT_FILES_PER_UPLOAD,
-			maxSizeMb: MAX_AGENT_FILE_SIZE_MB,
-			maxTotalGb: MAX_AGENT_KNOWLEDGE_BASE_SIZE_GB,
-		},
-	}),
-);
 
 function getFileIcon(file: AgentFileDto) {
 	const extension = file.fileName.split('.').pop()?.toLowerCase();
 	if (extension === 'csv' || file.mimeType === 'text/csv') return 'file-code';
-	if (extension === 'pdf') return 'file';
+	if (extension === 'pdf' || file.mimeType === 'application/pdf') return 'file';
 	if (extension === 'md' || extension === 'markdown' || file.mimeType === 'text/markdown') {
 		return 'scroll-text';
 	}
@@ -68,14 +62,20 @@ function getFileIcon(file: AgentFileDto) {
 	return 'file';
 }
 
-function getFileType(fileName: string) {
-	const extension = fileName.split('.').pop()?.toLowerCase();
-	if (extension === 'csv') return i18n.baseText('agents.builder.files.type.csv');
-	if (extension === 'pdf') return i18n.baseText('agents.builder.files.type.pdf');
-	if (extension === 'md' || extension === 'markdown') {
+function getFileType(file: AgentFileDto) {
+	const extension = file.fileName.split('.').pop()?.toLowerCase();
+	if (extension === 'csv' || file.mimeType === 'text/csv') {
+		return i18n.baseText('agents.builder.files.type.csv');
+	}
+	if (extension === 'pdf' || file.mimeType === 'application/pdf') {
+		return i18n.baseText('agents.builder.files.type.pdf');
+	}
+	if (extension === 'md' || extension === 'markdown' || file.mimeType === 'text/markdown') {
 		return i18n.baseText('agents.builder.files.type.markdown');
 	}
-	if (extension === 'txt') return i18n.baseText('agents.builder.files.type.txt');
+	if (extension === 'txt' || file.mimeType === 'text/plain') {
+		return i18n.baseText('agents.builder.files.type.txt');
+	}
 	return i18n.baseText('agents.builder.files.type.file');
 }
 
@@ -92,6 +92,27 @@ function formatFileSize(bytes: number) {
 	return i18n.baseText('agents.builder.files.size.megabytes', {
 		interpolate: { megabytes: megabytes.toFixed(1) },
 	});
+}
+
+function formatDate(fullDate: string) {
+	const { date, time } = convertToDisplayDate(fullDate);
+	return `${date} ${time}`;
+}
+
+function rowActions(): Array<ActionDropdownItem<FileAction>> {
+	return [
+		{
+			id: 'delete',
+			label: i18n.baseText('agents.builder.files.delete'),
+			icon: 'trash-2',
+			disabled: props.disabled || props.loading || isMutating.value,
+		},
+	];
+}
+
+function onAction(actionId: FileAction, file: AgentFileDto) {
+	if (actionId !== 'delete') return;
+	emit('delete-file', file);
 }
 
 function openFilePicker() {
@@ -111,100 +132,107 @@ function onFilesSelected(event: Event) {
 </script>
 
 <template>
-	<div :class="[$style.panel, props.disabled && $style.disabled]" data-testid="agent-files-panel">
-		<div :class="$style.titleGroup">
-			<div :class="$style.header">
-				<N8nText tag="h3" :bold="true">
-					{{ i18n.baseText('agents.builder.files.title') }}
-				</N8nText>
-				<N8nTooltip :content="i18n.baseText('agents.builder.files.upload')" placement="top">
-					<N8nIconButton
-						icon="plus"
-						variant="subtle"
-						size="small"
-						icon-size="medium"
-						:disabled="isUploadDisabled"
-						:aria-label="i18n.baseText('agents.builder.files.upload')"
-						data-testid="agent-files-upload"
-						@click="openFilePicker"
-					/>
+	<div :class="$style.panel" data-testid="agent-files-panel">
+		<div :class="$style.toolbar">
+			<span :class="$style.title" data-testid="agent-files-title">
+				{{ i18n.baseText('agents.builder.files.title') }}
+				<N8nTooltip
+					:content="i18n.baseText('agents.builder.files.titleTooltip' as BaseTextKey)"
+					placement="top"
+				>
+					<N8nIcon icon="circle-help" size="small" :class="$style.titleIcon" />
 				</N8nTooltip>
-			</div>
-			<N8nText size="small" color="text-light">
-				{{ description }}
-			</N8nText>
+			</span>
+
+			<input
+				ref="fileInput"
+				type="file"
+				:accept="acceptAttr"
+				multiple
+				:class="$style.fileInput"
+				data-testid="agent-files-upload-input"
+				@change="onFilesSelected"
+			/>
+
+			<N8nTooltip :content="uploadTooltip" placement="top">
+				<N8nButton
+					variant="ghost"
+					size="small"
+					icon="plus"
+					icon-only
+					:disabled="isUploadDisabled"
+					:aria-label="uploadTooltip"
+					data-testid="agent-files-upload"
+					@click="openFilePicker"
+				/>
+			</N8nTooltip>
 		</div>
 
-		<input
-			ref="fileInput"
-			type="file"
-			:accept="acceptAttr"
-			multiple
-			:class="$style.fileInput"
-			data-testid="agent-files-upload-input"
-			@change="onFilesSelected"
-		/>
-
-		<N8nLoading v-if="props.loading" :rows="2" variant="p" />
-
-		<N8nActionBox
-			v-else-if="totalCount === 0"
-			:class="$style.empty"
-			:icon="{ type: 'icon', value: 'file-text' }"
-			:description="i18n.baseText('agents.builder.files.empty')"
-		/>
-
-		<N8nScrollArea
-			v-else
-			max-height="calc((var(--spacing--2xl) + var(--spacing--sm)) * 5)"
-			type="auto"
-			:class="$style.rows"
-		>
-			<div :class="$style.rowList">
-				<N8nCard
-					v-for="file in props.files"
-					:key="file.id"
-					:class="$style.row"
-					data-testid="agent-files-list-row"
-				>
-					<template #prepend>
-						<N8nIcon :icon="getFileIcon(file)" size="medium" :class="$style.fileIcon" />
-					</template>
-
-					<N8nText size="xsmall" color="text-dark" :bold="true" :class="$style.name">
-						{{ file.fileName }}
-					</N8nText>
-					<N8nText size="xsmall" color="text-light" :class="$style.metadata">
-						{{ getFileType(file.fileName) }} | {{ formatFileSize(file.fileSizeBytes) }}
-					</N8nText>
-
-					<template #append>
-						<N8nTooltip :content="i18n.baseText('agents.builder.files.delete')" placement="top">
-							<N8nIconButton
-								icon="trash-2"
-								variant="ghost"
-								size="mini"
-								icon-size="small"
+		<div :class="$style.tableContainer">
+			<N8nTableBase :max-displayed-rows="10">
+				<tbody>
+					<tr
+						v-for="file in props.files"
+						:key="file.id"
+						:class="$style.fileRow"
+						data-testid="agent-files-list-row"
+					>
+						<td :class="$style.titleCell">
+							<span :class="$style.fileTitle">
+								<N8nIcon :icon="getFileIcon(file)" size="medium" :class="$style.fileIcon" />
+								<span :class="$style.fileName" :title="file.fileName" data-testid="agent-file-name">
+									{{ file.fileName }}
+								</span>
+							</span>
+						</td>
+						<td :class="$style.originCell" data-testid="agent-file-origin">
+							<span :class="$style.originPill" data-testid="agent-file-origin-pill">
+								<N8nIcon icon="user" size="large" />
+								<span>{{ i18n.baseText('agents.builder.files.origin.user' as BaseTextKey) }}</span>
+							</span>
+						</td>
+						<td :class="$style.dateCell" data-testid="agent-file-created-at">
+							{{ formatDate(file.createdAt) }}
+						</td>
+						<td :class="$style.typeCell" data-testid="agent-file-type">
+							{{ getFileType(file) }}
+						</td>
+						<td :class="$style.sizeCell" data-testid="agent-file-size">
+							{{ formatFileSize(file.fileSizeBytes) }}
+						</td>
+						<td :class="$style.actionCell" @click.stop>
+							<N8nActionDropdown
+								:items="rowActions()"
 								:disabled="props.disabled || props.loading || isMutating"
-								:loading="props.deletingFileId === file.id"
-								:aria-label="i18n.baseText('agents.builder.files.delete')"
-								data-testid="agent-files-delete"
-								@click="emit('delete-file', file)"
+								activator-icon="ellipsis"
+								data-testid="agent-files-actions"
+								@select="onAction($event, file)"
 							/>
-						</N8nTooltip>
-					</template>
-				</N8nCard>
-			</div>
-		</N8nScrollArea>
+						</td>
+					</tr>
 
-		<N8nText v-if="!props.loading" size="xsmall" color="text-light">
-			{{
-				i18n.baseText('agents.builder.files.count', {
-					adjustToNumber: totalCount,
-					interpolate: { count: String(totalCount) },
-				})
-			}}
-		</N8nText>
+					<template v-if="props.loading && props.files.length === 0">
+						<tr v-for="item in 5" :key="item">
+							<td v-for="col in 6" :key="col">
+								<ElSkeletonItem />
+							</td>
+						</tr>
+					</template>
+
+					<tr v-if="!props.loading && props.files.length === 0" :class="$style.lastRow">
+						<td :colspan="6">
+							<span :class="$style.emptyMessage" data-testid="agent-files-empty">
+								{{
+									props.isPublished
+										? i18n.baseText('agents.builder.files.empty')
+										: i18n.baseText('agents.builder.files.publishRequired')
+								}}
+							</span>
+						</td>
+					</tr>
+				</tbody>
+			</N8nTableBase>
+		</div>
 	</div>
 </template>
 
@@ -216,59 +244,131 @@ function onFilesSelected(event: Event) {
 	width: 100%;
 }
 
-.panel.disabled > :not(.header) {
-	pointer-events: none;
-	opacity: 0.6;
-}
-
-.titleGroup {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.header {
+.toolbar {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
+	width: 100%;
+}
+
+.title {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
+}
+
+.titleIcon {
+	color: var(--text-color--subtler);
 }
 
 .fileInput {
 	display: none;
 }
 
-.empty {
-	padding: var(--spacing--lg);
+.tableContainer {
+	width: 100%;
+	overflow-x: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
-.rowList {
+.titleCell {
+	width: 42%;
+	max-width: 0;
+}
+
+.fileTitle {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
 	gap: var(--spacing--2xs);
-	padding-right: var(--spacing--xs);
-}
-
-.rows {
-	scrollbar-gutter: stable;
-}
-
-.row {
-	--card--append--width: auto;
-	flex-shrink: 0;
+	min-width: 0;
 }
 
 .fileIcon {
 	flex-shrink: 0;
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 }
 
-.name,
-.metadata {
+.fileName {
 	display: block;
+	min-width: 0;
+	max-width: 100%;
 	overflow: hidden;
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	max-width: 100%;
+}
+
+.originCell,
+.dateCell,
+.typeCell,
+.sizeCell {
+	width: 1%;
+	white-space: nowrap;
+}
+
+.originPill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--xl);
+	color: var(--text-color);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
+	white-space: nowrap;
+}
+
+.dateCell,
+.typeCell,
+.sizeCell {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+}
+
+.actionCell {
+	width: 1%;
+	min-width: var(--spacing--2xl);
+	color: var(--text-color--subtler);
+	text-align: right;
+	white-space: nowrap;
+}
+
+.fileRow {
+	td {
+		color: var(--text-color--subtler);
+	}
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+}
+
+.lastRow {
+	td {
+		padding: var(--spacing--lg);
+		text-align: center;
+	}
+
+	&:hover {
+		background-color: var(--background--surface) !important;
+	}
+}
+
+.emptyMessage {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
 }
 </style>

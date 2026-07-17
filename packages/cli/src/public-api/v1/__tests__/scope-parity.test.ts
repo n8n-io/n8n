@@ -1,6 +1,8 @@
 import RefParser from '@apidevtools/json-schema-ref-parser';
 import { API_KEY_RESOURCES, type ApiKeyScope } from '@n8n/permissions';
+import fs from 'node:fs';
 import path from 'node:path';
+import yaml from 'yaml';
 
 import type { ScopeTaggedMiddleware } from '../shared/middlewares/global.middleware';
 
@@ -73,6 +75,15 @@ describe('Public API scope parity', () => {
 
 	beforeAll(async () => {
 		ops = await loadOperations();
+	});
+
+	test('openapi.yml tags are sorted alphabetically by name', () => {
+		const spec = yaml.parse(fs.readFileSync(OPENAPI_SPEC_PATH, 'utf8')) as {
+			tags?: Array<{ name: string }>;
+		};
+		const tagNames = (spec.tags ?? []).map((tag) => tag.name);
+		const sorted = [...tagNames].sort((a, b) => (a < b ? -1 : 1));
+		expect(tagNames).toEqual(sorted);
 	});
 
 	test('every operation declares x-required-scope', () => {

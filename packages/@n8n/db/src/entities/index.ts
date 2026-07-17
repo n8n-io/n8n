@@ -29,7 +29,13 @@ import type { SecretsProviderAccessRole } from './project-secrets-provider-acces
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
 import { ScheduledJob, ScheduledJobKind, ScheduledJobKindList } from './scheduled-job';
-import { ScheduledTask, ScheduledTaskStatus, ScheduledTaskStatusList } from './scheduled-task';
+import {
+	ScheduledTask,
+	ScheduledTaskStatus,
+	ScheduledTaskStatusList,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
+} from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -51,6 +57,7 @@ import {
 import {
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
+	type WorkflowPublicationTriggerKind,
 } from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
@@ -87,6 +94,8 @@ export {
 	ScheduledTask,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,
@@ -103,6 +112,7 @@ export {
 	WorkflowPublicationOutboxStatus,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
+	type WorkflowPublicationTriggerKind,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,

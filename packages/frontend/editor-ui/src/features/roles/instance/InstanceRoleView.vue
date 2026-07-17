@@ -42,6 +42,8 @@ const {
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
 	viewRoute: VIEWS.INSTANCE_ROLE_VIEW,
+	filterScopes: (scopes) =>
+		scopes.filter((s) => (ALL_INSTANCE_SCOPES as readonly string[]).includes(s)),
 	fetchError: i18n.baseText('roles.instance.action.fetch.error'),
 });
 
@@ -91,6 +93,7 @@ async function createInstanceRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'instance',
 			permissions: role.scopes,
 		});
 
@@ -120,6 +123,7 @@ async function updateInstanceRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'instance',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});

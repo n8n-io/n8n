@@ -131,7 +131,7 @@ async function onClickTemplatesLink() {
 						data-test-id="canvas-instance-ai-build-with-ai-button"
 						@mousedown.stop.prevent="onInstanceAiBuildWithAIClick"
 					>
-						<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+						<N8nIcon icon="sparkles" color="foreground-xdark" :size="40" />
 					</button>
 					<!-- Legacy builder — only while Instance AI is off -->
 					<button
@@ -140,7 +140,7 @@ async function onClickTemplatesLink() {
 						data-test-id="canvas-build-with-ai-button"
 						@mousedown.stop.prevent="onBuildWithAIClick"
 					>
-						<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+						<N8nIcon icon="sparkles" color="foreground-xdark" :size="40" />
 					</button>
 				</div>
 				<p :class="$style.label">

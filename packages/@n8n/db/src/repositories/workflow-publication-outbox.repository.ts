@@ -92,44 +92,121 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Enqueue a pending publication record for every active, non-archived workflow
-	 * at its current active version, in a single statement. Idempotent via the same
-	 * partial-unique-index upsert as {@link enqueue}.
+	 * Enqueue a pending publication record for the current version of each active workflow
+	 * with at least one in-memory trigger.
+	 *
+	 * These must be re-published on startup or leader handoff to ensure that all
+	 * of the in-memory state is correctly initialized. For workflows with no in-memory triggers,
+	 * we can skip re-publishing because their triggers are already persisted.
+	 *
+	 * NOTE: we only exclude workflows where we KNOW that there are no in-memory triggers.
+	 * If the per-trigger data is missing (e.g. due to a crash), we will still enqueue the
+	 * workflow for publication, which is safe because the publication process is idempotent.
 	 */
-	async enqueueAllActiveWorkflows(): Promise<void> {
+	async enqueueForLeaderHandoff(): Promise<void> {
 		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueAllActiveWithPostgresUpsert();
+			await this.enqueueForLeaderHandoffWithPostgresUpsert();
 			return;
 		}
 
-		await this.enqueueAllActiveWithSqliteUpsert();
+		await this.enqueueForLeaderHandoffWithSqliteUpsert();
 	}
 
-	private async enqueueAllActiveWithPostgresUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+	private async enqueueForLeaderHandoffWithPostgresUpsert(): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
+		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 AND (
+			   -- Enqueue workflows with at least one in-memory trigger
+				 EXISTS (
+					 SELECT 1 FROM ${triggerStatusTableName} ts
+					 WHERE ts."workflowId" = w."id" AND ts."triggerKind" = 'in-memory'
+				 )
+				 -- Enqueue workflows where we have no trigger status data
+				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
+			 )
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
 		);
 	}
 
-	private async enqueueAllActiveWithSqliteUpsert(): Promise<void> {
-		const tableName = this.getTableName('workflow_publication_outbox');
+	private async enqueueForLeaderHandoffWithSqliteUpsert(): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
+		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
 		await this.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 AND (
+			   -- Enqueue workflows with at least one in-memory trigger
+				 EXISTS (
+					 SELECT 1 FROM ${triggerStatusTableName} ts
+					 WHERE ts."workflowId" = w."id" AND ts."triggerKind" = 'in-memory'
+				 )
+				 -- Enqueue workflows where we have no trigger status data
+				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
+			 )
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+		);
+	}
+
+	/**
+	 * Enqueue a pending publication record for each given workflow that is active
+	 * and non-archived, at its current active version, in a single statement.
+	 * Workflows that are inactive, archived, or absent are skipped. Idempotent via
+	 * the same partial-unique-index upsert as {@link enqueue}, so the enqueued
+	 * version is always the canonical `activeVersionId`. Used by reconciliation to
+	 * re-publish workflows whose triggers went missing in memory.
+	 */
+	async enqueueByWorkflowIds(workflowIds: string[]): Promise<void> {
+		if (workflowIds.length === 0) return;
+
+		if (this.globalConfig.database.type === 'postgresdb') {
+			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds);
+			return;
+		}
+
+		await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds);
+	}
+
+	private async enqueueByWorkflowIdsWithPostgresUpsert(workflowIds: string[]): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+
+		await this.query(
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" = ANY($1) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			[workflowIds],
+		);
+	}
+
+	private async enqueueByWorkflowIdsWithSqliteUpsert(workflowIds: string[]): Promise<void> {
+		const outboxTableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+		const placeholders = workflowIds.map(() => '?').join(', ');
+
+		await this.query(
+			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" IN (${placeholders}) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			workflowIds,
 		);
 	}
 

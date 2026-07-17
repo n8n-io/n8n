@@ -1,8 +1,10 @@
 import startCase from 'lodash/startCase';
 import type { JsonValue } from 'n8n-workflow';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { TestTableColumn } from './components/shared/TestTableBase.vue';
+import type { EvalCollectionRunStatus } from './evalCollections.types';
 
 /**
  * Extract a human-readable answer string from an end-node output value.
@@ -26,6 +28,25 @@ export function extractAnswerText(json: unknown): string {
 		return typeof only === 'object' && only !== null ? JSON.stringify(only) : String(only);
 	}
 	return JSON.stringify(json);
+}
+
+/**
+ * The node-under-test's answer for a case: the end node's output during the
+ * test run, stripped of its JSON envelope via `extractAnswerText`. Falls back to
+ * the case's persisted `outputs` when the execution isn't loaded (or the compiled
+ * config run had no setOutputs node, so `outputs` is empty).
+ */
+export function extractCaseAnswer(
+	execution: IExecutionResponse | null | undefined,
+	endNodeName: string,
+	fallbackOutputs: unknown,
+): string {
+	if (execution && endNodeName) {
+		const firstItem =
+			execution.data?.resultData?.runData?.[endNodeName]?.[0]?.data?.main?.[0]?.[0]?.json;
+		if (firstItem !== undefined) return extractAnswerText(firstItem);
+	}
+	return extractAnswerText(fallbackOutputs);
 }
 
 export type Column =
@@ -75,9 +96,80 @@ export function getUserDefinedMetricNames(
 	return Object.keys(metrics).filter((key) => !PREDEFINED_METRIC_KEYS.has(key));
 }
 
+// The predefined operational metrics (token counts, execution time) present on a
+// run, in a stable display order. These are shown separately from check scores.
+export function getOperationalMetricEntries(
+	metrics: Record<string, number> | null | undefined,
+): Array<{ key: string; value: number }> {
+	if (!metrics) return [];
+	return [...PREDEFINED_METRIC_KEYS]
+		.filter((key) => key in metrics)
+		.map((key) => ({ key, value: metrics[key] }));
+}
+
 export function normalizeMetricValue(value: number | undefined): number | undefined {
 	if (value === undefined || Number.isNaN(value)) return undefined;
 	return value;
+}
+
+// A metric value is "score-shaped" when it lands in [0, 1] — the range the
+// collection cards chart and average as a percentage. Absolute counts that
+// commonly share the metrics map (tokens, latency_ms) fall outside and are
+// excluded so a mini bar chart (clamped to max=1) doesn't render a bogus
+// maxed-out bar and an avg doesn't blow up.
+export function isScoreShapedMetric(value: unknown): value is number {
+	return typeof value === 'number' && value >= 0 && value <= 1;
+}
+
+// A run set is "running" while any run is still queued or executing, else
+// "done". Shared by the collection card and the compare header so the two
+// surfaces can't disagree; callers that also have a not-yet-loaded state keep
+// their own `null` guard around this.
+export function deriveRunsStatus(
+	runs: Array<{ status: EvalCollectionRunStatus }>,
+): 'running' | 'done' {
+	return runs.some((run) => run.status === 'new' || run.status === 'running') ? 'running' : 'done';
+}
+
+// Reduce per-run aggregate metrics to the score-shaped ([0, 1]) metrics that
+// both the collection-card preview and the compare hero chart render. Returns
+// one entry per metric (first-seen order) with a value per run aligned by
+// index — `null` where a run lacks the metric, so a skipped metric never
+// shifts later versions out of their color/letter slot. A metric is included
+// only if it's score-shaped across every run that reported it, since the bar
+// charts clamp to max=1 and an absolute count (tokens, latency) would render a
+// meaningless maxed-out bar.
+export function buildScoreShapedMetricGroups(
+	runs: Array<{ metrics: Record<string, number> | null }>,
+): Array<{ key: string; values: Array<number | null> }> {
+	const orderedKeys: string[] = [];
+	const seen = new Set<string>();
+	for (const run of runs) {
+		for (const key of Object.keys(run.metrics ?? {})) {
+			// Skip predefined operational metrics (token counts, execution time) —
+			// they're absolute values, not scores, and would chart as a bogus
+			// percentage on the rare run where they land in [0, 1]. Matches the
+			// exclusion in `getUserDefinedMetricNames`.
+			if (PREDEFINED_METRIC_KEYS.has(key) || seen.has(key)) continue;
+			seen.add(key);
+			orderedKeys.push(key);
+		}
+	}
+
+	const scoreShapedKeys = orderedKeys.filter((key) =>
+		runs.every((run) => {
+			const value = run.metrics?.[key];
+			return value === undefined || isScoreShapedMetric(value);
+		}),
+	);
+
+	return scoreShapedKeys.map((key) => ({
+		key,
+		values: runs.map((run) => {
+			const value = run.metrics?.[key];
+			return typeof value === 'number' ? value : null;
+		}),
+	}));
 }
 
 export function computeDelta(
@@ -262,6 +354,24 @@ export function formatDuration(ms: number | undefined): string {
 	const minutes = Math.floor(totalRoundedSeconds / 60);
 	const seconds = totalRoundedSeconds - minutes * 60;
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+}
+
+// Short local date + 24h time, e.g. "May 4 18:04". `withSeconds` adds seconds
+// and a comma separator ("May 4, 18:04:05") for surfaces that must disambiguate
+// runs down to the second (the execution picker).
+export function formatShortDateTime(
+	value: string | number | Date,
+	options: { withSeconds?: boolean } = {},
+): string {
+	const d = new Date(value);
+	const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	const time = d.toLocaleTimeString(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+		...(options.withSeconds ? { second: '2-digit' } : {}),
+		hour12: false,
+	});
+	return options.withSeconds ? `${date}, ${time}` : `${date} ${time}`;
 }
 
 // Duration in ms between two ISO timestamps, or undefined if either is missing.

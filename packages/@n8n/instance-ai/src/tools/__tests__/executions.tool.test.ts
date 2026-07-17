@@ -245,13 +245,14 @@ describe('executions tool', () => {
 			expect(result).toEqual(executionResult);
 		});
 
-		it('should execute immediately when permission is always_allow', async () => {
+		it('should execute immediately when always_allow + workflow was created by the agent', async () => {
 			const executionResult: ExecutionResult = {
 				executionId: 'exec-456',
 				status: 'success',
 			};
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
+				aiCreatedWorkflowIds: new Set(['wf-1']),
 			});
 			(context.executionService.run as Mock).mockResolvedValue(executionResult);
 
@@ -273,6 +274,7 @@ describe('executions tool', () => {
 		it('should pass undefined inputData when not provided', async () => {
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
+				aiCreatedWorkflowIds: new Set(['wf-1']),
 			});
 			(context.executionService.run as Mock).mockResolvedValue({
 				executionId: 'exec-1',
@@ -604,6 +606,70 @@ describe('executions tool', () => {
 				expect(agentCtx.suspend).toHaveBeenCalled();
 				expect(context.executionService.run).not.toHaveBeenCalled();
 				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('aiCreatedWorkflowIds scope (no explicit allow-list)', () => {
+			it('runs without HITL when always_allow + workflow was created by the agent', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					aiCreatedWorkflowIds: new Set(['wf-built']),
+				});
+				(context.executionService.run as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+				const suspendFn = vi.fn();
+
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-built' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).not.toHaveBeenCalled();
+				expect(context.executionService.run).toHaveBeenCalledWith('wf-built', undefined, {
+					timeout: undefined,
+				});
+			});
+
+			it('still requires HITL for a pre-existing workflow the agent did not create', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					aiCreatedWorkflowIds: new Set(['wf-built']),
+				});
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Pre-existing WF' });
+				const suspendFn = vi.fn();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-preexisting' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
+			});
+
+			it('requires HITL when always_allow is set but the agent created nothing', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+				});
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Some WF' });
+				const suspendFn = vi.fn();
+
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
 			});
 		});
 	});

@@ -13,6 +13,7 @@ import {
 import { fixSchema } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
+import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
 
 type AiSdkProviderTool = AiSdkTool & {
 	type: 'provider';
@@ -71,17 +72,18 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	for (const t of tools) {
 		if (t.inputSchema) {
 			const ai = loadAi();
+			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
 			if (isZodSchema(t.inputSchema)) {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: t.inputSchema,
-					providerOptions: t.providerOptions,
+					providerOptions,
 				});
 			} else {
 				result[t.name] = ai.tool({
 					description: t.description,
 					inputSchema: ai.jsonSchema(fixSchema(t.inputSchema)),
-					providerOptions: t.providerOptions,
+					providerOptions,
 				});
 			}
 		}
@@ -121,6 +123,7 @@ export async function executeTool(
 			emitEvent: executionContext.emitEvent,
 			abortSignal: executionContext.abortSignal,
 			executionCounter: executionContext.executionCounter,
+			suspendPayload: executionContext.suspendPayload,
 		};
 		return await builtTool.handler(args, ctx);
 	}

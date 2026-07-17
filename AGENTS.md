@@ -11,6 +11,12 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- **Secrets on the command line:** if a developer opted into anonymous dev
+  metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
+  of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
+  subcommand or baked into a flag — are dropped, and the home dir is stripped from
+  paths, but other args are sent as-is — so never put secrets in a command. Pass
+  sensitive values via environment variables, which are never captured.
 - When adding comments, keep them concise and to the point - explain the "why"
   in a line or two; don't be overly verbose. Comments should be scoped and
   relevant to the surrounding code, not just to the current task
@@ -22,6 +28,9 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- **Developing v3 features:** land normal feature work on `master` behind an
+  opt-in flag; introduce breaking changes only on the `3.x` branch. See
+  [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
 
 ## Agent Skills and Claude Code Plugin
 
@@ -261,6 +270,18 @@ titles, test descriptions, and Linear URLs.
 - **Code comments:** Do not describe the attack scenario in comments.
 - **Linear references:** Never include the URL slug
   (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
+
+### Customer Confidentiality
+
+**This is a public repository.** Never mention customer names in any
+public-facing artifact — not all customers have agreed to be named publicly,
+and naming them can reveal security-relevant details about their setup.
+
+This applies to PR titles and descriptions, branch names, commit messages,
+code, code comments, test names and test data, and fixtures. When implementing
+a customer request, describe the use case neutrally (e.g. "a customer with a
+large multi-main setup", not the company name) and use generic placeholder
+names (e.g. `Acme Corp`) in tests and examples.
 
 ## Github Guidelines
 - When creating a PR, use the conventions in

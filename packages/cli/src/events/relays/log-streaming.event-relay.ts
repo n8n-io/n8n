@@ -43,6 +43,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		this.setupListeners({
 			'n8n-package-imported': (event) => this.packageImported(event),
 			'n8n-package-exported': (event) => this.packageExported(event),
+			'n8n-package-export-failed': (event) => this.packageExportFailed(event),
+			'n8n-package-import-failed': (event) => this.packageImportFailed(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
@@ -78,6 +80,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
 			'oauth-callback-binding-rejected': (event) => this.oauthCallbackBindingRejected(event),
+			'dynamic-credential-authorize-rejected': (event) =>
+				this.dynamicCredentialAuthorizeRejected(event),
 			'variable-created': (event) => this.variableCreated(event),
 			'variable-updated': (event) => this.variableUpdated(event),
 			'variable-deleted': (event) => this.variableDeleted(event),
@@ -146,7 +150,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private packageImported({ user, counts, ...rest }: RelayEventMap['n8n-package-imported']) {
 		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.n8n-package.imported',
+			eventName: 'n8n.audit.n8n-package.import.success',
 			payload: { ...user, ...rest },
 		});
 	}
@@ -154,8 +158,24 @@ export class LogStreamingEventRelay extends EventRelay {
 	@Redactable()
 	private packageExported({ user, counts, ...rest }: RelayEventMap['n8n-package-exported']) {
 		void this.eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.n8n-package.exported',
+			eventName: 'n8n.audit.n8n-package.export.success',
 			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private packageExportFailed({ user, ...rest }: RelayEventMap['n8n-package-export-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.export.failed',
+			payload: { ...user, operation: 'export', ...rest },
+		});
+	}
+
+	@Redactable()
+	private packageImportFailed({ user, ...rest }: RelayEventMap['n8n-package-import-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.import.failed',
+			payload: { ...user, operation: 'import', ...rest },
 		});
 	}
 
@@ -366,6 +386,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		executionId,
+		projectId,
+		projectName,
 		source,
 	}: WorkflowExecutedEventWithUser) {
 		void this.eventBus.sendAuditEvent({
@@ -375,6 +397,8 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				executionId,
+				projectId,
+				projectName,
 				source,
 			},
 		});
@@ -384,6 +408,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		executionId,
+		projectId,
+		projectName,
 		source,
 	}: WorkflowExecutedEvent) {
 		void this.eventBus.sendAuditEvent({
@@ -392,6 +418,8 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				executionId,
+				projectId,
+				projectName,
 				source,
 			},
 		});
@@ -653,6 +681,15 @@ export class LogStreamingEventRelay extends EventRelay {
 	) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.oauth.callback.binding.rejected',
+			payload: event,
+		});
+	}
+
+	private dynamicCredentialAuthorizeRejected(
+		event: RelayEventMap['dynamic-credential-authorize-rejected'] /* no user context: clicker is unauthenticated or mismatched */,
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.credentials.authorize.rejected',
 			payload: event,
 		});
 	}
@@ -1087,6 +1124,9 @@ export class LogStreamingEventRelay extends EventRelay {
 			case 'data_redaction_enforcement_floor':
 				// Telemetry-only signal. The audit trail for redaction enforcement
 				// is emitted separately via 'redaction-enforcement-updated'.
+				break;
+			case 'workflow_reviews':
+				// Telemetry-only signal.
 				break;
 			default:
 				assertNever(settingName);
