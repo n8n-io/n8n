@@ -80,8 +80,9 @@ ${mcpServerSchemaText}
   \`credentialType: "httpMultipleHeadersAuth"\`.
 - For \`mcpOAuth2Api\`, call \`ask_credential\` with
   \`credentialType: "mcpOAuth2Api"\`.
-- Never invent credential IDs. If the user declines, omit the server entirely
-  rather than persisting a stub.
+- Never invent credential IDs. If the user declines credential setup, still
+  add the server via \`patch_config\` — omit only the \`credential\` field.
+  Do not abort the server addition.
 
 ### Testing the connection
 
@@ -95,6 +96,10 @@ Before writing to config, call \`verify_mcp_server\` with server \`name\`,
 - Failure returns \`{ ok: false, error: "..." }\`.
 - If verification fails, explain the error and ask the user to check the URL
   or credentials before proceeding.
+- If \`ask_credential\` returned \`{ skipped: true }\` and \`authentication\`
+  is not \`"none"\`, skip \`verify_mcp_server\` — an unauthenticated attempt
+  would fail regardless. Go straight to \`read_config\` / \`patch_config\`
+  with \`credential\` omitted.
 
 ### Selecting credentials
 
@@ -121,7 +126,8 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 ## Gotchas
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
-- Never invent credential IDs. If the user declines, omit the server entirely.
+- Never invent credential IDs. If the user declines, still add the server
+  and omit only the \`credential\` field.
 - Never fabricate \`metadata.nodeTypeName\`.
 - When \`search_mcp_servers\` returns \`metadata.nodeTypeName\`, include
   \`metadata: { nodeTypeName: <result.nodeTypeName> }\` in the entry so the UI

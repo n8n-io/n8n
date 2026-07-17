@@ -89,6 +89,9 @@ Use \`patch_config\` with:
 - Services that require credentials must call \`ask_credential\` first and persist only its returned credential id.
 - If credential selection is skipped, do not enable the feature unless it supports missing credentials.
 - For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
+- Node tools (\`tools[]\`) and MCP servers (\`mcpServers[]\`) support missing
+  credentials: if setup is skipped, still add the entry and omit only the
+  credential field. Follow their respective skills for the exact shape.
 
 #### Add Node Or Workflow Tools
 
@@ -140,5 +143,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
 - \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
 - \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.
-- \`ask_credential\` skipped: omit or disable the feature that required it.`;
+- \`ask_credential\` skipped: omit or disable the feature that required it,
+  except for node tools and MCP servers — those still get added with only the
+  credential field omitted.`;
 }

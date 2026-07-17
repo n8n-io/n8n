@@ -160,6 +160,15 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 6. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
    \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
 
+### Add MCP integration when credential setup is skipped
+1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
+2. \`search_mcp_servers({ queries: [...] })\`.
+3. \`ask_credential(...)\` -> \`{ skipped: true }\`.
+4. Skip \`verify_mcp_server\` — no credential is available to authenticate with.
+5. \`read_config()\`.
+6. \`patch_config(...)\` adding the \`/mcpServers/-\` entry and omitting only
+   the \`credential\` field. Do not abort the server addition.
+
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_questions(...)\` with the known destination choices.
 2. Continue the chosen branch with node discovery, credentials, and config
