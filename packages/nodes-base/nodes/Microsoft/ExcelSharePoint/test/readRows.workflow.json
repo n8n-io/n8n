@@ -9,12 +9,33 @@
 			"name": "When clicking ‘Test workflow’"
 		},
 		{
-			"parameters": {},
+			"parameters": {
+				"authentication": "microsoftOAuth2Api",
+				"resource": "worksheet",
+				"operation": "readRows",
+				"workbook": {
+					"__rl": true,
+					"mode": "url",
+					"value": "https://contoso.sharepoint.com/sites/site1/Shared Documents/book.xlsx"
+				},
+				"worksheet": {
+					"__rl": true,
+					"mode": "id",
+					"value": "Sheet1"
+				},
+				"options": {}
+			},
 			"type": "n8n-nodes-base.microsoftExcelSharePoint",
 			"typeVersion": 1,
 			"position": [200, 0],
 			"id": "4c9be7de-51f2-4633-8b0a-2f4f3f1f9d02",
-			"name": "Microsoft Excel (SharePoint)"
+			"name": "Microsoft Excel (SharePoint)",
+			"credentials": {
+				"microsoftOAuth2Api": {
+					"id": "c1",
+					"name": "Microsoft account"
+				}
+			}
 		}
 	],
 	"connections": {
@@ -33,7 +54,10 @@
 	"pinData": {
 		"Microsoft Excel (SharePoint)": [
 			{
-				"json": {}
+				"json": {
+					"name": "alice",
+					"age": 30
+				}
 			}
 		]
 	}
