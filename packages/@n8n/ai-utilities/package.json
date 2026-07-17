@@ -30,6 +30,9 @@
       ],
       "model-discovery": [
         "dist/esm/model-discovery/index.d.ts"
+      ],
+      "prompt-builder": [
+        "dist/esm/prompt-builder/index.d.ts"
       ]
     }
   },
@@ -78,6 +81,11 @@
       "types": "./dist/esm/model-discovery/index.d.ts",
       "import": "./dist/esm/model-discovery/index.js",
       "require": "./dist/cjs/model-discovery/index.js"
+    },
+    "./prompt-builder": {
+      "types": "./dist/esm/prompt-builder/index.d.ts",
+      "import": "./dist/esm/prompt-builder/index.js",
+      "require": "./dist/cjs/prompt-builder/index.js"
     },
     "./*": "./*"
   },
