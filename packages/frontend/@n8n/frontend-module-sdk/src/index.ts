@@ -1,12 +1,6 @@
-export type * from './module.types';
-export type * from './push';
-export type * from './command';
-export type * from './shortcut';
-export type * from './banner';
-export type * from './setup';
-export type * from './locale';
+export type * from './types';
 
-export * as modalRegistry from './modalRegistry';
-export * from './resourceRegistry';
-export * as pushHandlerRegistry from './pushHandlerRegistry';
-export * as commandRegistry from './commandRegistry';
+export * as modalRegistry from './registries/modalRegistry';
+export * from './registries/resourceRegistry';
+export * as pushHandlerRegistry from './registries/pushHandlerRegistry';
+export * as commandRegistry from './registries/commandRegistry';

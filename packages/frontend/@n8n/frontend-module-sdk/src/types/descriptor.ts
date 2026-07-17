@@ -1,46 +1,15 @@
-import type { IMenuItem, TabOptions } from '@n8n/design-system';
-import type { Component } from 'vue';
+import type { IMenuItem } from '@n8n/design-system';
 import type { RouteRecordRaw } from 'vue-router';
 
 import type { ModuleBanner } from './banner';
-import type { CommandBarContribution } from './command';
+import type { CommandBarEntry } from './command';
 import type { ModuleLocaleMessages } from './locale';
+import type { ModalDefinition } from './modal';
 import type { ModulePushHandlers } from './push';
+import type { ResourceMetadata } from './resource';
 import type { ModuleSetupContext } from './setup';
 import type { ModuleShortcut } from './shortcut';
-
-export type ModalState = {
-	open: boolean;
-	mode?: string | null;
-	data?: Record<string, unknown>;
-	activeId?: string | null;
-	curlCommand?: string;
-	httpNodeParameters?: string;
-};
-
-export type DynamicTabOptions = TabOptions<string> & {
-	dynamicRoute?: {
-		name: string;
-		includeProjectId?: boolean;
-	};
-	/**
-	 * Insert this tab immediately after the tab whose `value` matches.
-	 * If unset (or no match is found at render time), the tab is appended at the end.
-	 */
-	insertAfter?: string;
-};
-
-export type ModalDefinition = {
-	key: string;
-	component: Component | (() => Promise<Component>);
-	initialState?: ModalState;
-};
-
-export type ResourceMetadata = {
-	key: string;
-	displayName: string;
-	i18nKeys?: Record<string, string>;
-};
+import type { DynamicTabOptions } from './tabs';
 
 /**
  * The declarative contract a frontend module exposes to the editor-ui shell.
@@ -71,7 +40,7 @@ export type FrontendModuleDescription = {
 	/** Push-message handlers, keyed by message type. */
 	pushHandlers?: ModulePushHandlers;
 	/** Command-bar contributions. */
-	commands?: CommandBarContribution[];
+	commands?: CommandBarEntry[];
 	/** Global keyboard shortcuts. */
 	shortcuts?: ModuleShortcut[];
 	/** Banners the module can contribute to the banner stack. */
