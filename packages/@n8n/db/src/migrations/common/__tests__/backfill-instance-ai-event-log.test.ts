@@ -58,6 +58,10 @@ const RICH_TREE: Record<string, unknown> = {
 	status: 'completed',
 	textContent: 'Hello. Done.',
 	reasoning: 'thinking hard',
+	tasks: {
+		tasks: [{ id: 't1', description: 'Build the workflow', status: 'done' }],
+	},
+	planItems: [{ id: 't1', title: 'Build', kind: 'build-workflow', spec: 'Build it', deps: [] }],
 	timeline: [
 		{ type: 'reasoning', content: 'thinking hard' },
 		{ type: 'text', content: 'Hello. ' },
@@ -129,6 +133,14 @@ describe('synthesizeThreadEvents', () => {
 		const rootCall = tree.toolCalls.find((tc) => tc.toolCallId === 'tc-1');
 		expect(rootCall?.result).toEqual({ total: 2 });
 		expect(rootCall?.isLoading).toBe(false);
+
+		// The task/plan card round-trips through a synthesized tasks-update.
+		expect(tree.tasks).toEqual({
+			tasks: [{ id: 't1', description: 'Build the workflow', status: 'done' }],
+		});
+		expect(tree.planItems).toEqual([
+			{ id: 't1', title: 'Build', kind: 'build-workflow', spec: 'Build it', deps: [] },
+		]);
 
 		const child = tree.children.find((c) => c.agentId === 'sub-1');
 		expect(child?.title).toBe('Building workflow');

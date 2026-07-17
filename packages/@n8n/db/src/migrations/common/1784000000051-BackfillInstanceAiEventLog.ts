@@ -34,8 +34,13 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
  *   sorts derived entries by `createdAt`, so mixed threads pair correctly.
  *
  * Deliberately not reproduced (degrade gracefully, documented in INS-851):
- * task/plan cards, confirmation cards, per-call timing, langsmith anchors
- * (pre-log feedback keeps resolving via snapshot columns until Gate B).
+ * confirmation cards (resolved long ago; their tool calls + results ARE
+ * reproduced, and re-emitting request facts would resurrect dead approval
+ * prompts), per-call timing (synthesized facts share the snapshot timestamp,
+ * so durations render as instant — the tree stores no segment timing to do
+ * better), and langsmith feedback anchors (they live in snapshot COLUMNS,
+ * which outlive Gate B until the table drops, so feedback on pre-log threads
+ * keeps resolving unchanged; the Gate B anchor relocation carries them over).
  */
 
 // ---------------------------------------------------------------------------
@@ -76,6 +81,8 @@ interface TreeNode {
 	subtitle?: string;
 	goal?: string;
 	targetResource?: { type?: unknown } & Record<string, unknown>;
+	tasks?: { tasks?: unknown };
+	planItems?: unknown[];
 	result?: string;
 	error?: string;
 	cancellationReason?: string;
@@ -288,6 +295,16 @@ function emitNodeContent(synth: RunSynthesizer, node: TreeNode, agentId: string)
 	}
 	for (const [childAgentId, child] of childrenById) {
 		if (!emitted.has(childAgentId)) emitChild(synth, agentId, child, recurse);
+	}
+	// Task/plan card: the tree stores the LATEST list, which is exactly what a
+	// last-write-wins tasks-update carries, so one synthesized fact restores it.
+	if (node.tasks && typeof node.tasks === 'object' && Array.isArray(node.tasks.tasks)) {
+		synth.push('tasks-update', agentId, {
+			tasks: node.tasks,
+			...(Array.isArray(node.planItems) && node.planItems.length > 0
+				? { planItems: node.planItems }
+				: {}),
+		});
 	}
 }
 
