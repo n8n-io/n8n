@@ -52,6 +52,8 @@ describe('redaction-channels', () => {
 			[{ version: 2, production: true, manual: true }, 'webhook', true],
 			[{ version: 2, production: false, manual: false }, 'manual', false],
 			[{ version: 2, production: false, manual: false }, 'trigger', false],
+			[{ version: 2, production: false, manual: true }, 'manual', true],
+			[{ version: 2, production: false, manual: true }, 'trigger', true],
 		] as const)('V2 snapshot %j in mode %s → %s', (redaction, mode, expected) => {
 			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(expected);
 		});

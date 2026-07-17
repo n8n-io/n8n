@@ -57,7 +57,8 @@ export const CONSOLE_OUTPUT_REDACTED_MESSAGE =
  * redacted for this run. Mirrors `ExecutionRedactionService.resolvePolicy`:
  * the `runtimeData.redaction` snapshot wins, the workflow setting is the
  * fallback; manual runs consult the manual channel, every other mode the
- * production channel.
+ * production channel. For a V2 snapshot, production is clamped up when
+ * manual is set, matching the fail-strict clamp in {@link channelsToPolicy}.
  */
 export function shouldRedactConsoleOutput(
 	redaction: IRedactionSetting | undefined,
@@ -68,7 +69,7 @@ export function shouldRedactConsoleOutput(
 		redaction === undefined
 			? policyToChannels(workflowSettings?.redactionPolicy ?? 'none')
 			: redaction.version === 2
-				? { production: redaction.production, manual: redaction.manual }
+				? { production: redaction.production || redaction.manual, manual: redaction.manual }
 				: policyToChannels(redaction.policy);
 
 	return mode === 'manual' ? channels.manual : channels.production;

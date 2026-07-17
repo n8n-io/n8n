@@ -869,6 +869,8 @@ describe('ExecutionRedactionService', () => {
 			[{ version: 2 as const, production: true, manual: false }, 'webhook' as const],
 			[{ version: 2 as const, production: false, manual: false }, 'manual' as const],
 			[{ version: 2 as const, production: false, manual: false }, 'trigger' as const],
+			[{ version: 2 as const, production: false, manual: true }, 'manual' as const],
+			[{ version: 2 as const, production: false, manual: true }, 'trigger' as const],
 			[{ version: 1 as const, policy: 'all' as const }, 'manual' as const],
 			[{ version: 1 as const, policy: 'non-manual' as const }, 'manual' as const],
 			[{ version: 1 as const, policy: 'non-manual' as const }, 'trigger' as const],

@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 import { request } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { CONSOLE_OUTPUT_REDACTED_MESSAGE } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import {
@@ -444,7 +445,7 @@ test.describe(
 			);
 
 			await expect
-				.poll(() => consoleMessages.some((m) => m.includes('[Console output redacted')))
+				.poll(() => consoleMessages.some((m) => m.includes(CONSOLE_OUTPUT_REDACTED_MESSAGE)))
 				.toBe(true);
 			expect(consoleMessages.some((m) => m.includes(secret))).toBe(false);
 		});

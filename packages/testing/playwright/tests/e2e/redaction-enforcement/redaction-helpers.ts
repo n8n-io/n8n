@@ -94,7 +94,7 @@ export const CODE_NODE = 'Code';
 export function consoleLogWorkflow({
 	secret,
 	settings = {},
-}: WorkflowOptions = {}): Partial<IWorkflowBase> {
+}: Omit<WorkflowOptions, 'secret'> & { secret: string }): Partial<IWorkflowBase> {
 	const trigger = {
 		id: nanoid(),
 		name: 'Manual',
