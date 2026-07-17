@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
+import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
 import {
 	N8nAssistantIcon,
 	N8nButton,
@@ -419,8 +419,12 @@ async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
 	activeChatSessionId.value = sessionId ?? null;
 
-	const query = { ...route.query, prompt: undefined };
-	delete query[CONTINUE_SESSION_ID_PARAM];
+	const {
+		[CONTINUE_SESSION_ID_PARAM]: _dropped,
+		prompt: _prompt,
+		...rest
+	} = route.query as LocationQueryRaw;
+	const query: LocationQueryRaw = { ...rest };
 	if (sessionId) {
 		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
 	}
