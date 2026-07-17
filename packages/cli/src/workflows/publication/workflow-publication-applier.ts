@@ -178,7 +178,10 @@ export class WorkflowPublicationApplier {
 	 * version to deactivate comes from the mapping (`oldVersion`), since the
 	 * workflow's `activeVersionId` has already been cleared by the service that
 	 * enqueued this record. A missing mapping means nothing was published on this
-	 * leader, so there is nothing to tear down.
+	 * leader, so there is nothing to tear down — but the record still completes as
+	 * `unpublished`, so the reporter clears any trigger-status rows left behind by
+	 * an unpublish that was interrupted between removing the mapping and clearing
+	 * the rows. Every step here is idempotent for exactly that retry.
 	 *
 	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
 	 * so the mapping is only removed once teardown has succeeded.
@@ -188,13 +191,11 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 		record: WorkflowPublicationOutbox,
 	): Promise<PublicationResult> {
-		if (!oldVersion) return { type: 'skipped', reason: 'workflow-inactive' };
-
 		const toRemove = new Set(
 			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
 		);
 
-		if (toRemove.size > 0) {
+		if (oldVersion && toRemove.size > 0) {
 			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
 		}
 

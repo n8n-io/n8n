@@ -161,12 +161,13 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Enqueue a pending publication record for each given workflow that is active
-	 * and non-archived, at its current active version, in a single statement.
-	 * Workflows that are inactive, archived, or absent are skipped. Idempotent via
-	 * the same partial-unique-index upsert as {@link enqueue}, so the enqueued
-	 * version is always the canonical `activeVersionId`. Used by reconciliation to
-	 * re-publish workflows whose triggers went missing in memory.
+	 * Enqueue a pending publication record for each given workflow that still
+	 * exists, in a single statement. Used by reconciliation, which must be able to
+	 * enqueue whatever its detection returns — refusing a workflow here would
+	 * re-detect it on every pass forever. Published workflows are enqueued at
+	 * their canonical `activeVersionId`; unpublished (including archived) ones get
+	 * an unpublish record that clears their stale trigger-status rows. Idempotent
+	 * via the same partial-unique-index upsert as {@link enqueue}.
 	 */
 	async enqueueByWorkflowIds(workflowIds: string[]): Promise<void> {
 		if (workflowIds.length === 0) return;
@@ -183,11 +184,15 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
+		// COALESCE: an unpublished workflow has no `activeVersionId`, but the column
+		// is NOT NULL. The fallback is inert — the applier dispatches an unpublish
+		// on the workflow's null `activeVersionId` and never reads the record's
+		// version. (Mirrored in the sqlite variant below.)
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 SELECT w."id", COALESCE(w."activeVersionId", w."versionId"), '${Status.Pending}'
 			 FROM ${workflowTableName} w
-			 WHERE w."id" = ANY($1) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 WHERE w."id" = ANY($1)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
 			[workflowIds],
@@ -201,9 +206,9 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 SELECT w."id", COALESCE(w."activeVersionId", w."versionId"), '${Status.Pending}'
 			 FROM ${workflowTableName} w
-			 WHERE w."id" IN (${placeholders}) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 WHERE w."id" IN (${placeholders})
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
 			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
 			workflowIds,

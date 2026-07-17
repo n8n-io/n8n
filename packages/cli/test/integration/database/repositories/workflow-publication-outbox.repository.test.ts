@@ -404,17 +404,31 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(pending.map((record) => record.workflowId)).not.toContain(wf2.id);
 		});
 
-		it('skips inactive and archived workflows even when listed', async () => {
-			const active = await createActiveWorkflow();
-			const inactive = await createWorkflow(); // no activeVersionId
-			const archived = await createActiveWorkflow();
+		it('enqueues unpublished and archived workflows at their draft version so stale trigger-status rows can be healed', async () => {
+			// The reconciler enqueues whatever its detection query returns; refusing
+			// any of it here would re-detect the same workflow forever. The version id
+			// is inert for these records — the applier dispatches an unpublish on the
+			// workflow's null `activeVersionId` and never reads it.
+			const unpublished = await createWorkflow(); // no activeVersionId
+			const archived = await createWorkflow();
 			await Container.get(WorkflowRepository).update(archived.id, { isArchived: true });
 
-			await repository.enqueueByWorkflowIds([active.id, inactive.id, archived.id]);
+			await repository.enqueueByWorkflowIds([unpublished.id, archived.id]);
 
 			const pending = await repository.find({ where: { status: 'pending' } });
-			expect(pending).toHaveLength(1);
-			expect(pending[0].workflowId).toBe(active.id);
+			expect(pending).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						workflowId: unpublished.id,
+						publishedVersionId: unpublished.versionId,
+					}),
+					expect.objectContaining({
+						workflowId: archived.id,
+						publishedVersionId: archived.versionId,
+					}),
+				]),
+			);
+			expect(pending).toHaveLength(2);
 		});
 
 		it('is idempotent: re-running does not create duplicate pending records', async () => {
