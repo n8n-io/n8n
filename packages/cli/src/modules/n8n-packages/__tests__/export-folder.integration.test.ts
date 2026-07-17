@@ -164,7 +164,7 @@ describe('folder package export', () => {
 			{ name: 'External Child', nodes: [], connections: {} },
 			projectB,
 		);
-		await buildWorkflowCallingSubWorkflow({
+		const parent = await buildWorkflowCallingSubWorkflow({
 			name: 'Parent',
 			project: projectA,
 			parentFolder: folder,
@@ -181,7 +181,9 @@ describe('folder package export', () => {
 		const childEntry = manifest.workflows!.find(({ id }) => id === externalChild.id);
 		expect(childEntry?.target).toBe('workflows/external-child');
 		expect(entries.find((e) => e.name === `${childEntry!.target}/workflow.json`)).toBeDefined();
-		expect(manifest.requirements).toBeUndefined();
+		expect(manifest.requirements?.workflows).toEqual([
+			{ id: externalChild.id, name: externalChild.name, usedByWorkflows: [parent.id] },
+		]);
 	});
 
 	it('preserves nesting through multiple levels when exporting a folder subtree', async () => {

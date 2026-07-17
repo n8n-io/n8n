@@ -167,7 +167,9 @@ describe('project package export', () => {
 		const { manifest } = await exportProjects(owner, [projectA.id, projectB.id]);
 
 		expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
-		expect(manifest.requirements).toBeUndefined();
+		expect(manifest.requirements?.workflows).toEqual([
+			{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+		]);
 	});
 
 	it('exports the owner personal project', async () => {
