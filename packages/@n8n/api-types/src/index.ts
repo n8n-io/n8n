@@ -339,6 +339,7 @@ export {
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalSeedDataTableRowsRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -355,6 +356,7 @@ export {
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
+	instanceAiEvalSeedDataTableSchema,
 	applyBranchReadOnlyOverrides,
 	normalizeInstanceAiThreadSource,
 } from './schemas/instance-ai.schema';

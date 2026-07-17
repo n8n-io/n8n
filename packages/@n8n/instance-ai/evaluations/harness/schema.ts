@@ -1,3 +1,4 @@
+import { instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { SUPPORTED_CREDENTIAL_TYPES } from '../credentials/seeder';
@@ -26,6 +27,12 @@ const ExecutionScenarioSchema = z.object({
 	dataSetup: z.string(),
 	successCriteria: z.string(),
 	requires: z.string().optional(),
+	/** Typed data tables to seed before this scenario executes (TRUST-311).
+	 *  Unlike free-text `dataSetup`, this declares each column's type, so a string
+	 *  id (`row_001`) can be seeded into a `string` column rather than being
+	 *  rejected by a `number` column. Reuses the api-types seed-table schema
+	 *  (extended with optional `rows`). */
+	seedDataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 });
 
 const evalTestCaseObjectSchema = z
