@@ -489,8 +489,8 @@ function onClear() {
 
 .comboboxEmpty {
 	padding: var(--spacing--xs) var(--spacing--sm);
-	font-size: var(--font-size--sm);
-	color: var(--text-color--subtle);
+	font-size: var(--font-size--xs);
+	color: var(--text-color--subtler);
 	text-align: center;
 }
 
