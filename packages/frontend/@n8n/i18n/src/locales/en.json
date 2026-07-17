@@ -3184,7 +3184,7 @@
 	"settings.mcp.status.disableDialog.confirm": "Disable MCP access",
 	"settings.mcp.connectionDetails.title": "Connection details",
 	"settings.mcp.yourClient.title": "Connect your client",
-	"settings.mcp.yourClient.description": "Connect an AI assistant or IDE, then follow the tailored setup steps.",
+	"settings.mcp.yourClient.description": "Choose your AI assistant, IDE, or CLI to get tailored setup steps.",
 	"settings.mcp.yourClient.connect": "Connect",
 	"settings.mcp.access.title": "Access",
 	"settings.mcp.access.description": "Which workflows connected clients can reach. What each client can do is granted per client.",
