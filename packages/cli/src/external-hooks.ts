@@ -32,6 +32,7 @@ type ExternalHooksMap = {
 	'worker.ready': never;
 
 	'activeWorkflows.initialized': never;
+
 	'agent.preExecute': [agentId: string];
 
 	'credentials.create': [encryptedData: ICredentialsDb];
