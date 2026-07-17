@@ -838,14 +838,14 @@ export class WorkflowDataProxy {
 			context?: ExpressionErrorOptions & {
 				moreInfoLink?: boolean;
 				functionOverrides?: {
-					// Custom data to display for Function-Nodes
+					// Custom data to display for scripting nodes
 					message?: string;
 					description?: string;
 				};
 			},
 		) => {
 			if (isScriptingNode(that.activeNodeName, that.workflow) && context?.functionOverrides) {
-				// If the node in which the error is thrown is a function node,
+				// If the node in which the error is thrown is a scripting node,
 				// display a different error message in case there is one defined
 				message = context.functionOverrides.message || message;
 				context.description = context.functionOverrides.description || context.description;
