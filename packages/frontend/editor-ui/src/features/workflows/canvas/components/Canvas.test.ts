@@ -562,6 +562,50 @@ describe('Canvas', () => {
 		]);
 	});
 
+	it('snaps a selected agent by its measured center when dragging a regular node', async () => {
+		const agent = createTestNode({
+			id: 'agent',
+			name: 'Agent',
+			position: [100, 100],
+			type: MESSAGE_AN_AGENT_NODE_TYPE,
+			typeVersion: 2,
+		});
+		workflowDocumentStore.addNode(agent);
+		const agentCanvasNode = createCanvasNodeElement({
+			id: agent.id,
+			position: { x: 100, y: 100 },
+			data: { type: agent.type, typeVersion: agent.typeVersion },
+		});
+		const regularCanvasNode = createCanvasNodeElement({
+			id: 'regular',
+			position: { x: 100, y: 100 },
+		});
+		const { container, emitted } = renderComponent({
+			props: { nodes: [agentCanvasNode, regularCanvasNode] },
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+		const vueFlow = useVueFlow({ id: canvasId });
+		const agentGraphNode = vueFlow.findNode(agent.id)!;
+		agentGraphNode.dimensions = { width: 320, height: 206 };
+		vueFlow.addSelectedNodes([agentGraphNode, vueFlow.findNode(regularCanvasNode.id)!]);
+
+		const regularNode = container.querySelector(`[data-id="${regularCanvasNode.id}"]`) as Element;
+		await fireEvent.mouseDown(regularNode, { view: window });
+		await fireEvent.mouseMove(regularNode, { view: window, clientX: 20, clientY: 20 });
+		await fireEvent.mouseMove(regularNode, { view: window, clientX: 40, clientY: 40 });
+		await fireEvent.mouseUp(regularNode, { view: window });
+
+		expect(emitted()['update:nodes:position']).toEqual([
+			[
+				[
+					{ id: agent.id, position: { x: 112, y: 105 } },
+					{ id: regularCanvasNode.id, position: { x: 112, y: 105 } },
+				],
+			],
+		]);
+	});
+
 	it('centers a newly added agent when its rendered height is first measured', async () => {
 		const agent = createTestNode({
 			id: 'agent',

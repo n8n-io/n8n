@@ -674,6 +674,7 @@ function onNodeDragStop(event: NodeDragEvent) {
 	const moves = agentNodeGeometry.snapDraggedNodeMoves(
 		event.node,
 		groupDrag.processNodeDragStop(event),
+		event.nodes,
 	);
 	if (moves.length > 0) commitManualNodePositions(moves);
 }

@@ -50,14 +50,23 @@ export function useCanvasAgentNodeGeometry(deps: UseCanvasAgentNodeGeometryDeps)
 	function snapDraggedNodeMoves(
 		draggedNode: { id: string; dimensions: Dimensions },
 		moves: CanvasNodeMoveEvent[],
+		draggedNodes: Array<{ id: string; dimensions: Dimensions }> = [draggedNode],
 	) {
-		const node = deps.getNodeById(draggedNode.id);
-		const { width, height } = draggedNode.dimensions;
-		if (!isAgentNodeV2(node) || width <= 0 || height <= 0) return moves;
+		const draggedAgentNode = [draggedNode, ...draggedNodes].find(({ id, dimensions }) => {
+			const { width, height } = dimensions;
+			return (
+				moves.some((move) => move.id === id) &&
+				isAgentNodeV2(deps.getNodeById(id)) &&
+				width > 0 &&
+				height > 0
+			);
+		});
+		if (!draggedAgentNode) return moves;
 
-		const draggedMove = moves.find((move) => move.id === draggedNode.id);
+		const draggedMove = moves.find((move) => move.id === draggedAgentNode.id);
 		if (!draggedMove) return moves;
 
+		const { width, height } = draggedAgentNode.dimensions;
 		const [x, y] = snapPositionToGridByCenter(
 			[draggedMove.position.x, draggedMove.position.y],
 			[width, height],
