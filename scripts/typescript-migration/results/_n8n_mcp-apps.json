@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/mcp-apps",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T10:27:47.067Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            8405,
+            7543,
+            8147
+          ],
+          "min": 7543,
+          "median": 8147,
+          "mean": 8032
+        },
+        "build": {
+          "runsMs": [
+            3889,
+            3235,
+            3615
+          ],
+          "min": 3235,
+          "median": 3615,
+          "mean": 3580
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T10:30:54.963Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            7398,
+            7136,
+            7054
+          ],
+          "min": 7054,
+          "median": 7136,
+          "mean": 7196
+        },
+        "build": {
+          "runsMs": [
+            3397,
+            2884,
+            2883
+          ],
+          "min": 2883,
+          "median": 2884,
+          "mean": 3054
+        }
+      }
+    }
+  }
+}

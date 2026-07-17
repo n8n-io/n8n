@@ -1,6 +1,6 @@
 # TypeScript 6 → 7 migration benchmarks
 
-Generated 2026-07-16T08:25:04.413Z from `scripts/typescript-migration/results/`.
+Generated 2026-07-16T10:36:32.332Z from `scripts/typescript-migration/results/`.
 
 | Package | typecheck Δ | build Δ |
 | --- | --- | --- |
@@ -10,7 +10,7 @@ Generated 2026-07-16T08:25:04.413Z from `scripts/typescript-migration/results/`.
 | `@n8n/ai-workflow-builder` | -69.3% | -33.1% |
 | `@n8n/api-types` | -64.6% | -66.6% |
 | `@n8n/backend-common` | -57.0% | -54.5% |
-| `@n8n/backend-network` | -57.0% | -54.9% |
+| `@n8n/backend-network` | -59.8% | -55.9% |
 | `@n8n/backend-test-utils` | -51.4% | -53.1% |
 | `@n8n/chat-hub` | -50.4% | -50.5% |
 | `@n8n/cli` | -45.7% | -45.7% |
@@ -22,20 +22,34 @@ Generated 2026-07-16T08:25:04.413Z from `scripts/typescript-migration/results/`.
 | `@n8n/config` | -48.2% | -37.9% |
 | `@n8n/constants` | -35.8% | -36.6% |
 | `@n8n/crdt` | -40.8% | -41.0% |
+| `@n8n/db` | -61.6% | -34.0% |
+| `@n8n/decorators` | -56.6% | -53.5% |
+| `@n8n/di` | -34.0% | -31.0% |
 | `@n8n/engine` | -37.2% | -40.8% |
 | `@n8n/errors` | -39.0% | -40.6% |
 | `@n8n/eslint-config` | -71.1% | -61.5% |
 | `@n8n/eslint-plugin-community-nodes` | -50.6% | -47.1% |
 | `@n8n/expression-runtime` | -57.1% | -42.4% |
+| `@n8n/extension-sdk` | — | -5.2% |
 | `@n8n/imap` | -48.6% | -36.7% |
 | `@n8n/instance-ai` | -70.0% | -40.3% |
 | `@n8n/json-schema-to-zod` | -43.9% | -34.7% |
 | `@n8n/local-gateway` | -46.1% | -42.1% |
+| `@n8n/mcp-apps` | -12.4% | -20.2% |
 | `@n8n/mcp-browser` | -57.6% | -55.6% |
+| `@n8n/mcp-browser-extension` | -46.3% | +3.0% |
 | `@n8n/n8n-benchmark` | -49.2% | -39.0% |
 | `@n8n/n8n-nodes-langchain` | -74.2% | -21.6% |
 | `@n8n/node-cli` | -55.3% | -48.3% |
+| `@n8n/permissions` | -34.1% | -28.5% |
+| `@n8n/scheduler` | -56.6% | -51.7% |
+| `@n8n/stylelint-config` | -39.9% | -40.8% |
+| `@n8n/task-runner` | -54.3% | -44.6% |
+| `@n8n/tournament` | -32.0% | -34.8% |
 | `@n8n/typeorm` | -37.9% | -68.7% |
+| `@n8n/utils` | -49.8% | -19.6% |
+| `@n8n/vitest-config` | -48.1% | -43.5% |
+| `@n8n/workflow-sdk` | -67.1% | -63.3% |
 | `n8n` | -75.5% | -71.3% |
 
 ```
@@ -114,12 +128,12 @@ build:
 === @n8n/backend-network — median times (Δ vs "before") ===
 
 typecheck:
-  before               1.52s
-  after                656ms  -868ms (-57.0%)
+  before               1.64s
+  after                659ms  -980ms (-59.8%)
 
 build:
-  before               1.28s
-  after                576ms  -701ms (-54.9%)
+  before               1.39s
+  after                611ms  -776ms (-55.9%)
 ```
 
 ```
@@ -251,6 +265,42 @@ build:
 ```
 
 ```
+=== @n8n/db — median times (Δ vs "before") ===
+
+typecheck:
+  before               2.76s
+  after                1.06s  -1701ms (-61.6%)
+
+build:
+  before               3.05s
+  after                2.02s  -1038ms (-34.0%)
+```
+
+```
+=== @n8n/decorators — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.40s
+  after                606ms  -790ms (-56.6%)
+
+build:
+  before               1.26s
+  after                588ms  -677ms (-53.5%)
+```
+
+```
+=== @n8n/di — median times (Δ vs "before") ===
+
+typecheck:
+  before               780ms
+  after                515ms  -265ms (-34.0%)
+
+build:
+  before               713ms
+  after                492ms  -221ms (-31.0%)
+```
+
+```
 === @n8n/engine — median times (Δ vs "before") ===
 
 typecheck:
@@ -311,6 +361,14 @@ build:
 ```
 
 ```
+=== @n8n/extension-sdk — median times (Δ vs "before") ===
+
+build:
+  before               2.65s
+  after                2.51s  -139ms (-5.2%)
+```
+
+```
 === @n8n/imap — median times (Δ vs "before") ===
 
 typecheck:
@@ -359,6 +417,18 @@ build:
 ```
 
 ```
+=== @n8n/mcp-apps — median times (Δ vs "before") ===
+
+typecheck:
+  before               8.15s
+  after                7.14s  -1011ms (-12.4%)
+
+build:
+  before               3.62s
+  after                2.88s  -731ms (-20.2%)
+```
+
+```
 === @n8n/mcp-browser — median times (Δ vs "before") ===
 
 typecheck:
@@ -368,6 +438,18 @@ typecheck:
 build:
   before               1.35s
   after                597ms  -749ms (-55.6%)
+```
+
+```
+=== @n8n/mcp-browser-extension — median times (Δ vs "before") ===
+
+typecheck:
+  before               984ms
+  after                528ms  -456ms (-46.3%)
+
+build:
+  before               2.80s
+  after                2.89s  +84ms (+3.0%)
 ```
 
 ```
@@ -407,6 +489,66 @@ build:
 ```
 
 ```
+=== @n8n/permissions — median times (Δ vs "before") ===
+
+typecheck:
+  before               965ms
+  after                636ms  -329ms (-34.1%)
+
+build:
+  before               918ms
+  after                656ms  -262ms (-28.5%)
+```
+
+```
+=== @n8n/scheduler — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.36s
+  after                590ms  -771ms (-56.6%)
+
+build:
+  before               1.14s
+  after                552ms  -590ms (-51.7%)
+```
+
+```
+=== @n8n/stylelint-config — median times (Δ vs "before") ===
+
+typecheck:
+  before               781ms
+  after                469ms  -312ms (-39.9%)
+
+build:
+  before               790ms
+  after                468ms  -322ms (-40.8%)
+```
+
+```
+=== @n8n/task-runner — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.64s
+  after                749ms  -890ms (-54.3%)
+
+build:
+  before               1.55s
+  after                862ms  -693ms (-44.6%)
+```
+
+```
+=== @n8n/tournament — median times (Δ vs "before") ===
+
+typecheck:
+  before               724ms
+  after                492ms  -232ms (-32.0%)
+
+build:
+  before               759ms
+  after                495ms  -264ms (-34.8%)
+```
+
+```
 === @n8n/typeorm — median times (Δ vs "before") ===
 
 typecheck:
@@ -416,6 +558,42 @@ typecheck:
 build:
   before               2.84s
   after                890ms  -1949ms (-68.7%)
+```
+
+```
+=== @n8n/utils — median times (Δ vs "before") ===
+
+typecheck:
+  before               1.12s
+  after                562ms  -558ms (-49.8%)
+
+build:
+  before               911ms
+  after                732ms  -179ms (-19.6%)
+```
+
+```
+=== @n8n/vitest-config — median times (Δ vs "before") ===
+
+typecheck:
+  before               950ms
+  after                493ms  -457ms (-48.1%)
+
+build:
+  before               898ms
+  after                507ms  -391ms (-43.5%)
+```
+
+```
+=== @n8n/workflow-sdk — median times (Δ vs "before") ===
+
+typecheck:
+  before               2.42s
+  after                798ms  -1625ms (-67.1%)
+
+build:
+  before               1.91s
+  after                699ms  -1207ms (-63.3%)
 ```
 
 ```

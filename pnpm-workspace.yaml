@@ -217,6 +217,7 @@ catalogMode: strict
 catalogs:
   typescript:
     typescript: 7.0.2
+    tsdown: ^0.22.8
   # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
   # (as `typescript`) for tooling that needs the programmatic compiler API —
   # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
@@ -279,3 +280,5 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - 'typescript'
   - '@typescript/*'
+  - 'tsdown'
+  - 'rolldown-plugin-dts'
