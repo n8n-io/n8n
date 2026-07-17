@@ -114,11 +114,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "return [{json:{\n  email:`test${Date.now().toString().substr(5)}@gmail.com`,\n  firstname:'Test first',\n  lastname:'Test last',\n  message:'Message'\n}}];"
+				"mode": "runOnceForAllItems",
+				"jsCode": "return [{json:{\n  email:`test${Date.now().toString().substr(5)}@gmail.com`,\n  firstname:'Test first',\n  lastname:'Test last',\n  message:'Message'\n}}];"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [690, 210],
 			"notesInFlow": true,
 			"notes": "Turn field into single json",
