@@ -202,14 +202,12 @@ export function useContextMenuItems(
 			if (anyHidden) {
 				items.push({
 					id: 'show_all_group_descriptions',
-					divided: true,
 					label: i18n.baseText('contextMenu.showAllGroupDescriptions'),
 				});
 			}
 			if (anyDisplayed) {
 				items.push({
 					id: 'hide_all_group_descriptions',
-					divided: !anyHidden,
 					label: i18n.baseText('contextMenu.hideAllGroupDescriptions'),
 				});
 			}
