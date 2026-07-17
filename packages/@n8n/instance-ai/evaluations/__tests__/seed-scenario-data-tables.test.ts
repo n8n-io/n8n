@@ -94,7 +94,8 @@ describe('seedScenarioDataTables', () => {
 			silentLogger,
 		);
 
-		const [, , , passedTables] = restoreThread.mock.calls[0];
+		// restoreThread(threadId, messages, workflows, tables, opts) — the 4th arg is the tables.
+		const passedTables = (restoreThread.mock.calls[0] as unknown[])[3];
 		expect(passedTables).toEqual([first]); // first declaration wins; dup name dropped
 	});
 
