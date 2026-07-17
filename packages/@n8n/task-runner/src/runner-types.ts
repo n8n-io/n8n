@@ -134,9 +134,6 @@ export const UNSUPPORTED_HELPER_FUNCTIONS = [
 	'helpers.httpRequestWithAuthentication',
 	'helpers.requestWithAuthenticationPaginated',
 
-	// This has been removed
-	'helpers.copyBinaryFile',
-
 	// We can't support streams over RPC without implementing it ourselves
 	'helpers.createReadStream',
 	'helpers.getBinaryStream',
