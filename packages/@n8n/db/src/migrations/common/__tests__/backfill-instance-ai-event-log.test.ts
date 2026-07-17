@@ -336,7 +336,13 @@ describe('synthesizeThreadEvents', () => {
 				{ type: 'tool-call', toolCallId: 'tc-1' },
 			],
 			toolCalls: [
-				{ toolCallId: 'tc-1', toolName: 'search-workflows', args: {}, result: {}, isLoading: false },
+				{
+					toolCallId: 'tc-1',
+					toolName: 'search-workflows',
+					args: {},
+					result: {},
+					isLoading: false,
+				},
 			],
 			children: [],
 		};
@@ -362,9 +368,7 @@ describe('synthesizeThreadEvents', () => {
 		});
 		const legacyFolded = fold(legacyRows);
 		expect(legacyFolded.reasoning).toBe('aggregate-only thinking');
-		expect(
-			legacyRows.filter((r) => r.type === 'reasoning-block'),
-		).toHaveLength(1);
+		expect(legacyRows.filter((r) => r.type === 'reasoning-block')).toHaveLength(1);
 	});
 
 	it('degenerate or unparseable trees produce lifecycle-only rows', () => {
