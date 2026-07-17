@@ -16,20 +16,24 @@ export function mcpSkill(): RuntimeSkill {
 		description:
 			'Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent.',
 		recommendedTools: [
-			'search_mcp_servers',
+			'resolve_integration',
 			'ask_credential',
 			'verify_mcp_server',
 			'read_config',
 			'patch_config',
 		],
 		allowedTools: [
+			'resolve_integration',
 			'search_mcp_servers',
+			'search_nodes',
+			'get_node_types',
 			'ask_credential',
 			'verify_mcp_server',
 			'ask_questions',
 			'read_config',
 			'patch_config',
 			'write_config',
+			'load_skill',
 		],
 		instructions: `\
 ## Purpose
@@ -41,30 +45,44 @@ connected MCP server.
 
 ## Use when:
 
-- The user asks for an external integration and you need to discover/connect an MCP server for it.
-- The user asks to edit the target agent's MCP servers.
-- The users wants to add a custom MCP server.
+- \`resolve_integration\` returned \`kind: "mcp"\`.
+- The user explicitly asks to add or edit an MCP server.
+- The user provides or asks to configure a custom MCP server.
 
 ## Workflow
 
 ### Discovery and setup
 
-Follow these steps in order when adding an MCP server:
+For a generic external-service request, \`resolve_integration\` must select the
+integration type before this skill is loaded. If no resolver result is
+available yet, call \`resolve_integration\` with queries matching the requested
+service.
 
-1. Search: call \`search_mcp_servers\` with queries matching the requested
-   integration (for example \`["github"]\`, \`["slack"]\`).
-   The result includes \`name\`, \`url\`, \`transport\`, \`authentication\`,
-   \`credentialType\`, \`tools\`, and optional \`metadata\`.
-2. Credential: for registry results, call \`ask_credential\` with the returned
-   \`credentialType\`. Never invent credential IDs.
-3. Verify: call \`verify_mcp_server\` with \`name\`, \`url\`, \`transport\`,
+- If it returns \`kind: "node"\` for a generic service request, load
+  \`agent-builder-node-tools\` and continue with the returned node results. Stop
+  this MCP workflow.
+- If it returns \`kind: "node"\` but the user explicitly requested an MCP server,
+  do not silently substitute a node tool. Continue with manual MCP setup by
+  asking for the URL and transport/authentication decision through
+  \`${ASK_QUESTIONS_TOOL_NAME}\`.
+- If it returns \`kind: "mcp"\`, use the returned \`name\`, \`url\`, \`transport\`,
+  \`authentication\`, \`credentialType\`, \`tools\`, and optional \`metadata\`.
+
+Follow these steps for an MCP result:
+
+1. Credential: call \`ask_credential\` with the returned \`credentialType\`. Never
+   invent credential IDs.
+2. Verify: call \`verify_mcp_server\` with \`name\`, \`url\`, \`transport\`,
    \`authentication\`, and (if applicable) \`credential\`.
-4. Write config: call \`read_config\`, then \`patch_config\` to add the entry
-   to \`mcpServers[]\` using the patch pattern below.
+3. Capability check: confirm the verified tool names and descriptions cover the
+   capability the user requested.
+4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
+   \`mcpServers[]\` using the patch pattern below.
 
-If \`search_mcp_servers\` returns no matches, continue with manual server
-setup: ask for the URL and transport/authentication decision through
-\`${ASK_QUESTIONS_TOOL_NAME}\`.
+If verification succeeds but the tools do not cover the requested capability
+for a generic service request, load \`agent-builder-node-tools\`, call
+\`search_nodes\` with the same service queries, and continue with node setup. Do
+not add the MCP server merely because its registry entry matched.
 
 Full schema reference:
 
@@ -112,7 +130,7 @@ setup later:
 ### Selecting credentials
 
 When using a registry-backed server, always use the \`credentialType\` returned
-by \`search_mcp_servers\`.
+by the MCP discovery result.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
@@ -135,8 +153,10 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
 - Never fabricate \`metadata.nodeTypeName\`.
-- When \`search_mcp_servers\` returns \`metadata.nodeTypeName\`, include
+- When the MCP discovery result includes \`metadata.nodeTypeName\`, include
   \`metadata: { nodeTypeName: <result.nodeTypeName> }\` in the entry so the UI
-  can render the correct server form.`,
+  can render the correct server form.
+- A registry match proves server availability, not support for the requested
+  capability; use the verified live tool list for that decision.`,
 	};
 }

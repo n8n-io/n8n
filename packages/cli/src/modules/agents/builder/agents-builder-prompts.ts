@@ -124,10 +124,15 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ### New agent: "Build me a Slack triage agent"
 1. \`ask_questions({ ... })\` for the model choice, then
    \`resolve_llm({ provider, model })\` -> resolved provider, model, and credential.
-2. \`search_nodes({ query: "slack" })\`, then \`get_node_types(...)\`.
-3. \`ask_credential(...)\` for the Slack credential slot.
+2. \`resolve_integration({ queries: ["slack"] })\`.
+3. Follow the returned kind:
+   - \`kind: "mcp"\`: load \`agent-builder-mcp\`, ask for the returned credential
+     type, and verify the server.
+   - \`kind: "node"\`: load \`agent-builder-node-tools\`, inspect the returned node
+     results with \`get_node_types\`, and ask for every required credential.
 4. \`read_config()\`.
-5. \`write_config(...)\` with model, credential, instructions, and Slack tool.
+5. \`write_config(...)\` with the model, credential, instructions, and resolved
+   Slack capability.
 
 ### New agent: "Use Anthropic via OpenRouter"
 1. \`resolve_llm({ provider: "openrouter" })\`.
@@ -141,32 +146,46 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 2. \`read_config()\`.
 3. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
 
-### Add a node tool to an existing agent
-1. Search and inspect the node type.
+### Add an explicitly requested n8n node tool to an existing agent
+1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
+   \`get_node_types\`; the explicit n8n-node request does not need
+   \`resolve_integration\`.
 2. \`ask_credential\` for every required slot.
 3. \`read_config()\`.
 4. \`patch_config(...)\` adding the node tool to \`/tools/-\`.
 
-### Add a node tool when credential setup is skipped
-1. Search and inspect the node type.
+### Add an explicitly requested n8n node tool when credential setup is skipped
+1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
+   \`get_node_types\`.
 2. \`ask_credential(...)\` -> \`{ skipped: true }\`.
 3. \`read_config()\`.
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
 
 ### Add MCP integration: "Connect Notion MCP"
-1. \`load_skill({ "skillId": "agent-builder-mcp" })\`.
-2. \`search_mcp_servers({ queries: ["notion"] })\`.
+1. \`resolve_integration({ queries: ["notion"] })\`.
+2. When it returns \`kind: "mcp"\`, load
+   \`agent-builder-mcp\`.
 3. \`ask_credential({ credentialType: "<result.credentialType>" })\`.
 4. \`verify_mcp_server({ name, url, transport, authentication, credential })\`.
-5. \`read_config()\`.
-6. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
-   \`metadata.nodeTypeName\` when returned by \`search_mcp_servers\`).
+5. Confirm the verified tools cover the requested capability.
+6. \`read_config()\`.
+7. \`patch_config(...)\` adding a new \`/mcpServers/-\` entry (including
+   \`metadata.nodeTypeName\` when returned by \`resolve_integration\`).
 
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_questions(...)\` with the known destination choices.
-2. Continue the chosen branch with node discovery, credentials, and config
-   mutation.
+2. Load \`agent-builder-integrations\` to decide whether the destination is the
+   agent's chat/trigger surface.
+3. If it is a chat integration, call \`configure_channel\` with the returned
+   \`integrationType\`.
+4. Otherwise call \`resolve_integration({ queries: ["<selected service>"] })\`
+   and follow the returned kind:
+   - \`kind: "mcp"\`: load \`agent-builder-mcp\`, verify, and wire the MCP server.
+   - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
+     results with \`get_node_types\`, and ask for every required credential.
+5. \`read_config()\`, then \`patch_config(...)\` or \`write_config(...)\` with
+   the resolved capability.
 
 ### Publish after build: "Publish it" / "Make it live"
 1. Finish any pending config mutations.
