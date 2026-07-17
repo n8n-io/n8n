@@ -119,4 +119,14 @@ describe('AWS AI Agent node — execute (stubbed)', () => {
 		expect(typeof json.usage.outputTokens).toBe('number');
 		expect(Array.isArray(json.traceRefs)).toBe(true);
 	});
+
+	it('catches and returns error when continueOnFail is true', async () => {
+		const ctx = setup({ input: 'test', sessionId: 'sess-456' });
+		ctx.continueOnFail.mockReturnValue(true);
+		ctx.getNodeParameter.mockImplementation(() => {
+			throw new Error('boom');
+		});
+		const result = await node.execute.call(ctx);
+		expect((result[0][0].json as { error: string }).error).toBe('boom');
+	});
 });
