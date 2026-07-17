@@ -1,6 +1,6 @@
 import path from 'path';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import shell from 'shelljs';
 import { rawTimeZones } from '@vvo/tzdb';
 import glob from 'fast-glob';
@@ -21,6 +21,11 @@ copyInstanceAiExamplesData();
 if (publicApiEnabled) {
 	createPublicApiDirectory();
 	copySwaggerTheme();
+	// Must run before bundleOpenApiSpecs(): redocly resolves openapi.yml's $refs against the
+	// `src` tree, so any Zod-generated path fragments (API-39) need to already be on disk under
+	// `src` by the time bundling reads them. Once every hand-written path is replaced this way,
+	// this is still the right order — generation always has to precede bundling.
+	await generateOpenApiDocs();
 	bundleOpenApiSpecs();
 }
 
@@ -57,6 +62,30 @@ function copySwaggerTheme() {
 	};
 
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);
+}
+
+// API-39 spike: generates the subset of openapi.yml's paths that have opted into being produced
+// from @n8n/api-types Zod DTOs instead of hand-written YAML (see src/public-api/v1/openapi-gen).
+// Imports the already-compiled dist output rather than the .ts source — by the time build:data
+// runs, `tsc` has already emitted it (see the `build` script), and build.mjs has no TS loader.
+async function generateOpenApiDocs() {
+	const generatorPath = path.resolve(
+		ROOT_DIR,
+		'dist',
+		'public-api',
+		'v1',
+		'openapi-gen',
+		'generate.js',
+	);
+	if (!existsSync(generatorPath)) {
+		throw new Error(
+			`OpenAPI doc generator not found at ${generatorPath} — did the TypeScript build run before build:data?`,
+		);
+	}
+
+	const { generateDocs } = await import(pathToFileURL(generatorPath).href);
+	const v1Dir = path.resolve(ROOT_DIR, 'src', 'public-api', 'v1');
+	generateDocs(v1Dir);
 }
 
 function bundleOpenApiSpecs() {
