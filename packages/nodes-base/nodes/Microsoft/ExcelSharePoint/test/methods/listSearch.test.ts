@@ -257,6 +257,49 @@ describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 			expect(result.results).toEqual([{ name: 'Costs', value: SHEET2.id }]);
 		});
 
+		it('keeps paging on its own while filtering until a page has a match', async () => {
+			// The editor disables "load more" while a filter is active, so a sheet
+			// past the first page (e.g. #120 of 150) must still be reachable from
+			// one search call, not just from the page it happens to land on.
+			const nextLink =
+				'https://graph.microsoft.com/v1.0/sites/s/drives/d/items/i/workbook/worksheets?$skiptoken=p2';
+			setParams(byIdParams);
+			apiRequest
+				.mockResolvedValueOnce({ value: [SHEET1], '@odata.nextLink': nextLink })
+				.mockResolvedValueOnce({ value: [SHEET2] });
+
+			const result = await getSheets.call(ctx, 'cost');
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', '', {}, {}, nextLink);
+			expect(result.results).toEqual([{ name: 'Costs', value: SHEET2.id }]);
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('gives up once pages run out without a match, returning no results', async () => {
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({ value: [SHEET1] });
+
+			const result = await getSheets.call(ctx, 'nonexistent');
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+			expect(result.results).toEqual([]);
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('does not auto-page when there is no filter, even if the page has no items', async () => {
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({
+				value: [],
+				'@odata.nextLink': 'https://graph.microsoft.com/v1.0/...?$skiptoken=p2',
+			});
+
+			const result = await getSheets.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+			expect(result.results).toEqual([]);
+		});
+
 		it('follows a pagination token verbatim, without rebuilding the request', async () => {
 			const nextLink =
 				'https://graph.microsoft.com/v1.0/sites/s/drives/d/items/i/workbook/worksheets?$skiptoken=abc';
