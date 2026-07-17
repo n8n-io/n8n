@@ -375,7 +375,7 @@ describe('SettingsMCPView', () => {
 			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
 		});
 
-		it('should open the connect dialog instead when not enrolled in the experiment', async () => {
+		it('should not open the connect dialog when not enrolled in the experiment', async () => {
 			exposeAllWorkflowsToMcpStore.isEnabled = false;
 
 			const { getByTestId } = createComponent({ pinia });
@@ -385,12 +385,11 @@ describe('SettingsMCPView', () => {
 
 			expect(mcpStore.getMcpEligibleWorkflows).not.toHaveBeenCalled();
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
-			await waitFor(() => {
-				expect(mcpStore.openConnectPopover).toHaveBeenCalled();
-			});
+			// Enabling MCP no longer auto-opens the connect dialog.
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
 		});
 
-		it('should open the connect dialog when there are no eligible workflows', async () => {
+		it('should not open the connect dialog when there are no eligible workflows', async () => {
 			exposeAllWorkflowsToMcpStore.isEnabled = true;
 			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
 
@@ -403,9 +402,7 @@ describe('SettingsMCPView', () => {
 				expect(mcpStore.getMcpEligibleWorkflows).toHaveBeenCalled();
 			});
 			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
-			await waitFor(() => {
-				expect(mcpStore.openConnectPopover).toHaveBeenCalled();
-			});
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
 		});
 	});
 

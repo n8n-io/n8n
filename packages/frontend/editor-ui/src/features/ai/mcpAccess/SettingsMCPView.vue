@@ -103,13 +103,9 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
 		if (enabled && updated) {
-			// Best-effort offer; the connect dialog only opens when the offer
-			// modal doesn't, so they never stack.
-			void offerToExposeAllWorkflows(fetchExposedWorkflowsCount).then((offered) => {
-				if (!offered) {
-					mcpStore.openConnectPopover();
-				}
-			});
+			// Best-effort expose-all offer for enrolled users; enabling MCP no longer
+			// auto-opens the connect dialog (the user connects a client when ready).
+			void offerToExposeAllWorkflows(fetchExposedWorkflowsCount);
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
