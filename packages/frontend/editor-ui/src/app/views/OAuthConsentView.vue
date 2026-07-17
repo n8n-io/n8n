@@ -248,66 +248,69 @@ onMounted(async () => {
 							"
 						></span>
 					</p>
-					<N8nCallout
-						v-if="clientDetails?.redirectUri"
-						theme="warning"
-						:class="$style['redirect-warning']"
-						data-test-id="consent-redirect-warning"
-					>
-						<div :class="$style['redirect-warning-content']">
-							<N8nText :bold="true">
-								{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
-							</N8nText>
-							<N8nText
-								:bold="true"
-								:class="$style['redirect-warning-url']"
-								data-test-id="consent-redirect-uri"
-							>
-								{{ clientDetails.redirectUri }}
-							</N8nText>
-						</div>
-					</N8nCallout>
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<N8nCheckbox
+				<!-- Redirect warning + its trust checkbox live together, right above the CTAs. -->
+				<N8nCallout
 					v-if="!error && clientDetails?.redirectUri"
-					v-model="redirectUriTrusted"
-					:class="$style['footer-confirm']"
-					:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
-				/>
-				<div :class="$style['button-group']">
-					<N8nButton
-						v-if="error"
-						variant="solid"
-						:data-test-id="'consent-close-button'"
-						:size="'large'"
-						@click="handleClose"
-					>
-						{{ i18n.baseText('generic.close') }}
-					</N8nButton>
-					<template v-else>
-						<N8nButton
-							variant="subtle"
-							:data-test-id="'consent-deny-button'"
-							:size="'large'"
-							:loading="loading"
-							:disabled="loading"
-							@click="handleDeny"
+					theme="warning"
+					:class="$style['redirect-warning']"
+					data-test-id="consent-redirect-warning"
+				>
+					<div :class="$style['redirect-warning-content']">
+						<N8nText :bold="true">
+							{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
+						</N8nText>
+						<N8nText
+							:bold="true"
+							:class="$style['redirect-warning-url']"
+							data-test-id="consent-redirect-uri"
 						>
-							{{ i18n.baseText('generic.deny') }}
-						</N8nButton>
+							{{ clientDetails.redirectUri }}
+						</N8nText>
+					</div>
+				</N8nCallout>
+				<div :class="$style['footer-actions']">
+					<N8nCheckbox
+						v-if="!error && clientDetails?.redirectUri"
+						v-model="redirectUriTrusted"
+						:class="$style['footer-confirm']"
+						:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+					/>
+					<div :class="$style['button-group']">
 						<N8nButton
+							v-if="error"
 							variant="solid"
-							:data-test-id="'consent-allow-button'"
+							:data-test-id="'consent-close-button'"
 							:size="'large'"
-							:loading="loading"
-							:disabled="allowDisabled"
-							@click="handleAllow"
+							@click="handleClose"
 						>
-							{{ i18n.baseText('generic.allow') }}
+							{{ i18n.baseText('generic.close') }}
 						</N8nButton>
-					</template>
+						<template v-else>
+							<N8nButton
+								variant="subtle"
+								:data-test-id="'consent-deny-button'"
+								:size="'large'"
+								:loading="loading"
+								:disabled="loading"
+								@click="handleDeny"
+							>
+								{{ i18n.baseText('generic.deny') }}
+							</N8nButton>
+							<N8nButton
+								variant="solid"
+								:data-test-id="'consent-allow-button'"
+								:size="'large'"
+								:loading="loading"
+								:disabled="allowDisabled"
+								@click="handleAllow"
+							>
+								{{ i18n.baseText('generic.allow') }}
+							</N8nButton>
+						</template>
+					</div>
 				</div>
 			</footer>
 		</div>
@@ -467,10 +470,6 @@ onMounted(async () => {
 	font-size: var(--font-size--2xs);
 }
 
-.redirect-warning {
-	margin-top: var(--spacing--2xs);
-}
-
 .redirect-warning-content {
 	display: flex;
 	flex-direction: column;
@@ -484,15 +483,21 @@ onMounted(async () => {
 .footer {
 	width: 100%;
 	display: flex;
-	flex-direction: row;
-	align-items: center;
-	/* CTAs sit at the right; the trust-URL checkbox is pushed to the left. */
-	justify-content: flex-end;
+	flex-direction: column;
 	gap: var(--spacing--sm);
 
 	:global(.notice) {
 		margin: 0;
 	}
+}
+
+/* CTAs sit at the right; the trust-URL checkbox is pushed to the left. */
+.footer-actions {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--sm);
 
 	.button-group {
 		display: flex;
