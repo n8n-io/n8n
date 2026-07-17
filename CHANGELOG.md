@@ -1,3 +1,12 @@
+## [2.30.7](https://github.com/n8n-io/n8n/compare/n8n@2.30.6...n8n@2.30.7) (2026-07-17)
+
+
+### Bug Fixes
+
+* **core:** Lint community packages against their provenance-attested source ([#34391](https://github.com/n8n-io/n8n/issues/34391)) ([ecf9507](https://github.com/n8n-io/n8n/commit/ecf9507feec4c73b5906b02a7f8f9289b511afdc))
+* **core:** Sign SES requests with the ses service name ([#34283](https://github.com/n8n-io/n8n/issues/34283)) ([9a9db18](https://github.com/n8n-io/n8n/commit/9a9db1808fe1a2dd88c1ff77bcb3f33aa3cdf5bd))
+
+
 ## [2.30.6](https://github.com/n8n-io/n8n/compare/n8n@2.30.5...n8n@2.30.6) (2026-07-16)
 
 
