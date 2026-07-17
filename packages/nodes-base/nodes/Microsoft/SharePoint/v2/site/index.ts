@@ -129,9 +129,11 @@ export async function getSites(
  * Callers with a per-item loop pass `siteIdCache` (hoisted in the router) so
  * a multi-item run resolves each distinct URL once instead of per item —
  * without it the run doubles its Graph request volume and risks 429 throttling.
+ * Also callable from load-options contexts (dependent dropdowns) — pass 0
+ * there, where the second `getNodeParameter` argument is a no-op fallback.
  */
 export async function resolveSiteId(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
 	siteIdCache?: Map<string, string>,
 ): Promise<string> {

@@ -24,6 +24,10 @@ export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
 export const REQUIRED_PERMISSIONS: Readonly<
 	Record<string, { delegated: string; application: string }>
 > = Object.freeze({
+	'file:upload': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
 	'list:get': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
@@ -151,7 +155,9 @@ export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-	body: IDataObject = {},
+	// A Buffer body (uploads) passes through the request layer raw when the
+	// caller overrides Content-Type; `json: true` still parses the JSON reply.
+	body: IDataObject | Buffer = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
