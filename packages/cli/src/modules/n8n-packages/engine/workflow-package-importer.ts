@@ -12,6 +12,7 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
+import type { VariableImportRequest } from '../entities/variable/variable-import.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -83,12 +84,18 @@ export class WorkflowPackageImporter {
 			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 		};
 
+		const variableRequest: VariableImportRequest = {
+			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+			missingPolicy: request.variableMissingPolicy,
+		};
+
 		const imported = await this.importOrchestrator.import({
 			context,
 			folders,
 			workflows,
 			credentialRequest,
 			dataTableRequest,
+			variableRequest,
 			options: request,
 		});
 
@@ -99,6 +106,7 @@ export class WorkflowPackageImporter {
 			imported,
 			credentialRequest,
 			dataTableRequest,
+			variableRequest,
 		);
 
 		return buildImportResult({
@@ -111,6 +119,10 @@ export class WorkflowPackageImporter {
 			credentials: {
 				matched: imported.credentialResult.matched,
 				stubbed: imported.credentialResult.stubbed,
+			},
+			variables: {
+				matched: imported.variablePlan.matched,
+				missing: imported.variablePlan.missing,
 			},
 		});
 	}
@@ -130,8 +142,9 @@ export class WorkflowPackageImporter {
 		imported: ImportOrchestrationResult,
 		credentialRequest: CredentialBindingRequest,
 		dataTableRequest: DataTableImportRequest,
+		variableRequest: VariableImportRequest,
 	): void {
-		const { workflowOutcomes, credentialResult, dataTablePlan } = imported;
+		const { workflowOutcomes, credentialResult, dataTablePlan, variablePlan } = imported;
 		const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
 		const countByStatus = (status: WorkflowImportOutcome['status']) =>
 			workflowOutcomes.filter((outcome) => outcome.status === status).length;
@@ -150,6 +163,7 @@ export class WorkflowPackageImporter {
 				dataTableMatchingMode: request.dataTableMatchingMode,
 				dataTableMissingMode: request.dataTableMissingMode,
 				dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
+				variableMissingPolicy: request.variableMissingPolicy,
 			},
 			packageSourceId: manifest.sourceId,
 			packageVersion: manifest.packageFormatVersion,
@@ -177,6 +191,11 @@ export class WorkflowPackageImporter {
 					matched: dataTablePlan.matchedCount,
 					created: dataTablePlan.creations.length,
 					requirements: dataTableRequest.requirements?.length ?? 0,
+				},
+				variables: {
+					matched: variablePlan.matched.length,
+					missing: variablePlan.missing.length,
+					requirements: variableRequest.requirements?.length ?? 0,
 				},
 			},
 		});

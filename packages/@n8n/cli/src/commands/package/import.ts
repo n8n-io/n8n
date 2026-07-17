@@ -68,6 +68,12 @@ export default class PackageImport extends BaseCommand {
 			options: ['keep-existing', 'fail'],
 			aliases: ['data-table-schema-conflict-policy'],
 		}),
+		variableMissingPolicy: Flags.string({
+			description:
+				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything',
+			options: ['do-nothing'],
+			aliases: ['variable-missing-policy'],
+		}),
 		bindings: Flags.string({
 			description:
 				'Explicit source→target id bindings as a JSON object keyed by entity type, e.g. \'{"credentials":{"<sourceId>":"<targetId>"}}\'. Applied before credential-matching-mode resolution.',
@@ -99,6 +105,7 @@ export default class PackageImport extends BaseCommand {
 						dataTableMatchingMode: flags.dataTableMatchingMode,
 						dataTableMissingMode: flags.dataTableMissingMode,
 						dataTableSchemaConflictPolicy: flags.dataTableSchemaConflictPolicy,
+						variableMissingPolicy: flags.variableMissingPolicy,
 						bindings: flags.bindings,
 					},
 				);

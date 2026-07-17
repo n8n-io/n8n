@@ -31,6 +31,7 @@ async function importProjects(user: User, packageBuffer: Buffer, apiKeyScopes?: 
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
+		variableMissingPolicy: 'do-nothing',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }

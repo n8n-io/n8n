@@ -15,6 +15,11 @@ import type {
 } from '../entities/data-table/data-table.types';
 import { FolderImporter } from '../entities/folder/folder-importer';
 import type { FolderImportPlan, PreparedFolder } from '../entities/folder/folder-import.types';
+import { VariableImporter } from '../entities/variable/variable-importer';
+import type {
+	VariableImportPlan,
+	VariableImportRequest,
+} from '../entities/variable/variable-import.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -39,6 +44,7 @@ export interface ImportOrchestrationInput {
 	workflows: PreparedWorkflow[];
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
+	variableRequest: VariableImportRequest;
 	options: ImportWorkflowProperties & ImportFolderProperties;
 }
 
@@ -48,6 +54,7 @@ export interface ImportOrchestrationResult {
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
 	dataTablePlan: DataTableImportPlan;
+	variablePlan: VariableImportPlan;
 }
 
 /**
@@ -59,13 +66,22 @@ export class ImportOrchestrator {
 	constructor(
 		private readonly credentialImporter: CredentialImporter,
 		private readonly dataTableImporter: DataTableImporter,
+		private readonly variableImporter: VariableImporter,
 		private readonly folderImporter: FolderImporter,
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
 	async import(input: ImportOrchestrationInput): Promise<ImportOrchestrationResult> {
-		const { context, folders, workflows, credentialRequest, dataTableRequest, options } = input;
+		const {
+			context,
+			folders,
+			workflows,
+			credentialRequest,
+			dataTableRequest,
+			variableRequest,
+			options,
+		} = input;
 
 		// PublishAll requires publish scope up front; other policies are checked per workflow.
 		await this.workflowPublisher.assertCanPublish(
@@ -76,6 +92,7 @@ export class ImportOrchestrator {
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
+		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
@@ -122,6 +139,7 @@ export class ImportOrchestrator {
 			bindings,
 			credentialResult,
 			dataTablePlan,
+			variablePlan,
 		};
 	}
 

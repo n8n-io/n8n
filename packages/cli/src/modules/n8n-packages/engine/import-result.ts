@@ -8,6 +8,7 @@ import type {
 	ImportedProjectSummary,
 	ImportPackageSummary,
 	ImportResult,
+	ImportVariableSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -29,6 +30,7 @@ export function buildImportResult(input: {
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
 	credentials?: ImportCredentialSummary;
+	variables?: ImportVariableSummary;
 }): ImportResult {
 	return {
 		package: input.package,
@@ -46,6 +48,7 @@ export function buildImportResult(input: {
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
 		credentials: input.credentials ?? { matched: [], stubbed: [] },
+		variables: input.variables ?? { matched: [], missing: [] },
 	};
 }
 
