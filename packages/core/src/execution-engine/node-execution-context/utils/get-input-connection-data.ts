@@ -48,6 +48,19 @@ function ensureArray<T>(value: T | T[] | undefined): T[] {
 	return Array.isArray(value) ? value : [value];
 }
 
+// Tools are matched structurally, not by class identity
+function isTool(value: unknown): value is StructuredTool | Tool {
+	if (value instanceof StructuredTool || value instanceof Tool) return true;
+	if (value instanceof StructuredToolkit) return false;
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { name?: unknown }).name === 'string' &&
+		typeof (value as { description?: unknown }).description === 'string' &&
+		typeof (value as { invoke?: unknown }).invoke === 'function'
+	);
+}
+
 export function createHitlToolkit(
 	connectedToolsOrToolkits: SupplyDataToolResponse[] | SupplyDataToolResponse | undefined,
 	hitlNode: INode,
@@ -364,7 +377,7 @@ function validateInputConfiguration(
 // Extends metadata for tools and toolkits to include the source node name that is used for HITL routing
 export function extendResponseMetadata(response: unknown, connectedNode: INode) {
 	// Ensure sourceNodeName is set for proper routing
-	if (response instanceof StructuredTool || response instanceof Tool) {
+	if (isTool(response)) {
 		response.metadata ??= {};
 		response.metadata.sourceNodeName = connectedNode.name;
 	}

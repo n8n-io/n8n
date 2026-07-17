@@ -145,6 +145,14 @@ export async function buildFromJson(
 
 	if (config.mcpServers?.length && options.buildMcpClient) {
 		for (const server of config.mcpServers) {
+			// Draft MCP connections may not have an endpoint URL yet, or may
+			// require a credential that setup skipped. Attempting to connect
+			// anyway would mean an unauthenticated request to a server that
+			// requires auth, so treat either as an incomplete draft and skip
+			// attaching it rather than risk a connection attempt.
+			if (!server.url.trim()) continue;
+			if (server.authentication !== 'none' && !server.credential) continue;
+
 			const client = await options.buildMcpClient(server);
 			agent.mcp(client);
 		}

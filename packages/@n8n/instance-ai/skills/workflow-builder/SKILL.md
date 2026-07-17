@@ -452,7 +452,6 @@ import {
   workflow,
   node,
   trigger,
-  sticky,
   placeholder,
   newCredential,
   ifElse,
@@ -521,6 +520,12 @@ Follow these rules strictly when generating workflows:
    match time units broadly (day/days, week/weeks…), and give every classifier
    an explicit fallback bucket — a one-phrasing regex silently misroutes every
    other phrasing.
+7. Do not add sticky notes (`sticky(...)` / `n8n-nodes-base.stickyNote`) unless
+   the user explicitly asks for canvas notes. They add visual noise and are
+   often poorly positioned. Put explanations in your chat reply instead. Even
+   when the SDK language reference documents `sticky()`, do not use it by
+   default. When editing a workflow, do not add or reintroduce stickies unless the user
+   explicitly asks for them.
 
 ## Tool Naming Rules
 
@@ -682,8 +687,9 @@ For AI Agent workflows:
 ## Additional SDK Functions
 
 - `placeholder('hint')`: marks a parameter value for user input.
-- `sticky('content', nodes?, config?)`: creates a sticky note. It must still be
-  added to the workflow.
+- `sticky('content', nodes?, config?)`: opt-in only when the user explicitly
+  asks for a sticky note on the canvas. Do not import or call it otherwise.
+  When used, it must still be added to the workflow.
 - `.output(n)`: selects a zero-based output index.
 - `.onError(handler)`: connects a node's error output to a handler. Requires
   `onError: 'continueErrorOutput'` in the node config.

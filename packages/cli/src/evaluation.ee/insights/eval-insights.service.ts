@@ -1,5 +1,5 @@
 import type { AiInsightsPayload, AiInsightsResponse } from '@n8n/api-types';
-import { aiInsightsResponseSchema } from '@n8n/api-types';
+import { aiInsightsResponseSchema, normalizeMetricScore } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { TestRun, User } from '@n8n/db';
 import { EvaluationCollectionRepository } from '@n8n/db';
@@ -27,7 +27,10 @@ type RunSummary = {
 	versionLabel: string;
 	workflowVersionId: string | null;
 	avgScore: number | null;
-	metrics: Record<string, number>;
+	// Per-metric scores normalized to [0, 1] (operational metrics excluded).
+	// Winner/regression comparisons run over these, not the raw metrics, so the
+	// insights talk about actual quality scores rather than token totals.
+	scores: Record<string, number>;
 };
 
 /**
@@ -156,33 +159,31 @@ export class EvalInsightsService {
 	// ---- internals ----
 
 	private summariseRun(run: TestRun, index: number): RunSummary {
-		const metrics = this.coerceMetrics(run.metrics);
-		const avg = this.averageScore(metrics);
+		const scores = this.scoreMetrics(run.metrics);
+		const values = Object.values(scores);
+		const avgScore =
+			values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 		// Label by index letter — A/B/C — so the FE legend chips line up. The
 		// agent (and the deterministic path) refer back to these labels.
 		const versionLabel = String.fromCharCode(0x41 + index);
-		return {
-			versionLabel,
-			workflowVersionId: run.workflowVersionId,
-			avgScore: avg,
-			metrics,
-		};
+		return { versionLabel, workflowVersionId: run.workflowVersionId, avgScore, scores };
 	}
 
-	private averageScore(metrics: Record<string, number>): number | null {
-		const values = Object.values(metrics);
-		if (values.length === 0) return null;
-		return values.reduce((sum, v) => sum + v, 0) / values.length;
-	}
-
-	private coerceMetrics(
+	// Per-metric scores normalized to [0, 1] by their scale (AI-judge metrics
+	// are 1–5 → /5); operational metrics (token counts, execution time) and
+	// unknown-scale values are dropped. Booleans coerce to 0/1. Shares the
+	// `normalizeMetricScore` contract with the FE + versions-table scoring so
+	// winner/regressions reflect the same "score" the user sees.
+	private scoreMetrics(
 		metrics: Record<string, number | boolean> | null | undefined,
 	): Record<string, number> {
 		if (!metrics) return {};
 		const out: Record<string, number> = {};
-		for (const [k, v] of Object.entries(metrics)) {
-			if (typeof v === 'number') out[k] = v;
-			else if (typeof v === 'boolean') out[k] = v ? 1 : 0;
+		for (const [key, raw] of Object.entries(metrics)) {
+			const value = typeof raw === 'boolean' ? (raw ? 1 : 0) : raw;
+			if (typeof value !== 'number') continue;
+			const score = normalizeMetricScore(key, value);
+			if (score !== null) out[key] = score;
 		}
 		return out;
 	}
@@ -252,7 +253,7 @@ export class EvalInsightsService {
 			winner: {
 				versionLabel: winner.versionLabel,
 				headline: `${winner.versionLabel} is the winner`,
-				body: `${winner.versionLabel} leads on average score (${this.formatScore(winner.avgScore)}) across ${Object.keys(winner.metrics).length} metric(s).`,
+				body: `${winner.versionLabel} leads on average score (${this.formatScore(winner.avgScore)}) across ${Object.keys(winner.scores).length} metric(s).`,
 			},
 			regressions,
 			suggestedNext,
@@ -269,17 +270,20 @@ export class EvalInsightsService {
 		const regressions: AiInsightsPayload['regressions'] = [];
 		for (const run of scored) {
 			if (run.versionLabel === winner.versionLabel) continue;
-			for (const [metric, winnerScore] of Object.entries(winner.metrics)) {
-				const runScore = run.metrics[metric];
+			for (const [metric, winnerScore] of Object.entries(winner.scores)) {
+				const runScore = run.scores[metric];
 				if (typeof runScore !== 'number') continue;
 				const delta = runScore - winnerScore;
 				if (delta >= -REGRESSION_DELTA_THRESHOLD) continue;
+				// `delta` is a [-1, 1] score difference; report it as signed
+				// percentage points so the copy reads "N percentage points below".
+				const deltaPoints = Number((delta * 100).toFixed(1));
 				regressions.push({
 					versionLabel: run.versionLabel,
 					metric,
-					delta: Number((delta * 100).toFixed(1)),
+					delta: deltaPoints,
 					headline: `${run.versionLabel} regressed on ${metric}`,
-					body: `${run.versionLabel} scored ${this.formatScore(runScore)} on ${metric}, ${this.formatScore(Math.abs(delta * 100))} percentage points below ${winner.versionLabel}.`,
+					body: `${run.versionLabel} scored ${this.formatScore(runScore)} on ${metric}, ${Math.abs(deltaPoints).toFixed(1)} percentage points below ${winner.versionLabel}.`,
 				});
 			}
 		}
@@ -306,7 +310,8 @@ export class EvalInsightsService {
 	}
 
 	private formatScore(score: number): string {
-		// Compact 0–1 score formatting; agent prose can override per locale.
-		return score.toFixed(2);
+		// Scores are normalized to [0, 1]; surface them as whole-percent so the
+		// prose reads "83%" rather than "0.83". Agent prose can override per locale.
+		return `${Math.round(score * 100)}%`;
 	}
 }
