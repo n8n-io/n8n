@@ -1,5 +1,11 @@
 import { useUIStore } from '@/app/stores/ui.store';
-import { AutoSaveState, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import {
+	AutoSaveState,
+	MODAL_CANCEL,
+	MODAL_CONFIRM,
+	STICKY_NODE_TYPE,
+	VIEWS,
+} from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -13,7 +19,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
-import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	createWorkflowDocumentId,
@@ -44,6 +50,18 @@ vi.mock('@/app/composables/useMessage', () => {
 		}),
 	};
 });
+
+const showMessageSpy = vi.hoisted(() => vi.fn());
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showMessage: showMessageSpy,
+		showToast: vi.fn(() => ({ close: vi.fn() })),
+		showError: vi.fn(),
+		clearAllStickyNotifications: vi.fn(),
+		showNotificationForViews: vi.fn(),
+	}),
+}));
 
 vi.mock('@n8n/permissions', () => ({
 	getResourcePermissions: () => ({
@@ -651,6 +669,93 @@ describe('useWorkflowSaving', () => {
 				expect.objectContaining({ tags: tagIds }),
 				false,
 			);
+		});
+
+		it('should remove invalid node groups before saving and warn the user', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w6',
+				nodes: [
+					createTestNode({ id: 'node-a', name: 'Node A' }),
+					createTestNode({ id: 'node-b', name: 'Node B' }),
+					createTestNode({ id: 'sticky', name: 'Sticky', type: STICKY_NODE_TYPE }),
+				],
+				connections: {
+					'Node A': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				// The sticky member is not connected to the rest of the group, which
+				// this version's grouping rules reject
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'sticky'] }],
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const saved = await saveCurrentWorkflow({ id: 'w6' });
+
+			expect(saved).toBe(true);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w6',
+				expect.objectContaining({ nodeGroups: [] }),
+				false,
+			);
+			expect(documentStore.allGroups).toHaveLength(0);
+			expect(showMessageSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					title: 'Groups removed',
+					message: expect.stringContaining('<li>Group 1</li>'),
+				}),
+			);
+		});
+
+		it('should keep valid node groups in the save payload', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w7',
+				nodes: [
+					createTestNode({ id: 'node-a', name: 'Node A' }),
+					createTestNode({ id: 'node-b', name: 'Node B' }),
+				],
+				connections: {
+					'Node A': {
+						[NodeConnectionTypes.Main]: [
+							[{ node: 'Node B', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+				},
+				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b'] }],
+			});
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const saved = await saveCurrentWorkflow({ id: 'w7' });
+
+			expect(saved).toBe(true);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'w7',
+				expect.objectContaining({
+					nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b'] }],
+				}),
+				false,
+			);
+			expect(documentStore.allGroups).toHaveLength(1);
+			expect(showMessageSpy).not.toHaveBeenCalled();
 		});
 	});
 
