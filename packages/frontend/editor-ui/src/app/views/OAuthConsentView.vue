@@ -129,8 +129,8 @@ onMounted(async () => {
 	<div :class="$style.overlay">
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
-				<div :class="[$style.logo, $style.n8n]">
-					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
+				<div :class="$style.logo">
+					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector (ported from the prototype's authorize view): a dashed
 				     SVG line marching toward the n8n tile with a slow muted spinner badge. Decorative. -->
@@ -152,8 +152,8 @@ onMounted(async () => {
 						<N8nIcon :class="$style['badge-spinner']" icon="loader-circle" size="large" />
 					</span>
 				</span>
-				<div :class="$style.logo">
-					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
+				<div :class="[$style.logo, $style.n8n]">
+					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
 				</div>
 			</header>
 			<!-- Success screen, show while waiting to be redirected back to client -->
@@ -383,14 +383,14 @@ onMounted(async () => {
 	}
 }
 
-/* Dashes march toward the n8n tile; a whole dash period (2 + 5) keeps the loop seamless. */
+/* Dashes march toward the n8n tile (right); a whole dash period (2 + 5) keeps the loop seamless. */
 .connector-line {
 	animation: mcp-connector-dash 0.8s linear infinite;
 }
 
 @keyframes mcp-connector-dash {
 	to {
-		stroke-dashoffset: 14;
+		stroke-dashoffset: -14;
 	}
 }
 
