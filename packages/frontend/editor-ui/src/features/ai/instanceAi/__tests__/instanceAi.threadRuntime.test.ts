@@ -218,6 +218,7 @@ describe('cancelRun', () => {
 	beforeEach(() => {
 		setupRuntimePinia();
 		vi.mocked(postCancel).mockClear();
+		vi.mocked(fetchThreadStatus).mockClear();
 	});
 
 	test('posts the thread-scoped cancel even without a local activeRunId', async () => {
@@ -229,9 +230,11 @@ describe('cancelRun', () => {
 
 		// Thread-scoped and idempotent server-side; the terminal state arrives
 		// as a run-finish fact over SSE (the backend appends one even for dead
-		// runs), so no local run id is required and nothing is settled here.
+		// runs), so no local run id is required, nothing is settled here, and
+		// no status poll is needed to settle stale state either way.
 		expect(vi.mocked(postCancel)).toHaveBeenCalledWith(expect.anything(), 'thread-cancel');
 		expect(runtime.activeRunId).toBeNull();
+		expect(vi.mocked(fetchThreadStatus)).not.toHaveBeenCalled();
 	});
 });
 
@@ -1329,32 +1332,13 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 		expect(runtime.activeRunId).toBeNull();
 	});
 
-	test('cancelRun posts thread cancellation without an activeRunId', async () => {
-		const runtime = activeRuntime(registry);
-		expect(runtime.activeRunId).toBeNull();
-		mockPostCancel.mockResolvedValueOnce(undefined);
-		mockFetchThreadStatus.mockResolvedValue({
-			hasActiveRun: false,
-			isSuspended: false,
-			backgroundTasks: [],
-		});
-
-		await runtime.cancelRun();
-
-		expect(mockPostCancel).toHaveBeenCalledWith(
-			expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
-			activeThreadId,
-		);
-		expect(mockFetchThreadStatus).toHaveBeenCalledOnce();
-	});
-
-	test('loadThreadStatus settles stale hydrated agent trees when the backend is idle', async () => {
+	test('loadThreadStatus leaves local run state untouched when this process reports idle', async () => {
 		const runtime = activeRuntime(registry);
 		runtime.messages = [
 			{
 				id: 'msg-1',
 				role: 'assistant',
-				runId: 'run-stale',
+				runId: 'run-live-elsewhere',
 				content: '',
 				reasoning: '',
 				isStreaming: true,
@@ -1384,6 +1368,9 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 				},
 			},
 		];
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-live-elsewhere' });
+		await runtime.sendMessage('go');
+		expect(runtime.activeRunId).toBe('run-live-elsewhere');
 		mockFetchThreadStatus.mockResolvedValue({
 			hasActiveRun: false,
 			isSuspended: false,
@@ -1392,14 +1379,18 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 
 		await runtime.loadThreadStatus();
 
-		expect(runtime.activeRunId).toBeNull();
+		// /status is per-process: on multi-main an idle answer from a
+		// non-driving main is truthful while a sibling still streams, so it
+		// must never settle local state — dead runs converge through replayed
+		// terminal facts (boot sweep + cancel) instead.
+		expect(runtime.activeRunId).toBe('run-live-elsewhere');
 		const [message] = runtime.messages;
-		expect(message.isStreaming).toBe(false);
-		expect(message.agentTree?.status).toBe('cancelled');
-		expect(message.agentTree?.toolCalls[0].isLoading).toBe(false);
+		expect(message.isStreaming).toBe(true);
+		expect(message.agentTree?.status).toBe('active');
+		expect(message.agentTree?.toolCalls[0].isLoading).toBe(true);
 		const [child] = message.agentTree?.children ?? [];
-		expect(child.status).toBe('cancelled');
-		expect(child.toolCalls[0].isLoading).toBe(false);
+		expect(child.status).toBe('active');
+		expect(child.toolCalls[0].isLoading).toBe(true);
 	});
 
 	test('loadThreadStatus preserves active trees and restores activeRunId for a live run', async () => {
