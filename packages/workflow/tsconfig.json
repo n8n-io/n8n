@@ -5,7 +5,7 @@
 		"noUncheckedIndexedAccess": false,
 		"types": ["vite/client", "vitest/globals"],
 		"paths": {
-			"esprima-next": ["./node_modules/esprima-next/dist/esm/esprima.d.ts"]
+			"esprima-next": ["./node_modules/esprima-next/dist/esm/esprima"]
 		}
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"],
