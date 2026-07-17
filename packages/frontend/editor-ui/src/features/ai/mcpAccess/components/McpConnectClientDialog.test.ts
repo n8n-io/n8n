@@ -70,7 +70,7 @@ describe('McpConnectClientDialog', () => {
 		expect(body().queryByText('Authenticate')).not.toBeInTheDocument();
 	});
 
-	it('should show the one-click connector, server URL, and no token setup for web clients', async () => {
+	it('should show only the server URL (no one-click) for web clients without a connector URL', async () => {
 		renderComponent({ pinia });
 
 		await waitFor(() => {
@@ -82,15 +82,11 @@ describe('McpConnectClientDialog', () => {
 		});
 		await userEvent.click(body().getByText('ChatGPT'));
 
+		// ChatGPT has no one-click connector, so only the mandatory server URL shows.
 		await waitFor(() => {
-			expect(body().getByTestId('mcp-connect-one-click')).toBeInTheDocument();
+			expect(body().getByText('Server URL')).toBeInTheDocument();
 		});
-		expect(body().getByTestId('mcp-connect-one-click')).toHaveAttribute(
-			'href',
-			'https://chatgpt.com/#settings/connectors',
-		);
-		// Server URL is mandatory for web clients.
-		expect(body().getByText('Server URL')).toBeInTheDocument();
+		expect(body().queryByTestId('mcp-connect-one-click')).not.toBeInTheDocument();
 	});
 
 	it('should show the OAuth client setup by default and switch to the API key tab', async () => {

@@ -105,7 +105,6 @@ export function getMcpClientCatalog(serverUrl: string): McpClientCategoryGroup[]
 					name: 'ChatGPT',
 					category: 'web',
 					icon: OpenAiIcon,
-					addUrl: 'https://chatgpt.com/#settings/connectors',
 				},
 			],
 		},

@@ -266,9 +266,10 @@ const serverUrlDescription = computed(() =>
 					</N8nSettingsRow>
 				</template>
 
-				<!-- Web: one-click connector + the mandatory server URL to paste in. -->
+				<!-- Web: one-click connector (when supported) + the mandatory server URL to paste in. -->
 				<template v-else-if="activeClient?.category === 'web'">
 					<N8nSettingsRow
+						v-if="activeClient.addUrl"
 						:show-divider="false"
 						:title="i18n.baseText('settings.mcp.connectDialog.oneClick.title')"
 						:description="oneClickDescription"
