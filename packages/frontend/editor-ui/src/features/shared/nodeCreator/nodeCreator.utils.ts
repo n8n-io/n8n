@@ -463,7 +463,7 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 		};
 	} else if (element.properties.name === MESSAGE_AN_AGENT_NODE_TYPE) {
 		element.properties.tag = {
-			type: 'info',
+			preview: true,
 			text: i18n.baseText('nodeCreator.nodeItem.earlyPreview'),
 		};
 	} else if (RECOMMENDED_NODES.includes(element.properties.name)) {

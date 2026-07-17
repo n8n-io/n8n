@@ -930,7 +930,7 @@ describe('NodeCreator - utils', () => {
 			const [result] = finalizeItems([
 				makeAgentNode(MESSAGE_AN_AGENT_NODE_TYPE),
 			]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ type: 'info', text: 'Early preview' });
+			expect(result.properties.tag).toEqual({ preview: true, text: 'Early preview' });
 		});
 
 		it('should keep a pre-set tag', () => {
