@@ -12,6 +12,7 @@ import type { Telemetry } from '@/telemetry';
 
 import { AgentWorkflowExecutionService } from '../agent-workflow-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -103,8 +104,10 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const credentialsService = mock<CredentialsService>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
+	const agentRunTracingService = mock<AgentRunTracingService>();
 
 	executionService.recordMessage.mockResolvedValue('execution-1');
+	agentRunTracingService.build.mockResolvedValue(undefined);
 
 	const service = new AgentWorkflowExecutionService(
 		mockLogger(),
@@ -113,6 +116,7 @@ function makeService() {
 		telemetry,
 		credentialsService,
 		reconstructionService,
+		agentRunTracingService,
 	);
 
 	return {
@@ -121,6 +125,7 @@ function makeService() {
 		executionService,
 		telemetry,
 		reconstructionService,
+		agentRunTracingService,
 	};
 }
 
@@ -130,8 +135,14 @@ describe('AgentWorkflowExecutionService', () => {
 	});
 
 	it('executes workflow runs with thread-scoped persistence and tool-call output', async () => {
-		const { service, agentRepository, reconstructionService, executionService, telemetry } =
-			makeService();
+		const {
+			service,
+			agentRepository,
+			reconstructionService,
+			executionService,
+			telemetry,
+			agentRunTracingService,
+		} = makeService();
 		const runtime = makeRuntime([
 			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', input: { id: 1 } },
 			{ type: 'tool-result', toolCallId: 'tc-1', toolName: 'lookup', output: { ok: true } },
@@ -186,6 +197,16 @@ describe('AgentWorkflowExecutionService', () => {
 				}),
 			}),
 		);
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({
+				agentId,
+				projectId,
+				threadId: 'thread-1',
+				userId,
+				source: 'workflow',
+				executionId: 'execution-1',
+			}),
+		);
 	});
 
 	it('applies per-call structured output schema and improves empty-output errors', async () => {
@@ -226,13 +247,14 @@ describe('AgentWorkflowExecutionService', () => {
 		};
 
 		const setupRuntimeWithToolSpy = (declaredTools: Array<{ name: string }> = []) => {
-			const { service, agentRepository, reconstructionService } = makeService();
+			const { service, agentRepository, reconstructionService, agentRunTracingService } =
+				makeService();
 			const runtime = makeRuntime();
 			const toolFn = vi.fn();
 			Object.assign(runtime.agent, { tool: toolFn, declaredTools });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
-			return { service, toolFn };
+			return { service, toolFn, agentRunTracingService };
 		};
 
 		const toolNamesFrom = (toolFn: Mock): string[] => {
@@ -241,7 +263,7 @@ describe('AgentWorkflowExecutionService', () => {
 		};
 
 		it('always injects fetch_input_data when workflowContext is provided', async () => {
-			const { service, toolFn } = setupRuntimeWithToolSpy();
+			const { service, toolFn, agentRunTracingService } = setupRuntimeWithToolSpy();
 			const workflowContext: ExecuteAgentWorkflowContext = {
 				...baseContext,
 				exposeWorkflowData: false,
@@ -261,6 +283,15 @@ describe('AgentWorkflowExecutionService', () => {
 
 			expect(toolFn).toHaveBeenCalledTimes(1);
 			expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data']);
+			// Workflow-only correlation IDs land on the tracing metadata, keyed off
+			// the workflow context's workflowId/callingNodeName.
+			expect(agentRunTracingService.build).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'workflow',
+					workflowId: 'wf-1',
+					nodeId: 'Message an Agent',
+				}),
+			);
 		});
 
 		it('also injects fetch_workflow_context when exposeWorkflowData is true', async () => {
@@ -329,8 +360,14 @@ describe('AgentWorkflowExecutionService', () => {
 		};
 
 		it('compiles from the embedded config, records no session, and tracks inline telemetry', async () => {
-			const { service, agentRepository, reconstructionService, executionService, telemetry } =
-				makeService();
+			const {
+				service,
+				agentRepository,
+				reconstructionService,
+				executionService,
+				telemetry,
+				agentRunTracingService,
+			} = makeService();
 			const runtime = makeRuntime([
 				{ type: 'text-start', id: 'text-1' },
 				{ type: 'text-delta', id: 'text-1', delta: 'answer' },
@@ -407,6 +444,16 @@ describe('AgentWorkflowExecutionService', () => {
 					run_type: 'production',
 					turn_status: 'succeeded',
 					configuration: expect.objectContaining({ model: 'anthropic/claude-sonnet-4-5' }),
+				}),
+			);
+			// Inline workflow-invoked runs get the same 'workflow' tracing as
+			// entity-backed ones, keyed off the synthetic inline agent id.
+			expect(agentRunTracingService.build).toHaveBeenCalledWith(
+				expect.objectContaining({
+					agentId: 'inline:wf-1:Message an Agent',
+					source: 'workflow',
+					workflowId: 'wf-1',
+					nodeId: 'Message an Agent',
 				}),
 			);
 		});

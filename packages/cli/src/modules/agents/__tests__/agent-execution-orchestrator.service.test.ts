@@ -10,6 +10,7 @@ import type { Telemetry } from '@/telemetry';
 
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -59,6 +60,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 	return {
 		agent: {
 			name: 'Runtime Agent',
+			snapshot: { model: { provider: 'anthropic', name: 'claude-sonnet-4-5' } },
 			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
 			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
 			structuredOutput: vi.fn(),
@@ -88,8 +90,10 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const integrationMessageContextService = mock<IntegrationMessageContextService>();
+	const agentRunTracingService = mock<AgentRunTracingService>();
 
 	executionService.recordMessage.mockResolvedValue('execution-1');
+	agentRunTracingService.build.mockResolvedValue(undefined);
 
 	const service = new AgentExecutionOrchestratorService(
 		mockLogger(),
@@ -98,6 +102,7 @@ function makeService() {
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
+		agentRunTracingService,
 	);
 
 	return {
@@ -107,6 +112,7 @@ function makeService() {
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
+		agentRunTracingService,
 	};
 }
 
@@ -165,8 +171,13 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes in-app chat against the draft runtime', async () => {
-		const { service, runtimeCacheService, executionService, integrationMessageContextService } =
-			makeService();
+		const {
+			service,
+			runtimeCacheService,
+			executionService,
+			integrationMessageContextService,
+			agentRunTracingService,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -216,10 +227,20 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 			}),
 		);
+		// In-app test chat has no `source` — the tracing metadata normalizes it
+		// to 'test', distinct from the (unrelated) analytics `source` above.
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({
+				source: 'test',
+				threadId: 'thread-1',
+				modelId: 'anthropic/claude-sonnet-4-5',
+			}),
+		);
 	});
 
 	it('executes published integration chat with integration-scoped runtime', async () => {
-		const { service, runtimeCacheService, executionService } = makeService();
+		const { service, runtimeCacheService, executionService, agentRunTracingService } =
+			makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -248,10 +269,14 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 			}),
 		);
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'slack' }),
+		);
 	});
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
-		const { service, runtimeCacheService, executionService } = makeService();
+		const { service, runtimeCacheService, executionService, agentRunTracingService } =
+			makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -282,6 +307,9 @@ describe('AgentExecutionOrchestratorService', () => {
 					configuration: runtime.telemetryConfiguration,
 				},
 			}),
+		);
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'task' }),
 		);
 	});
 
@@ -425,6 +453,123 @@ describe('AgentExecutionOrchestratorService', () => {
 					configuration: runtime.telemetryConfiguration,
 				},
 			}),
+		);
+	});
+
+	it('passes tracing telemetry returned by AgentRunTracingService into stream() and resume()', async () => {
+		const { service, checkpointStorage, runtimeCacheService, agentRunTracingService } =
+			makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		const fakeTelemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+		};
+		agentRunTracingService.build.mockResolvedValue(fakeTelemetry as never);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+			}),
+		);
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'hello',
+			expect.objectContaining({ telemetry: fakeTelemetry }),
+		);
+
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				integrationType: 'slack',
+			}),
+		);
+		expect(runtime.agent.resume).toHaveBeenCalledWith(
+			'stream',
+			{ value: 'yes' },
+			expect.objectContaining({ telemetry: fakeTelemetry }),
+		);
+	});
+
+	it('recovers the original run source from the latest suspended execution when resuming', async () => {
+		const {
+			service,
+			checkpointStorage,
+			runtimeCacheService,
+			executionService,
+			agentRunTracingService,
+		} = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		executionService.findLatestSuspendedRun.mockResolvedValueOnce({ source: 'telegram' } as never);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				integrationType: 'telegram',
+			}),
+		);
+
+		expect(executionService.findLatestSuspendedRun).toHaveBeenCalledWith('thread-1');
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'telegram' }),
+		);
+	});
+
+	it('falls back to source "unknown" when no suspended execution is found on resume', async () => {
+		const {
+			service,
+			checkpointStorage,
+			runtimeCacheService,
+			executionService,
+			agentRunTracingService,
+		} = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		executionService.findLatestSuspendedRun.mockResolvedValueOnce(null);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				integrationType: 'slack',
+			}),
+		);
+
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'unknown' }),
 		);
 	});
 
