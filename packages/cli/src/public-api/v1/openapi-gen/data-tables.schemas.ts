@@ -1,15 +1,11 @@
-// Must run before importing @n8n/api-types: see the same note in data-tables.path.ts.
-import './zod-extend';
-
 import { PublicApiCreateDataTableDto } from '@n8n/api-types';
 
 /**
- * Registered as a named component (`.openapi('createDataTableRequest')`) rather than embedded
- * inline in the request body — the hand-written spec this supersedes `$ref`'d a standalone
- * `createDataTableRequest.yml` schema file instead of inlining it too (now removed; see
- * `createDataTableRequest.generated.yml`). Generated separately from the path (see
- * `createDataTableRequest` in generate.ts's `GENERATED_SCHEMAS`) so the path and this schema can
- * each be regenerated independently.
+ * The request-body schema, generated as a standalone named component rather than inlined — the
+ * hand-written spec this supersedes `$ref`'d a standalone `createDataTableRequest.yml` schema file
+ * too (now removed; see `createDataTableRequest.generated.yml`). The component name comes from the
+ * `ref` in generate.ts's `GENERATED_SCHEMAS`, which `generateSchemaYaml` passes to
+ * `registry.register(ref, schema)` — so no `.openapi(ref)` is needed on the schema itself.
+ * Generated separately from the path so the two can be regenerated independently.
  */
-export const createDataTableRequestSchema =
-	PublicApiCreateDataTableDto.schema.openapi('createDataTableRequest');
+export const createDataTableRequestSchema = PublicApiCreateDataTableDto.schema;
