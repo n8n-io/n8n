@@ -1,0 +1,60 @@
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 10,66
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 79
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 78
+packages/@n8n/db/src/migrations/common/1784000000051-CreateWorkflowReviewRequestTables.ts
+  s_44a98ba2784a12::t_00dfed75f4d4c3 19
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,837,1151
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,824,1138
+packages/cli/test/migration/1784000000051-create-workflow-review-request-tables.test.ts
+  s_44a98ba2784a12::t_78a208a46ec827 13
+packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
+  ai_agent 1-31
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+packages/@n8n/db/src/migrations/common/1784000000049-AddScheduledTaskDispatchedAt.ts
+  ai_agent 1-35
+docs/generated/sqlite-schema/scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 93
+docs/generated/sqlite-schema/scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 9,21,65
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-219
+  s_44a98ba2784a12::t_daa8f45a138448 437-439
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 92
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,20,57
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_51812c9029fdb3 455-457
+  s_44a98ba2784a12::t_d25d8416783ebe 225-227
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c58ddc55d006491621204068248ab9fdf1e1880",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

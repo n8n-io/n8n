@@ -1,0 +1,27 @@
+packages/cli/test/integration/scheduling/scheduler-multi-main.test.ts
+  s_70bc7977dd8eb1::t_83c95e8ebc7db4 233-234
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_70bc7977dd8eb1::t_78317c711dc55f 131,134-135
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.property.test.ts
+  s_70bc7977dd8eb1::t_c038ffd658ebb1 72-74,76-77
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.test.ts
+  s_70bc7977dd8eb1::t_fff6a4f4422ac4 150-151
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_70bc7977dd8eb1::t_797375ed47f09d 269-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06d220e4d96df3cdc0d653ce11d7648949d15174",
+  "prompts": {},
+  "sessions": {
+    "s_70bc7977dd8eb1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1270577-3c25-4bbd-b153-56e6f603ad20",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
