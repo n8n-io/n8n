@@ -35,9 +35,9 @@ const renderView = (credentials: ICredentialsResponse[]) => {
 	const pinia = createTestingPinia();
 	const credentialsStore = mockedStore(useCredentialsStore);
 	const uiStore = mockedStore(useUIStore);
-	credentialsStore.fetchCredentialTypes.mockResolvedValue([]);
+	credentialsStore.fetchCredentialTypes.mockResolvedValue(undefined);
 	credentialsStore.fetchInstanceCredentials.mockResolvedValue(credentials);
-	credentialsStore.deleteCredential.mockResolvedValue(true);
+	credentialsStore.deleteCredential.mockResolvedValue(undefined);
 
 	return {
 		credentialsStore,
