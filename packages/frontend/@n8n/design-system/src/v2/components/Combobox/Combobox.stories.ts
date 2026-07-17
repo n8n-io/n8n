@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -81,10 +81,6 @@ const iconItems: ObjectComboboxItem[] = [
 		icon: 'filled-square',
 	},
 ];
-
-function getSelectedItemIcon(items: ObjectComboboxItem[], value: unknown) {
-	return items.find((item) => item.value === value)?.icon;
-}
 
 const slotItems: ComboboxItemType[] = [
 	{
@@ -444,14 +440,13 @@ export const WithIcons = {
 		components: { Combobox, N8nIcon },
 		setup() {
 			const value = ref(args.modelValue);
-			const icon = computed(() => getSelectedItemIcon(iconItems, value.value));
-			return { args, value, icon };
+			return { args, value };
 		},
 		template: `
 		<div style="${storyContainerStyle}; display: flex; gap: 16px; align-items: center;">
-			<Combobox v-bind="args" v-model="value" :icon="icon">
-				<template #item-leading="{ item }">
-					<N8nIcon :icon="item.icon" color="primary" />
+			<Combobox v-bind="args" v-model="value">
+				<template #item-leading="{ item, ui }">
+					<N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
 				</template>
 			</Combobox>
 		</div>
@@ -468,14 +463,11 @@ export const WithSlots = {
 		components: { Combobox, N8nIcon },
 		setup() {
 			const value = ref(args.modelValue);
-			const icon = computed(() =>
-				getSelectedItemIcon(slotItems as ObjectComboboxItem[], value.value),
-			);
-			return { args, value, icon };
+			return { args, value };
 		},
 		template: `
 		<div style="${storyContainerStyle}">
-			<Combobox v-bind="args" v-model="value" :icon="icon">
+			<Combobox v-bind="args" v-model="value">
 				<template #header>
 					<div style="padding: var(--spacing--2xs); font-size: var(--font-size--2xs); color: var(--color--text--tint-1); border-bottom: 1px solid var(--border-color);">
 						Header slot

@@ -109,6 +109,22 @@ describe('v2/components/Combobox', () => {
 			expect(popover.querySelector('[data-icon="check"]')).toBeVisible();
 		});
 
+		it('should render the selected item icon in the trigger', async () => {
+			const items = [
+				{ value: '1', label: 'Option 1', icon: 'check' as const },
+				{ value: '2', label: 'Option 2', icon: 'users' as const },
+			];
+
+			const wrapper = render(Combobox, {
+				props: { items, modelValue: '2' },
+			});
+
+			await waitFor(() => {
+				const trigger = wrapper.getByTestId('combobox');
+				expect(trigger.querySelector('[data-icon="users"]')).toBeVisible();
+			});
+		});
+
 		it('should render items with disabled state', async () => {
 			const items: ComboboxItem[] = [
 				{ value: '1', label: 'Option 1' },

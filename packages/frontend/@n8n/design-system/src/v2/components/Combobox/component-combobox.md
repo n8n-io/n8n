@@ -46,7 +46,7 @@ When `multiple` is true, selected values render via embedded `N8nTagsInput2` (sh
 - `defaultOpen?: boolean` — Initial open state when uncontrolled
 - `disabled?: boolean` — Disable interaction
 - `required?: boolean` — Mark the field as required (reka-ui root)
-- `icon?: IconName` — Leading icon in the trigger (typically derived from the selected item)
+- `icon?: IconName` — Leading icon in the trigger when no selected item icon is available
 - `ignoreFilter?: boolean` — Disable built-in filtering
 - `resetSearchTermOnBlur?: boolean` — Reset search text on blur | reka default: `true`
 - `resetSearchTermOnSelect?: boolean` — Reset search text on select | reka default: `true`
@@ -119,7 +119,7 @@ type ComboboxItem = Exclude<AcceptableValue, undefined> | ComboboxListItem;
 - **Labels** — `{ type: 'label', label: 'Fruits' }` — non-interactive section heading.
 - **Separators** — `{ type: 'separator' }` — non-interactive divider between groups.
 
-Object items may also include an `icon` property. When no custom `#item-leading` slot is provided, icons on items are rendered automatically.
+Object items may also include an `icon` property. When no custom `#item-leading` slot is provided, icons on items are rendered automatically. The same `#item-leading` slot (or default icon) is also used for the selected value in the trigger.
 
 ### Template usage examples
 
@@ -143,7 +143,7 @@ const value = ref('Backlog');
 
 ```vue
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { N8nCombobox2, N8nIcon } from '@n8n/design-system';
 
 const items = ref([
@@ -151,13 +151,12 @@ const items = ref([
   { value: 'dark', label: 'Dark', icon: 'filled-square' },
 ]);
 const value = ref('light');
-const icon = computed(() => items.value.find((item) => item.value === value.value)?.icon);
 </script>
 
 <template>
-  <N8nCombobox2 v-model="value" :items="items" :icon="icon">
-    <template #item-leading="{ item }">
-      <N8nIcon :icon="item.icon" color="primary" />
+  <N8nCombobox2 v-model="value" :items="items">
+    <template #item-leading="{ item, ui }">
+      <N8nIcon :icon="item.icon" color="primary" v-bind="ui" />
     </template>
   </N8nCombobox2>
 </template>

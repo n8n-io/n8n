@@ -187,6 +187,23 @@ const hasValue = computed(() => {
 
 const showClearButton = computed(() => props.clearable && !props.disabled && hasValue.value);
 
+const selectedItem = computed(() => {
+	if (props.multiple) {
+		return undefined;
+	}
+
+	const { modelValue } = props;
+	if (modelValue === undefined || modelValue === null || Array.isArray(modelValue)) {
+		return undefined;
+	}
+
+	return groups.value.find(
+		(item) => item.type !== 'label' && item.type !== 'separator' && item.value === modelValue,
+	);
+});
+
+const leadingIcon = computed(() => selectedItem.value?.icon ?? props.icon);
+
 function focusInput() {
 	void nextTick(() => {
 		const element = inputRef.value?.$el;
@@ -224,7 +241,17 @@ function onTagsUpdate(value: TagsInputValue[]) {
 			:data-multiple="props.multiple || undefined"
 			:data-empty="hasValue ? undefined : true"
 		>
-			<Icon v-if="props.icon && !props.multiple" :icon="props.icon" :class="$style.leadingIcon" />
+			<span v-if="!props.multiple && leadingIcon" :class="$style.leadingIcon">
+				<slot
+					v-if="selectedItem?.icon"
+					name="item-leading"
+					:item="selectedItem"
+					:ui="{ class: $style.leadingIconGlyph }"
+				>
+					<Icon :icon="selectedItem.icon" :class="$style.leadingIconGlyph" size="large" />
+				</slot>
+				<Icon v-else :icon="leadingIcon" :class="$style.leadingIconGlyph" size="large" />
+			</span>
 
 			<N8nTagsInput2
 				v-if="props.multiple"
@@ -425,6 +452,15 @@ function onTagsUpdate(value: TagsInputValue[]) {
 }
 
 .leadingIcon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	line-height: 0;
+}
+
+.leadingIconGlyph {
+	display: block;
 	flex-shrink: 0;
 }
 
