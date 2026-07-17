@@ -3,7 +3,13 @@ import { request } from '@playwright/test';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
-import { DATA_NODE, manualWorkflow, uniqueSecret, webhookWorkflow } from './redaction-helpers';
+import {
+	consoleLogWorkflow,
+	DATA_NODE,
+	manualWorkflow,
+	uniqueSecret,
+	webhookWorkflow,
+} from './redaction-helpers';
 import { expect, test } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
 import { ApiHelpers } from '../../../services/api-helper';
@@ -419,6 +425,28 @@ test.describe(
 
 			const executionData = await api.workflows.getExecution(execution.executionId);
 			expect(executionData.data).toContain(execution.secret);
+		});
+
+		test('should redact Code node console output in the editor logs when the policy redacts manual runs', async ({
+			n8n,
+			api,
+		}) => {
+			await api.securitySettings.setRedactionFloor('all');
+			const secret = uniqueSecret();
+			const workflow = await api.workflows.createWorkflow(consoleLogWorkflow({ secret }));
+
+			const consoleMessages: string[] = [];
+			n8n.page.on('console', (msg) => consoleMessages.push(msg.text()));
+
+			await n8n.navigate.toWorkflow(workflow.id);
+			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
+				'Workflow executed successfully',
+			);
+
+			await expect
+				.poll(() => consoleMessages.some((m) => m.includes('[Console output redacted')))
+				.toBe(true);
+			expect(consoleMessages.some((m) => m.includes(secret))).toBe(false);
 		});
 	},
 );

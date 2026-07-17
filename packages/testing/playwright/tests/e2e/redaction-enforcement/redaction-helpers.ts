@@ -87,3 +87,35 @@ export function manualWorkflow({
 		settings: { ...SAVE_ALL_SETTINGS, ...settings },
 	};
 }
+
+export const CODE_NODE = 'Code';
+
+/** Manual-trigger workflow whose Code node logs the secret to the console. */
+export function consoleLogWorkflow({
+	secret,
+	settings = {},
+}: WorkflowOptions = {}): Partial<IWorkflowBase> {
+	const trigger = {
+		id: nanoid(),
+		name: 'Manual',
+		type: 'n8n-nodes-base.manualTrigger',
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+	};
+	const code = {
+		id: nanoid(),
+		name: CODE_NODE,
+		type: 'n8n-nodes-base.code',
+		typeVersion: 2,
+		position: [220, 0] as [number, number],
+		parameters: { jsCode: `console.log('${secret}');\nreturn $input.all();` },
+	};
+
+	return {
+		name: `Redaction console ${nanoid(8)}`,
+		nodes: [trigger, code],
+		connections: { Manual: { main: [[{ node: CODE_NODE, type: 'main', index: 0 }]] } },
+		settings: { ...SAVE_ALL_SETTINGS, ...settings },
+	};
+}
