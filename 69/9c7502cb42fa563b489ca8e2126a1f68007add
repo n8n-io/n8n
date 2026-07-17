@@ -1,0 +1,24 @@
+packages/workflow/src/redaction-channels.ts
+  s_456b1fff7bb2dc::t_32144036819983 47-76
+  s_456b1fff7bb2dc::t_cd040d868f006c 1-2
+packages/workflow/test/redaction-channels.test.ts
+  s_456b1fff7bb2dc::t_e05ec321e468bd 2
+  s_456b1fff7bb2dc::t_1d26e8e03e1f16 6,46-77
+  s_456b1fff7bb2dc::t_d7ca90e21c6802 3-5,78-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "699c7502cb42fa563b489ca8e2126a1f68007add",
+  "prompts": {},
+  "sessions": {
+    "s_456b1fff7bb2dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffba89ca-6fe5-4fd6-9331-7e707027dc54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
