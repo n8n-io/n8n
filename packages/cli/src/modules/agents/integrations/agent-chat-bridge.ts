@@ -10,7 +10,7 @@ import type {
 	BridgeExecutionContext,
 	PlatformAgentContext,
 } from './agent-chat-integration';
-import { ChatIntegrationRegistry } from './agent-chat-integration';
+import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
 import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
@@ -273,37 +273,44 @@ export class AgentChatBridge {
 			),
 			this.messageContextBridge.resolveSubject(message),
 		]);
-		await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
-			messageId: message.id,
-			interactingUserId: message.author.userId,
-			...bridgeExecutionContext.platformAgentContext,
-			subject,
-		});
-		// threadId.id is agent-prefixed for observation storage; resourceId keeps
-		// the platform user identity so episodic recall works across threads for
-		// the same user while staying isolated between users.
-		// Always run the published snapshot — integrations are production traffic.
-		const agentInput = bridgeExecutionContext.historyContext
-			? `${bridgeExecutionContext.historyContext}\n\n${text}`
-			: text;
-		const stream = this.agentService.executeForChatPublished({
-			agentId: this.agentId,
-			projectId: this.n8nProjectId,
-			message: agentInput,
-			memory: {
-				threadId,
-				resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
-			},
-			integrationType: this.integration.type,
-		});
-
+		const statusHandle = onceStatusHandle(bridgeExecutionContext.statusHandle);
 		try {
+			await this.messageContextBridge.updateLatest(threadId.id, message.author.userId, thread, {
+				messageId: message.id,
+				interactingUserId: message.author.userId,
+				...bridgeExecutionContext.platformAgentContext,
+				subject,
+			});
+			// threadId.id is agent-prefixed for observation storage; resourceId keeps
+			// the platform user identity so episodic recall works across threads for
+			// the same user while staying isolated between users.
+			// Always run the published snapshot — integrations are production traffic.
+			const agentInput = bridgeExecutionContext.historyContext
+				? `${bridgeExecutionContext.historyContext}\n\n${text}`
+				: text;
+			const stream = this.agentService.executeForChatPublished({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				message: agentInput,
+				memory: {
+					threadId,
+					resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
+				},
+				integrationType: this.integration.type,
+			});
+
 			await this.streamConsumer.consume(stream, thread, {
 				forceBuffered: bridgeExecutionContext.forceBuffered,
-				statusHandle: bridgeExecutionContext.statusHandle,
+				statusHandle,
 			});
 		} finally {
 			statusRetry.abort();
+			// The stream consumer clears the status right before the first response;
+			// this clear covers failures before/outside consumption, which would
+			// otherwise leave a status indicator (e.g. Telegram's typing keepalive)
+			// running after the error reply. The once-wrapped handle makes this a
+			// no-op await of the consumer's clear when that already ran.
+			await statusHandle?.clearBeforeResponse();
 		}
 	}
 
