@@ -276,62 +276,68 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.5 second",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [640, 250],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "74e93e34-a272-40a3-a976-98f7da373e49"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.5 second1",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1050, 250],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "c4d53540-e46f-4e9f-b61a-cdfa72df1730"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.5 second2",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1450, 250],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "1fc2b051-cd25-4fc4-8c6f-819c24ca1f49"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.5 second3",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [880, 550],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "a7794510-cd2c-4265-b7ce-505aceb813c8"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.5 second4",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [480, 550],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "f50da613-c2c9-4823-9ba8-2969ed4899c1"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(500);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.5 second5",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1290, 550],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "3259acd2-fd46-4348-b7d0-48d4396041df"
 		}
 	],
