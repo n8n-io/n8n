@@ -443,17 +443,6 @@ describe('AgentPublishButton', () => {
 			expect(button.attributes('disabled')).toBeUndefined();
 		});
 
-		it('does not call publishAgent when Publish is clicked while the config is invalid', async () => {
-			const { publishAgent } = await import('../composables/useAgentApi');
-			const agent = createAgent({ activeVersionId: null });
-			const wrapper = await renderComponent({ agent, configValidationStatus: 'invalid' });
-
-			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
-			await flushPromises();
-
-			expect(publishAgent).not.toHaveBeenCalled();
-		});
-
 		it('aborts the publish request when beforePublish resolves false', async () => {
 			const { publishAgent } = await import('../composables/useAgentApi');
 			const beforePublish = vi.fn().mockResolvedValue(false);

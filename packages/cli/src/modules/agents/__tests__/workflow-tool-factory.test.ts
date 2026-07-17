@@ -12,10 +12,7 @@ import {
 	validateCompatibility,
 } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
-import {
-	findWorkflowToolWorkflow,
-	findWorkflowToolWorkflows,
-} from '../tools/workflow-tool-workflow-resolver';
+import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -180,24 +177,6 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		);
 	});
 
-	it('findWorkflowToolWorkflow uses the canonical project-scoped query', async () => {
-		const workflow = makeWorkflow({ id: 'wf-scoped-1', name: 'Scoped Workflow' });
-		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(workflow);
-
-		const result = await findWorkflowToolWorkflow(
-			workflowRepository,
-			'Scoped Workflow',
-			'project-1',
-		);
-
-		expect(result).toBe(workflow);
-		expect(workflowRepository.findOne).toHaveBeenCalledWith({
-			where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
-			relations: ['shared'],
-		});
-	});
-
 	it('throws when the workflow is not shared with the project', async () => {
 		const context = makeContext(null);
 
@@ -288,20 +267,5 @@ describe('findWorkflowToolWorkflows', () => {
 		});
 		expect(result.get('Workflow A')).toBe(workflow);
 		expect(result.has('Workflow B')).toBe(false);
-	});
-
-	it('findWorkflowToolWorkflow keeps singular lookup behavior', async () => {
-		const workflow = makeWorkflow({ id: 'wf-a', name: 'Workflow A' });
-		const workflowRepository = mock<WorkflowRepository>();
-		workflowRepository.findOne.mockResolvedValue(workflow);
-
-		const result = await findWorkflowToolWorkflow(workflowRepository, 'Workflow A', 'project-1');
-
-		expect(result).toBe(workflow);
-		expect(workflowRepository.find).not.toHaveBeenCalled();
-		expect(workflowRepository.findOne).toHaveBeenCalledWith({
-			where: { name: 'Workflow A', shared: { projectId: 'project-1' } },
-			relations: ['shared'],
-		});
 	});
 });

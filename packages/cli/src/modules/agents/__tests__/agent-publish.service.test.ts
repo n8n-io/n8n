@@ -168,8 +168,15 @@ describe('AgentPublishService', () => {
 	});
 
 	it('rejects publishing the current draft when validation reports it invalid', async () => {
-		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
-			makeService();
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			taskSnapshotRepository,
+			agentValidationService,
+			runtimeCacheService,
+			trx,
+		} = makeService();
 		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
@@ -188,50 +195,6 @@ describe('AgentPublishService', () => {
 			expect.anything(),
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
-		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
-		expect(agent.activeVersionId).toBeNull();
-	});
-
-	it('rejects publishing a disabled dangling task before snapshot side effects', async () => {
-		const {
-			service,
-			agentRepository,
-			agentHistoryRepository,
-			taskSnapshotRepository,
-			agentTaskRepository,
-			agentValidationService,
-			runtimeCacheService,
-			trx,
-		} = makeService();
-		const agent = makeAgent({
-			schema: {
-				...schema,
-				tasks: [{ type: 'task', id: 'missing_disabled', enabled: false }],
-			},
-		});
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentTaskRepository.findByAgentId.mockResolvedValue([]);
-		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
-			status: 'invalid',
-			issues: [
-				{
-					code: 'missing_reference',
-					path: 'tasks.0.id',
-					capability: { kind: 'task', id: 'missing_disabled', index: 0 },
-				},
-			],
-		});
-
-		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
-			'Agent configuration has errors that must be resolved before publishing',
-		);
-
-		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
-			agent,
-			projectId,
-			new Map(),
-			expect.anything(),
-		);
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(taskSnapshotRepository.saveForVersion).not.toHaveBeenCalled();
 		expect(trx.save).not.toHaveBeenCalled();

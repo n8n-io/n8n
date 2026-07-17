@@ -1,16 +1,11 @@
 import { agentConfigValidationResponseSchema } from '../agent-config-validation.schema';
 
 describe('agentConfigValidationResponseSchema', () => {
-	it('accepts a valid response with no issues', () => {
-		const result = agentConfigValidationResponseSchema.safeParse({
-			status: 'valid',
-			issues: [],
-		});
+	it('accepts valid and invalid responses with structured issues', () => {
+		expect(
+			agentConfigValidationResponseSchema.safeParse({ status: 'valid', issues: [] }).success,
+		).toBe(true);
 
-		expect(result.success).toBe(true);
-	});
-
-	it('accepts an invalid response with structured issues', () => {
 		const result = agentConfigValidationResponseSchema.safeParse({
 			status: 'invalid',
 			issues: [
@@ -35,44 +30,38 @@ describe('agentConfigValidationResponseSchema', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('rejects an unknown issue code', () => {
-		const result = agentConfigValidationResponseSchema.safeParse({
-			status: 'invalid',
-			issues: [{ code: 'not_a_real_code', path: 'model', capability: { kind: 'agent' } }],
-		});
+	it('rejects unknown enum values in code, kind, toolType, and status', () => {
+		expect(
+			agentConfigValidationResponseSchema.safeParse({
+				status: 'invalid',
+				issues: [{ code: 'not_a_real_code', path: 'model', capability: { kind: 'agent' } }],
+			}).success,
+		).toBe(false);
 
-		expect(result.success).toBe(false);
-	});
+		expect(
+			agentConfigValidationResponseSchema.safeParse({
+				status: 'invalid',
+				issues: [
+					{ code: 'missing_required', path: 'model', capability: { kind: 'not_a_real_kind' } },
+				],
+			}).success,
+		).toBe(false);
 
-	it('rejects an unknown capability kind', () => {
-		const result = agentConfigValidationResponseSchema.safeParse({
-			status: 'invalid',
-			issues: [
-				{ code: 'missing_required', path: 'model', capability: { kind: 'not_a_real_kind' } },
-			],
-		});
+		expect(
+			agentConfigValidationResponseSchema.safeParse({
+				status: 'invalid',
+				issues: [
+					{
+						code: 'missing_credential',
+						path: 'tools.0.node.credentials.openAiApi',
+						capability: { kind: 'tool', toolType: 'not_a_real_type' },
+					},
+				],
+			}).success,
+		).toBe(false);
 
-		expect(result.success).toBe(false);
-	});
-
-	it('rejects an unknown tool type', () => {
-		const result = agentConfigValidationResponseSchema.safeParse({
-			status: 'invalid',
-			issues: [
-				{
-					code: 'missing_credential',
-					path: 'tools.0.node.credentials.openAiApi',
-					capability: { kind: 'tool', toolType: 'not_a_real_type' },
-				},
-			],
-		});
-
-		expect(result.success).toBe(false);
-	});
-
-	it('rejects an unknown status', () => {
-		const result = agentConfigValidationResponseSchema.safeParse({ status: 'ok', issues: [] });
-
-		expect(result.success).toBe(false);
+		expect(
+			agentConfigValidationResponseSchema.safeParse({ status: 'ok', issues: [] }).success,
+		).toBe(false);
 	});
 });

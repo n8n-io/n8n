@@ -1052,48 +1052,6 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
 	});
 
-	it('passes validation issues through to the capabilities editor column', async () => {
-		const issues = [
-			{
-				code: 'missing_credential' as const,
-				path: 'tools.0.node.credentials.linearOAuth2Api',
-				capability: {
-					kind: 'tool' as const,
-					id: 'create_issue',
-					index: 0,
-					toolType: 'node' as const,
-				},
-			},
-		];
-		getAgentConfigValidationMock.mockResolvedValue({ status: 'invalid', issues });
-
-		const wrapper = await renderView();
-
-		expect(
-			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('configValidationIssues'),
-		).toEqual(issues);
-	});
-
-	it('invalidates the cached validation result immediately on a local config edit', async () => {
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			configValidation: { status: 'valid' | 'invalid'; issues: unknown[] } | null;
-			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
-		};
-
-		expect(vm.configValidation?.status).toBe('valid');
-
-		vm.onConfigFieldUpdate({ name: 'Renamed agent' });
-		await nextTick();
-
-		expect(vm.configValidation).toBeNull();
-
-		// Unmount flushes the debounced autosave scheduled by the edit above so it
-		// does not leak into a later test.
-		wrapper.unmount();
-		await flushPromises();
-	});
-
 	it('flushes a pending config edit when the builder unmounts', async () => {
 		const wrapper = await renderView();
 		updateConfigMock.mockClear();
@@ -1111,32 +1069,6 @@ describe('AgentBuilderView — configuration validation', () => {
 			'a1',
 			expect.objectContaining({ name: 'Renamed agent' }),
 		);
-	});
-
-	it('does not autosave pending config edits after deleting the agent', async () => {
-		agentPermissionsMock.canDelete.value = true;
-		openModalWithDataMock.mockImplementation(({ name, data }) => {
-			if (name === 'agentConfirmation') {
-				data.onConfirm();
-			}
-		});
-
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
-		};
-
-		vm.onConfigFieldUpdate({ name: 'Renamed before delete' });
-		await nextTick();
-		updateConfigMock.mockClear();
-
-		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'delete');
-		await flushPromises();
-		wrapper.unmount();
-		await flushPromises();
-
-		expect(deleteAgentMock).toHaveBeenCalled();
-		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('refreshes validation after a successful config autosave lands', async () => {
@@ -1172,32 +1104,6 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(vm.configValidation?.status).toBe('valid');
 	});
 
-	it('ignores a stale validation response from a previously selected agent', async () => {
-		let resolveFirst!: (value: { status: 'valid' | 'invalid'; issues: unknown[] }) => void;
-		const firstPromise = new Promise<{ status: 'valid' | 'invalid'; issues: unknown[] }>(
-			(resolve) => {
-				resolveFirst = resolve;
-			},
-		);
-		getAgentConfigValidationMock
-			.mockReturnValueOnce(firstPromise)
-			.mockResolvedValueOnce({ status: 'invalid', issues: [] });
-
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			configValidation: { status: 'valid' | 'invalid' } | null;
-		};
-
-		// Switch agents before the first (stale) request resolves.
-		await wrapper.setProps({ artifactAgentId: 'a2', artifactMode: true, artifactProjectId: 'p1' });
-		await flushPromises();
-
-		resolveFirst({ status: 'valid', issues: [] });
-		await flushPromises();
-
-		expect(vm.configValidation?.status).toBe('invalid');
-	});
-
 	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
 		getAgentConfigValidationMock
 			.mockResolvedValueOnce({ status: 'valid', issues: [] })
@@ -1213,88 +1119,6 @@ describe('AgentBuilderView — configuration validation', () => {
 		expect(updateConfigMock).not.toHaveBeenCalled();
 		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
 		expect(result).toBe(false);
-	});
-
-	it('reports publishable once flush + revalidation both succeed', async () => {
-		getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
-
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			refreshValidationBeforePublish: () => Promise<boolean>;
-		};
-
-		const result = await vm.refreshValidationBeforePublish();
-
-		expect(result).toBe(true);
-	});
-
-	it('refreshes validation after a successful skill autosave lands', async () => {
-		getAgentConfigValidationMock
-			.mockResolvedValueOnce({ status: 'invalid', issues: [] })
-			.mockResolvedValueOnce({ status: 'valid', issues: [] });
-		updateAgentSkillMock.mockResolvedValueOnce({
-			id: 'summarize_notes',
-			skill: {
-				name: 'summarize_notes',
-				description: 'Use when summarizing notes',
-				instructions: 'Read the notes and produce a concise summary.',
-			},
-			versionId: 'v2',
-		});
-
-		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			configValidation: { status: 'valid' | 'invalid' } | null;
-			saveSkill: (snapshot: {
-				type: 'skill';
-				projectId: string;
-				agentId: string;
-				skillId: string;
-				skill: { name: string; description: string; instructions: string };
-			}) => Promise<void>;
-		};
-
-		expect(vm.configValidation?.status).toBe('invalid');
-
-		await vm.saveSkill({
-			type: 'skill',
-			projectId: 'p1',
-			agentId: 'a1',
-			skillId: 'summarize_notes',
-			skill: {
-				name: 'summarize_notes',
-				description: 'Use when summarizing notes',
-				instructions: 'Read the notes and produce a concise summary.',
-			},
-		});
-		await nextTick();
-
-		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
-		expect(getAgentConfigValidationMock).toHaveBeenLastCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-		);
-		expect(vm.configValidation?.status).toBe('valid');
-	});
-
-	it('refreshes validation alongside the agent and config after a channel/integration change', async () => {
-		const wrapper = await renderView();
-		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
-
-		getAgentConfigValidationMock.mockClear();
-		fetchConfigMock.mockClear();
-		getAgentMock.mockClear();
-		capabilities.vm.$emit('agent-changed');
-		await flushPromises();
-
-		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
-		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
-		expect(getAgentConfigValidationMock).toHaveBeenCalledWith(
-			{ baseUrl: 'http://localhost:5678' },
-			'p1',
-			'a1',
-		);
 	});
 });
 

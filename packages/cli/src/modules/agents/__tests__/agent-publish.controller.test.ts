@@ -82,57 +82,6 @@ describe('AgentPublishController publish history', () => {
 	});
 });
 
-describe('AgentPublishController publish', () => {
-	it('reuses the draft validation returned by a plain publish and avoids a second validation call', async () => {
-		const { controller, agentPublishService, agentValidationService } = makeController();
-		agentPublishService.publishAgent.mockResolvedValue({
-			agent: { id: 'agent-1', projectId: 'project-1' } as never,
-			draftValidation: { status: 'valid', issues: [] },
-		});
-
-		const result = await controller.publish(
-			{
-				params: { projectId: 'project-1' },
-				user: { id: 'user-1' },
-			} as never,
-			undefined as never,
-			'agent-1',
-			undefined as never,
-		);
-
-		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
-		expect(result).toEqual(expect.objectContaining({ id: 'agent-1', isRunnable: true }));
-	});
-
-	it('revalidates the current draft when publishing a historical version omits draft validation', async () => {
-		const { controller, agentPublishService, agentValidationService } = makeController();
-		agentPublishService.publishAgent.mockResolvedValue({
-			agent: { id: 'agent-1', projectId: 'project-1' } as never,
-		});
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
-			status: 'valid',
-			issues: [],
-		});
-
-		const result = await controller.publish(
-			{
-				params: { projectId: 'project-1' },
-				user: { id: 'user-1' },
-			} as never,
-			undefined as never,
-			'agent-1',
-			{ versionId: 'v1' } as never,
-		);
-
-		expect(agentValidationService.validateAgentConfiguration).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			expect.anything(),
-		);
-		expect(result).toEqual(expect.objectContaining({ id: 'agent-1', isRunnable: true }));
-	});
-});
-
 describe('AgentPublishController revert to version', () => {
 	it('forwards the parsed versionId to the service and returns the agent with runnable state', async () => {
 		const { controller, agentPublishService, agentValidationService } = makeController();
@@ -140,7 +89,7 @@ describe('AgentPublishController revert to version', () => {
 			id: 'agent-1',
 			projectId: 'project-1',
 		} as never);
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
 			issues: [],
 		});

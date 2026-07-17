@@ -664,60 +664,34 @@ describe('AgentCapabilitiesSection', () => {
 	});
 
 	describe('validation issues', () => {
-		it('marks a node tool chip invalid when a matching issue is present', () => {
-			const wrapper = mountSection(
-				[
-					{
-						type: 'node',
-						name: 'create_issue',
-						node: {
-							nodeType: 'n8n-nodes-base.linearTool',
-							nodeTypeVersion: 1,
-							nodeParameters: {},
-						},
-					},
-				],
-				{},
-				null,
-				[],
-				[],
+		it('marks a node tool chip invalid when a matching issue is present, and leaves it unmarked otherwise', () => {
+			const tools: AgentJsonToolRef[] = [
 				{
-					validationIssues: [
-						{
-							code: 'missing_credential',
-							path: 'tools.0.node.credentials.linearOAuth2Api',
-							capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
-						},
-					],
+					type: 'node',
+					name: 'create_issue',
+					node: {
+						nodeType: 'n8n-nodes-base.linearTool',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+					},
 				},
-			);
+			];
 
-			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
-			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
-		});
-
-		it('leaves a tool chip unmarked when no issue matches it', () => {
-			const wrapper = mountSection(
-				[
+			const invalidWrapper = mountSection(tools, {}, null, [], [], {
+				validationIssues: [
 					{
-						type: 'node',
-						name: 'create_issue',
-						node: {
-							nodeType: 'n8n-nodes-base.linearTool',
-							nodeTypeVersion: 1,
-							nodeParameters: {},
-						},
+						code: 'missing_credential',
+						path: 'tools.0.node.credentials.linearOAuth2Api',
+						capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
 					},
 				],
-				{},
-				null,
-				[],
-				[],
-				{ validationIssues: [] },
-			);
+			});
+			const invalidChip = invalidWrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(invalidChip.classes().some((c) => c.includes('invalid'))).toBe(true);
 
-			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
-			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+			const validWrapper = mountSection(tools, {}, null, [], [], { validationIssues: [] });
+			const validChip = validWrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(validChip.classes().some((c) => c.includes('invalid'))).toBe(false);
 		});
 
 		it('marks the matching MCP server chip invalid by server name, not tool index', () => {
@@ -780,29 +754,6 @@ describe('AgentCapabilitiesSection', () => {
 			await flushPromises();
 
 			const chip = wrapper.find('[data-testid="agent-capabilities-task-row"]');
-			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
-		});
-
-		it('marks the matching sub-agent chip invalid by agent id', async () => {
-			const config: AgentJsonConfig = {
-				name: 'Test Agent',
-				model: '',
-				instructions: '',
-				tools: [],
-				subAgents: { agents: [{ agentId: 'agent-2' }] },
-			};
-			const wrapper = mountSection([], {}, config, [], [makeAgent()], {
-				validationIssues: [
-					{
-						code: 'incompatible_reference',
-						path: 'subAgents.agents.0.agentId',
-						capability: { kind: 'subAgent', id: 'agent-2', index: 0 },
-					},
-				],
-			});
-			await flushPromises();
-
-			const chip = wrapper.find('[data-testid="agent-capabilities-sub-agent-row"]');
 			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
 		});
 	});

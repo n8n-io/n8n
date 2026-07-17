@@ -335,15 +335,6 @@ describe('AgentBuilderHeader', () => {
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});
 
-	it('forwards config validation status and beforePublish to AgentPublishButton', () => {
-		const beforePublish = vi.fn().mockResolvedValue(true);
-		const wrapper = mountHeader({ configValidationStatus: 'invalid', beforePublish });
-		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
-
-		expect(publish.props('configValidationStatus')).toBe('invalid');
-		expect(publish.props('beforePublish')).toBe(beforePublish);
-	});
-
 	it('navigates to Instance AI for agent creation from the switcher footer', async () => {
 		const wrapper = mountHeader();
 

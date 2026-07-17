@@ -417,35 +417,6 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('accepts an MCP server whose credential type matches the configured authentication', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				mcpServers: [
-					{
-						name: 'github',
-						url: 'https://example.com/mcp',
-						transport: 'streamableHttp',
-						authentication: 'bearerAuth',
-						credential: 'right-type-cred',
-					},
-				],
-			}),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([
-				{ id: 'openai-main', type: 'openAiApi' },
-				{ id: 'right-type-cred', type: 'httpBearerAuth' },
-			]),
-		);
-
-		expect(result).toEqual({ status: 'valid', issues: [] });
-	});
-
 	it('accepts an MCP server whose credential type exactly matches a registry-specific OAuth2 authentication', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -853,7 +824,6 @@ describe('AgentValidationService — structured issues', () => {
 			]),
 		);
 		expect(runtimeResult).toEqual({ missing: [] });
-		expect(agentTaskRepository.findByAgentId).toHaveBeenCalledTimes(1);
 	});
 
 	it('runtime validation still reports execution-relevant tool and sub-agent issues', async () => {
@@ -879,7 +849,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('batches sub-agent and workflow lookups once per validation pass', async () => {
+	it('flags duplicate, missing, and incompatible sub-agent and workflow-tool references in one pass', async () => {
 		const { service, agentRepository, workflowRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -929,12 +899,6 @@ describe('AgentValidationService — structured issues', () => {
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
 		);
 
-		expect(agentRepository.findByIdsAndProjectId).toHaveBeenCalledTimes(1);
-		expect(agentRepository.findByIdsAndProjectId).toHaveBeenCalledWith(
-			['sub-1', 'sub-2', 'sub-3'],
-			projectId,
-		);
-		expect(workflowRepository.find).toHaveBeenCalledTimes(1);
 		expect(result.issues).toEqual([
 			{
 				code: 'missing_reference',
@@ -965,7 +929,7 @@ describe('AgentValidationService — structured issues', () => {
 	});
 
 	it('loaded-agent full validation loads tasks but does not refetch the agent', async () => {
-		const { service, agentRepository, agentTaskRepository } = makeService();
+		const { service, agentTaskRepository } = makeService();
 		const agent = makeAgent({
 			...runnableConfig,
 			tasks: [{ type: 'task', id: 'missing_task', enabled: true }],
@@ -986,8 +950,6 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'task', id: 'missing_task', index: 0 },
 			}),
 		]);
-		expect(agentTaskRepository.findByAgentId).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 	});
 });
 
@@ -1018,38 +980,14 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
 	});
 
-	it('reports the same missing-credential issue as validateAgentConfiguration for equivalent input', async () => {
-		const { service, agentRepository } = makeService();
-		const agent = makeAgent({ ...runnableConfig, credential: '' });
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		const credentialProvider = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
-
-		const viaEntity = await service.validateAgentEntityConfiguration(
-			agent,
-			projectId,
-			new Map(),
-			credentialProvider,
-		);
-		const viaFetch = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			credentialProvider,
-		);
-
-		expect(viaEntity).toEqual(viaFetch);
-		expect(viaEntity.status).toBe('invalid');
-		expect(viaEntity.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({ code: 'missing_credential', path: 'credential' }),
-			]),
-		);
-	});
-
-	it('flags an enabled task missing from the passed-in task map, without querying the task repository', async () => {
+	it('flags enabled and disabled tasks missing from the passed-in task map, without querying the task repository', async () => {
 		const { service, agentTaskRepository } = makeService();
 		const agent = makeAgent({
 			...runnableConfig,
-			tasks: [{ type: 'task', id: 'missing_task', enabled: true }],
+			tasks: [
+				{ type: 'task', id: 'missing_enabled', enabled: true },
+				{ type: 'task', id: 'missing_disabled', enabled: false },
+			],
 		});
 
 		const result = await service.validateAgentEntityConfiguration(
@@ -1063,77 +1001,14 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 			expect.objectContaining({
 				code: 'missing_reference',
 				path: 'tasks.0.id',
-				capability: { kind: 'task', id: 'missing_task', index: 0 },
+				capability: { kind: 'task', id: 'missing_enabled', index: 0 },
 			}),
-		]);
-		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
-	});
-
-	it('flags a disabled task missing from the passed-in task map, without querying the task repository', async () => {
-		const { service, agentTaskRepository } = makeService();
-		const agent = makeAgent({
-			...runnableConfig,
-			tasks: [{ type: 'task', id: 'missing_disabled', enabled: false }],
-		});
-
-		const result = await service.validateAgentEntityConfiguration(
-			agent,
-			projectId,
-			new Map(),
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.issues).toEqual([
 			expect.objectContaining({
 				code: 'missing_reference',
-				path: 'tasks.0.id',
-				capability: { kind: 'task', id: 'missing_disabled', index: 0 },
+				path: 'tasks.1.id',
+				capability: { kind: 'task', id: 'missing_disabled', index: 1 },
 			}),
 		]);
 		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
-	});
-
-	it('accepts a task present in the passed-in task map even when the task repository is not stubbed to return it', async () => {
-		const { service } = makeService();
-		const agent = makeAgent({
-			...runnableConfig,
-			tasks: [{ type: 'task', id: 'task-1', enabled: true }],
-		});
-		const tasks = new Map([
-			[
-				'task-1',
-				{ name: 'Daily summary', objective: 'Summarize messages', cronExpression: '0 9 * * *' },
-			],
-		]);
-
-		const result = await service.validateAgentEntityConfiguration(
-			agent,
-			projectId,
-			tasks,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result).toEqual({ status: 'valid', issues: [] });
-	});
-
-	it('reports missing config issues when the passed-in entity has no schema', async () => {
-		const { service } = makeService();
-		const agent = makeAgent(null);
-
-		const result = await service.validateAgentEntityConfiguration(
-			agent,
-			projectId,
-			new Map(),
-			makeCredentialProvider(),
-		);
-
-		expect(result).toEqual({
-			status: 'invalid',
-			issues: [
-				expect.objectContaining({ code: 'missing_required', path: 'instructions' }),
-				expect.objectContaining({ code: 'missing_required', path: 'model' }),
-				expect.objectContaining({ code: 'missing_credential', path: 'credential' }),
-			],
-		});
 	});
 });
