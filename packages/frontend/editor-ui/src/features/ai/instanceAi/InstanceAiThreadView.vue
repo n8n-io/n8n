@@ -533,12 +533,14 @@ const composerContextChip = computed(() => {
 });
 
 function reconnectThreadAfterHydration(): void {
+	// Apply preview/credential composer context before hydration so a quick first
+	// submit cannot race past attachment while the composer is already enabled.
+	pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
 		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
-		pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
 		// Replay an opening message handed off from another tab (e.g. credential help
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
 		const pending = consumePendingFirstMessage(props.threadId);

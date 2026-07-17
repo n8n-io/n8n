@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { getThread, patchThread } from '../../storage/thread-patch';
 import type { InstanceAiContext } from '../../types';
 
-const METADATA_KEY = 'instanceAiAgentPreviewSession';
+export const AGENT_PREVIEW_SESSION_METADATA_KEY = 'instanceAiAgentPreviewSession';
 
 const agentPreviewSessionSchema = z.object({
 	agentId: z.string(),
@@ -30,7 +30,7 @@ async function readThreadSession(
 	if (!context.threadMemory || !context.threadId) return undefined;
 
 	const thread = await getThread(context.threadMemory, context.threadId);
-	return parseSession(thread?.metadata?.[METADATA_KEY]);
+	return parseSession(thread?.metadata?.[AGENT_PREVIEW_SESSION_METADATA_KEY]);
 }
 
 /**
@@ -67,7 +67,7 @@ export async function saveAgentPreviewSession(
 	await patchThread(context.threadMemory, {
 		threadId: context.threadId,
 		update: ({ metadata = {} }) => ({
-			metadata: { ...metadata, [METADATA_KEY]: session },
+			metadata: { ...metadata, [AGENT_PREVIEW_SESSION_METADATA_KEY]: session },
 		}),
 	});
 }

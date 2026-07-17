@@ -155,6 +155,7 @@ describe('LogStreamingEventRelay', () => {
 					folders: 1,
 					credentials: 1,
 					dataTables: 1,
+					variables: 1,
 				},
 			};
 

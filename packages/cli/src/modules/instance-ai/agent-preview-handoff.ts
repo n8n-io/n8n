@@ -49,6 +49,12 @@ export async function resolveAgentPreviewHandoff(
 	if (!detail) {
 		throw new UserError('Preview session not found');
 	}
+	if (
+		context.executionId &&
+		!detail.executions.some((execution) => execution.id === context.executionId)
+	) {
+		throw new UserError('Preview session turn not found');
+	}
 
 	const trimmedTitle = detail.thread.title?.trim() ?? '';
 	const titleFallback =
@@ -64,9 +70,9 @@ export async function resolveAgentPreviewHandoff(
 		agentId: context.agentId,
 		threadId: context.threadId,
 		...(context.executionId ? { executionId: context.executionId } : {}),
-		...(context.agentName ? { agentName: context.agentName } : {}),
-		...(context.agentIcon ? { agentIcon: context.agentIcon } : {}),
-		...(context.sessionTitle ? { sessionTitle: context.sessionTitle } : {}),
+		...(context.agentName ? { agentName: escapeAgentPreviewContextDelimiters(context.agentName) } : {}),
+		...(context.agentIcon ? { agentIcon: escapeAgentPreviewContextDelimiters(context.agentIcon) } : {}),
+		...(context.sessionTitle ? { sessionTitle: escapeAgentPreviewContextDelimiters(context.sessionTitle) } : {}),
 	});
 
 	const prose = [

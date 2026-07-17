@@ -473,6 +473,64 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
+	it('applies pending preview context before message hydration finishes', async () => {
+		thread.sseState = 'disconnected';
+		let resolveHydration!: (status: 'skipped') => void;
+		vi.mocked(thread.loadHistoricalMessages).mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveHydration = resolve;
+				}),
+		);
+		localStorageState.store.set(
+			'n8n-instance-ai-handoff-context:thread-1',
+			JSON.stringify({
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			}),
+		);
+		thread.producedArtifacts = new Map([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'SEO Auditor',
+				},
+			],
+		]) as typeof thread.producedArtifacts;
+
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent(
+				'SEO Auditor session',
+			);
+		});
+		expect(thread.loadThreadStatus).not.toHaveBeenCalled();
+		expect(localStorageState.store.has('n8n-instance-ai-handoff-context:thread-1')).toBe(false);
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenCalledWith(
+			'Normal message',
+			undefined,
+			expect.any(String),
+			{
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'preview-thread-1',
+			},
+		);
+
+		resolveHydration('skipped');
+		await vi.waitFor(() => {
+			expect(thread.connectSSE).toHaveBeenCalled();
+		});
+	});
+
 	it('keeps pending preview context after a failed send so retry can reattach it', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');

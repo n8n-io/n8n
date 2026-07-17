@@ -229,7 +229,7 @@ export class AgentKnowledgeSandboxService {
 	 * callers must not have cleanup failures block the parent delete operation.
 	 */
 	async destroySandbox(projectId: string, agentId: string): Promise<void> {
-		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) return;
+		if (!this.isKnowledgeBaseEnabled()) return;
 
 		try {
 			const { Daytona } = loadDaytona();
@@ -885,8 +885,12 @@ export class AgentKnowledgeSandboxService {
 		}
 	}
 
+	private isKnowledgeBaseEnabled(): boolean {
+		return isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled());
+	}
+
 	private assertKnowledgeBaseEnabled(): void {
-		if (isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
+		if (this.isKnowledgeBaseEnabled()) {
 			return;
 		}
 

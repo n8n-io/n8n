@@ -105,8 +105,10 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 
-// Gates the entire knowledge base feature (files panel + fetching) behind the
-// Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
+// Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
+// the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
+// PROVIDER=daytona) OR AI Assistant proxy availability. The Knowledge tab and
+// vector store management are always available regardless of this flag.
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
@@ -200,7 +202,6 @@ const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('ve
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
-	knowledgeBaseEnabled: isKnowledgeBaseEnabled,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 

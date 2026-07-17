@@ -82,6 +82,24 @@ describe('scheduled repositories', () => {
 		);
 	}
 
+	/** A minimal interval job row; bookkeeping columns take their defaults. */
+	const newJobRow = (name: string, overrides: Partial<NewScheduledJob> = {}): NewScheduledJob => ({
+		name,
+		workflowId: null,
+		nodeId: null,
+		taskType: 'scheduleTrigger',
+		payload: {},
+		kind: 'interval',
+		cronExpression: null,
+		timezone: null,
+		recurrenceUnit: null,
+		recurrenceSize: null,
+		intervalSeconds: 60,
+		fireAt: null,
+		nextRunAt: secondsFromNow(-60),
+		...overrides,
+	});
+
 	/** Insert a task in a given lifecycle state; `scheduledFor` is made unique per row. */
 	let taskSequence = 0;
 	async function createTask(
@@ -366,30 +384,61 @@ describe('scheduled repositories', () => {
 				expect(reloaded.nextRunAt!.getTime()).toBe(nextRunAt.getTime());
 			}
 		});
+
+		it('advances a batch larger than the default chunk without overflowing', async () => {
+			// insertMany seeds the rows in bulk; the default advanceMany chunk on sqlite is 200,
+			// so 600 advances span multiple chunks. Built as one statement, the CASE would overflow
+			// SQLite's expression-depth cap, so this guards the dialect-aware chunk default.
+			const ids = await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.insertMany(
+						trx,
+						Array.from({ length: 600 }, (_, i) => newJobRow(`wf:node:${i}`)),
+					),
+			);
+			const nextRunAt = secondsFromNow(3600);
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.advanceMany(
+						trx,
+						ids.map((id) => ({ id, nextRunAt, lastFiredAt: null })),
+					),
+			);
+
+			const reloaded = await jobRepository.findBy({ id: In(ids) });
+			expect(reloaded).toHaveLength(600);
+			expect(reloaded.every((row) => row.nextRunAt?.getTime() === nextRunAt.getTime())).toBe(true);
+		});
+
+		it('clamps an oversized chunk size to the dialect maximum', async () => {
+			const ids = await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.insertMany(
+						trx,
+						Array.from({ length: 600 }, (_, i) => newJobRow(`wf:node:${i}`)),
+					),
+			);
+			const nextRunAt = secondsFromNow(3600);
+
+			// A chunk far past the driver's limit must be clamped, not run as one statement: on
+			// sqlite an unclamped 600-branch CASE would overflow the expression-depth cap.
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.advanceMany(
+						trx,
+						ids.map((id) => ({ id, nextRunAt, lastFiredAt: null })),
+						10_000_000,
+					),
+			);
+
+			const reloaded = await jobRepository.findBy({ id: In(ids) });
+			expect(reloaded).toHaveLength(600);
+			expect(reloaded.every((row) => row.nextRunAt?.getTime() === nextRunAt.getTime())).toBe(true);
+		});
 	});
 
 	describe('ScheduledJobRepository.insertMany', () => {
-		/** A minimal interval job row for insertMany; bookkeeping columns take their defaults. */
-		const newJobRow = (
-			name: string,
-			overrides: Partial<NewScheduledJob> = {},
-		): NewScheduledJob => ({
-			name,
-			workflowId: null,
-			nodeId: null,
-			taskType: 'scheduleTrigger',
-			payload: {},
-			kind: 'interval',
-			cronExpression: null,
-			timezone: null,
-			recurrenceUnit: null,
-			recurrenceSize: null,
-			intervalSeconds: 60,
-			fireAt: null,
-			nextRunAt: secondsFromNow(-60),
-			...overrides,
-		});
-
 		it('inserts new rows and returns one id per input job, in input order', async () => {
 			const jobs = [newJobRow('wf:node:0'), newJobRow('wf:node:1')];
 
@@ -477,6 +526,27 @@ describe('scheduled repositories', () => {
 			).rejects.toThrow('insertMany must run within a transaction');
 
 			expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(0);
+		});
+
+		it('inserts and reads back a batch larger than both chunk sizes', async () => {
+			// 1500 jobs spans two insert chunks (1000) and, on sqlite, three read-back chunks
+			// (500). A single read-back `name IN (...)` this long would overflow SQLite's
+			// expression-depth cap, so this guards the chunked read-back.
+			const jobs = Array.from({ length: 1500 }, (_, i) => newJobRow(`wf:node:${i}`));
+
+			const ids = await dataSource.transaction(
+				async (trx) => await jobRepository.insertMany(trx, jobs),
+			);
+
+			expect(ids).toHaveLength(1500);
+			// Every job got a distinct id back: no name was dropped or duplicated by the chunking.
+			expect(new Set(ids).size).toBe(1500);
+			expect(await jobRepository.count()).toBe(1500);
+			// Spot-check that ids come back in input order: index i belongs to that job's name.
+			for (const i of [0, 750, 1499]) {
+				const stored = await jobRepository.findOneByOrFail({ name: `wf:node:${i}` });
+				expect(ids[i]).toBe(stored.id);
+			}
 		});
 	});
 

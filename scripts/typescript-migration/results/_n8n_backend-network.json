@@ -5,27 +5,27 @@
       "label": "before",
       "tsVersion": "6.0.2",
       "node": "v24.13.0",
-      "timestamp": "2026-07-14T08:17:32.701Z",
+      "timestamp": "2026-07-16T10:06:30.845Z",
       "tasks": {
         "typecheck": {
           "runsMs": [
-            1598,
-            1524,
-            1514
+            1779,
+            1577,
+            1639
           ],
-          "min": 1514,
-          "median": 1524,
-          "mean": 1545
+          "min": 1577,
+          "median": 1639,
+          "mean": 1665
         },
         "build": {
           "runsMs": [
-            1302,
-            1262,
-            1277
+            1387,
+            1445,
+            1376
           ],
-          "min": 1262,
-          "median": 1277,
-          "mean": 1281
+          "min": 1376,
+          "median": 1387,
+          "mean": 1403
         }
       }
     },
@@ -33,27 +33,27 @@
       "label": "after",
       "tsVersion": "7.0.2",
       "node": "v24.13.0",
-      "timestamp": "2026-07-14T08:42:01.850Z",
+      "timestamp": "2026-07-16T10:08:15.231Z",
       "tasks": {
         "typecheck": {
           "runsMs": [
-            656,
+            688,
             625,
             659
           ],
           "min": 625,
-          "median": 656,
-          "mean": 646
+          "median": 659,
+          "mean": 657
         },
         "build": {
           "runsMs": [
-            582,
-            576,
-            575
+            611,
+            616,
+            605
           ],
-          "min": 575,
-          "median": 576,
-          "mean": 578
+          "min": 605,
+          "median": 611,
+          "mean": 611
         }
       }
     }

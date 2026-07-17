@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import * as clear from './actions/worksheet/clear.operation';
+import * as deleteWorksheet from './actions/worksheet/deleteWorksheet.operation';
 import * as readRows from './actions/worksheet/readRows.operation';
 import { listSearch } from './methods';
 
@@ -95,6 +97,18 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				},
 				options: [
 					{
+						name: 'Clear',
+						value: 'clear',
+						description: 'Clear sheet',
+						action: 'Clear sheet',
+					},
+					{
+						name: 'Delete',
+						value: 'deleteWorksheet',
+						description: 'Delete sheet',
+						action: 'Delete sheet',
+					},
+					{
 						name: 'Get Rows',
 						value: 'readRows',
 						description: 'Read rows from a range or the used range of a sheet',
@@ -104,6 +118,8 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				default: 'readRows',
 			},
 
+			...clear.description,
+			...deleteWorksheet.description,
 			...readRows.description,
 		],
 	};
@@ -119,6 +135,14 @@ export class MicrosoftExcelSharePoint implements INodeType {
 
 		if (resource === 'worksheet' && operation === 'readRows') {
 			return [await readRows.execute.call(this, items)];
+		}
+
+		if (resource === 'worksheet' && operation === 'clear') {
+			return [await clear.execute.call(this, items)];
+		}
+
+		if (resource === 'worksheet' && operation === 'deleteWorksheet') {
+			return [await deleteWorksheet.execute.call(this, items)];
 		}
 
 		throw new NodeOperationError(

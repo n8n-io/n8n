@@ -74,7 +74,6 @@ import {
 	orchestratorAgentId,
 	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
-	saveAgentPreviewSession,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -2314,10 +2313,15 @@ export class InstanceAiService {
 	 */
 	private async bindAgentPreviewSession(
 		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+		user: User,
 	): Promise<void> {
 		await resolveAgentPreviewSession(context);
 		const projectId = context.projectId;
 		if (!context.agentPreviewSession || !projectId) return;
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
+			context.agentPreviewSession = undefined;
+			return;
+		}
 
 		context.resolvePreviewSession = async (ref) => {
 			const service = this.getAgentExecutionService();
@@ -3327,15 +3331,14 @@ export class InstanceAiService {
 				agentPreviewTitleFallback = resolved.titleFallback;
 
 				context.agentBuilderTarget = resolved.target;
-				await saveAgentBuilderTarget(context, resolved.target);
-
 				context.agentPreviewSession = {
 					agentId: handoffContext.agentId,
 					threadId: handoffContext.threadId,
 					...(handoffContext.executionId ? { executionId: handoffContext.executionId } : {}),
 				};
-				// Persist so follow-up turns (no handoffContext) can still register get-session.
-				await saveAgentPreviewSession(context, context.agentPreviewSession);
+				await saveAgentBuilderTarget(context, resolved.target, {
+					previewSession: context.agentPreviewSession,
+				});
 			} else {
 				handoffContextBlock = buildHandoffContextBlock(handoffContext);
 			}
@@ -4243,7 +4246,7 @@ export class InstanceAiService {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
-		await this.bindAgentPreviewSession(environment.context);
+		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,
 			threadId,
@@ -4402,9 +4405,13 @@ export class InstanceAiService {
 		}
 	}
 
-	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {
+	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
 		const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
-		if (!(await userHasScopes(user, requiredScopes, false, { projectId }))) {
+		return await userHasScopes(user, requiredScopes, false, { projectId });
+	}
+
+	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
 			throw new ForbiddenError(
 				'You do not have permission to load or edit agent previews in this project.',
 			);
