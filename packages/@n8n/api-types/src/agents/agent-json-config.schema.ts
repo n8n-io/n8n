@@ -232,7 +232,7 @@ export const McpServerConfigSchema = z
 				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
 			),
 		description: z.string().max(512).optional().describe('Human-readable server description'),
-		url: z.string().min(1).describe('MCP server endpoint URL'),
+		url: z.string().describe('MCP server endpoint URL. Empty string means setup is incomplete'),
 		transport: z
 			.enum(['sse', 'streamableHttp'])
 			.default('streamableHttp')
