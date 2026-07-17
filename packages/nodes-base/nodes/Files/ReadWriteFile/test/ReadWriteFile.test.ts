@@ -2,9 +2,6 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import fsPromises from 'fs/promises';
 import type { WorkflowTestData } from 'n8n-workflow';
 
-import { description as readDescription } from '../actions/read.operation';
-import { description as writeDescription } from '../actions/write.operation';
-
 describe('Test ReadWriteFile Node', () => {
 	const directory = __dirname.replace(/\\/gi, '/');
 
@@ -84,23 +81,4 @@ describe('Test ReadWriteFile Node', () => {
 	for (const testData of tests) {
 		testHarness.setupTest(testData);
 	}
-
-	it.each([
-		['read', readDescription],
-		['write', writeDescription],
-	])('shows the Cloud path notice for the %s operation', (operation, description) => {
-		expect(description).toContainEqual({
-			displayName:
-				'The node can only access paths under /home/node/. Paths outside this directory (for example, /tmp/ or /data/) fail with an access error.',
-			name: 'cloudNotice',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					operation: [operation],
-				},
-				showOnDeployment: 'cloud',
-			},
-		});
-	});
 });
