@@ -687,7 +687,7 @@ describe('useWorkflowSaving', () => {
 					},
 				},
 				// The sticky member is not connected to the rest of the group, which
-				// this version's grouping rules reject
+				// this version's (<2.32) grouping rules reject
 				nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'sticky'] }],
 			});
 
