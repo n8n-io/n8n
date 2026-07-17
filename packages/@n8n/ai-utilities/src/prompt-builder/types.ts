@@ -8,7 +8,8 @@ export type SectionFormat = 'xml' | 'markdown' | 'plain';
 
 /**
  * Content can be a string or a factory function for lazy evaluation.
- * Factory functions are only called during build() and can return null/undefined
+ * Factory functions are evaluated whenever content is rendered by `build()`,
+ * `buildAsMessageBlocks()`, or `estimateTokens()`, and can return null/undefined
  * to skip the section.
  */
 export type ContentOrFactory = string | (() => string | null | undefined);
