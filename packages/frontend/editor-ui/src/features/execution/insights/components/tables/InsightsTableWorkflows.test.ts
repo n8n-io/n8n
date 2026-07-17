@@ -71,7 +71,7 @@ const mockInsightsData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-1',
 			workflowName: 'Test Workflow 1',
-			hasAccess: true,
+			hasReadAccess: true,
 			total: 100,
 			failed: 5,
 			failureRate: 0.05,
@@ -85,7 +85,7 @@ const mockInsightsData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-2',
 			workflowName: 'Test Workflow 2 With Very Long Name That Should Be Truncated',
-			hasAccess: true,
+			hasReadAccess: true,
 			total: 50,
 			failed: 0,
 			failureRate: 0,
@@ -213,7 +213,7 @@ describe('InsightsTableWorkflows', () => {
 			it('should render workflow name as static text without a link when the user has no access', () => {
 				const noAccessData: InsightsByWorkflow = {
 					count: 1,
-					data: [{ ...mockInsightsData.data[0], hasAccess: false }],
+					data: [{ ...mockInsightsData.data[0], hasReadAccess: false }],
 				};
 
 				renderComponent({
@@ -230,7 +230,7 @@ describe('InsightsTableWorkflows', () => {
 				const user = userEvent.setup();
 				const noAccessData: InsightsByWorkflow = {
 					count: 1,
-					data: [{ ...mockInsightsData.data[0], hasAccess: false }],
+					data: [{ ...mockInsightsData.data[0], hasReadAccess: false }],
 				};
 
 				renderComponent({

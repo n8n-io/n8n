@@ -400,7 +400,7 @@ describe('InsightsController', () => {
 
 			expect(response).toEqual({
 				count: 3,
-				data: mockRows.map((row) => ({ ...row, hasAccess: true })),
+				data: mockRows.map((row) => ({ ...row, hasReadAccess: true })),
 			});
 		});
 
@@ -436,7 +436,7 @@ describe('InsightsController', () => {
 
 				expect(response).toEqual({
 					count: 3,
-					data: mockRows.map((row) => ({ ...row, hasAccess: true })),
+					data: mockRows.map((row) => ({ ...row, hasReadAccess: true })),
 				});
 			});
 
@@ -470,7 +470,7 @@ describe('InsightsController', () => {
 
 				expect(response).toEqual({
 					count: 3,
-					data: mockRows.map((row) => ({ ...row, hasAccess: true })),
+					data: mockRows.map((row) => ({ ...row, hasReadAccess: true })),
 				});
 			});
 

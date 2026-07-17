@@ -825,7 +825,7 @@ describe('InsightsService', () => {
 		const makeUser = (scopes: string[]) =>
 			({ role: { scopes: scopes.map((slug) => ({ slug })) } }) as unknown as User;
 
-		it('sets hasAccess only for workflows in the shared set for non-admins', async () => {
+		it('sets hasReadAccess only for workflows in the shared set for non-admins', async () => {
 			const user = makeUser([]);
 			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
 				count: 2,
@@ -839,11 +839,13 @@ describe('InsightsService', () => {
 				scopes: ['workflow:read'],
 				projectId: undefined,
 			});
-			expect(result.data.find((r) => r.workflowId === 'wf-accessible')?.hasAccess).toBe(true);
-			expect(result.data.find((r) => r.workflowId === 'wf-inaccessible')?.hasAccess).toBe(false);
+			expect(result.data.find((r) => r.workflowId === 'wf-accessible')?.hasReadAccess).toBe(true);
+			expect(result.data.find((r) => r.workflowId === 'wf-inaccessible')?.hasReadAccess).toBe(
+				false,
+			);
 		});
 
-		it('sets hasAccess true for all rows and skips the sharing query for admins', async () => {
+		it('sets hasReadAccess true for all rows and skips the sharing query for admins', async () => {
 			const user = makeUser(['workflow:read']);
 			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
 				count: 2,
@@ -853,10 +855,10 @@ describe('InsightsService', () => {
 			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
 
 			expect(mockWorkflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
-			expect(result.data.every((r) => r.hasAccess)).toBe(true);
+			expect(result.data.every((r) => r.hasReadAccess)).toBe(true);
 		});
 
-		it('sets hasAccess false for rows with a null workflowId (deleted workflow)', async () => {
+		it('sets hasReadAccess false for rows with a null workflowId (deleted workflow)', async () => {
 			const user = makeUser([]);
 			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
 				count: 1,
@@ -866,7 +868,7 @@ describe('InsightsService', () => {
 
 			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
 
-			expect(result.data[0].hasAccess).toBe(false);
+			expect(result.data[0].hasReadAccess).toBe(false);
 		});
 	});
 });
