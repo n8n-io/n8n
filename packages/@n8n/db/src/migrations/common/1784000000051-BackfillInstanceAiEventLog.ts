@@ -113,8 +113,9 @@ export interface SynthesizedRow {
 }
 
 // ---------------------------------------------------------------------------
-// Pure synthesis helpers (exported for the round-trip tests, which validate
-// the output against the real event schema and shared reducer).
+// Pure synthesis helpers (exported for the Gate B safety re-run and for
+// offline dry-run tooling that validates the output against the real event
+// schema and shared reducer).
 // ---------------------------------------------------------------------------
 
 function isNonEmptyString(value: unknown): value is string {
