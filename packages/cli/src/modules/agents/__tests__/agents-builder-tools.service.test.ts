@@ -451,13 +451,7 @@ describe('AgentsBuilderToolsService', () => {
 					integrations: [currentIntegrations[0], currentIntegrations[2]],
 				}),
 			);
-			expect(result).toEqual({
-				ok: true,
-				config: normalizedConfig,
-				configHash: getAgentConfigHash(normalizedConfig),
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
+			expect(result).toEqual({ ok: true });
 		});
 
 		it('patch_config strips legacy schedule integrations from the current snapshot', async () => {
