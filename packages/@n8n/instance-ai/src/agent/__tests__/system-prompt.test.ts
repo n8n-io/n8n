@@ -254,7 +254,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('find its id via `agents(action="list")` and pass it as `agentId`');
 			expect(prompt).toContain('forward that intent to `build-agent`');
 			expect(prompt).toContain('never tell the user to open the agent editor and click Publish');
-			expect(prompt).toContain('publishes, and unpublishes n8n **Agent** artifacts');
+			expect(prompt).toContain('`publish_agent` / `unpublish_agent`');
 		});
 
 		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
