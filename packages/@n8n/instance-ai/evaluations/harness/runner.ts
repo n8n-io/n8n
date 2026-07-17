@@ -657,6 +657,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let credentialViewPinned = true;
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
+	// Ids the build itself produced (the agent's workflow + any data tables it
+	// made). Tracked here so a throw AFTER the build lands — scenario-table
+	// seeding, workflow checks — still hands them to the caller's cleanup rather
+	// than leaking them into the shared eval project.
+	let builtWorkflowIds: string[] = [];
+	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
 
@@ -843,6 +849,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			config.claimedWorkflowIds,
 			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true, logger },
 		);
+		builtWorkflowIds = outcome.workflowsCreated.map((wf) => wf.id);
+		builtDataTableIds = outcome.dataTablesCreated;
 
 		if (outcome.workflowsCreated.length === 0) {
 			// Answer-only cases (no execution scenarios, no outcome expectations)
@@ -938,8 +946,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 			workflowJsons: [],
-			createdWorkflowIds: restoredWorkflowIds,
-			createdDataTableIds: restoredDataTableIds,
+			createdWorkflowIds: [...restoredWorkflowIds, ...builtWorkflowIds],
+			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			conversationMetrics,
 			events,
 			threadId,

@@ -62,6 +62,20 @@ describe('executionScenarios[].seedDataTables', () => {
 		expect(result.data.executionScenarios?.[0].seedDataTables).toBeUndefined();
 	});
 
+	it('rejects a too-short table id at load time (restore needs >=8 chars to remap)', () => {
+		const result = EvalTestCaseSchema.safeParse(
+			caseWith([
+				{
+					id: 'short',
+					name: 'Job Applications',
+					columns: [{ name: 'id', type: 'string' as const }],
+				},
+			]),
+		);
+
+		expect(result.success).toBe(false);
+	});
+
 	it('rejects an unknown column type', () => {
 		const result = EvalTestCaseSchema.safeParse(
 			caseWith([

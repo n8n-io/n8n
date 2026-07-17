@@ -1600,7 +1600,11 @@ export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkfl
  *  explicitly `string`-typed column instead of being rejected by free-text
  *  `dataSetup` landing it in a `number` column. */
 export const instanceAiEvalSeedDataTableSchema = z.object({
-	id: z.string().min(1).max(64),
+	// ≥8 chars: restore remaps this id by whole-document string replace, and a
+	// short id would risk corrupting unrelated substrings — so the restore path
+	// refuses shorter ids. Enforcing it here fails a bad fixture at load time
+	// instead of after a workflow has already been built.
+	id: z.string().min(8).max(64),
 	name: z.string().min(1).max(128),
 	columns: z
 		.array(
