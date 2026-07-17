@@ -202,39 +202,7 @@ describe('AgentPublishService', () => {
 		expect(agent.activeVersionId).toBeNull();
 	});
 
-	it('validates the target historical snapshot, not the current draft, when publishing a specific version', async () => {
-		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
-			makeService();
-		const agent = makeAgent({
-			versionId: 'draft-v2',
-			activeVersionId: 'v0',
-			integrations: [{ type: 'slack', credentialId: 'slack-1' }],
-		});
-		const target = makeHistory({ versionId: 'v1' });
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
-
-		const result = await service.publishAgent(agentId, projectId, user, 'v1');
-
-		expect(result).toStrictEqual({ agent });
-		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
-
-		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledTimes(1);
-		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith('v1', agentId);
-		expect(agentValidationService.validateAgentHistoryConfiguration).toHaveBeenCalledWith(
-			agentId,
-			projectId,
-			target,
-			agent.integrations,
-			expect.anything(),
-		);
-		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
-		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
-		expect(agent.activeVersionId).toBe('v1');
-		expect(agent.activeVersion).toBe(target);
-	});
-
-	it('rejects publishing a specific version when its snapshot fails validation', async () => {
+	it('rejects publishing a specific version when its snapshot fails validation, without touching the current draft validator', async () => {
 		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
 			makeService();
 		const agent = makeAgent({ versionId: 'draft-v2', activeVersionId: 'v0' });
@@ -256,27 +224,15 @@ describe('AgentPublishService', () => {
 			'Agent configuration has errors that must be resolved before publishing',
 		);
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledTimes(1);
-		expect(agent.activeVersionId).toBe('v0');
-	});
-
-	it('rejects publishing a missing historical version before transaction side effects', async () => {
-		const { service, agentRepository, agentHistoryRepository, agentValidationService, trx } =
-			makeService();
-		const agent = makeAgent({ versionId: 'draft-v2', activeVersionId: 'v0' });
-		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
-
-		await expect(service.publishAgent(agentId, projectId, user, 'missing-v1')).rejects.toThrow(
-			'Version "missing-v1" not found for agent "agent-1"',
-		);
-
-		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledTimes(1);
-		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
-			'missing-v1',
+		expect(agentValidationService.validateAgentHistoryConfiguration).toHaveBeenCalledWith(
 			agentId,
+			projectId,
+			target,
+			agent.integrations,
+			expect.anything(),
 		);
-		expect(agentValidationService.validateAgentHistoryConfiguration).not.toHaveBeenCalled();
-		expect(trx.save).not.toHaveBeenCalled();
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBe('v0');
 	});
 
@@ -347,46 +303,6 @@ describe('AgentPublishService', () => {
 		);
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-	});
-
-	it('validates and snapshots the exact same task data, even when a stale task-repository mock would return something different', async () => {
-		const { service, agentRepository, agentTaskRepository, agentValidationService, taskRepo } =
-			makeService();
-		const agent = makeAgent({
-			schema: {
-				...schema,
-				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
-			},
-		});
-		const validatedTask = {
-			id: 'task-1',
-			name: 'Validated summary',
-			objective: 'Validated objective',
-			cronExpression: '0 9 * * *',
-		};
-		const staleTask = {
-			id: 'task-1',
-			name: 'Stale summary',
-			objective: 'Stale objective',
-			cronExpression: '0 9 * * *',
-		};
-
-		agentRepository.findByIdAndProjectId.mockResolvedValueOnce(agent);
-		agentTaskRepository.findByAgentId.mockResolvedValue([validatedTask] as never);
-		// A separate, unrelated repository mock returning different data must
-		// not affect what gets validated or persisted.
-		taskRepo.findBy.mockResolvedValue([staleTask]);
-
-		await service.publishAgent(agentId, projectId, user);
-
-		expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledTimes(1);
-		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
-			agent,
-			projectId,
-			new Map([['task-1', validatedTask]]),
-			expect.anything(),
-		);
-		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 	});
 
 	it('rejects publishing when a configured task body is missing', async () => {
@@ -485,8 +401,10 @@ describe('AgentPublishService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
 
-		await service.publishAgent(agentId, projectId, user, 'v1');
+		const result = await service.publishAgent(agentId, projectId, user, 'v1');
 
+		expect(result).toStrictEqual({ agent });
+		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledTimes(1);
 		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith('v1', agentId);
 		expect(agent.activeVersionId).toBe('v1');

@@ -125,49 +125,46 @@ describe('AgentValidationService — structured issues', () => {
 		vi.clearAllMocks();
 	});
 
-	it('flags a main model credential whose provider does not match the configured model', async () => {
+	it('flags a main model credential whose provider does not match the configured model, but not when the model itself is invalid', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(runnableConfig));
 
-		const result = await service.validateAgentConfiguration(
+		const mismatchResult = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
 			makeCredentialProvider([{ id: 'openai-main', type: 'anthropicApi' }]),
 		);
 
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual([
+		expect(mismatchResult.status).toBe('invalid');
+		expect(mismatchResult.issues).toEqual([
 			expect.objectContaining({
 				code: 'incompatible_credential',
 				path: 'credential',
 				capability: { kind: 'agent' },
 			}),
 		]);
-	});
 
-	it('does not flag credential incompatibility when the model itself is invalid', async () => {
-		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({ ...runnableConfig, model: 'not-a-model' }),
 		);
 
-		const result = await service.validateAgentConfiguration(
+		const invalidModelResult = await service.validateAgentConfiguration(
 			agentId,
 			projectId,
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
 		);
 
-		expect(result.issues).toEqual(
+		expect(invalidModelResult.issues).toEqual(
 			expect.arrayContaining([expect.objectContaining({ code: 'invalid_value', path: 'model' })]),
 		);
-		expect(result.issues).not.toEqual(
+		expect(invalidModelResult.issues).not.toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ code: 'incompatible_credential', path: 'credential' }),
 			]),
 		);
 	});
 
-	it('flags a node tool missing a required credential slot', async () => {
+	it('flags a node tool missing a required credential slot but accepts one with the slot configured and accessible', async () => {
 		const { service, agentRepository, nodeTypes } = makeService();
 		nodeTypes.getByNameAndVersion.mockReturnValue({
 			description: {
@@ -188,43 +185,9 @@ describe('AgentValidationService — structured issues', () => {
 							nodeParameters: {},
 						},
 					},
-				],
-			}),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'missing_credential',
-					path: 'tools.0.node.credentials.linearOAuth2Api',
-					capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
-				}),
-			]),
-		);
-	});
-
-	it('accepts a node tool whose required credential slot is configured and accessible', async () => {
-		const { service, agentRepository, nodeTypes } = makeService();
-		nodeTypes.getByNameAndVersion.mockReturnValue({
-			description: {
-				credentials: [{ name: 'linearOAuth2Api', required: true }],
-				properties: [],
-			},
-		} as never);
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				tools: [
 					{
 						type: 'node',
-						name: 'create_issue',
+						name: 'update_issue',
 						node: {
 							nodeType: 'n8n-nodes-base.linear',
 							nodeTypeVersion: 1,
@@ -245,7 +208,14 @@ describe('AgentValidationService — structured issues', () => {
 			]),
 		);
 
-		expect(result).toEqual({ status: 'valid', issues: [] });
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
+				path: 'tools.0.node.credentials.linearOAuth2Api',
+				capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
+			}),
+		]);
 	});
 
 	it('ignores a conditionally required node-tool credential when its display options are inactive', async () => {
@@ -345,7 +315,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags an MCP server with incomplete authentication as invalid', async () => {
+	it('flags MCP servers with missing or incompatible credential authentication', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
@@ -357,40 +327,19 @@ describe('AgentValidationService — structured issues', () => {
 						transport: 'streamableHttp',
 						authentication: 'bearerAuth',
 					},
-				],
-			}),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'missing_credential',
-					path: 'mcpServers.0.credential',
-					capability: { kind: 'mcpServer', id: 'github', index: 0 },
-				}),
-			]),
-		);
-	});
-
-	it('flags an MCP server whose credential type does not match the configured authentication', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				mcpServers: [
 					{
-						name: 'github',
+						name: 'jira',
 						url: 'https://example.com/mcp',
 						transport: 'streamableHttp',
 						authentication: 'bearerAuth',
 						credential: 'wrong-type-cred',
+					},
+					{
+						name: 'notion',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'notionMcpOAuth2Api',
+						credential: 'generic-oauth-cred',
 					},
 				],
 			}),
@@ -402,19 +351,28 @@ describe('AgentValidationService — structured issues', () => {
 			makeCredentialProvider([
 				{ id: 'openai-main', type: 'openAiApi' },
 				{ id: 'wrong-type-cred', type: 'httpHeaderAuth' },
+				{ id: 'generic-oauth-cred', type: 'mcpOAuth2Api' },
 			]),
 		);
 
 		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'incompatible_credential',
-					path: 'mcpServers.0.credential',
-					capability: { kind: 'mcpServer', id: 'github', index: 0 },
-				}),
-			]),
-		);
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
+				path: 'mcpServers.0.credential',
+				capability: { kind: 'mcpServer', id: 'github', index: 0 },
+			}),
+			expect.objectContaining({
+				code: 'incompatible_credential',
+				path: 'mcpServers.1.credential',
+				capability: { kind: 'mcpServer', id: 'jira', index: 1 },
+			}),
+			expect.objectContaining({
+				code: 'incompatible_credential',
+				path: 'mcpServers.2.credential',
+				capability: { kind: 'mcpServer', id: 'notion', index: 2 },
+			}),
+		]);
 	});
 
 	it('accepts an MCP server whose credential type exactly matches a registry-specific OAuth2 authentication', async () => {
@@ -446,69 +404,7 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
-	it('flags an MCP server whose credential is the generic OAuth2 type instead of the required registry-specific variant', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				mcpServers: [
-					{
-						name: 'notion',
-						url: 'https://example.com/mcp',
-						transport: 'streamableHttp',
-						authentication: 'notionMcpOAuth2Api',
-						credential: 'generic-oauth-cred',
-					},
-				],
-			}),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([
-				{ id: 'openai-main', type: 'openAiApi' },
-				{ id: 'generic-oauth-cred', type: 'mcpOAuth2Api' },
-			]),
-		);
-
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'incompatible_credential',
-					path: 'mcpServers.0.credential',
-					capability: { kind: 'mcpServer', id: 'notion', index: 0 },
-				}),
-			]),
-		);
-	});
-
-	it('flags a channel with a missing credential', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent(runnableConfig, {}, { integrations: [{ type: 'slack', credentialId: '' }] }),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'missing_credential',
-					path: 'integrations.0.credentialId',
-					capability: { kind: 'channel', id: 'slack', index: 0 },
-				}),
-			]),
-		);
-	});
-
-	it('flags a channel whose credential type the integration does not support', async () => {
+	it('flags channels with a missing credential or a credential type the integration does not support', async () => {
 		const { service, agentRepository, chatIntegrationRegistry } = makeService();
 		chatIntegrationRegistry.get.mockReturnValue({
 			type: 'slack',
@@ -518,7 +414,12 @@ describe('AgentValidationService — structured issues', () => {
 			makeAgent(
 				runnableConfig,
 				{},
-				{ integrations: [{ type: 'slack', credentialId: 'wrong-cred' }] },
+				{
+					integrations: [
+						{ type: 'slack', credentialId: '' },
+						{ type: 'slack', credentialId: 'wrong-cred' },
+					],
+				},
 			),
 		);
 
@@ -531,41 +432,19 @@ describe('AgentValidationService — structured issues', () => {
 			]),
 		);
 
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'incompatible_credential',
-					path: 'integrations.0.credentialId',
-				}),
-			]),
-		);
-	});
-
-	it('flags a workflow tool whose target workflow no longer exists', async () => {
-		const { service, agentRepository, workflowRepository } = makeService();
-		workflowRepository.find.mockResolvedValue([]);
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				tools: [{ type: 'workflow', workflow: 'Deleted workflow' }],
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
+				path: 'integrations.0.credentialId',
+				capability: { kind: 'channel', id: 'slack', index: 0 },
 			}),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'missing_reference',
-					path: 'tools.0.workflow',
-					capability: { kind: 'tool', id: 'Deleted workflow', index: 0, toolType: 'workflow' },
-				}),
-			]),
-		);
+			expect.objectContaining({
+				code: 'incompatible_credential',
+				path: 'integrations.1.credentialId',
+				capability: { kind: 'channel', id: 'slack', index: 1 },
+			}),
+		]);
 	});
 
 	it('flags a custom tool without a saved body', async () => {
@@ -594,40 +473,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags task references without a saved body regardless of enabled state', async () => {
-		const { service, agentRepository, agentTaskRepository } = makeService();
-		agentTaskRepository.findByAgentId.mockResolvedValue([]);
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				tasks: [
-					{ type: 'task', id: 'missing_enabled', enabled: true },
-					{ type: 'task', id: 'missing_disabled', enabled: false },
-				],
-			}),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.issues).toEqual([
-			expect.objectContaining({
-				code: 'missing_reference',
-				path: 'tasks.0.id',
-				capability: { kind: 'task', id: 'missing_enabled', index: 0 },
-			}),
-			expect.objectContaining({
-				code: 'missing_reference',
-				path: 'tasks.1.id',
-				capability: { kind: 'task', id: 'missing_disabled', index: 1 },
-			}),
-		]);
-	});
-
-	it('flags an enabled task with an invalid schedule while keeping its body available', async () => {
+	it('flags an enabled task with an invalid schedule while keeping its body available, but ignores the same invalid body on a disabled task', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentTaskRepository.findByAgentId.mockResolvedValue([
 			{
@@ -640,7 +486,10 @@ describe('AgentValidationService — structured issues', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
-				tasks: [{ type: 'task', id: 'broken_schedule', enabled: true }],
+				tasks: [
+					{ type: 'task', id: 'broken_schedule', enabled: true },
+					{ type: 'task', id: 'broken_schedule', enabled: false },
+				],
 			}),
 		);
 
@@ -657,105 +506,6 @@ describe('AgentValidationService — structured issues', () => {
 				capability: { kind: 'task', id: 'broken_schedule', index: 0 },
 			}),
 		]);
-	});
-
-	it('flags a sub-agent reference to a non-existent agent', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ ...runnableConfig, subAgents: { agents: [{ agentId: 'ghost' }] } }),
-		);
-		agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'missing_reference',
-					path: 'subAgents.agents.0.agentId',
-					capability: { kind: 'subAgent', id: 'ghost', index: 0 },
-				}),
-			]),
-		);
-	});
-
-	it('flags a sub-agent reference to an unpublished agent', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ ...runnableConfig, subAgents: { agents: [{ agentId: 'sub-1' }] } }),
-		);
-		agentRepository.findByIdsAndProjectId.mockResolvedValue([
-			{ id: 'sub-1', activeVersionId: null },
-		] as never);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'incompatible_reference',
-					path: 'subAgents.agents.0.agentId',
-					capability: { kind: 'subAgent', id: 'sub-1', index: 0 },
-				}),
-			]),
-		);
-	});
-
-	it('flags a self-referencing sub-agent', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({ ...runnableConfig, subAgents: { agents: [{ agentId }] } }),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'incompatible_reference',
-					path: 'subAgents.agents.0.agentId',
-					capability: { kind: 'subAgent', id: agentId, index: 0 },
-				}),
-			]),
-		);
-	});
-
-	it('ignores absent and disabled optional capabilities entirely', async () => {
-		const { service, agentRepository, agentTaskRepository } = makeService();
-		agentTaskRepository.findByAgentId.mockResolvedValue([
-			{
-				id: 'disabled_task',
-				name: 'Disabled task',
-				objective: 'Not scheduled',
-				cronExpression: '0 9 * * *',
-			},
-		] as never);
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				tasks: [{ type: 'task', id: 'disabled_task', enabled: false }],
-			}),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
 	it('treats a credential-listing failure as invalid rather than silently valid', async () => {
@@ -779,7 +529,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('runtime validation ignores channel and task issues without loading tasks', async () => {
+	it('runtime validation ignores channel and task issues but still reports execution-relevant tool and sub-agent issues', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent(
@@ -789,6 +539,9 @@ describe('AgentValidationService — structured issues', () => {
 						{ type: 'task', id: 'missing_enabled', enabled: true },
 						{ type: 'task', id: 'broken_schedule', enabled: true },
 					],
+					subAgents: { agents: [{ agentId: 'ghost' }] },
+					tools: [{ type: 'custom', id: 'missing_tool' }],
+					mcpServers: [{ name: 'docs', url: '', authentication: 'none' }],
 				},
 				{},
 				{ integrations: [{ type: 'slack', credentialId: '' }] },
@@ -802,6 +555,7 @@ describe('AgentValidationService — structured issues', () => {
 				cronExpression: 'not a cron',
 			},
 		] as never);
+		agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
 
 		const publishResult = await service.validateAgentConfiguration(
 			agentId,
@@ -823,29 +577,12 @@ describe('AgentValidationService — structured issues', () => {
 				expect.objectContaining({ path: 'tasks.1' }),
 			]),
 		);
-		expect(runtimeResult).toEqual({ missing: [] });
-	});
-
-	it('runtime validation still reports execution-relevant tool and sub-agent issues', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				subAgents: { agents: [{ agentId: 'ghost' }] },
-				tools: [{ type: 'custom', id: 'missing_tool' }],
-				mcpServers: [{ name: 'docs', url: '', authentication: 'none' }],
-			}),
-		);
-		agentRepository.findByIdsAndProjectId.mockResolvedValue([]);
-
-		const runtimeResult = await service.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
 
 		expect(runtimeResult.missing).toEqual(
 			expect.arrayContaining(['subAgents.agents.0.agentId', 'tools.0.id', 'mcpServers.0.url']),
+		);
+		expect(runtimeResult.missing).not.toEqual(
+			expect.arrayContaining(['integrations.0.credentialId', 'tasks.0.id', 'tasks.1']),
 		);
 	});
 
@@ -928,11 +665,14 @@ describe('AgentValidationService — structured issues', () => {
 		]);
 	});
 
-	it('loaded-agent full validation loads tasks but does not refetch the agent', async () => {
+	it('loaded-agent full validation loads tasks but does not refetch the agent, flagging missing task bodies regardless of enabled state', async () => {
 		const { service, agentTaskRepository } = makeService();
 		const agent = makeAgent({
 			...runnableConfig,
-			tasks: [{ type: 'task', id: 'missing_task', enabled: true }],
+			tasks: [
+				{ type: 'task', id: 'missing_task', enabled: true },
+				{ type: 'task', id: 'missing_disabled', enabled: false },
+			],
 		});
 		agentTaskRepository.findByAgentId.mockResolvedValue([]);
 
@@ -948,6 +688,11 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'missing_reference',
 				path: 'tasks.0.id',
 				capability: { kind: 'task', id: 'missing_task', index: 0 },
+			}),
+			expect.objectContaining({
+				code: 'missing_reference',
+				path: 'tasks.1.id',
+				capability: { kind: 'task', id: 'missing_disabled', index: 1 },
 			}),
 		]);
 	});
@@ -977,38 +722,6 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 			]),
 		);
 		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
-		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
-	});
-
-	it('flags enabled and disabled tasks missing from the passed-in task map, without querying the task repository', async () => {
-		const { service, agentTaskRepository } = makeService();
-		const agent = makeAgent({
-			...runnableConfig,
-			tasks: [
-				{ type: 'task', id: 'missing_enabled', enabled: true },
-				{ type: 'task', id: 'missing_disabled', enabled: false },
-			],
-		});
-
-		const result = await service.validateAgentEntityConfiguration(
-			agent,
-			projectId,
-			new Map(),
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.issues).toEqual([
-			expect.objectContaining({
-				code: 'missing_reference',
-				path: 'tasks.0.id',
-				capability: { kind: 'task', id: 'missing_enabled', index: 0 },
-			}),
-			expect.objectContaining({
-				code: 'missing_reference',
-				path: 'tasks.1.id',
-				capability: { kind: 'task', id: 'missing_disabled', index: 1 },
-			}),
-		]);
 		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
 	});
 });

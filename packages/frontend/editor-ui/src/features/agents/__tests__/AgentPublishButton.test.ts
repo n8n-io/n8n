@@ -403,44 +403,51 @@ describe('AgentPublishButton', () => {
 
 	// Configuration validation gating
 	describe('configuration validation gating', () => {
-		it('disables Publish and shows the generic tooltip when the config is invalid', async () => {
-			const agent = createAgent({ activeVersionId: null });
-			const wrapper = await renderComponent({ agent, configValidationStatus: 'invalid' });
+		it('gates the Publish button on validation status', async () => {
+			const unpublishedAgent = createAgent({ activeVersionId: null });
 
-			const button = wrapper.find('[data-testid="publish-agent-button"]');
-			expect(button.attributes('disabled')).toBeDefined();
+			const invalidWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: 'invalid',
+			});
+			const invalidButton = invalidWrapper.find('[data-testid="publish-agent-button"]');
+			expect(invalidButton.attributes('disabled')).toBeDefined();
+			const invalidTooltip = invalidWrapper.find('[data-testid="stub-tooltip"]');
+			expect(invalidTooltip.attributes('data-disabled')).toBe('false');
+			expect(invalidTooltip.attributes('data-content')).toBe(
+				'agents.publish.button.invalidConfigTooltip',
+			);
 
-			const tooltip = wrapper.find('[data-testid="stub-tooltip"]');
-			expect(tooltip.attributes('data-disabled')).toBe('false');
-			expect(tooltip.attributes('data-content')).toBe('agents.publish.button.invalidConfigTooltip');
-		});
+			// An unknown (null) validation result is treated as not publishable.
+			const nullWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: null,
+			});
+			expect(
+				nullWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
 
-		it('treats an unknown (null) validation result as not publishable', async () => {
-			const agent = createAgent({ activeVersionId: null });
-			const wrapper = await renderComponent({ agent, configValidationStatus: null });
+			const validWrapper = await renderComponent({
+				agent: unpublishedAgent,
+				configValidationStatus: 'valid',
+			});
+			expect(
+				validWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
 
-			const button = wrapper.find('[data-testid="publish-agent-button"]');
-			expect(button.attributes('disabled')).toBeDefined();
-		});
-
-		it('does not show the invalid-config tooltip when the button is already disabled for another reason', async () => {
-			// Published with no pending changes — disabled regardless of validation.
-			const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
-			const wrapper = await renderComponent({ agent, configValidationStatus: 'invalid' });
-
-			const button = wrapper.find('[data-testid="publish-agent-button"]');
-			expect(button.attributes('disabled')).toBeDefined();
-
-			const tooltip = wrapper.find('[data-testid="stub-tooltip"]');
-			expect(tooltip.attributes('data-disabled')).toBe('true');
-		});
-
-		it('enables Publish when the config is valid', async () => {
-			const agent = createAgent({ activeVersionId: null });
-			const wrapper = await renderComponent({ agent, configValidationStatus: 'valid' });
-
-			const button = wrapper.find('[data-testid="publish-agent-button"]');
-			expect(button.attributes('disabled')).toBeUndefined();
+			// Published with no pending changes — disabled regardless of validation,
+			// and the invalid-config tooltip must not show for this other reason.
+			const publishedAgent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
+			const publishedWrapper = await renderComponent({
+				agent: publishedAgent,
+				configValidationStatus: 'invalid',
+			});
+			expect(
+				publishedWrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(
+				publishedWrapper.find('[data-testid="stub-tooltip"]').attributes('data-disabled'),
+			).toBe('true');
 		});
 
 		it('aborts the publish request when beforePublish resolves false', async () => {

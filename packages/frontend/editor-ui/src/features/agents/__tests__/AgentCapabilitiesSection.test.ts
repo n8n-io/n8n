@@ -664,7 +664,10 @@ describe('AgentCapabilitiesSection', () => {
 	});
 
 	describe('validation issues', () => {
-		it('marks a node tool chip invalid when a matching issue is present, and leaves it unmarked otherwise', () => {
+		it('marks the node-tool, MCP-server, channel, and task chips invalid when a matching issue is present for each', async () => {
+			integrationsCatalogRef.value = [{ type: 'slack', label: 'Slack', icon: 'zap' }];
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+
 			const tools: AgentJsonToolRef[] = [
 				{
 					type: 'node',
@@ -677,26 +680,8 @@ describe('AgentCapabilitiesSection', () => {
 				},
 			];
 
-			const invalidWrapper = mountSection(tools, {}, null, [], [], {
-				validationIssues: [
-					{
-						code: 'missing_credential',
-						path: 'tools.0.node.credentials.linearOAuth2Api',
-						capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
-					},
-				],
-			});
-			const invalidChip = invalidWrapper.find('[data-testid="agent-capabilities-tool-row"]');
-			expect(invalidChip.classes().some((c) => c.includes('invalid'))).toBe(true);
-
-			const validWrapper = mountSection(tools, {}, null, [], [], { validationIssues: [] });
-			const validChip = validWrapper.find('[data-testid="agent-capabilities-tool-row"]');
-			expect(validChip.classes().some((c) => c.includes('invalid'))).toBe(false);
-		});
-
-		it('marks the matching MCP server chip invalid by server name, not tool index', () => {
 			const wrapper = mountSection(
-				[],
+				tools,
 				{},
 				configWithMcpServers([
 					{
@@ -706,55 +691,68 @@ describe('AgentCapabilitiesSection', () => {
 						authentication: 'bearerAuth',
 					},
 				]),
-				[],
+				[taskRef('task-1')],
 				[],
 				{
+					connectedTriggers: ['slack'],
 					validationIssues: [
+						{
+							code: 'missing_credential',
+							path: 'tools.0.node.credentials.linearOAuth2Api',
+							capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
+						},
 						{
 							code: 'missing_credential',
 							path: 'mcpServers.0.credential',
 							capability: { kind: 'mcpServer', id: 'github', index: 0 },
 						},
+						{
+							code: 'missing_credential',
+							path: 'integrations.0.credentialId',
+							capability: { kind: 'channel', id: 'slack', index: 0 },
+						},
+						{
+							code: 'missing_reference',
+							path: 'tasks.0.id',
+							capability: { kind: 'task', id: 'task-1', index: 0 },
+						},
 					],
 				},
 			);
-
-			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
-			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
-		});
-
-		it('marks the matching channel chip invalid by integration type', () => {
-			integrationsCatalogRef.value = [{ type: 'slack', label: 'Slack', icon: 'zap' }];
-			const wrapper = mountSection([], {}, null, [], [], {
-				connectedTriggers: ['slack'],
-				validationIssues: [
-					{
-						code: 'missing_credential',
-						path: 'integrations.0.credentialId',
-						capability: { kind: 'channel', id: 'slack', index: 0 },
-					},
-				],
-			});
-
-			const chip = wrapper.find('[data-testid="agent-capabilities-channel-row"]');
-			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
-		});
-
-		it('marks the matching task chip invalid by task id', async () => {
-			getAgentTasksSpy.mockResolvedValue([makeTask()]);
-			const wrapper = mountSection([], {}, null, [taskRef('task-1')], [], {
-				validationIssues: [
-					{
-						code: 'missing_reference',
-						path: 'tasks.0.id',
-						capability: { kind: 'task', id: 'task-1', index: 0 },
-					},
-				],
-			});
 			await flushPromises();
 
-			const chip = wrapper.find('[data-testid="agent-capabilities-task-row"]');
-			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
+			const toolChips = wrapper.findAll('[data-testid="agent-capabilities-tool-row"]');
+			expect(toolChips).toHaveLength(2);
+			expect(toolChips.every((chip) => chip.classes().some((c) => c.includes('invalid')))).toBe(
+				true,
+			);
+			expect(wrapper.findAll('[data-testid="agent-chip-invalid-icon"]').length).toBeGreaterThan(0);
+
+			const channelChip = wrapper.find('[data-testid="agent-capabilities-channel-row"]');
+			expect(channelChip.classes().some((c) => c.includes('invalid'))).toBe(true);
+
+			const taskChip = wrapper.find('[data-testid="agent-capabilities-task-row"]');
+			expect(taskChip.classes().some((c) => c.includes('invalid'))).toBe(true);
+		});
+
+		it('leaves capability chips unmarked when there are no matching validation issues', () => {
+			const tools: AgentJsonToolRef[] = [
+				{
+					type: 'node',
+					name: 'create_issue',
+					node: {
+						nodeType: 'n8n-nodes-base.linearTool',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+					},
+				},
+			];
+
+			const wrapper = mountSection(tools, {}, null, [], [], { validationIssues: [] });
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+			expect(wrapper.find('[data-testid="agent-chip-invalid-icon"]').exists()).toBe(false);
 		});
 	});
 

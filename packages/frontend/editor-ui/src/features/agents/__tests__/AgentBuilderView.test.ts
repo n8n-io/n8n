@@ -496,6 +496,42 @@ const commonStubs = {
 	Transition: { template: '<div><slot/></div>' },
 };
 
+// Common reset shared by every describe block below. Each describe's own
+// beforeEach calls this first, then applies its own divergent setup
+// (permission defaults, spy restoration, or mocks it alone exercises).
+function resetViewMocks() {
+	vi.clearAllMocks();
+	routerPush.mockReset();
+	routerReplace.mockReset();
+	openModalWithDataMock.mockReset();
+	closeModalMock.mockReset();
+	routeName = 'AgentBuilderView';
+	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
+	sessionThreads.length = 0;
+	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
+	// Reset to a built agent; tests that need an unbuilt agent override locally.
+	intendedConfig = {
+		name: 'Agent One',
+		instructions: 'You are a helpful assistant.',
+	};
+	mockConfig.value = withDefaultLlm(intendedConfig);
+	updateConfigMock.mockReset();
+	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
+	getAgentMock.mockResolvedValue(makeAgentResponse());
+	getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+	getAgentConfigValidationMock.mockReset();
+	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
+	listAgentFilesMock.mockReset();
+	listAgentFilesMock.mockResolvedValue([]);
+	uploadAgentFilesMock.mockReset();
+	uploadAgentFilesMock.mockResolvedValue([]);
+	showErrorMock.mockReset();
+	fetchConfigMock.mockClear();
+	favoritesStoreMock.isFavorite.mockReturnValue(false);
+	instanceAiAvailableRef.value = true;
+	startInstanceAiThread.mockReset();
+}
+
 describe('AgentBuilderView — preview routing', () => {
 	// First Vite transform of this SFC + design-system deps can exceed the default
 	// 5s test timeout; warm the module once so each case measures mount behavior.
@@ -504,7 +540,7 @@ describe('AgentBuilderView — preview routing', () => {
 	}, 30_000);
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		resetViewMocks();
 		vi.restoreAllMocks();
 		createObjectURLSpy?.mockRestore();
 		revokeObjectURLSpy?.mockRestore();
@@ -512,47 +548,17 @@ describe('AgentBuilderView — preview routing', () => {
 		createObjectURLSpy = undefined;
 		revokeObjectURLSpy = undefined;
 		anchorClickSpy = undefined;
-		routerPush.mockReset();
-		routerReplace.mockReset();
-		openModalWithDataMock.mockReset();
-		closeModalMock.mockReset();
 		agentPermissionsMock.canCreate.value = true;
 		agentPermissionsMock.canUpdate.value = true;
 		agentPermissionsMock.canDelete.value = false;
 		agentPermissionsMock.canPublish.value = true;
 		agentPermissionsMock.canUnpublish.value = true;
-		routeName = 'AgentBuilderView';
-		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
-		sessionThreads.length = 0;
-		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
-		// Reset to a built agent; tests that need an unbuilt agent override locally.
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		updateConfigMock.mockReset();
-		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
 		deleteAgentMock.mockReset();
 		deleteAgentMock.mockResolvedValue(undefined);
-		getAgentMock.mockResolvedValue(makeAgentResponse());
-		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
-		getAgentConfigValidationMock.mockReset();
-		getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
-		listAgentFilesMock.mockReset();
-		listAgentFilesMock.mockResolvedValue([]);
-		uploadAgentFilesMock.mockReset();
-		uploadAgentFilesMock.mockResolvedValue([]);
 		warmAgentKnowledgeSandboxMock.mockClear();
-		showErrorMock.mockReset();
-		fetchConfigMock.mockClear();
-		showErrorMock.mockReset();
-		favoritesStoreMock.isFavorite.mockReturnValue(false);
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
-		instanceAiAvailableRef.value = true;
-		startInstanceAiThread.mockReset();
 	});
 
 	it('renders the manual editor without an agents-page build chat', async () => {
@@ -991,7 +997,7 @@ describe('AgentBuilderView — preview routing', () => {
 
 describe('AgentBuilderView — configuration validation', () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
+		resetViewMocks();
 		vi.restoreAllMocks();
 		createObjectURLSpy?.mockRestore();
 		revokeObjectURLSpy?.mockRestore();
@@ -999,40 +1005,12 @@ describe('AgentBuilderView — configuration validation', () => {
 		createObjectURLSpy = undefined;
 		revokeObjectURLSpy = undefined;
 		anchorClickSpy = undefined;
-		routerPush.mockReset();
-		routerReplace.mockReset();
-		openModalWithDataMock.mockReset();
-		closeModalMock.mockReset();
 		agentPermissionsMock.canCreate.value = true;
 		agentPermissionsMock.canUpdate.value = true;
 		agentPermissionsMock.canDelete.value = false;
 		agentPermissionsMock.canPublish.value = true;
 		agentPermissionsMock.canUnpublish.value = true;
-		routeName = 'AgentBuilderView';
-		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
-		sessionThreads.length = 0;
-		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		updateConfigMock.mockReset();
-		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
-		getAgentMock.mockResolvedValue(makeAgentResponse());
-		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
-		getAgentConfigValidationMock.mockReset();
-		getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
-		listAgentFilesMock.mockReset();
-		listAgentFilesMock.mockResolvedValue([]);
-		uploadAgentFilesMock.mockReset();
-		uploadAgentFilesMock.mockResolvedValue([]);
 		warmAgentKnowledgeSandboxMock.mockClear();
-		showErrorMock.mockReset();
-		fetchConfigMock.mockClear();
-		favoritesStoreMock.isFavorite.mockReturnValue(false);
-		instanceAiAvailableRef.value = true;
-		startInstanceAiThread.mockReset();
 	});
 
 	it('fetches validation on initial load and forwards the status to the header', async () => {
@@ -1124,38 +1102,10 @@ describe('AgentBuilderView — configuration validation', () => {
 
 describe('AgentBuilderView — three-column shell', () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
-		routerPush.mockReset();
-		routerReplace.mockReset();
-		openModalWithDataMock.mockReset();
-		closeModalMock.mockReset();
-		routeName = 'AgentBuilderView';
-		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
-		sessionThreads.length = 0;
-		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		updateConfigMock.mockReset();
-		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
-		getAgentMock.mockResolvedValue(makeAgentResponse());
-		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
-		getAgentConfigValidationMock.mockReset();
-		getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
-		listAgentFilesMock.mockReset();
-		listAgentFilesMock.mockResolvedValue([]);
-		uploadAgentFilesMock.mockReset();
-		uploadAgentFilesMock.mockResolvedValue([]);
-		showErrorMock.mockReset();
-		fetchConfigMock.mockClear();
-		favoritesStoreMock.isFavorite.mockReturnValue(false);
+		resetViewMocks();
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
-		instanceAiAvailableRef.value = true;
-		startInstanceAiThread.mockReset();
 	});
 
 	it('renders only the manual editor without build chat controls', async () => {

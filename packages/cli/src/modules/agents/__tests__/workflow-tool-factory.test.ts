@@ -240,18 +240,15 @@ describe('workflow tool compatibility', () => {
 });
 
 describe('findWorkflowToolWorkflows', () => {
-	it('returns an empty map without querying when no names are provided', async () => {
+	it('returns an empty map without querying when no names are provided, and dedupes workflow names into a project-scoped map otherwise', async () => {
 		const workflowRepository = mock<WorkflowRepository>();
 
-		const result = await findWorkflowToolWorkflows(workflowRepository, [], 'project-1');
+		const emptyResult = await findWorkflowToolWorkflows(workflowRepository, [], 'project-1');
 
-		expect(result).toEqual(new Map());
+		expect(emptyResult).toEqual(new Map());
 		expect(workflowRepository.find).not.toHaveBeenCalled();
-	});
 
-	it('dedupes workflow names and returns a name-to-workflow map scoped to the project', async () => {
 		const workflow = makeWorkflow({ id: 'wf-a', name: 'Workflow A' });
-		const workflowRepository = mock<WorkflowRepository>();
 		workflowRepository.find.mockResolvedValue([workflow]);
 
 		const result = await findWorkflowToolWorkflows(

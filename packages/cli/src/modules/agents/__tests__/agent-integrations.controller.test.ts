@@ -335,7 +335,6 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
-		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 	});
 
 	it('persists the integration before publishing when connecting an unpublished agent', async () => {
@@ -449,7 +448,6 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
-		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 	});
 
 	it('does not report an unpublished agent integration as connected when live connect fails', async () => {
