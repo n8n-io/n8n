@@ -119,14 +119,13 @@ async function startSlackThinkingStatus(
 
 	if (slackThreadContext && !slackThreadContext.hasRealThreadTs) {
 		const setStatus = setSlackAssistantStatus(slackThreadContext, options);
-		// The bridge clears again in its cleanup path, so guard against a
-		// duplicate remote clear call.
-		let cleared = false;
 
 		return {
 			clearBeforeResponse: async () => {
-				if (cleared) return;
-				cleared = true;
+				// Only clears abort statusRetry, so an already-aborted signal means
+				// another clear has run — skip the duplicate remote clear. (The
+				// bridge calls this again in its cleanup path after the consumer.)
+				if (statusRetry?.signal.aborted) return;
 				// Cancel any pending status retry first: the retry waits out a
 				// delay before re-setting "Thinking...", and without this it could
 				// fire *after* we clear and leave a stale status behind.

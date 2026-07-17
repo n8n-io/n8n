@@ -303,12 +303,14 @@ export class AgentChatBridge {
 				statusHandle: bridgeExecutionContext.statusHandle,
 			});
 		} finally {
-			statusRetry.abort();
 			// The stream consumer clears the status right before the first response;
-			// this idempotent clear covers failures before/outside consumption, which
-			// would otherwise leave a status indicator (e.g. Telegram's typing
-			// keepalive) running after the error reply.
+			// this clear covers failures before/outside consumption, which would
+			// otherwise leave a status indicator (e.g. Telegram's typing keepalive)
+			// running after the error reply. It must run before the abort below:
+			// handles use an aborted statusRetry as the "already cleared" marker
+			// and skip their remote clear once it is set.
 			await bridgeExecutionContext.statusHandle?.clearBeforeResponse();
+			statusRetry.abort();
 		}
 	}
 
