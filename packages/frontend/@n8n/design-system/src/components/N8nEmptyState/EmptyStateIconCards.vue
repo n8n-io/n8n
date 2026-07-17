@@ -1,21 +1,21 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import type { ActionBoxCardIcon } from './types';
+import type { EmptyStateCardIcon } from './types';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 
-interface ActionBoxIconCardsProps {
+interface EmptyStateIconCardsProps {
 	/** Static centre icon naming the feature/page the empty state belongs to. */
 	centerIcon: IconName | (string & {});
 	/** Icons shown in the two side cards (and cycled through when animated). */
-	sideIcons: ActionBoxCardIcon[];
+	sideIcons: EmptyStateCardIcon[];
 	/** Whether the side cards cycle through the icons; when false the trio renders statically. */
 	animated?: boolean;
 }
 
-defineOptions({ name: 'N8nActionBoxIconCards' });
-const props = withDefaults(defineProps<ActionBoxIconCardsProps>(), { animated: true });
+defineOptions({ name: 'N8nEmptyStateIconCards' });
+const props = withDefaults(defineProps<EmptyStateIconCardsProps>(), { animated: true });
 
 // The side cards swap with a fade+blur: fade out, replace the icon mid-fade, fade back in.
 // The right card runs the same swap half a cycle later, and starts halfway around the icon
@@ -37,7 +37,7 @@ const rightIcon = computed(() =>
 	count.value > 0 ? props.sideIcons[rightIndex.value % count.value] : undefined,
 );
 
-const isIconName = (icon: ActionBoxCardIcon): icon is IconName | (string & {}) =>
+const isIconName = (icon: EmptyStateCardIcon): icon is IconName | (string & {}) =>
 	typeof icon === 'string';
 
 // Deliberately a one-shot check (not reactive): each cycle reads it when it starts, matching
@@ -99,11 +99,11 @@ onBeforeUnmount(stopCycling);
 </script>
 
 <template>
-	<!-- Purely decorative: the heading/description of the surrounding action box carry the
+	<!-- Purely decorative: the heading/description of the surrounding empty state carry the
 	     meaning, so the whole cluster is hidden from assistive technology. -->
 	<div
 		:class="$style.cards"
-		:style="{ '--action-box-icon-cards--fade-duration': `${FADE_MS}ms` }"
+		:style="{ '--empty-state-icon-cards--fade-duration': `${FADE_MS}ms` }"
 		aria-hidden="true"
 	>
 		<div :class="$style.card">
@@ -172,8 +172,8 @@ onBeforeUnmount(stopCycling);
 	opacity: 1;
 	filter: blur(0);
 	transition:
-		opacity var(--action-box-icon-cards--fade-duration) var(--easing--ease-in-out),
-		filter var(--action-box-icon-cards--fade-duration) var(--easing--ease-in-out);
+		opacity var(--empty-state-icon-cards--fade-duration) var(--easing--ease-in-out),
+		filter var(--empty-state-icon-cards--fade-duration) var(--easing--ease-in-out);
 
 	@media (prefers-reduced-motion: reduce) {
 		transition: none;

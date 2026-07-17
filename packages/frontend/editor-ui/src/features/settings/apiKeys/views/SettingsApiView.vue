@@ -21,7 +21,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
 import type { IUser } from '@n8n/design-system';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -403,7 +403,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			{{ i18n.baseText('settings.api.empty.mine') }}
 		</N8nText>
 
-		<N8nActionBox
+		<N8nEmptyState
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
 			data-test-id="public-api-upgrade-cta"
 			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
@@ -412,7 +412,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			@click:button="onUpgrade"
 		/>
 
-		<N8nActionBox
+		<N8nEmptyState
 			v-if="isPublicApiEnabled && !hasAnyKeys"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')

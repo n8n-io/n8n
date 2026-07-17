@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import ActionBoxIconCards from './ActionBoxIconCards.vue';
-import type { ActionBoxIconCards as ActionBoxIconCardsIcon } from './types';
+import EmptyStateIconCards from './EmptyStateIconCards.vue';
+import type { EmptyStateIconCards as EmptyStateIconCardsIcon } from './types';
 import type { ButtonVariant } from '../../types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
@@ -11,8 +11,8 @@ import type { IconOrEmoji } from '../N8nIconPicker/types';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
-interface ActionBoxProps {
-	icon?: IconOrEmoji | ActionBoxIconCardsIcon;
+interface EmptyStateProps {
+	icon?: IconOrEmoji | EmptyStateIconCardsIcon;
 	heading?: string;
 	buttonText?: string;
 	buttonVariant?: ButtonVariant;
@@ -24,17 +24,17 @@ interface ActionBoxProps {
 	calloutIcon?: IconName;
 }
 
-defineOptions({ name: 'N8nActionBox' });
-withDefaults(defineProps<ActionBoxProps>(), {
+defineOptions({ name: 'N8nEmptyState' });
+withDefaults(defineProps<EmptyStateProps>(), {
 	calloutTheme: 'info',
 	buttonIcon: undefined,
 });
 </script>
 
 <template>
-	<div :class="['n8n-action-box', $style.container]" data-test-id="action-box">
+	<div :class="['n8n-empty-state', $style.container]" data-test-id="empty-state">
 		<div v-if="icon" :class="$style.icon">
-			<ActionBoxIconCards
+			<EmptyStateIconCards
 				v-if="icon.type === 'cards'"
 				:center-icon="icon.center"
 				:side-icons="icon.sides"

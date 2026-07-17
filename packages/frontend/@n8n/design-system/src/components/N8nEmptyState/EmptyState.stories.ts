@@ -2,13 +2,13 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { markRaw, type Component } from 'vue';
 
-import N8nActionBox from './ActionBox.vue';
+import N8nEmptyState from './EmptyState.vue';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 
 export default {
-	title: 'Core/ActionBox',
-	component: N8nActionBox,
+	title: 'Core/EmptyState',
+	component: N8nEmptyState,
 	argTypes: {
 		calloutTheme: {
 			control: {
@@ -20,8 +20,7 @@ export default {
 	parameters: {
 		docs: {
 			description: {
-				component:
-					'A card-like call-to-action container with title, description, and action areas.',
+				component: 'A card-like empty-state container with title, description, and action areas.',
 			},
 		},
 		backgrounds: { default: '--color--background--light-2' },
@@ -36,14 +35,14 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		N8nActionBox,
+		N8nEmptyState,
 	},
-	template: '<n8n-action-box v-bind="args" @click="onClick" />',
+	template: '<n8n-empty-state v-bind="args" @click="onClick" />',
 	methods,
 });
 
-export const ActionBox = DefaultTemplate.bind({});
-ActionBox.args = {
+export const EmptyState = DefaultTemplate.bind({});
+EmptyState.args = {
 	icon: { type: 'emoji', value: '😿' },
 	heading: 'Headline you need to know',
 	description:
@@ -51,8 +50,8 @@ ActionBox.args = {
 	buttonText: 'Do something',
 };
 
-export const ActionBoxWithIcon = DefaultTemplate.bind({});
-ActionBoxWithIcon.args = {
+export const EmptyStateWithIcon = DefaultTemplate.bind({});
+EmptyStateWithIcon.args = {
 	icon: { type: 'icon', value: 'tree-pine' },
 	heading: 'Create your first workflow',
 	description: 'Get started by creating a new workflow to automate your tasks.',
@@ -72,8 +71,8 @@ const DemoBrandMark: Component = markRaw({
 	`,
 });
 
-export const ActionBoxWithIconCards = DefaultTemplate.bind({});
-ActionBoxWithIconCards.args = {
+export const EmptyStateWithIconCards = DefaultTemplate.bind({});
+EmptyStateWithIconCards.args = {
 	icon: {
 		type: 'cards',
 		center: 'mcp',
@@ -84,7 +83,7 @@ ActionBoxWithIconCards.args = {
 		'Let MCP clients like Claude Code and Cursor build, run, and iterate on workflows in your instance.',
 	buttonText: 'Enable MCP access',
 };
-ActionBoxWithIconCards.parameters = {
+EmptyStateWithIconCards.parameters = {
 	docs: {
 		description: {
 			story:
@@ -93,8 +92,8 @@ ActionBoxWithIconCards.parameters = {
 	},
 };
 
-export const ActionBoxWithStaticIconCards = DefaultTemplate.bind({});
-ActionBoxWithStaticIconCards.args = {
+export const EmptyStateWithStaticIconCards = DefaultTemplate.bind({});
+EmptyStateWithStaticIconCards.args = {
 	icon: {
 		type: 'cards',
 		center: 'mcp',
@@ -106,7 +105,7 @@ ActionBoxWithStaticIconCards.args = {
 		'Let MCP clients like Claude Code and Cursor build, run, and iterate on workflows in your instance.',
 	buttonText: 'Enable MCP access',
 };
-ActionBoxWithStaticIconCards.parameters = {
+EmptyStateWithStaticIconCards.parameters = {
 	docs: {
 		description: {
 			story:
@@ -119,25 +118,25 @@ const WithAdditionalContentTemplate: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		N8nActionBox,
+		N8nEmptyState,
 		N8nText,
 		N8nLink,
 	},
 	template: `
-		<n8n-action-box v-bind="args" @click="onClick">
+		<n8n-empty-state v-bind="args" @click="onClick">
 			<template #additionalContent>
 					<N8nText color="text-base">
 						Read more on
 					</N8nText>
 					<N8nLink class="ml-4xs" href="https://n8n.io" target="_blank">our docs</N8nLink>
 			</template>
-		</n8n-action-box>
+		</n8n-empty-state>
 	`,
 	methods,
 });
 
-export const ActionBoxWithAdditionalContent = WithAdditionalContentTemplate.bind({});
-ActionBoxWithAdditionalContent.args = {
+export const EmptyStateWithAdditionalContent = WithAdditionalContentTemplate.bind({});
+EmptyStateWithAdditionalContent.args = {
 	icon: { type: 'emoji', value: '🚀' },
 	heading: 'Launch your project',
 	description:
