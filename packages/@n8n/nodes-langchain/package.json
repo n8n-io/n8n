@@ -314,7 +314,7 @@
     "n8n-core": "workspace:*",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "openai": "^6.34.0",
+    "openai": "catalog:",
     "oracledb": "catalog:",
     "pg": "catalog:",
     "redis": "4.6.14",
