@@ -1,0 +1,68 @@
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/node.type.ts
+  s_dd6b1476a89205::t_9d934a74069a95 4
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/site/index.ts
+  s_dd6b1476a89205::t_402bc5dd0257eb 133-135,137
+  s_dd6b1476a89205::t_34f043eab5cba3 10
+  s_dd6b1476a89205::t_b2c0c7f9502403 62
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/getAll.test.ts
+  s_dd6b1476a89205::t_726b21d1f13e99 1,3-8,14-15,17-63,65-79,82-89,91-97,99-101,108-118,120-122,129-139,143-161,163-176,178-179,181-192,194-204,206-207,209,217-226,228-229,231-238,240-242,249-259,261-265,267,273,275,281-284,306-315,317-327,329-334
+  s_dd6b1476a89205::t_b9b4be4b971895 210-216,227
+  s_dd6b1476a89205::t_66c5e8060c1e51 285-305
+  s_dd6b1476a89205::t_376753e1e7afe0 10-13
+  s_dd6b1476a89205::t_03998eb192fc33 9,16,80,90,103-107,124-128,180,208,230,244-248,268-272,276-280
+  s_dd6b1476a89205::t_c4d5db98ee2cbd 2,64,81,98,102,119,123,140-142,162,177,193,205,239,243,260,266,274,316,328
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/get.test.ts
+  s_dd6b1476a89205::t_223e301a78c319 231,238
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/index.test.ts
+  s_dd6b1476a89205::t_d0468d521b82a6 116,119-120
+  s_dd6b1476a89205::t_fc812647cbb91c 1-6,8-115,117-118,121-134
+  s_dd6b1476a89205::t_b095de2733f692 7
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/utils.ts
+  s_dd6b1476a89205::t_7ad924e7f49fd0 4-6
+  s_dd6b1476a89205::t_31b5493629576f 7-9
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/transport/index.test.ts
+  s_dd6b1476a89205::t_6929ebdd86a8ec 383-394
+  s_dd6b1476a89205::t_df1fdb1689c41b 153-369
+  s_dd6b1476a89205::t_11dfd22408ee95 9
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/get.operation.ts
+  s_dd6b1476a89205::t_571282d345cb1c 42-44,46
+  s_dd6b1476a89205::t_35cbddd68e8ed9 6
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/getAll.operation.ts
+  s_dd6b1476a89205::t_9e4b0bae26fd42 34,44
+  s_dd6b1476a89205::t_689c777a7d5f28 1,2-24,33,35-37,41-43,45-64
+  s_dd6b1476a89205::t_f30fba2e212cb0 25-27,29
+  s_dd6b1476a89205::t_acd2abb9de68d8 38-40
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/index.ts
+  s_dd6b1476a89205::t_c042e6c92faf99 8,43
+  s_dd6b1476a89205::t_188f20d1a3a872 7,9-11,45-56,59,60-92
+  s_dd6b1476a89205::t_35aaf226ea7090 1-6,12-42
+  s_dd6b1476a89205::t_3d16c828cad3c5 44
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
+  s_dd6b1476a89205::t_e3d7b6198462c1 234-237
+  s_dd6b1476a89205::t_e0b4fa3d8efb06 31-34
+  s_dd6b1476a89205::t_1f59138b1a055b 210-233,238-245
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/index.ts
+  s_dd6b1476a89205::t_3c5808aa69b41f 4,6,26-31,37
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/methods/index.ts
+  s_dd6b1476a89205::t_19f9751224d2d7 1,6
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/router.ts
+  s_dd6b1476a89205::t_dd711d3453a40f 50
+  s_dd6b1476a89205::t_32acc25ce5e8a7 1
+  s_dd6b1476a89205::t_19e19a7b507ecd 33-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c59dd5d8ca5df4c1381843833fc12e2910502226",
+  "prompts": {},
+  "sessions": {
+    "s_dd6b1476a89205": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "169c121b-d3d9-4449-aa90-c5e0821e1c16",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
