@@ -97,10 +97,18 @@ const hasActiveFilters = computed(
 		filters.value.connected !== null,
 );
 
-// No clients at all (not just filtered to nothing): show only the empty state,
-// hiding the tabs, search/filter toolbar and table. A search that returns nothing
-// keeps the toolbar (hasActiveFilters) so the user can clear it.
-const showEmptyState = computed(() => props.clients.length === 0 && !hasActiveFilters.value);
+// Aggregate total across the tabs a manager can see (own count for members).
+const totalClients = computed(
+	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
+);
+
+// Show only the empty state (hiding tabs, toolbar and table) when there are no
+// clients anywhere — so a manager with 0 of their own but clients under "All"
+// still gets the tabs. A search that returns nothing keeps the toolbar
+// (hasActiveFilters) so the user can clear it.
+const showEmptyState = computed(
+	() => props.clients.length === 0 && totalClients.value === 0 && !hasActiveFilters.value,
+);
 
 function onFiltersChange(newFilters: OAuthClientFilters) {
 	filters.value = newFilters;

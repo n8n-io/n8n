@@ -38,7 +38,7 @@ withDefaults(
 	border: var(--border-width) dashed var(--border-color);
 	border-radius: var(--radius--lg);
 	/* Gentle entrance, matching the prototype's empty states. */
-	animation: mcp-reveal-in var(--duration--base, 240ms) var(--easing--ease-out, ease-out);
+	animation: mcp-reveal-in var(--duration--snappy) var(--easing--ease-out);
 }
 
 .surface {

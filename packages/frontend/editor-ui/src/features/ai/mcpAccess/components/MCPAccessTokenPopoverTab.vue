@@ -149,7 +149,11 @@ onMounted(async () => {
 				<label :class="$style.label">
 					{{ i18n.baseText('settings.mcp.connectPopover.jsonConfig') }}
 				</label>
-				<McpConfigSnippet :value="connectionString" @copy="handleConnectionStringCopy" />
+				<McpConfigSnippet
+					:value="connectionString"
+					:disabled="keyRotating"
+					@copy="handleConnectionStringCopy"
+				/>
 			</div>
 		</div>
 	</div>

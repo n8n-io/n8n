@@ -88,6 +88,23 @@ describe('OAuthClientsTable', () => {
 			expect(queryByTestId('mcp-clients-search')).not.toBeInTheDocument();
 			expect(queryByTestId('oauth-clients-data-table')).not.toBeInTheDocument();
 		});
+
+		it('should keep the tabs for a manager with no own clients but clients under All', () => {
+			mockHasScope.mockReturnValue(true);
+			mockMcpStore.oauthClientTotals = { mine: 0, all: 3 };
+
+			const { getByTestId, queryByTestId } = createComponent({
+				props: {
+					// The Mine view is empty, but clients exist under All.
+					clients: [],
+					loading: false,
+				},
+			});
+
+			// No standalone empty state: the tabs must stay so the manager can switch to All.
+			expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
+			expect(getByTestId('mcp-clients-tabs')).toBeVisible();
+		});
 	});
 
 	describe('Client rendering', () => {

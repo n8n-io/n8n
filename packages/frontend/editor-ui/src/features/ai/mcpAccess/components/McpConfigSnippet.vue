@@ -10,6 +10,8 @@ const props = defineProps<{
 	value: string;
 	/** Fence language for syntax highlighting. */
 	language?: string;
+	/** Hide the copy affordance (e.g. while the value is still resolving). */
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -38,7 +40,7 @@ const handleCopy = async () => {
 				:show-after="MCP_TOOLTIP_DELAY"
 			>
 				<N8nButton
-					v-if="isSupported"
+					v-if="isSupported && !disabled"
 					variant="ghost"
 					iconOnly
 					:icon="copied ? 'check' : 'copy'"
