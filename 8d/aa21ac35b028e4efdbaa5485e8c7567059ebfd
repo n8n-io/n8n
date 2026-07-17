@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_365b472d5d8c59::t_a15954bbb959f6 45-48
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_365b472d5d8c59::t_e29fa4c42ea657 187
+  s_365b472d5d8c59::t_f4d03912cd785f 269
+  s_365b472d5d8c59::t_d7b9572df9787e 22-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8daa21ac35b028e4efdbaa5485e8c7567059ebfd",
+  "prompts": {},
+  "sessions": {
+    "s_365b472d5d8c59": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb19c6f7-a030-4ca5-b2ee-0cd60963272c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
