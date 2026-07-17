@@ -74,8 +74,9 @@ function onInstructionsUpdate(instructions: string) {
 				:model-value="localConfig?.instructions ?? ''"
 				:disabled="!canUpdate"
 				show-toolbar="always"
-				max-height="240px"
+				max-height="480px"
 				variant="contained"
+				:class="$style.markdownEditor"
 				data-testid="agent-ndv-inline-instructions"
 				@update:model-value="onInstructionsUpdate"
 			/>
@@ -117,5 +118,9 @@ function onInstructionsUpdate(instructions: string) {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	width: 100%;
+}
+
+.markdownEditor {
+	aspect-ratio: 16/9;
 }
 </style>
