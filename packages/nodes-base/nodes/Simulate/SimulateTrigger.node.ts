@@ -26,9 +26,9 @@ export class SimulateTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Simulate a trigger node',
+		iconColor: 'neutral',
 		defaults: {
 			name: 'Simulate Trigger',
-			color: '#b0b0b0',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],

@@ -19,9 +19,9 @@ export class ICalendar implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Create iCalendar file',
+		iconColor: 'green',
 		defaults: {
 			name: 'iCalendar',
-			color: '#408000',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

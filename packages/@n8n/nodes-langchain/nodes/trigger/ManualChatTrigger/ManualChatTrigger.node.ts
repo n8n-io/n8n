@@ -17,9 +17,9 @@ export class ManualChatTrigger implements INodeType {
 		eventTriggerDescription: '',
 		maxNodes: 1,
 		hidden: true,
+		iconColor: 'gray',
 		defaults: {
 			name: 'When chat message received',
-			color: '#909298',
 		},
 		codex: {
 			categories: ['Core Nodes'],
