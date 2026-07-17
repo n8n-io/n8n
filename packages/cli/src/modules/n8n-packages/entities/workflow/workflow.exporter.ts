@@ -23,6 +23,7 @@ export interface WorkflowExportRequest {
 
 	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
+	reservedTargets?: string[];
 }
 
 export interface WorkflowExportResult {
@@ -64,6 +65,10 @@ export class WorkflowExporter {
 			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
 			'workflow',
 		);
+
+		for (const target of request.reservedTargets ?? []) {
+			fileNames.reservePath(target);
+		}
 
 		for (const workflow of workflowsForExport) {
 			const target = fileNames.allocate(workflow.name);
