@@ -21,6 +21,7 @@ const $style = useCssModule();
 		:value="props.value ?? ''"
 		:text-value="props.textValue ?? props.label"
 		:data-disabled="props.disabled || undefined"
+		@mousedown.prevent
 	>
 		<slot name="item-leading" :item="props" :ui="{ class: $style.itemLeading }">
 			<Icon v-if="props.icon" :icon="props.icon" :class="$style.itemLeading" size="large" />
