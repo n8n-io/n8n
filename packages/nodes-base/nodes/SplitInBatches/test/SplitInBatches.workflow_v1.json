@@ -49,7 +49,7 @@
 			},
 			"id": "74b7e63e-a9f8-4a82-9e1f-7b2429d9118d",
 			"name": "Item Lists",
-			"type": "n8n-nodes-base.itemLists",
+			"type": "n8n-nodes-base.splitOut",
 			"typeVersion": 1,
 			"position": [860, 220]
 		},

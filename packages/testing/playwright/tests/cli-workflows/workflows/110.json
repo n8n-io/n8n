@@ -27,11 +27,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData = JSON.stringify({ country: { code: \"DE\", capital: \"Berlin\", currency: \"EUR\", name: \"Germany\" } })\n\nif(JSON.stringify($node['GraphQL'].json.data) !== testData){\n  throw new Error('Function node data is not equal to GraphQL output');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData = JSON.stringify({ country: { code: \"DE\", capital: \"Berlin\", currency: \"EUR\", name: \"Germany\" } })\n\nif(JSON.stringify($node['GraphQL'].json.data) !== testData){\n  throw new Error('Code node data is not equal to GraphQL output');\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [650, 300],
 			"id": "238509ad-714e-420a-a521-5b2e9d973c38"
 		}
