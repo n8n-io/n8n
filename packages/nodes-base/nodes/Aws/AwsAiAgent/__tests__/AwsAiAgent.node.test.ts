@@ -1,5 +1,5 @@
-import { mockDeep } from 'jest-mock-extended';
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { AwsAiAgent } from '../AwsAiAgent.node';
 
@@ -105,7 +105,8 @@ describe('AWS AI Agent node — execute (stubbed)', () => {
 			(name: string, _i?: number, fallback?: unknown) => (params[name] ?? fallback) as never,
 		);
 		ctx.helpers.returnJsonArray.mockImplementation(
-			(data) => (Array.isArray(data) ? data : [data]).map((json) => ({ json })) as never,
+			(data: IDataObject | IDataObject[]) =>
+				(Array.isArray(data) ? data : [data]).map((json) => ({ json })) as never,
 		);
 		return ctx;
 	};
