@@ -19,7 +19,7 @@ import type { ExportedWorkflowDependencySeed } from './entities/workflow/static-
 import { StaticWorkflowDependencyResolver } from './entities/workflow/static-workflow-dependency-resolver';
 import {
 	StaticWorkflowDependencyExporter,
-	StaticWorkflowDependencyExportResult,
+	type StaticWorkflowDependencyExportResult,
 } from './entities/workflow/static-workflow-dependency.exporter';
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';

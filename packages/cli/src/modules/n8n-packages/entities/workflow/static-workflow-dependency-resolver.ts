@@ -14,7 +14,6 @@ import {
 import type { WorkflowWorkflowRequirement } from './workflow.types';
 
 export type WorkflowDependencyOrigin = 'top-level' | 'folder' | 'project';
-export type WorkflowDependencyPlacement = WorkflowDependencyOrigin;
 
 export interface ExportedWorkflowDependencySeed {
 	workflowId: string;
@@ -23,7 +22,7 @@ export interface ExportedWorkflowDependencySeed {
 
 export interface StaticWorkflowDependency {
 	workflow: WorkflowEntity;
-	placement: WorkflowDependencyPlacement;
+	placement: WorkflowDependencyOrigin;
 	ownerProject: Project;
 	folderChain: Folder[];
 }
@@ -189,7 +188,7 @@ export class StaticWorkflowDependencyResolver {
 
 	private choosePlacement(
 		origins: Set<WorkflowDependencyOrigin> | undefined,
-	): WorkflowDependencyPlacement {
+	): WorkflowDependencyOrigin {
 		if (origins?.has('project')) return 'project';
 		if (origins?.has('folder')) return 'folder';
 		return 'top-level';
