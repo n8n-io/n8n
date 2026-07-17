@@ -1,4 +1,5 @@
 export { default as N8nActionBox } from './N8nActionBox';
+export type { ActionBoxCardIcon, ActionBoxIconCards } from './N8nActionBox';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
