@@ -1,4 +1,5 @@
-import type { WorkflowSettings } from './interfaces';
+import type { IRedactionSetting } from './execution-context';
+import type { IWorkflowSettings, WorkflowExecuteMode, WorkflowSettings } from './interfaces';
 
 /**
  * Redaction expressed as two independent channels:
@@ -41,4 +42,34 @@ export function channelsToPolicy({
 	if (production) return 'non-manual';
 	if (manual) return 'all';
 	return 'none';
+}
+
+/**
+ * Emitted in place of user console output when the run's resolved redaction
+ * policy redacts the channel it executes on. Console output is ephemeral
+ * (never persisted), so unlike execution data it has no reveal path.
+ */
+export const CONSOLE_OUTPUT_REDACTED_MESSAGE =
+	'[Console output redacted by workflow redaction policy]';
+
+/**
+ * Decides whether Code-node console output (`console.log` / `print`) is
+ * redacted for this run. Mirrors `ExecutionRedactionService.resolvePolicy`:
+ * the `runtimeData.redaction` snapshot wins, the workflow setting is the
+ * fallback; manual runs consult the manual channel, every other mode the
+ * production channel.
+ */
+export function shouldRedactConsoleOutput(
+	redaction: IRedactionSetting | undefined,
+	workflowSettings: IWorkflowSettings | undefined,
+	mode: WorkflowExecuteMode,
+): boolean {
+	const channels: RedactionChannels =
+		redaction === undefined
+			? policyToChannels(workflowSettings?.redactionPolicy ?? 'none')
+			: redaction.version === 2
+				? { production: redaction.production, manual: redaction.manual }
+				: policyToChannels(redaction.policy);
+
+	return mode === 'manual' ? channels.manual : channels.production;
 }
