@@ -106,8 +106,6 @@ const AI_AGENT_TYPES = new Set([
 /** Node types whose output is dynamic and can't be statically checked. */
 const DYNAMIC_OUTPUT_TYPES = new Set([
 	'n8n-nodes-base.code',
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.functionItem',
 	'n8n-nodes-base.executeWorkflow',
 	'n8n-nodes-base.httpRequest',
 ]);

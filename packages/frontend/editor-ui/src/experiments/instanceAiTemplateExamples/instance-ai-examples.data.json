@@ -19456,7 +19456,7 @@
    "category": "Sales",
    "subcategory": "Lead Capture",
    "relevanceScore": 5,
-   "prompt": "Capture leads via webhook, validate emails and check IPs for fraud, score leads using a function node, log results to Google Sheets, and send high-score lead alerts to sales teams via Slack and Gmail."
+   "prompt": "Capture leads via webhook, validate emails and check IPs for fraud, score leads using a Code node, log results to Google Sheets, and send high-score lead alerts to sales teams via Slack and Gmail."
   },
   {
    "id": 8904,
@@ -162452,7 +162452,7 @@
    "category": "Engineering",
    "subcategory": "Data Aggregation",
    "relevanceScore": 3,
-   "prompt": "Use a Function node to transform a flat array into a structured array of objects for downstream data processing."
+   "prompt": "Use a Code node to transform a flat array into a structured array of objects for downstream data processing."
   },
   {
    "id": 766,
@@ -162461,16 +162461,16 @@
    "category": "Engineering",
    "subcategory": "Data Aggregation",
    "relevanceScore": 3,
-   "prompt": "Use a Function node to split an array into multiple individual JSON items for parallel processing in subsequent workflow steps."
+   "prompt": "Use a Code node to split an array into multiple individual JSON items for parallel processing in subsequent workflow steps."
   },
   {
    "id": 767,
-   "name": "Create an Array of Objects with a Function Node",
+   "name": "Create an Array of Objects with a Code Node",
    "nodes": [],
    "category": "Engineering",
    "subcategory": "Data Aggregation",
    "relevanceScore": 3,
-   "prompt": "Use a Function node to programmatically generate and return a structured array of objects for use in downstream workflow nodes."
+   "prompt": "Use a Code node to programmatically generate and return a structured array of objects for use in downstream workflow nodes."
   },
   {
    "id": 770,
@@ -164735,7 +164735,7 @@
    "category": "Marketing",
    "subcategory": "Email Campaigns",
    "relevanceScore": 3,
-   "prompt": "Use a document generator community node with templates to produce dynamic HTML content for emails or web pages without requiring complex Set or Function nodes, then send via email."
+   "prompt": "Use a document generator community node with templates to produce dynamic HTML content for emails or web pages without requiring complex Edit Fields or Code nodes, then send via email."
   },
   {
    "id": 1791,
@@ -255676,7 +255676,7 @@
    "category": "Personal Productivity",
    "subcategory": "Learning & Tutorials",
    "relevanceScore": 2,
-   "prompt": "Guide new users through building a simple n8n workflow that receives data via webhook, transforms it using a function node, and forwards it to a web server via HTTP request."
+   "prompt": "Guide new users through building a simple n8n workflow that receives data via webhook, transforms it using a Code node, and forwards it to a web server via HTTP request."
   },
   {
    "id": 100,
@@ -255694,7 +255694,7 @@
    "category": "Engineering",
    "subcategory": "Data Aggregation",
    "relevanceScore": 2,
-   "prompt": "Convert JSON data to binary format using a Function node and write the resulting binary data to a file on disk."
+   "prompt": "Convert JSON data to binary format using a Code node and write the resulting binary data to a file on disk."
   },
   {
    "id": 156,
@@ -256202,12 +256202,12 @@
   },
   {
    "id": 524,
-   "name": "Get Today's Date and Day Using the Function Node",
+   "name": "Get Today's Date and Day Using the Code Node",
    "nodes": [],
    "category": "Personal Productivity",
    "subcategory": "News & Monitoring",
    "relevanceScore": 2,
-   "prompt": "Retrieve the current date and day of the week using n8n's Function node and return the formatted values for use in downstream workflow steps."
+   "prompt": "Retrieve the current date and day of the week using n8n's Code node and return the formatted values for use in downstream workflow steps."
   },
   {
    "id": 526,
@@ -256732,21 +256732,21 @@
   },
   {
    "id": 688,
-   "name": "Route Workflow Execution Based on Function Node Output",
+   "name": "Route Workflow Execution Based on Code Node Output",
    "nodes": [],
    "category": "Engineering",
    "subcategory": "Workflow Automation",
    "relevanceScore": 2,
-   "prompt": "Use a Switch node to conditionally execute different Set nodes based on the output of a Function node, demonstrating conditional branching logic."
+   "prompt": "Use a Switch node to conditionally execute different Edit Fields nodes based on the output of a Code node, demonstrating conditional branching logic."
   },
   {
    "id": 695,
-   "name": "Get Local Datetime in a Function Node Using Moment.js",
+   "name": "Get Local Datetime in a Code Node Using Luxon",
    "nodes": [],
    "category": "Engineering",
    "subcategory": "Data Aggregation",
    "relevanceScore": 2,
-   "prompt": "Retrieve the local date and time inside an n8n Function node using the moment.js library with the GENERIC_TIMEZONE environment variable."
+   "prompt": "Retrieve the local date and time inside an n8n Code node using Luxon with the GENERIC_TIMEZONE environment variable."
   },
   {
    "id": 701,
@@ -258124,7 +258124,7 @@
    "category": "Personal Productivity",
    "subcategory": "AI Data Analysis",
    "relevanceScore": 2,
-   "prompt": "Use a JavaScript function node to sum or aggregate numeric values across multiple data items, replicating Excel-style column totals within an n8n workflow."
+   "prompt": "Use a JavaScript Code node to sum or aggregate numeric values across multiple data items, replicating Excel-style column totals within an n8n workflow."
   },
   {
    "id": 1500,
@@ -258349,7 +258349,7 @@
    "category": "Engineering",
    "subcategory": "Document Processing",
    "relevanceScore": 2,
-   "prompt": "Use a Function node to build a Markdown string from structured data, convert it to an HTML file, and send it as an email attachment."
+   "prompt": "Use a Code node to build a Markdown string from structured data, convert it to an HTML file, and send it as an email attachment."
   },
   {
    "id": 1756,
@@ -259037,7 +259037,7 @@
    "category": "Engineering",
    "subcategory": "Security & Threat Detection",
    "relevanceScore": 2,
-   "prompt": "Validate a 6-digit TOTP code against a base32 TOTP secret using a function node for use in authentication systems, without requiring a stored credential."
+   "prompt": "Validate a 6-digit TOTP code against a base32 TOTP secret using a Code node for use in authentication systems, without requiring a stored credential."
   },
   {
    "id": 2383,
@@ -277518,7 +277518,7 @@
    "category": "Engineering",
    "subcategory": "Workflow Automation",
    "relevanceScore": 1,
-   "prompt": "Use an IF node to conditionally route workflow execution to a Set node based on the output of a Function node."
+   "prompt": "Use an IF node to conditionally route workflow execution to an Edit Fields node based on the output of a Code node."
   },
   {
    "id": 582,

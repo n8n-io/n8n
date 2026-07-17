@@ -10,10 +10,11 @@
 		},
 		{
 			"id": "1ea0a87c-3395-4bd9-84fb-cf8b0f769cc4",
-			"name": "Function",
-			"type": "n8n-nodes-base.function",
+			"name": "Read PDF",
+			"type": "n8n-nodes-base.readPDF",
 			"typeVersion": 1,
-			"position": [960, 460]
+			"position": [960, 460],
+			"parameters": {}
 		},
 		{
 			"id": "30bb9fab-bc89-4309-b42b-0fc586519c76",

@@ -122,11 +122,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "if($node['Set'].json['value'] !== $node['Redis3'].json['value'] ){\n  throw new Error('Error in redis node');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "if($node['Set'].json['value'] !== $node['Redis3'].json['value'] ){\n  throw new Error('Error in redis node');\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [1300, 450],
 			"notesInFlow": true,
 			"notes": "validate the saved value",
