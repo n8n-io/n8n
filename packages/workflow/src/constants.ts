@@ -67,8 +67,6 @@ export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflo
 export const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
 export const MESSAGE_AN_AGENT_TOOL_NODE_TYPE = 'n8n-nodes-base.messageAnAgentTool';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
-export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
-export const FUNCTION_ITEM_NODE_TYPE = 'n8n-nodes-base.functionItem';
 export const MERGE_NODE_TYPE = 'n8n-nodes-base.merge';
 export const AI_TRANSFORM_NODE_TYPE = 'n8n-nodes-base.aiTransform';
 export const FORM_NODE_TYPE = 'n8n-nodes-base.form';
@@ -94,12 +92,7 @@ export const STARTING_NODE_TYPES = [
 	FORM_TRIGGER_NODE_TYPE,
 ];
 
-export const SCRIPTING_NODE_TYPES = [
-	FUNCTION_NODE_TYPE,
-	FUNCTION_ITEM_NODE_TYPE,
-	CODE_NODE_TYPE,
-	AI_TRANSFORM_NODE_TYPE,
-];
+export const SCRIPTING_NODE_TYPES = [CODE_NODE_TYPE, AI_TRANSFORM_NODE_TYPE];
 
 export const DATA_TABLE_NODE_TYPES = [
 	DATA_TABLE_NODE_TYPE,
@@ -114,12 +107,7 @@ export const ADD_FORM_NOTICE = 'addFormPage';
  * Nodes whose parameter values may refer to other nodes without expressions.
  * Their content may need to be updated when the referenced node is renamed.
  */
-export const NODES_WITH_RENAMABLE_CONTENT = new Set([
-	CODE_NODE_TYPE,
-	FUNCTION_NODE_TYPE,
-	FUNCTION_ITEM_NODE_TYPE,
-	AI_TRANSFORM_NODE_TYPE,
-]);
+export const NODES_WITH_RENAMABLE_CONTENT = new Set([CODE_NODE_TYPE, AI_TRANSFORM_NODE_TYPE]);
 export const NODES_WITH_RENAMABLE_FORM_HTML_CONTENT = new Set([FORM_NODE_TYPE]);
 export const NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT = new Set([
 	MAILGUN_NODE_TYPE,
