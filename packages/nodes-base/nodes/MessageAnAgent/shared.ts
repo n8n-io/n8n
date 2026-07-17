@@ -110,6 +110,11 @@ export const commonProperties: INodeProperties[] = [
 				noDataExpression: true,
 				default: 'allItems',
 				description: 'Whether to call the agent once per input item or a single time for all items',
+				displayOptions: {
+					show: {
+						agentSource: ['referenced'],
+					},
+				},
 				options: [
 					{
 						name: 'Once for All Items',
@@ -138,6 +143,11 @@ export const commonProperties: INodeProperties[] = [
 				default: false,
 				description:
 					"Whether to give the agent a tool to read other workflow nodes' execution data, beyond its own input",
+				displayOptions: {
+					show: {
+						agentSource: ['referenced'],
+					},
+				},
 			},
 		],
 	},
