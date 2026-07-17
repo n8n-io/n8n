@@ -675,6 +675,12 @@ describe('PromptBuilder', () => {
 			expect(result).toMatch(/<[a-z0-9_]+>/);
 		});
 
+		it('should use a fallback tag when a section name has no tag characters', () => {
+			const result = prompt().section('!!!', 'content').build();
+
+			expect(result).toBe('<section>\ncontent\n</section>');
+		});
+
 		it('should handle multiline content', () => {
 			const content = 'line 1\nline 2\nline 3';
 			const result = prompt().section('MULTI', content).build();

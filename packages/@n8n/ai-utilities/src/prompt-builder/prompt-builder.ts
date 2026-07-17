@@ -42,11 +42,13 @@ function defaultExampleFormatter<T>(example: T): string {
  * - Removes consecutive underscores
  */
 function normalizeToTag(name: string): string {
-	return name
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '_')
-		.replace(/^_+|_+$/g, '')
-		.replace(/_+/g, '_');
+	return (
+		name
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '')
+			.replace(/_+/g, '_') || 'section'
+	);
 }
 
 /**
