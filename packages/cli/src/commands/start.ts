@@ -427,6 +427,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// @OnLeaderStepdown and @OnShutdown handlers. Nothing else loads this module.
 			await import('@/workflows/publication/published-workflow-trigger-deactivator');
 
+			// The modules above register @OnPubSubEvent handlers (e.g. the outbox
+			// wake-up) after the earlier PubSubRegistry.init() calls already wired
+			// listeners, so rewire to pick them up.
+			Container.get(PubSubRegistry).init();
+
 			// Enqueue needs to happen before outbox consumer init, so it can activate
 			// everything on the first drain
 			if (this.instanceSettings.isLeader) {
