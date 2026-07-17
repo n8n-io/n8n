@@ -543,6 +543,9 @@ catalogs:
     yaml:
       specifier: 2.8.3
       version: 2.8.3
+    zod-openapi:
+      specifier: 4.2.4
+      version: 4.2.4
     zod-to-json-schema:
       specifier: 3.23.3
       version: 3.23.3
@@ -4310,6 +4313,9 @@ importers:
       zod:
         specifier: 3.25.67
         version: 3.25.67
+      zod-openapi:
+        specifier: 'catalog:'
+        version: 4.2.4(zod@3.25.67)
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
@@ -22655,6 +22661,12 @@ packages:
 
   zod-from-json-schema@0.0.5:
     resolution: {integrity: sha512-zYEoo86M1qpA1Pq6329oSyHLS785z/mTwfr9V1Xf/ZLhuuBGaMlDGu/pDVGVUe4H4oa1EFgWZT53DP0U3oT9CQ==}
+
+  zod-openapi@4.2.4:
+    resolution: {integrity: sha512-tsrQpbpqFCXqVXUzi3TPwFhuMtLN3oNZobOtYnK6/5VkXsNdnIgyNr4r8no4wmYluaxzN3F7iS+8xCW8BmMQ8g==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: 3.25.67
 
   zod-to-json-schema@3.23.3:
     resolution: {integrity: sha512-TYWChTxKQbRJp5ST22o/Irt9KC5nj7CdBKYB/AosCRdj/wxEMvv4NNaj9XVUHDOIp53ZxArGhnw5HMZziPFjog==}
@@ -42316,6 +42328,10 @@ snapshots:
       readable-stream: 4.5.2
 
   zod-from-json-schema@0.0.5:
+    dependencies:
+      zod: 3.25.67
+
+  zod-openapi@4.2.4(zod@3.25.67):
     dependencies:
       zod: 3.25.67
 

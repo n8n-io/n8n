@@ -134,7 +134,7 @@ paths:
   /variables/{id}:
     $ref: './handlers/variables/spec/paths/variables.id.yml'
   /data-tables:
-    $ref: './handlers/data-tables/spec/paths/data-tables.yml'
+    $ref: './handlers/data-tables/spec/paths/data-tables.generated.yml'
   /data-tables/{dataTableId}:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.yml'
   /data-tables/{dataTableId}/rows:

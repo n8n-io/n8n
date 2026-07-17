@@ -278,6 +278,7 @@
     "yaml": "catalog:",
     "yargs-parser": "21.1.1",
     "zod": "catalog:",
+    "zod-openapi": "catalog:",
     "zod-to-json-schema": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
