@@ -5,16 +5,18 @@ export function integrationsSkill(): RuntimeSkill {
 		id: 'agent-builder-integrations',
 		name: 'Agent Builder Integrations',
 		description:
-			'Use when deciding whether Slack, Linear, Telegram, or another external platform should be a target-agent chat integration/trigger versus a node tool, and when adding or changing chat integrations; not for built-in Build chat or Preview chat behavior.',
+			'Use when deciding whether Slack, Linear, Telegram, or another external platform should be a target-agent chat integration/trigger versus a node tool, and when adding, changing, or removing chat integrations; not for built-in Build chat or Preview chat behavior.',
 		recommendedTools: [
 			'list_integration_types',
 			'configure_channel',
+			'ask_questions',
 			'read_config',
 			'patch_config',
 		],
 		allowedTools: [
 			'list_integration_types',
 			'configure_channel',
+			'ask_questions',
 			'read_config',
 			'patch_config',
 			'write_config',
@@ -70,14 +72,26 @@ The \`integrations\` array controls how the target agent is triggered.
   shows creates and persists the credential/connection itself; do not follow up
   with \`patch_config\`/\`write_config\` to write the credential.
 - Preserve existing chat integrations unless the user asked to remove them.
+- To remove an existing chat integration, call \`read_config\` and inspect
+  \`config.integrations\`.
+- If exactly one existing integration matches the requested platform, remove
+  that entry with \`patch_config\` by index (or replace \`/integrations\` with a
+  filtered array when clearer).
+- If multiple existing integrations match the requested platform, ask which one
+  to remove before editing \`integrations\`.
+- Removing a chat integration means deleting its entry from
+  \`integrations[]\`. Do not call \`configure_channel\` to remove a channel.
 
 ## Gotchas
 
 - Chat integration types must come from \`list_integration_types\`.
 - Do not add a Linear integration just because the agent needs Linear issue
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
-- For recurring or scheduled runs, create a task (\`create_task\`), not an
+- For recurring or scheduled runs, create a task (\`create_tasks\`), not an
   integration.
+- Omitting \`integrations\` from a config write preserves the current channels.
+  To remove one, write an explicit filtered array or remove the exact array
+  entry.
 
 ## Verify
 
@@ -85,6 +99,7 @@ The \`integrations\` array controls how the target agent is triggered.
   \`ask_credential\` or a manual config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise use node or
   workflow tools.
-- The final \`integrations\` array keeps unrelated integrations intact.`,
+- The final \`integrations\` array keeps unrelated integrations intact and
+  removes only the requested channel entries.`,
 	};
 }

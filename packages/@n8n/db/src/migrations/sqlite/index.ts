@@ -215,6 +215,7 @@ import { CreateInstanceAiEventsTable1784000000046 } from '../common/178400000004
 import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
 import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
 import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/1784000000049-AddScheduledTaskDispatchedAt';
+import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -433,6 +434,7 @@ const sqliteMigrations: Migration[] = [
 	BackfillPreScopingOAuthGrantScopes1784000000047,
 	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
 	AddScheduledTaskDispatchedAt1784000000049,
+	AddHostRunIdToInstanceAiCheckpoints1784000000050,
 ];
 
 export { sqliteMigrations };

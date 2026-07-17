@@ -33,6 +33,14 @@ export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
 
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
+/** Hover-intent delays for reveal-on-hover affordances (e.g. a collapsed group's description). */
+export const HOVER_DELAY = {
+	/** Delay before a hovered affordance reveals its content. */
+	SHOW: 300,
+	/** Grace period before hiding, so the cursor can bridge onto the revealed content. */
+	LEAVE: 150,
+} as const;
+
 /** Centralized debounce timing constants. Use with getDebounceTime(). */
 export const DEBOUNCE_TIME = {
 	/** UI responsiveness - very fast feedback */

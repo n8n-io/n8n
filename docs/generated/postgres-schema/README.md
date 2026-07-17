@@ -62,7 +62,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.insights_raw](public.insights_raw.md) | 5 |  | BASE TABLE |
 | [public.installed_nodes](public.installed_nodes.md) | 4 |  | BASE TABLE |
 | [public.installed_packages](public.installed_packages.md) | 6 |  | BASE TABLE |
-| [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 8 |  | BASE TABLE |
+| [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 9 |  | BASE TABLE |
 | [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
@@ -819,6 +819,7 @@ erDiagram
 "public.instance_ai_checkpoints" {
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone expiredAt
+  varchar_64_ hostRunId
   varchar_255_ key
   varchar_255_ resourceId
   varchar_255_ runId

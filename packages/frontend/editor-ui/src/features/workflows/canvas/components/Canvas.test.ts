@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createEvent, fireEvent, waitFor } from '@testing-library/vue';
+import { createEvent, fireEvent, waitFor, within } from '@testing-library/vue';
 import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import Canvas from './Canvas.vue';
@@ -37,6 +37,8 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode } from '@/__tests__/mocks';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -419,7 +421,8 @@ describe('Canvas', () => {
 		it('neither toggles nor selects when the rename field is clicked', async () => {
 			const { getByTestId, nodeGroupView, vueFlow } = await setupGroup();
 
-			await fireEvent.click(getByTestId('inline-edit-preview'));
+			const title = within(getByTestId('canvas-node-group-title'));
+			await fireEvent.click(title.getByTestId('inline-edit-preview'));
 
 			expect(nodeGroupView.isGroupCollapsed('g1')).toBe(false);
 			expect(vueFlow.getSelectedNodes.value).toHaveLength(0);
@@ -548,7 +551,8 @@ describe('Canvas', () => {
 
 			await pressSpace();
 
-			await waitFor(() => expect(getByTestId('inline-edit-input')).toBeInTheDocument());
+			const title = within(getByTestId('canvas-node-group-title'));
+			await waitFor(() => expect(title.getByTestId('inline-edit-input')).toBeInTheDocument());
 			expect(messagePrompt).not.toHaveBeenCalled();
 		});
 
@@ -589,7 +593,8 @@ describe('Canvas', () => {
 
 			await pressSpace();
 
-			await waitFor(() => expect(rendered.getByTestId('inline-edit-input')).toBeInTheDocument());
+			const title = within(rendered.getByTestId('canvas-node-group-title'));
+			await waitFor(() => expect(title.getByTestId('inline-edit-input')).toBeInTheDocument());
 			expect(rendered.emitted()['update:node:name']).toBeUndefined();
 			expect(messagePrompt).not.toHaveBeenCalled();
 		});
@@ -667,8 +672,9 @@ describe('Canvas', () => {
 			rendered: Awaited<ReturnType<typeof setupExpandedGroup>>,
 			name: string,
 		) => {
-			await fireEvent.click(rendered.getByTestId('inline-edit-preview'));
-			const input = rendered.getByTestId('inline-edit-input') as HTMLInputElement;
+			const title = within(rendered.getByTestId('canvas-node-group-title'));
+			await fireEvent.click(title.getByTestId('inline-edit-preview'));
+			const input = title.getByTestId('inline-edit-input') as HTMLInputElement;
 			await fireEvent.update(input, name);
 			await fireEvent.keyDown(input, { key: 'Enter' });
 			return input;
@@ -693,8 +699,9 @@ describe('Canvas', () => {
 			// The editor re-opens (data-focused mirrors reka's edit mode, which a
 			// plain commit exits — see the fresh-name test) holding the rejected
 			// value so the user can correct it.
+			const title = within(rendered.getByTestId('canvas-node-group-title'));
 			await waitFor(() =>
-				expect(rendered.getByTestId('inline-editable-area')).toHaveAttribute('data-focused'),
+				expect(title.getByTestId('inline-editable-area')).toHaveAttribute('data-focused'),
 			);
 			expect(input).toHaveValue('Taken');
 			expect(input).toHaveFocus();
@@ -710,7 +717,8 @@ describe('Canvas', () => {
 			);
 			expect(showToast).not.toHaveBeenCalled();
 			// A successful commit leaves edit mode.
-			expect(rendered.getByTestId('inline-editable-area')).not.toHaveAttribute('data-focused');
+			const title = within(rendered.getByTestId('canvas-node-group-title'));
+			expect(title.getByTestId('inline-editable-area')).not.toHaveAttribute('data-focused');
 		});
 	});
 
@@ -1034,6 +1042,126 @@ describe('Canvas', () => {
 				],
 			],
 		]);
+	});
+
+	it('snaps an agent drag by its measured center', async () => {
+		const agent = createTestNode({
+			id: 'agent',
+			name: 'Agent',
+			position: [100, 100],
+			type: MESSAGE_AN_AGENT_NODE_TYPE,
+			typeVersion: 2,
+		});
+		workflowDocumentStore.addNode(agent);
+		const canvasNode = createCanvasNodeElement({
+			id: agent.id,
+			position: { x: 100, y: 100 },
+			data: { type: agent.type, typeVersion: agent.typeVersion },
+		});
+		const { container, emitted } = renderComponent({ props: { nodes: [canvasNode] } });
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(1));
+		const graphNode = useVueFlow({ id: canvasId }).findNode(agent.id)!;
+		graphNode.dimensions = { width: 320, height: 206 };
+
+		const node = container.querySelector(`[data-id="${agent.id}"]`) as Element;
+		await fireEvent.mouseDown(node, { view: window });
+		await fireEvent.mouseMove(node, { view: window, clientX: 20, clientY: 20 });
+		await fireEvent.mouseMove(node, { view: window, clientX: 40, clientY: 40 });
+		await fireEvent.mouseUp(node, { view: window });
+
+		expect(emitted()['update:nodes:position']).toEqual([
+			[
+				[
+					{
+						id: agent.id,
+						position: { x: 112, y: 105 },
+					},
+				],
+			],
+		]);
+	});
+
+	it('snaps a selected agent by its measured center when dragging a regular node', async () => {
+		const agent = createTestNode({
+			id: 'agent',
+			name: 'Agent',
+			position: [100, 100],
+			type: MESSAGE_AN_AGENT_NODE_TYPE,
+			typeVersion: 2,
+		});
+		workflowDocumentStore.addNode(agent);
+		const agentCanvasNode = createCanvasNodeElement({
+			id: agent.id,
+			position: { x: 100, y: 100 },
+			data: { type: agent.type, typeVersion: agent.typeVersion },
+		});
+		const regularCanvasNode = createCanvasNodeElement({
+			id: 'regular',
+			position: { x: 100, y: 100 },
+		});
+		const { container, emitted } = renderComponent({
+			props: { nodes: [agentCanvasNode, regularCanvasNode] },
+		});
+
+		await waitFor(() => expect(container.querySelectorAll('.vue-flow__node')).toHaveLength(2));
+		const vueFlow = useVueFlow({ id: canvasId });
+		const agentGraphNode = vueFlow.findNode(agent.id)!;
+		agentGraphNode.dimensions = { width: 320, height: 206 };
+		vueFlow.addSelectedNodes([agentGraphNode, vueFlow.findNode(regularCanvasNode.id)!]);
+
+		const regularNode = container.querySelector(`[data-id="${regularCanvasNode.id}"]`) as Element;
+		await fireEvent.mouseDown(regularNode, { view: window });
+		await fireEvent.mouseMove(regularNode, { view: window, clientX: 20, clientY: 20 });
+		await fireEvent.mouseMove(regularNode, { view: window, clientX: 40, clientY: 40 });
+		await fireEvent.mouseUp(regularNode, { view: window });
+
+		expect(emitted()['update:nodes:position']).toEqual([
+			[
+				[
+					{ id: agent.id, position: { x: 112, y: 105 } },
+					{ id: regularCanvasNode.id, position: { x: 112, y: 105 } },
+				],
+			],
+		]);
+	});
+
+	it('centers a newly added agent when its rendered height is first measured', async () => {
+		const agent = createTestNode({
+			id: 'agent',
+			name: 'Agent',
+			position: [112, 112],
+			type: MESSAGE_AN_AGENT_NODE_TYPE,
+			typeVersion: 2,
+		});
+		workflowDocumentStore.addNode(agent);
+		useAgentNodeCanvasGeometryStore().setPendingCenterY(canvasId, agent.id, 176);
+
+		const { container } = renderComponent({
+			props: {
+				nodes: [
+					createCanvasNodeElement({
+						id: agent.id,
+						position: { x: 112, y: 112 },
+						data: {
+							type: agent.type,
+							typeVersion: agent.typeVersion,
+						},
+					}),
+				],
+			},
+		});
+
+		await waitFor(() =>
+			expect(container.querySelector(`[data-id="${agent.id}"]`)).toBeInTheDocument(),
+		);
+
+		const vueFlow = useVueFlow({ id: canvasId });
+		await vueFlow.emits.nodesChange([
+			{ id: agent.id, type: 'dimensions', dimensions: { width: 320, height: 224 } },
+		]);
+
+		expect(workflowDocumentStore.getNodeById(agent.id)?.position).toEqual([112, 64]);
 	});
 
 	it('should emit `update:node:name` event', async () => {
