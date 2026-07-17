@@ -48,9 +48,16 @@ import type {
 	NodeMouseEvent,
 	ViewportTransform,
 	XYPosition,
-} from '@vue-flow/core';
-import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '@vue-flow/core';
-import { MiniMap } from '@vue-flow/minimap';
+} from '@/features/workflows/canvas/vueFlow.adapter';
+import {
+	ConnectionMode,
+	getRectOfNodes,
+	MarkerType,
+	MiniMap,
+	PanelPosition,
+	useVueFlow,
+	VueFlow,
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
 import type { CanvasRenderData } from '../canvas.utils';
@@ -1545,13 +1552,19 @@ defineExpose({
 </script>
 
 <template>
+	<!--
+		Controlled flow: `:nodes`/`:edges` are one-way bindings off read-only computeds; the
+		workflowDocument store is the source of truth and applies changes itself (no auto-apply prop
+		needed). `connection-mode` is set explicitly because Vue Flow 1.x defaults to `loose` but 2.0
+		defaults to `strict`, which would silently stop forming n8n's connections.
+	-->
 	<VueFlow
 		:id="id"
 		:nodes="vueFlowNodes"
 		:edges="connections"
 		:class="classes"
 		:style="selectionBoxStyle"
-		:apply-changes="false"
+		:connection-mode="ConnectionMode.Loose"
 		:connection-line-options="{ markerEnd: MarkerType.ArrowClosed }"
 		:connection-radius="60"
 		:pan-on-drag="panningMouseButton"

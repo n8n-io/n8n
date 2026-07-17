@@ -1,7 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { Position } from '@vue-flow/core';
+import { Position } from '@/features/workflows/canvas/vueFlow.adapter';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import CanvasEdge, { type CanvasEdgeProps } from './CanvasEdge.vue';

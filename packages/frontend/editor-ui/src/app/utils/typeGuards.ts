@@ -17,7 +17,7 @@ import type {
 } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
-import type { Connection as VueFlowConnection } from '@vue-flow/core';
+import type { Connection as VueFlowConnection } from '@/features/workflows/canvas/vueFlow.adapter';
 import type { RouteLocationRaw } from 'vue-router';
 import type { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import { canvasConnectionModes } from '@/features/workflows/canvas/canvas.types';

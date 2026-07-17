@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { GraphNode, NodeDragEvent } from '@vue-flow/core';
+import type { GraphNode, NodeDragEvent } from '@/features/workflows/canvas/vueFlow.adapter';
 import type { INodeUi } from '@/Interface';
 import { useCanvasNodeGroupDrag } from './useCanvasNodeGroupDrag';
 import { CANVAS_NODE_GROUP_TYPE } from '../canvas.types';

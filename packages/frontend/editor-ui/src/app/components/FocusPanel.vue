@@ -43,7 +43,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useVueFlow } from '@vue-flow/core';
+import { useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import ExperimentalFocusPanelHeader from '@/features/workflows/canvas/experimental/components/ExperimentalFocusPanelHeader.vue';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';

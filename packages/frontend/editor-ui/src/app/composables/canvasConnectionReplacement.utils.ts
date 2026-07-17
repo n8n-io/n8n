@@ -1,4 +1,4 @@
-import type { Connection } from '@vue-flow/core';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 import uniq from 'lodash/uniq';
 import type { IConnection, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';

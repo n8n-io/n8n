@@ -24,7 +24,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import { SET_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants';
 import { createTestNode } from '@/__tests__/mocks';
-import type { GraphNode } from '@vue-flow/core';
+import type { GraphNode } from '@/features/workflows/canvas/vueFlow.adapter';
 import { v4 as uuid } from 'uuid';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';

@@ -1,5 +1,5 @@
 import { nextTick, ref, watch } from 'vue';
-import { useVueFlow } from '@vue-flow/core';
+import { useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 
 // Vue-flow's transform pane has no public API; the class name is part of its
 // DOM contract. Overlays teleported here inherit the same pan/zoom transforms

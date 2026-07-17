@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CanvasEdgeProps } from '@/features/workflows/canvas/components/elements/edges/CanvasEdge.vue';
 import Edge from '@/features/workflows/canvas/components/elements/edges/CanvasEdge.vue';
-import { BaseEdge } from '@vue-flow/core';
+import { BaseEdge } from '@/features/workflows/canvas/vueFlow.adapter';
 
 const props = defineProps<CanvasEdgeProps>();
 </script>

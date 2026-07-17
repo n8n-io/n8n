@@ -8,7 +8,7 @@ import {
 	type CanvasConnectionPort,
 	type CanvasElementPortWithRenderData,
 } from '../../../canvas.types';
-import { Position } from '@vue-flow/core';
+import { Position } from '@/features/workflows/canvas/vueFlow.adapter';
 import {
 	createCanvasNodeProvide,
 	createCanvasProvide,

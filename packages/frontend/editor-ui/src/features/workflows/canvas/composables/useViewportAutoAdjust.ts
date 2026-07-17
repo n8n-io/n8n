@@ -1,4 +1,8 @@
-import type { Rect, SetViewport, ViewportTransform } from '@vue-flow/core';
+import type {
+	Rect,
+	SetViewport,
+	ViewportTransform,
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import { type Ref, ref, watch } from 'vue';
 
 /**

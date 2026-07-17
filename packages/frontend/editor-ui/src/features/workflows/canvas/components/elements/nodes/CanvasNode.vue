@@ -24,8 +24,8 @@ import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/app/constants';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
-import type { NodeProps, XYPosition } from '@vue-flow/core';
-import { Position } from '@vue-flow/core';
+import type { NodeProps, XYPosition } from '@/features/workflows/canvas/vueFlow.adapter';
+import { Position } from '@/features/workflows/canvas/vueFlow.adapter';
 import { useCanvas } from '../../../composables/useCanvas';
 import {
 	createCanvasConnectionHandleString,

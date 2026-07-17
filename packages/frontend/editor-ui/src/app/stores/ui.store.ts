@@ -98,7 +98,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
-import type { Connection } from '@vue-flow/core';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';

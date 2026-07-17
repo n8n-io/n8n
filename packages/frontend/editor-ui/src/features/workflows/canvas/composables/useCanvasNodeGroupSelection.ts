@@ -1,5 +1,5 @@
 import { computed, toValue, watch, type MaybeRefOrGetter } from 'vue';
-import { useVueFlow } from '@vue-flow/core';
+import { useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import type { IWorkflowGroup } from 'n8n-workflow';
 import { isPresent } from '@/app/utils/typesUtils';
 import {

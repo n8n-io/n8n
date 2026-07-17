@@ -5,7 +5,7 @@ import type { NodeConnectionType } from 'n8n-workflow';
 import { isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
 
 import { N8nIconButton } from '@n8n/design-system';
-import type { GraphNode } from '@vue-flow/core';
+import type { GraphNode } from '@/features/workflows/canvas/vueFlow.adapter';
 import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
 import CanvasEdgeTooltip from './CanvasEdgeTooltip.vue';
 

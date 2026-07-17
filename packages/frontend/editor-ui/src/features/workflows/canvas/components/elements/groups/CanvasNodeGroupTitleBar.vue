@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nIconButton, N8nInlineTextEdit, N8nTooltip } from '@n8n/design-system';
-import { Handle, Position, useVueFlow } from '@vue-flow/core';
+import { Handle, Position, useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import CanvasNodeStatusMark from '../nodes/render-types/parts/CanvasNodeStatusMark.vue';
 import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';

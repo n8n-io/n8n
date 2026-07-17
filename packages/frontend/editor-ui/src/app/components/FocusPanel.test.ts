@@ -12,7 +12,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
-import { useVueFlow } from '@vue-flow/core';
+import { useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import type { INodeProperties } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { reactive, computed, shallowRef } from 'vue';

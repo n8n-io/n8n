@@ -22,7 +22,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 
 import type { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import { useVueFlow } from '@vue-flow/core';
+import { useVueFlow } from '@/features/workflows/canvas/vueFlow.adapter';
 import { SIMULATE_NODE_TYPE } from '@/app/constants';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { createEventBus } from '@n8n/utils/event-bus';

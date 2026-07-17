@@ -3,8 +3,8 @@ import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vu
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIconButton } from '@n8n/design-system';
-import { getRectOfNodes } from '@vue-flow/core';
-import type { GraphNode } from '@vue-flow/core';
+import { getRectOfNodes } from '@/features/workflows/canvas/vueFlow.adapter';
+import type { GraphNode } from '@/features/workflows/canvas/vueFlow.adapter';
 
 import { useVueFlowTransformPaneTeleport } from '../../../composables/useVueFlowTransformPaneTeleport';
 import { useCanvasNodeGroupActions } from '../../../composables/useCanvasNodeGroupActions';

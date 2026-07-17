@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Connection } from '@vue-flow/core';
+import type { Connection } from '@/features/workflows/canvas/vueFlow.adapter';
 
 import { replaceCanvasConnection } from './canvasConnectionReplacement.utils';
 import type { INodeUi } from '@/Interface';

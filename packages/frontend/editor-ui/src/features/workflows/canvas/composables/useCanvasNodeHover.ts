@@ -1,5 +1,9 @@
 import { type CanvasNode } from '../canvas.types';
-import { getRectOfNodes, type Rect, type VueFlowStore } from '@vue-flow/core';
+import {
+	getRectOfNodes,
+	type Rect,
+	type VueFlowStore,
+} from '@/features/workflows/canvas/vueFlow.adapter';
 import { useThrottleFn } from '@vueuse/core';
 import { type ComputedRef, onMounted, onUnmounted, ref } from 'vue';
 

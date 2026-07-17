@@ -1,6 +1,6 @@
 import { ref, readonly } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { ViewportTransform } from '@vue-flow/core';
+import type { ViewportTransform } from '@/features/workflows/canvas/vueFlow.adapter';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
 
