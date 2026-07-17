@@ -50,8 +50,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				dataTables: [
-					{ id: 'dt-1', name: 'A', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
-					{ id: 'dt-1', name: 'B', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
+					{ id: 'dt-1', name: 'A', usedByWorkflows: ['wf-abc'] },
+					{ id: 'dt-1', name: 'B', usedByWorkflows: ['wf-abc'] },
 				],
 			},
 		};
