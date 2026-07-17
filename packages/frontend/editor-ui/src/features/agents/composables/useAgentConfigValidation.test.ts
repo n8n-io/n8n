@@ -90,4 +90,17 @@ describe('useAgentConfigValidation', () => {
 		await first;
 		expect(validation.value).toBeNull();
 	});
+
+	it('clears the result and stops loading when the fetch fails, without throwing', async () => {
+		getAgentConfigValidation.mockResolvedValueOnce(makeValid());
+		const { validation, loading, refresh } = useAgentConfigValidation();
+		await refresh('proj-1', 'agent-1');
+		expect(validation.value).toEqual(makeValid());
+
+		getAgentConfigValidation.mockRejectedValueOnce(new Error('network down'));
+		await expect(refresh('proj-1', 'agent-1')).resolves.toBeUndefined();
+
+		expect(validation.value).toBeNull();
+		expect(loading.value).toBe(false);
+	});
 });

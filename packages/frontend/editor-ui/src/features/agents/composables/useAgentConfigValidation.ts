@@ -49,6 +49,11 @@ export function useAgentConfigValidation() {
 		try {
 			const fresh = await getAgentConfigValidation(rootStore.restApiContext, projectId, agentId);
 			if (latestKey === key) validation.value = fresh;
+		} catch {
+			// Fail safe: a failed readiness fetch must not fail the caller's
+			// save/load/publish flow. `null` already means "unknown", which keeps
+			// Publish disabled until a later refresh succeeds.
+			if (latestKey === key) validation.value = null;
 		} finally {
 			if (latestKey === key) loading.value = false;
 		}

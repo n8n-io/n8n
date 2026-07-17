@@ -1084,6 +1084,10 @@ describe('AgentBuilderView — configuration validation', () => {
 		await nextTick();
 
 		expect(vm.configValidation).toBeNull();
+
+		// Cancel the debounced autosave scheduled by the edit above — a leaked
+		// timer would otherwise fire updateConfig during a later test.
+		wrapper.unmount();
 	});
 
 	it('refreshes validation after a successful config autosave lands', async () => {
