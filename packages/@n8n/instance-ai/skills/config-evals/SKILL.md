@@ -29,6 +29,7 @@ build a config eval instead and briefly say that is how you set up evaluations.
 
 - `name` — a human-readable evaluation name.
 - `startNodeName` — the node where a run begins; it is fed one test-input row.
+  Must be a node with an incoming connection — **never a trigger** (see step 2).
 - `endNodeName` — the node whose output is judged.
 - `dataTableId` — a Data Table holding the test dataset. Create and populate it
   with the `data-tables` tool first, then link it here by id.
@@ -39,8 +40,11 @@ build a config eval instead and briefly say that is how you set up evaluations.
 1. Identify the target workflow and read it. Trace the main path from trigger to
    the node that produces the answer.
 2. Pick the nodes:
-   - `startNodeName` is normally the node that receives the input the dataset
-     varies (often the trigger or the first node after it).
+   - `startNodeName` is the first node **after** the trigger — the node that
+     receives the input the dataset varies. Never use the trigger itself: an
+     eval run swaps the trigger for a dataset-driven one, so the start node must
+     have an incoming connection or the run fails to compile. For a chat/agent
+     workflow this is usually the agent node (often the same as `endNodeName`).
    - `endNodeName` is the node whose output you want scored (usually the AI agent
      or the final response node).
 3. Resolve the dataset. Call `data-tables(action="list")` to find an existing

@@ -16,6 +16,12 @@ discriminated by `action` and always take a `workflowId`.
 Config fields (create/update): `name`, `startNodeName`, `endNodeName`,
 `dataTableId`, `metrics`.
 
+`startNodeName` must be a node **with an incoming connection** — the first node
+the trigger feeds into, never the trigger itself. An eval run replaces the
+trigger with a dataset-driven one, so naming the trigger as the start node fails
+to compile. For a single-agent workflow, `startNodeName` and `endNodeName` are
+usually the same agent node.
+
 `create`, `update`, and `delete` show an approval card automatically. Call the
 tool and act on the result; do not ask for chat approval beforehand.
 
@@ -54,7 +60,7 @@ tool and act on the result; do not ask for chat approval beforehand.
      action="create",
      workflowId="<wf_id>",
      name="Support agent correctness",
-     startNodeName="When chat message received",
+     startNodeName="AI Agent",        // first node after the trigger — not the trigger itself
      endNodeName="AI Agent",
      dataTableId="<dt_id>",
      metrics=[{
@@ -80,7 +86,7 @@ eval-config(
   action="create",
   workflowId="<wf_id>",
   name="Assistant helpfulness",
-  startNodeName="When chat message received",
+  startNodeName="AI Agent",        // first node after the trigger — not the trigger itself
   endNodeName="AI Agent",
   dataTableId="<dt_id>",
   metrics=[{

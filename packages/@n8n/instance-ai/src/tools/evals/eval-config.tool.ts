@@ -71,7 +71,9 @@ const configFields = {
 	startNodeName: z
 		.string()
 		.min(1)
-		.describe('Name of the node where the evaluation run begins (fed the test input)'),
+		.describe(
+			'Name of the node where the evaluation run begins (fed the test input). Must be a node with an incoming connection — NOT a trigger. An eval run replaces the trigger with a dataset-driven one, so a trigger as the start node fails to compile; use the first node after the trigger (often the same as endNodeName for a single-agent workflow).',
+		),
 	endNodeName: z.string().min(1).describe('Name of the node whose output is judged'),
 	dataTableId: z
 		.string()
