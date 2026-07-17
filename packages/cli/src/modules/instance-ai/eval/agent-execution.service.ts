@@ -29,13 +29,14 @@ import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entit
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
-import { createMcpMockFetch } from './mcp-mock-fetch';
+import { createMcpMockFetch, type McpMockCanonicalTool } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
 import { truncateForLlm } from './request-sanitizer';
 
@@ -155,6 +156,7 @@ export class EvalAgentExecutionService {
 		// prefixed name (`<server>_<tool>`) so they merge with GenerateResult's
 		// tool calls like every other tool kind.
 		const mcpServers = config.mcpServers ?? [];
+		const knownToolsByServer = await this.resolveCanonicalMcpCatalogs(mcpServers);
 		const mcpFetch =
 			mcpServers.length > 0
 				? createMcpMockFetch({
@@ -167,6 +169,7 @@ export class EvalAgentExecutionService {
 						scenarioHints: options.scenarioHints,
 						globalContext: seed.globalContext,
 						serverHints: seed.toolHints,
+						knownToolsByServer,
 						logger: this.logger,
 						onToolCall: (call) => {
 							const key = `${call.serverName}_${call.toolName}`;
@@ -350,6 +353,55 @@ export class EvalAgentExecutionService {
 	 * owning tool — the agent-eval analog of the workflow eval's
 	 * `createInterceptingHandler`, keyed by tool instead of node.
 	 */
+	/**
+	 * Resolve canonical tool catalogs for configured MCP servers, so the mock
+	 * exposes the tools the real server would: registry entries carry the
+	 * server's declared catalog (matched by remote URL), and an allow-mode
+	 * toolFilter pins names even without a registry match. Best-effort —
+	 * without a match the mock's LLM-designed catalog applies.
+	 */
+	private async resolveCanonicalMcpCatalogs(
+		mcpServers: NonNullable<AgentJsonConfig['mcpServers']>,
+	): Promise<Record<string, McpMockCanonicalTool[]> | undefined> {
+		if (mcpServers.length === 0) return undefined;
+		const result: Record<string, McpMockCanonicalTool[]> = {};
+
+		if (this.moduleRegistry.isActive('mcp-registry')) {
+			try {
+				const entries = await Container.get(McpRegistryService).getAll();
+				for (const server of mcpServers) {
+					const entry = entries.find((candidate) =>
+						candidate.remotes.some(
+							(remote) => server.url.startsWith(remote.url) || remote.url.startsWith(server.url),
+						),
+					);
+					if (entry && entry.tools.length > 0) {
+						result[server.name] = entry.tools.map((tool) => ({
+							name: tool.name,
+							description: tool.title ?? tool.name,
+						}));
+					}
+				}
+			} catch (error) {
+				this.logger.debug(
+					`[EvalAgentMock] MCP registry catalog lookup failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+
+		for (const server of mcpServers) {
+			if (result[server.name]) continue;
+			if (server.toolFilter?.mode === 'allow' && server.toolFilter.tools.length > 0) {
+				result[server.name] = server.toolFilter.tools.map((name) => ({
+					name,
+					description: name,
+				}));
+			}
+		}
+
+		return Object.keys(result).length > 0 ? result : undefined;
+	}
+
 	private createRecordingMockHandler(
 		mockHandler: EvalLlmMockHandler,
 		toolName: string,

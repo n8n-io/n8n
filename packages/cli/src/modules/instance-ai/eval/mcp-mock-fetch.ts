@@ -30,6 +30,11 @@ export interface McpMockToolCall {
 	result: unknown;
 }
 
+export interface McpMockCanonicalTool {
+	name: string;
+	description: string;
+}
+
 export interface McpMockFetchOptions {
 	servers: McpMockServerInfo[];
 	agentInstructions: string;
@@ -37,6 +42,13 @@ export interface McpMockFetchOptions {
 	globalContext?: string;
 	/** Per-server data hints from the scenario seed, keyed by server name. */
 	serverHints?: Record<string, string>;
+	/**
+	 * Canonical tool catalogs keyed by server name (e.g. from the MCP
+	 * registry). When present, the mock exposes EXACTLY these tools — the LLM
+	 * only designs their input schemas — so the mock matches the server as the
+	 * builder set it up instead of inventing a catalog.
+	 */
+	knownToolsByServer?: Record<string, McpMockCanonicalTool[]>;
 	onToolCall: (call: McpMockToolCall) => void;
 	logger: Logger;
 }
@@ -59,7 +71,8 @@ RULES:
 2. Tool names: short snake_case, WITHOUT any server-name prefix (the client adds it).
 3. Each tool needs a one-sentence description and an "inputSchema": a JSON Schema object with "type": "object", simple "properties" (string/number/boolean), and a "required" array. Keep schemas minimal — 1-3 properties.
 4. If a "Server data hint" or "Test Scenario" is provided, the catalog must make that scenario playable (e.g. a lookup scenario needs a lookup tool).
-5. Return ONLY valid JSON: { "tools": [ { "name", "description", "inputSchema" } ] }`;
+5. **When a "## Canonical tools" section is provided, the catalog is FIXED**: return exactly those tool names with those descriptions, in that order — your job is ONLY to design each tool's inputSchema.
+6. Return ONLY valid JSON: { "tools": [ { "name", "description", "inputSchema" } ] }`;
 
 const TOOL_CALL_PROMPT = `You simulate ONE tool invocation on a mocked MCP server during an automated eval run. Given the tool, its arguments, and the scenario context, produce the exact result the real server would return.
 
@@ -177,16 +190,38 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 		return sections;
 	}
 
+	/** Force the generated catalog onto the canonical names when they're known. */
+	function coerceToCanonical(
+		generated: McpMockTool[] | undefined,
+		canonical: McpMockCanonicalTool[],
+	): McpMockTool[] {
+		const schemasByName = new Map((generated ?? []).map((tool) => [tool.name, tool.inputSchema]));
+		return canonical.map((tool) => ({
+			name: tool.name,
+			description: tool.description,
+			inputSchema: schemasByName.get(tool.name) ?? { type: 'object', properties: {} },
+		}));
+	}
+
 	async function getTools(server: McpMockServerInfo): Promise<McpMockTool[]> {
 		let cached = toolsByServer.get(server.name);
 		if (!cached) {
 			cached = (async () => {
+				const canonical = options.knownToolsByServer?.[server.name];
 				const sections = [
 					`Design the tool catalog for the MCP server "${server.name}"${server.description ? ` (${server.description})` : ''} at ${server.url}.`,
 					'',
 					'## Agent instructions (what the agent expects from this server)',
 					'',
 					options.agentInstructions.slice(0, 3_000),
+					...(canonical && canonical.length > 0
+						? [
+								'',
+								'## Canonical tools (the catalog is FIXED to exactly these)',
+								'',
+								...canonical.map((tool) => `- ${tool.name}: ${tool.description}`),
+							]
+						: []),
 					...scenarioSections(server),
 				];
 				const tools = await generateJson(
@@ -196,6 +231,16 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 					validateToolsList,
 					logger,
 				);
+				// Canonical catalogs (from the MCP registry) are authoritative: the
+				// real server exposes these names, so the mock must too, whatever
+				// the generator returned.
+				if (canonical && canonical.length > 0) {
+					const coerced = coerceToCanonical(tools, canonical);
+					logger.debug(
+						`[EvalMcpMock] ${server.name} exposes canonical catalog: ${coerced.map((tool) => tool.name).join(', ')}`,
+					);
+					return coerced;
+				}
 				if (tools) {
 					logger.debug(
 						`[EvalMcpMock] ${server.name} exposes: ${tools.map((tool) => tool.name).join(', ')}`,

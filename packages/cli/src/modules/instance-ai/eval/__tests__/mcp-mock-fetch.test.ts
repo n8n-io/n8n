@@ -145,6 +145,54 @@ describe('createMcpMockFetch', () => {
 		expect(body.result.tools.map((tool) => tool.name)).toEqual(['query']);
 	});
 
+	it('pins the catalog to canonical registry tools regardless of what the generator returns', async () => {
+		// Generator returns one matching name (schema kept) and one invented
+		// name (dropped) — the served catalog must be exactly the canonical set.
+		extractText.mockReturnValue(
+			JSON.stringify({
+				tools: [
+					{
+						name: 'notion-search',
+						description: 'invented description',
+						inputSchema: {
+							type: 'object',
+							properties: { query: { type: 'string' } },
+							required: ['query'],
+						},
+					},
+					{ name: 'made_up_tool', description: 'nope', inputSchema: { type: 'object' } },
+				],
+			}),
+		);
+		const fetchFn = createMcpMockFetch({
+			servers: [{ name: 'notion', url: 'https://mcp.notion.com/mcp' }],
+			agentInstructions: 'Save notes to Notion.',
+			knownToolsByServer: {
+				notion: [
+					{ name: 'notion-search', description: 'Search Notion and connected sources' },
+					{ name: 'notion-create-pages', description: 'Create pages in Markdown' },
+				],
+			},
+			onToolCall: vi.fn(),
+			logger,
+		});
+
+		const res = await fetchFn('https://mcp.notion.com/mcp', { ...rpc('tools/list') });
+		const body = (await res.json()) as {
+			result: { tools: Array<{ name: string; description: string; inputSchema: unknown }> };
+		};
+
+		expect(body.result.tools.map((tool) => tool.name)).toEqual([
+			'notion-search',
+			'notion-create-pages',
+		]);
+		// Canonical description wins; the matching generated schema is kept.
+		expect(body.result.tools[0].description).toBe('Search Notion and connected sources');
+		expect(body.result.tools[0].inputSchema).toMatchObject({ required: ['query'] });
+		// The unmatched canonical tool gets a permissive fallback schema.
+		expect(body.result.tools[1].inputSchema).toMatchObject({ type: 'object' });
+	});
+
 	it('answers unknown methods with a JSON-RPC method-not-found error', async () => {
 		const fetchFn = buildFetch();
 		const res = await fetchFn('https://mcp.acme-kb.example/mcp', { ...rpc('tasks/create') });
