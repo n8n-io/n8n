@@ -103,26 +103,40 @@ export function useNodeCredentialOptions(
 		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(node.value.type) && isRequired;
 	}
 
+	function isMainAuthCredential(credentialType: INodeCredentialDescription): boolean {
+		const authFieldName = mainNodeAuthField.value?.name;
+		return (
+			authFieldName !== undefined &&
+			credentialType.displayOptions?.show?.[authFieldName] !== undefined
+		);
+	}
+
+	function shouldShowRelatedCredentials(credentialType: INodeCredentialDescription): boolean {
+		/**
+		 * Show related credentials if:
+		 * - the credential type is mixed - one selector combines multiple credential types
+		 * - the credential type is the main auth credential - the main auth field is shown in the node UI
+		 * - the display all options is enabled
+		 */
+		return (
+			showMixedCredentials(credentialType) ||
+			(toValue(displayAllOptions) && isMainAuthCredential(credentialType))
+		);
+	}
+
 	function getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
-		if (hasOverride.value) {
+		if (hasOverride.value || !shouldShowRelatedCredentials(credentialType)) {
 			return [credentialType.name];
 		}
 
-		const credentialIsRequired = showMixedCredentials(credentialType);
-		if (credentialIsRequired) {
-			if (mainNodeAuthField.value) {
-				if (toValue(displayAllOptions)) {
-					return nodeType.value?.credentials?.map((cred) => cred.name) ?? [];
-				}
-
-				const credentials = getAllNodeCredentialForAuthType(
-					nodeType.value,
-					mainNodeAuthField.value.name,
-				);
-				return credentials.map((cred) => cred.name);
-			}
+		const authFieldName = mainNodeAuthField.value?.name;
+		// if no main auth field exists, return the credential type itself
+		if (!authFieldName) {
+			return [credentialType.name];
 		}
-		return [credentialType.name];
+
+		// otherwise, return all related credential types
+		return getAllNodeCredentialForAuthType(nodeType.value, authFieldName).map((cred) => cred.name);
 	}
 
 	function isCredentialExisting(credentialType: INodeCredentialDescription): boolean {
