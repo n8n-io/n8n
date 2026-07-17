@@ -2,11 +2,14 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
+import type { OAuthClientResponseDto } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogClose,
 	N8nDialogFooter,
+	N8nIcon,
 	N8nNotice,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -30,6 +33,7 @@ import {
 	MCP_DOCS_PAGE_URL,
 	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
+import { getClientBrand } from '@/features/ai/mcpAccess/clients.utils';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
@@ -131,6 +135,18 @@ const fetchoAuthCLients = async () => {
 const connectedClientsTotal = computed(
 	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
 );
+
+// A short preview of the connected clients so the list stays visible on the
+// overview; the full, filterable/revocable list lives in the clients sub-view.
+const CLIENTS_PREVIEW_LIMIT = 3;
+const previewClients = computed(() => mcpStore.oauthClients.slice(0, CLIENTS_PREVIEW_LIMIT));
+const hasMoreClients = computed(() => connectedClientsTotal.value > previewClients.value.length);
+
+function clientTypeLabel(client: OAuthClientResponseDto): string | null {
+	const type = getClientBrand(client.name).type;
+	if (!type) return null;
+	return i18n.baseText(`settings.mcp.oAuthClients.clientType.${type}` as BaseTextKey);
+}
 
 const openClientsView = () => {
 	void router.push({ name: MCP_CLIENTS_VIEW });
@@ -277,6 +293,27 @@ onMounted(async () => {
 				/>
 				<N8nSettingsRowGroup v-else>
 					<N8nSettingsRow
+						v-for="client in previewClients"
+						:key="`${client.id}:${client.owner?.id ?? 'mine'}`"
+						:title="client.name"
+						:description="clientTypeLabel(client) ?? undefined"
+						clickable
+						data-test-id="mcp-clients-preview-row"
+						@click="openClientsView"
+					>
+						<template #visual>
+							<span :class="$style['client-icon-chip']">
+								<component
+									:is="getClientBrand(client.name).icon"
+									v-if="getClientBrand(client.name).icon"
+									:class="$style['client-icon']"
+								/>
+								<N8nIcon v-else icon="mcp" :class="$style['client-icon']" />
+							</span>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						v-if="hasMoreClients"
 						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
 						:description="
 							i18n.baseText('settings.mcp.connectedClients.viewAll.description', {
@@ -334,5 +371,25 @@ onMounted(async () => {
    header starts at the layout's own 24px inset, like the prototype. */
 .layout {
 	margin-top: -70.5px;
+}
+
+.client-icon-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	flex-shrink: 0;
+	/* fixed white tile so dark brand marks stay visible on the dark theme */
+	background-color: var(--color--neutral-white);
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
+.client-icon {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	/* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
+	color: var(--color--neutral-black);
 }
 </style>
