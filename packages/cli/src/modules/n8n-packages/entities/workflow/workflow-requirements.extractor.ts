@@ -3,14 +3,14 @@ import { Service } from '@n8n/di';
 import { getSubworkflowId } from 'n8n-workflow';
 
 import type { RequirementsExtractor } from '../requirements-extractor';
-import type { WorkflowWorkflowRequirement } from './workflow.types';
+import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 @Service()
 export class WorkflowRequirementsExtractor
-	implements RequirementsExtractor<WorkflowWorkflowRequirement>
+	implements RequirementsExtractor<WorkflowSubWorkflowRequirement>
 {
-	extract(workflow: WorkflowEntity): WorkflowWorkflowRequirement[] {
-		const byId = new Map<string, WorkflowWorkflowRequirement>();
+	extract(workflow: WorkflowEntity): WorkflowSubWorkflowRequirement[] {
+		const byId = new Map<string, WorkflowSubWorkflowRequirement>();
 
 		for (const node of workflow.nodes ?? []) {
 			const referencedWorkflowId = getSubworkflowId(node);
