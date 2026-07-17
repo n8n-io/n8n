@@ -54,11 +54,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData = JSON.stringify(\n{\nname: \"test\",\nRenamed: \"name\"\n}\n)\nif(JSON.stringify($node['Rename Keys'].json) !== testData){\n  throw new Error('Error in rename keys node');\n}\n\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData = JSON.stringify(\n{\nname: \"test\",\nRenamed: \"name\"\n}\n)\nif(JSON.stringify($node['Rename Keys'].json) !== testData){\n  throw new Error('Error in rename keys node');\n}\n\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [850, 300],
 			"id": "95ab4a10-c3f3-4bad-8792-4a8dab012672"
 		}
