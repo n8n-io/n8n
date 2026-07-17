@@ -1,0 +1,21 @@
+packages/testing/containers/services/n8n.ts
+  s_3a8fd61635800a::t_6158e4a7e42aad 48
+packages/testing/playwright/playwright.config.ts
+  s_3a8fd61635800a::t_d156d6d82e2a00 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "250126d3cde226249fe6a26f536bc7b7bffb4d97",
+  "prompts": {},
+  "sessions": {
+    "s_3a8fd61635800a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_3a8fd61635800a",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}
