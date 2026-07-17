@@ -26,6 +26,7 @@
     "test:unit": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run",
     "test:unit:changed": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite janitor test-scoped",
     "test:integration": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run --config vitest.config.integration.ts",
+    "test:integration:dev": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest --silent=false --config vitest.config.integration.ts",
     "test:integration:changed": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite janitor test-scoped -- --config vitest.config.integration.ts",
     "test:dev": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest --silent=false",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run --config vitest.config.integration.ts",

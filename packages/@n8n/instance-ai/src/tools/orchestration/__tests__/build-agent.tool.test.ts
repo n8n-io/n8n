@@ -1,4 +1,8 @@
-import { BUILDER_CHECKPOINT_UNAVAILABLE_CODE, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
+	type InstanceAiEvent,
+	type QuestionAnswer,
+} from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -41,6 +45,7 @@ interface BuildAgentOutput {
 	error?: string;
 	agentId?: string;
 	agentName?: string;
+	answers?: QuestionAnswer[];
 }
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
@@ -1010,6 +1015,40 @@ describe('build-agent tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				builderReply: 'Using Slack.',
+				configUpdated: false,
+				agentId: 'agent-1',
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+			});
+		});
+
+		it('does not attach answers when resuming a credential suspension', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Connected Slack.'));
+
+			const result = await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { credentials: { slack: 'cred-1' } },
+					suspendPayload: {
+						...askCredentialSuspendPayload(),
+						requestId: 'orch-req-1',
+						builderCheckpoint: {
+							runId: 'builder-run-1',
+							toolCallId: 'builder-call-1',
+							configUpdated: false,
+						},
+					},
+				},
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				builderReply: 'Connected Slack.',
 				configUpdated: false,
 				agentId: 'agent-1',
 			});
