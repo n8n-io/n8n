@@ -1,7 +1,10 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -212,6 +215,39 @@ export class AwsAiAgent implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		listSearch: {
+			async searchHarnesses(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const harnesses: INodeListSearchItems[] = [
+					{
+						name: 'Customer Support Agent',
+						value:
+							'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/support-agent-abc123',
+					},
+					{
+						name: 'Sales Research Agent',
+						value:
+							'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/sales-research-def456',
+					},
+					{
+						name: 'Claims Triage Agent',
+						value:
+							'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/claims-triage-ghi789',
+					},
+				];
+
+				const results = filter
+					? harnesses.filter((h) => h.name.toLowerCase().includes(filter.toLowerCase()))
+					: harnesses;
+
+				return { results };
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

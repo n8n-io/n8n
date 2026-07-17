@@ -1,3 +1,5 @@
+import { mockDeep } from 'jest-mock-extended';
+import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { AwsAiAgent } from '../AwsAiAgent.node';
 
 describe('AWS AI Agent node — description', () => {
@@ -63,5 +65,25 @@ describe('AWS AI Agent node — parameters', () => {
 				'streaming',
 			]),
 		);
+	});
+});
+
+describe('AWS AI Agent node — searchHarnesses', () => {
+	const node = new AwsAiAgent();
+	const ctx = mockDeep<ILoadOptionsFunctions>();
+
+	it('returns fake harnesses with name and ARN value', async () => {
+		const result = await node.methods.listSearch.searchHarnesses.call(ctx);
+		expect(result.results.length).toBeGreaterThanOrEqual(3);
+		for (const r of result.results) {
+			expect(typeof r.name).toBe('string');
+			expect(r.value).toMatch(/^arn:aws:bedrock-agentcore:/);
+		}
+	});
+
+	it('filters harnesses case-insensitively by name', async () => {
+		const result = await node.methods.listSearch.searchHarnesses.call(ctx, 'sales');
+		expect(result.results.length).toBe(1);
+		expect(result.results[0].name.toLowerCase()).toContain('sales');
 	});
 });
