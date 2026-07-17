@@ -67,7 +67,11 @@ export function generatePathYaml(pathKey: string, routes: RouteConfig[]): string
 		info: { title: 'throwaway', version: '0.0.0' },
 	});
 
-	return stringify(document.paths?.[pathKey], { aliasDuplicateObjects: false });
+	// singleQuote: true matches this repo's prettier config (.prettierrc.js) — without it, the
+	// `yaml` package's default quoting differs from prettier's, so every regeneration produces a
+	// spurious quote-style diff against what lefthook's prettier hook already reformatted at
+	// commit time.
+	return stringify(document.paths?.[pathKey], { aliasDuplicateObjects: false, singleQuote: true });
 }
 
 /**
@@ -83,7 +87,7 @@ export function generateSchemaYaml(schema: ZodType, ref: string): string {
 	registry.register(ref, schema);
 
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
-	return stringify(components?.schemas?.[ref], { aliasDuplicateObjects: false });
+	return stringify(components?.schemas?.[ref], { aliasDuplicateObjects: false, singleQuote: true });
 }
 
 /**
