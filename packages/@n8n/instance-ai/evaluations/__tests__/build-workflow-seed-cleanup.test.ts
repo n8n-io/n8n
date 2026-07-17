@@ -82,5 +82,8 @@ describe('buildWorkflow scenario-seed failure cleanup', () => {
 		// caller's cleanup deletes them instead of leaking them into the project.
 		expect(build.createdWorkflowIds).toContain('built-wf-1');
 		expect(build.createdDataTableIds).toContain('built-dt-1');
+		// A post-build seed failure is a harness problem, not an agent build
+		// failure — flag it so the CLI attributes framework_issue, not build_failure.
+		expect(build.seedingFailed).toBe(true);
 	});
 });

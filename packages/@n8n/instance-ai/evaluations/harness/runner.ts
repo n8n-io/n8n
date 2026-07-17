@@ -911,12 +911,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		// Seed the case's execution-scenario data tables (exact names + rows) now
 		// that the workflow exists, before any scenario runs against it (TRUST-311).
-		const scenarioDataTableIds = await seedScenarioDataTables(
-			client,
-			threadId,
-			config.executionScenarios ?? [],
-			logger,
-		);
+		// Post-build (not pre-build) because the binding is by NAME: the agent names
+		// the table in the built workflow, so we only know which name to seed once
+		// the build is done. A pre-build variant (seed first, tell the agent the
+		// name) is a tracked follow-up. A seed failure here is a harness problem, so
+		// flag seedingFailed → the CLI attributes framework_issue, not build_failure;
+		// the outer catch still returns the built ids (builtWorkflowIds/…) for cleanup.
+		let scenarioDataTableIds: string[];
+		try {
+			scenarioDataTableIds = await seedScenarioDataTables(
+				client,
+				threadId,
+				config.executionScenarios ?? [],
+				logger,
+			);
+		} catch (error) {
+			seedingFailed = true;
+			throw error;
+		}
 
 		return {
 			success: true,
@@ -991,6 +1003,10 @@ export async function executeScenario(
 	);
 }
 
+/** Max distinct scenario seed tables per case — mirrors the restore-thread
+ *  DTO's `dataTables` cap, since the whole union is sent in one call. */
+const MAX_SEED_DATA_TABLES = 20;
+
 /**
  * Create + row-seed the data tables an execution-scenario case declares
  * (`seedDataTables`), before any scenario runs (TRUST-311). Reuses the
@@ -1001,9 +1017,10 @@ export async function executeScenario(
  *
  * Tables are deduped by name across a case's scenarios (first declaration wins):
  * a name is unique per project, and the built workflow references it by name, so
- * a case shares one table across its scenarios. Returns the created ids so the
- * caller can fold them into cleanup. NOTE: differing per-scenario row-states for
- * the same table name are not supported (would need per-scenario execution
+ * a case shares one table across its scenarios. A later same-name declaration
+ * with a different shape is dropped with a warning. Returns the created ids so
+ * the caller can fold them into cleanup. NOTE: differing per-scenario row-states
+ * for the same table name are not supported (would need per-scenario execution
  * isolation the shared project doesn't provide).
  */
 export async function seedScenarioDataTables(
@@ -1015,10 +1032,30 @@ export async function seedScenarioDataTables(
 	const byName = new Map<string, InstanceAiEvalSeedDataTable>();
 	for (const scenario of scenarios) {
 		for (const table of scenario.seedDataTables ?? []) {
-			if (!byName.has(table.name)) byName.set(table.name, table);
+			const existing = byName.get(table.name);
+			if (existing) {
+				// Same name, different columns/rows: the by-name binding can only
+				// resolve to one table, so keeping the first is silent data loss for
+				// the author unless we say so.
+				if (!sameSeedTableShape(existing, table)) {
+					logger.warn(
+						`  Scenario seed table "${table.name}" is declared more than once with different columns/rows; keeping the first declaration and ignoring the rest.`,
+					);
+				}
+				continue;
+			}
+			byName.set(table.name, table);
 		}
 	}
 	if (byName.size === 0) return [];
+	// The whole deduped union is seeded in ONE restore call, whose DTO caps
+	// `dataTables` at MAX_SEED_DATA_TABLES — fail clearly at authoring rather than
+	// with an opaque 400 at runtime.
+	if (byName.size > MAX_SEED_DATA_TABLES) {
+		throw new Error(
+			`A case declares ${String(byName.size)} distinct scenario seed data tables, exceeding the ${String(MAX_SEED_DATA_TABLES)}-table restore limit; reduce the number of distinct table names.`,
+		);
+	}
 
 	const tables = [...byName.values()];
 	const { dataTableIds } = await client.restoreThread(threadId, [], [], tables, {
@@ -1026,6 +1063,18 @@ export async function seedScenarioDataTables(
 	});
 	logger.info(`  Seeded ${String(dataTableIds.length)} scenario data table(s)`);
 	return dataTableIds;
+}
+
+/** Two seed tables bind the same way iff their columns + rows match (the id
+ *  differs per declaration and is cosmetic under by-name seeding). */
+function sameSeedTableShape(
+	a: InstanceAiEvalSeedDataTable,
+	b: InstanceAiEvalSeedDataTable,
+): boolean {
+	return (
+		JSON.stringify({ columns: a.columns, rows: a.rows }) ===
+		JSON.stringify({ columns: b.columns, rows: b.rows })
+	);
 }
 
 /**

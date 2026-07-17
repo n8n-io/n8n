@@ -113,4 +113,84 @@ describe('seedScenarioDataTables', () => {
 		expect(ids).toEqual([]);
 		expect(restoreThread).not.toHaveBeenCalled();
 	});
+
+	it('warns when a later scenario redeclares the same name with a DIFFERENT shape', async () => {
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 0,
+			workflowIds: [],
+			dataTableIds: ['dt-a'],
+		});
+		const { client } = makeClient(restoreThread);
+		const warn = vi.fn();
+		const logger = { ...silentLogger, warn };
+
+		const first = {
+			id: 'applications-1111',
+			name: 'Job Applications',
+			columns: [{ name: 'application_id', type: 'string' as const }],
+			rows: [{ application_id: 'row_001' }],
+		};
+		const conflicting = {
+			...first,
+			id: 'applications-2222',
+			rows: [{ application_id: 'row_002' }],
+		};
+
+		await seedScenarioDataTables(
+			client,
+			'thread-1',
+			[scenario({ seedDataTables: [first] }), scenario({ seedDataTables: [conflicting] })],
+			logger,
+		);
+
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('Job Applications'));
+	});
+
+	it('does not warn when the same name is redeclared identically', async () => {
+		const restoreThread = vi.fn().mockResolvedValue({
+			restored: 0,
+			workflowIds: [],
+			dataTableIds: ['dt-a'],
+		});
+		const { client } = makeClient(restoreThread);
+		const warn = vi.fn();
+		const logger = { ...silentLogger, warn };
+
+		const table = {
+			id: 'applications-1111',
+			name: 'Job Applications',
+			columns: [{ name: 'application_id', type: 'string' as const }],
+			rows: [{ application_id: 'row_001' }],
+		};
+
+		await seedScenarioDataTables(
+			client,
+			'thread-1',
+			[scenario({ seedDataTables: [table] }), scenario({ seedDataTables: [{ ...table }] })],
+			logger,
+		);
+
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	it('throws (without seeding) when the deduped union exceeds the 20-table cap', async () => {
+		const restoreThread = vi.fn();
+		const { client } = makeClient(restoreThread);
+
+		const tables = Array.from({ length: 21 }, (_, i) => ({
+			id: `table-id-${String(i).padStart(4, '0')}`,
+			name: `Table ${String(i)}`,
+			columns: [{ name: 'application_id', type: 'string' as const }],
+		}));
+
+		await expect(
+			seedScenarioDataTables(
+				client,
+				'thread-1',
+				[scenario({ seedDataTables: tables })],
+				silentLogger,
+			),
+		).rejects.toThrow(/20/);
+		expect(restoreThread).not.toHaveBeenCalled();
+	});
 });
