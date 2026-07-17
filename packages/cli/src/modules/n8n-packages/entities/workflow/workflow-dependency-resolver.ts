@@ -19,29 +19,12 @@ export class WorkflowDependencyResolver {
 	) {}
 
 	async resolve(request: WorkflowDependencyResolveRequest): Promise<WorkflowWorkflowRequirement[]> {
-		const queue: string[] = [];
-		const queuedIds = new Set<string>();
-		const processedIds = new Set<string>();
-		const seenRequirements = new Set<string>();
+		const queue = [...new Set(request.workflowIds)];
+		const seenWorkflowIds = new Set(queue);
 		const requirements: WorkflowWorkflowRequirement[] = [];
-
-		const enqueue = (workflowId: string) => {
-			if (processedIds.has(workflowId) || queuedIds.has(workflowId)) return;
-
-			queue.push(workflowId);
-			queuedIds.add(workflowId);
-		};
-
-		for (const workflowId of request.workflowIds) {
-			enqueue(workflowId);
-		}
 
 		while (queue.length > 0) {
 			const workflowIds = queue.splice(0);
-			for (const workflowId of workflowIds) {
-				queuedIds.delete(workflowId);
-				processedIds.add(workflowId);
-			}
 
 			const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 				workflowIds,
@@ -57,22 +40,18 @@ export class WorkflowDependencyResolver {
 				// But the missing/inaccessible IDs are kept as direct requirements from their parent.
 				if (!workflow) continue;
 
-				for (const requirement of this.workflowRequirementsExtractor.extract(workflow)) {
-					const key = this.requirementKey(requirement);
-					if (!seenRequirements.has(key)) {
-						seenRequirements.add(key);
-						requirements.push(requirement);
-					}
+				const extractedRequirements = this.workflowRequirementsExtractor.extract(workflow);
+				requirements.push(...extractedRequirements);
 
-					enqueue(requirement.referencedWorkflowId);
+				for (const { referencedWorkflowId } of extractedRequirements) {
+					if (seenWorkflowIds.has(referencedWorkflowId)) continue;
+
+					seenWorkflowIds.add(referencedWorkflowId);
+					queue.push(referencedWorkflowId);
 				}
 			}
 		}
 
 		return requirements;
-	}
-
-	private requirementKey(requirement: WorkflowWorkflowRequirement): string {
-		return `${requirement.workflowId}:${requirement.referencedWorkflowId}`;
 	}
 }
