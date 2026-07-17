@@ -108,7 +108,7 @@ export class AgentPublishService {
 				);
 		}
 
-		const { AgentTaskService } = await import('./agent-task.service');
+		const { AgentTaskService } = await import('./agent-task.service.js');
 		await Container.get(AgentTaskService)
 			.requestReconcile(agentId)
 			.catch((error) =>
@@ -145,7 +145,7 @@ export class AgentPublishService {
 			});
 		}
 
-		const { AgentTaskService } = await import('./agent-task.service');
+		const { AgentTaskService } = await import('./agent-task.service.js');
 		await Container.get(AgentTaskService)
 			.requestReconcile(agentId)
 			.catch((error) =>

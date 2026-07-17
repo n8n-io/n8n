@@ -168,9 +168,10 @@ export function driveEndpoint(root: string): string {
  * so the RLC is read (with `extractValue`) without coupling transport to either
  * signature. Validation + encoding happen in `getServicePrincipalResourceRoot`.
  *
- * `resourceTarget`/the target RLC are `noDataExpression` (per-node, not per-item),
- * so `itemIndex` exists only to satisfy the execute `getNodeParameter` signature —
- * the resolved root is the same for every item in the run.
+ * The target RLC accepts expressions, so in execute contexts it is resolved per
+ * item — the node MUST pass the loop's `itemIndex`. `resourceTarget` (the mode)
+ * stays `noDataExpression`, so only the id can vary per item. The trigger keeps
+ * `isPoll=true` single resolution.
  */
 export function resolveDriveScopeRoot(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

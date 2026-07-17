@@ -62,9 +62,10 @@ vi.mock('../composables/useAgentApi', () => ({
 	getAgentTasks: (...args: unknown[]) => getAgentTasksSpy(...args),
 }));
 
+const integrationsCatalogRef = ref<Array<{ type: string; label: string; icon?: string }>>([]);
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
-		catalog: { value: [] },
+		catalog: integrationsCatalogRef,
 	}),
 }));
 
@@ -117,9 +118,8 @@ function mountSection(
 				N8nTooltip: { template: '<span><slot /></span>' },
 				AgentChannelModal: {
 					name: 'AgentChannelModal',
-					props: ['simpleSetup'],
-					template:
-						'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" />',
+					props: ['view', 'open'],
+					template: '<div v-if="open" data-testid="agent-channel-modal-stub" :data-view="view" />',
 				},
 			},
 		},
@@ -178,6 +178,7 @@ describe('AgentCapabilitiesSection', () => {
 		getAgentTasksSpy.mockResolvedValue([]);
 		projectAgentsListRef.value = [];
 		ensureProjectAgentsLoadedSpy.mockResolvedValue([]);
+		integrationsCatalogRef.value = [];
 	});
 
 	it('formats node and custom tool chip labels for display', () => {
@@ -635,8 +636,8 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
 	});
 
-	describe('simpleChannelSetup', () => {
-		it('does not force simple setup on the channel modal by default', async () => {
+	describe('channel modal', () => {
+		it('opens the channel list view when clicking the add-channel button', async () => {
 			const wrapper = mountSection([]);
 
 			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
@@ -644,18 +645,21 @@ describe('AgentCapabilitiesSection', () => {
 
 			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
 			expect(modal.exists()).toBe(true);
-			expect(modal.attributes('data-simple-setup')).toBe('false');
+			expect(modal.attributes('data-view')).toBe('list');
 		});
 
-		it('forwards simpleChannelSetup to the channel modal as simple-setup', async () => {
-			const wrapper = mountSection([], {}, null, [], [], { simpleChannelSetup: true });
+		it('opens the per-channel edit view when clicking a configured channel chip', async () => {
+			integrationsCatalogRef.value = [{ type: 'linear', label: 'Linear', icon: 'zap' }];
+			const wrapper = mountSection([], {}, null, [], [], {
+				connectedTriggers: ['linear'],
+			});
 
-			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
+			await wrapper.find('[data-testid="agent-capabilities-channel-row"]').trigger('click');
 			await flushPromises();
 
 			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
 			expect(modal.exists()).toBe(true);
-			expect(modal.attributes('data-simple-setup')).toBe('true');
+			expect(modal.attributes('data-view')).toBe('linear_edit');
 		});
 	});
 

@@ -240,7 +240,7 @@ export class SubAgentForegroundRunner {
 async function getReconstructionService() {
 	// eslint-disable-next-line import-x/no-cycle
 	const { AgentRuntimeReconstructionService } = await import(
-		'../agent-runtime-reconstruction.service'
+		'../agent-runtime-reconstruction.service.js'
 	);
 	return Container.get(AgentRuntimeReconstructionService);
 }

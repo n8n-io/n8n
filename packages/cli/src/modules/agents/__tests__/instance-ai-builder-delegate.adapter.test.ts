@@ -5,6 +5,7 @@ import type {
 	StreamChunk,
 } from '@n8n/agents';
 import type { User } from '@n8n/db';
+import { Like } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -12,27 +13,40 @@ import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { AgentThreadEntity } from '../entities/agent-thread.entity';
 import type { Agent } from '../entities/agent.entity';
 import {
 	INSTANCE_AI_BUILDER_ADDENDUM,
 	InstanceAiBuilderDelegateAdapterService,
 } from '../instance-ai-builder-delegate.adapter';
+import type { N8nMemory, N8nMemoryImpl } from '../integrations/n8n-memory';
+import type { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 function setup() {
 	const agentsService = mock<AgentsService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
+	const n8nMemory = mock<N8nMemory>();
+	const agentThreadRepository = mock<AgentThreadRepository>();
 
-	const service = new InstanceAiBuilderDelegateAdapterService(agentsService, agentsBuilderService);
+	const service = new InstanceAiBuilderDelegateAdapterService(
+		agentsService,
+		agentsBuilderService,
+		n8nMemory,
+		agentThreadRepository,
+	);
 
 	const user = mock<User>({ id: 'user-1' });
 	const credentialProvider = mock<CredentialProvider>();
 	const delegate = service.createDelegate(user, 'project-1', credentialProvider);
 
 	return {
+		service,
 		delegate,
 		user,
 		agentsService,
 		agentsBuilderService,
+		n8nMemory,
+		agentThreadRepository,
 		credentialProvider,
 	};
 }
@@ -60,6 +74,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const turn = await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			const seen: unknown[] = [];
@@ -69,7 +86,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			await expect(turn.text).resolves.toBe('Hello world');
 		});
 
-		it('builds the sub-agent session from the delegate session: thread id, model config, and addendum', async () => {
+		it('builds the sub-agent session from the delegate session: thread ids, run id, model config, and addendum', async () => {
 			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
@@ -77,6 +94,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				telemetry: sentinel,
 			});
@@ -89,6 +108,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
@@ -101,7 +122,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 
-			await delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' });
+			await delegate.streamBuild('agent-1', 'hi', {
+				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+			});
 
 			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
 			expect(sessionArg).not.toHaveProperty('telemetry');
@@ -112,7 +138,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 
 			await expect(
-				delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' }),
+				delegate.streamBuild('agent-1', 'hi', {
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
 		});
@@ -132,7 +163,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			const turn = await delegate.resumeBuild(
 				'agent-1',
 				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:t:agent-1', modelConfig: 'anthropic/claude-sonnet-host-resolved' },
+				{
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				},
 			);
 
 			const seen: unknown[] = [];
@@ -150,6 +186,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 				},
@@ -164,7 +202,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				delegate.resumeBuild(
 					'agent-1',
 					{ runId: 'run-1', toolCallId: 'call-1', resumeData: {} },
-					{ threadId: 'ia-builder:t:agent-1' },
+					{
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					},
 				),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.resumeBuild).not.toHaveBeenCalled();
@@ -210,6 +253,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.findOpenSuspensions('agent-1', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			expect(agentsBuilderService.findOpenCheckpointForThread).toHaveBeenCalledWith(
@@ -229,6 +275,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.findOpenSuspensions('agent-1', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			expect(result).toEqual([]);
@@ -245,6 +294,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.findOpenSuspensions('agent-1', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			expect(result).toEqual([]);
@@ -255,7 +307,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 
 			await expect(
-				delegate.findOpenSuspensions('agent-1', { threadId: 'ia-builder:t:agent-1' }),
+				delegate.findOpenSuspensions('agent-1', {
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.findOpenCheckpointForThread).not.toHaveBeenCalled();
 		});
@@ -300,6 +357,90 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await expect(delegate.createAgent('New agent')).rejects.toThrow(ForbiddenError);
 			expect(agentsService.create).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('listAgents', () => {
+		it('maps agent entities to listing rows, most recently updated first', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findByProjectId.mockResolvedValue([
+				mock<Agent>({
+					id: 'agent-1',
+					name: 'Published Agent',
+					activeVersionId: 'v1',
+					updatedAt: new Date('2026-07-14T00:00:00.000Z'),
+				}),
+				mock<Agent>({
+					id: 'agent-2',
+					name: 'Draft Agent',
+					activeVersionId: null,
+					updatedAt: new Date('2026-07-10T00:00:00.000Z'),
+				}),
+			]);
+
+			const result = await delegate.listAgents();
+
+			expect(agentsService.findByProjectId).toHaveBeenCalledWith('project-1');
+			expect(result).toEqual([
+				{
+					agentId: 'agent-1',
+					name: 'Published Agent',
+					published: true,
+					updatedAt: '2026-07-14T00:00:00.000Z',
+				},
+				{
+					agentId: 'agent-2',
+					name: 'Draft Agent',
+					published: false,
+					updatedAt: '2026-07-10T00:00:00.000Z',
+				},
+			]);
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentsService, user } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.listAgents()).rejects.toThrow(ForbiddenError);
+			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+	});
+
+	describe('deleteBuilderSessions', () => {
+		it('deletes messages and thread state for every builder session of the instance thread, scoped per target agent', async () => {
+			const { service, n8nMemory, agentThreadRepository } = setup();
+			agentThreadRepository.find.mockResolvedValue([
+				{ id: 'ia-builder:t1:agent-1' },
+				{ id: 'ia-builder:t1:agent-2' },
+			] as AgentThreadEntity[]);
+			const impls = [mock<N8nMemoryImpl>(), mock<N8nMemoryImpl>()];
+			n8nMemory.getImplementation.mockReturnValueOnce(impls[0]).mockReturnValueOnce(impls[1]);
+
+			await service.deleteBuilderSessions('t1');
+
+			expect(agentThreadRepository.find).toHaveBeenCalledWith({
+				select: { id: true },
+				where: { id: Like('ia-builder:t1:%') },
+			});
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-1');
+			expect(n8nMemory.getImplementation).toHaveBeenCalledWith('agent-2');
+			expect(impls[0].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
+			expect(impls[0].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-1');
+			expect(impls[1].deleteMessagesByThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
+			expect(impls[1].deleteThread).toHaveBeenCalledWith('ia-builder:t1:agent-2');
+		});
+
+		it('is a no-op when the instance thread has no builder sessions', async () => {
+			const { service, n8nMemory, agentThreadRepository } = setup();
+			agentThreadRepository.find.mockResolvedValue([]);
+
+			await service.deleteBuilderSessions('t1');
+
+			expect(n8nMemory.getImplementation).not.toHaveBeenCalled();
 		});
 	});
 });

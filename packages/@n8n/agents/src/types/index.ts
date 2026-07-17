@@ -123,6 +123,7 @@ export type {
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
+	MemoryTaskUsageReport,
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
 	ObservationLogReadOptions,
