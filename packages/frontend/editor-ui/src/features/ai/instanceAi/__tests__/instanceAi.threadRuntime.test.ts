@@ -6,7 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage, postConfirmation } from '../instanceAi.api';
+import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
 import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRuntime';
 
 // ---------------------------------------------------------------------------
@@ -213,6 +213,27 @@ function activateThread(registry: RuntimeRegistry, threadId: string): void {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+describe('cancelRun', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		vi.mocked(postCancel).mockClear();
+	});
+
+	test('posts the thread-scoped cancel even without a local activeRunId', async () => {
+		const registry = createRuntimeRegistry();
+		const runtime = registry.getOrCreateRuntime('thread-cancel');
+		expect(runtime.activeRunId).toBeNull();
+
+		await runtime.cancelRun();
+
+		// Thread-scoped and idempotent server-side; the terminal state arrives
+		// as a run-finish fact over SSE (the backend appends one even for dead
+		// runs), so no local run id is required and nothing is settled here.
+		expect(vi.mocked(postCancel)).toHaveBeenCalledWith(expect.anything(), 'thread-cancel');
+		expect(runtime.activeRunId).toBeNull();
+	});
+});
 
 const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);

@@ -1072,10 +1072,13 @@ export function createThreadRuntime(
 	}
 
 	async function cancelRun(): Promise<void> {
-		if (!activeRunId.value) return;
+		// Thread-scoped and idempotent server-side, so it works after a reload
+		// that lost the local run id. Don't clear activeRunId or settle any
+		// state here: the terminal state arrives as a run-finish fact over SSE
+		// — the backend appends one even for a crashed run with no live
+		// process left to emit it, so every client converges through replay.
 		try {
 			await postCancel(rootStore.restApiContext, threadId);
-			// Don't clear activeRunId here — wait for the run-finish event via SSE
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
 		}

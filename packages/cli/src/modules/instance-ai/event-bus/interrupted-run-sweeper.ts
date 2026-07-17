@@ -108,10 +108,85 @@ export class InterruptedRunSweeper {
 	private async sweepRun(threadId: string, runId: string): Promise<void> {
 		this.metrics.recordSweepRunExamined();
 
+		const inFlightToolCalls = await this.resolveZombieRun(threadId, runId, {
+			status: 'interrupted',
+			reason: 'crash_interrupted',
+		});
+		if (inFlightToolCalls === null) return;
+
+		this.metrics.recordSweepOutcome('interrupted', inFlightToolCalls);
+		this.logger.info('Marked interrupted Instance AI run in the durable log', {
+			threadId,
+			runId,
+			inFlightToolCalls,
+		});
+	}
+
+	/**
+	 * User-initiated zombie resolution: a Stop on a thread with no live run
+	 * anywhere still terminalizes crashed runs whose durable facts would
+	 * otherwise leave the thread rendering in-flight until the next boot's
+	 * sweep. Cancel of an already-dead run emits no `run-finish` from any run
+	 * body (there is no process to emit it) — this appends the terminal facts
+	 * instead, so every client and every main converges through the normal
+	 * replay path rather than a status poll. Same guards as the sweep; only
+	 * the terminal payload differs (the user asked, so `cancelled`, not
+	 * `interrupted`). Runs the sweep's multi-main activity grace, which also
+	 * covers a live sibling run the broadcast cancel is about to abort.
+	 */
+	async cancelUnfinishedRuns(threadId: string): Promise<number> {
+		if (!this.durableLogEnabled) return 0;
+
+		let unfinished;
+		try {
+			unfinished = await this.eventLogRepo.findUnfinishedRuns();
+		} catch (error) {
+			this.logger.error('Cancel-time zombie resolution failed to query the event log', { error });
+			return 0;
+		}
+
+		let resolved = 0;
+		for (const run of unfinished) {
+			if (run.threadId !== threadId) continue;
+			try {
+				const inFlightToolCalls = await this.resolveZombieRun(threadId, run.runId, {
+					status: 'cancelled',
+					reason: 'user_cancelled',
+				});
+				if (inFlightToolCalls === null) continue;
+				resolved++;
+				this.logger.info('Cancelled a dead Instance AI run in the durable log', {
+					threadId,
+					runId: run.runId,
+					inFlightToolCalls,
+				});
+			} catch (error) {
+				this.logger.error('Cancel-time zombie resolution failed for run', {
+					threadId,
+					runId: run.runId,
+					error,
+				});
+			}
+		}
+		return resolved;
+	}
+
+	/**
+	 * Shared zombie resolution: appends `tool-interrupted` for in-flight calls
+	 * and one terminal `run-finish`, unless the run is live in this process,
+	 * HITL-suspended, or (multi-main) shows recent durable activity. Returns
+	 * the number of in-flight calls terminalized, or null when the run was
+	 * left alone.
+	 */
+	private async resolveZombieRun(
+		threadId: string,
+		runId: string,
+		finish: { status: 'interrupted' | 'cancelled'; reason: string },
+	): Promise<number | null> {
 		// This specific run is live in this process (e.g. a sweep re-run raced an
 		// in-flight run) — not a zombie. A different run started on the same
 		// thread while the sweep was running must not shield it.
-		if (this.resumeHost?.isRunLive(threadId, runId)) return;
+		if (this.resumeHost?.isRunLive(threadId, runId)) return null;
 
 		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
 		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
@@ -123,14 +198,14 @@ export class InterruptedRunSweeper {
 		);
 
 		// A run suspended at HITL is recoverable through the pending-confirmation
-		// orphan path; marking it interrupted would destroy that recovery. Only
-		// this run's own checkpoint counts — another run suspended on the same
-		// thread must not shield a crashed run from being swept.
-		if (runCheckpoints.some((row) => row.state?.status === 'suspended')) return;
+		// orphan path; terminalizing it would destroy that recovery. Only this
+		// run's own checkpoint counts — another run suspended on the same thread
+		// must not shield a crashed run.
+		if (runCheckpoints.some((row) => row.state?.status === 'suspended')) return null;
 
 		// Multi-main: durable activity is the liveness heartbeat — a sibling
 		// main driving this run appends facts and upserts its checkpoint every
-		// step, so recent writes mean "not a zombie, skip this round".
+		// step, so recent writes mean "not a zombie, leave it alone".
 		if (this.instanceSettings.isMultiMain) {
 			const cutoff = Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS;
 			const lastFact = await this.eventLogRepo.lastFactAt(threadId, runId);
@@ -138,10 +213,14 @@ export class InterruptedRunSweeper {
 				.map((row) => row.updatedAt?.getTime() ?? 0)
 				.reduce((a, b) => Math.max(a, b), 0);
 			const lastActivity = Math.max(lastFact?.getTime() ?? 0, newestCheckpointAt);
-			if (lastActivity > cutoff) return;
+			if (lastActivity > cutoff) return null;
 		}
 
 		const events = await this.eventLogRepo.getForRuns(threadId, [runId]);
+		// Belt against drain races: a terminal fact may have landed between the
+		// unfinished-run query and this read — never append a second one (a
+		// later run-finish would win the fold and rewrite the run's outcome).
+		if (events.some((event) => event.type === 'run-finish')) return null;
 		const inFlight = collectInFlightToolCalls(events);
 
 		for (const call of inFlight) {
@@ -158,14 +237,9 @@ export class InterruptedRunSweeper {
 			type: 'run-finish',
 			runId,
 			agentId: orchestratorAgentId(runId),
-			payload: { status: 'interrupted', reason: 'crash_interrupted' },
+			payload: finish,
 		});
-		this.metrics.recordSweepOutcome('interrupted', inFlight.length);
-		this.logger.info('Marked interrupted Instance AI run in the durable log', {
-			threadId,
-			runId,
-			inFlightToolCalls: inFlight.length,
-		});
+		return inFlight.length;
 	}
 }
 

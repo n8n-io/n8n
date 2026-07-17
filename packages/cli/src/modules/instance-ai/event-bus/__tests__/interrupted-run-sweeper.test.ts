@@ -286,3 +286,94 @@ describe('InterruptedRunSweeper', () => {
 		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 });
+
+describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
+	it('terminalizes a dead run as cancelled and returns the count', async () => {
+		const { sweeper, published, metrics } = buildSweeper({
+			events: [runStart(), toolCall('tc-inflight')],
+		});
+
+		const resolved = await sweeper.cancelUnfinishedRuns(THREAD);
+
+		expect(resolved).toBe(1);
+		expect(published.map((e) => e.type)).toEqual(['tool-interrupted', 'run-finish']);
+		const finish = published.at(-1);
+		expect(finish?.type === 'run-finish' && finish.payload.status).toBe('cancelled');
+		expect(finish?.type === 'run-finish' && finish.payload.reason).toBe('user_cancelled');
+		// Sweep-outcome metrics stay sweep-only.
+		expect(metrics.sweep.runsMarkedInterrupted).toBe(0);
+		expect(metrics.sweep.runsCrashResumed).toBe(0);
+	});
+
+	it('is idempotent and scoped to the requested thread', async () => {
+		const { sweeper, published, eventLogRepo } = buildSweeper({ events: [runStart()] });
+		const base = eventLogRepo.findUnfinishedRuns.getMockImplementation()!;
+		eventLogRepo.findUnfinishedRuns.mockImplementation(async () => [
+			...(await base()),
+			{ threadId: 'other-thread', runId: 'run-foreign' },
+		]);
+
+		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(1);
+		// The appended run-finish makes the second pass a no-op.
+		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
+		expect(published.filter((e) => e.type === 'run-finish')).toHaveLength(1);
+		// The foreign thread's zombie is someone else's cancel to resolve.
+		expect(published.some((e) => e.runId === 'run-foreign')).toBe(false);
+	});
+
+	it('leaves live, suspended, and recently-active runs alone', async () => {
+		const live = buildSweeper({ events: [runStart()], host: { isRunLive: () => true } });
+		expect(await live.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
+		expect(live.published).toHaveLength(0);
+
+		const suspended = buildSweeper({
+			events: [runStart()],
+			checkpoints: [
+				runningCheckpoint({
+					state: {
+						persistence: { threadId: THREAD, resourceId: 'user-1', hostRunId: RUN },
+						status: 'suspended',
+						messageList: { messages: [] },
+						pendingToolCalls: { 'tc-p': { suspended: true } },
+					} as never,
+				}),
+			],
+		});
+		expect(await suspended.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
+		expect(suspended.published).toHaveLength(0);
+
+		const activeSibling = buildSweeper({
+			events: [runStart()],
+			isMultiMain: true,
+			lastFactAt: new Date(),
+		});
+		expect(await activeSibling.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
+		expect(activeSibling.published).toHaveLength(0);
+	});
+
+	it('does nothing when the durable log is off', async () => {
+		const { sweeper, published, eventLogRepo } = buildSweeper({
+			events: [runStart()],
+			durableLog: false,
+		});
+
+		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
+		expect(eventLogRepo.findUnfinishedRuns).not.toHaveBeenCalled();
+		expect(published).toHaveLength(0);
+	});
+
+	it('never appends a second terminal fact when one landed mid-race', async () => {
+		const { sweeper, published, eventLogRepo } = buildSweeper({
+			events: [
+				runStart(),
+				{ type: 'run-finish', runId: RUN, agentId: AGENT, payload: { status: 'completed' } },
+			],
+		});
+		// Simulate the unfinished-run read racing the drain: the query claims the
+		// run is unfinished even though its terminal fact is already readable.
+		eventLogRepo.findUnfinishedRuns.mockResolvedValue([{ threadId: THREAD, runId: RUN }]);
+
+		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
+		expect(published).toHaveLength(0);
+	});
+});
