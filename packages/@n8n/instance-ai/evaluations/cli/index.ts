@@ -1721,7 +1721,7 @@ function ciRerunHint(): RerunHint | undefined {
 	};
 }
 
-function writeEvalResults(
+export function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
 	outputDir: string | undefined,
@@ -1917,7 +1917,11 @@ async function tryRunComparison(config: {
 	}
 }
 
-main().catch((error) => {
-	console.error('Fatal error:', error);
-	process.exit(1);
-});
+// Guard so the module can be imported (e.g. by tests exercising `writeEvalResults`)
+// without kicking off a real eval run — mirrors `report.ts`.
+if (require.main === module) {
+	main().catch((error) => {
+		console.error('Fatal error:', error);
+		process.exit(1);
+	});
+}
