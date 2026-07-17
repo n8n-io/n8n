@@ -258,10 +258,9 @@ describe('AgentIntegrationsController integration credentials', () => {
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
-		agentPublishService.publishAgent.mockResolvedValue(agent as never);
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
-			status: 'valid',
-			issues: [],
+		agentPublishService.publishAgent.mockResolvedValue({
+			agent,
+			draftValidation: { status: 'valid', issues: [] },
 		} as never);
 		const { controller } = makeController({
 			agentIntegrationPersistenceService,
@@ -336,6 +335,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 	});
 
 	it('persists the integration before publishing when connecting an unpublished agent', async () => {
@@ -380,10 +380,9 @@ describe('AgentIntegrationsController integration credentials', () => {
 		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 			savedAgent as never,
 		);
-		agentPublishService.publishAgent.mockResolvedValue(publishedAgent as never);
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
-			status: 'valid',
-			issues: [],
+		agentPublishService.publishAgent.mockResolvedValue({
+			agent: publishedAgent,
+			draftValidation: { status: 'valid', issues: [] },
 		} as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockResolvedValue(undefined);
@@ -450,6 +449,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 		expect(chatIntegrationService.connect.mock.invocationCallOrder[0]).toBeLessThan(
 			chatIntegrationService.broadcastIntegrationChange.mock.invocationCallOrder[0],
 		);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 	});
 
 	it('does not report an unpublished agent integration as connected when live connect fails', async () => {
@@ -493,7 +493,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 			savedAgent as never,
 		);
-		agentPublishService.publishAgent.mockResolvedValue(publishedAgent as never);
+		agentPublishService.publishAgent.mockResolvedValue({
+			agent: publishedAgent,
+			draftValidation: { status: 'valid', issues: [] },
+		} as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockRejectedValue(new Error('Slack connect failed'));
 		const { controller } = makeController({

@@ -588,6 +588,140 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
+	it('flags an MCP server whose credential type does not match the configured authentication', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'bearerAuth',
+						credential: 'wrong-type-cred',
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'wrong-type-cred', type: 'httpHeaderAuth' },
+			]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'incompatible_credential',
+					path: 'mcpServers.0.credential',
+					capability: { kind: 'mcpServer', id: 'github', index: 0 },
+				}),
+			]),
+		);
+	});
+
+	it('accepts an MCP server whose credential type matches the configured authentication', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'github',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'bearerAuth',
+						credential: 'right-type-cred',
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'right-type-cred', type: 'httpBearerAuth' },
+			]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('accepts an MCP server whose credential type exactly matches a registry-specific OAuth2 authentication', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'notion',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'notionMcpOAuth2Api',
+						credential: 'notion-oauth-cred',
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'notion-oauth-cred', type: 'notionMcpOAuth2Api' },
+			]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('flags an MCP server whose credential is the generic OAuth2 type instead of the required registry-specific variant', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				mcpServers: [
+					{
+						name: 'notion',
+						url: 'https://example.com/mcp',
+						transport: 'streamableHttp',
+						authentication: 'notionMcpOAuth2Api',
+						credential: 'generic-oauth-cred',
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'generic-oauth-cred', type: 'mcpOAuth2Api' },
+			]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'incompatible_credential',
+					path: 'mcpServers.0.credential',
+					capability: { kind: 'mcpServer', id: 'notion', index: 0 },
+				}),
+			]),
+		);
+	});
+
 	it('flags a channel with a missing credential', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -1022,5 +1156,128 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result.issues).not.toContainEqual(
 			expect.objectContaining({ path: 'vectorStores.wrong_type_cred.embedding.credential' }),
 		);
+	});
+});
+
+describe('AgentValidationService — validateAgentEntityConfiguration', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('validates the passed-in entity and task map directly, without refetching either from the database', async () => {
+		const { service, agentRepository, agentTaskRepository } = makeService();
+		const agent = makeAgent({ ...runnableConfig, credential: '' });
+		const tasks = new Map();
+
+		const result = await service.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			tasks,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'missing_credential', path: 'credential' }),
+			]),
+		);
+		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+	});
+
+	it('reports the same missing-credential issue as validateAgentConfiguration for equivalent input', async () => {
+		const { service, agentRepository } = makeService();
+		const agent = makeAgent({ ...runnableConfig, credential: '' });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		const credentialProvider = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		const viaEntity = await service.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			new Map(),
+			credentialProvider,
+		);
+		const viaFetch = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			credentialProvider,
+		);
+
+		expect(viaEntity).toEqual(viaFetch);
+		expect(viaEntity.status).toBe('invalid');
+		expect(viaEntity.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'missing_credential', path: 'credential' }),
+			]),
+		);
+	});
+
+	it('flags an enabled task missing from the passed-in task map, without querying the task repository', async () => {
+		const { service, agentTaskRepository } = makeService();
+		const agent = makeAgent({
+			...runnableConfig,
+			tasks: [{ type: 'task', id: 'missing_task', enabled: true }],
+		});
+
+		const result = await service.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			new Map(),
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_reference',
+				path: 'tasks.0.id',
+				capability: { kind: 'task', id: 'missing_task', index: 0 },
+			}),
+		]);
+		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+	});
+
+	it('accepts a task present in the passed-in task map even when the task repository is not stubbed to return it', async () => {
+		const { service } = makeService();
+		const agent = makeAgent({
+			...runnableConfig,
+			tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+		});
+		const tasks = new Map([
+			[
+				'task-1',
+				{ name: 'Daily summary', objective: 'Summarize messages', cronExpression: '0 9 * * *' },
+			],
+		]);
+
+		const result = await service.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			tasks,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result).toEqual({ status: 'valid', issues: [] });
+	});
+
+	it('reports missing config issues when the passed-in entity has no schema', async () => {
+		const { service } = makeService();
+		const agent = makeAgent(null);
+
+		const result = await service.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			new Map(),
+			makeCredentialProvider(),
+		);
+
+		expect(result).toEqual({
+			status: 'invalid',
+			issues: [
+				expect.objectContaining({ code: 'missing_required', path: 'instructions' }),
+				expect.objectContaining({ code: 'missing_required', path: 'model' }),
+				expect.objectContaining({ code: 'missing_credential', path: 'credential' }),
+			],
+		});
 	});
 });

@@ -55,4 +55,18 @@ describe('AgentRunnableStateService', () => {
 		expect(result.isRunnable).toBe(false);
 		expect(result.hasPublishHistory).toBe(false);
 	});
+
+	it('derives isRunnable from supplied draft validation without revalidating', async () => {
+		const { service, agentValidationService, agentPublishService } = makeService();
+		agentPublishService.hasPublishHistory.mockResolvedValue(true);
+
+		const result = await service.addRunnableState({ id: 'agent-1' } as Agent, projectId, user, {
+			status: 'valid',
+			issues: [],
+		});
+
+		expect(result.isRunnable).toBe(true);
+		expect(result.hasPublishHistory).toBe(true);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+	});
 });

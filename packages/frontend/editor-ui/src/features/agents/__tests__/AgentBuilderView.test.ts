@@ -1094,6 +1094,75 @@ describe('AgentBuilderView — configuration validation', () => {
 
 		expect(result).toBe(true);
 	});
+
+	it('refreshes validation after a successful skill autosave lands', async () => {
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'invalid', issues: [] })
+			.mockResolvedValueOnce({ status: 'valid', issues: [] });
+		updateAgentSkillMock.mockResolvedValueOnce({
+			id: 'summarize_notes',
+			skill: {
+				name: 'summarize_notes',
+				description: 'Use when summarizing notes',
+				instructions: 'Read the notes and produce a concise summary.',
+			},
+			versionId: 'v2',
+		});
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			configValidation: { status: 'valid' | 'invalid' } | null;
+			saveSkill: (snapshot: {
+				type: 'skill';
+				projectId: string;
+				agentId: string;
+				skillId: string;
+				skill: { name: string; description: string; instructions: string };
+			}) => Promise<void>;
+		};
+
+		expect(vm.configValidation?.status).toBe('invalid');
+
+		await vm.saveSkill({
+			type: 'skill',
+			projectId: 'p1',
+			agentId: 'a1',
+			skillId: 'summarize_notes',
+			skill: {
+				name: 'summarize_notes',
+				description: 'Use when summarizing notes',
+				instructions: 'Read the notes and produce a concise summary.',
+			},
+		});
+		await nextTick();
+
+		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
+		expect(getAgentConfigValidationMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+		expect(vm.configValidation?.status).toBe('valid');
+	});
+
+	it('refreshes validation alongside the agent and config after a channel/integration change', async () => {
+		const wrapper = await renderView();
+		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+
+		getAgentConfigValidationMock.mockClear();
+		fetchConfigMock.mockClear();
+		getAgentMock.mockClear();
+		capabilities.vm.$emit('agent-changed');
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p1', 'a1');
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(getAgentConfigValidationMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+	});
 });
 
 describe('AgentBuilderView — three-column shell', () => {

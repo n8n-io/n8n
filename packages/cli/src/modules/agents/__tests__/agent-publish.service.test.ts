@@ -17,6 +17,7 @@ import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
+import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { SubAgentCleanupService } from '../sub-agents/sub-agent-cleanup.service';
 
@@ -95,6 +96,7 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentHistoryRepository = mock<AgentHistoryRepository>();
 	const taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
+	const agentTaskRepository = mock<AgentTaskRepository>();
 	const customToolsService = mock<AgentCustomToolsService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const chatIntegrationService = mock<ChatIntegrationService>();
@@ -116,7 +118,8 @@ function makeService() {
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	taskService.requestReconcile.mockResolvedValue();
 	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
-	agentValidationService.validateAgentConfiguration.mockResolvedValue({
+	agentTaskRepository.findByAgentId.mockResolvedValue([]);
+	agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
 		status: 'valid',
 		issues: [],
 	});
@@ -132,6 +135,7 @@ function makeService() {
 		agentRepository,
 		agentHistoryRepository,
 		taskSnapshotRepository,
+		agentTaskRepository,
 		customToolsService,
 		runtimeCacheService,
 		subAgentCleanupService,
@@ -144,6 +148,7 @@ function makeService() {
 		agentRepository,
 		agentHistoryRepository,
 		taskSnapshotRepository,
+		agentTaskRepository,
 		customToolsService,
 		runtimeCacheService,
 		chatIntegrationService,
@@ -167,7 +172,7 @@ describe('AgentPublishService', () => {
 			makeService();
 		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue({
 			status: 'invalid',
 			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 		});
@@ -176,11 +181,13 @@ describe('AgentPublishService', () => {
 			'Agent configuration has errors that must be resolved before publishing',
 		);
 
-		expect(agentValidationService.validateAgentConfiguration).toHaveBeenCalledWith(
-			agentId,
+		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
+			agent,
 			projectId,
 			expect.anything(),
+			expect.anything(),
 		);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
 	});
@@ -197,7 +204,10 @@ describe('AgentPublishService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
 
-		await service.publishAgent(agentId, projectId, user, 'v1');
+		const result = await service.publishAgent(agentId, projectId, user, 'v1');
+
+		expect(result).toStrictEqual({ agent });
+		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
 
 		expect(agentValidationService.validateAgentHistoryConfiguration).toHaveBeenCalledWith(
 			agentId,
@@ -207,6 +217,7 @@ describe('AgentPublishService', () => {
 			expect.anything(),
 		);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBe('v1');
 	});
 
@@ -239,10 +250,11 @@ describe('AgentPublishService', () => {
 			service,
 			agentRepository,
 			agentHistoryRepository,
+			agentTaskRepository,
 			taskSnapshotRepository,
 			customToolsService,
 			runtimeCacheService,
-			taskRepo,
+			agentValidationService,
 			trx,
 		} = makeService();
 		const configuredTools = { tool: { descriptor: { name: 'tool' } } };
@@ -258,19 +270,30 @@ describe('AgentPublishService', () => {
 			},
 			skills: configuredSkills,
 		});
+		const draftValidation = { status: 'valid' as const, issues: [] };
+		const task = {
+			id: 'task-1',
+			name: 'Daily summary',
+			objective: 'Summarize messages',
+			cronExpression: '0 9 * * *',
+		};
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentValidationService.validateAgentEntityConfiguration.mockResolvedValue(draftValidation);
 		customToolsService.snapshotConfiguredTools.mockReturnValue(configuredTools as never);
-		taskRepo.findBy.mockResolvedValue([
-			{
-				id: 'task-1',
-				name: 'Daily summary',
-				objective: 'Summarize messages',
-				cronExpression: '0 9 * * *',
-			},
-		]);
+		agentTaskRepository.findByAgentId.mockResolvedValue([task] as never);
 
-		await expect(service.publishAgent(agentId, projectId, user)).resolves.toBe(agent);
+		const result = await service.publishAgent(agentId, projectId, user);
+
+		expect(result.draftValidation).toBe(draftValidation);
+		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledTimes(1);
+		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
+			agent,
+			projectId,
+			new Map([['task-1', task]]),
+			expect.anything(),
+		);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 
 		expect(agentHistoryRepository.saveVersion).toHaveBeenCalledWith(
 			{
@@ -289,6 +312,46 @@ describe('AgentPublishService', () => {
 		);
 		expect(agent.activeVersionId).toBe(versionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
+	});
+
+	it('validates and snapshots the exact same task data, even when a stale task-repository mock would return something different', async () => {
+		const { service, agentRepository, agentTaskRepository, agentValidationService, taskRepo } =
+			makeService();
+		const agent = makeAgent({
+			schema: {
+				...schema,
+				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+			},
+		});
+		const validatedTask = {
+			id: 'task-1',
+			name: 'Validated summary',
+			objective: 'Validated objective',
+			cronExpression: '0 9 * * *',
+		};
+		const staleTask = {
+			id: 'task-1',
+			name: 'Stale summary',
+			objective: 'Stale objective',
+			cronExpression: '0 9 * * *',
+		};
+
+		agentRepository.findByIdAndProjectId.mockResolvedValueOnce(agent);
+		agentTaskRepository.findByAgentId.mockResolvedValue([validatedTask] as never);
+		// A separate, unrelated repository mock returning different data must
+		// not affect what gets validated or persisted.
+		taskRepo.findBy.mockResolvedValue([staleTask]);
+
+		await service.publishAgent(agentId, projectId, user);
+
+		expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledTimes(1);
+		expect(agentValidationService.validateAgentEntityConfiguration).toHaveBeenCalledWith(
+			agent,
+			projectId,
+			new Map([['task-1', validatedTask]]),
+			expect.anything(),
+		);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 	});
 
 	it('rejects publishing when a configured task body is missing', async () => {
@@ -332,6 +395,7 @@ describe('AgentPublishService', () => {
 			service,
 			agentRepository,
 			agentHistoryRepository,
+			agentValidationService,
 			chatIntegrationService,
 			subAgentCleanupService,
 		} = makeService();
@@ -343,8 +407,12 @@ describe('AgentPublishService', () => {
 		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-		await expect(service.publishAgent(agentId, projectId, user)).resolves.toBe(agent);
+		const result = await service.publishAgent(agentId, projectId, user);
+		expect(result).toStrictEqual({ agent });
+		expect(Object.hasOwn(result, 'draftValidation')).toBe(false);
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+		expect(agentValidationService.validateAgentEntityConfiguration).not.toHaveBeenCalled();
 
 		await service.unpublishAgent(agentId, projectId);
 		expect(agent.activeVersionId).toBeNull();

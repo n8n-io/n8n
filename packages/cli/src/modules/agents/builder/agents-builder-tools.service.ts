@@ -495,7 +495,7 @@ export class AgentsBuilderToolsService {
 					};
 				}
 				try {
-					const agent = await this.agentPublishService.publishAgent(
+					const { agent } = await this.agentPublishService.publishAgent(
 						agentId,
 						projectId,
 						user,

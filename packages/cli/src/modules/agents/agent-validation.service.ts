@@ -22,19 +22,21 @@ import {
 } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
+import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8n-workflow';
+
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
+import { NodeTypes } from '@/node-types';
+import { AiService } from '@/services/ai.service';
 
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
+import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { detectTriggerNode, validateCompatibility } from './tools/workflow-tool-factory';
-import { NodeTypes } from '@/node-types';
-import { AiService } from '@/services/ai.service';
-import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 type FindCredential = (
 	credentialId: string,
@@ -125,27 +127,47 @@ export class AgentValidationService {
 			return { status: 'invalid', issues: [agentIssue('missing_required', 'agent')] };
 		}
 
-		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
-		if (!config) {
-			return { status: 'invalid', issues: this.missingConfigIssues() };
-		}
-
 		const tasks = new Map(
 			(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
 		);
 
-		const issues = await this.collectIssues({
+		return await this.runValidation({
 			agentId,
 			projectId,
-			config,
+			config: agentEntity.schema as unknown as AgentJsonConfig | null,
 			skills: agentEntity.skills ?? {},
 			customTools: agentEntity.tools ?? {},
 			integrations: agentEntity.integrations ?? [],
 			tasks,
 			credentialProvider,
 		});
+	}
 
-		return { status: issues.length === 0 ? 'valid' : 'invalid', issues };
+	/**
+	 * Same as {@link validateAgentConfiguration}, but validates the given
+	 * already-loaded `Agent` entity and task map directly, without refetching
+	 * either from the database. Callers that already hold the exact entity
+	 * they are about to persist (e.g. a publish flow) must use this instead,
+	 * so the data that gets validated is guaranteed to be the data that gets
+	 * saved — a DB refetch here would otherwise open a window for a
+	 * concurrent write to invalidate that guarantee.
+	 */
+	async validateAgentEntityConfiguration(
+		agent: Agent,
+		projectId: string,
+		tasks: ReadonlyMap<string, TaskBody>,
+		credentialProvider: CredentialProvider,
+	): Promise<AgentConfigValidationResponse> {
+		return await this.runValidation({
+			agentId: agent.id,
+			projectId,
+			config: agent.schema as unknown as AgentJsonConfig | null,
+			skills: agent.skills ?? {},
+			customTools: agent.tools ?? {},
+			integrations: agent.integrations ?? [],
+			tasks,
+			credentialProvider,
+		});
 	}
 
 	/**
@@ -162,28 +184,32 @@ export class AgentValidationService {
 		currentIntegrations: AgentIntegrationConfig[],
 		credentialProvider: CredentialProvider,
 	): Promise<AgentConfigValidationResponse> {
-		const config = history.schema as unknown as AgentJsonConfig | null;
-		if (!config) {
-			return { status: 'invalid', issues: this.missingConfigIssues() };
-		}
-
 		const tasks = new Map(
 			(await this.agentTaskSnapshotRepository.findByVersionId(history.versionId)).map(
 				(snapshot) => [snapshot.taskId, snapshot],
 			),
 		);
 
-		const issues = await this.collectIssues({
+		return await this.runValidation({
 			agentId,
 			projectId,
-			config,
+			config: history.schema as unknown as AgentJsonConfig | null,
 			skills: history.skills ?? {},
 			customTools: history.tools ?? {},
 			integrations: currentIntegrations,
 			tasks,
 			credentialProvider,
 		});
+	}
 
+	private async runValidation(
+		ctx: Omit<ConfigurationValidationContext, 'config'> & { config: AgentJsonConfig | null },
+	): Promise<AgentConfigValidationResponse> {
+		if (!ctx.config) {
+			return { status: 'invalid', issues: this.missingConfigIssues() };
+		}
+
+		const issues = await this.collectIssues({ ...ctx, config: ctx.config });
 		return { status: issues.length === 0 ? 'valid' : 'invalid', issues };
 	}
 
@@ -660,9 +686,25 @@ export class AgentValidationService {
 				continue;
 			}
 
-			if (!(await this.findCredentialSafe(findCredential, credentialId))) {
+			const credential = await this.findCredentialSafe(findCredential, credentialId);
+			if (!credential) {
 				issues.push(issue('invalid_credential', `mcpServers.${index}.credential`, capability));
+			} else if (!this.mcpCredentialTypeMatches(server.authentication, credential.type)) {
+				issues.push(issue('incompatible_credential', `mcpServers.${index}.credential`, capability));
 			}
+		}
+	}
+
+	private mcpCredentialTypeMatches(authentication: string, credentialType: string): boolean {
+		switch (authentication) {
+			case 'bearerAuth':
+				return credentialType === 'httpBearerAuth';
+			case 'headerAuth':
+				return credentialType === 'httpHeaderAuth';
+			case 'multipleHeadersAuth':
+				return credentialType === 'httpMultipleHeadersAuth';
+			default:
+				return isMcpOAuth2Authentication(authentication) ? credentialType === authentication : true;
 		}
 	}
 

@@ -1475,9 +1475,11 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentPublishService.publishAgent.mockResolvedValue({
-				activeVersionId: 'v-active',
-				versionId: 'v-active',
-			} as Agent);
+				agent: {
+					activeVersionId: 'v-active',
+					versionId: 'v-active',
+				} as Agent,
+			});
 
 			const result = await getPublishTool(service).handler!({}, ctx);
 
@@ -1502,9 +1504,11 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentPublishService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentPublishService.publishAgent.mockResolvedValue({
-				activeVersionId: 'v-history',
-				versionId: 'v-draft',
-			} as Agent);
+				agent: {
+					activeVersionId: 'v-history',
+					versionId: 'v-draft',
+				} as Agent,
+			});
 
 			const result = await getPublishTool(service).handler!({ versionId: 'v-history' }, ctx);
 

@@ -441,6 +441,7 @@ async function refreshAgentAfterIntegrationChange(
 	await Promise.all([
 		fetchAgent(targetProjectId, targetAgentId),
 		fetchConfig(targetProjectId, targetAgentId),
+		refreshConfigValidation(targetProjectId, targetAgentId),
 	]);
 }
 
@@ -630,6 +631,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 			[snapshot.skillId]: result.skill,
 		},
 	};
+	await refreshConfigValidation(snapshot.projectId, snapshot.agentId);
 }
 
 // Debounce shorter than the workflow canvas' 1500ms — the publish button's
@@ -766,14 +768,18 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	scheduleConfigUpdate: onConfigFieldUpdate,
-	scheduleSkillSave: ({ skillId, skill }) =>
+	scheduleSkillSave: ({ skillId, skill }) => {
+		// The persisted validation result no longer reflects the working copy —
+		// mirrors `onConfigFieldUpdate`'s invalidation before scheduling a config autosave.
+		invalidateConfigValidation();
 		skillAutosave.scheduleAutosave({
 			type: 'skill',
 			projectId: projectId.value,
 			agentId: agentId.value,
 			skillId,
 			skill,
-		}),
+		});
+	},
 	telemetry: {
 		trackOpenedToolFromList: builderTelemetry.trackOpenedToolFromList,
 		trackOpenedSkillFromList: builderTelemetry.trackOpenedSkillFromList,

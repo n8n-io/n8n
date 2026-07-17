@@ -280,6 +280,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentRepository,
 			agentHistoryRepository,
 			agentTaskSnapshotRepository,
+			agentTaskRepository,
 			agentCustomToolsService,
 			runtimeCacheService,
 			mock<SubAgentCleanupService>(),

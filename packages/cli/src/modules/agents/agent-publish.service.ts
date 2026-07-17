@@ -1,4 +1,5 @@
 import {
+	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentVersionListItemDto,
@@ -10,8 +11,10 @@ import type { EntityManager } from '@n8n/typeorm';
 import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
@@ -22,13 +25,38 @@ import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
+import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
+}
+
+export type ValidAgentConfigValidationResponse = AgentConfigValidationResponse & {
+	status: 'valid';
+};
+
+function requireValidValidation(
+	validation: AgentConfigValidationResponse,
+): asserts validation is ValidAgentConfigValidationResponse {
+	if (validation.status !== 'valid') {
+		throw new UserError('Agent configuration has errors that must be resolved before publishing');
+	}
+}
+
+export interface PublishAgentResult {
+	agent: Agent;
+	/**
+	 * The draft validation `assertPublishable` already computed while
+	 * guarding this publish call — only present when the current draft (not
+	 * a historical `versionId`, and not an idempotent no-op) was validated.
+	 * Callers can pass this into `AgentRunnableStateService.addRunnableState`
+	 * to avoid re-validating the same draft a second time in the same
+	 * request. Never reuse this for a historical-version publish: it
+	 * describes the draft, not the published snapshot.
+	 */
+	draftValidation?: ValidAgentConfigValidationResponse;
 }
 
 @Service()
@@ -38,6 +66,7 @@ export class AgentPublishService {
 		private readonly agentRepository: AgentRepository,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
 		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
+		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly customToolsService: AgentCustomToolsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly subAgentCleanupService: SubAgentCleanupService,
@@ -51,21 +80,27 @@ export class AgentPublishService {
 		user: User,
 		versionId?: string,
 		options: PublishAgentOptions = {},
-	): Promise<Agent> {
+	): Promise<PublishAgentResult> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
 		if (!versionId && agent.versionId !== null && agent.versionId === agent.activeVersionId) {
-			return agent;
+			return { agent };
 		}
 
 		if (versionId !== undefined && versionId === agent.activeVersionId) {
-			return agent;
+			return { agent };
 		}
 
-		await this.assertPublishable(agent, projectId, user, versionId);
+		const tasks = versionId
+			? new Map<string, AgentTask>()
+			: new Map(
+					(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
+				);
+
+		const validation = await this.assertPublishable(agent, projectId, user, tasks, versionId);
 
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (versionId) {
@@ -94,7 +129,7 @@ export class AgentPublishService {
 					},
 					trx,
 				);
-				await this.snapshotConfiguredTasks(trx, agent.versionId, agent.id, agent.schema);
+				await this.snapshotConfiguredTasks(trx, agent.versionId, agent.schema, tasks);
 				agent.activeVersionId = agent.versionId;
 			}
 
@@ -124,7 +159,7 @@ export class AgentPublishService {
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
-		return agent;
+		return versionId ? { agent } : { agent, draftValidation: validation };
 	}
 
 	/**
@@ -139,8 +174,9 @@ export class AgentPublishService {
 		agent: Agent,
 		projectId: string,
 		user: User,
+		tasks: ReadonlyMap<string, AgentTask>,
 		versionId?: string,
-	): Promise<void> {
+	): Promise<ValidAgentConfigValidationResponse> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
@@ -149,15 +185,15 @@ export class AgentPublishService {
 
 		const validation = versionId
 			? await this.validateHistoryVersion(agent, projectId, versionId, credentialProvider)
-			: await this.agentValidationService.validateAgentConfiguration(
-					agent.id,
+			: await this.agentValidationService.validateAgentEntityConfiguration(
+					agent,
 					projectId,
+					tasks,
 					credentialProvider,
 				);
 
-		if (validation.status === 'invalid') {
-			throw new UserError('Agent configuration has errors that must be resolved before publishing');
-		}
+		requireValidValidation(validation);
+		return validation;
 	}
 
 	private async validateHistoryVersion(
@@ -320,28 +356,28 @@ export class AgentPublishService {
 	/**
 	 * Freeze the referenced task bodies (enabled/name/objective/cron) into
 	 * published snapshot rows so scheduled runs read publish-time content, not
-	 * live draft edits.
+	 * live draft edits. Takes the same in-memory task map that was already
+	 * used to validate the draft, rather than re-reading task bodies here, so
+	 * the snapshot can never diverge from what was just validated.
 	 */
 	private async snapshotConfiguredTasks(
 		trx: EntityManager,
 		versionId: string,
-		agentId: string,
 		config: AgentJsonConfig | null,
+		tasks: ReadonlyMap<string, AgentTask>,
 	): Promise<void> {
 		if (!config) return;
 		const refs = config.tasks ?? [];
 		if (refs.length === 0) return;
 
-		const bodies = await trx.getRepository(AgentTask).findBy({ agentId });
-		const byId = new Map(bodies.map((body) => [body.id, body]));
-		const missing = refs.filter((ref) => !byId.has(ref.id)).map((ref) => ref.id);
+		const missing = refs.filter((ref) => !tasks.has(ref.id)).map((ref) => ref.id);
 		if (missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing task bodies: ${missing.join(', ')}`);
 		}
 
 		await this.agentTaskSnapshotRepository.saveForVersion(
 			refs.map((ref) => {
-				const body = byId.get(ref.id);
+				const body = tasks.get(ref.id);
 				if (!body) {
 					throw new UserError(`Cannot publish agent with missing task body: ${ref.id}`);
 				}
