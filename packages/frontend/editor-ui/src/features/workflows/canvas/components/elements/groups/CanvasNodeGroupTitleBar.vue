@@ -236,6 +236,15 @@ function clearHoverTimers() {
 	clearTimeout(hoverLeaveTimer);
 }
 
+function scheduleDescriptionHide() {
+	hoverLeaveTimer = setTimeout(() => {
+		if (!isEditingDescription.value && !isPermanentlyVisible.value) {
+			isDescriptionHovered.value = false;
+		}
+	}, HOVER_DELAY.LEAVE);
+}
+
+// The info icon reveals the description after a short intent delay.
 function onInfoMouseEnter() {
 	clearTimeout(hoverLeaveTimer);
 	hoverShowTimer = setTimeout(() => {
@@ -243,26 +252,20 @@ function onInfoMouseEnter() {
 	}, HOVER_DELAY.SHOW);
 }
 
+// Leaving the icon only cancels a pending reveal; hiding is driven by leaving
+// the whole group, so the cursor can travel from the icon down to the panel.
 function onInfoMouseLeave() {
 	clearTimeout(hoverShowTimer);
-	hoverLeaveTimer = setTimeout(() => {
-		if (!isEditingDescription.value && !isPermanentlyVisible.value) {
-			isDescriptionHovered.value = false;
-		}
-	}, HOVER_DELAY.LEAVE);
 }
 
-function onDescriptionMouseEnter() {
+// Keep the revealed description alive while the cursor is anywhere over the
+// group (header or panel); only start hiding once it leaves the group entirely.
+function onGroupMouseEnter() {
 	clearTimeout(hoverLeaveTimer);
-	isDescriptionHovered.value = true;
 }
 
-function onDescriptionMouseLeave() {
-	hoverLeaveTimer = setTimeout(() => {
-		if (!isEditingDescription.value && !isPermanentlyVisible.value) {
-			isDescriptionHovered.value = false;
-		}
-	}, HOVER_DELAY.LEAVE);
+function onGroupMouseLeave() {
+	scheduleDescriptionHide();
 }
 
 function autoResizeTextarea() {
@@ -370,6 +373,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 		@pointerdown="onWrapperPointerDown"
 		@dblclick.stop="onWrapperDblClick"
 		@contextmenu="onOpenContextMenu"
+		@mouseenter="onGroupMouseEnter"
+		@mouseleave="onGroupMouseLeave"
 	>
 		<div :class="$style.titleBar">
 			<Handle
@@ -531,8 +536,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 				cursor: !readOnly && !isEditingDescription ? 'text' : 'default',
 			}"
 			data-test-id="canvas-node-group-description-panel"
-			@mouseenter="onDescriptionMouseEnter"
-			@mouseleave="onDescriptionMouseLeave"
 			@pointerdown="onDescriptionPanelPointerDown"
 			@click="onDescriptionPanelClick"
 		>
