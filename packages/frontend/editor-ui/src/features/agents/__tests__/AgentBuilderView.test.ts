@@ -20,6 +20,7 @@ const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const sendPreviewSessionToInstanceAiMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -85,6 +86,13 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
+}));
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
+	useInstanceAiAgentPreviewHandoff: () => ({
+		canSendPreviewToInstanceAi: ref(true),
+		sendPreviewSessionToInstanceAi: sendPreviewSessionToInstanceAiMock,
+	}),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -368,7 +376,10 @@ const commonStubs = {
 			'localConfig',
 			'connectedTriggers',
 			'effectiveSessionId',
+			'initialPrompt',
+			'canSendToAssistant',
 		],
+		emits: ['config-updated', 'continue-loaded', 'open-build', 'send-to-assistant'],
 	},
 	AgentConfigTree: {
 		name: 'AgentConfigTree',
@@ -623,6 +634,28 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.findComponent({ name: 'AgentBuilderHeader' }).exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
+	});
+
+	it('sends the active preview session to instance AI from the preview page', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+
+		expect(preview.props('canSendToAssistant')).toBe(true);
+
+		preview.vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			agentName: 'Agent One',
+			agentIcon: 'bot',
+			sessionTitle: 'agents.builder.chat.newChat.label',
+		});
 	});
 
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {

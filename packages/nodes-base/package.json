@@ -921,7 +921,7 @@
     "n8n-core": "workspace:*",
     "nock": "catalog:",
     "reflect-metadata": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

@@ -52,10 +52,24 @@ const privateOAuth: ICredentialType = {
 	],
 };
 
+// A managed OAuth type opted out of managed creation (skip-list) — the overwrite
+// exists but the managed option must not be offered.
+const skipManagedOAuth: ICredentialType = {
+	name: 'skipOAuth2Api',
+	displayName: 'Skip OAuth2 API',
+	__overwrittenProperties: ['clientId', 'clientSecret'],
+	__skipManagedCreation: true,
+	properties: [
+		{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' },
+		{ displayName: 'Client Secret', name: 'clientSecret', type: 'string', default: '' },
+	],
+};
+
 const typesByName: Record<string, ICredentialType> = {
 	httpBasicAuth,
 	acmeOAuth2Api: managedOAuth,
 	privateOAuth2Api: privateOAuth,
+	skipOAuth2Api: skipManagedOAuth,
 };
 
 describe('useCredentialForm', () => {
@@ -158,6 +172,29 @@ describe('useCredentialForm', () => {
 			const form = await loadPrivateCred();
 
 			expect(form.getChangedSharedFields({ clientId: 'id', clientSecret: 'secret' })).toEqual([]);
+		});
+	});
+
+	describe('managedOAuthAvailable', () => {
+		// Regression (IAM-853): opening a new credential from the Credentials tab has
+		// no node context, so managed availability must derive from the selected type
+		// directly (via its overwritten client fields), not only from the active node.
+		it('is true for an overwritten OAuth type with no node context', () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'acmeOAuth2Api' });
+
+			expect(form.managedOAuthAvailable.value).toBe(true);
+		});
+
+		it('is false for a type without overwritten client fields', () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
+
+			expect(form.managedOAuthAvailable.value).toBe(false);
+		});
+
+		it('is false for a skip-list type even though it is overwritten', () => {
+			const form = useCredentialForm({ mode: 'new', activeId: 'skipOAuth2Api' });
+
+			expect(form.managedOAuthAvailable.value).toBe(false);
 		});
 	});
 });
