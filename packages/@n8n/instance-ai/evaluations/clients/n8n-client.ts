@@ -635,6 +635,13 @@ export class N8nClient {
 	 * referenced workflows are recreated (node credentials stripped server-side)
 	 * and the native message log is written verbatim, so the thread continues
 	 * as if the conversation really happened.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each seed data
+	 * table's name to dodge the per-project unique-name constraint — safe when the
+	 * seed workflow references tables by id (id-remap). Pass false to keep the
+	 * EXACT declared names, so a freshly-built workflow's by-name references
+	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
+	 * seed only data tables.
 	 * POST /rest/instance-ai/eval/restore-thread
 	 */
 	async restoreThread(
@@ -642,10 +649,13 @@ export class N8nClient {
 		messages: Array<Record<string, unknown>>,
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
+		options: { uniquifyNames?: boolean } = {},
 	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
+		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables };
+		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
-			body: { threadId, messages, workflows, dataTables },
+			body,
 		});
 		return RestoreThreadEnvelope.parse(result).data;
 	}

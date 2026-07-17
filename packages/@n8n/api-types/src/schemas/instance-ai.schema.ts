@@ -1623,10 +1623,15 @@ export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataT
 
 export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	threadId: z.string().uuid(),
-	/** Native agent message log (ISO `createdAt`), stored verbatim. */
-	messages: z.array(z.record(z.unknown())).min(1).max(1000),
+	/** Native agent message log (ISO `createdAt`), stored verbatim. May be empty
+	 *  when the request only seeds data tables (TRUST-311 scenario seeding). */
+	messages: z.array(z.record(z.unknown())).max(1000),
 	/** Data tables the workflows reference; recreated first so ids can be rewritten. */
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 	/** Workflows the history references; recreated (node credentials stripped). */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
+	/** Append a unique suffix to each seed data table's name (default true — safe
+	 *  for id-remapped seed workflows). False keeps the EXACT declared name so a
+	 *  freshly-built workflow's by-name references resolve. */
+	uniquifyNames: z.boolean().optional(),
 }) {}

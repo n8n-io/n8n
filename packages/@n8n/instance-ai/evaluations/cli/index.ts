@@ -644,6 +644,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						seedFile: buildArgs.seedFile,
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
+						executionScenarios: buildArgs.executionScenarios,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,

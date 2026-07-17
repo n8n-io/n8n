@@ -47,11 +47,19 @@ export class EvalThreadRestoreService {
 	 * (TRUST-311) — free-text `dataSetup` can't declare types, so a string id
 	 * like `row_001` would otherwise be rejected by a `number` column. Rolls back
 	 * tables already created if a later table (or its rows) fails.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each name to dodge
+	 * the per-project unique-name constraint — safe when the seed workflow
+	 * references tables by id (id-remap). Pass false to keep the EXACT declared
+	 * name, so a freshly-built workflow's by-name references resolve (TRUST-311
+	 * scenario seeding).
 	 */
 	async restoreDataTables(
 		dataTables: InstanceAiEvalSeedDataTable[],
 		projectId: string,
+		options: { uniquifyNames?: boolean } = {},
 	): Promise<Map<string, string>> {
+		const uniquifyNames = options.uniquifyNames ?? true;
 		const idMap = new Map<string, string>();
 		try {
 			for (const table of dataTables) {
@@ -62,8 +70,11 @@ export class EvalThreadRestoreService {
 						`Seed data table id "${table.id}" is too short to remap safely (need ≥8 chars)`,
 					);
 				}
-				const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
-				const name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+				let name = table.name;
+				if (uniquifyNames) {
+					const suffix = ` [seed ${randomUUID().slice(0, 8)}]`;
+					name = `${table.name.slice(0, 128 - suffix.length)}${suffix}`;
+				}
 				const created = await this.dataTableService.createDataTable(projectId, {
 					name,
 					columns: table.columns,

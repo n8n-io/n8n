@@ -876,11 +876,12 @@ export class InstanceAiController {
 		const idMap = await this.evalThreadRestore.restoreDataTables(
 			payload.dataTables ?? [],
 			projectId,
+			{ uniquifyNames: payload.uniquifyNames ?? true },
 		);
 		const dataTableIds = [...idMap.values()];
 		// Roll back everything we created if a later step fails, so a partial
 		// restore doesn't leak workflows/tables into the shared eval project.
-		let restored: number;
+		let restored = 0;
 		let createdWorkflowIds: string[] = [];
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
@@ -888,11 +889,14 @@ export class InstanceAiController {
 				projectId,
 				idMap,
 			);
-			({ restored } = await this.memoryService.restoreThreadMessages(
-				req.user.id,
-				payload.threadId,
-				payload.messages,
-			));
+			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
+			if (payload.messages.length > 0) {
+				({ restored } = await this.memoryService.restoreThreadMessages(
+					req.user.id,
+					payload.threadId,
+					payload.messages,
+				));
+			}
 		} catch (error) {
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);

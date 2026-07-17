@@ -750,13 +750,41 @@ describe('InstanceAiController', () => {
 				dataTables: [dataTable],
 			} as InstanceAiEvalRestoreThreadRequest);
 
-			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1');
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1', {
+				uniquifyNames: true,
+			});
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
 				idMap,
 			);
 			expect(result).toMatchObject({ dataTableIds: ['dt-new'] });
+		});
+
+		it('seeds data tables only (no messages) under exact names when uniquifyNames is false (TRUST-311)', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			memoryService.getThreadProjectId.mockResolvedValue('project-1');
+			evalThreadRestore.restoreDataTables.mockResolvedValue(new Map([['dt-old-1234', 'dt-new']]));
+
+			const dataTable = {
+				id: 'dt-old-1234',
+				name: 'Job Applications',
+				columns: [{ name: 'application_id', type: 'string' as const }],
+				rows: [{ application_id: 'row_001' }],
+			};
+			const result = await controller.restoreEvalThread(req, res, {
+				threadId: THREAD_ID,
+				messages: [],
+				dataTables: [dataTable],
+				uniquifyNames: false,
+			} as InstanceAiEvalRestoreThreadRequest);
+
+			expect(evalThreadRestore.restoreDataTables).toHaveBeenCalledWith([dataTable], 'project-1', {
+				uniquifyNames: false,
+			});
+			// No messages to restore — the message write is skipped.
+			expect(memoryService.restoreThreadMessages).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ restored: 0, dataTableIds: ['dt-new'] });
 		});
 
 		it('should roll back created workflows and data tables when a later step fails', async () => {

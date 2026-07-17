@@ -2,7 +2,11 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
@@ -182,6 +186,10 @@ export interface ExecutionScenario {
 	dataSetup: string;
 	/** Criteria the LLM verifier checks against the execution result */
 	successCriteria: string;
+	/** Typed data tables to create + row-seed before the scenario executes
+	 *  (TRUST-311). Seeded under their exact declared names so the built
+	 *  workflow's by-name data-table references resolve. */
+	seedDataTables?: InstanceAiEvalSeedDataTable[];
 }
 
 export interface ConversationTurn {

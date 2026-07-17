@@ -180,6 +180,30 @@ describe('EvalThreadRestoreService', () => {
 			expect(dataTableService.deleteDataTable).toHaveBeenCalledWith('dt-new', 'project-1');
 		});
 
+		it('creates the table under its EXACT name when uniquifyNames is false (TRUST-311)', async () => {
+			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
+
+			await service.restoreDataTables(
+				[
+					{
+						id: 'job-applications-1234',
+						name: 'Job Applications',
+						columns: [{ name: 'application_id', type: 'string' }],
+						rows: [{ application_id: 'row_001' }],
+					},
+				],
+				'project-1',
+				{ uniquifyNames: false },
+			);
+
+			const [, dto] = dataTableService.createDataTable.mock.calls[0];
+			// No ` [seed <uuid>]` suffix — the built workflow references it by this name.
+			expect(dto.name).toBe('Job Applications');
+			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-new', 'project-1', [
+				{ application_id: 'row_001' },
+			]);
+		});
+
 		it('rejects a too-short table id without creating anything (unsafe to string-replace)', async () => {
 			await expect(
 				service.restoreDataTables(

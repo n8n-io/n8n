@@ -6,7 +6,11 @@
 // LLM-mocked HTTP, checklist verification, and result aggregation.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedDataTable,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import crypto from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -297,6 +301,7 @@ export async function runWorkflowTestCase(
 				seedFile: testCase.seedFile,
 				priorConversation: testCase.priorConversation,
 				seedThread: testCase.seedThread,
+				executionScenarios: testCase.executionScenarios,
 				createdCredentialIds: config.createdCredentialIds,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
@@ -593,6 +598,9 @@ export interface BuildWorkflowConfig {
 	/** Reproduce a real conversation from its LangSmith trace (seed = before the
 	 *  last user message, live = that message). */
 	seedThread?: SeedThreadRef;
+	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
+	 *  after a successful build, before any scenario runs (TRUST-311). */
+	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
@@ -893,13 +901,26 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					logger,
 				});
 
+		// Seed the case's execution-scenario data tables (exact names + rows) now
+		// that the workflow exists, before any scenario runs against it (TRUST-311).
+		const scenarioDataTableIds = await seedScenarioDataTables(
+			client,
+			threadId,
+			config.executionScenarios ?? [],
+			logger,
+		);
+
 		return {
 			success: true,
 			workflowId: outcome.workflowsCreated[0].id,
 			workflowJsons: outcome.workflowJsons,
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
-			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+			createdDataTableIds: [
+				...outcome.dataTablesCreated,
+				...restoredDataTableIds,
+				...scenarioDataTableIds,
+			],
 			artifactRefs: eventOutcome.artifactRefs,
 			conversationMetrics,
 			events,
@@ -960,6 +981,43 @@ export async function executeScenario(
 		buildTrace,
 		pinAiRoots,
 	);
+}
+
+/**
+ * Create + row-seed the data tables an execution-scenario case declares
+ * (`seedDataTables`), before any scenario runs (TRUST-311). Reuses the
+ * restore-thread seed path, but under the tables' EXACT declared names
+ * (`uniquifyNames:false`) so the freshly-built workflow's by-name data-table
+ * references resolve — free-text `dataSetup` carries no column types, so a
+ * string id like `row_001` would otherwise be rejected by a `number` column.
+ *
+ * Tables are deduped by name across a case's scenarios (first declaration wins):
+ * a name is unique per project, and the built workflow references it by name, so
+ * a case shares one table across its scenarios. Returns the created ids so the
+ * caller can fold them into cleanup. NOTE: differing per-scenario row-states for
+ * the same table name are not supported (would need per-scenario execution
+ * isolation the shared project doesn't provide).
+ */
+export async function seedScenarioDataTables(
+	client: N8nClient,
+	threadId: string,
+	scenarios: ExecutionScenario[],
+	logger: EvalLogger,
+): Promise<string[]> {
+	const byName = new Map<string, InstanceAiEvalSeedDataTable>();
+	for (const scenario of scenarios) {
+		for (const table of scenario.seedDataTables ?? []) {
+			if (!byName.has(table.name)) byName.set(table.name, table);
+		}
+	}
+	if (byName.size === 0) return [];
+
+	const tables = [...byName.values()];
+	const { dataTableIds } = await client.restoreThread(threadId, [], [], tables, {
+		uniquifyNames: false,
+	});
+	logger.info(`  Seeded ${String(dataTableIds.length)} scenario data table(s)`);
+	return dataTableIds;
 }
 
 /**
