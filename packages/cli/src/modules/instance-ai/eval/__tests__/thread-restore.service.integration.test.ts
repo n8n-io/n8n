@@ -98,3 +98,64 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 		expect(tables.count).toBe(0);
 	});
 });
+
+// TRUST-311 follow-up: scenario tables are created empty before the build turn,
+// then row-seeded per scenario. reseedDataTableRows must REPLACE (clear then
+// insert) the existing rows, not append — so each scenario runs against exactly
+// the state it declared, regardless of what a prior scenario or the build left.
+describe('EvalThreadRestoreService.reseedDataTableRows', () => {
+	let service: EvalThreadRestoreService;
+	let dataTableService: DataTableService;
+	let project: Project;
+	let tableId: string;
+
+	beforeAll(() => {
+		dataTableService = Container.get(DataTableService);
+		service = new EvalThreadRestoreService(
+			Container.get(WorkflowRepository),
+			Container.get(SharedWorkflowRepository),
+			dataTableService,
+		);
+	});
+
+	beforeEach(async () => {
+		project = await createTeamProject();
+		const created = await dataTableService.createDataTable(project.id, {
+			name: 'Job Applications',
+			columns: [{ name: 'application_id', type: 'string' }],
+		});
+		tableId = created.id;
+	});
+
+	afterEach(async () => {
+		await dataTableService.deleteDataTableAll();
+	});
+
+	it('seeds rows into an empty pre-created table', async () => {
+		await service.reseedDataTableRows(tableId, project.id, [{ application_id: 'row_001' }]);
+
+		const { count, data } = await dataTableService.getManyRowsAndCount(tableId, project.id, {});
+		expect(count).toBe(1);
+		expect(data).toEqual([expect.objectContaining({ application_id: 'row_001' })]);
+	});
+
+	it('replaces the prior scenario rows rather than appending them', async () => {
+		await service.reseedDataTableRows(tableId, project.id, [
+			{ application_id: 'row_001' },
+			{ application_id: 'row_002' },
+		]);
+		await service.reseedDataTableRows(tableId, project.id, [{ application_id: 'row_003' }]);
+
+		const { count, data } = await dataTableService.getManyRowsAndCount(tableId, project.id, {});
+		expect(count).toBe(1);
+		expect(data).toEqual([expect.objectContaining({ application_id: 'row_003' })]);
+	});
+
+	it('clears the table when seeded with no rows', async () => {
+		await service.reseedDataTableRows(tableId, project.id, [{ application_id: 'row_001' }]);
+		await service.reseedDataTableRows(tableId, project.id, []);
+
+		const { count } = await dataTableService.getManyRowsAndCount(tableId, project.id, {});
+		expect(count).toBe(0);
+	});
+});

@@ -92,6 +92,25 @@ export class EvalThreadRestoreService {
 		return idMap;
 	}
 
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert).
+	 * Used for the per-scenario row seeding of a case whose tables were created
+	 * empty before the build turn (TRUST-311 follow-up): the table already exists
+	 * (the built workflow bound its id), so we only swap the rows a scenario
+	 * declares — clearing whatever a prior scenario or a build-time execution
+	 * left. Rows are validated against each column's type by `insertRows`.
+	 */
+	async reseedDataTableRows(
+		tableId: string,
+		projectId: string,
+		rows: NonNullable<InstanceAiEvalSeedDataTable['rows']>,
+	): Promise<void> {
+		await this.dataTableService.clearRows(tableId, projectId);
+		if (rows.length > 0) {
+			await this.dataTableService.insertRows(tableId, projectId, rows);
+		}
+	}
+
 	/** Best-effort delete (rollback of a failed restore). */
 	async deleteDataTables(dataTableIds: string[], projectId: string): Promise<void> {
 		for (const id of dataTableIds) {
