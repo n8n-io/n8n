@@ -20,6 +20,7 @@ catalog:
   '@ai-sdk/otel': ^1.0.37
   '@ai-sdk/provider-utils': ^5.0.12
   '@ai-sdk/xai': ^4.0.18
+  '@asteasolutions/zod-to-openapi': 7.3.4
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
   '@chat-adapter/linear': ^4.28.1
