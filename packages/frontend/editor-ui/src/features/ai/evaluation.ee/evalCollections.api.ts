@@ -59,6 +59,21 @@ export const createCollection = async (
 	);
 };
 
+// Re-attempts a collection's runs. The server derives the versions from the
+// collection's current runs, kicks off fresh runs, and unlinks the old ones,
+// returning the same shape as create (record + the ids of the new runs).
+export const rerunCollection = async (
+	context: IRestApiContext,
+	workflowId: string,
+	collectionId: string,
+) => {
+	return await makeRestApiRequest<CreateCollectionResponse>(
+		context,
+		'POST',
+		`${collectionsPath(workflowId, collectionId)}/rerun`,
+	);
+};
+
 export const updateCollection = async (
 	context: IRestApiContext,
 	workflowId: string,

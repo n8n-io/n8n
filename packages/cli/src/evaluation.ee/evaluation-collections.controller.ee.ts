@@ -23,9 +23,9 @@ type EvalVersionsQuery = { evaluationConfigId?: string };
  * Scope choice notes:
  *  - List / get / versions → `workflow:read`. Collection metadata is workflow-
  *    adjacent and the body never includes execution state.
- *  - Create → `workflow:execute`. Creating a collection schedules new test
- *    runs for any version without a reusable existing run, so it's not just
- *    a metadata operation — it kicks off workflow executions.
+ *  - Create / rerun → `workflow:execute`. Both schedule new test runs (rerun
+ *    re-attempts every version the collection compares), so they're not just
+ *    metadata operations — they kick off workflow executions.
  *  - Update / delete / curate runs → `workflow:update`. Renaming a collection,
  *    deleting it (which broadcasts cancel-collection for active runs but
  *    does not start new ones), and adding/removing run membership are all
@@ -96,6 +96,18 @@ export class EvaluationCollectionsController {
 			req.user,
 			req.params.workflowId,
 			payload,
+		);
+		return { ...record, runsStartedIds };
+	}
+
+	@Post('/:workflowId/eval-collections/:collectionId/rerun')
+	@ProjectScope('workflow:execute')
+	async rerun(req: AuthenticatedRequest<CollectionParam>) {
+		await this.assertFlagEnabled(req.user);
+		const { record, runsStartedIds } = await this.service.rerunCollection(
+			req.user,
+			req.params.workflowId,
+			req.params.collectionId,
 		);
 		return { ...record, runsStartedIds };
 	}

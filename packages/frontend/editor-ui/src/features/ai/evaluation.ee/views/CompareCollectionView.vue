@@ -201,6 +201,8 @@ onBeforeUnmount(() => {
 				:collection-name="detail?.name ?? ''"
 				:versions="compareData.versions"
 				:best-version-index="compareData.bestVersionIndex"
+				:workflow-id="workflowId"
+				:collection-id="collectionId"
 			/>
 			<ScoreChart
 				:metric-groups="compareData.metricGroups"

@@ -150,6 +150,22 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 		return response;
 	};
 
+	const rerunCollection = async (workflowId: string, collectionId: string) => {
+		const response = await evalCollectionsApi.rerunCollection(
+			rootStore.restApiContext,
+			workflowId,
+			collectionId,
+		);
+
+		// Refresh detail so the UI flips to running + arms polling on the fresh
+		// runs. Best-effort: the re-run is already scheduled server-side, so a
+		// transient refresh failure must not surface as a re-run failure (which
+		// would push the user to click again and reject with "already in
+		// progress"). The compare view refetches on its next poll/navigation.
+		await fetchCollectionDetail(workflowId, collectionId).catch(() => null);
+		return response;
+	};
+
 	const updateCollection = async (
 		workflowId: string,
 		collectionId: string,
@@ -358,6 +374,7 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 		fetchCollectionDetail,
 		fetchEvalVersions,
 		createCollection,
+		rerunCollection,
 		updateCollection,
 		deleteCollection,
 		addExistingRun,

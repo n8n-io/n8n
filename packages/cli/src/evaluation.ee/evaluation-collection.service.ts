@@ -9,7 +9,7 @@ import type {
 	UpdateEvaluationCollectionPayload,
 } from '@n8n/api-types';
 import { metricScalesFromConfig, normalizeMetricScore } from '@n8n/api-types';
-import type { TestRun, User } from '@n8n/db';
+import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
@@ -20,6 +20,7 @@ import {
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import type { IDataObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -129,6 +130,16 @@ export class EvaluationCollectionService {
 						`versions[${index}]: test run "${v.existingTestRunId}" has no pinned workflow version and cannot be reused in a collection`,
 					);
 				}
+				// Only a completed run is a reusable result. A failed/cancelled
+				// run has no scores to compare, and a still-running one hasn't
+				// produced any yet — reusing either would silently seed the
+				// collection with a broken version. The caller should omit
+				// `existingTestRunId` to force a fresh run instead.
+				if (run.status !== 'completed') {
+					throw new BadRequestError(
+						`versions[${index}]: test run "${v.existingTestRunId}" has status "${run.status}" and is not a completed result; omit it to run a fresh evaluation`,
+					);
+				}
 			}
 		}
 
@@ -155,14 +166,9 @@ export class EvaluationCollectionService {
 		// run. For "current draft" entries we snapshot a `WorkflowHistory` row
 		// first so the new run is pinned to an immutable version — otherwise
 		// the next edit to the live workflow would invalidate the comparison.
-		// Freeze the evaluation config in `evaluationConfigSnapshot` for the
-		// same reason: future config edits must not retroactively change what
-		// a historical run was evaluating.
-		const configSnapshot = {
-			...config,
-			createdAt: config.createdAt.toISOString(),
-			updatedAt: config.updatedAt.toISOString(),
-		};
+		// Freeze the evaluation config for the same reason: future config edits
+		// must not retroactively change what a historical run was evaluating.
+		const configSnapshot = this.freezeConfigSnapshot(config);
 
 		const runsStartedIds: string[] = [];
 		for (const v of input.versions) {
@@ -172,23 +178,15 @@ export class EvaluationCollectionService {
 				v.workflowVersionId ??
 				(await this.workflowHistoryService.snapshotCurrent(workflowId)).versionId;
 
-			const { testRun } = await this.testRunnerService.startTestRun(
-				user,
-				workflowId,
-				input.concurrency ?? 1,
-				{
+			runsStartedIds.push(
+				await this.startCollectionRun(user, workflowId, {
 					collectionId: collection.id,
 					workflowVersionId: versionId,
 					evaluationConfigId: input.evaluationConfigId,
-					evaluationConfigSnapshot: configSnapshot,
-					// Compile the eval config (dataset + trigger + metric nodes) onto
-					// each version's snapshot. Without this the run goes "direct" and
-					// the raw versioned workflow has no evaluation trigger → the run
-					// fails immediately with EVALUATION_TRIGGER_NOT_FOUND.
-					compileFromConfig: true,
-				},
+					configSnapshot,
+					concurrency: input.concurrency ?? 1,
+				}),
 			);
-			runsStartedIds.push(testRun.id);
 		}
 
 		this.telemetry.track('Eval collection created', {
@@ -203,6 +201,125 @@ export class EvaluationCollectionService {
 		});
 
 		const record = this.toRecord(collection, existingRunIds.length + runsStartedIds.length);
+		return { record, runsStartedIds };
+	}
+
+	/**
+	 * Re-attempts a collection's runs. Kicks off one fresh run per version the
+	 * collection currently compares, then unlinks the old runs so the compare
+	 * view shows only the new attempt.
+	 *
+	 * Two deliberate choices:
+	 *  - The versions to re-run are derived from the collection's *current*
+	 *    runs (their distinct pinned `workflowVersionId`s), so a re-run keeps
+	 *    comparing exactly the same set of versions.
+	 *  - The eval config is re-frozen from its *current* state, not the
+	 *    original snapshot. A user typically re-runs because they fixed the
+	 *    config; re-running against the stale frozen snapshot would just
+	 *    reproduce the original failure. One fresh snapshot shared across every
+	 *    version keeps the collection internally comparable.
+	 */
+	async rerunCollection(
+		user: User,
+		workflowId: string,
+		collectionId: string,
+	): Promise<{ record: EvaluationCollectionRecord; runsStartedIds: string[] }> {
+		// 1. Load the collection + its runs (scoped to the workflow).
+		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
+		if (!detail) throw new NotFoundError('Collection not found');
+		const { collection, runs } = detail;
+
+		// Reject while anything is still in flight — a second wave against a
+		// collection that's still resolving the first would double the runs and
+		// leave the compare view ambiguous about which attempt is current.
+		if (runs.some((r) => r.status === 'new' || r.status === 'running')) {
+			throw new BadRequestError('Collection run already in progress');
+		}
+
+		// 2. Derive the versions to re-run from the CURRENT runs: the distinct
+		// pinned version ids in run order (this is what the collection compares).
+		// Done BEFORE any unlink so we capture the on-screen membership.
+		const versionIds: string[] = [];
+		const seenVersions = new Set<string>();
+		for (const run of runs) {
+			if (run.workflowVersionId && !seenVersions.has(run.workflowVersionId)) {
+				seenVersions.add(run.workflowVersionId);
+				versionIds.push(run.workflowVersionId);
+			}
+		}
+		if (versionIds.length === 0) {
+			throw new BadRequestError('Collection has no pinned versions to re-run');
+		}
+
+		// 3. Re-freeze the CURRENT eval config (see the doc comment for why).
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
+			collection.evaluationConfigId,
+			workflowId,
+		);
+		if (!config) {
+			throw new BadRequestError(
+				'Evaluation config for this collection no longer exists; cannot re-run',
+			);
+		}
+		const configSnapshot = this.freezeConfigSnapshot(config);
+
+		// 4. Kick off one fresh run per derived version, linked to the collection.
+		// If any version fails to start (e.g. its pinned WorkflowHistory was
+		// pruned), roll back the fresh runs already created this call and leave
+		// the OLD runs untouched, so the collection stays exactly in its
+		// pre-rerun state rather than a partial mix of old + orphaned new runs.
+		const runsStartedIds: string[] = [];
+		try {
+			for (const versionId of versionIds) {
+				runsStartedIds.push(
+					await this.startCollectionRun(user, workflowId, {
+						collectionId: collection.id,
+						workflowVersionId: versionId,
+						evaluationConfigId: collection.evaluationConfigId,
+						configSnapshot,
+						concurrency: 1,
+					}),
+				);
+			}
+		} catch (error) {
+			// Best-effort: detach only the fresh runs this call linked, so a
+			// failed re-run adds nothing to the collection. Cleanup errors are
+			// swallowed so the original failure is what propagates. The OLD runs
+			// are deliberately left linked — they're still the collection's
+			// valid state until every fresh run has started.
+			for (const runId of runsStartedIds) {
+				try {
+					await this.collectionRepo.removeRunFromCollection(collection.id, runId);
+				} catch {
+					// Ignore cleanup failures; the original error is what matters.
+				}
+			}
+			throw error;
+		}
+
+		// 5. Unlink the OLD runs so the compare view reflects only the fresh
+		// attempt. Reached only after every fresh run started successfully, so a
+		// partial failure never strips the old runs. The new runs created in
+		// step 4 have distinct ids, so this only detaches the previous ones.
+		for (const run of runs) {
+			await this.collectionRepo.removeRunFromCollection(collection.id, run.id);
+		}
+
+		// Membership changed (old runs out, fresh runs in) — the cached insights
+		// envelope was computed against the previous set and can't be trusted.
+		await this.collectionRepo.updateInsightsCache(collection.id, null);
+
+		this.telemetry.track('Eval collection rerun', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			collection_id: collection.id,
+			evaluation_config_id: collection.evaluationConfigId,
+			version_count: versionIds.length,
+			new_run_count: runsStartedIds.length,
+			dataset_id: this.extractDatasetId(config),
+		});
+
+		const record = this.toRecord(collection, runsStartedIds.length);
 		return { record, runsStartedIds };
 	}
 
@@ -389,9 +506,19 @@ export class EvaluationCollectionService {
 						},
 						order: { createdAt: 'DESC' },
 					});
+		// Only a completed run is a reusable result — the wizard offers this run
+		// for reuse (via `existingTestRunId`), and a failed/cancelled/running run
+		// has no comparable scores. Skipping non-completed runs surfaces the
+		// latest *completed* run per version (or "no run yet" if none), so
+		// re-running a version that last failed doesn't silently reuse the
+		// failure.
 		const latestRunByVersion = new Map<string, TestRun>();
 		for (const run of lastRuns) {
-			if (run.workflowVersionId && !latestRunByVersion.has(run.workflowVersionId)) {
+			if (
+				run.workflowVersionId &&
+				run.status === 'completed' &&
+				!latestRunByVersion.has(run.workflowVersionId)
+			) {
 				latestRunByVersion.set(run.workflowVersionId, run);
 			}
 		}
@@ -463,6 +590,56 @@ export class EvaluationCollectionService {
 	}
 
 	// ---- internals ----
+
+	/**
+	 * Freeze an eval config into the immutable snapshot every collection run
+	 * compiles against, so a later config edit can't retroactively change what a
+	 * historical run was evaluating. Dates are serialized to match the JSON the
+	 * runner persists on the run row.
+	 */
+	private freezeConfigSnapshot(config: EvaluationConfig): IDataObject {
+		return {
+			...config,
+			createdAt: config.createdAt.toISOString(),
+			updatedAt: config.updatedAt.toISOString(),
+		};
+	}
+
+	/**
+	 * Kick off one collection-linked test run pinned to a workflow version,
+	 * compiling the frozen eval config onto that version's snapshot. Shared by
+	 * {@link createCollection} and {@link rerunCollection} so both schedule runs
+	 * identically. Returns the new run id.
+	 */
+	private async startCollectionRun(
+		user: User,
+		workflowId: string,
+		options: {
+			collectionId: string;
+			workflowVersionId: string;
+			evaluationConfigId: string;
+			configSnapshot: IDataObject;
+			concurrency: number;
+		},
+	): Promise<string> {
+		const { testRun } = await this.testRunnerService.startTestRun(
+			user,
+			workflowId,
+			options.concurrency,
+			{
+				collectionId: options.collectionId,
+				workflowVersionId: options.workflowVersionId,
+				evaluationConfigId: options.evaluationConfigId,
+				evaluationConfigSnapshot: options.configSnapshot,
+				// Compile the eval config (dataset + trigger + metric nodes) onto
+				// each version's snapshot. Without this the run goes "direct" and
+				// the raw versioned workflow has no evaluation trigger → the run
+				// fails immediately with EVALUATION_TRIGGER_NOT_FOUND.
+				compileFromConfig: true,
+			},
+		);
+		return testRun.id;
+	}
 
 	private toRecord(collection: CollectionFields, runCount: number): EvaluationCollectionRecord {
 		return {
