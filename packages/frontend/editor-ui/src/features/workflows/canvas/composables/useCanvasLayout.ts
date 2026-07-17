@@ -11,7 +11,7 @@ import {
 	type CanvasNodeData,
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
-import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE, NODE_X_SPACING } from '@/app/utils/nodeViewUtils';
 import {
 	GROUP_HEADER_HEIGHT,
 	GROUP_HEADER_WIDTH_COLLAPSED,
@@ -50,7 +50,6 @@ export type CanvasLayoutEvent = {
 
 export type CanvasNodeDictionary = Record<string, GraphNode<CanvasNodeData>>;
 
-const NODE_X_SPACING = GRID_SIZE * 8;
 const NODE_Y_SPACING = GRID_SIZE * 6;
 const SUBGRAPH_SPACING = GRID_SIZE * 8;
 const AI_X_SPACING = GRID_SIZE * 3;

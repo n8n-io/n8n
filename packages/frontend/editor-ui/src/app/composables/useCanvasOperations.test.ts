@@ -112,7 +112,7 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
-import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
+import { GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -525,7 +525,8 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([320, 112]);
+			// 112 + HORIZONTAL_NODE_STEP (224) = 336, matching the auto-layout step
+			expect(position).toEqual([336, 112]);
 		});
 
 		it('should place the node clear of the agent card when added after a message an agent node', () => {
@@ -553,8 +554,8 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			// The agent card renders 384px wide, so the new node keeps the standard
-			// gap to its right edge: 112 + 384 + (208 - 96) = 608
-			expect(position).toEqual([608, 112]);
+			// gap to its right edge: 112 + 384 + (HORIZONTAL_NODE_STEP 224 - 96) = 624
+			expect(position).toEqual([624, 112]);
 		});
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {
@@ -588,7 +589,7 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([448, 96]);
+			expect(position).toEqual([464, 96]);
 		});
 
 		it('should place the node at the last clicked position if no other position is set', () => {
@@ -1469,7 +1470,7 @@ describe('useCanvasOperations', () => {
 				name: nodes[1].name,
 				type: nodeTypeName,
 				typeVersion: 1,
-				position: [32 + PUSH_NODES_OFFSET + 2 * GRID_SIZE, 32 + GRID_SIZE],
+				position: [32 + HORIZONTAL_NODE_STEP + 2 * GRID_SIZE, 32 + GRID_SIZE],
 				parameters: {},
 			});
 		});
