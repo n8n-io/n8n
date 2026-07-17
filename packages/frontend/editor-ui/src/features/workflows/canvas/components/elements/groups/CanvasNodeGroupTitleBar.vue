@@ -772,6 +772,7 @@ function onWrapperPointerDown(event: PointerEvent) {
 
 .descriptionInline {
 	color: var(--text-color--subtle);
+	font-size: var(--font-size--sm);
 }
 
 .deactivatedLabel {
