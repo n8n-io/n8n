@@ -1594,9 +1594,12 @@ export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkfl
 
 /** A data table a seed references. Recreated on restore (its id is server-
  *  generated, so the seed workflows' references are rewritten to the new id).
- *  Schema only — no rows (the table just needs to exist; rows are the trace's
- *  highest-PII payload and are never sent here). */
-const instanceAiEvalSeedDataTableSchema = z.object({
+ *  Real conversation seeds send `columns` only — rows are the trace's highest-PII
+ *  payload and are never sent for those. Authored eval scenarios (TRUST-311) may
+ *  additionally send `rows`, so a string id like `row_001` can be seeded into an
+ *  explicitly `string`-typed column instead of being rejected by free-text
+ *  `dataSetup` landing it in a `number` column. */
+export const instanceAiEvalSeedDataTableSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().min(1).max(128),
 	columns: z
@@ -1607,6 +1610,13 @@ const instanceAiEvalSeedDataTableSchema = z.object({
 			}),
 		)
 		.max(50),
+	/** Optional seed rows, keyed by column name. Cell values arrive as JSON
+	 *  scalars (dates as ISO strings); the data-table service validates each cell
+	 *  against its declared column type on insert. */
+	rows: z
+		.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
+		.max(1000)
+		.optional(),
 });
 
 export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;

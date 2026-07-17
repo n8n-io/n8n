@@ -40,10 +40,13 @@ export class EvalThreadRestoreService {
 	) {}
 
 	/**
-	 * Recreate each seed data table (schema only — no rows) and map its seed id to
-	 * the freshly created one. Tables are created under a uniquified name (names
-	 * are unique per project; the id, which the workflow references, is what
-	 * matters). Rolls back tables already created if a later one fails.
+	 * Recreate each seed data table and map its seed id to the freshly created
+	 * one. Tables are created under a uniquified name (names are unique per
+	 * project; the id, which the workflow references, is what matters). A table
+	 * declaring `rows` is seeded with them against its declared column types
+	 * (TRUST-311) — free-text `dataSetup` can't declare types, so a string id
+	 * like `row_001` would otherwise be rejected by a `number` column. Rolls back
+	 * tables already created if a later table (or its rows) fails.
 	 */
 	async restoreDataTables(
 		dataTables: InstanceAiEvalSeedDataTable[],
@@ -65,7 +68,11 @@ export class EvalThreadRestoreService {
 					name,
 					columns: table.columns,
 				});
+				// Map before seeding rows so a row-insert failure rolls this table back too.
 				idMap.set(table.id, created.id);
+				if (table.rows && table.rows.length > 0) {
+					await this.dataTableService.insertRows(created.id, projectId, table.rows);
+				}
 			}
 		} catch (error) {
 			await this.deleteDataTables([...idMap.values()], projectId);

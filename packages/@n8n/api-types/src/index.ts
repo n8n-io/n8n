@@ -353,6 +353,7 @@ export {
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
+	instanceAiEvalSeedDataTableSchema,
 	applyBranchReadOnlyOverrides,
 	normalizeInstanceAiThreadSource,
 } from './schemas/instance-ai.schema';
