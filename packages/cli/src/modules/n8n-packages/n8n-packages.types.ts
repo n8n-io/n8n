@@ -98,6 +98,8 @@ export interface ExportPackageRequest {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	includeVariableValues?: boolean;
+	canExportVariableValues?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 }
 
@@ -186,6 +188,7 @@ export type ExportPackageEventCounts = {
 	folders: number;
 	credentials: number;
 	dataTables: number;
+	variables: number;
 };
 
 export interface ImportedWorkflowSummary {
