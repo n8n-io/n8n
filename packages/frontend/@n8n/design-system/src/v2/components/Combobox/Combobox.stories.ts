@@ -206,15 +206,48 @@ export const Sizes = {
 			const mediumValue = ref(args.modelValue);
 			const smallValue = ref(args.modelValue);
 			const miniValue = ref(args.modelValue);
-			return { args, xlargeValue, largeValue, mediumValue, smallValue, miniValue };
+			const xlargeMultiple = ref(['apple', 'banana', 'orange']);
+			const largeMultiple = ref(['apple', 'banana', 'orange']);
+			const mediumMultiple = ref(['apple', 'banana', 'orange']);
+			const smallMultiple = ref(['apple', 'banana', 'orange']);
+			const miniMultiple = ref(['apple', 'banana', 'orange']);
+			return {
+				args,
+				xlargeValue,
+				largeValue,
+				mediumValue,
+				smallValue,
+				miniValue,
+				xlargeMultiple,
+				largeMultiple,
+				mediumMultiple,
+				smallMultiple,
+				miniMultiple,
+				fruitItems,
+			};
 		},
 		template: `
-		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
-			<Combobox v-bind="args" v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
-			<Combobox v-bind="args" v-model="largeValue" size="large" placeholder="large (36px, default)" />
-			<Combobox v-bind="args" v-model="mediumValue" size="medium" placeholder="medium (32px)" />
-			<Combobox v-bind="args" v-model="smallValue" size="small" placeholder="small (28px)" />
-			<Combobox v-bind="args" v-model="miniValue" size="mini" placeholder="mini (24px)" />
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--md);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Single
+				</h3>
+				<Combobox v-bind="args" v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)" />
+				<Combobox v-bind="args" v-model="largeValue" size="large" placeholder="large (36px, default)" />
+				<Combobox v-bind="args" v-model="mediumValue" size="medium" placeholder="medium (32px)" />
+				<Combobox v-bind="args" v-model="smallValue" size="small" placeholder="small (28px)" />
+				<Combobox v-bind="args" v-model="miniValue" size="mini" placeholder="mini (24px)" />
+			</section>
+			<section style="display: flex; flex-direction: column; gap: var(--spacing--md);">
+				<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Multiple
+				</h3>
+				<Combobox :items="fruitItems" v-model="xlargeMultiple" size="xlarge" multiple clearable placeholder="xlarge (40px)" />
+				<Combobox :items="fruitItems" v-model="largeMultiple" size="large" multiple clearable placeholder="large (36px, default)" />
+				<Combobox :items="fruitItems" v-model="mediumMultiple" size="medium" multiple clearable placeholder="medium (32px)" />
+				<Combobox :items="fruitItems" v-model="smallMultiple" size="small" multiple clearable placeholder="small (28px)" />
+				<Combobox :items="fruitItems" v-model="miniMultiple" size="mini" multiple clearable placeholder="mini (24px)" />
+			</section>
 		</div>
 		`,
 	}),
@@ -267,103 +300,120 @@ export const Clearable = {
 	},
 } satisfies Story;
 
-export const Controlled = {
+export const Multiple = {
+	render: (args) => ({
+		components: { Combobox },
+		setup() {
+			const value = ref(args.modelValue);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}">
+			<Combobox
+				v-bind="args"
+				v-model="value"
+				multiple
+				clearable
+				placeholder="Select fruits..."
+			/>
+		</div>
+		`,
+	}),
+	args: {
+		items: fruitItems,
+		modelValue: ['apple', 'banana'],
+	},
+} satisfies Story;
+
+export const ControlledUncontrolled = {
+	name: 'Controlled/Uncontrolled',
 	render: () => ({
 		components: { Combobox },
 		setup() {
 			const controlledValue = ref<string | undefined>('workflows');
 			const controlledOpen = ref(false);
-
-			function selectCredentials() {
-				controlledValue.value = 'credentials';
-			}
-
-			function clearSelection() {
-				controlledValue.value = undefined;
-			}
-
-			function openCombobox() {
-				controlledOpen.value = true;
-			}
-
-			function closeCombobox() {
-				controlledOpen.value = false;
-			}
+			const presets = [
+				{ label: 'Workflows', value: 'workflows' as string | undefined },
+				{ label: 'Credentials', value: 'credentials' as string | undefined },
+				{ label: 'Clear', value: undefined },
+			];
 
 			return {
 				controlledDemoItems,
 				controlledValue,
 				controlledOpen,
-				selectCredentials,
-				clearSelection,
-				openCombobox,
-				closeCombobox,
+				presets,
 			};
 		},
 		template: `
-			<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
-				<section style="display: flex; flex-direction: column; gap: var(--spacing--2xs);">
-					<h3 style="margin: 0; font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
-						Controlled
-					</h3>
-					<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
-						Value and open state are owned by the parent via
-						<code>v-model</code> and <code>v-model:open</code>.
-					</p>
-
-					<dl style="display: flex; flex-direction: column; gap: var(--spacing--4xs); margin: 0; font-size: var(--font-size--2xs);">
-						<div style="display: grid; grid-template-columns: 5rem 1fr; gap: var(--spacing--3xs);">
-							<dt style="margin: 0; color: var(--color--text--tint-1);">Selected</dt>
-							<dd style="margin: 0; word-break: break-word;">{{ controlledValue ?? 'none' }}</dd>
-						</div>
-						<div style="display: grid; grid-template-columns: 5rem 1fr; gap: var(--spacing--3xs);">
-							<dt style="margin: 0; color: var(--color--text--tint-1);">Open</dt>
-							<dd style="margin: 0; word-break: break-word;">{{ controlledOpen ? 'true' : 'false' }}</dd>
-						</div>
-					</dl>
-
-					<div style="display: flex; flex-wrap: wrap; gap: var(--spacing--3xs);">
-						<button type="button" @click="selectCredentials">Select credentials</button>
-						<button type="button" @click="clearSelection">Clear selection</button>
-						<button type="button" @click="openCombobox">Open</button>
-						<button type="button" @click="closeCombobox">Close</button>
-					</div>
-
-					<Combobox
-						:items="controlledDemoItems"
-						v-model="controlledValue"
-						v-model:open="controlledOpen"
-						placeholder="Search..."
-					/>
-				</section>
-			</div>
-		`,
-	}),
-	args: {
-		items: controlledDemoItems,
-	},
-} satisfies Story;
-
-export const Uncontrolled = {
-	render: () => ({
-		components: { Combobox },
-		setup() {
-			return { controlledDemoItems };
-		},
-		template: `
-			<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Controlled
+				</h3>
 				<Combobox
+					key="controlled"
+					:items="controlledDemoItems"
+					v-model="controlledValue"
+					v-model:open="controlledOpen"
+					placeholder="Search..."
+				/>
+				<div style="display: flex; gap: var(--spacing--2xs); margin-top: var(--spacing--sm); flex-wrap: wrap;">
+					<button
+						v-for="preset in presets"
+						:key="preset.label"
+						type="button"
+						style="
+							padding: var(--spacing--3xs) var(--spacing--xs);
+							border: var(--border);
+							border-radius: var(--radius--2xs);
+							background: var(--background--surface);
+							color: var(--text-color);
+							cursor: pointer;
+							font: inherit;
+							font-size: var(--font-size--xs);
+						"
+						@click="controlledValue = preset.value"
+					>
+						{{ preset.label }}
+					</button>
+					<button
+						type="button"
+						style="
+							padding: var(--spacing--3xs) var(--spacing--xs);
+							border: var(--border);
+							border-radius: var(--radius--2xs);
+							background: var(--background--surface);
+							color: var(--text-color);
+							cursor: pointer;
+							font: inherit;
+							font-size: var(--font-size--xs);
+						"
+						@click="controlledOpen = !controlledOpen"
+					>
+						{{ controlledOpen ? 'Close' : 'Open' }}
+					</button>
+				</div>
+				<p style="margin-top: var(--spacing--sm); font-size: var(--font-size--sm);">
+					Selected: <strong>{{ controlledValue ?? '(empty)' }}</strong>
+					· Open: <strong>{{ controlledOpen }}</strong>
+				</p>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Uncontrolled
+				</h3>
+				<Combobox
+					key="uncontrolled"
 					:items="controlledDemoItems"
 					default-value="workflows"
 					:default-open="false"
 					placeholder="Search..."
 				/>
-			</div>
+			</section>
+		</div>
 		`,
 	}),
-	args: {
-		items: controlledDemoItems,
-	},
 } satisfies Story;
 
 export const WithDisabledItem = {

@@ -20,6 +20,7 @@ import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 import { get } from '@n8n/design-system/v2/utils';
 
+import { N8nTagsInput2, TagsInputInput, type TagsInputValue } from '../TagsInput';
 import type {
 	AcceptableValue,
 	ComboboxEmits,
@@ -85,7 +86,9 @@ function stringifyAcceptableValue(value: string | number | bigint | null): strin
 }
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
-const inputRef = useTemplateRef<InstanceType<typeof ComboboxInput>>('input');
+const inputRef = useTemplateRef<
+	InstanceType<typeof ComboboxInput> | InstanceType<typeof TagsInputInput>
+>('input');
 
 defineExpose({
 	anchorRef,
@@ -129,7 +132,7 @@ function getDisplayValue(value: unknown): string {
 	}
 
 	if (Array.isArray(value)) {
-		return value.map((item) => getDisplayValue(item)).join(', ');
+		return '';
 	}
 
 	if (isRecord(value)) {
@@ -151,6 +154,25 @@ function getDisplayValue(value: unknown): string {
 
 	return '';
 }
+
+function isTagsInputValue(value: AcceptableValue): value is TagsInputValue {
+	return (
+		typeof value === 'string' ||
+		(typeof value === 'object' && value !== null && !Array.isArray(value))
+	);
+}
+
+function getTagLabel(value: TagsInputValue): string {
+	return getDisplayValue(value);
+}
+
+const selectedTags = computed<TagsInputValue[]>(() => {
+	if (!props.multiple || !Array.isArray(props.modelValue)) {
+		return [];
+	}
+
+	return props.modelValue.filter(isTagsInputValue);
+});
 
 const hasValue = computed(() => {
 	const { modelValue, multiple } = props;
@@ -177,6 +199,10 @@ function onClear() {
 	emit('update:modelValue', props.multiple ? [] : undefined);
 	focusInput();
 }
+
+function onTagsUpdate(value: TagsInputValue[]) {
+	emit('update:modelValue', value);
+}
 </script>
 
 <template>
@@ -191,11 +217,46 @@ function onClear() {
 			ref="anchor"
 			data-test-id="combobox"
 			v-bind="$attrs"
-			:class="[$style.comboboxAnchor, sizeClass]"
+			:class="[$style.comboboxAnchor, sizeClass, props.multiple && $style.multiple]"
 			:data-disabled="props.disabled || undefined"
+			:data-multiple="props.multiple || undefined"
+			:data-empty="hasValue ? undefined : true"
 		>
-			<Icon v-if="props.icon" :icon="props.icon" :class="$style.leadingIcon" />
+			<Icon v-if="props.icon && !props.multiple" :icon="props.icon" :class="$style.leadingIcon" />
+
+			<N8nTagsInput2
+				v-if="props.multiple"
+				:embedded="true"
+				:model-value="selectedTags"
+				:size="props.size"
+				:disabled="props.disabled"
+				:display-value="getTagLabel"
+				:placeholder="props.placeholder"
+				:auto-focus="props.autoFocus"
+				@update:model-value="onTagsUpdate"
+			>
+				<template #input="inputProps">
+					<ComboboxInput
+						:id="props.id"
+						as-child
+						:display-value="getDisplayValue"
+						:aria-label="$attrs['aria-label'] ?? props.placeholder"
+					>
+						<TagsInputInput
+							:id="inputProps.id"
+							ref="input"
+							:class="inputProps.class"
+							:placeholder="inputProps.placeholder"
+							:auto-focus="inputProps.autoFocus"
+							:disabled="inputProps.disabled"
+							@keydown.enter.prevent
+						/>
+					</ComboboxInput>
+				</template>
+			</N8nTagsInput2>
+
 			<ComboboxInput
+				v-else
 				:id="props.id"
 				ref="input"
 				:class="$style.comboboxInput"
@@ -204,6 +265,7 @@ function onClear() {
 				:display-value="getDisplayValue"
 				:aria-label="$attrs['aria-label'] ?? props.placeholder"
 			/>
+
 			<button
 				v-if="showClearButton"
 				type="button"
@@ -332,6 +394,12 @@ function onClear() {
 				inset var(--input--border--shadow);
 		}
 	}
+
+	&.multiple {
+		--tags-input--padding: var(--spacing--4xs);
+		padding: var(--tags-input--padding);
+		padding-inline-end: var(--input--padding);
+	}
 }
 
 .mini {
@@ -358,8 +426,7 @@ function onClear() {
 	flex-shrink: 0;
 }
 
-.comboboxInput,
-.comboboxAnchor :where(input[role='combobox']) {
+.comboboxInput {
 	flex: 1;
 	align-self: stretch;
 	min-width: 0;
@@ -448,15 +515,19 @@ function onClear() {
 	color: var(--input--color--text);
 }
 
-.comboboxAnchor:has(input:placeholder-shown) .trailingIcon {
+.comboboxAnchor[data-empty] .trailingIcon {
 	color: var(--input--placeholder--color);
 }
 
-.comboboxAnchor[data-disabled]:has(input:placeholder-shown) .trailingIcon {
+.comboboxAnchor:not([data-disabled])[data-empty] .comboboxTrigger:hover .trailingIcon {
+	color: var(--color--text--shade-1);
+}
+
+.comboboxAnchor[data-disabled][data-empty] .trailingIcon {
 	color: var(--input--placeholder--color--disabled);
 }
 
-.comboboxAnchor[data-disabled]:has(input:not(:placeholder-shown)) .trailingIcon {
+.comboboxAnchor[data-disabled]:not([data-empty]) .trailingIcon {
 	color: var(--input--color--disabled);
 }
 

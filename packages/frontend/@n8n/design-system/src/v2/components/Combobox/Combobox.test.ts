@@ -394,7 +394,7 @@ describe('v2/components/Combobox', () => {
 				});
 			});
 
-			it('should display selected values', async () => {
+			it('should display selected values as tags', async () => {
 				const wrapper = render(Combobox, {
 					props: {
 						items: ['Option 1', 'Option 2', 'Option 3'],
@@ -404,7 +404,29 @@ describe('v2/components/Combobox', () => {
 				});
 
 				await waitFor(() => {
-					expect(getComboboxInput(wrapper)).toHaveValue('Option 2, Option 1');
+					const tags = wrapper.getAllByTestId('tags-input-tag');
+					expect(tags).toHaveLength(2);
+					expect(tags[0]).toHaveTextContent('Option 2');
+					expect(tags[1]).toHaveTextContent('Option 1');
+					expect(getComboboxInput(wrapper)).toHaveValue('');
+				});
+			});
+
+			it('should remove a tag and emit the updated selection', async () => {
+				const wrapper = render(Combobox, {
+					props: {
+						items: ['Option 1', 'Option 2', 'Option 3'],
+						modelValue: ['Option 2', 'Option 1'],
+						multiple: true,
+					},
+				});
+
+				const tags = wrapper.getAllByTestId('tags-input-tag');
+				const removeButton = within(tags[0]).getByRole('button');
+				await userEvent.click(removeButton);
+
+				await waitFor(() => {
+					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['Option 1']]);
 				});
 			});
 		});

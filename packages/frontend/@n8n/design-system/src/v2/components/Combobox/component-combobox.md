@@ -10,8 +10,10 @@ Allows users to search and choose one or more options from a list. All comboboxe
 
 ```
 Combobox (N8nCombobox2)
-├── ComboboxAnchor (trigger: leading icon, input, clear button, chevron)
-│   └── ComboboxInput + clear button (when clearable) + ComboboxTrigger
+├── ComboboxAnchor (trigger chrome)
+│   ├── Single: leading icon + ComboboxInput + clear + chevron
+│   └── Multiple: N8nTagsInput2 (embedded) + clear + chevron
+│       └── #input slot: ComboboxInput as-child → TagsInputInput
 └── ComboboxContent (portaled dropdown, max-height 500px by default)
     ├── header slot
     ├── ComboboxViewport (scrollable list area)
@@ -22,6 +24,8 @@ Combobox (N8nCombobox2)
     │       └── N8nCombobox2Item (reka-ui ComboboxItem + default row: icon, label, check)
     └── footer slot
 ```
+
+When `multiple` is true, selected values render via embedded `N8nTagsInput2` (shared chip/layout styles; Combobox keeps the field chrome). Freeform tag creation is disabled — values are only added from the dropdown.
 
 ## Public API Definition
 
@@ -37,7 +41,7 @@ Combobox (N8nCombobox2)
 - `labelKey?: string` — When `items` is an array of objects, field to use as the label | `default: 'label'`
 - `defaultValue?: AcceptableValue | AcceptableValue[]` — Initial value when uncontrolled
 - `modelValue?: AcceptableValue | AcceptableValue[]` — Controlled value. Bind with `v-model`
-- `multiple?: boolean` — Allow selecting multiple options
+- `multiple?: boolean` — Allow selecting multiple options. Selected values render as removable tags via embedded `N8nTagsInput2` (search input stays empty; filtering still works while typing)
 - `open?: boolean` — Controlled open state. Bind with `v-model:open`
 - `defaultOpen?: boolean` — Initial open state when uncontrolled
 - `disabled?: boolean` — Disable interaction
@@ -229,6 +233,32 @@ const value = ref<string | undefined>('Option 1');
 ```
 
 When the clear button is clicked, single selection emits `undefined`, multiple selection emits `[]`, and the input is refocused.
+
+**Multiple selection (tags)**
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue';
+import { N8nCombobox2 } from '@n8n/design-system';
+
+const items = [
+  { label: 'Apple', value: 'apple' },
+  { label: 'Banana', value: 'banana' },
+  { label: 'Orange', value: 'orange' },
+];
+const value = ref<string[]>(['apple']);
+</script>
+
+<template>
+  <N8nCombobox2
+    v-model="value"
+    :items="items"
+    multiple
+    clearable
+    placeholder="Select fruits..."
+  />
+</template>
+```
 
 **Custom dropdown max height**
 
