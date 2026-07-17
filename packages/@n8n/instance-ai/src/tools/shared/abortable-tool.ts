@@ -25,8 +25,8 @@ export function throwIfAborted(ctx: Pick<ToolContext, 'abortSignal'>): void {
 	}
 }
 
-function abortRejection(signal: AbortSignal): Promise<never> {
-	return new Promise((_, reject) => {
+async function abortRejection(signal: AbortSignal): Promise<never> {
+	return await new Promise((_, reject) => {
 		if (signal.aborted) {
 			reject(createAbortError(signal.reason));
 			return;

@@ -40,7 +40,7 @@ describe('abortable-tool', () => {
 
 	describe('withAbortableToolHandler', () => {
 		it('returns the handler result when not aborted', async () => {
-			const handler = withAbortableToolHandler(async () => ({ ok: true }));
+			const handler = withAbortableToolHandler(async () => await Promise.resolve({ ok: true }));
 			await expect(handler({}, makeCtx(new AbortController().signal))).resolves.toEqual({
 				ok: true,
 			});
@@ -68,7 +68,7 @@ describe('abortable-tool', () => {
 		it('rejects before starting when already aborted', async () => {
 			const controller = new AbortController();
 			controller.abort();
-			const inner = vi.fn(async () => ({ ok: true }));
+			const inner = vi.fn(async () => await Promise.resolve({ ok: true }));
 			const handler = withAbortableToolHandler(inner);
 
 			await expect(handler({}, makeCtx(controller.signal))).rejects.toMatchObject({
@@ -78,7 +78,7 @@ describe('abortable-tool', () => {
 		});
 
 		it('passes through when no abort signal is provided', async () => {
-			const handler = withAbortableToolHandler(async () => ({ ok: true }));
+			const handler = withAbortableToolHandler(async () => await Promise.resolve({ ok: true }));
 			await expect(handler({}, {})).resolves.toEqual({ ok: true });
 		});
 	});
