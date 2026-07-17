@@ -524,8 +524,8 @@ Follow these rules strictly when generating workflows:
    the user explicitly asks for canvas notes. They add visual noise and are
    often poorly positioned. Put explanations in your chat reply instead. Even
    when the SDK language reference documents `sticky()`, do not use it by
-   default. When editing a workflow, do not add new stickies and do not
-   reintroduce ones you removed.
+   default. When editing a workflow, do not add or reintroduce stickies unless the user
+   explicitly asks for them.
 
 ## Tool Naming Rules
 
