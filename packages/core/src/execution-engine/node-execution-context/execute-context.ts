@@ -20,7 +20,12 @@ import type {
 	WorkflowExecuteMode,
 	EngineResponse,
 } from 'n8n-workflow';
-import { UnexpectedError, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	jsonParse,
+	NodeConnectionTypes,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+} from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
@@ -220,7 +225,11 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		}
 
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
-			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
+			const emittedArgs = this.isConsoleOutputRedacted() ? [CONSOLE_OUTPUT_REDACTED_MESSAGE] : args;
+			console.log(
+				`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`,
+				...emittedArgs,
+			);
 		}
 	}
 
