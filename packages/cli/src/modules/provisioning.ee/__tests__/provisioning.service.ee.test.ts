@@ -214,11 +214,13 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
 			);
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
-			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: 'global:admin' });
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, {
+				newRoleName: 'global:admin',
+			});
 			expect(logger.debug).toHaveBeenCalledWith(
 				'Extracted global role from array',
 				expect.objectContaining({
@@ -236,11 +238,13 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
 			);
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
-			expect(userService.changeUserRole).toHaveBeenCalledWith(user, { newRoleName: 'global:admin' });
+			expect(userService.changeUserRole).toHaveBeenCalledWith(user, {
+				newRoleName: 'global:admin',
+			});
 		});
 
 		it('should skip provisioning if array contains no global roles', async () => {
@@ -248,7 +252,7 @@ describe('ProvisioningService', () => {
 			// Only project roles, no global roles
 			const roleSlug = ['projectId123:editor', 'projectId456:viewer'];
 
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
@@ -580,7 +584,12 @@ describe('ProvisioningService', () => {
 		it('should filter out global:* roles from the array (Azure AD format)', async () => {
 			const userId = 'user-id-123';
 			// Azure AD sends all App Roles in a single array, including global roles
-			const projectIdToRole = ['global:admin', 'global:member', 'project-1:viewer', 'project-2:editor'];
+			const projectIdToRole = [
+				'global:admin',
+				'global:member',
+				'project-1:viewer',
+				'project-2:editor',
+			];
 			// Mocks query to find existing projects
 			projectRepository.find.mockResolvedValueOnce([
 				mock<Project>({ id: 'project-1' }),
@@ -593,7 +602,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
 			]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -625,7 +634,7 @@ describe('ProvisioningService', () => {
 			// Only global roles, no project roles
 			const projectIdToRole = ['global:admin', 'global:member'];
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
