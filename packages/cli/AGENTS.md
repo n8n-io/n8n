@@ -27,6 +27,14 @@ business-logic leaks are tracked in a `files`-scoped allowlist in
 `eslint.config.mjs` that only ever shrinks: never add to it, and never suppress
 the rule inline.
 
+Distinct from that shrink-only ratchet, two files are **permanently** exempted in
+`eslint.config.mjs` for legitimate TypeORM use outside the persistence tree —
+these are sanctioned, not migration targets, so don't try to relocate them or
+suppress the rule:
+
+- `src/commands/db/revert.ts` — `MigrationExecutor` (CLI migration tooling)
+- `src/security-audit/security-audit.repository.ts` — `PackagesRepository`
+
 Need an operator query (`In`, `IsNull`, `FindOptionsWhere`, …)? Add a
 use-case-named repository method (plain parameters, domain-shaped return) rather
 than importing the operator into business logic. Don't relabel the import to

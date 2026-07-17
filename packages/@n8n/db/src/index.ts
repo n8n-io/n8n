@@ -52,7 +52,6 @@ export type {
 	IsolationLevel,
 	RunOptions,
 } from './services/transaction';
-export { TypeOrmTransaction, TypeOrmTransactionRunner } from './services/typeorm-transaction';
 
 export { In, Like, MoreThanOrEqual, Not, DataSource } from '@n8n/typeorm';
 export type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
