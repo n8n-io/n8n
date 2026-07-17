@@ -76,11 +76,19 @@ const handleCopy = async () => {
 	right: var(--spacing--2xs);
 }
 
-/* A bare glyph, no button chrome, in every state, hugging the corner. */
+/* A bare glyph, no button chrome, hugging the corner. Icon-only buttons are
+   forced to a square (width = button height) with the icon centred, leaving dead
+   space on each side; shrink to the glyph so it sits flush against the offset. */
 .copy-button {
-	padding: var(--spacing--4xs) !important;
+	width: auto !important;
+	min-width: 0 !important;
+	padding: 0 !important;
 	border: none !important;
 	box-shadow: none !important;
 	background: transparent !important;
+
+	> * {
+		width: auto !important;
+	}
 }
 </style>

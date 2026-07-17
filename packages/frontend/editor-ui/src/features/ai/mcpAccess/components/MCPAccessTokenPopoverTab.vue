@@ -246,12 +246,20 @@ onMounted(async () => {
 	right: var(--spacing--2xs);
 }
 
-/* A bare glyph, no button chrome, in every state. */
+/* A bare glyph, no button chrome. Icon-only buttons are forced to a square with
+   the icon centred, leaving dead space on each side; shrink to the glyph so it
+   sits flush against the offset. */
 .copy-json-button {
-	padding: var(--spacing--4xs) !important;
+	width: auto !important;
+	min-width: 0 !important;
+	padding: 0 !important;
 	border: none !important;
 	outline: none !important;
 	box-shadow: none !important;
 	background: transparent !important;
+
+	> * {
+		width: auto !important;
+	}
 }
 </style>
