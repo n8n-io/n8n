@@ -11,7 +11,7 @@ import {
 	PackageExportBlockedError,
 	assertEveryRequestedEntityAccessible,
 } from '../package-export.errors';
-import type { WorkflowWorkflowRequirement } from './workflow.types';
+import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 export type WorkflowDependencyOrigin = 'top-level' | 'folder' | 'project';
 
@@ -43,7 +43,7 @@ export class StaticWorkflowDependencyResolver {
 	async resolve(options: {
 		user: User;
 		seeds: ExportedWorkflowDependencySeed[];
-		requirements: WorkflowWorkflowRequirement[];
+		requirements: WorkflowSubWorkflowRequirement[];
 	}): Promise<StaticWorkflowDependencyResolution> {
 		const exportedWorkflowIds = new Set(options.seeds.map(({ workflowId }) => workflowId));
 		const originsByWorkflowId = this.resolveOrigins(options.seeds, options.requirements);
@@ -75,10 +75,10 @@ export class StaticWorkflowDependencyResolver {
 
 	private resolveOrigins(
 		seeds: ExportedWorkflowDependencySeed[],
-		requirements: WorkflowWorkflowRequirement[],
+		requirements: WorkflowSubWorkflowRequirement[],
 	): Map<string, Set<WorkflowDependencyOrigin>> {
 		const originsByWorkflowId = this.buildInitialOrigins(seeds);
-		const requirementsByWorkflowId = new Map<string, WorkflowWorkflowRequirement[]>();
+		const requirementsByWorkflowId = new Map<string, WorkflowSubWorkflowRequirement[]>();
 
 		for (const requirement of requirements) {
 			const current = requirementsByWorkflowId.get(requirement.workflowId) ?? [];

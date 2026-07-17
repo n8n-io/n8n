@@ -8,6 +8,8 @@ import { CredentialRequirementsExtractor } from '../credential/credential-requir
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
 import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
+import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
+import type { WorkflowVariableRequirement } from '../variable/variable.types';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
@@ -45,6 +47,7 @@ export class StaticWorkflowDependencyExporter {
 		private readonly projectSerializer: ProjectSerializer,
 		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
 		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
+		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
 	) {}
 
 	export(request: StaticWorkflowDependencyExportRequest): StaticWorkflowDependencyExportResult {
@@ -77,6 +80,7 @@ export class StaticWorkflowDependencyExporter {
 		const projectEntries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
+		const variables: WorkflowVariableRequirement[] = [];
 
 		for (const dependency of request.dependencies) {
 			if (workflowEntriesById.has(dependency.workflow.id)) continue;
@@ -95,13 +99,14 @@ export class StaticWorkflowDependencyExporter {
 			workflowEntriesById.set(entry.id, entry);
 			credentials.push(...this.credentialRequirementsExtractor.extract(dependency.workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(dependency.workflow));
+			variables.push(...this.variableRequirementsExtractor.extract(dependency.workflow));
 		}
 
 		return {
 			workflowEntries,
 			folderEntries,
 			projectEntries,
-			requirements: { credentials, dataTables },
+			requirements: { credentials, dataTables, variables },
 			projectTargetsById,
 		};
 	}
