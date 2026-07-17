@@ -238,9 +238,7 @@ function clearHoverTimers() {
 
 function scheduleDescriptionHide() {
 	hoverLeaveTimer = setTimeout(() => {
-		if (!isEditingDescription.value && !isPermanentlyVisible.value) {
-			isDescriptionHovered.value = false;
-		}
+		isDescriptionHovered.value = false;
 	}, HOVER_DELAY.LEAVE);
 }
 

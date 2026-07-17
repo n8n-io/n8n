@@ -20,6 +20,7 @@ const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const sendPreviewSessionToInstanceAiMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -85,6 +86,13 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
+}));
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
+	useInstanceAiAgentPreviewHandoff: () => ({
+		canSendPreviewToInstanceAi: ref(true),
+		sendPreviewSessionToInstanceAi: sendPreviewSessionToInstanceAiMock,
+	}),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -368,7 +376,10 @@ const commonStubs = {
 			'localConfig',
 			'connectedTriggers',
 			'effectiveSessionId',
+			'initialPrompt',
+			'canSendToAssistant',
 		],
+		emits: ['config-updated', 'continue-loaded', 'open-build', 'send-to-assistant'],
 	},
 	AgentConfigTree: {
 		name: 'AgentConfigTree',
@@ -625,6 +636,28 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
 	});
 
+	it('sends the active preview session to instance AI from the preview page', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+
+		expect(preview.props('canSendToAssistant')).toBe(true);
+
+		preview.vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			agentName: 'Agent One',
+			agentIcon: 'bot',
+			sessionTitle: 'agents.builder.chat.newChat.label',
+		});
+	});
+
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([
@@ -748,9 +781,68 @@ describe('AgentBuilderView — preview routing', () => {
 			expect.objectContaining({
 				name: 'AgentPreviewView',
 				params: { projectId: 'p1', agentId: 'a1' },
+				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
+			}),
+		);
+	});
+
+	it('opens preview with the latest thread when prior sessions exist', async () => {
+		sessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentPreviewView',
+				params: { projectId: 'p1', agentId: 'a1' },
+				query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
+			}),
+		);
+	});
+
+	it('opens the preview route in the same tab from artifact mode', async () => {
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentPreviewView',
+				params: { projectId: 'p2', agentId: 'a2' },
+				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
+			}),
+		);
+		expect(windowOpen).not.toHaveBeenCalled();
+	});
+
+	it('mints a fresh preview session when landing with no prior threads', async () => {
+		routeName = 'AgentPreviewView';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		expect(routerReplace).toHaveBeenCalledWith(
+			expect.objectContaining({
 				query: expect.objectContaining({ continueSessionId: expect.any(String) }),
 			}),
 		);
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
+		).toEqual(expect.any(String));
 	});
 
 	it('does not open preview when the agent is not runnable', async () => {
@@ -783,6 +875,27 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
 		).toBe('faulty-thread');
+	});
+
+	it('replaces an unknown continued session with a fresh chat when there is no history', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'stale-missing-thread';
+
+		const wrapper = await renderView();
+		routerReplace.mockClear();
+
+		(wrapper.vm as unknown as { onContinueLoaded: (count: number) => void }).onContinueLoaded(0);
+		await flushPromises();
+
+		expect(routerReplace).toHaveBeenCalledWith(
+			expect.objectContaining({
+				query: expect.objectContaining({ continueSessionId: expect.any(String) }),
+			}),
+		);
+		const replaceQuery = routerReplace.mock.calls[0]?.[0]?.query as {
+			continueSessionId: string;
+		};
+		expect(replaceQuery.continueSessionId).not.toBe('stale-missing-thread');
 	});
 
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {

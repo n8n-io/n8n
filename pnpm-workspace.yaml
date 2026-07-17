@@ -278,7 +278,3 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
-  - 'typescript'
-  - '@typescript/*'
-  - 'tsdown'
-  - 'rolldown-plugin-dts'
