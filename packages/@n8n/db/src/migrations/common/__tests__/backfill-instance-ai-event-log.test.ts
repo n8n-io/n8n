@@ -11,11 +11,11 @@ import type {
 	BackfillMessageRow,
 	BackfillSnapshotRow,
 	SynthesizedRow,
-} from './1784000000051-BackfillInstanceAiEventLog';
+} from '../1784000000051-BackfillInstanceAiEventLog';
 import {
 	extractMessageText,
 	synthesizeThreadEvents,
-} from './1784000000051-BackfillInstanceAiEventLog';
+} from '../1784000000051-BackfillInstanceAiEventLog';
 
 const AT = new Date('2026-07-01T10:00:00.000Z');
 
