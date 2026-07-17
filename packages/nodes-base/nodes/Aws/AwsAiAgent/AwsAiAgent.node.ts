@@ -63,12 +63,12 @@ export class AwsAiAgent implements INodeType {
 				default: 'us-east-1',
 				description: 'Overrides the region from your AWS credential',
 				options: [
-					{ name: 'US East (N. Virginia) — us-east-1', value: 'us-east-1' },
-					{ name: 'US West (Oregon) — us-west-2', value: 'us-west-2' },
-					{ name: 'Europe (Ireland) — eu-west-1', value: 'eu-west-1' },
-					{ name: 'Europe (Frankfurt) — eu-central-1', value: 'eu-central-1' },
 					{ name: 'Asia Pacific (Singapore) — ap-southeast-1', value: 'ap-southeast-1' },
 					{ name: 'Asia Pacific (Tokyo) — ap-northeast-1', value: 'ap-northeast-1' },
+					{ name: 'Europe (Frankfurt) — eu-central-1', value: 'eu-central-1' },
+					{ name: 'Europe (Ireland) — eu-west-1', value: 'eu-west-1' },
+					{ name: 'US East (N. Virginia) — us-east-1', value: 'us-east-1' },
+					{ name: 'US West (Oregon) — us-west-2', value: 'us-west-2' },
 				],
 			},
 			{
