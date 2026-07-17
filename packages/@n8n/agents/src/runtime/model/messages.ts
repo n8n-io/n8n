@@ -184,11 +184,28 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		// Provider metadata can be required for replay. Gemini attaches
 		// `google.thoughtSignature` to function-call parts, and the next request
 		// is rejected if that signature is dropped from conversation history.
-		const providerOptions = isReasoning(block)
+		let providerOptions = isReasoning(block)
 			? toReasoningProviderOptions(block)
 			: block.providerOptions;
-		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
-			return undefined;
+
+		if (isReasoning(block)) {
+			// QUIRK: the OpenAI Responses API rejects requests where a
+			// function_call item references a reasoning item by ID
+			// (item_reference) that the server cannot resolve.  When replaying
+			// conversation history (multi-step turns) without
+			// `previous_response_id`, the reasoning must be sent as a full
+			// reasoning item with `encrypted_content` — not as an
+			// item_reference.  Strip `itemId` so the @ai-sdk/openai provider
+			// falls through to the full-item path.  Keep `reasoningEncryptedContent`
+			// so the provider can build the full reasoning item.
+			if (providerOptions?.openai) {
+				const { itemId: _itemId, ...rest } = providerOptions.openai as Record<string, unknown>;
+				providerOptions = { ...providerOptions, openai: rest as JSONObject };
+			}
+
+			if (!hasReplayableReasoningProviderOptions(providerOptions)) {
+				return undefined;
+			}
 		}
 
 		return {
