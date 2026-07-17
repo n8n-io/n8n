@@ -1226,6 +1226,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getRuntimeCredential(alias: string): Promise<IDataObject[string] | undefined>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
+		/** Whether the run's resolved redaction policy redacts console output for this execution's mode */
+		isConsoleOutputRedacted(): boolean;
 		sendResponse(response: IExecuteResponsePromiseData): void;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
@@ -1312,6 +1314,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'getNodeOutputs'
 		| 'executeWorkflow'
 		| 'sendMessageToUI'
+		| 'isConsoleOutputRedacted'
 		| 'startJob'
 		| 'helpers'
 		| 'isToolExecution'
