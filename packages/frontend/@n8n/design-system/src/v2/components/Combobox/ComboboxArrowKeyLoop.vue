@@ -3,5 +3,3 @@ import { useComboboxArrowKeyLoop } from './useComboboxArrowKeyLoop';
 
 useComboboxArrowKeyLoop();
 </script>
-
-<template />
