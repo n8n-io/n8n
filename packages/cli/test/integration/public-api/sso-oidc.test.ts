@@ -233,6 +233,52 @@ describe('OIDC SSO configuration in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('rejects a partial body missing loginEnabled with 400', async () => {
+			testServer.license.enable('feat:oidc');
+			const { loginEnabled: _loginEnabled, ...partial } = validConfig;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send(partial);
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects a partial body missing additionalScopes with 400', async () => {
+			testServer.license.enable('feat:oidc');
+			const { additionalScopes: _additionalScopes, ...partial } = validConfig;
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send(partial);
+
+			expect(response.status).toBe(400);
+		});
+
+		it('accepts a GET response body as a PUT body', async () => {
+			testServer.license.enable('feat:oidc');
+			await testServer.publicApiAgentFor(owner).put('/settings/sso/oidc').send(validConfig);
+
+			const getResponse = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
+			expect(getResponse.status).toBe(200);
+			expect(getResponse.body.clientSecret).toBe(OIDC_CLIENT_SECRET_REDACTED_VALUE);
+
+			const putResponse = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/sso/oidc')
+				.send({ ...getResponse.body, loginEnabled: true });
+
+			expect(putResponse.status).toBe(200);
+			expect(putResponse.body.loginEnabled).toBe(true);
+			expect(putResponse.body.clientSecret).toBe(OIDC_CLIENT_SECRET_REDACTED_VALUE);
+
+			// The redacted sentinel round-tripped without clobbering the stored secret.
+			const stored = await Container.get(OidcService).loadConfig(true);
+			expect(stored.clientSecret).toBe(validConfig.clientSecret);
+		});
+
 		it('rejects a well-formed body with invalid values with 400', async () => {
 			testServer.license.enable('feat:oidc');
 

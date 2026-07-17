@@ -9,6 +9,7 @@ import type {
 	UpsertDataTableRowDto,
 	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
+	UpdateOidcConfigurationDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -416,5 +417,5 @@ export declare namespace SsoSamlRequest {
 
 export declare namespace SsoOidcRequest {
 	type Get = AuthenticatedRequest;
-	type Set = AuthenticatedRequest<{}, {}, Record<string, unknown>>;
+	type Set = AuthenticatedRequest<{}, {}, UpdateOidcConfigurationDto>;
 }

@@ -1,4 +1,4 @@
-import { OidcConfigDto } from '@n8n/api-types';
+import { UpdateOidcConfigurationDto } from '@n8n/api-types';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
@@ -34,7 +34,7 @@ const ssoOidcHandlers: SsoOidcHandlers = {
 		isLicensed('feat:oidc'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'oidc:manage' }),
 		async (req, res) => {
-			const payload = OidcConfigDto.safeParse(req.body);
+			const payload = UpdateOidcConfigurationDto.safeParse(req.body);
 			if (!payload.success) {
 				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}
@@ -49,7 +49,7 @@ const ssoOidcHandlers: SsoOidcHandlers = {
 			const oidcService = Container.get(OidcService);
 			await oidcService.updateConfig(payload.data);
 
-			return res.json(oidcService.getRedactedConfig());
+			return res.json(toOidcConfigurationResponse(await oidcService.loadConfig()));
 		},
 	],
 };
