@@ -27,6 +27,28 @@ const inputSchema = {
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
+	schemaVersion: z.literal('1.0').describe('Version of the structured node-search result schema.'),
+	queries: z.array(z.string()).describe('Search queries in their original input order.'),
+	count: z.number().int().nonnegative().describe('Number of structured node result items.'),
+	items: z
+		.array(
+			z.object({
+				queryIndex: z.number().int().nonnegative(),
+				query: z.string(),
+				nodeType: z.string(),
+				displayName: z.string().optional(),
+				description: z.string().optional(),
+				package: z.string().optional(),
+				versions: z.array(z.number()).optional(),
+				groups: z.array(z.string()).optional(),
+				isTrigger: z.boolean().optional(),
+				relation: z.enum(['primary', 'related']),
+			}),
+		)
+		.describe('Structured node matches in source order.'),
+	queriesWithNoResults: z
+		.array(z.string())
+		.describe('Queries with no matching nodes, preserving input order and duplicates.'),
 	results: z
 		.string()
 		.describe('Search results with matching node IDs, discriminators, and related nodes'),
@@ -77,7 +99,7 @@ export const createSearchWorkflowNodesTool = (
 		};
 
 		try {
-			const [{ results, queriesWithNoResults }, availability] = await Promise.all([
+			const [{ results, items, queriesWithNoResults }, availability] = await Promise.all([
 				nodeCatalogService.searchNodes(queries),
 				aiGatewayService.isAvailable(),
 			]);
@@ -92,13 +114,23 @@ export const createSearchWorkflowNodesTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
+			const coverage = toN8nConnectCoverage(availability);
 			const structured: {
+				schemaVersion: '1.0';
+				queries: string[];
+				count: number;
+				items: typeof items;
+				queriesWithNoResults: string[];
 				results: string;
 				n8nConnect?: N8nConnectCoverage;
 			} = {
+				schemaVersion: '1.0',
+				queries,
+				count: items.length,
+				items,
+				queriesWithNoResults,
 				results,
 			};
-			const coverage = toN8nConnectCoverage(availability);
 			if (coverage) structured.n8nConnect = coverage;
 
 			const text = coverage ? `${results}\n\nn8nConnect: ${JSON.stringify(coverage)}` : results;
