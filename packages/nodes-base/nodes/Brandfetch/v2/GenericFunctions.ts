@@ -78,7 +78,7 @@ export async function brandfetchApiRequest(
 			options,
 		);
 
-		if (response.statusCode && response.statusCode !== 200) {
+		if (response?.statusCode && response.statusCode !== 200) {
 			throw new NodeApiError(this.getNode(), response as JsonObject);
 		}
 

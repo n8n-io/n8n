@@ -116,6 +116,7 @@ describe('BrandfetchV1.execute', () => {
 			imageTypes: ['logo'],
 			imageFormats: ['png'],
 		});
+		executeFunctions.getInputData.mockReturnValue([{ json: {}, binary: {} }]);
 		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({
 			logos: [
 				{
@@ -163,6 +164,7 @@ describe('BrandfetchV1.execute', () => {
 			imageTypes: ['logo'],
 			imageFormats: ['svg'],
 		});
+		executeFunctions.getInputData.mockReturnValue([{ json: {}, binary: {} }]);
 		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({
 			logos: [
 				{
@@ -174,7 +176,30 @@ describe('BrandfetchV1.execute', () => {
 
 		const result = await node.execute.call(executeFunctions);
 
+		expect(result[0][0].json).toEqual({});
 		expect(result[0][0].binary).toBeUndefined();
+	});
+
+	// Legacy V1 quirk, frozen intentionally: when no formats match and the input
+	// item has no binary key, the empty-binary cleanup throws.
+	it('should throw when no formats match and the input item has no binary data', async () => {
+		mockParams({
+			operation: 'logo',
+			domain: 'n8n.io',
+			download: true,
+			imageTypes: ['logo'],
+			imageFormats: ['svg'],
+		});
+		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({
+			logos: [
+				{
+					type: 'logo',
+					formats: [{ format: 'png', src: 'https://cdn.brandfetch.io/logo.png' }],
+				},
+			],
+		});
+
+		await expect(node.execute.call(executeFunctions)).rejects.toThrow(TypeError);
 	});
 
 	it('should return colors when operation is color', async () => {
@@ -210,24 +235,16 @@ describe('BrandfetchV1.execute', () => {
 		expect(result[0]).toEqual([{ name: 'n8n' }]);
 	});
 
-	it('should return industries when operation is industry', async () => {
+	it('should return the full brand response when operation is industry (legacy V1 behavior)', async () => {
 		mockParams({ operation: 'industry', domain: 'n8n.io' });
 		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({
+			name: 'n8n',
 			company: { industries: [{ name: 'Software' }] },
 		});
 
 		const result = await node.execute.call(executeFunctions);
 
-		expect(result[0]).toEqual([{ name: 'Software' }]);
-	});
-
-	it('should return an empty industries array when company is missing', async () => {
-		mockParams({ operation: 'industry', domain: 'n8n.io' });
-		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({});
-
-		const result = await node.execute.call(executeFunctions);
-
-		expect(result[0]).toEqual([]);
+		expect(result[0]).toEqual([{ name: 'n8n', company: { industries: [{ name: 'Software' }] } }]);
 	});
 
 	it('should push an error item when continueOnFail is true', async () => {

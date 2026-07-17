@@ -180,7 +180,6 @@ export class BrandfetchV1 implements INodeType {
 						}
 
 						newItem.json = response.logos;
-						items[i] = newItem;
 
 						for (const imageType of imageTypes) {
 							for (const imageFormat of imageFormats) {
@@ -200,6 +199,7 @@ export class BrandfetchV1 implements INodeType {
 												domain,
 												newItem,
 											);
+											items[i] = newItem;
 										}
 									}
 								}
@@ -243,9 +243,8 @@ export class BrandfetchV1 implements INodeType {
 				if (operation === 'industry') {
 					const response = await brandfetchApiRequest.call(this, 'GET', `/brands/${domain}`);
 
-					const industries = (response.company as IDataObject | undefined)?.industries ?? [];
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(industries as IDataObject),
+						this.helpers.returnJsonArray(response as IDataObject),
 						{ itemData: { item: i } },
 					);
 					responseData.push.apply(responseData, executionData);

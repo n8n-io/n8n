@@ -265,6 +265,99 @@ describe('BrandfetchV2.execute', () => {
 	});
 
 	// ---------------------------------------------------------------------------
+	// operation: context
+	// ---------------------------------------------------------------------------
+
+	it('should return brand context as JSON when operation is context', async () => {
+		mockParams({ operation: 'context', domain: 'n8n.io', outputFormat: 'json', cachedOnly: false });
+		const context = {
+			meta: { domain: 'n8n.io', canonical_name: 'n8n' },
+			identity: { tagline: 'Flexible AI workflow automation' },
+		};
+		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue(context);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/context/n8n.io',
+			{},
+			{},
+			undefined,
+			{ headers: { accept: 'application/json' } },
+		);
+		expect(result[0]).toEqual([context]);
+	});
+
+	it('should return brand context as markdown wrapped in a context key', async () => {
+		mockParams({
+			operation: 'context',
+			domain: 'n8n.io',
+			outputFormat: 'markdown',
+			cachedOnly: false,
+		});
+		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue('# n8n Brand Context');
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/context/n8n.io',
+			{},
+			{},
+			undefined,
+			{ json: false, headers: { accept: 'text/markdown' } },
+		);
+		expect(result[0]).toEqual([{ context: '# n8n Brand Context' }]);
+	});
+
+	it('should pass cachedOnly as a query parameter', async () => {
+		mockParams({ operation: 'context', domain: 'n8n.io', outputFormat: 'json', cachedOnly: true });
+		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({});
+
+		await node.execute.call(executeFunctions);
+
+		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/context/n8n.io',
+			{},
+			{ cachedOnly: true },
+			undefined,
+			{ headers: { accept: 'application/json' } },
+		);
+	});
+
+	it('should return an empty item when cachedOnly finds no cached context', async () => {
+		mockParams({ operation: 'context', domain: 'n8n.io', outputFormat: 'json', cachedOnly: true });
+		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue(undefined);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(result[0]).toEqual([{}]);
+	});
+
+	it('should trim and URL-encode the domain for the context path', async () => {
+		mockParams({
+			operation: 'context',
+			domain: '  bücher.example/path  ',
+			outputFormat: 'json',
+			cachedOnly: false,
+		});
+		(GenericFunctions.brandfetchApiRequest as Mock).mockResolvedValue({});
+
+		await node.execute.call(executeFunctions);
+
+		expect(GenericFunctions.brandfetchApiRequest).toHaveBeenCalledWith(
+			'GET',
+			`/context/${encodeURIComponent('bücher.example/path')}`,
+			{},
+			{},
+			undefined,
+			{ headers: { accept: 'application/json' } },
+		);
+	});
+
+	// ---------------------------------------------------------------------------
 	// Error handling
 	// ---------------------------------------------------------------------------
 
@@ -306,11 +399,27 @@ describe('BrandfetchV2.execute', () => {
 		expect(description.version).toEqual([2]);
 		const operationParam = description.properties.find((p) => p.name === 'operation');
 		expect(operationParam?.options?.map((o) => (o as { value: string }).value)).toEqual(
-			expect.arrayContaining(['logo', 'colors', 'data']),
+			expect.arrayContaining(['logo', 'colors', 'data', 'context']),
 		);
 		const typeParam = description.properties.find((p) => p.name === 'type');
 		expect(typeParam?.options?.map((o) => (o as { value: string }).value)).toEqual(
 			expect.arrayContaining(['domain', 'ticker', 'crypto', 'isin']),
 		);
+	});
+
+	it('shows context-only fields for the context operation and brand fields otherwise', () => {
+		const description = node.description;
+		const byName = (name: string) => description.properties.find((p) => p.name === name);
+
+		for (const name of ['domain', 'outputFormat', 'cachedOnly']) {
+			expect(byName(name)?.displayOptions?.show?.operation).toEqual(['context']);
+		}
+		for (const name of ['type', 'identifier']) {
+			expect([...(byName(name)?.displayOptions?.show?.operation ?? [])].sort()).toEqual([
+				'colors',
+				'data',
+				'logo',
+			]);
+		}
 	});
 });

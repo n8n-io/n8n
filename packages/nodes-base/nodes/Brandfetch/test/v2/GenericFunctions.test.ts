@@ -78,6 +78,14 @@ describe('BrandfetchV2', () => {
 			});
 		});
 
+		it('should return undefined without throwing when the response body is empty', async () => {
+			(mockThis.helpers.requestWithAuthentication as Mock).mockResolvedValue(undefined);
+
+			await expect(
+				brandfetchApiRequest.call(mockThis, 'GET', '/context/n8n.io'),
+			).resolves.toBeUndefined();
+		});
+
 		it('should throw NodeApiError when statusCode is not 200', async () => {
 			(mockThis.helpers.requestWithAuthentication as Mock).mockResolvedValue({
 				statusCode: 404,
