@@ -1,6 +1,6 @@
 import type { PushType } from '@n8n/api-types';
 
-import type { ModulePushHandler, ModulePushHandlers } from './push';
+import type { ModulePushHandler, ModulePushHandlers } from '../types/push';
 
 // One handler per push message type. The shell consults this before its own
 // switch, so a module can own (or override) a push message type.

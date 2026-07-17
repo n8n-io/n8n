@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import type { CommandBarContribution } from './command';
 import * as commandRegistry from './commandRegistry';
+import type { CommandBarEntry } from '../types/command';
 
 describe('commandRegistry', () => {
-	const commandA: CommandBarContribution = { id: 'cmd-a', title: 'Command A' };
-	const commandB: CommandBarContribution = {
+	const commandA: CommandBarEntry = { id: 'cmd-a', title: 'Command A' };
+	const commandB: CommandBarEntry = {
 		id: 'cmd-b',
 		title: 'Command B',
 		section: 'Navigation',

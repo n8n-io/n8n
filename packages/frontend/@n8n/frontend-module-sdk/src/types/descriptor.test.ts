@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import type { FrontendModuleDescription } from './module.types';
+import type { FrontendModuleDescription } from './descriptor';
 
 describe('FrontendModuleDescription', () => {
 	it('accepts a v1-shaped descriptor (no v2 fields)', () => {

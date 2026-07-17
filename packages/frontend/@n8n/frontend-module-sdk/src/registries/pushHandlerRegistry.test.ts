@@ -1,8 +1,8 @@
 import type { PushMessage } from '@n8n/api-types';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import type { ModulePushHandlerContext, ModulePushHandlers } from './push';
 import * as pushHandlerRegistry from './pushHandlerRegistry';
+import type { ModulePushHandlerContext, ModulePushHandlers } from '../types/push';
 
 const context = { router: {} } as unknown as ModulePushHandlerContext;
 
