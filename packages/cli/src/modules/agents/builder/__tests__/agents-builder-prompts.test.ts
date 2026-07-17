@@ -1,12 +1,136 @@
 import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api-types';
 
 import {
-	IMPORTANT_SECTION,
 	INTERACTIVE_TOOLS_SECTION,
+	READ_CONFIG_FRESHNESS_SECTION,
 	WORKFLOW_SECTION,
+	buildBuilderPrompt,
 } from '../agents-builder-prompts';
 import { getConfigMutationPrompt } from '../prompts/config-mutation.prompt';
 import { getBuilderRuntimeSkills } from '../skills';
+
+describe('builder prompt stability', () => {
+	it('omits stale agent state while retaining config freshness guidance', () => {
+		const prompt = buildBuilderPrompt({
+			agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
+			modelRecommendationsSection: null,
+		});
+
+		expect(prompt).not.toContain('## Current Agent Config');
+		expect(prompt).not.toContain('\n## Custom Tools\n');
+		expect(prompt).not.toContain('## Builder runtime skills');
+		expect(prompt).not.toContain('## Important');
+		expect(prompt).toContain(
+			'Always call `read_config` first whenever a request touches the config',
+		);
+	});
+});
+
+describe('create_skills / create_tasks batching guidance', () => {
+	it('names only the plural batch tools, not the old singular ones', () => {
+		const prompt = buildBuilderPrompt({
+			agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
+			modelRecommendationsSection: null,
+		});
+
+		expect(prompt).toContain('`create_skills`');
+		expect(prompt).toContain('`create_tasks`');
+		expect(prompt).not.toContain('`create_skill`');
+		expect(prompt).not.toContain('`create_task`');
+
+		for (const skill of getBuilderRuntimeSkills()) {
+			expect(skill.allowedTools ?? []).not.toContain('create_skill');
+			expect(skill.allowedTools ?? []).not.toContain('create_task');
+			expect(skill.instructions).not.toContain('`create_skill`');
+			expect(skill.instructions).not.toContain('`create_task`');
+		}
+	});
+
+	it('mandates one call per fully-specified batch, not one call per item', () => {
+		const skills = getBuilderRuntimeSkills();
+		const targetSkills = skills.find((skill) => skill.id === 'agent-builder-target-skills');
+		const targetTasks = skills.find((skill) => skill.id === 'agent-builder-target-tasks');
+
+		expect(targetSkills?.instructions).toContain(
+			'do not spread multiple fully-specified skills\n  across separate calls',
+		);
+		expect(targetTasks?.instructions).toContain(
+			'do not spread multiple fully-specified tasks\n  across separate calls',
+		);
+	});
+
+	it('preserves the skill-attachment and task-publish rules for the batched tools', () => {
+		const skills = getBuilderRuntimeSkills();
+		const targetSkills = skills.find((skill) => skill.id === 'agent-builder-target-skills');
+		const targetTasks = skills.find((skill) => skill.id === 'agent-builder-target-tasks');
+
+		expect(targetSkills?.instructions).toContain(
+			'Use `patch_config` or `write_config` to add a `{ "type": "skill", "id": "<returned id>" }`',
+		);
+		expect(targetTasks?.instructions).toContain(
+			'`create_tasks` adds a `{ type: "task", id, enabled }` ref per task to',
+		);
+		expect(targetTasks?.instructions).toContain(
+			'only start running once the agent is (re)published',
+		);
+	});
+
+	it('permits create_skills and create_tasks together in one turn, never with an interactive tool or config mutation', () => {
+		expect(WORKFLOW_SECTION).toContain(
+			'call `create_skills`\n   and `create_tasks` in the same assistant response',
+		);
+		expect(WORKFLOW_SECTION).toContain(
+			'Do not combine either\n   with an interactive tool or `write_config`/`patch_config` in that response.',
+		);
+	});
+});
+
+describe('compact tool output guidance', () => {
+	it('requires a fresh read_config before retrying a stale write/patch', () => {
+		expect(READ_CONFIG_FRESHNESS_SECTION).toContain(
+			'`patch_config` returns `stage: "stale"`, call `read_config` and retry once\nusing the `config` and `configHash` it returns.',
+		);
+
+		const mutationPrompt = getConfigMutationPrompt();
+		expect(mutationPrompt).toContain('Follow Config Freshness');
+		expect(mutationPrompt).not.toContain('retry once using the');
+	});
+
+	it('never claims a stale or mutation-success response carries the config or configHash', () => {
+		expect(READ_CONFIG_FRESHNESS_SECTION).toContain(
+			'`read_config` is the only tool that returns the full `config`. A successful\n`write_config`/`patch_config` returns only `{ ok: true }` as confirmation\n— never the config, its hash, timestamps, or version — so it cannot serve as\na `baseConfigHash` for a later write.',
+		);
+		expect(READ_CONFIG_FRESHNESS_SECTION).not.toContain('configHash`, `updatedAt`');
+		expect(READ_CONFIG_FRESHNESS_SECTION).not.toContain('retry once\nfrom the returned');
+
+		const mutationPrompt = getConfigMutationPrompt();
+		expect(mutationPrompt).not.toContain('never echo the config back');
+		expect(mutationPrompt).not.toContain('retry once from the returned');
+	});
+
+	it('requires an immediately preceding read_config before every later mutation', () => {
+		expect(READ_CONFIG_FRESHNESS_SECTION).toContain(
+			'Call `read_config`\nagain immediately before every later mutation and before any later\ninspection of the config.',
+		);
+	});
+});
+
+describe('prompt-caching rule dedup', () => {
+	it('states the detailed mandatory prompt-caching rule once, in Agent Config Rules', () => {
+		const prompt = buildBuilderPrompt({
+			agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
+			modelRecommendationsSection: null,
+		});
+
+		const detailedRule = 'this is mandatory and must\n  never be disabled';
+		expect(prompt.split(detailedRule)).toHaveLength(2);
+
+		const rulesIndex = prompt.indexOf('#### Agent Config Rules');
+		const ruleIndex = prompt.indexOf(detailedRule);
+		expect(rulesIndex).toBeGreaterThan(-1);
+		expect(ruleIndex).toBeGreaterThan(rulesIndex);
+	});
+});
 
 describe('agents builder integrations prompt', () => {
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
@@ -27,9 +151,6 @@ describe('chat-channel credential guidance', () => {
 		expect(INTERACTIVE_TOOLS_SECTION).toContain(
 			'`configure_channel`: ALWAYS use this to connect a chat platform',
 		);
-		expect(IMPORTANT_SECTION).toContain(
-			'`configure_channel` (never `ask_credential`) for chat-channel',
-		);
 
 		const integrationsSkill = getBuilderRuntimeSkills().find(
 			(skill) => skill.id === 'agent-builder-integrations',
@@ -40,11 +161,10 @@ describe('chat-channel credential guidance', () => {
 	});
 
 	it('references ask_questions in the batching guidance', () => {
-		expect(WORKFLOW_SECTION).toContain(
-			'Use `ask_questions` for clarifying questions with discrete options, batching',
+		expect(WORKFLOW_SECTION).toContain('Clarify missing decisions through the Interactive tools');
+		expect(INTERACTIVE_TOOLS_SECTION).toContain(
+			'Batch every\n  question you currently need into a single call',
 		);
-		expect(IMPORTANT_SECTION).toContain('`ask_questions` (discrete options for a known set');
-		expect(IMPORTANT_SECTION).toContain('batch multiple questions into one call');
 	});
 
 	it('tells the builder how to remove an existing chat integration', () => {

@@ -87,7 +87,7 @@ The \`integrations\` array controls how the target agent is triggered.
 - Chat integration types must come from \`list_integration_types\`.
 - Do not add a Linear integration just because the agent needs Linear issue
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
-- For recurring or scheduled runs, create a task (\`create_task\`), not an
+- For recurring or scheduled runs, create a task (\`create_tasks\`), not an
   integration.
 - Omitting \`integrations\` from a config write preserves the current channels.
   To remove one, write an explicit filtered array or remove the exact array

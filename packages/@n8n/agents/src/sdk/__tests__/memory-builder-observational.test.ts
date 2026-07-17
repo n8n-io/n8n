@@ -65,8 +65,8 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveObservationalMemoryConfig({}, { defaultModel: 'openai/gpt-4o-mini' });
 
 		expect(resolved).toMatchObject({
-			observerThresholdTokens: 500,
-			reflectorThresholdTokens: 4_000,
+			observerThresholdTokens: 8_000,
+			reflectorThresholdTokens: 12_000,
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 			observationLogTailLimit: 20,
 			lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
@@ -145,8 +145,8 @@ describe('Memory builder — observation log memory', () => {
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		});
 		expect(runtimeConfig.observationalMemory).toMatchObject({
-			observerThresholdTokens: 500,
-			reflectorThresholdTokens: 4_000,
+			observerThresholdTokens: 8_000,
+			reflectorThresholdTokens: 12_000,
 		});
 		expect(typeof runtimeConfig.observationalMemory?.observe).toBe('function');
 		expect(typeof runtimeConfig.observationalMemory?.reflect).toBe('function');

@@ -1,6 +1,7 @@
 import startCase from 'lodash/startCase';
 import type { JsonValue } from 'n8n-workflow';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { TestTableColumn } from './components/shared/TestTableBase.vue';
 import type { EvalCollectionRunStatus } from './evalCollections.types';
@@ -27,6 +28,25 @@ export function extractAnswerText(json: unknown): string {
 		return typeof only === 'object' && only !== null ? JSON.stringify(only) : String(only);
 	}
 	return JSON.stringify(json);
+}
+
+/**
+ * The node-under-test's answer for a case: the end node's output during the
+ * test run, stripped of its JSON envelope via `extractAnswerText`. Falls back to
+ * the case's persisted `outputs` when the execution isn't loaded (or the compiled
+ * config run had no setOutputs node, so `outputs` is empty).
+ */
+export function extractCaseAnswer(
+	execution: IExecutionResponse | null | undefined,
+	endNodeName: string,
+	fallbackOutputs: unknown,
+): string {
+	if (execution && endNodeName) {
+		const firstItem =
+			execution.data?.resultData?.runData?.[endNodeName]?.[0]?.data?.main?.[0]?.[0]?.json;
+		if (firstItem !== undefined) return extractAnswerText(firstItem);
+	}
+	return extractAnswerText(fallbackOutputs);
 }
 
 export type Column =
@@ -74,6 +94,17 @@ export function getUserDefinedMetricNames(
 ): string[] {
 	if (!metrics) return [];
 	return Object.keys(metrics).filter((key) => !PREDEFINED_METRIC_KEYS.has(key));
+}
+
+// The predefined operational metrics (token counts, execution time) present on a
+// run, in a stable display order. These are shown separately from check scores.
+export function getOperationalMetricEntries(
+	metrics: Record<string, number> | null | undefined,
+): Array<{ key: string; value: number }> {
+	if (!metrics) return [];
+	return [...PREDEFINED_METRIC_KEYS]
+		.filter((key) => key in metrics)
+		.map((key) => ({ key, value: metrics[key] }));
 }
 
 export function normalizeMetricValue(value: number | undefined): number | undefined {
@@ -323,6 +354,24 @@ export function formatDuration(ms: number | undefined): string {
 	const minutes = Math.floor(totalRoundedSeconds / 60);
 	const seconds = totalRoundedSeconds - minutes * 60;
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+}
+
+// Short local date + 24h time, e.g. "May 4 18:04". `withSeconds` adds seconds
+// and a comma separator ("May 4, 18:04:05") for surfaces that must disambiguate
+// runs down to the second (the execution picker).
+export function formatShortDateTime(
+	value: string | number | Date,
+	options: { withSeconds?: boolean } = {},
+): string {
+	const d = new Date(value);
+	const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	const time = d.toLocaleTimeString(undefined, {
+		hour: '2-digit',
+		minute: '2-digit',
+		...(options.withSeconds ? { second: '2-digit' } : {}),
+		hour12: false,
+	});
+	return options.withSeconds ? `${date}, ${time}` : `${date} ${time}`;
 }
 
 // Duration in ms between two ISO timestamps, or undefined if either is missing.

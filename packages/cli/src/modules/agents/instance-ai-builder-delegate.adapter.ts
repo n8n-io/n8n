@@ -15,7 +15,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
-import type { BuilderSessionOptions } from './builder/agents-builder.service';
+import type { InstanceAiBuilderSessionOptions } from './builder/agents-builder.service';
 import { N8nMemory } from './integrations/n8n-memory';
 import { AgentThreadRepository } from './repositories/agent-thread.repository';
 
@@ -24,7 +24,9 @@ export const INSTANCE_AI_BUILDER_ADDENDUM = `## Instance AI session rules
 
 You are running as a sub-agent inside n8n's instance AI chat; the user sees your questions as chat cards.
 
-The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.`;
+The agent preview link is not visible in this chat; describe outcomes in text instead of linking the preview.
+
+You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.`;
 
 function isTextDeltaChunk(
 	chunk: StreamChunk,
@@ -77,12 +79,15 @@ export class InstanceAiBuilderDelegateAdapterService {
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
-	private buildSubAgentSession(session: BuilderDelegateSession): BuilderSessionOptions {
+	private buildSubAgentSession(session: BuilderDelegateSession): InstanceAiBuilderSessionOptions {
 		return {
 			threadId: session.threadId,
+			hostThreadId: session.hostThreadId,
+			runId: session.runId,
 			instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 			modelConfig: session.modelConfig,
 			...(session.telemetry ? { telemetry: session.telemetry } : {}),
+			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 		};
 	}
 

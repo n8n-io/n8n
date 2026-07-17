@@ -11,14 +11,12 @@ Use this after deciding a config change is needed and before calling
 
 ### Workflow
 
-1. Call \`read_config\` immediately before every \`write_config\` or \`patch_config\`.
-2. Use only the \`config\` and \`configHash\` returned by that same \`read_config\`.
-3. For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
-4. For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
-5. Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
-6. On \`stage: "stale"\`, retry once from the returned \`config\` and \`configHash\`.
-7. On parse, patch, or schema errors, fix the payload, call \`read_config\`
-   again, and retry from the fresh \`configHash\`.
+Follow Config Freshness for authoritative reads, hashes, and stale recovery.
+- For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
+- For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
+- Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
+- On parse, patch, or schema errors, fix the payload, call \`read_config\`
+  again, and retry from the fresh \`configHash\`.
 
 ### Rules
 
@@ -82,12 +80,8 @@ Use \`patch_config\` with:
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
-- Prompt caching lives under \`config.promptCaching\` and is OpenAI/Anthropic-only.
-  It is mandatory: write \`{ "enabled": true }\` for those providers and never
-  disable it, and omit the field entirely for every other provider. For
-  Anthropic only, an optional \`anthropic: { "ttl": "5m" | "1h" }\` sub-object
-  tunes cache-breakpoint duration (default \`"1h"\`); OpenAI has no sub-config.
-  The write path also enforces all of this automatically.
+- Prompt caching follows Agent Config Rules above; the write path enforces it
+  automatically.
 - Web search lives under \`config.webSearch\`.
 - Only OpenAI and Anthropic models support native web search. For those models, set
   \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
@@ -157,7 +151,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 
 ### Error Recovery
 
-- \`stage: "stale"\`: retry once from the returned \`config\` and \`configHash\`.
+- \`stage: "stale"\`: follow Config Freshness.
 - \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
 - \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
 - \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.

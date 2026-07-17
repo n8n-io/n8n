@@ -30,7 +30,8 @@
   "dependencies": {
     "@vueuse/core": "catalog:frontend",
     "lodash": "catalog:",
-    "vue": "catalog:frontend"
+    "vue": "catalog:frontend",
+    "xss": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
