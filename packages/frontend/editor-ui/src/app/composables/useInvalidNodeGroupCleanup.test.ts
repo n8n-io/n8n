@@ -107,6 +107,9 @@ describe('useInvalidNodeGroupCleanup', () => {
 				source: 'invalid-on-save',
 			}),
 		);
+		expect(trackSpy).toHaveBeenCalledWith('Auto-ungrouped invalid node groups', {
+			groupsAffected: 1,
+		});
 	});
 
 	it('removes a group referencing a node that does not exist', () => {
@@ -160,7 +163,11 @@ describe('useInvalidNodeGroupCleanup', () => {
 				message: expect.stringContaining('<li>Group 2</li><li>Group 3</li>'),
 			}),
 		);
-		expect(trackSpy).toHaveBeenCalledTimes(2);
+		// One 'User ungrouped nodes' per removed group, plus one aggregate event
+		expect(trackSpy).toHaveBeenCalledTimes(3);
+		expect(trackSpy).toHaveBeenCalledWith('Auto-ungrouped invalid node groups', {
+			groupsAffected: 2,
+		});
 	});
 
 	it('escapes HTML in group names listed in the toast', () => {

@@ -91,6 +91,10 @@ export function useInvalidNodeGroupCleanup() {
 			});
 		}
 
+		telemetry.track('Auto-ungrouped invalid node groups', {
+			groupsAffected: invalidGroups.length,
+		});
+
 		showGroupsRemovedToast(invalidGroups);
 
 		return invalidGroups;
