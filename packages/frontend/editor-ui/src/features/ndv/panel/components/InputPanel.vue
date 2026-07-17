@@ -520,7 +520,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									type="secondary"
+									variant="subtle"
 									:node-name="nodeNameToExecute"
 									:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
 									:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
@@ -580,7 +580,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					</template>
 					<NodeExecuteButton
 						v-if="!readOnly"
-						type="secondary"
+						variant="subtle"
 						hide-icon
 						:transparent="true"
 						:node-name="nodeNameToExecute"

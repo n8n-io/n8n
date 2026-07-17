@@ -68,11 +68,6 @@ export const FOCUSED_NODES_EXPERIMENT = createExperiment('064_focused_nodes');
 export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_1');
 
 export const SIDEBAR_EXPANDED_EXPERIMENT = createExperiment('067_sidebar_expanded');
-export const EMPTY_STATE_EXPERIMENT = createExperiment('070_empty_screen_layout', {
-	control: 'control',
-	variantBuilderPrompt: 'variant-builder-prompt',
-	variantTemplates: 'variant-templates',
-});
 
 export const SETUP_PANEL = createExperiment('069_setup_panel', {
 	control: 'control',
@@ -108,8 +103,6 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
 	},
 );
 
-export const CANVAS_NODES_GROUPING_EXPERIMENT = createExperiment('083_canvas_nodes_grouping');
-
 export const EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT = createExperiment('088_config_evaluations');
 export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperiment(
 	'087_instance_ai_workflow_preview_suggestions',
@@ -135,8 +128,22 @@ export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance
 
 export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
 
+export const INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
+	'092_instance_ai_template_examples',
+);
 export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
 	'094_instance_ai_browser_credential_setup',
+);
+
+export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
+	'095_expose_all_workflows_to_mcp',
+);
+export const ENHANCED_HITL_SLACK_EXPERIMENT = createExperiment('096_enhanced_hitl_slack');
+export const ENHANCED_HITL_TELEGRAM_EXPERIMENT = createExperiment('097_enhanced_hitl_telegram');
+export const ENHANCED_HITL_GMAIL_EXPERIMENT = createExperiment('098_enhanced_hitl_gmail');
+
+export const N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT = createExperiment(
+	'100_n8n_credits_credential_selection',
 );
 
 export const EXPERIMENTS_TO_TRACK = [
@@ -152,7 +159,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
 	SIDEBAR_EXPANDED_EXPERIMENT.name,
-	EMPTY_STATE_EXPERIMENT.name,
 	SETUP_PANEL.name,
 	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
@@ -166,7 +172,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
-	CANVAS_NODES_GROUPING_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
@@ -174,5 +179,11 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
+	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
+	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
+	ENHANCED_HITL_SLACK_EXPERIMENT.name,
+	ENHANCED_HITL_TELEGRAM_EXPERIMENT.name,
+	ENHANCED_HITL_GMAIL_EXPERIMENT.name,
+	N8N_CREDITS_CREDENTIAL_SELECTION_EXPERIMENT.name,
 ];

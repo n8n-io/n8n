@@ -41,8 +41,15 @@ function makeTextDelta(
 	runId: string,
 	agentId: string,
 	text: string,
+	responseId?: string,
 ): Extract<InstanceAiEvent, { type: 'text-delta' }> {
-	return { type: 'text-delta', runId, agentId, payload: { text } };
+	return {
+		type: 'text-delta',
+		runId,
+		agentId,
+		...(responseId ? { responseId } : {}),
+		payload: { text },
+	};
 }
 
 function makeReasoningDelta(
@@ -463,6 +470,90 @@ describe('agent-run-reducer', () => {
 			expect(state.toolCallsById['tc-skill'].renderHint).toBe('skill');
 		});
 
+		it('tool-input-start announces a pending tool call before its args stream', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				responseId: 'resp-1',
+				payload: { toolCallId: 'tc-1', toolName: 'build-workflow' },
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc).toBeDefined();
+			expect(tc.args).toEqual({});
+			expect(tc.isLoading).toBe(true);
+			expect(tc.renderHint).toBe('builder');
+			expect(state.agentsById['root'].timeline).toContainEqual({
+				type: 'tool-call',
+				toolCallId: 'tc-1',
+				responseId: 'resp-1',
+			});
+		});
+
+		it('tool-call fills args on an announced call without duplicating it', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'build-workflow' },
+			});
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'build-workflow', args: { filePath: 'a.ts' } },
+			});
+
+			expect(state.toolCallsById['tc-1'].args).toEqual({ filePath: 'a.ts' });
+			expect(state.agentsById['root'].toolCalls).toHaveLength(1);
+			expect(state.agentsById['root'].timeline.filter((e) => e.type === 'tool-call')).toHaveLength(
+				1,
+			);
+		});
+
+		it('duplicate tool-input-start events are idempotent', () => {
+			const state = stateWithRun('run-1', 'root');
+			const event = {
+				type: 'tool-input-start',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { toolCallId: 'tc-1', toolName: 'some-tool' },
+			} as const;
+			reduceEvent(state, event);
+			reduceEvent(state, event);
+
+			expect(state.agentsById['root'].toolCalls).toHaveLength(1);
+			expect(state.agentsById['root'].timeline.filter((e) => e.type === 'tool-call')).toHaveLength(
+				1,
+			);
+		});
+
+		it('uses the event publish timestamp for tool timing when present', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'tool-call',
+				runId: 'run-1',
+				agentId: 'root',
+				ts: Date.parse('2026-01-01T00:00:00Z'),
+				payload: { toolCallId: 'tc-1', toolName: 'some-tool', args: {} },
+			});
+			reduceEvent(state, {
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'root',
+				ts: Date.parse('2026-01-01T00:01:30Z'),
+				payload: { toolCallId: 'tc-1', result: {} },
+			});
+
+			// Replayed events must reconstruct the original timing, not "now".
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.startedAt).toBe('2026-01-01T00:00:00.000Z');
+			expect(tc.completedAt).toBe('2026-01-01T00:01:30.000Z');
+		});
+
 		it('tool-result resolves tool call', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'some-tool'));
@@ -677,6 +768,33 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeError('run-1', 'unknown', 'root fallback'));
 
 			expect(state.agentsById['root'].textContent).toContain('root fallback');
+		});
+
+		it('does not append raw error text for a structured (coded) error', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: { content: 'Have reached end of quota', code: 'quota_exhausted' },
+			});
+
+			expect(state.agentsById['root'].textContent).toBe('');
+			expect(state.agentsById['root'].timeline).toHaveLength(0);
+		});
+
+		it('still appends raw error text for an unrecognized error code', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'root',
+				// An unknown code (older/newer service) has no dedicated UI state,
+				// so the transcript must still show the raw error.
+				payload: { content: 'boom', code: 'not_a_real_code' },
+			});
+
+			expect(state.agentsById['root'].textContent).toContain('boom');
 		});
 	});
 
@@ -1195,6 +1313,258 @@ describe('agent-run-reducer', () => {
 			normalizeAgentTree(tree);
 
 			expect(child.timeline).toEqual([{ type: 'reasoning', content: 'Child reasoning' }]);
+		});
+	});
+	describe('durable-log replay (block replace semantics + interrupted facts)', () => {
+		const RUN = 'run-dl';
+		const AGENT = 'orchestrator-run-dl';
+
+		function makeTextBlock(
+			text: string,
+			responseId?: string,
+		): Extract<InstanceAiEvent, { type: 'text-block' }> {
+			return {
+				type: 'text-block',
+				runId: RUN,
+				agentId: AGENT,
+				...(responseId ? { responseId } : {}),
+				payload: { text },
+			};
+		}
+
+		function makeReasoningBlock(
+			text: string,
+			responseId?: string,
+		): Extract<InstanceAiEvent, { type: 'reasoning-block' }> {
+			return {
+				type: 'reasoning-block',
+				runId: RUN,
+				agentId: AGENT,
+				...(responseId ? { responseId } : {}),
+				payload: { text },
+			};
+		}
+
+		it('text-block REPLACES the open streamed segment with the same responseId', () => {
+			// Mid-block reconnect: the client saw partial deltas live, then the
+			// replayed block carries the segment's full text.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextDelta(RUN, AGENT, 'AAA', 'msg-open'));
+			state = reduceEvent(state, makeTextDelta(RUN, AGENT, 'BBB', 'msg-open'));
+			state = reduceEvent(state, makeTextBlock('AAABBBCCC', 'msg-open'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.textContent).toBe('AAABBBCCC');
+			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
+				{ type: 'text', content: 'AAABBBCCC', responseId: 'msg-open' },
+			]);
+		});
+
+		it('reasoning-block strips exactly the open segment before appending the full text', () => {
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			// A previously closed reasoning segment must be preserved verbatim.
+			state = reduceEvent(state, makeReasoningDelta(RUN, AGENT, 'first thoughts. ', 'msg-1'));
+			state = reduceEvent(state, makeReasoningBlock('first thoughts. ', 'msg-1'));
+			// Open segment: two partial deltas, then the replayed block.
+			state = reduceEvent(state, makeReasoningDelta(RUN, AGENT, 'sec', 'msg-2'));
+			state = reduceEvent(state, makeReasoningDelta(RUN, AGENT, 'ond', 'msg-2'));
+			state = reduceEvent(state, makeReasoningBlock('second thoughts.', 'msg-2'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.reasoning).toBe('first thoughts. second thoughts.');
+			expect(agent.timeline.filter((e) => e.type === 'reasoning')).toEqual([
+				{ type: 'reasoning', content: 'first thoughts. ', responseId: 'msg-1' },
+				{ type: 'reasoning', content: 'second thoughts.', responseId: 'msg-2' },
+			]);
+		});
+
+		it('mid-block reconnect deep-equals the never-disconnected state (text)', () => {
+			// Never disconnected: the full delta stream, then the closing block.
+			let live = createInitialState(AGENT);
+			live = reduceEvent(live, makeRunStart(RUN, AGENT));
+			for (const text of ['AAA', 'BBB', 'CCC']) {
+				live = reduceEvent(live, makeTextDelta(RUN, AGENT, text, 'msg-open'));
+			}
+			live = reduceEvent(live, makeTextBlock('AAABBBCCC', 'msg-open'));
+
+			// Reconnected mid-block: partial deltas seen live, then the replayed
+			// block (deltas are never persisted, so the tail is never re-sent).
+			let reconnected = createInitialState(AGENT);
+			reconnected = reduceEvent(reconnected, makeRunStart(RUN, AGENT));
+			for (const text of ['AAA', 'BBB']) {
+				reconnected = reduceEvent(reconnected, makeTextDelta(RUN, AGENT, text, 'msg-open'));
+			}
+			reconnected = reduceEvent(reconnected, makeTextBlock('AAABBBCCC', 'msg-open'));
+
+			expect(reconnected).toEqual(live);
+		});
+
+		it('mid-block reconnect deep-equals the never-disconnected state (reasoning)', () => {
+			let live = createInitialState(AGENT);
+			live = reduceEvent(live, makeRunStart(RUN, AGENT));
+			for (const text of ['deep ', 'thoughts', '...']) {
+				live = reduceEvent(live, makeReasoningDelta(RUN, AGENT, text, 'msg-open'));
+			}
+			live = reduceEvent(live, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			let reconnected = createInitialState(AGENT);
+			reconnected = reduceEvent(reconnected, makeRunStart(RUN, AGENT));
+			for (const text of ['deep ', 'thoughts']) {
+				reconnected = reduceEvent(reconnected, makeReasoningDelta(RUN, AGENT, text, 'msg-open'));
+			}
+			reconnected = reduceEvent(reconnected, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			expect(reconnected).toEqual(live);
+		});
+
+		it('text-block heals a suffix-only attacher to deep-equal the block-only state', () => {
+			// Mid-segment attach (refresh served by a main without the coalescer
+			// buffer): the client holds only the segment's tail when the block
+			// arrives, so the entry is a SUFFIX of the block, not a prefix.
+			let suffixOnly = createInitialState(AGENT);
+			suffixOnly = reduceEvent(suffixOnly, makeRunStart(RUN, AGENT));
+			suffixOnly = reduceEvent(suffixOnly, makeTextDelta(RUN, AGENT, ' 4', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeTextDelta(RUN, AGENT, ' 5', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeTextBlock('1 2 3 4 5', 'msg-open'));
+
+			let blockOnly = createInitialState(AGENT);
+			blockOnly = reduceEvent(blockOnly, makeRunStart(RUN, AGENT));
+			blockOnly = reduceEvent(blockOnly, makeTextBlock('1 2 3 4 5', 'msg-open'));
+
+			expect(suffixOnly).toEqual(blockOnly);
+		});
+
+		it('reasoning-block heals a suffix-only attacher to deep-equal the block-only state', () => {
+			let suffixOnly = createInitialState(AGENT);
+			suffixOnly = reduceEvent(suffixOnly, makeRunStart(RUN, AGENT));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningDelta(RUN, AGENT, 'oughts', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningDelta(RUN, AGENT, '...', 'msg-open'));
+			suffixOnly = reduceEvent(suffixOnly, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			let blockOnly = createInitialState(AGENT);
+			blockOnly = reduceEvent(blockOnly, makeRunStart(RUN, AGENT));
+			blockOnly = reduceEvent(blockOnly, makeReasoningBlock('deep thoughts...', 'msg-open'));
+
+			expect(suffixOnly).toEqual(blockOnly);
+		});
+
+		it('a block with a DIFFERENT responseId appends instead of replacing', () => {
+			// Pure replay (no live deltas seen): every block appends.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextBlock('first segment. ', 'msg-1'));
+			state = reduceEvent(state, makeTextBlock('second segment.', 'msg-2'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.textContent).toBe('first segment. second segment.');
+			expect(agent.timeline.filter((e) => e.type === 'text')).toHaveLength(2);
+		});
+
+		it('adjacent id-less blocks append — undefined ids never match as one segment', () => {
+			// Synthetic blocks (crash-resume markers, correction lines) carry no
+			// responseId; the second must not overwrite the first.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextBlock('first line. '));
+			state = reduceEvent(state, makeTextBlock('second line.'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.textContent).toBe('first line. second line.');
+			// Same-key adjacency merges into one display entry — but never drops text.
+			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
+				{ type: 'text', content: 'first line. second line.' },
+			]);
+		});
+
+		it('an id-less block never replaces, even when it textually extends the previous one', () => {
+			// Id-less blocks have no identity to match on, so text alone must
+			// never decide a replace: a block that merely happens to start with
+			// the previous block's text would silently overwrite it. Stream
+			// segments are stamped with responseIds, so the replace path never
+			// needs the id-less case.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextBlock('Hello. '));
+			state = reduceEvent(state, makeTextBlock('Hello. World.'));
+
+			const agent = findAgent(state, AGENT)!;
+			// Nothing dropped: both blocks' text present, in order.
+			expect(agent.textContent).toBe('Hello. Hello. World.');
+			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
+				{ type: 'text', content: 'Hello. Hello. World.' },
+			]);
+		});
+
+		it('a block reusing a responseId with unrelated text appends', () => {
+			// Same id but not a textual extension of the open entry: this is a new
+			// message, not the completion of the partial one.
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeTextBlock('Task one finished. ', 'bg-outcome:run-dl'));
+			state = reduceEvent(state, makeTextBlock('Task two failed.', 'bg-outcome:run-dl'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.textContent).toBe('Task one finished. Task two failed.');
+			expect(agent.timeline.filter((e) => e.type === 'text')).toEqual([
+				{
+					type: 'text',
+					content: 'Task one finished. Task two failed.',
+					responseId: 'bg-outcome:run-dl',
+				},
+			]);
+		});
+
+		it('adjacent id-less reasoning-blocks append — undefined ids never match as one segment', () => {
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeReasoningBlock('first thoughts. '));
+			state = reduceEvent(state, makeReasoningBlock('second thoughts.'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.reasoning).toBe('first thoughts. second thoughts.');
+			expect(agent.timeline.filter((e) => e.type === 'reasoning')).toEqual([
+				{ type: 'reasoning', content: 'first thoughts. second thoughts.' },
+			]);
+		});
+
+		it('an id-less reasoning-block never replaces, even when it textually extends the previous one', () => {
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeReasoningBlock('so far. '));
+			state = reduceEvent(state, makeReasoningBlock('so far. and further.'));
+
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.reasoning).toBe('so far. so far. and further.');
+			expect(agent.timeline.filter((e) => e.type === 'reasoning')).toEqual([
+				{ type: 'reasoning', content: 'so far. so far. and further.' },
+			]);
+		});
+
+		it('tool-interrupted resolves the call terminally and run-finish{interrupted} folds to cancelled', () => {
+			let state = createInitialState(AGENT);
+			state = reduceEvent(state, makeRunStart(RUN, AGENT));
+			state = reduceEvent(state, makeToolCall(RUN, AGENT, 'tc-1', 'update-workflow'));
+			state = reduceEvent(state, {
+				type: 'tool-interrupted',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { toolCallId: 'tc-1', error: 'Interrupted by a process restart' },
+			});
+			state = reduceEvent(state, {
+				type: 'run-finish',
+				runId: RUN,
+				agentId: AGENT,
+				payload: { status: 'interrupted', reason: 'crash_interrupted' },
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.isLoading).toBe(false);
+			expect(tc.error).toContain('Interrupted');
+			expect(state.status).toBe('cancelled');
+			const agent = findAgent(state, AGENT)!;
+			expect(agent.cancellationReason).toBe('interrupted');
 		});
 	});
 });

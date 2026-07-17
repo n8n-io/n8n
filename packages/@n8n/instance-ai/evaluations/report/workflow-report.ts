@@ -1067,29 +1067,38 @@ function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 
 // ---------------------------------------------------------------------------
 // Build expectations
+//
+// Aggregates a list of pass/fail/incomplete verdicts into a `<details>`
+// checklist shell; per-item markup comes from `renderItem`.
 // ---------------------------------------------------------------------------
 
-function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
-	if (!results || results.length === 0) return '';
+function renderChecklistSection<T extends { pass: boolean; incomplete?: boolean }>(
+	title: string,
+	entries: T[] | undefined,
+	renderItem: (entry: T) => string,
+): string {
+	if (!entries || entries.length === 0) return '';
 	// `incomplete` (no verdict) stays out of the pass/fail count — rendered neutrally.
-	const passCount = results.filter((r) => r.pass && !r.incomplete).length;
-	const failCount = results.filter((r) => !r.pass && !r.incomplete).length;
-	const incompleteCount = results.filter((r) => r.incomplete).length;
+	const passCount = entries.filter((e) => e.pass && !e.incomplete).length;
+	const failCount = entries.filter((e) => !e.pass && !e.incomplete).length;
+	const incompleteCount = entries.filter((e) => e.incomplete).length;
 	const scored = passCount + failCount;
 	const statusClass = failCount > 0 ? 'fail' : 'pass';
 	const openAttr = failCount > 0 ? 'open' : '';
 	const summary = `${String(passCount)}/${String(scored)}${incompleteCount > 0 ? ` · ${String(incompleteCount)} no verdict` : ''}`;
-	const items = results
-		.map((r) => {
-			const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
-			const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
-			const judgment = r.reason
-				? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
-				: '';
-			return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
-		})
-		.join('');
-	return `<details class="section" ${openAttr}><summary>Build expectations <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+	const items = entries.map(renderItem).join('');
+	return `<details class="section" ${openAttr}><summary>${title} <span class="${statusClass}">${summary}</span></summary><ul class="check-list">${items}</ul></details>`;
+}
+
+function renderBuildExpectations(results: BuildExpectationResult[] | undefined): string {
+	return renderChecklistSection('Build expectations', results, (r) => {
+		const cls = r.incomplete ? 'n_a' : r.pass ? 'pass' : 'fail';
+		const icon = r.incomplete ? '⌀' : r.pass ? '&#10003;' : '&#10007;';
+		const judgment = r.reason
+			? `<div class="expectation-judgment">${escapeHtml(r.reason)}</div>`
+			: '';
+		return `<li class="expectation ${cls}"><span class="check-icon ${cls}">${icon}</span><div class="expectation-body"><div class="expectation-text">${escapeHtml(r.expectation)}</div>${judgment}</div></li>`;
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -1196,7 +1205,7 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	// Pass rate counts scenarios AND build expectations as units (incomplete units excluded).
+	// Pass rate counts scenarios and build expectations as units (incomplete units excluded).
 	const { passCount, totalCount } = getRunScoredCounts(result);
 	const allPass = passCount === totalCount && totalCount > 0;
 	const caseStatus = getCaseRunStatus(result);
@@ -1599,17 +1608,17 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	<div class="stat-card">
 		<div class="label">Failed</div>
 		<div class="value${failCount > 0 ? ' fail' : ''}">${String(failCount)}</div>
-	</div>${
-		noVerdictCount > 0
-			? `
-	<div class="stat-card">
-		<div class="label">No verdict</div>
-		<div class="value">${String(noVerdictCount)}</div>
-	</div>`
-			: ''
-	}
-	<div class="stat-card">
-		<div class="label">Checked/Built</div>
+		</div>${
+			noVerdictCount > 0
+				? `
+		<div class="stat-card">
+			<div class="label">No verdict</div>
+			<div class="value">${String(noVerdictCount)}</div>
+		</div>`
+				: ''
+		}
+		<div class="stat-card">
+			<div class="label">Checked/Built</div>
 		<div class="value${checkedOrBuiltCount === totalTestCases ? ' pass' : ' mixed'}">${String(checkedOrBuiltCount)}/${String(totalTestCases)}</div>
 	</div>
 </div>

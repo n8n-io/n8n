@@ -259,6 +259,48 @@ describe('evaluateGate', () => {
 		expect(gate.excluded[0].slug).toBe('a/edge');
 	});
 
+	it('grades a scenario-less case by its outcome expectation alone, and fails it when the expectation never passes', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'agent-only',
+				expectations: [{ text: 'an agent was created', verdicts: [true, true, true] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.units).toHaveLength(1);
+		expect(gate.units[0].kind).toBe('buildExpectation');
+		expect(gate.green).toBe(true);
+
+		const { evaluation: failingEval, slugByTestCase: failingSlugs } = makeEval(3, [
+			{
+				slug: 'agent-only',
+				expectations: [{ text: 'an agent was created', verdicts: [false, false, false] }],
+			},
+		]);
+		const failingGate = evaluateGate(failingEval, { slugByTestCase: failingSlugs });
+		expect(failingGate.green).toBe(false);
+		expect(failingGate.failing).toHaveLength(1);
+	});
+
+	it('excludes expectations with no judge verdict instead of failing on them', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'a',
+				scenarios: [{ name: 'happy', passes: [true, true, true] }],
+				expectations: [
+					{ text: 'an agent was created', verdicts: ['incomplete', 'incomplete', 'incomplete'] },
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.green).toBe(true);
+		expect(gate.units).toHaveLength(1); // only the scenario
+		expect(gate.excluded).toHaveLength(1);
+		expect(gate.excluded[0].kind).toBe('buildExpectation');
+	});
+
 	it('minAggregatePassRate verdict tracks the pooled rate, not per-unit greenness', () => {
 		// 4 scenarios: 3 fully pass, 1 fully fails → pooled 9/12 = 75%.
 		const { evaluation, slugByTestCase } = makeEval(3, [
@@ -417,14 +459,20 @@ describe('formatComparisonMarkdown — gate mode', () => {
 		const gate = evaluateGate(evaluation, { slugByTestCase });
 		const pr = {
 			experimentName: 'pr',
-			scenarios: new Map([
-				['a/happy', { testCaseFile: 'a', scenarioName: 'happy', passed: 0, total: 3 }],
+			evaluationUnits: new Map([
+				[
+					'a/happy',
+					{ kind: 'scenario' as const, testCaseFile: 'a', name: 'happy', passed: 0, total: 3 },
+				],
 			]),
 		};
 		const base = {
 			experimentName: 'master',
-			scenarios: new Map([
-				['a/happy', { testCaseFile: 'a', scenarioName: 'happy', passed: 10, total: 10 }],
+			evaluationUnits: new Map([
+				[
+					'a/happy',
+					{ kind: 'scenario' as const, testCaseFile: 'a', name: 'happy', passed: 10, total: 10 },
+				],
 			]),
 		};
 		const outcome = { kind: 'ok' as const, result: compareBuckets(pr, base) };

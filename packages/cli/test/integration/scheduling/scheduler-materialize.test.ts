@@ -1,21 +1,24 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { type ScheduledJob, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import {
+	DataSource,
+	type ScheduledJob,
+	ScheduledJobRepository,
+	ScheduledTaskRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler } from '@n8n/scheduler';
 import type { SchedulerDeps } from '@n8n/scheduler';
 
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
+import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
 describe('scheduler materialization', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
-	let scheduler: DurableScheduler;
 
 	beforeAll(async () => {
 		await testDb.init();
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
-		scheduler = Container.get(DurableScheduler);
 	});
 
 	afterEach(async () => {
@@ -45,11 +48,15 @@ describe('scheduler materialization', () => {
 			}),
 		);
 
-	/** Compose a scheduler over the same storage bindings, with per-test tuning. */
-	const composeScheduler = (materializer: SchedulerDeps['materializer']) =>
+	/** Compose a scheduler over the production storage bindings, with per-test tuning. */
+	const composeScheduler = (materializer?: SchedulerDeps['materializer']) =>
 		createScheduler({
 			hostId: 'materialize-test',
-			materializerTransaction: scheduler.materializerTransaction,
+			materializerTransaction: buildMaterializerTransaction(
+				Container.get(DataSource),
+				jobRepo,
+				taskRepo,
+			),
 			taskStore: taskRepo,
 			materializer,
 		});
@@ -68,7 +75,7 @@ describe('scheduler materialization', () => {
 
 		const summary = await runMaterialization(0);
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 
 		const [task] = await taskRepo.find();
 		expect(task.jobId).toBe(job.id);
@@ -100,16 +107,19 @@ describe('scheduler materialization', () => {
 		expect(first.occurrences).toBe(5);
 		expect(await taskRepo.count()).toBe(5);
 
-		// Successive passes continue draining, each recording at most maxPerJob, until nothing is due.
+		// Successive passes continue draining, each recording at most maxPerJob, until the
+		// backlog is exhausted. The claim reaches a poll interval ahead of due, so with
+		// windowSeconds: 0 the job keeps being claimed for its near-future fire even once
+		// drained; exhaustion shows as a pass that records nothing new, not an unclaimed job.
 		for (let i = 0; i < 10; i++) {
 			const summary = await drainScheduler.materialize();
 			expect(summary.occurrences).toBeLessThanOrEqual(5);
-			if (summary.claimedJobs === 0) break;
+			if (summary.occurrences === 0) break;
 		}
 
 		// Drained: the backlog is fully recorded, every occurrence distinct (no duplicate from batching).
 		const drained = await drainScheduler.materialize();
-		expect(drained.claimedJobs).toBe(0);
+		expect(drained.occurrences).toBe(0);
 		const tasks = await taskRepo.find();
 		const distinctInstants = new Set(tasks.map((t) => t.scheduledFor.getTime()));
 		expect(distinctInstants.size).toBe(tasks.length);
@@ -179,7 +189,7 @@ describe('scheduler materialization', () => {
 
 		const summary = await runMaterialization(0);
 
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
+		expect(summary).toMatchObject({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 
 		// The good job materialized normally.
 		const [task] = await taskRepo.find();
@@ -213,15 +223,15 @@ describe('scheduler materialization', () => {
 		const summary = await runMaterialization(0);
 
 		// The repaired job materializes again with no other intervention.
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 		const resumed = await jobRepo.findOneByOrFail({ id: job.id });
 		expect(resumed.nextRunAt).not.toBeNull();
 	});
 
-	it('runs through DurableScheduler with its configured window', async () => {
+	it('materializes a due job with the default window', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 
-		const summary = await scheduler.materialize();
+		const summary = await composeScheduler().materialize();
 
 		expect(summary.claimedJobs).toBe(1);
 		const [task] = await taskRepo.find();

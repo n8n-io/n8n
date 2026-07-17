@@ -1,17 +1,17 @@
-import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
+import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
 import {
 	AgentJsonConfigSchema,
+	findVectorStoreToolNameCollisions,
 	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { UserError, type INodeParameters } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillsService } from './agent-skills.service';
@@ -23,6 +23,7 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
@@ -67,8 +68,16 @@ export class AgentConfigService {
 
 		const config = parsed.data;
 
+		const toolNameCollisions = findVectorStoreToolNameCollisions(config);
+		if (toolNameCollisions.length > 0) {
+			return {
+				valid: false,
+				error: `Vector store tool name collides with an existing tool: ${toolNameCollisions.join(', ')}`,
+			};
+		}
+
 		try {
-			this.validateNodeToolExpressions(config);
+			validateNodeToolExpressions(config.tools);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return {
@@ -77,20 +86,12 @@ export class AgentConfigService {
 			};
 		}
 
-		const nodeError = await this.validateNodeToolConfigs(config);
+		const nodeError = await validateNodeToolConfigs(config.tools);
 		if (nodeError) {
 			return { valid: false, error: nodeError };
 		}
 
 		return { valid: true, config };
-	}
-
-	private validateNodeToolExpressions(config: AgentJsonConfig): void {
-		for (const tool of config.tools ?? []) {
-			if (tool.type !== 'node') continue;
-
-			extractFromAIParameters((tool.node.nodeParameters ?? {}) as INodeParameters);
-		}
 	}
 
 	/**
@@ -119,7 +120,10 @@ export class AgentConfigService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		const validatedConfig = result.config;
+		// Reconcile native web-search provider tools with the config's explicit
+		// `webSearch` state. This is the single write path, so persisted config
+		// always agrees with read/compose paths.
+		const validatedConfig = reconcileNativeWebSearch(result.config);
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
@@ -146,6 +150,7 @@ export class AgentConfigService {
 		const providerToolsProvided = validatedConfig.providerTools !== undefined;
 		const configBlockProvided = validatedConfig.config !== undefined;
 		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
+		const vectorStoresProvided = validatedConfig.vectorStores !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
 			decomposeJsonConfig(validatedConfig);
@@ -174,6 +179,7 @@ export class AgentConfigService {
 			...(providerToolsProvided ? { providerTools: decomposedSchema.providerTools } : {}),
 			...(configBlockProvided ? { config: decomposedSchema.config } : {}),
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
+			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
 
 		entity.schema = nextSchema;
@@ -223,45 +229,6 @@ export class AgentConfigService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
-	}
-
-	private async validateNodeToolConfigs(config: AgentJsonConfig): Promise<string | null> {
-		const nodeTools = (config.tools ?? []).filter(
-			(t): t is Extract<AgentJsonToolConfig, { type: 'node' }> => t.type === 'node',
-		);
-
-		if (nodeTools.length === 0) return null;
-
-		const { setSchemaBaseDirs, validateNodeConfig } = await import('@n8n/workflow-sdk');
-
-		const dirs = resolveBuiltinNodeDefinitionDirs();
-		if (dirs.length > 0) {
-			setSchemaBaseDirs(dirs);
-		}
-
-		const errors: string[] = [];
-
-		for (const tool of nodeTools) {
-			const nodeType: string = tool.node.nodeType;
-			const nodeTypeVersion: number = tool.node.nodeTypeVersion;
-			const nodeParameters = tool.node.nodeParameters ?? {};
-
-			const result = validateNodeConfig(
-				nodeType,
-				nodeTypeVersion,
-				{ parameters: nodeParameters },
-				{ isToolNode: true },
-			);
-
-			if (!result.valid) {
-				const messages = result.errors
-					.map((e: { path: string; message: string }) => e.message)
-					.join('; ');
-				errors.push(`Node tool "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${messages}`);
-			}
-		}
-
-		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
 	private async removeMissingConfigRefs(

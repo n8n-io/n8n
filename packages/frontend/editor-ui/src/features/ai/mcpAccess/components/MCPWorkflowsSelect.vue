@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
-import { N8nIcon, N8nSelect, N8nOption } from '@n8n/design-system';
+import { N8nSelect, N8nOption } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import type { WorkflowListItem } from '@/Interface';
 import WorkflowLocation from '@/features/ai/mcpAccess/components/WorkflowLocation.vue';
@@ -16,7 +16,7 @@ defineProps<{
 const i18n = useI18n();
 const toast = useToast();
 
-const modelValue = defineModel<string>();
+const modelValue = defineModel<string[]>({ default: () => [] });
 
 const emit = defineEmits<{
 	ready: [];
@@ -79,7 +79,7 @@ function onVisibleChange(visible: boolean) {
 }
 
 function onKeydownCapture(event: KeyboardEvent) {
-	if (event.key === 'Enter' && !isDropdownVisible.value && modelValue.value) {
+	if (event.key === 'Enter' && !isDropdownVisible.value && modelValue.value.length > 0) {
 		event.preventDefault();
 		event.stopPropagation();
 		emit('confirm');
@@ -106,18 +106,17 @@ defineExpose({
 			:placeholder="placeholder"
 			:disabled="disabled"
 			:loading="isLoading"
+			:multiple="true"
 			:filterable="true"
 			:remote="true"
 			:remote-method="searchWorkflows"
+			size="medium"
 			:popper-class="{
 				[$style['mcp-workflows-select-loading']]: isLoading,
 				[$style['mcp-workflows-select-empty']]: showEmptyState,
 			}"
 			@visible-change="onVisibleChange"
 		>
-			<template #prefix>
-				<N8nIcon :class="$style['search-icon']" icon="search" size="large" />
-			</template>
 			<N8nOption v-if="showEmptyState" value="" disabled :class="$style['empty-option']">
 				{{ i18n.baseText('settings.mcp.connectWorkflows.emptyState') }}
 			</N8nOption>

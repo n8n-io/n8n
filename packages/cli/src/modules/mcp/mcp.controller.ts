@@ -120,7 +120,7 @@ export class McpController {
 		const body = req.body;
 		this.logger.debug('MCP Request', { body });
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
-		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
+		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'tools/call' : false;
 		const clientInfo = getClientInfo(req);
 
 		const baseTelemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
@@ -200,7 +200,13 @@ export class McpController {
 		const { StreamableHTTPServerTransport } = await import(
 			'@modelcontextprotocol/sdk/server/streamableHttp.js'
 		);
-		const server = await this.mcpService.getServer(req.user, mcpAppsEnabled, getClientInfo(req));
+		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
+		const server = await this.mcpService.getServer(
+			req.user,
+			mcpAppsEnabled,
+			getClientInfo(req),
+			grantedScopes,
+		);
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
 		});

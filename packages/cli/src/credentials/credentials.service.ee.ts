@@ -211,6 +211,12 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// Transferring an end-user credential into a project is equivalent to creating
+		// one there, so it must clear the same createEndUser gate.
+		if (credential.isResolvable) {
+			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
+		}
+
 		// 6. validate that the destination project has access to all external secret providers
 		if (
 			this.licenseState.isExternalSecretsLicensed() &&

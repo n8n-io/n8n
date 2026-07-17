@@ -52,7 +52,9 @@ data: {"type":"text-delta","runId":"run_abc","agentId":"agent-001","payload":{"t
 ```
 
 Event IDs are monotonically increasing integers per thread channel and unique
-within that thread.
+within that thread. In multi-main deployments they come from a shared
+per-thread sequence (Redis), so ids — and the replay cursor built from them —
+are valid against any main.
 
 ## Event Schema
 
@@ -63,6 +65,7 @@ Every event follows this schema:
   type: string;        // event type
   runId: string;       // correlates all events in a single message → response cycle
   agentId: string;     // agent this event is attributed to in the UI
+  ts?: number;         // epoch ms stamped at publish — replays reconstruct real timing from it
   payload?: object;    // event-specific data
 }
 ```
@@ -121,9 +124,32 @@ decision-making and supports faster iteration.
 reasoning tokens; when a model doesn't support it, no `reasoning-delta` events
 are sent. The frontend should handle the absence gracefully.
 
+### `tool-input-start`
+
+A tool call's arguments have started streaming from the model. Sent before
+`tool-call` — for tools with large arguments (e.g. `build-workflow` streaming
+generated workflow code) this can precede the full `tool-call` event by a
+long time, so the frontend can surface the pending call immediately.
+
+```json
+{
+  "type": "tool-input-start",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "toolCallId": "tc_abc123",
+    "toolName": "build-workflow"
+  }
+}
+```
+
+The frontend adds a pending entry to the agent's `toolCalls` with empty `args`
+and `isLoading: true`; the subsequent `tool-call` event fills in the args.
+
 ### `tool-call`
 
-An agent is invoking a tool. Sent before the tool executes.
+An agent is invoking a tool. Sent when the tool's arguments are complete,
+before the tool executes.
 
 ```json
 {
@@ -386,8 +412,12 @@ simultaneously persisted to thread storage and delivered to connected SSE client
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
 | Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Event persistence uses thread storage regardless of transport — this provides
-replay capability for reconnection.
+Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. Off (default),
+replay serves from a bounded in-memory buffer per thread (500 events / 2 MB,
+FIFO-evicted; ids reset on restart). On, the durable event log
+(`instance_ai_events`) is the replay source: coalesced step-level facts are
+appended with a per-thread `seq` assigned by the writer's drain, so cursors
+stay valid across restarts and across mains sharing one database.
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -407,8 +437,27 @@ The backend must accept the cursor from both `Last-Event-ID` header and
 `?lastEventId` query parameter. If neither is present, replay starts from
 event ID 0 (full history).
 
-IDs are monotonically increasing integers per thread. Replay does not
-require dedup.
+IDs are monotonically increasing integers per thread, assigned from a shared
+per-thread sequence in multi-main. Assignment order is monotonic, but delivery
+order is not guaranteed to be: concurrent producers on different mains (e.g. a
+background task while the orchestrator runs elsewhere) can interleave, so a
+connection may occasionally deliver a lower id after a higher one. The
+frontend therefore tracks its reconnect cursor as the max id seen and drops
+already-seen ids on replay overlap.
+
+With the durable log enabled (`N8N_INSTANCE_AI_DURABLE_LOG`), ids are
+database-assigned sequence numbers and only DURABLE facts carry an `id:`
+line. Ephemeral frames (`text-delta`, `reasoning-delta`, `status`,
+`filesystem-request`) are live-only: their SSE frames have no `id:` line, so
+the browser's replay cursor never points at them (the same mechanism as the
+`run-sync` control frames). On replay, the deltas a client missed are covered
+by coalesced `text-block` / `reasoning-block` facts, which the shared run
+reducer applies with REPLACE semantics keyed on the segment's `responseId` —
+a client that reconnects mid-block never renders partial text twice. The
+writer persists a batch before emitting it live, so a fact is never in
+neither store, and same-connection replay does not require dedup; the
+endpoint's replay-and-subscribe handoff dedups by `seq` across its one async
+read.
 
 ## Abort Support
 

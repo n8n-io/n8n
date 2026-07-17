@@ -3,26 +3,36 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
-
-import type { PackageRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import {
-	publicApiCompositeScope,
-	publicApiScope,
-} from '../../shared/middlewares/global.middleware';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
 import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
+
+import type { PackageRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware';
 
 const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
 	{},
-	{ workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] }
+	{
+		workflowIds?: string[];
+		folderIds?: string[];
+		projectIds?: string[];
+		includeVariableValues?: boolean;
+		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
+	}
 >;
 
 type ImportPackageRequest = PackageRequest.Import & {
@@ -39,7 +49,7 @@ function assertPackageExportApiKeyScopes(
 	workflowIds: string[],
 	folderIds: string[],
 	projectIds: string[],
-) {
+): string[] {
 	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
 	if (!apiKeyScopes) {
 		throw new ForbiddenError('Forbidden');
@@ -58,6 +68,15 @@ function assertPackageExportApiKeyScopes(
 		if (!apiKeyScopes.includes(scope)) {
 			throw new ForbiddenError('Forbidden');
 		}
+	}
+
+	return apiKeyScopes;
+}
+
+function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
+	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
+	if (!apiKeyScopes?.includes('workflow:import')) {
+		throw new ForbiddenError('Forbidden');
 	}
 }
 
@@ -80,59 +99,116 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 	exportPackage: [
 		publicApiCompositeScope(PACKAGE_EXPORT_SCOPES),
 		async (req, res) => {
-			const payload = ExportPackageRequestDto.safeParse(req.body);
-			if (!payload.success) {
-				throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
+			let workflowIds: string[] = [];
+			let folderIds: string[] = [];
+			let projectIds: string[] = [];
+			let includeVariableValues: boolean = true;
+
+			try {
+				const payload = ExportPackageRequestDto.safeParse(req.body);
+				if (!payload.success) {
+					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
+				}
+
+				workflowIds = payload.data.workflowIds ?? [];
+				folderIds = payload.data.folderIds ?? [];
+				projectIds = payload.data.projectIds ?? [];
+				includeVariableValues = payload.data.includeVariableValues;
+
+				// A package is either a set of loose workflows/folders or a set of whole projects, not both.
+				if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
+					throw new BadRequestError('Provide either workflowIds/folderIds or projectIds, not both');
+				}
+
+				if (workflowIds.length === 0 && folderIds.length === 0 && projectIds.length === 0) {
+					throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
+				}
+
+				const apiKeyScopes = assertPackageExportApiKeyScopes(
+					req,
+					workflowIds,
+					folderIds,
+					projectIds,
+				);
+
+				const stream = await Container.get(N8nPackagesService).exportPackage({
+					user: req.user,
+					workflowIds,
+					folderIds,
+					projectIds,
+					includeVariableValues,
+					canExportVariableValues: apiKeyScopes.includes('variable:list'),
+					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
+				});
+
+				return await streamPackageExport(res, stream);
+			} catch (error) {
+				Container.get(EventService).emit('n8n-package-export-failed', {
+					user: req.user,
+					reason: classifyPackageFailure(error),
+					...(workflowIds.length ? { workflowIds } : {}),
+					...(folderIds.length ? { folderIds } : {}),
+					...(projectIds.length ? { projectIds } : {}),
+				});
+
+				if (
+					error instanceof PackageEntityAccessDeniedError ||
+					error instanceof PackageEntityNotFoundError
+				) {
+					throw new UserError(error.message, { description: error.description });
+				}
+				throw error;
 			}
-
-			const workflowIds = payload.data.workflowIds ?? [];
-			const folderIds = payload.data.folderIds ?? [];
-			const projectIds = payload.data.projectIds ?? [];
-
-			// A package is either a set of loose workflows/folders or a set of whole projects, not both.
-			if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
-				throw new BadRequestError('Provide either workflowIds/folderIds or projectIds, not both');
-			}
-
-			if (workflowIds.length === 0 && folderIds.length === 0 && projectIds.length === 0) {
-				throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
-			}
-
-			assertPackageExportApiKeyScopes(req, workflowIds, folderIds, projectIds);
-
-			const stream = await Container.get(N8nPackagesService).exportPackage({
-				user: req.user,
-				workflowIds,
-				folderIds,
-				projectIds,
-			});
-
-			return await streamPackageExport(res, stream);
 		},
 	],
 	importPackage: [
-		publicApiScope('workflow:import'),
+		publicApiCompositeScope('workflow:import'),
 		async (req, res) => {
-			const packageFile = resolveImportPackageUpload(req);
+			let projectId: string | undefined;
+			let folderId: string | undefined;
 
-			const payload = ImportPackageRequestDto.safeParse(req.body ?? {});
-			if (!payload.success) {
-				throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
+			try {
+				const payload = ImportPackageRequestDto.safeParse(req.body ?? {});
+				if (!payload.success) {
+					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
+				}
+
+				projectId = payload.data.projectId;
+				folderId = payload.data.folderId;
+
+				assertPackageImportApiKeyScopes(req);
+
+				const packageFile = resolveImportPackageUpload(req);
+
+				const result = await Container.get(N8nPackagesService).importPackage({
+					user: req.user,
+					apiKeyScopes: req.tokenGrant?.apiKeyScopes,
+					projectId,
+					folderId,
+					credentialMatchingMode: payload.data.credentialMatchingMode,
+					credentialMissingMode: payload.data.credentialMissingMode,
+					bindings: {
+						credentials: new Map(Object.entries(payload.data.bindings.credentials ?? {})),
+					},
+					workflowConflictPolicy: payload.data.workflowConflictPolicy,
+					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
+					workflowIdPolicy: payload.data.workflowIdPolicy,
+					folderConflictPolicy: payload.data.folderConflictPolicy,
+					dataTableMatchingMode: payload.data.dataTableMatchingMode,
+					dataTableMissingMode: payload.data.dataTableMissingMode,
+					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
+					packageBuffer: packageFile.buffer,
+				});
+				return res.status(200).json(result);
+			} catch (error) {
+				Container.get(EventService).emit('n8n-package-import-failed', {
+					user: req.user,
+					reason: classifyPackageFailure(error),
+					...(projectId ? { projectId } : {}),
+					...(folderId ? { folderId } : {}),
+				});
+				throw error;
 			}
-
-			const result = await Container.get(N8nPackagesService).importPackage({
-				user: req.user,
-				projectId: payload.data.projectId,
-				folderId: payload.data.folderId,
-				credentialMatchingMode: payload.data.credentialMatchingMode,
-				credentialMissingMode: payload.data.credentialMissingMode,
-				credentialBindings: new Map(Object.entries(payload.data.credentialBindings)),
-				workflowConflictPolicy: payload.data.workflowConflictPolicy,
-				workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
-				workflowIdPolicy: payload.data.workflowIdPolicy,
-				packageBuffer: packageFile.buffer,
-			});
-			return res.status(200).json(result);
 		},
 	],
 };

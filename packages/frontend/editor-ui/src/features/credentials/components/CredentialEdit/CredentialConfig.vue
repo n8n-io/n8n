@@ -249,6 +249,10 @@ const canWrite = computed(() => {
 	return canCreate.value || canEdit.value;
 });
 
+// Switching a credential's type in either direction requires the createEndUser
+// permission — the change affects every user's own connection, not just the caller's.
+const canSelectEndUserType = computed(() => !!props.credentialPermissions.createEndUser);
+
 // Connecting an existing private credential only needs the `connect` capability
 // (no edit rights); shared/static credentials store the token on the shared
 // credential itself, so connecting them follows the write permission.
@@ -438,6 +442,30 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					@click="$emit('retest')"
 				/>
 
+				<!-- Type selection stays above the connection banners: the connect /
+					 connected banner always renders below the selector, so it keeps a
+					 stable position when the credential connects or the type changes. -->
+				<CredentialTypeSelector
+					v-if="
+						isPrivateCredentialsEnabled &&
+						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
+						isOAuthType &&
+						canWrite &&
+						canSelectEndUserType
+					"
+					:model-value="Boolean(isResolvable)"
+					:info-tip="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')"
+					@update:model-value="(val) => $emit('update:isResolvable', val)"
+				/>
+
+				<N8nInfoTip
+					v-if="isResolvable"
+					:bold="false"
+					data-test-id="end-user-credential-connect-subtext"
+				>
+					{{ i18n.baseText('credentialEdit.credentialConfig.endUserCredential.connectSubtext') }}
+				</N8nInfoTip>
+
 				<Banner
 					v-show="showOAuthSuccessBanner && !showValidationWarning"
 					theme="success"
@@ -483,22 +511,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					@click="$emit('retest')"
 				/>
 
-				<CredentialTypeSelector
-					v-if="
-						isPrivateCredentialsEnabled &&
-						// Only OAuth credentials can be dynamic for now, as they are the only ones with the managed authorize endpoint
-						isOAuthType &&
-						canWrite
-					"
-					:model-value="Boolean(isResolvable)"
-					:info-tip="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')"
-					@update:model-value="(val) => $emit('update:isResolvable', val)"
-				/>
-
 				<Banner
 					v-show="showOAuthNotConnectedBanner && !showValidationWarning"
 					theme="warning"
-					:message="i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')"
+					:message="
+						isResolvable
+							? i18n.baseText('credentialEdit.credentialConfig.accountNotConnected.endUser')
+							: i18n.baseText('credentialEdit.credentialConfig.accountNotConnected')
+					"
 					:button-label="i18n.baseText('credentialEdit.credentialConfig.connect')"
 					:button-title="i18n.baseText('credentialEdit.credentialConfig.connectOAuth2Credential')"
 					data-test-id="oauth-not-connected-banner"
@@ -521,14 +541,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						/>
 					</template>
 				</Banner>
-
-				<N8nInfoTip
-					v-if="isResolvable"
-					:bold="false"
-					data-test-id="end-user-credential-connect-subtext"
-				>
-					{{ i18n.baseText('credentialEdit.credentialConfig.endUserCredential.connectSubtext') }}
-				</N8nInfoTip>
 
 				<template v-if="canWrite">
 					<!-- Instance AI credential setup help (mimics the assistant button) -->

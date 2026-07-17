@@ -26,13 +26,16 @@ import {
 	mapGroupsToVueFlowNodes,
 } from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import {
+	NodeGroupDescriptionVisibilityKey,
+	useCanvasNodeGroupDescriptionVisibility,
+} from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
+import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 
 defineOptions({
 	inheritAttrs: false,
@@ -98,18 +101,14 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const posthogStore = usePostHog();
-const isCanvasNodeGroupingEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
-);
-
 const nodeGroupView = useCanvasNodeGroupView({
 	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
-	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
 	getGroupExpansionMode: () => props.groupExpansionMode,
 });
+
+const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility();
 
 // Keep the group view in sync with the currently displayed document
 watch(
@@ -117,6 +116,9 @@ watch(
 	() => {
 		nodeGroupView.reinitialize();
 		applyGroupExpansion();
+		nodeGroupDescriptionVisibility.restore(
+			new Set(workflowDocumentStore.value.allGroups.map((group) => group.id)),
+		);
 	},
 );
 
@@ -165,9 +167,8 @@ function applyGroupExpansion() {
 watch(groupIdsToExpand, applyGroupExpansion, { immediate: true });
 
 const layoutComponents = computed(() =>
-	// Without grouping enabled or without groups there can be no pushes —
-	// skip building per-node components.
-	!isCanvasNodeGroupingEnabled.value || workflowDocumentStore.value.allGroups.length === 0
+	// Without groups there can be no pushes — skip building per-node components.
+	workflowDocumentStore.value.allGroups.length === 0
 		? []
 		: buildNodeGroupLayoutComponents({
 				allGroups: workflowDocumentStore.value.allGroups,
@@ -200,6 +201,12 @@ const mappedNodes = computed(() => [
 ]);
 
 provide(NodeGroupViewKey, nodeGroupView);
+provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
+// Collapse state for the context menu's expand/collapse item enablement —
+// the menu lives in the shared layer and can't reach this canvas' view state.
+provide(ContextMenuGroupViewKey, {
+	isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+});
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

@@ -45,6 +45,20 @@ describe('packageManifestSchema', () => {
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate credential id/i);
 	});
 
+	it('rejects duplicate data table ids in requirements.dataTables', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				dataTables: [
+					{ id: 'dt-1', name: 'A', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
+					{ id: 'dt-1', name: 'B', sourceProjectId: 'proj-1', usedByWorkflows: ['wf-abc'] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate data table id/i);
+	});
+
 	it('preserves a folders section', () => {
 		const manifest = {
 			...validManifest,
@@ -64,6 +78,41 @@ describe('packageManifestSchema', () => {
 		};
 
 		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate folder id/i);
+	});
+
+	it('rejects a manifest containing duplicate variable ids', () => {
+		const manifest = {
+			...validManifest,
+			variables: [
+				{ id: 'var-1', name: 'API_URL', target: 'variables/api-url' },
+				{ id: 'var-1', name: 'API_URL', target: 'variables/api-url-2' },
+			],
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate variable id/i);
+	});
+
+	it('rejects duplicate variable names in requirements.variables', () => {
+		const manifest = {
+			...validManifest,
+			requirements: {
+				variables: [
+					{ name: 'API_URL', value: 'a', usedByWorkflows: ['wf-abc'] },
+					{ name: 'API_URL', value: 'b', usedByWorkflows: ['wf-abc'] },
+				],
+			},
+		};
+
+		expect(() => packageManifestSchema.parse(manifest)).toThrow(/duplicate variable name/i);
+	});
+
+	it('preserves a variables section', () => {
+		const manifest = {
+			...validManifest,
+			variables: [{ id: 'var-1', name: 'API_URL', target: 'variables/api-url' }],
+		};
+
+		expect(packageManifestSchema.parse(manifest).variables).toEqual(manifest.variables);
 	});
 
 	it('accepts manifests with unknown sections for forward compatibility', () => {

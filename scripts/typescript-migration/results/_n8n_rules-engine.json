@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/rules-engine",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:29:23.570Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            893,
+            844,
+            875
+          ],
+          "min": 844,
+          "median": 875,
+          "mean": 871
+        },
+        "build": {
+          "runsMs": [
+            811,
+            812,
+            822
+          ],
+          "min": 811,
+          "median": 812,
+          "mean": 815
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:30:00.600Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            535,
+            521,
+            515
+          ],
+          "min": 515,
+          "median": 521,
+          "mean": 524
+        },
+        "build": {
+          "runsMs": [
+            565,
+            513,
+            495
+          ],
+          "min": 495,
+          "median": 513,
+          "mean": 524
+        }
+      }
+    }
+  }
+}

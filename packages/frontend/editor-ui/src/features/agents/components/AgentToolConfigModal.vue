@@ -35,6 +35,8 @@ interface ToolModalData {
 	existingToolNames?: string[];
 	projectId?: string;
 	agentId?: string;
+	/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
+	supportsToolApproval?: boolean;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
 	onRemove?: () => void;
 	kind?: 'tool';
@@ -47,6 +49,8 @@ interface McpServerModalData {
 	existingToolNames?: string[];
 	projectId?: string;
 	agentId?: string;
+	/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
+	supportsToolApproval?: boolean;
 	onConfirm: (updatedServer: AgentJsonMcpServerConfig) => void;
 	onRemove?: () => void;
 }
@@ -135,7 +139,10 @@ const canSave = computed(() => {
 	if (isMcpTool.value) return isValid.value && mcpApprovalValid.value;
 	return isValid.value;
 });
-const showApprovalSetting = computed(() => !isMcpTool.value && toolModalData.value !== null);
+const supportsApproval = computed(() => props.data.supportsToolApproval !== false);
+const showApprovalSetting = computed(
+	() => supportsApproval.value && !isMcpTool.value && toolModalData.value !== null,
+);
 
 watch(
 	() => toolModalData.value?.toolRef,
@@ -218,6 +225,10 @@ function closeDialog() {
 }
 
 function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
+	if (!supportsApproval.value) {
+		const { requireApproval: _requireApproval, ...rest } = ref;
+		return rest as AgentJsonToolRef;
+	}
 	const updatedRef = { ...ref };
 	if (approvalRequired.value) {
 		updatedRef.requireApproval = true;
@@ -229,7 +240,7 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 
 function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerConfig {
 	const updatedServer = { ...server };
-	if (mcpApproval.value) {
+	if (supportsApproval.value && mcpApproval.value) {
 		updatedServer.approval = mcpApproval.value;
 	} else {
 		delete updatedServer.approval;
@@ -400,7 +411,7 @@ function handleNodeUpdate(node: INode) {
 							v-model="approvalRequired"
 						/>
 						<AgentToolConfigMcpApprovalSetting
-							v-if="isMcpTool && currentNode"
+							v-if="isMcpTool && currentNode && supportsApproval"
 							v-model="mcpApproval"
 							:node="currentNode"
 							:project-id="data.projectId"

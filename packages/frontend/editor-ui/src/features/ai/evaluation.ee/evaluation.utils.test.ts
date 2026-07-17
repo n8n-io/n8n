@@ -16,6 +16,7 @@ import {
 	getDefaultOrderedColumns,
 	getDeltaTone,
 	getMetricCategory,
+	getMetricDescriptionKey,
 	getTestCasesColumns,
 	getTestTableHeaders,
 	getUserDefinedMetricNames,
@@ -1448,6 +1449,28 @@ describe('utils', () => {
 			expect(getMetricCategory('customMetrics')).toBe('custom');
 			expect(getMetricCategory(undefined)).toBe('custom');
 			expect(getMetricCategory('madeUpType')).toBe('custom');
+		});
+	});
+
+	describe('getMetricDescriptionKey', () => {
+		it('returns an i18n key for each built-in metric', () => {
+			expect(getMetricDescriptionKey('correctness')).toBe(
+				'evaluation.metric.description.correctness',
+			);
+			expect(getMetricDescriptionKey('helpfulness')).toBe(
+				'evaluation.metric.description.helpfulness',
+			);
+			expect(getMetricDescriptionKey('stringSimilarity')).toBe(
+				'evaluation.metric.description.stringSimilarity',
+			);
+			expect(getMetricDescriptionKey('categorization')).toBe(
+				'evaluation.metric.description.categorization',
+			);
+			expect(getMetricDescriptionKey('toolsUsed')).toBe('evaluation.metric.description.toolsUsed');
+		});
+		it('returns null for custom/unknown metrics', () => {
+			expect(getMetricDescriptionKey('myCustomMetric')).toBeNull();
+			expect(getMetricDescriptionKey(undefined)).toBeNull();
 		});
 	});
 

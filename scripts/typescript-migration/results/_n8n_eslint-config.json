@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/eslint-config",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T09:50:43.926Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1732,
+            1752,
+            1635
+          ],
+          "min": 1635,
+          "median": 1732,
+          "mean": 1706
+        },
+        "build": {
+          "runsMs": [
+            1383,
+            1318,
+            1313
+          ],
+          "min": 1313,
+          "median": 1318,
+          "mean": 1338
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T09:52:21.010Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            522,
+            498,
+            501
+          ],
+          "min": 498,
+          "median": 501,
+          "mean": 507
+        },
+        "build": {
+          "runsMs": [
+            534,
+            508,
+            504
+          ],
+          "min": 504,
+          "median": 508,
+          "mean": 515
+        }
+      }
+    }
+  }
+}

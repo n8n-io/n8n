@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/permissions",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T08:51:01.528Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1016,
+            956,
+            965
+          ],
+          "min": 956,
+          "median": 965,
+          "mean": 979
+        },
+        "build": {
+          "runsMs": [
+            993,
+            918,
+            879
+          ],
+          "min": 879,
+          "median": 918,
+          "mean": 930
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T08:51:37.138Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            639,
+            636,
+            607
+          ],
+          "min": 607,
+          "median": 636,
+          "mean": 627
+        },
+        "build": {
+          "runsMs": [
+            656,
+            687,
+            596
+          ],
+          "min": 596,
+          "median": 656,
+          "mean": 646
+        }
+      }
+    }
+  }
+}

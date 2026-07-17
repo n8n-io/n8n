@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/constants",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:55:20.856Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            687,
+            670,
+            664
+          ],
+          "min": 664,
+          "median": 670,
+          "mean": 673
+        },
+        "build": {
+          "runsMs": [
+            691,
+            685,
+            692
+          ],
+          "min": 685,
+          "median": 691,
+          "mean": 689
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T08:55:50.952Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            430,
+            448,
+            427
+          ],
+          "min": 427,
+          "median": 430,
+          "mean": 435
+        },
+        "build": {
+          "runsMs": [
+            438,
+            434,
+            452
+          ],
+          "min": 434,
+          "median": 438,
+          "mean": 442
+        }
+      }
+    }
+  }
+}

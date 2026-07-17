@@ -361,9 +361,9 @@ describe('mapGroupsToVueFlowNodes', () => {
 		expect(out[0].connectable).toBe(false);
 	});
 
-	it("marks the title bar NOT selectable when expanded — the group's nodes are the interactive surface then", () => {
+	it('keeps the title bar selectable when expanded — selecting it selects the whole group', () => {
 		const out = setup(false);
-		expect(out[0].selectable).toBe(false);
+		expect(out[0].selectable).toBe(true);
 	});
 
 	it('keeps a collapsed title bar selectable but not draggable when readOnly', () => {
@@ -437,6 +437,36 @@ describe('mapGroupsToVueFlowNodes', () => {
 			width: 96,
 			height: 96,
 		});
+	});
+
+	it('marks the group deactivated when every member node is disabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			{ ...makeNode('b', 400, 200), disabled: true },
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(true);
+	});
+
+	it('does not mark the group deactivated while any member node is enabled', () => {
+		const getById = nodeStore(
+			{ ...makeNode('a', 100, 200), disabled: true },
+			makeNode('b', 400, 200),
+		);
+		const out = mapGroupsToVueFlowNodes({
+			allGroups: [group],
+			getNodeById: getById,
+			isGroupCollapsed: () => true,
+			readOnly: false,
+			getNodeExecutionSnapshot: snapshotGetter(),
+		});
+		expect(out[0].data?.allNodesDisabled).toBe(false);
 	});
 });
 

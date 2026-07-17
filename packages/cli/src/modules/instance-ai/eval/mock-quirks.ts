@@ -65,11 +65,11 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'OpenAI endpoints commonly seen in workflows:\n' +
 			'  * `POST /v1/responses` (Responses API) → JSON `{ "id": "resp_abc123", "object": "response", "status": "completed", "model": "<from request>", "output": [{ "type": "message", "id": "msg_abc123", "status": "completed", "role": "assistant", "content": [{ "type": "output_text", "text": "<answer>", "annotations": [] }] }], "usage": { "input_tokens": 100, "output_tokens": 50, "total_tokens": 150 } }`. The `output` ARRAY is REQUIRED — consumers read `output[].content[].text` and crash without it. NEVER return `{ "content": ... }` or a chat-completions `choices` shape for this endpoint.\n' +
 			'  * `POST /v1/audio/transcriptions` and `POST /v1/audio/translations` → JSON `{ "text": "<plausible transcript>", ... }`. The request multipart body has been redacted (you will see `__redacted: "multipart"`); derive the transcript from scenario/node hints when present, otherwise return a short generic English sentence.\n' +
-			'  * `POST /v1/images/generations` → JSON `{ "created": <unix>, "data": [{ "url": "https://example.invalid/img.png", "revised_prompt": "..." }] }`. If the request body has `response_format: "b64_json"`, replace `url` with `b64_json` containing a tiny base64 PNG-like blob (literal value `iVBORw0KGgo` is fine — the eval harness does not decode it).\n' +
+			'  * `POST /v1/images/generations` → ALWAYS `type: "json"`, NEVER a binary/Buffer response (this endpoint returns a JSON envelope, not raw image bytes — a Buffer crashes the node with "data is not iterable"). Body: `{ "created": <unix>, "data": [ ... ] }` where `data` is an ARRAY of image OBJECTS (never a flat byte array). The per-image shape depends on the request `model`: the `gpt-image-1` family (`gpt-image-1`, `gpt-image-1-mini`) ALWAYS returns base64 and NEVER a url (it does not support `response_format`), so each `data[]` entry MUST be `{ "b64_json": "iVBORw0KGgo", "revised_prompt": "..." }` — never `{ "url": ... }`. For `dall-e-2`/`dall-e-3`, return `{ "url": "https://example.invalid/img.png", "revised_prompt": "..." }` by default, or `{ "b64_json": "iVBORw0KGgo", "revised_prompt": "..." }` when the request body has `response_format: "b64_json"`. The literal base64 value `iVBORw0KGgo` is fine — the eval harness does not decode it.\n' +
 			'  * `GET /v1/files/{file_id}/content` → BINARY (`type: "binary"`). Use `contentType` matching the file MIME if known, else `application/octet-stream`. The metadata sibling `GET /v1/files/{file_id}` is JSON.\n' +
 			'  * Chat completions, embeddings, moderations, files-list, models-list → JSON only.',
 		rationale:
-			'OpenAI mixes JSON, binary, and base64-in-JSON across endpoints, and AI workflow scenarios depend on the transcript text being plausibly downstream-matchable.',
+			'OpenAI mixes JSON, binary, and base64-in-JSON across endpoints, and AI workflow scenarios depend on the transcript text being plausibly downstream-matchable. Image generations are model-dependent: the gpt-image-1 family only ever returns b64_json (no url, no response_format), so a url-shaped mock crashes the n8n OpenAI image node with "first argument must be of type string ... Received undefined". A second observed failure is the mock returning a raw binary Buffer instead of the JSON envelope, crashing the node with "data is not iterable" — the guidance now pins json+b64_json (array of image objects, never binary) for that model family.',
 		addedAt: '2026-05-19',
 	},
 	{
@@ -172,6 +172,15 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		rationale:
 			'S3 mixes binary and empty responses on the same path skeleton; downstream nodes (Extract from File, image processing) expect a real file body for GET.',
 		addedAt: '2026-05-19',
+	},
+	{
+		service: 'Generativelanguage',
+		hostnames: ['generativelanguage.googleapis.com'],
+		guidance:
+			'Google Gemini `POST /v1beta/models/{model}:generateContent` (also `/v1/...`) → the FULL Gemini envelope: `{ "candidates": [{ "content": { "parts": [{ "text": "<answer>" }], "role": "model" }, "finishReason": "STOP", "index": 0 }], "usageMetadata": { "promptTokenCount": 10, "candidatesTokenCount": 20, "totalTokenCount": 30 } }`. The `candidates[].content.parts[].text` path is REQUIRED — the n8n Gemini node reads exactly that and yields nothing (or crashes) without it. NEVER return a bare `{ "text": ... }`, `{ "content": ... }`, or the answer object at the top level. When the request demands JSON output (`generationConfig.responseMimeType: "application/json"`, a `responseSchema`, or prompt instructions for a JSON document), the JSON goes INSIDE `parts[0].text` as a STRING — still wrapped in the full envelope.',
+		rationale:
+			'The Gemini node parses candidates[].content.parts; bare payload objects yield empty output that downstream IF/parse nodes then misroute. Observed as mock_issue rows in run 29012884140 (whatsapp-faq-assistant, weekly-social-content-scheduler).',
+		addedAt: '2026-07-09',
 	},
 ];
 

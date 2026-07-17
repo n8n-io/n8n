@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import type { InstanceAiAttachment } from '@n8n/api-types';
@@ -12,12 +12,16 @@ import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
-import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT,
+} from '@/app/constants/experiments';
+import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT } from '@/experiments/instanceAiTemplateExamples/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { INSTANCE_AI_THREAD_VIEW } from './constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_PROJECT_ID_QUERY } from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
@@ -60,6 +64,12 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import ProjectSelect from './components/ProjectSelect.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	useInstanceAiTemplateExamplesExperiment,
+	useInstanceAiTemplateExamplesStore,
+	TemplateExamplesCatalog,
+	TEMPLATE_PROMPT_SUFFIX,
+} from '@/experiments/instanceAiTemplateExamples';
 
 const INSTANCE_AI_DEFAULT_TITLE_KEY: BaseTextKey = 'instanceAi.emptyState.title';
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
@@ -87,11 +97,19 @@ const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
 const projectsStore = useProjectsStore();
-const selectedProject = ref(projectsStore.personalProject?.id);
+const route = useRoute();
+const router = useRouter();
+function resolveInitialProjectId(): string | undefined {
+	const queryProjectId = route.query[INSTANCE_AI_PROJECT_ID_QUERY];
+	if (typeof queryProjectId === 'string' && queryProjectId.length > 0) {
+		return queryProjectId;
+	}
+	return projectsStore.personalProject?.id;
+}
+const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
-const router = useRouter();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -103,6 +121,31 @@ const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
 	useInstanceAiPromptSuggestionsV2Experiment();
 const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
 	useInstanceAiWorkflowPreviewSuggestionsExperiment();
+const {
+	isFeatureEnabled: isTemplateExamplesExperimentEnabled,
+	currentVariant: templateExamplesVariant,
+} = useInstanceAiTemplateExamplesExperiment();
+const templateExamplesStore = useInstanceAiTemplateExamplesStore();
+const showTemplateExamples = computed(
+	() => isTemplateExamplesExperimentEnabled.value && !templateExamplesStore.hasLoadFailed,
+);
+let hasTrackedTemplateExamplesExposure = false;
+watch(
+	showTemplateExamples,
+	(visible) => {
+		const variant = templateExamplesVariant.value;
+		if (!visible || hasTrackedTemplateExamplesExposure || typeof variant !== 'string') {
+			return;
+		}
+
+		telemetry.track(
+			INSTANCE_AI_TEMPLATE_EXAMPLES_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT, variant),
+		);
+		hasTrackedTemplateExamplesExposure = true;
+	},
+	{ immediate: true },
+);
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
@@ -255,6 +298,9 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		return {};
 	}
 
+	if (showTemplateExamples.value) {
+		return {};
+	}
 	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
 		const resolution = personalizedPromptSuggestionResolution.value;
 
@@ -305,7 +351,16 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		suggestions: INSTANCE_AI_EMPTY_STATE_SUGGESTIONS,
 	};
 });
+// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
+const INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY =
+	'experiments.instanceAiTemplateExamples.emptyState.title' as BaseTextKey;
+const INSTANCE_AI_TEMPLATE_EXAMPLES_PLACEHOLDER_KEY =
+	'experiments.instanceAiTemplateExamples.input.placeholder' as BaseTextKey;
+
 const emptyStateTitleKey = computed<BaseTextKey>(() => {
+	if (showTemplateExamples.value) {
+		return INSTANCE_AI_TEMPLATE_EXAMPLES_TITLE_KEY;
+	}
 	if (isPersonalizedPromptSuggestionsTreatmentVariant.value) {
 		return INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY;
 	}
@@ -320,6 +375,44 @@ const emptyStateTitleKey = computed<BaseTextKey>(() => {
 
 const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 const isStartingThread = ref(false);
+
+watch(
+	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
+	() => {
+		// Re-resolve on every change, including when the query is cleared, so
+		// navigating away from a project-scoped entry falls back to the
+		// personal project instead of leaving the previous project selected.
+		selectedProject.value = resolveInitialProjectId();
+	},
+);
+
+// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
+const templatePreviewPrompt = ref<string | null>(null);
+
+function handleTemplateHoverPrompt(prompt: string) {
+	templatePreviewPrompt.value = prompt;
+}
+
+function handleTemplateHoverEnd() {
+	templatePreviewPrompt.value = null;
+}
+
+const inputPulsing = ref(false);
+const selectedTemplatePrompt = ref<string | null>(null);
+
+function handleTemplateSelectPrompt(prompt: string) {
+	templatePreviewPrompt.value = null;
+	if (chatInputRef.value) {
+		chatInputRef.value.setText(prompt);
+		chatInputRef.value.focus();
+	}
+	selectedTemplatePrompt.value = prompt;
+	inputPulsing.value = true;
+	setTimeout(() => {
+		inputPulsing.value = false;
+	}, 250);
+}
+// EOF InstanceAiTemplateExamplesExperiment experiment cleanup
 const emptyLayoutRef = useTemplateRef<HTMLElement>('emptyLayout');
 const centeredInputRef = useTemplateRef<HTMLElement>('centeredInput');
 const CANVAS_NATURAL_HEIGHT_PX = 420;
@@ -367,6 +460,13 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 		return;
 	}
 
+	// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
+	const isFromTemplate =
+		isTemplateExamplesExperimentEnabled.value &&
+		selectedTemplatePrompt.value !== null &&
+		message.startsWith(selectedTemplatePrompt.value);
+	const finalMessage = isFromTemplate ? message + TEMPLATE_PROMPT_SUFFIX : message;
+
 	const threadId = uuidv4();
 	isStartingThread.value = true;
 
@@ -382,7 +482,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	void thread.sendMessage(message, attachments, rootStore.pushRef);
+	void thread.sendMessage(finalMessage, attachments, rootStore.pushRef);
 	void router.replace({
 		name: INSTANCE_AI_THREAD_VIEW,
 		params: { threadId },
@@ -488,7 +588,7 @@ function handleShelfSuggestionInsert(payload: {
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="$style.centeredInput">
+				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
 						variant="standalone"
@@ -502,6 +602,11 @@ function handleShelfSuggestionInsert(payload: {
 						ref="chatInputRef"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+						:contextual-suggestion="templatePreviewPrompt"
+						:placeholder-key="
+							showTemplateExamples ? INSTANCE_AI_TEMPLATE_EXAMPLES_PLACEHOLDER_KEY : undefined
+						"
+						:bold-placeholder="showTemplateExamples"
 						v-bind="emptyStatePromptSuggestionProps"
 						@submit="handleSubmit"
 						@workflow-preview="handleWorkflowPreview"
@@ -513,6 +618,14 @@ function handleShelfSuggestionInsert(payload: {
 						</template>
 					</InstanceAiInput>
 				</div>
+				<!-- Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment -->
+				<TemplateExamplesCatalog
+					v-if="showTemplateExamples"
+					:class="$style.templateCatalog"
+					@hover-prompt="handleTemplateHoverPrompt"
+					@hover-end="handleTemplateHoverEnd"
+					@select-prompt="handleTemplateSelectPrompt"
+				/>
 				<Transition name="workflow-preview-fade">
 					<div
 						v-if="
@@ -574,6 +687,8 @@ function handleShelfSuggestionInsert(payload: {
 	gap: var(--spacing--lg);
 	padding: var(--spacing--lg);
 	padding-top: 20vh;
+	overflow-y: auto;
+	overflow-x: hidden;
 }
 
 .centeredInput {
@@ -582,6 +697,29 @@ function handleShelfSuggestionInsert(payload: {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.inputPulse {
+	animation: inputScaleUp 0.25s ease;
+}
+
+@keyframes inputScaleUp {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.02);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+.templateCatalog {
+	width: 100%;
+	max-width: 1014px;
+	min-width: 0;
+	margin-top: var(--spacing--m);
 }
 
 .workflowPreviewWrapper {

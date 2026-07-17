@@ -157,6 +157,10 @@ describe('AgentsToolsService', () => {
 			}
 		});
 
+		it('rejects the sub-workflow tool node', () => {
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.toolWorkflow')).toBe(false);
+		});
+
 		it('allows shared AI utility tool node IDs', () => {
 			for (const nodeType of AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES) {
 				expect(isAgentToolNodeType(nodeType)).toBe(true);

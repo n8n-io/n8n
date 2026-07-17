@@ -1,5 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type {
+	NewScheduledJob,
 	ScheduledJob as ScheduledJobEntity,
 	ScheduledTask as ScheduledTaskEntity,
 	TerminalTaskStatus,
@@ -11,7 +12,7 @@ import {
 	ScheduledTaskRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 // SKIP LOCKED and truly parallel writes only apply on Postgres; the local sqlite driver
 // serializes every writer through a single lock. Tests that need real parallelism are
@@ -80,6 +81,24 @@ describe('scheduled repositories', () => {
 			}),
 		);
 	}
+
+	/** A minimal interval job row; bookkeeping columns take their defaults. */
+	const newJobRow = (name: string, overrides: Partial<NewScheduledJob> = {}): NewScheduledJob => ({
+		name,
+		workflowId: null,
+		nodeId: null,
+		taskType: 'scheduleTrigger',
+		payload: {},
+		kind: 'interval',
+		cronExpression: null,
+		timezone: null,
+		recurrenceUnit: null,
+		recurrenceSize: null,
+		intervalSeconds: 60,
+		fireAt: null,
+		nextRunAt: secondsFromNow(-60),
+		...overrides,
+	});
 
 	/** Insert a task in a given lifecycle state; `scheduledFor` is made unique per row. */
 	let taskSequence = 0;
@@ -194,6 +213,32 @@ describe('scheduled repositories', () => {
 			);
 
 			expect(claimed?.jobs.map((j) => j.id)).toEqual([dueEarly.id, dueLate.id]);
+		});
+
+		it('claims a not-yet-due job whose nextRunAt falls within the lookahead', async () => {
+			// The materializer polls on a fixed tick, so a job due just after a tick would
+			// otherwise wait a whole interval to be noticed. Claiming ahead of due lets the
+			// job be planned before its window lapses. Default (0) lookahead ignores it.
+			const soon = await createJob({ nextRunAt: secondsFromNow(5) });
+
+			const strict = await dataSource.transaction(
+				async (trx) => await jobRepository.claimDue(trx, 100),
+			);
+			expect(strict).toBeUndefined();
+
+			const withLookahead = await dataSource.transaction(
+				async (trx) => await jobRepository.claimDue(trx, 100, 10_000),
+			);
+			expect(withLookahead?.jobs.map((j) => j.id)).toEqual([soon.id]);
+		});
+
+		it('still excludes a job whose nextRunAt is beyond the lookahead', async () => {
+			await createJob({ nextRunAt: secondsFromNow(60) });
+
+			const claimed = await dataSource.transaction(
+				async (trx) => await jobRepository.claimDue(trx, 100, 10_000),
+			);
+			expect(claimed).toBeUndefined();
 		});
 
 		it('excludes disabled, future, and null-nextRunAt jobs', async () => {
@@ -339,6 +384,170 @@ describe('scheduled repositories', () => {
 				expect(reloaded.nextRunAt!.getTime()).toBe(nextRunAt.getTime());
 			}
 		});
+
+		it('advances a batch larger than the default chunk without overflowing', async () => {
+			// insertMany seeds the rows in bulk; the default advanceMany chunk on sqlite is 200,
+			// so 600 advances span multiple chunks. Built as one statement, the CASE would overflow
+			// SQLite's expression-depth cap, so this guards the dialect-aware chunk default.
+			const ids = await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.insertMany(
+						trx,
+						Array.from({ length: 600 }, (_, i) => newJobRow(`wf:node:${i}`)),
+					),
+			);
+			const nextRunAt = secondsFromNow(3600);
+
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.advanceMany(
+						trx,
+						ids.map((id) => ({ id, nextRunAt, lastFiredAt: null })),
+					),
+			);
+
+			const reloaded = await jobRepository.findBy({ id: In(ids) });
+			expect(reloaded).toHaveLength(600);
+			expect(reloaded.every((row) => row.nextRunAt?.getTime() === nextRunAt.getTime())).toBe(true);
+		});
+
+		it('clamps an oversized chunk size to the dialect maximum', async () => {
+			const ids = await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.insertMany(
+						trx,
+						Array.from({ length: 600 }, (_, i) => newJobRow(`wf:node:${i}`)),
+					),
+			);
+			const nextRunAt = secondsFromNow(3600);
+
+			// A chunk far past the driver's limit must be clamped, not run as one statement: on
+			// sqlite an unclamped 600-branch CASE would overflow the expression-depth cap.
+			await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.advanceMany(
+						trx,
+						ids.map((id) => ({ id, nextRunAt, lastFiredAt: null })),
+						10_000_000,
+					),
+			);
+
+			const reloaded = await jobRepository.findBy({ id: In(ids) });
+			expect(reloaded).toHaveLength(600);
+			expect(reloaded.every((row) => row.nextRunAt?.getTime() === nextRunAt.getTime())).toBe(true);
+		});
+	});
+
+	describe('ScheduledJobRepository.insertMany', () => {
+		it('inserts new rows and returns one id per input job, in input order', async () => {
+			const jobs = [newJobRow('wf:node:0'), newJobRow('wf:node:1')];
+
+			const ids = await dataSource.transaction(
+				async (trx) => await jobRepository.insertMany(trx, jobs),
+			);
+
+			expect(ids).toHaveLength(2);
+			// The returned ids must line up with the input order by name, so the caller's
+			// index-based zip attributes each id to the right job.
+			const stored = await jobRepository.findBy({ name: In(['wf:node:0', 'wf:node:1']) });
+			const idByName = new Map(stored.map((row) => [row.name, row.id]));
+			expect(ids).toEqual([idByName.get('wf:node:0'), idByName.get('wf:node:1')]);
+		});
+
+		it('returns the existing id for a name already taken, without duplicating the row', async () => {
+			// A prior writer already holds `wf:node:0`; a second provisioning run inserts it
+			// again alongside a fresh name. orIgnore skips the taken row, and the read-back by
+			// name still yields the taken row's id rather than a gap.
+			const [firstId] = await dataSource.transaction(
+				async (trx) => await jobRepository.insertMany(trx, [newJobRow('wf:node:0')]),
+			);
+
+			const ids = await dataSource.transaction(
+				async (trx) =>
+					await jobRepository.insertMany(trx, [newJobRow('wf:node:0'), newJobRow('wf:node:1')]),
+			);
+
+			expect(ids[0]).toBe(firstId);
+			expect(ids[1]).not.toBe(firstId);
+			// Only one row named `wf:node:0`: the second insert converged on the first's row.
+			expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(1);
+			expect(await jobRepository.countBy({ name: 'wf:node:1' })).toBe(1);
+		});
+
+		// Postgres only: two transactions inserting the same name at once. The unique index
+		// lets exactly one row win; both callers read the winner's id back by name rather than
+		// the loser getting a gap from the skipped RETURNING row.
+		//
+		// runnerB draws from the secondary pool so both transactions are genuinely held open at
+		// once (the main pool is capped at a single connection in CI). A inserts and holds the
+		// new row's uncommitted unique-index entry; B's insert of the same name blocks on it
+		// until A commits, then `orIgnore` skips and B reads A's row back by name.
+		it.skipIf(!isPostgres)(
+			'converges on a single row when two transactions insert the same name at once',
+			async () => {
+				const runnerA = dataSource.createQueryRunner();
+				const runnerB = secondaryDataSource!.createQueryRunner();
+				let first: number[];
+				let second: number[];
+				try {
+					await runnerA.connect();
+					await runnerB.connect();
+					await runnerA.startTransaction();
+					await runnerB.startTransaction();
+
+					first = await jobRepository.insertMany(runnerA.manager, [newJobRow('wf:node:0')]);
+
+					// Start B's insert while A's transaction is still open; it blocks on A's
+					// uncommitted row, so don't await it until A has committed.
+					const secondPromise = jobRepository.insertMany(runnerB.manager, [newJobRow('wf:node:0')]);
+					await runnerA.commitTransaction();
+					second = await secondPromise;
+					await runnerB.commitTransaction();
+				} finally {
+					// Free the runners (runnerA holds the single main-pool connection) before the
+					// assertions below query through the main DataSource.
+					await runnerA.release();
+					await runnerB.release();
+				}
+
+				expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(1);
+				const stored = await jobRepository.findOneByOrFail({ name: 'wf:node:0' });
+				// Neither caller came back empty; both point at the surviving row.
+				expect(first).toEqual([stored.id]);
+				expect(second).toEqual([stored.id]);
+			},
+		);
+
+		it('rejects a call made outside a transaction', async () => {
+			// The plain DataSource manager has no queryRunner, which is how the guard detects
+			// a call made outside `dataSource.transaction`.
+			await expect(
+				jobRepository.insertMany(dataSource.manager, [newJobRow('wf:node:0')]),
+			).rejects.toThrow('insertMany must run within a transaction');
+
+			expect(await jobRepository.countBy({ name: 'wf:node:0' })).toBe(0);
+		});
+
+		it('inserts and reads back a batch larger than both chunk sizes', async () => {
+			// 1500 jobs spans two insert chunks (1000) and, on sqlite, three read-back chunks
+			// (500). A single read-back `name IN (...)` this long would overflow SQLite's
+			// expression-depth cap, so this guards the chunked read-back.
+			const jobs = Array.from({ length: 1500 }, (_, i) => newJobRow(`wf:node:${i}`));
+
+			const ids = await dataSource.transaction(
+				async (trx) => await jobRepository.insertMany(trx, jobs),
+			);
+
+			expect(ids).toHaveLength(1500);
+			// Every job got a distinct id back: no name was dropped or duplicated by the chunking.
+			expect(new Set(ids).size).toBe(1500);
+			expect(await jobRepository.count()).toBe(1500);
+			// Spot-check that ids come back in input order: index i belongs to that job's name.
+			for (const i of [0, 750, 1499]) {
+				const stored = await jobRepository.findOneByOrFail({ name: `wf:node:${i}` });
+				expect(ids[i]).toBe(stored.id);
+			}
+		});
 	});
 
 	describe('ScheduledTaskRepository.insertIgnoringDuplicates', () => {
@@ -346,7 +555,7 @@ describe('scheduled repositories', () => {
 			const job = await createJob();
 			const scheduledFor = secondsFromNow(-60);
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) =>
 					await taskRepository.insertIgnoringDuplicates(trx, [
 						{
@@ -360,10 +569,39 @@ describe('scheduled repositories', () => {
 					]),
 			);
 
-			expect(recorded).toBe(1);
+			expect(result.recorded).toBe(1);
 			const stored = await taskRepository.findBy({ jobId: job.id });
 			expect(stored).toHaveLength(1);
 			expect(stored[0].scheduledFor.getTime()).toBe(scheduledFor.getTime());
+		});
+
+		// Postgres only: SQLite's driver never surfaces RETURNING rows from a raw
+		// insert, so row identity for tracing is a Postgres-only capability.
+		it.skipIf(!isPostgres)('returns the identity of each newly created row', async () => {
+			const job = await createJob();
+			const scheduledFor = secondsFromNow(-60);
+
+			const result = await dataSource.transaction(
+				async (trx) =>
+					await taskRepository.insertIgnoringDuplicates(trx, [
+						{
+							jobId: job.id,
+							taskType: 'scheduleTrigger',
+							payload: {},
+							scheduledFor,
+							runAt: scheduledFor,
+							maxAttempts: 1,
+						},
+					]),
+			);
+
+			expect(result.created).toHaveLength(1);
+			const stored = await taskRepository.findOneByOrFail({ jobId: job.id });
+			expect(result.created[0]).toEqual({
+				id: stored.id,
+				jobId: job.id,
+				taskType: 'scheduleTrigger',
+			});
 		});
 
 		it('is idempotent on (jobId, scheduledFor): a duplicate is skipped and not counted', async () => {
@@ -385,8 +623,8 @@ describe('scheduled repositories', () => {
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, [occurrence]),
 			);
 
-			expect(first).toBe(1);
-			expect(second).toBe(0);
+			expect(first.recorded).toBe(1);
+			expect(second.recorded).toBe(0);
 			expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 		});
 
@@ -406,11 +644,11 @@ describe('scheduled repositories', () => {
 				};
 			});
 
-			const recorded = await dataSource.transaction(
+			const result = await dataSource.transaction(
 				async (trx) => await taskRepository.insertIgnoringDuplicates(trx, occurrences),
 			);
 
-			expect(recorded).toBe(2500);
+			expect(result.recorded).toBe(2500);
 			expect(await taskRepository.countBy({ jobId: job.id })).toBe(2500);
 		});
 
@@ -439,7 +677,7 @@ describe('scheduled repositories', () => {
 					),
 				]);
 
-				expect(first + second).toBe(1);
+				expect(first.recorded + second.recorded).toBe(1);
 				expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 			},
 		);
@@ -634,5 +872,65 @@ describe('scheduled repositories', () => {
 				expect(await taskRepository.count()).toBe(0);
 			},
 		);
+	});
+
+	describe('ScheduledTaskRepository.getMetricSnapshot', () => {
+		it('reports queue depth counts and the oldest due pending age', async () => {
+			const job = await createJob();
+			const now = new Date();
+
+			// Two due pending rows (runAt in the past) and one not-yet-due pending row.
+			const dueOld = await createTask(job.id, {
+				status: 'pending',
+				runAt: new Date(now.getTime() - 120_000),
+			});
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() - 30_000) });
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() + 3_600_000) });
+			// A running row, plus terminal rows that must not be counted.
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: new Date(now.getTime() + 60_000),
+			});
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-60) });
+			await createTask(job.id, { status: 'failed', finishedAt: secondsFromNow(-60) });
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.pending).toBe(3); // both due rows plus the future one
+			expect(snapshot.due).toBe(2); // only the two past-runAt rows are actionable
+			expect(snapshot.running).toBe(1);
+			// Lag tracks the oldest DUE pending row, not the future one. Measured against
+			// DB-now, so it's at least the row's age at seed time, plus the small elapsed
+			// time until the query ran.
+			const seededAgeMs = now.getTime() - dueOld.runAt.getTime();
+			expect(snapshot.oldestPendingAgeMs).toBeGreaterThanOrEqual(seededAgeMs);
+			expect(snapshot.oldestPendingAgeMs).toBeLessThan(seededAgeMs + 60_000);
+		});
+
+		it('returns a null oldest age when no pending row is due', async () => {
+			const job = await createJob();
+			const now = new Date();
+
+			await createTask(job.id, { status: 'pending', runAt: new Date(now.getTime() + 3_600_000) });
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: new Date(now.getTime() + 60_000),
+			});
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.pending).toBe(1);
+			expect(snapshot.due).toBe(0);
+			expect(snapshot.running).toBe(1);
+			expect(snapshot.oldestPendingAgeMs).toBeNull();
+		});
+
+		it('reports all-zero counts and a null age on an empty queue', async () => {
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot).toEqual({ pending: 0, due: 0, running: 0, oldestPendingAgeMs: null });
+		});
 	});
 });
