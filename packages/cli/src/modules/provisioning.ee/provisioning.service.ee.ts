@@ -83,10 +83,13 @@ export class ProvisioningService {
 			);
 
 			if (globalRoles.length === 0) {
-				this.logger.debug('No global roles found in roles array, skipping instance role provisioning', {
-					userId: user.id,
-					roleSlugInput,
-				});
+				this.logger.debug(
+					'No global roles found in roles array, skipping instance role provisioning',
+					{
+						userId: user.id,
+						roleSlugInput,
+					},
+				);
 				return;
 			}
 
