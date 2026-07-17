@@ -1,4 +1,6 @@
 import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	normalizeGroupDescription,
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
 } from '../src/node-grouping-validation';
@@ -381,5 +383,30 @@ describe('node grouping validation', () => {
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
+	});
+});
+
+describe('normalizeGroupDescription', () => {
+	test('keeps a description within the cap unchanged', () => {
+		expect(normalizeGroupDescription('short')).toBe('short');
+	});
+
+	test('caps an over-long description to the max length', () => {
+		const result = normalizeGroupDescription('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50));
+		expect(result).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+	});
+
+	test('treats an empty string as no description', () => {
+		expect(normalizeGroupDescription('')).toBeUndefined();
+	});
+
+	test.each([
+		['undefined', undefined],
+		['a number', 42],
+		['an object', { a: 1 }],
+		['an array', [1, 2, 3]],
+		['null', null],
+	])('drops a non-string value (%s)', (_label, value) => {
+		expect(normalizeGroupDescription(value)).toBeUndefined();
 	});
 });
