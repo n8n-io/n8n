@@ -1095,6 +1095,8 @@ watch(agentId, initialize, { immediate: true });
 
 onBeforeUnmount(() => {
 	sessionsStore.stopAutoRefresh();
+	configAutosave.cancelPendingAutosave();
+	skillAutosave.cancelPendingAutosave();
 });
 
 // If the user is on Preview before the sessions list finishes loading, latch onto

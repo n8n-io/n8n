@@ -832,7 +832,7 @@ describe('AgentValidationService — structured issues', () => {
 		);
 	});
 
-	it('flags an enabled task without a saved body but ignores a disabled one', async () => {
+	it('flags task references without a saved body regardless of enabled state', async () => {
 		const { service, agentRepository, agentTaskRepository } = makeService();
 		agentTaskRepository.findByAgentId.mockResolvedValue([]);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -856,6 +856,11 @@ describe('AgentValidationService — structured issues', () => {
 				code: 'missing_reference',
 				path: 'tasks.0.id',
 				capability: { kind: 'task', id: 'missing_enabled', index: 0 },
+			}),
+			expect.objectContaining({
+				code: 'missing_reference',
+				path: 'tasks.1.id',
+				capability: { kind: 'task', id: 'missing_disabled', index: 1 },
 			}),
 		]);
 	});
@@ -970,7 +975,15 @@ describe('AgentValidationService — structured issues', () => {
 	});
 
 	it('ignores absent and disabled optional capabilities entirely', async () => {
-		const { service, agentRepository } = makeService();
+		const { service, agentRepository, agentTaskRepository } = makeService();
+		agentTaskRepository.findByAgentId.mockResolvedValue([
+			{
+				id: 'disabled_task',
+				name: 'Disabled task',
+				objective: 'Not scheduled',
+				cronExpression: '0 9 * * *',
+			},
+		] as never);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
@@ -1232,6 +1245,30 @@ describe('AgentValidationService — validateAgentEntityConfiguration', () => {
 				code: 'missing_reference',
 				path: 'tasks.0.id',
 				capability: { kind: 'task', id: 'missing_task', index: 0 },
+			}),
+		]);
+		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
+	});
+
+	it('flags a disabled task missing from the passed-in task map, without querying the task repository', async () => {
+		const { service, agentTaskRepository } = makeService();
+		const agent = makeAgent({
+			...runnableConfig,
+			tasks: [{ type: 'task', id: 'missing_disabled', enabled: false }],
+		});
+
+		const result = await service.validateAgentEntityConfiguration(
+			agent,
+			projectId,
+			new Map(),
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_reference',
+				path: 'tasks.0.id',
+				capability: { kind: 'task', id: 'missing_disabled', index: 0 },
 			}),
 		]);
 		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();

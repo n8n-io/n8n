@@ -20,6 +20,7 @@ import { AgentsCredentialProvider } from './adapters/agents-credential-provider'
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentValidationService } from './agent-validation.service';
+import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -94,26 +95,27 @@ export class AgentPublishService {
 			return { agent };
 		}
 
+		let targetHistory: AgentHistory | undefined;
+		if (versionId) {
+			const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agent.id);
+			if (!target) {
+				throw new NotFoundError(`Version "${versionId}" not found for agent "${agent.id}"`);
+			}
+			targetHistory = target;
+		}
+
 		const tasks = versionId
 			? new Map<string, AgentTask>()
 			: new Map(
 					(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
 				);
 
-		const validation = await this.assertPublishable(agent, projectId, user, tasks, versionId);
+		const validation = await this.assertPublishable(agent, projectId, user, tasks, targetHistory);
 
 		await this.agentRepository.manager.transaction(async (trx) => {
-			if (versionId) {
-				const existing = await this.agentHistoryRepository.findByVersionAndAgentId(
-					versionId,
-					agentId,
-					trx,
-				);
-				if (!existing) {
-					throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
-				}
-				agent.activeVersionId = existing.versionId;
-				agent.activeVersion = existing;
+			if (targetHistory) {
+				agent.activeVersionId = targetHistory.versionId;
+				agent.activeVersion = targetHistory;
 				agent.versionId = uuid();
 			} else {
 				agent.versionId ??= uuid();
@@ -175,7 +177,7 @@ export class AgentPublishService {
 		projectId: string,
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
-		versionId?: string,
+		targetHistory?: AgentHistory,
 	): Promise<ValidAgentConfigValidationResponse> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -183,8 +185,14 @@ export class AgentPublishService {
 			user,
 		);
 
-		const validation = versionId
-			? await this.validateHistoryVersion(agent, projectId, versionId, credentialProvider)
+		const validation = targetHistory
+			? await this.agentValidationService.validateAgentHistoryConfiguration(
+					agent.id,
+					projectId,
+					targetHistory,
+					agent.integrations ?? [],
+					credentialProvider,
+				)
 			: await this.agentValidationService.validateAgentEntityConfiguration(
 					agent,
 					projectId,
@@ -194,26 +202,6 @@ export class AgentPublishService {
 
 		requireValidValidation(validation);
 		return validation;
-	}
-
-	private async validateHistoryVersion(
-		agent: Agent,
-		projectId: string,
-		versionId: string,
-		credentialProvider: AgentsCredentialProvider,
-	) {
-		const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agent.id);
-		if (!target) {
-			throw new NotFoundError(`Version "${versionId}" not found for agent "${agent.id}"`);
-		}
-
-		return await this.agentValidationService.validateAgentHistoryConfiguration(
-			agent.id,
-			projectId,
-			target,
-			agent.integrations ?? [],
-			credentialProvider,
-		);
 	}
 
 	async unpublishAgent(agentId: string, projectId: string): Promise<Agent> {

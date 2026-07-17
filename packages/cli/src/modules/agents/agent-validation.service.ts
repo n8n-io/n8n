@@ -37,6 +37,7 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { detectTriggerNode, validateCompatibility } from './tools/workflow-tool-factory';
+import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 
 type FindCredential = (
 	credentialId: string,
@@ -478,16 +479,15 @@ export class AgentValidationService {
 		const refs = config.tasks ?? [];
 		for (let index = 0; index < refs.length; index++) {
 			const ref = refs[index];
-			if (!ref.enabled) continue;
 			const task = tasks.get(ref.id);
 			if (!task) {
 				issues.push(
 					issue('missing_reference', `tasks.${index}.id`, { kind: 'task', id: ref.id, index }),
 				);
-			} else if (
-				!agentTaskSchema.safeParse(task).success ||
-				!isValidCronExpression(task.cronExpression)
-			) {
+				continue;
+			}
+			if (!ref.enabled) continue;
+			if (!agentTaskSchema.safeParse(task).success || !isValidCronExpression(task.cronExpression)) {
 				issues.push(issue('invalid_value', `tasks.${index}`, { kind: 'task', id: ref.id, index }));
 			}
 		}
@@ -574,10 +574,11 @@ export class AgentValidationService {
 			toolType: 'workflow',
 		};
 
-		const workflow = await this.workflowRepository.findOne({
-			where: { name: tool.workflow, shared: { projectId } },
-			relations: ['shared'],
-		});
+		const workflow = await findWorkflowToolWorkflow(
+			this.workflowRepository,
+			tool.workflow,
+			projectId,
+		);
 
 		if (!workflow) {
 			issues.push(issue('missing_reference', path, capability));

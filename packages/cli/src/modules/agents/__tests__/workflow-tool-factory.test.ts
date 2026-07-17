@@ -11,6 +11,7 @@ import {
 	validateCompatibility,
 } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
+import { findWorkflowToolWorkflow } from '../tools/workflow-tool-workflow-resolver';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -170,8 +171,27 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowRepository.findOne).toHaveBeenCalledWith(
 			expect.objectContaining({
 				where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+				relations: ['shared'],
 			}),
 		);
+	});
+
+	it('findWorkflowToolWorkflow uses the canonical project-scoped query', async () => {
+		const workflow = makeWorkflow({ id: 'wf-scoped-1', name: 'Scoped Workflow' });
+		const workflowRepository = mock<WorkflowRepository>();
+		workflowRepository.findOne.mockResolvedValue(workflow);
+
+		const result = await findWorkflowToolWorkflow(
+			workflowRepository,
+			'Scoped Workflow',
+			'project-1',
+		);
+
+		expect(result).toBe(workflow);
+		expect(workflowRepository.findOne).toHaveBeenCalledWith({
+			where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+			relations: ['shared'],
+		});
 	});
 
 	it('throws when the workflow is not shared with the project', async () => {
