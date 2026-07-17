@@ -70,9 +70,15 @@ export async function resolveAgentPreviewHandoff(
 		agentId: context.agentId,
 		threadId: context.threadId,
 		...(context.executionId ? { executionId: context.executionId } : {}),
-		...(context.agentName ? { agentName: escapeAgentPreviewContextDelimiters(context.agentName) } : {}),
-		...(context.agentIcon ? { agentIcon: escapeAgentPreviewContextDelimiters(context.agentIcon) } : {}),
-		...(context.sessionTitle ? { sessionTitle: escapeAgentPreviewContextDelimiters(context.sessionTitle) } : {}),
+		...(context.agentName
+			? { agentName: escapeAgentPreviewContextDelimiters(context.agentName) }
+			: {}),
+		...(context.agentIcon
+			? { agentIcon: escapeAgentPreviewContextDelimiters(context.agentIcon) }
+			: {}),
+		...(context.sessionTitle
+			? { sessionTitle: escapeAgentPreviewContextDelimiters(context.sessionTitle) }
+			: {}),
 	});
 
 	const prose = [
