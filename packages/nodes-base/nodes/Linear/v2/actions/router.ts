@@ -10,6 +10,8 @@ import * as issue from './issue';
 import * as label from './label';
 import type { Linear } from './node.type';
 import * as project from './project';
+import * as projectMilestone from './projectMilestone';
+import * as projectUpdate from './projectUpdate';
 import * as team from './team';
 import * as teamMembership from './teamMembership';
 import * as user from './user';
@@ -33,6 +35,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			break;
 		case 'project':
 			returnData = await project[linear.operation].execute.call(this, items);
+			break;
+		case 'projectMilestone':
+			returnData = await projectMilestone[linear.operation].execute.call(this, items);
+			break;
+		case 'projectUpdate':
+			returnData = await projectUpdate[linear.operation].execute.call(this, items);
 			break;
 		case 'user':
 			returnData = await user[linear.operation].execute.call(this, items);

@@ -1,3 +1,5 @@
+import type { INodeProperties } from 'n8n-workflow';
+
 export const LINEAR_API_URL = 'https://api.linear.app/graphql';
 
 export const PRIORITY_OPTIONS = [
@@ -68,3 +70,63 @@ export const INITIATIVE_FIELDS = `
 	createdAt
 	updatedAt
 `;
+
+export const PROJECT_MILESTONE_FIELDS = `
+	id
+	name
+	description
+	targetDate
+	sortOrder
+	createdAt
+	updatedAt
+	project {
+		id
+		name
+	}
+`;
+
+export const PROJECT_UPDATE_HEALTH_OPTIONS = [
+	{ name: 'On Track', value: 'onTrack' },
+	{ name: 'At Risk', value: 'atRisk' },
+	{ name: 'Off Track', value: 'offTrack' },
+];
+
+export const PROJECT_UPDATE_FIELDS = `
+	id
+	body
+	health
+	url
+	createdAt
+	updatedAt
+	project {
+		id
+		name
+	}
+	user {
+		id
+		displayName
+	}
+`;
+
+export const PROJECT_LOCATOR: INodeProperties = {
+	displayName: 'Project',
+	name: 'projectId',
+	type: 'resourceLocator',
+	required: true,
+	default: { mode: 'list', value: '' },
+	description: 'The project the record belongs to',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: { searchListMethod: 'getProjects', searchable: true },
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			hint: 'Enter the project ID',
+		},
+	],
+};

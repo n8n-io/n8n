@@ -12,6 +12,8 @@ type NodeMap = {
 	workflowState: 'get' | 'getAll';
 	document: 'create' | 'get' | 'getAll' | 'update' | 'delete';
 	initiative: 'create' | 'get' | 'getAll' | 'update' | 'delete' | 'archive';
+	projectMilestone: 'create' | 'get' | 'getAll' | 'update' | 'delete';
+	projectUpdate: 'create' | 'get' | 'getAll' | 'update' | 'delete';
 	teamMembership: 'create' | 'getAll' | 'delete';
 };
 

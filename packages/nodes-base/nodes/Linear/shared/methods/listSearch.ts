@@ -11,23 +11,28 @@ interface NamedNode {
 	name: string;
 }
 
-interface ListSearchResponse {
-	data: {
-		initiatives: {
-			nodes: NamedNode[];
-			pageInfo: { hasNextPage: boolean; endCursor: string | null };
-		};
-	};
+interface SearchResponse {
+	data: Record<
+		string,
+		{ nodes: NamedNode[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+	>;
 }
 
-export async function getInitiatives(
-	this: ILoadOptionsFunctions,
+/**
+ * Shared resource-locator search over a top-level Linear connection that supports
+ * a `name` filter (Initiatives, Projects, etc.). Server-side filtering keeps large
+ * workspaces usable.
+ */
+async function searchByName(
+	ctx: ILoadOptionsFunctions,
+	entity: string,
+	filterType: string,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const body = {
-		query: `query Initiatives($first: Int, $after: String, $filter: InitiativeFilter) {
-			initiatives(first: $first, after: $after, filter: $filter) {
+		query: `query Search($first: Int, $after: String, $filter: ${filterType}) {
+			${entity}(first: $first, after: $after, filter: $filter) {
 				nodes {
 					id
 					name
@@ -41,21 +46,38 @@ export async function getInitiatives(
 		variables: {
 			first: 50,
 			after: paginationToken ?? null,
-			// Server-side search so large workspaces stay usable
 			filter: filter ? { name: { containsIgnoreCase: filter } } : undefined,
 		},
 	};
 
-	const response = (await linearApiRequest.call(this, body)) as unknown as ListSearchResponse;
-	const { nodes, pageInfo } = response.data.initiatives;
+	const response = (await linearApiRequest.call(ctx, body)) as unknown as SearchResponse;
+	const connection = response.data[entity];
 
-	const results: INodeListSearchItems[] = nodes.map((node) => ({
+	const results: INodeListSearchItems[] = connection.nodes.map((node) => ({
 		name: node.name,
 		value: node.id,
 	}));
 
 	return {
 		results,
-		paginationToken: pageInfo.hasNextPage ? (pageInfo.endCursor ?? undefined) : undefined,
+		paginationToken: connection.pageInfo.hasNextPage
+			? (connection.pageInfo.endCursor ?? undefined)
+			: undefined,
 	};
+}
+
+export async function getInitiatives(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName(this, 'initiatives', 'InitiativeFilter', filter, paginationToken);
+}
+
+export async function getProjects(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName(this, 'projects', 'ProjectFilter', filter, paginationToken);
 }

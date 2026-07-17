@@ -9,6 +9,8 @@ import * as initiative from './initiative';
 import * as issue from './issue';
 import * as label from './label';
 import * as project from './project';
+import * as projectMilestone from './projectMilestone';
+import * as projectUpdate from './projectUpdate';
 import * as team from './team';
 import * as teamMembership from './teamMembership';
 import * as user from './user';
@@ -104,6 +106,14 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'project',
 				},
 				{
+					name: 'Project Milestone',
+					value: 'projectMilestone',
+				},
+				{
+					name: 'Project Update',
+					value: 'projectUpdate',
+				},
+				{
 					name: 'Team',
 					value: 'team',
 				},
@@ -130,6 +140,8 @@ export const versionDescription: INodeTypeDescription = {
 		...issue.description,
 		...label.description,
 		...project.description,
+		...projectMilestone.description,
+		...projectUpdate.description,
 		...team.description,
 		...teamMembership.description,
 		...user.description,
