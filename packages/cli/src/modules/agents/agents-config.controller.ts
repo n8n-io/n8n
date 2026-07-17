@@ -50,8 +50,8 @@ export class AgentsConfigController {
 			projectId,
 			req.user,
 		);
-		return await this.agentValidationService.validateAgentConfiguration(
-			agentId,
+		return await this.agentValidationService.validateLoadedAgentConfiguration(
+			agent,
 			projectId,
 			credentialProvider,
 		);

@@ -1,4 +1,5 @@
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,7 +12,10 @@ import {
 	validateCompatibility,
 } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
-import { findWorkflowToolWorkflow } from '../tools/workflow-tool-workflow-resolver';
+import {
+	findWorkflowToolWorkflow,
+	findWorkflowToolWorkflows,
+} from '../tools/workflow-tool-workflow-resolver';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -252,6 +256,52 @@ describe('workflow tool compatibility', () => {
 					},
 				},
 			],
+		});
+	});
+});
+
+describe('findWorkflowToolWorkflows', () => {
+	it('returns an empty map without querying when no names are provided', async () => {
+		const workflowRepository = mock<WorkflowRepository>();
+
+		const result = await findWorkflowToolWorkflows(workflowRepository, [], 'project-1');
+
+		expect(result).toEqual(new Map());
+		expect(workflowRepository.find).not.toHaveBeenCalled();
+	});
+
+	it('dedupes workflow names and returns a name-to-workflow map scoped to the project', async () => {
+		const workflow = makeWorkflow({ id: 'wf-a', name: 'Workflow A' });
+		const workflowRepository = mock<WorkflowRepository>();
+		workflowRepository.find.mockResolvedValue([workflow]);
+
+		const result = await findWorkflowToolWorkflows(
+			workflowRepository,
+			['Workflow A', 'Workflow A', 'Workflow B'],
+			'project-1',
+		);
+
+		expect(workflowRepository.find).toHaveBeenCalledTimes(1);
+		expect(workflowRepository.find).toHaveBeenCalledWith({
+			where: { name: In(['Workflow A', 'Workflow B']), shared: { projectId: 'project-1' } },
+			select: ['id', 'name', 'nodes'],
+		});
+		expect(result.get('Workflow A')).toBe(workflow);
+		expect(result.has('Workflow B')).toBe(false);
+	});
+
+	it('findWorkflowToolWorkflow keeps singular lookup behavior', async () => {
+		const workflow = makeWorkflow({ id: 'wf-a', name: 'Workflow A' });
+		const workflowRepository = mock<WorkflowRepository>();
+		workflowRepository.findOne.mockResolvedValue(workflow);
+
+		const result = await findWorkflowToolWorkflow(workflowRepository, 'Workflow A', 'project-1');
+
+		expect(result).toBe(workflow);
+		expect(workflowRepository.find).not.toHaveBeenCalled();
+		expect(workflowRepository.findOne).toHaveBeenCalledWith({
+			where: { name: 'Workflow A', shared: { projectId: 'project-1' } },
+			relations: ['shared'],
 		});
 	});
 });

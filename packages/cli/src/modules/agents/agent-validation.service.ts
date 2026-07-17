@@ -20,7 +20,7 @@ import {
 	type AgentJsonWorkflowToolConfig,
 	type AgentSkill,
 } from '@n8n/api-types';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, type WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8n-workflow';
 
@@ -37,7 +37,9 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { detectTriggerNode, validateCompatibility } from './tools/workflow-tool-factory';
-import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
+import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
+
+type AgentValidationScope = 'runtime' | 'publish';
 
 type FindCredential = (
 	credentialId: string,
@@ -106,6 +108,7 @@ export class AgentValidationService {
 			agentId,
 			projectId,
 			credentialProvider,
+			'runtime',
 		);
 		return { missing: issues.map((i) => i.path) };
 	}
@@ -122,26 +125,41 @@ export class AgentValidationService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
 			return { status: 'invalid', issues: [agentIssue('missing_required', 'agent')] };
 		}
 
-		const tasks = new Map(
-			(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
-		);
-
-		return await this.runValidation({
-			agentId,
+		return await this.validateLoadedAgentConfiguration(
+			agentEntity,
 			projectId,
-			config: agentEntity.schema as unknown as AgentJsonConfig | null,
-			skills: agentEntity.skills ?? {},
-			customTools: agentEntity.tools ?? {},
-			integrations: agentEntity.integrations ?? [],
+			credentialProvider,
+			scope,
+		);
+	}
+
+	async validateLoadedAgentConfiguration(
+		agent: Agent,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope = 'publish',
+	): Promise<AgentConfigValidationResponse> {
+		const tasks =
+			scope === 'publish'
+				? new Map(
+						(await this.agentTaskRepository.findByAgentId(agent.id)).map((task) => [task.id, task]),
+					)
+				: new Map<string, TaskBody>();
+
+		return await this.validateAgentEntityConfiguration(
+			agent,
+			projectId,
 			tasks,
 			credentialProvider,
-		});
+			scope,
+		);
 	}
 
 	/**
@@ -158,17 +176,21 @@ export class AgentValidationService {
 		projectId: string,
 		tasks: ReadonlyMap<string, TaskBody>,
 		credentialProvider: CredentialProvider,
+		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
-		return await this.runValidation({
-			agentId: agent.id,
-			projectId,
-			config: agent.schema as unknown as AgentJsonConfig | null,
-			skills: agent.skills ?? {},
-			customTools: agent.tools ?? {},
-			integrations: agent.integrations ?? [],
-			tasks,
-			credentialProvider,
-		});
+		return await this.runValidation(
+			{
+				agentId: agent.id,
+				projectId,
+				config: agent.schema as unknown as AgentJsonConfig | null,
+				skills: agent.skills ?? {},
+				customTools: agent.tools ?? {},
+				integrations: agent.integrations ?? [],
+				tasks,
+				credentialProvider,
+			},
+			scope,
+		);
 	}
 
 	/**
@@ -191,26 +213,30 @@ export class AgentValidationService {
 			),
 		);
 
-		return await this.runValidation({
-			agentId,
-			projectId,
-			config: history.schema as unknown as AgentJsonConfig | null,
-			skills: history.skills ?? {},
-			customTools: history.tools ?? {},
-			integrations: currentIntegrations,
-			tasks,
-			credentialProvider,
-		});
+		return await this.runValidation(
+			{
+				agentId,
+				projectId,
+				config: history.schema as unknown as AgentJsonConfig | null,
+				skills: history.skills ?? {},
+				customTools: history.tools ?? {},
+				integrations: currentIntegrations,
+				tasks,
+				credentialProvider,
+			},
+			'publish',
+		);
 	}
 
 	private async runValidation(
 		ctx: Omit<ConfigurationValidationContext, 'config'> & { config: AgentJsonConfig | null },
+		scope: AgentValidationScope = 'publish',
 	): Promise<AgentConfigValidationResponse> {
 		if (!ctx.config) {
 			return { status: 'invalid', issues: this.missingConfigIssues() };
 		}
 
-		const issues = await this.collectIssues({ ...ctx, config: ctx.config });
+		const issues = await this.collectIssues({ ...ctx, config: ctx.config }, scope);
 		return { status: issues.length === 0 ? 'valid' : 'invalid', issues };
 	}
 
@@ -224,6 +250,7 @@ export class AgentValidationService {
 
 	private async collectIssues(
 		ctx: ConfigurationValidationContext,
+		scope: AgentValidationScope,
 	): Promise<AgentConfigValidationIssue[]> {
 		const { config } = ctx;
 		const issues: AgentConfigValidationIssue[] = [];
@@ -234,20 +261,54 @@ export class AgentValidationService {
 			return credentialList.find((credential) => credential.id === credentialId);
 		};
 
+		const { agentsById, workflowsByName } = await this.prefetchReferenceLookups(ctx);
+
 		this.collectCoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, issues);
 		await this.collectMemoryIssues(config, findCredential, issues);
 		await this.collectWebSearchIssues(config, findCredential, issues);
 		await this.collectVectorStoreIssues(config, findCredential, issues);
 		await this.collectSubAgentDifficultyModelIssues(config, findCredential, issues);
-		await this.collectSubAgentRefIssues(ctx, issues);
+		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
-		this.collectTaskIssues(config, ctx.tasks, issues);
-		await this.collectChannelIssues(ctx.integrations, findCredential, issues);
-		await this.collectToolIssues(ctx, findCredential, issues);
+		if (scope === 'publish') {
+			this.collectTaskIssues(config, ctx.tasks, issues);
+			await this.collectChannelIssues(ctx.integrations, findCredential, issues);
+		}
+		await this.collectToolIssues(ctx, findCredential, workflowsByName, issues);
 		await this.collectMcpServerIssues(config, findCredential, issues);
 
 		return this.dedupe(issues);
+	}
+
+	private async prefetchReferenceLookups(ctx: ConfigurationValidationContext): Promise<{
+		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>;
+		workflowsByName: Map<string, WorkflowEntity>;
+	}> {
+		const subAgentIds = new Set<string>();
+		const workflowNames = new Set<string>();
+
+		for (const ref of ctx.config.subAgents?.agents ?? []) {
+			if (ref.agentId && ref.agentId !== ctx.agentId) {
+				subAgentIds.add(ref.agentId);
+			}
+		}
+
+		for (const tool of ctx.config.tools ?? []) {
+			if (tool.type === 'workflow' && tool.workflow) {
+				workflowNames.add(tool.workflow);
+			}
+		}
+
+		const [agents, workflowsByName] = await Promise.all([
+			this.agentRepository.findByIdsAndProjectId([...subAgentIds], ctx.projectId),
+			findWorkflowToolWorkflows(this.workflowRepository, [...workflowNames], ctx.projectId),
+		]);
+
+		return {
+			agentsById: new Map(agents.map((agent) => [agent.id, agent])),
+			workflowsByName,
+		};
 	}
 
 	private dedupe(issues: AgentConfigValidationIssue[]): AgentConfigValidationIssue[] {
@@ -285,8 +346,19 @@ export class AgentValidationService {
 		}
 
 		const credentialId = config.credential.trim();
-		if (!(await this.findCredentialSafe(findCredential, credentialId))) {
+		const credential = await this.findCredentialSafe(findCredential, credentialId);
+		if (!credential) {
 			issues.push(agentIssue('invalid_credential', 'credential'));
+			return;
+		}
+
+		const model = config.model?.trim();
+		if (
+			model &&
+			AgentModelSchema.safeParse(model).success &&
+			!this.credentialSupportsModel(credential.type, model)
+		) {
+			issues.push(agentIssue('incompatible_credential', 'credential'));
 		}
 	}
 
@@ -430,8 +502,9 @@ export class AgentValidationService {
 		}
 	}
 
-	private async collectSubAgentRefIssues(
+	private collectSubAgentRefIssues(
 		ctx: ConfigurationValidationContext,
+		agentsById: Map<string, Pick<Agent, 'id' | 'activeVersionId'>>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const refs = ctx.config.subAgents?.agents ?? [];
@@ -449,7 +522,7 @@ export class AgentValidationService {
 				continue;
 			}
 
-			const target = await this.agentRepository.findByIdAndProjectId(ref.agentId, ctx.projectId);
+			const target = agentsById.get(ref.agentId);
 			if (!target) {
 				issues.push(issue('missing_reference', path, capability));
 				continue;
@@ -529,6 +602,7 @@ export class AgentValidationService {
 	private async collectToolIssues(
 		ctx: ConfigurationValidationContext,
 		findCredential: FindCredential,
+		workflowsByName: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const tools = ctx.config.tools ?? [];
@@ -550,7 +624,7 @@ export class AgentValidationService {
 			}
 
 			if (tool.type === 'workflow') {
-				await this.collectWorkflowToolIssues(tool, index, ctx.projectId, issues);
+				this.collectWorkflowToolIssues(tool, index, workflowsByName, issues);
 				continue;
 			}
 
@@ -560,10 +634,10 @@ export class AgentValidationService {
 		}
 	}
 
-	private async collectWorkflowToolIssues(
+	private collectWorkflowToolIssues(
 		tool: AgentJsonWorkflowToolConfig,
 		index: number,
-		projectId: string,
+		workflowsByName: Map<string, WorkflowEntity>,
 		issues: AgentConfigValidationIssue[],
 	) {
 		const path = `tools.${index}.workflow`;
@@ -574,11 +648,7 @@ export class AgentValidationService {
 			toolType: 'workflow',
 		};
 
-		const workflow = await findWorkflowToolWorkflow(
-			this.workflowRepository,
-			tool.workflow,
-			projectId,
-		);
+		const workflow = workflowsByName.get(tool.workflow);
 
 		if (!workflow) {
 			issues.push(issue('missing_reference', path, capability));
@@ -742,12 +812,12 @@ export class AgentValidationService {
 		const credential = await this.findCredentialSafe(findCredential, credentialId);
 		if (!credential) {
 			issues.push(issue('invalid_credential', `${path}.credential`, capability));
-		} else if (!this.workerCredentialSupportsModel(credential.type, modelConfig.model ?? '')) {
+		} else if (!this.credentialSupportsModel(credential.type, modelConfig.model ?? '')) {
 			issues.push(issue('incompatible_credential', `${path}.credential`, capability));
 		}
 	}
 
-	private workerCredentialSupportsModel(credentialType: string, model: string) {
+	private credentialSupportsModel(credentialType: string, model: string) {
 		return LLM_PROVIDER_DEFAULTS[credentialType]?.provider === getProviderPrefix(model);
 	}
 

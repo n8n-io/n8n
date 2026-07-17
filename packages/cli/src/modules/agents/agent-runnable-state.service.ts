@@ -48,10 +48,11 @@ export class AgentRunnableStateService {
 			user,
 		);
 		const [validation, hasPublishHistory] = await Promise.all([
-			this.agentValidationService.validateAgentConfiguration(
-				agent.id,
+			this.agentValidationService.validateLoadedAgentConfiguration(
+				agent,
 				projectId,
 				credentialProvider,
+				'runtime',
 			),
 			this.agentPublishService.hasPublishHistory(agent.id),
 		]);

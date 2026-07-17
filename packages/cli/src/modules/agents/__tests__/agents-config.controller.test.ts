@@ -31,7 +31,7 @@ describe('AgentsConfigController route access scopes', () => {
 describe('AgentsConfigController getValidation', () => {
 	it('validates against the user-scoped credential provider and returns the result', async () => {
 		const agentValidationService = mock<AgentValidationService>();
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'invalid',
 			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 		});
@@ -57,11 +57,13 @@ describe('AgentsConfigController getValidation', () => {
 			status: 'invalid',
 			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 		});
-		expect(agentValidationService.validateAgentConfiguration).toHaveBeenCalledWith(
-			'agent-1',
+		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'agent-1' }),
 			'project-1',
 			expect.any(AgentsCredentialProvider),
 		);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+		expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledTimes(1);
 	});
 
 	it('returns not found for validation when the agent is outside the project scope', async () => {
@@ -82,6 +84,7 @@ describe('AgentsConfigController getValidation', () => {
 				user: { id: 'user-1' },
 			} as never),
 		).rejects.toThrow('Agent not found');
+		expect(agentValidationService.validateLoadedAgentConfiguration).not.toHaveBeenCalled();
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
 	});
 });

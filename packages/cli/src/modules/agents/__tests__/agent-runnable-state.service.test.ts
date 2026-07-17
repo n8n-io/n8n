@@ -30,7 +30,7 @@ function makeService() {
 describe('AgentRunnableStateService', () => {
 	it('marks the agent runnable when structured validation reports it valid', async () => {
 		const { service, agentValidationService, agentPublishService } = makeService();
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'valid',
 			issues: [],
 		});
@@ -44,7 +44,7 @@ describe('AgentRunnableStateService', () => {
 
 	it('marks the agent not runnable when structured validation reports it invalid', async () => {
 		const { service, agentValidationService, agentPublishService } = makeService();
-		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
 			status: 'invalid',
 			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 		});
@@ -68,5 +68,24 @@ describe('AgentRunnableStateService', () => {
 		expect(result.isRunnable).toBe(true);
 		expect(result.hasPublishHistory).toBe(true);
 		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+	});
+
+	it('uses runtime-scoped loaded-agent validation for runnable state', async () => {
+		const agent = { id: 'agent-1' } as Agent;
+		const { service, agentValidationService, agentPublishService } = makeService();
+		agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		});
+		agentPublishService.hasPublishHistory.mockResolvedValue(false);
+
+		await service.addRunnableState(agent, projectId, user);
+
+		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(
+			agent,
+			projectId,
+			expect.anything(),
+			'runtime',
+		);
 	});
 });
