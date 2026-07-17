@@ -15,9 +15,12 @@ import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
-import { StaticWorkflowDependencyExporter } from './entities/workflow/static-workflow-dependency.exporter';
-import { StaticWorkflowDependencyResolver } from './entities/workflow/static-workflow-dependency-resolver';
 import type { ExportedWorkflowDependencySeed } from './entities/workflow/static-workflow-dependency-resolver';
+import { StaticWorkflowDependencyResolver } from './entities/workflow/static-workflow-dependency-resolver';
+import {
+	StaticWorkflowDependencyExporter,
+	StaticWorkflowDependencyExportResult,
+} from './entities/workflow/static-workflow-dependency.exporter';
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
@@ -59,6 +62,14 @@ export class N8nPackagesService {
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
+		// TODO: remove this once reference-only is supported
+		const { missingWorkflowDependencyPolicy } = request;
+		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly) {
+			throw new PackageExportBlockedError(
+				'Reference-only static sub-workflow dependencies are not supported. Export aborted.',
+			);
+		}
+
 		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
@@ -107,40 +118,33 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
-		const dependencyPolicy =
-			request.missingWorkflowDependencyPolicy ?? MissingWorkflowDependencyPolicy.Fail;
-		if (dependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly) {
-			throw new PackageExportBlockedError(
-				'Reference-only static sub-workflow dependencies are not supported. Export aborted.',
-			);
-		}
-
 		const workflowRequirements = await this.workflowDependencyResolver.resolve({
 			user: request.user,
 			workflowIds: allWorkflowsBeforeAutoAdd.map(({ id }) => id),
 		});
 
-		const autoAddExportResult =
-			dependencyPolicy === MissingWorkflowDependencyPolicy.IncludeInPackage
-				? this.staticWorkflowDependencyExporter.export({
-						writer,
-						dependencies: (
-							await this.staticWorkflowDependencyResolver.resolve({
-								user: request.user,
-								requirements: workflowRequirements,
-								seeds: this.buildWorkflowDependencySeeds({
-									topLevelWorkflows: workflowExportResult?.entries ?? [],
-									folderWorkflows: folderExportResult?.workflowEntries ?? [],
-									projectWorkflows: projectExportResult?.workflowEntries ?? [],
-								}),
-							})
-						).autoAddedWorkflows,
-						existingWorkflowEntries: allWorkflowsBeforeAutoAdd,
-						existingFolderEntries: allFoldersBeforeAutoAdd,
-						existingProjectEntries: allProjectsBeforeAutoAdd,
-						projectTargetsById: projectExportResult?.projectTargetsById,
-					})
-				: undefined;
+		let autoAddExportResult: StaticWorkflowDependencyExportResult | undefined;
+
+		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.IncludeInPackage) {
+			const autoAddWorkflowRequirements = await this.staticWorkflowDependencyResolver.resolve({
+				user: request.user,
+				requirements: workflowRequirements,
+				seeds: this.buildWorkflowDependencySeeds({
+					topLevelWorkflows: workflowExportResult?.entries ?? [],
+					folderWorkflows: folderExportResult?.workflowEntries ?? [],
+					projectWorkflows: projectExportResult?.workflowEntries ?? [],
+				}),
+			});
+
+			autoAddExportResult = this.staticWorkflowDependencyExporter.export({
+				writer,
+				dependencies: autoAddWorkflowRequirements.autoAddedWorkflows,
+				existingWorkflowEntries: allWorkflowsBeforeAutoAdd,
+				existingFolderEntries: allFoldersBeforeAutoAdd,
+				existingProjectEntries: allProjectsBeforeAutoAdd,
+				projectTargetsById: projectExportResult?.projectTargetsById,
+			});
+		}
 
 		const requirements = mergeRequirements(
 			workflowExportResult?.requirements,
