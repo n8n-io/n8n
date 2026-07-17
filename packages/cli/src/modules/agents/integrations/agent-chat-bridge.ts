@@ -184,7 +184,7 @@ export class AgentChatBridge {
 			try {
 				if (!this.canUserAccess(message.author)) return;
 				await thread.subscribe();
-				await this.executeAndStream(thread, message);
+				await this.executeAndStream(thread, message, { isNewMention: true });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -193,7 +193,7 @@ export class AgentChatBridge {
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
 				if (!this.canUserAccess(message.author)) return;
-				await this.executeAndStream(thread, message);
+				await this.executeAndStream(thread, message, { isNewMention: false });
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -247,7 +247,12 @@ export class AgentChatBridge {
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
 
-	private async executeAndStream(thread: Thread, message: Message): Promise<void> {
+	private async executeAndStream(
+		thread: Thread,
+		message: Message,
+		options: { isNewMention: boolean },
+	): Promise<void> {
+		const { isNewMention } = options;
 		const platformAgentContext = this.getPlatformAgentContext();
 		const text = this.prepareInboundText(message.text, platformAgentContext).trim();
 		if (!text) return;
@@ -255,11 +260,17 @@ export class AgentChatBridge {
 		const platformThreadId = this.resolvePlatformThreadId(thread);
 		const threadId = this.toAgentThreadId(platformThreadId);
 		const statusRetry = new AbortController();
-		// Platform status hooks and the lazy
-		// `message.subject` fetch are both remote round-trips on independent
+		// Platform status hooks, the lazy `message.subject` fetch, and any
+		// thread-history fetch are all remote round-trips on independent
 		// resources — run them concurrently.
 		const [bridgeExecutionContext, subject] = await Promise.all([
-			this.resolveBridgeExecutionContext(thread, message, platformAgentContext, statusRetry),
+			this.resolveBridgeExecutionContext(
+				thread,
+				message,
+				platformAgentContext,
+				statusRetry,
+				isNewMention,
+			),
 			this.messageContextBridge.resolveSubject(message),
 		]);
 		try {
@@ -273,10 +284,13 @@ export class AgentChatBridge {
 			// the platform user identity so episodic recall works across threads for
 			// the same user while staying isolated between users.
 			// Always run the published snapshot — integrations are production traffic.
+			const agentInput = bridgeExecutionContext.historyContext
+				? `${bridgeExecutionContext.historyContext}\n\n${text}`
+				: text;
 			const stream = this.agentService.executeForChatPublished({
 				agentId: this.agentId,
 				projectId: this.n8nProjectId,
-				message: text,
+				message: agentInput,
 				memory: {
 					threadId,
 					resourceId: integrationMemoryResourceId(this.integration.type, message.author.userId),
@@ -303,6 +317,7 @@ export class AgentChatBridge {
 		message: Message<unknown>,
 		platformAgentContext: PlatformAgentContext,
 		statusRetry: AbortController,
+		isNewMention: boolean,
 	): Promise<BridgeExecutionContext> {
 		return (
 			(await this.integrationImpl?.createBridgeExecutionContext?.({
@@ -312,6 +327,7 @@ export class AgentChatBridge {
 				logger: this.logger,
 				agentId: this.agentId,
 				statusRetry,
+				isNewMention,
 			})) ?? { platformAgentContext }
 		);
 	}

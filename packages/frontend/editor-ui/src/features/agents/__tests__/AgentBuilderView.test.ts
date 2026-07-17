@@ -20,6 +20,7 @@ const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const sendPreviewSessionToInstanceAiMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -85,6 +86,13 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
+}));
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
+	useInstanceAiAgentPreviewHandoff: () => ({
+		canSendPreviewToInstanceAi: ref(true),
+		sendPreviewSessionToInstanceAi: sendPreviewSessionToInstanceAiMock,
+	}),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -368,7 +376,10 @@ const commonStubs = {
 			'localConfig',
 			'connectedTriggers',
 			'effectiveSessionId',
+			'initialPrompt',
+			'canSendToAssistant',
 		],
+		emits: ['config-updated', 'continue-loaded', 'open-build', 'send-to-assistant'],
 	},
 	AgentConfigTree: {
 		name: 'AgentConfigTree',
@@ -625,6 +636,28 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
 	});
 
+	it('sends the active preview session to instance AI from the preview page', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+
+		expect(preview.props('canSendToAssistant')).toBe(true);
+
+		preview.vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			agentName: 'Agent One',
+			agentIcon: 'bot',
+			sessionTitle: 'agents.builder.chat.newChat.label',
+		});
+	});
+
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([
@@ -662,16 +695,32 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
 	});
 
-	it('adds the Knowledge tab only when the knowledge base is enabled', async () => {
+	it('always includes the Knowledge tab and keeps it selectable regardless of the knowledge base flag', async () => {
+		routeQuery.section = 'knowledge';
 		const withoutKnowledge = await renderView();
 		expect(
 			withoutKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
-		).not.toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+		).toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+		expect(
+			withoutKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('activeMainTab'),
+		).toBe('knowledge');
+		expect(
+			withoutKnowledge
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.props('knowledgeBaseEnabled'),
+		).toBe(false);
 
 		const withKnowledge = await renderView({ knowledgeBaseEnabled: true });
 		expect(
 			withKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
 		).toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+	});
+
+	it('does not fetch knowledge files when the knowledge base is disabled', async () => {
+		routeQuery.section = 'knowledge';
+		await renderView();
+
+		expect(listAgentFilesMock).not.toHaveBeenCalled();
 	});
 
 	it('marks the knowledge files panel unpublished for an unpublished agent', async () => {

@@ -133,6 +133,7 @@ describe('telegram-bridge-behavior', () => {
 				message: mock(),
 				logger,
 				agentId: 'agent-1',
+				isNewMention: false,
 			});
 
 			expect(context.platformAgentContext).toEqual({});

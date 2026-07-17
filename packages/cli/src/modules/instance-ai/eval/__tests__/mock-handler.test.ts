@@ -551,6 +551,59 @@ describe('createLlmMockHandler', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Provider-shape normalization — deterministic backstop wired into the handler
+// ---------------------------------------------------------------------------
+
+describe('provider-shape normalization', () => {
+	const geminiRequest = {
+		url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+		method: 'POST',
+	} as IHttpRequestOptions;
+	const geminiNode = { name: 'Gemini', type: 'n8n-nodes-base.httpRequest' } as INode;
+
+	const imagesRequest = {
+		url: 'https://api.openai.com/v1/images/generations',
+		method: 'POST',
+	} as IHttpRequestOptions;
+	const imagesNode = { name: 'OpenAI', type: 'n8n-nodes-base.httpRequest' } as INode;
+
+	it('coerces a shape-wrong Gemini payload into the candidates envelope end-to-end', async () => {
+		llmSubmits({ type: 'json', body: { text: 'the answer' } });
+		const handler = createLlmMockHandler();
+
+		const result = await callHandler(handler, geminiRequest, geminiNode);
+
+		const body = result.body as {
+			candidates: Array<{ content: { parts: Array<{ text: string }> } }>;
+		};
+		expect(body.candidates[0].content.parts[0].text).toBe('the answer');
+	});
+
+	it('guarantees data[].b64_json for a url-only OpenAI images payload end-to-end', async () => {
+		llmSubmits({ type: 'json', body: { data: [{ url: 'https://x/y.png' }] } });
+		const handler = createLlmMockHandler();
+
+		const result = await callHandler(handler, imagesRequest, imagesNode);
+
+		const body = result.body as { data: Array<Record<string, unknown>> };
+		expect(typeof body.data[0].b64_json).toBe('string');
+	});
+
+	it('rejects a shape-wrong provider body via submit_response before it returns', async () => {
+		llmSubmits({ type: 'json', body: { data: [{ b64_json: 'AAAA' }] } });
+		const handler = createLlmMockHandler();
+		await handler(imagesRequest, imagesNode);
+
+		const submitHandler = submitCapture.handler;
+		if (!submitHandler) throw new Error('submit_response handler was not captured');
+
+		await expect(
+			submitHandler({ type: 'json', body: { url: 'https://x/y.png' } }),
+		).resolves.toContain('b64_json');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Prompt construction — verify request details reach the agent
 // ---------------------------------------------------------------------------
 
