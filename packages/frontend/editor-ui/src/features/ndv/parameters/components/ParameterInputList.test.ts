@@ -65,7 +65,12 @@ import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { WAIT_NODE_TYPE, AGENT_NODE_TYPE, TELEGRAM_NODE_TYPE } from '@/app/constants';
+import {
+	WAIT_NODE_TYPE,
+	AGENT_NODE_TYPE,
+	TELEGRAM_NODE_TYPE,
+	SLACK_NODE_TYPE,
+} from '@/app/constants';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
@@ -2416,6 +2421,86 @@ describe('ParameterInputList', () => {
 			} finally {
 				vi.useRealTimers();
 			}
+		});
+	});
+
+	describe('Slack HITL parameter gating', () => {
+		const slackNode = {
+			...TEST_NODE_NO_ISSUES,
+			type: SLACK_NODE_TYPE,
+		};
+
+		// captureResponder/approvers are simple types that route through the stubbed
+		// ParameterInputFull (which forwards its `path` prop as a DOM attribute), so
+		// presence/absence can be asserted without their real rendering.
+		const slackParameters: INodeProperties[] = [
+			{ displayName: 'Channel', name: 'channelId', type: 'string', default: '' },
+			{
+				displayName: 'Capture Who Responded',
+				name: 'captureResponder',
+				type: 'boolean',
+				default: false,
+			},
+			{ displayName: 'Approvers', name: 'approvers', type: 'string', default: '' },
+		];
+
+		it('hides the advanced HITL parameters when the experiment is off', async () => {
+			ndvStore.activeNode = slackNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="channelId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="captureResponder"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).not.toBeInTheDocument();
+		});
+
+		it('shows the advanced HITL parameters when the experiment is on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			ndvStore.activeNode = slackNode;
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="channelId"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="captureResponder"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).toBeInTheDocument();
+		});
+
+		it('gates the Slack tool variant too', async () => {
+			ndvStore.activeNode = { ...slackNode, type: `${SLACK_NODE_TYPE}Tool` };
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="captureResponder"]')).not.toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).not.toBeInTheDocument();
+		});
+
+		it('does not filter parameters for other node types', async () => {
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container } = renderComponent({
+				props: {
+					parameters: slackParameters,
+					nodeValues: TEST_NODE_VALUES,
+				},
+			});
+			await flushPromises();
+
+			expect(container.querySelector('[path="captureResponder"]')).toBeInTheDocument();
+			expect(container.querySelector('[path="approvers"]')).toBeInTheDocument();
 		});
 	});
 });

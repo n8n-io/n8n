@@ -5,7 +5,6 @@ import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from
 import {
 	SharedWorkflow,
 	WorkflowEntity,
-	ExecutionRepository,
 	FolderRepository,
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
@@ -24,7 +23,6 @@ import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
-import { FileLocation, BinaryDataService } from 'n8n-core';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
@@ -40,6 +38,7 @@ import { WorkflowValidationError } from '@/errors/response-errors/workflow-valid
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
@@ -70,7 +69,6 @@ export class WorkflowService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
-		private readonly binaryDataService: BinaryDataService,
 		private readonly ownershipService: OwnershipService,
 		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
@@ -78,7 +76,7 @@ export class WorkflowService {
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
@@ -232,7 +230,7 @@ export class WorkflowService {
 		T extends ListQueryDb.Workflow.Plain | ListQueryDb.Workflow.WithSharing,
 	>(workflows: T[]): Promise<Array<T & { hasResolvableCredentials: boolean }>> {
 		// Use lazy import to avoid circular dependency
-		const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+		const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
 
 		const workflowIds = workflows.map((w) => w.id);
@@ -392,7 +390,7 @@ export class WorkflowService {
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
 		// folder/project services which import this module).
 		if (this.licenseState.isSharingLicensed()) {
-			const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+			const { EnterpriseWorkflowService } = await import('./workflow.service.ee.js');
 			await Container.get(EnterpriseWorkflowService).preventTampering(
 				workflowUpdateData,
 				workflowId,
@@ -1058,17 +1056,12 @@ export class WorkflowService {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
-		const idsForDeletion = await this.executionRepository
-			.find({
-				select: ['id'],
-				where: { workflowId },
-			})
-			.then((rows) =>
-				rows.map(({ id: executionId }) => FileLocation.ofExecution(workflowId, executionId)),
-			);
+		// Delete executions (incl. their binary and blob data) in batches before
+		// the workflow row, so the FK cascade on the workflow row stays too small
+		// to hit a DB statement timeout, however large the execution history.
+		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
 		await this.workflowRepository.delete(workflowId);
-		await this.binaryDataService.deleteMany(idsForDeletion);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [workflowId]);

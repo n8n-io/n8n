@@ -33,13 +33,19 @@ export async function workflowPartiallyActivated(
 	);
 
 	const activeVersionChanged = workflowDocumentStore.activeVersionId !== activeVersionId;
-	if (activeVersionChanged && !uiStore.stateIsDirty) {
-		// Only update workflow if there are no unsaved changes
+	if (activeVersionChanged) {
 		const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowId);
 		if (!updatedWorkflow.checksum) {
 			throw new Error('Failed to fetch workflow');
 		}
-		await initializeWorkspace(updatedWorkflow);
+
+		if (uiStore.stateIsDirty) {
+			// Unsaved changes in the editor: refresh the expectedChecksum so the next save
+			// doesn't 409, but don't re-hydrate — that would discard the in-progress edits.
+			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
+		} else {
+			await initializeWorkspace(updatedWorkflow);
+		}
 	}
 
 	if (useSettingsStore().isWorkflowPublicationServiceEnabled) {

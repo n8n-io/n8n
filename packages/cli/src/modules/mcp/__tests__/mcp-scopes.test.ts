@@ -30,6 +30,7 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -43,7 +44,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import { BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { McpService } from '../mcp.service';
 
 const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
@@ -115,6 +116,9 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
 			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(AiGatewayService, {
+				isAvailable: vi.fn().mockResolvedValue({ available: false }),
+			}),
 		);
 
 	beforeEach(() => {
@@ -136,6 +140,16 @@ describe('McpService scope enforcement', () => {
 
 		const unregistered = [...ALL_MAPPED_TOOLS].filter((name) => !registered.has(name));
 		expect(unregistered).toEqual([]);
+	});
+
+	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
+		const withBuilder = getRegisteredToolNames(await buildService().getServer(user, false));
+		const withoutBuilder = getRegisteredToolNames(
+			await buildService({ builderEnabled: false }).getServer(user, false),
+		);
+
+		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
+		expect(gated).toEqual([...BUILDER_TOOLS].sort());
 	});
 
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {

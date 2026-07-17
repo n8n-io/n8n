@@ -29,7 +29,9 @@
   },
   "dependencies": {
     "@vueuse/core": "catalog:frontend",
-    "vue": "catalog:frontend"
+    "lodash": "catalog:",
+    "vue": "catalog:frontend",
+    "xss": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -39,6 +41,7 @@
     "@testing-library/vue": "catalog:frontend",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
+    "@types/lodash": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "tsdown": "catalog:",

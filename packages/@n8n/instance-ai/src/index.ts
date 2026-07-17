@@ -3,6 +3,7 @@ import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 
 import './source-map-filter';
 
+import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
@@ -22,6 +23,7 @@ import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
 import type * as MapChunkMod from './stream/map-chunk';
+import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as ToolsMod from './tools';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
@@ -89,6 +91,9 @@ const loadTraceReplay = lazyModule(
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
 );
+const loadApplyAgentThinking = lazyModule(
+	() => require('./agent/apply-agent-thinking') as typeof ApplyAgentThinkingMod,
+);
 const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof DomainAccessMod);
 const loadSystemPrompt = lazyModule(
 	() => require('./agent/system-prompt') as typeof SystemPromptMod,
@@ -109,6 +114,9 @@ const loadStreamHelpers = lazyModule(
 );
 const loadStorage = lazyModule(() => require('./storage') as typeof StorageMod);
 const loadMapChunk = lazyModule(() => require('./stream/map-chunk') as typeof MapChunkMod);
+const loadUsageAccumulator = lazyModule(
+	() => require('./stream/usage-accumulator') as typeof UsageAccumulatorMod,
+);
 const loadRuntimeSkills = lazyModule(
 	() => require('./skills/runtime-skills') as typeof RuntimeSkillsMod,
 );
@@ -181,7 +189,9 @@ export {
 	STORED_PLANNED_TASK_KINDS,
 } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
+export { saveAgentBuilderTarget } from './tools/orchestration/agent-target-binding';
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -216,6 +226,9 @@ export const continueInstanceAiTraceContext: typeof LangsmithTracingMod.continue
 export const releaseTraceClient: typeof LangsmithTracingMod.releaseTraceClient = lazyFunction(
 	() => loadLangsmithTracing().releaseTraceClient,
 );
+
+export const shutdownProductTelemetryProviders: typeof LangsmithTracingMod.shutdownProductTelemetryProviders =
+	lazyFunction(() => loadLangsmithTracing().shutdownProductTelemetryProviders);
 
 export const submitLangsmithUserFeedback: typeof LangsmithTracingMod.submitLangsmithUserFeedback =
 	lazyFunction(() => loadLangsmithTracing().submitLangsmithUserFeedback);
@@ -267,6 +280,10 @@ export type {
 
 export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
 	() => loadInstanceAgent().createInstanceAgent,
+);
+
+export const applyAgentThinking: typeof ApplyAgentThinkingMod.applyAgentThinking = lazyFunction(
+	() => loadApplyAgentThinking().applyAgentThinking,
 );
 
 export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
@@ -495,6 +512,8 @@ export type {
 } from './runtime/resumable-stream-executor';
 export type { WorkSummary } from './stream/work-summary-accumulator';
 export type { RunTokenUsage, BuilderUsageItem } from './stream/usage-accumulator';
+export const tokenUsageToBuilderUsageItems: typeof UsageAccumulatorMod.tokenUsageToBuilderUsageItems =
+	lazyFunction(() => loadUsageAccumulator().tokenUsageToBuilderUsageItems);
 export const resumeAgentRun: typeof StreamRunnerMod.resumeAgentRun = lazyFunction(
 	() => loadStreamRunner().resumeAgentRun,
 );

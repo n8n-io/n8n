@@ -9,6 +9,7 @@ import { N8N_VERSION } from '@/constants';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 
@@ -148,6 +149,9 @@ export class InstanceAiModelService {
 			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}
 		const client = await this.aiService.getClient();
-		return await client.getInstanceAiCredits({ id: user.id });
+		return await callAiServiceWithRetry(
+			'Instance AI credits fetch',
+			async () => await client.getInstanceAiCredits({ id: user.id }),
+		);
 	}
 }

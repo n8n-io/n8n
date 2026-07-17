@@ -141,11 +141,15 @@ export function mergeRemoteCrendetialDataIntoLocalCredentialData({
 		}
 	}
 
-	// Because oauthTokenData is explicitly stripped from the remote data during sanitization,
-	// it will never exist in the sanitizedRemote object. Therefore, it is skipped in the loop above.
-	// We manually merge it back from local to prevent OAuth credentials being wiped out on pull.
-	if (local.oauthTokenData) {
-		merged.oauthTokenData = local.oauthTokenData;
+	// Keep local fields the remote stub does not carry. A field left at its default value
+	// is not persisted, so it never reaches the stub; an absent field carries the same
+	// "no value to give" meaning as a present-but-blank one, which is already preserved
+	// above. Without this it would be dropped on pull and reset to its default. This also
+	// covers oauthTokenData, which sanitization always strips from the remote.
+	for (const [key, localValue] of Object.entries(local)) {
+		if (!(key in sanitizedRemote)) {
+			merged[key] = localValue;
+		}
 	}
 
 	return merged;
@@ -288,7 +292,10 @@ export function isNoUpstreamBranchError(error: unknown): boolean {
 }
 
 export async function generateSshKeyPair(keyType: KeyPairType) {
-	const sshpk = await import('sshpk');
+	// sshpk is CommonJS (`export =`): under nodenext, a native dynamic import only
+	// hoists some named exports onto the namespace (parsePrivateKey is missed), so
+	// read the real module.exports off `.default`.
+	const { default: sshpk } = await import('sshpk');
 	const keyPair: KeyPair = {
 		publicKey: '',
 		privateKey: '',
