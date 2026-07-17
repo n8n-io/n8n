@@ -513,14 +513,11 @@ export class S3 implements INodeType {
 						const signOpts: IDataObject = {
 							host: endpoint.host,
 							method: 'GET',
-							path,
+							path: `${path}?X-Amz-Expires=${additionalFields.expires ?? 3600}`,
 							service: 's3',
 							region: credentials.region,
 							signQuery: true,
 						};
-
-						// aws4 expects X-Amz-Expires to already exist
-						signOpts.path += `?X-Amz-Expires=${additionalFields.expires ?? 3600}`;
 
 						const securityHeaders = {
 							accessKeyId: `${credentials.accessKeyId}`.trim(),
