@@ -8,8 +8,10 @@ import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
+	registerModuleCommands,
 	registerModuleModals,
 	registerModuleProjectTabs,
+	registerModulePushHandlers,
 	registerModuleResources,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
@@ -216,6 +218,8 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+	registerModulePushHandlers();
+	registerModuleCommands();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
