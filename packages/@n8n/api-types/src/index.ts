@@ -515,6 +515,9 @@ export {
 
 export {
 	EVAL_COLLECTIONS_FLAG,
+	RESERVED_METRIC_KEYS,
+	ONE_TO_FIVE_METRIC_KEYS,
+	normalizeMetricScore,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,
 	CreateEvaluationCollectionDto,

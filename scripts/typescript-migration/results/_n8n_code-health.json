@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/code-health",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:22:22.057Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1217,
+            1033,
+            955
+          ],
+          "min": 955,
+          "median": 1033,
+          "mean": 1069
+        },
+        "build": {
+          "runsMs": [
+            890,
+            974,
+            851
+          ],
+          "min": 851,
+          "median": 890,
+          "mean": 905
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:23:37.921Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            543,
+            530,
+            530
+          ],
+          "min": 530,
+          "median": 530,
+          "mean": 535
+        },
+        "build": {
+          "runsMs": [
+            512,
+            503,
+            571
+          ],
+          "min": 503,
+          "median": 512,
+          "mean": 529
+        }
+      }
+    }
+  }
+}

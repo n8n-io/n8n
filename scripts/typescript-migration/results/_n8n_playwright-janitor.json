@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/playwright-janitor",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:24:20.759Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1285,
+            1194,
+            1497
+          ],
+          "min": 1194,
+          "median": 1285,
+          "mean": 1325
+        },
+        "build": {
+          "runsMs": [
+            1375,
+            1451,
+            1391
+          ],
+          "min": 1375,
+          "median": 1391,
+          "mean": 1406
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T11:25:01.813Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            597,
+            642,
+            580
+          ],
+          "min": 580,
+          "median": 597,
+          "mean": 606
+        },
+        "build": {
+          "runsMs": [
+            586,
+            654,
+            629
+          ],
+          "min": 586,
+          "median": 629,
+          "mean": 623
+        }
+      }
+    }
+  }
+}
