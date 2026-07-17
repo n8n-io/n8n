@@ -246,6 +246,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentSkillsService,
 			runtimeCacheService,
 			credentialsService,
+			mock<WorkflowRepository>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,

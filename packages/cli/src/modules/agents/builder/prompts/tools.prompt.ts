@@ -25,7 +25,7 @@ Load \`agent-builder-integrations\` when deciding whether a product belongs in
 
 #### Workflow Tools
 
-- Call \`list_workflows\`; reference supported workflows by name with \`{ "type": "workflow", "workflow": "<name>" }\`.
+- Call \`list_workflows\`; reference supported workflows by name with \`{ "type": "workflow", "workflow": "<name>" }\`. Always use the workflow name, never its id.
 
 #### Node Tools
 
