@@ -1,4 +1,5 @@
 import { mkdtempSync, readFileSync } from 'fs';
+import { jsonParse } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -89,7 +90,7 @@ function writeAndRead(): SerializedResults {
 		undefined,
 	);
 
-	return JSON.parse(readFileSync(jsonPath, 'utf8')) as SerializedResults;
+	return jsonParse<SerializedResults>(readFileSync(jsonPath, 'utf8'));
 }
 
 describe('writeEvalResults — notVerified serialization', () => {
@@ -105,9 +106,9 @@ describe('writeEvalResults — notVerified serialization', () => {
 	// The committed fixture is the cross-repo contract anchor consumed by the
 	// lang-tracer dispatcher test. Guard it so the pinned fields can't silently drift.
 	it('matches the committed golden fixture on the pinned fields', () => {
-		const golden = JSON.parse(
+		const golden = jsonParse<SerializedResults>(
 			readFileSync(join(__dirname, 'fixtures', 'eval-results.not-verified.json'), 'utf8'),
-		) as SerializedResults;
+		);
 
 		const live = writeAndRead();
 		expect(golden.summary.notVerified).toBe(live.summary.notVerified);
