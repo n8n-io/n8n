@@ -1,3 +1,4 @@
+import { jsonParse } from 'n8n-workflow';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -15,6 +16,29 @@ import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from
 // --output-dir and pins the JSON shape the dispatcher parses against a golden
 // fixture (the cross-repo contract anchor).
 // ---------------------------------------------------------------------------
+
+/** Minimal shape of the emitted eval-results.json — only the fields these tests read. */
+interface ParsedEvalResults {
+	timestamp?: string;
+	duration?: number;
+	testCases: Array<{
+		buildSuccessCount: number;
+		totalRuns: number;
+		scenarios: Array<{
+			passCount: number;
+			evaluatedCount: number;
+			totalRuns: number;
+			passAtK: number;
+			runs: Array<{
+				passed: boolean;
+				score: number;
+				failureCategory?: string;
+				rootCause?: string;
+			}>;
+		}>;
+	}>;
+	[key: string]: unknown;
+}
 
 const silentLogger: EvalLogger = {
 	info: () => {},
@@ -81,6 +105,7 @@ describe('runEvalAndPersist write-on-abort', () => {
 		// exact shape of a budget abort after some scenarios already passed.
 		const runEval = async (partialResults: WorkflowTestCaseResult[][]) => {
 			partialResults.push(partialIteration());
+			await Promise.resolve();
 			throw new Error('operation aborted due to timeout');
 		};
 
@@ -102,7 +127,7 @@ describe('runEvalAndPersist write-on-abort', () => {
 
 		const file = join(outputDir, 'eval-results.json');
 		expect(existsSync(file)).toBe(true);
-		const parsed = JSON.parse(readFileSync(file, 'utf8'));
+		const parsed = jsonParse<ParsedEvalResults>(readFileSync(file, 'utf8'));
 
 		// (a) the passing scenario that completed before the abort survives. The
 		// emitted per-scenario key is `scenarios`, and pass state is carried as
@@ -131,6 +156,7 @@ describe('runEvalAndPersist write-on-abort', () => {
 	it('matches the cross-repo golden fixture (minus the volatile timestamp/duration)', async () => {
 		const runEval = async (partialResults: WorkflowTestCaseResult[][]) => {
 			partialResults.push(partialIteration());
+			await Promise.resolve();
 			throw new Error('operation aborted due to timeout');
 		};
 
@@ -150,13 +176,15 @@ describe('runEvalAndPersist write-on-abort', () => {
 			),
 		).rejects.toThrow(/aborted/);
 
-		const parsed = JSON.parse(readFileSync(join(outputDir, 'eval-results.json'), 'utf8'));
+		const parsed = jsonParse<ParsedEvalResults>(
+			readFileSync(join(outputDir, 'eval-results.json'), 'utf8'),
+		);
 		// timestamp + duration are wall-clock and can't be pinned; the rest is the
 		// contract the dispatcher parses.
 		delete parsed.timestamp;
 		delete parsed.duration;
 
-		const golden = JSON.parse(
+		const golden = jsonParse<ParsedEvalResults>(
 			readFileSync(join(__dirname, 'fixtures', 'eval-results.partial-abort.json'), 'utf8'),
 		);
 		expect(parsed).toEqual(golden);
