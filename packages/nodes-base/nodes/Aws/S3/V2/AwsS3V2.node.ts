@@ -18,6 +18,7 @@ import { folderFields, folderOperations } from './FolderDescription';
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
 import { getAwsCredentials } from '../../GenericFunctions';
+import { AwsAssumeRoleCredentialsType, AwsIamCredentialsType } from '@credentials/common/aws';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -492,6 +493,66 @@ export class AwsS3V2 implements INodeType {
 				}
 				if (resource === 'file') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CopyObject.html
+					if (operation === 'getPresignedUrl') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const accessKeyId =
+							(credentials as AwsIamCredentialsType).accessKeyId ||
+							(credentials as AwsAssumeRoleCredentialsType).stsAccessKeyId;
+						const secretAccessKey =
+							(credentials as AwsIamCredentialsType).secretAccessKey ||
+							(credentials as AwsAssumeRoleCredentialsType).stsSecretAccessKey;
+						const sessionToken =
+							(credentials as AwsIamCredentialsType).sessionToken ||
+							(credentials as AwsAssumeRoleCredentialsType).stsSessionToken;
+
+						const region = credentials.region as string;
+
+						// Percent-encode key segments
+						const encodedFileKey = fileKey
+							.split('/')
+							.map((segment) => encodeURIComponent(segment))
+							.join('/');
+
+						const path = `/${encodedFileKey}`;
+						const host = `${bucketName}.s3.${region}.amazonaws.com`;
+
+						const { sign } = require('aws4');
+
+						const signOpts: IDataObject = {
+							host,
+							method: 'GET',
+							path: `${path}?X-Amz-Expires=${additionalFields.expires ?? 3600}`,
+							service: 's3',
+							region,
+							signQuery: true,
+						};
+
+						const securityHeaders = {
+							accessKeyId: `${accessKeyId}`.trim(),
+							secretAccessKey: `${secretAccessKey}`.trim(),
+							sessionToken: sessionToken ? `${sessionToken}`.trim() : undefined,
+						};
+
+						sign(signOpts, securityHeaders);
+
+						const presignedUrl = `https://${host}${signOpts.path}`;
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								url: presignedUrl,
+							}),
+							{
+								itemData: {
+									item: i,
+								},
+							},
+						);
+
+						returnData.push(...executionData);
+					}
 					if (operation === 'copy') {
 						const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;
