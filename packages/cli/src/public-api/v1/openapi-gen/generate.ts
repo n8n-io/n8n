@@ -65,7 +65,11 @@ export function generatePathYaml(pathItem: ZodOpenApiPathItemObject): string {
 		paths: { '/x': pathItem },
 	});
 
-	return stringify(document.paths?.['/x'], { aliasDuplicateObjects: false });
+	// singleQuote: true matches this repo's prettier config (.prettierrc.js) — without it, the
+	// `yaml` package's default quoting differs from prettier's, so every regeneration produces a
+	// spurious quote-style diff against what lefthook's prettier hook already reformatted at
+	// commit time.
+	return stringify(document.paths?.['/x'], { aliasDuplicateObjects: false, singleQuote: true });
 }
 
 /**
@@ -76,7 +80,7 @@ export function generatePathYaml(pathItem: ZodOpenApiPathItemObject): string {
  */
 export function generateSchemaYaml(schema: ZodType, ref: string): string {
 	const { components } = createSchema(schema, { schemaType: 'input' });
-	return stringify(components?.[ref], { aliasDuplicateObjects: false });
+	return stringify(components?.[ref], { aliasDuplicateObjects: false, singleQuote: true });
 }
 
 /**
