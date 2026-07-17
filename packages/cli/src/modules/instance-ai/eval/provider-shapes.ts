@@ -162,7 +162,7 @@ function hasGeminiCandidates(body: unknown): boolean {
 	if (!isPlainObject(body) || !Array.isArray(body.candidates) || body.candidates.length === 0) {
 		return false;
 	}
-	const first = body.candidates[0];
+	const first: unknown = body.candidates[0];
 	if (!isPlainObject(first) || !isPlainObject(first.content)) return false;
 	return Array.isArray(first.content.parts) && first.content.parts.length > 0;
 }
@@ -324,7 +324,7 @@ function redditViolation(body: unknown, kind: 'submit' | 'comment'): string | un
 		return 'Invalid: Reddit write responses must use the `{ "json": { "errors": [], "data": { ... } } }` envelope — the node reads response.json.data. Resubmit wrapped in that shape.';
 	}
 	if (kind === 'comment') {
-		const things = (data as Record<string, unknown>).things;
+		const things = data.things;
 		if (!Array.isArray(things) || !isPlainObject(things[0]) || !things[0].data) {
 			return 'Invalid: Reddit api/comment responses put the comment under `json.data.things[0].data`. Resubmit with `{ "json": { "data": { "things": [{ "kind": "t1", "data": { ... } }] } } }`.';
 		}
