@@ -145,10 +145,8 @@ interface EovApiDoc {
  *
  * Why it's needed in tests: eov's default resolver `require()`s each handler module, but under
  * Vitest only the `.ts` handler sources exist on disk (no `.js`) and they're served by Vite, not
- * Node's `require` — so `require()` throws and every route 500s. (Under Jest this worked via
- * ts-jest's require hook, which Vitest has no equivalent of.) `import()` is intercepted by Vite and
- * resolves the `.ts`. Mirrors eov's `defaultResolver` lookup (`mod[id]` / `mod.default[id]` / `mod.default`).
- */
+ * Node's `require` — so `require()` throws and every route 500s.
+ * */
 async function importOperationHandlerResolver(
 	handlersPath: string,
 	// Typed as `unknown` (then narrowed) so the signature stays assignable to eov's

@@ -647,7 +647,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'without either keep editing the current agent. To build ANOTHER agent in the same ' +
 				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
 				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
-				'switches the active target. When the builder needs user input (a choice, a ' +
+				'switches the active target. The builder can also publish or unpublish the target ' +
+				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
+				'forward that intent in `message`; never tell the user to open the agent editor and ' +
+				'click Publish. When the builder needs user input (a choice, a ' +
 				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
 				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
 				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +

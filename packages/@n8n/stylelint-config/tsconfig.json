@@ -1,9 +1,8 @@
 {
 	"compilerOptions": {
-		"ignoreDeprecations": "6.0",
 		"target": "ES2015",
 		"module": "ESNext",
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
 		"strict": false,
@@ -11,7 +10,6 @@
 		"rootDir": "src",
 		"declaration": true,
 		"declarationMap": true,
-		"downlevelIteration": true,
 		"skipLibCheck": true,
 		"types": ["node", "vitest/globals"]
 	},

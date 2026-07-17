@@ -920,6 +920,12 @@ export const instanceAiAgentPreviewHandoffContextSchema = z.object({
 	agentId: z.string().min(1).max(128),
 	threadId: z.string().min(1).max(128),
 	executionId: z.string().min(1).max(64).optional(),
+	/** Display-only — the target agent's name, surfaced in the context chip. */
+	agentName: z.string().max(128).optional(),
+	/** Display-only — the target agent's personalisation icon, surfaced in the context chip. */
+	agentIcon: z.string().max(64).optional(),
+	/** Display-only — the preview session's title, surfaced in the context chip. */
+	sessionTitle: z.string().max(200).optional(),
 });
 export type InstanceAiAgentPreviewHandoffContext = z.infer<
 	typeof instanceAiAgentPreviewHandoffContextSchema
