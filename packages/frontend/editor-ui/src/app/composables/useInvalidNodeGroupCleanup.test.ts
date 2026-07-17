@@ -108,7 +108,7 @@ describe('useInvalidNodeGroupCleanup', () => {
 			}),
 		);
 		expect(trackSpy).toHaveBeenCalledWith('Auto-ungrouped invalid node groups', {
-			groupsAffected: 1,
+			groups_affected: 1,
 		});
 	});
 
@@ -166,7 +166,7 @@ describe('useInvalidNodeGroupCleanup', () => {
 		// One 'User ungrouped nodes' per removed group, plus one aggregate event
 		expect(trackSpy).toHaveBeenCalledTimes(3);
 		expect(trackSpy).toHaveBeenCalledWith('Auto-ungrouped invalid node groups', {
-			groupsAffected: 2,
+			groups_affected: 2,
 		});
 	});
 

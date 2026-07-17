@@ -92,7 +92,7 @@ export function useInvalidNodeGroupCleanup() {
 		}
 
 		telemetry.track('Auto-ungrouped invalid node groups', {
-			groupsAffected: invalidGroups.length,
+			groups_affected: invalidGroups.length,
 		});
 
 		showGroupsRemovedToast(invalidGroups);
