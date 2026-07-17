@@ -118,6 +118,7 @@ const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
+const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
@@ -129,7 +130,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
-	deleteAgent: vi.fn(),
+	deleteAgent: deleteAgentMock,
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
@@ -532,6 +533,8 @@ describe('AgentBuilderView — preview routing', () => {
 		mockConfig.value = withDefaultLlm(intendedConfig);
 		updateConfigMock.mockReset();
 		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
+		deleteAgentMock.mockReset();
+		deleteAgentMock.mockResolvedValue(undefined);
 		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 		getAgentConfigValidationMock.mockReset();
@@ -1085,9 +1088,55 @@ describe('AgentBuilderView — configuration validation', () => {
 
 		expect(vm.configValidation).toBeNull();
 
-		// Cancel the debounced autosave scheduled by the edit above — a leaked
-		// timer would otherwise fire updateConfig during a later test.
+		// Unmount flushes the debounced autosave scheduled by the edit above so it
+		// does not leak into a later test.
 		wrapper.unmount();
+		await flushPromises();
+	});
+
+	it('flushes a pending config edit when the builder unmounts', async () => {
+		const wrapper = await renderView();
+		updateConfigMock.mockClear();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+		};
+
+		vm.onConfigFieldUpdate({ name: 'Renamed agent' });
+		await nextTick();
+		wrapper.unmount();
+		await flushPromises();
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ name: 'Renamed agent' }),
+		);
+	});
+
+	it('does not autosave pending config edits after deleting the agent', async () => {
+		agentPermissionsMock.canDelete.value = true;
+		openModalWithDataMock.mockImplementation(({ name, data }) => {
+			if (name === 'agentConfirmation') {
+				data.onConfirm();
+			}
+		});
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+		};
+
+		vm.onConfigFieldUpdate({ name: 'Renamed before delete' });
+		await nextTick();
+		updateConfigMock.mockClear();
+
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'delete');
+		await flushPromises();
+		wrapper.unmount();
+		await flushPromises();
+
+		expect(deleteAgentMock).toHaveBeenCalled();
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('refreshes validation after a successful config autosave lands', async () => {

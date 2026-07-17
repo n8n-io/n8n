@@ -965,9 +965,11 @@ async function onHeaderAction(action: string) {
 		});
 		if (confirmed !== MODAL_CONFIRM) return;
 
-		// Cancel any pending autosave so it doesn't fire against the now-deleted
-		// agent mid-navigation.
+		// Drop any pending edits before navigation — the agent is being deleted and
+		// the unmount flush must not save against it.
 		await settleAutosave();
+		configAutosave.cancelPendingAutosave();
+		skillAutosave.cancelPendingAutosave();
 		const capturedProjectId = projectId.value;
 
 		try {
@@ -1090,8 +1092,7 @@ watch(agentId, initialize, { immediate: true });
 
 onBeforeUnmount(() => {
 	sessionsStore.stopAutoRefresh();
-	configAutosave.cancelPendingAutosave();
-	skillAutosave.cancelPendingAutosave();
+	void flushAutosave().catch(() => {});
 });
 
 // If the user is on Preview before the sessions list finishes loading, latch onto

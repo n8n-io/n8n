@@ -84,15 +84,35 @@ const {
 	},
 });
 
+const RUNTIME_ISSUE_PATH_PREFIXES = [
+	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
+	{ prefix: 'mcpServers.', key: 'agents.chat.misconfigured.missing.mcpServers' },
+	{
+		prefix: 'subAgents.modelsByDifficulty.',
+		key: 'agents.chat.misconfigured.missing.subAgents.modelsByDifficulty',
+	},
+	{ prefix: 'subAgents.agents.', key: 'agents.chat.misconfigured.missing.subAgents.agents' },
+	{ prefix: 'vectorStores.', key: 'agents.chat.misconfigured.missing.vectorStores' },
+	{ prefix: 'memory.', key: 'agents.chat.misconfigured.missing.memory' },
+] as const;
+
 function humaniseMissingField(field: string): string {
 	if (field.startsWith('skill:')) {
 		return locale.baseText('agents.chat.misconfigured.missing.skill', {
 			interpolate: { id: field.slice('skill:'.length) },
 		});
 	}
-	const key = `agents.chat.misconfigured.missing.${field}`;
-	const translated = locale.baseText(key as never);
-	return translated === key ? field : translated;
+	const exactKey = `agents.chat.misconfigured.missing.${field}`;
+	const exactTranslation = locale.baseText(exactKey as never);
+	if (exactTranslation !== exactKey) {
+		return exactTranslation;
+	}
+	for (const { prefix, key } of RUNTIME_ISSUE_PATH_PREFIXES) {
+		if (field.startsWith(prefix)) {
+			return locale.baseText(key);
+		}
+	}
+	return field;
 }
 
 const missingFields = computed(() => {
@@ -182,7 +202,7 @@ onBeforeUnmount(() => {
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
 				</span>
 				<span v-if="missingFields" :class="$style.errorBannerDetail">
-					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
+					{{ locale.baseText('agents.chat.misconfigured.issuesPrefix') }} {{ missingFields }}
 				</span>
 			</div>
 			<template #trailingContent>
