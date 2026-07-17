@@ -5,7 +5,7 @@ import { ref } from 'vue';
 import type { SegmentControlSize } from './SegmentControl.types';
 import N8nSegmentControl from './SegmentControl.vue';
 
-const sizeOptions: SegmentControlSize[] = ['small', 'medium', 'large', 'xlarge'];
+const sizeOptions: SegmentControlSize[] = ['mini', 'small', 'medium', 'large', 'xlarge'];
 
 export default {
 	title: 'Core/SegmentControl',

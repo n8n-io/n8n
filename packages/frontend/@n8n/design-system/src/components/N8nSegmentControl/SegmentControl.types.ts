@@ -1,1 +1,1 @@
-export type SegmentControlSize = 'small' | 'medium' | 'large' | 'xlarge';
+export type SegmentControlSize = 'mini' | 'small' | 'medium' | 'large' | 'xlarge';

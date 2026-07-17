@@ -1,19 +1,15 @@
 <script lang="ts" setup>
 import { RadioGroupItem } from 'reka-ui';
 
-import type { SegmentControlSize } from './SegmentControl.types';
-
 interface SegmentControlItemProps {
 	label: string;
 	value: string;
 	disabled?: boolean;
-	size?: SegmentControlSize;
 	square?: boolean;
 }
 
 withDefaults(defineProps<SegmentControlItemProps>(), {
 	disabled: false,
-	size: 'medium',
 	square: false,
 });
 
@@ -29,7 +25,6 @@ defineSlots<{ default?: {} }>();
 		:class="{
 			'n8n-segment-control-item': true,
 			[$style.item]: true,
-			[$style[size]]: true,
 			[$style.square]: square,
 			[$style.hoverable]: !disabled,
 		}"
@@ -44,6 +39,8 @@ defineSlots<{ default?: {} }>();
 @use '../../css/mixins/focus';
 
 .item {
+	--segment-control--item-height: calc(var(--input--height) - 2 * var(--segment-control--padding));
+
 	appearance: none;
 	display: inline-flex;
 	align-items: center;
@@ -52,8 +49,12 @@ defineSlots<{ default?: {} }>();
 	border: none;
 	border-radius: var(--radius--3xs);
 	background: transparent;
+	height: var(--segment-control--item-height);
+	padding: var(--segment-control--item-padding);
 	font-family: inherit;
+	font-size: var(--segment-control--font-size);
 	font-weight: var(--font-weight--medium);
+	line-height: 1;
 	color: var(--text-color--subtle);
 	cursor: pointer;
 	user-select: none;
@@ -103,51 +104,8 @@ defineSlots<{ default?: {} }>();
 	}
 }
 
-.small {
-	height: 22px;
-	font-size: var(--font-size--3xs);
-	padding: 0 var(--spacing--2xs);
-	line-height: 1;
-
-	&.square {
-		width: 22px;
-		padding: 0;
-	}
-}
-
-.medium {
-	height: 26px;
-	font-size: var(--font-size--2xs);
-	padding: 0 var(--spacing--xs);
-	line-height: 1;
-
-	&.square {
-		width: 26px;
-		padding: 0;
-	}
-}
-
-.large {
-	height: var(--height--md);
-	font-size: var(--font-size--xs);
-	padding: 0 var(--spacing--xs);
-	line-height: 1;
-
-	&.square {
-		width: var(--height--md);
-		padding: 0;
-	}
-}
-
-.xlarge {
-	height: var(--height--lg);
-	font-size: var(--font-size--sm);
-	padding: 0 var(--spacing--sm);
-	line-height: 1;
-
-	&.square {
-		width: var(--height--lg);
-		padding: 0;
-	}
+.square {
+	width: var(--segment-control--item-height);
+	padding: 0;
 }
 </style>

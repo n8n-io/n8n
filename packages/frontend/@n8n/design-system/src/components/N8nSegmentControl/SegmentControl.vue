@@ -124,7 +124,13 @@ function onUpdate(raw: AcceptableValue) {
 
 <template>
 	<div
-		:class="['n8n-segment-control', $style.segmentControl, disabled && $style.disabled, rootClass]"
+		:class="[
+			'n8n-segment-control',
+			$style.segmentControl,
+			$style[size],
+			disabled && $style.disabled,
+			rootClass,
+		]"
 		:data-suppress-hover="suppressHover || undefined"
 		@pointermove="onPointerInteract"
 		@pointerdown="onPointerInteract"
@@ -146,7 +152,6 @@ function onUpdate(raw: AcceptableValue) {
 				:key="`${option.value}`"
 				:label="option.label"
 				:value="`${option.value}`"
-				:size="size"
 				:disabled="disabled || option.disabled"
 				:square="squareButtons"
 				@focusin="onItemFocusIn"
@@ -158,14 +163,58 @@ function onUpdate(raw: AcceptableValue) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/input' as input-mixin;
+
 .segmentControl {
+	@include input-mixin.size-variables('medium');
+
+	--segment-control--padding: var(--spacing--5xs);
+	--segment-control--font-size: var(--font-size--2xs);
+	--segment-control--item-padding: 0 var(--spacing--xs);
+
 	display: inline-flex;
 	align-items: stretch;
+	height: var(--input--height);
 	line-height: 1;
 	vertical-align: middle;
 	background-color: var(--color--foreground);
-	padding: var(--spacing--5xs);
+	padding: var(--segment-control--padding);
 	border-radius: var(--radius--2xs);
+}
+
+.mini {
+	@include input-mixin.size-variables('mini');
+
+	--segment-control--font-size: var(--font-size--3xs);
+	--segment-control--item-padding: 0 var(--spacing--2xs);
+}
+
+.small {
+	@include input-mixin.size-variables('small');
+
+	--segment-control--font-size: var(--font-size--3xs);
+	--segment-control--item-padding: 0 var(--spacing--2xs);
+}
+
+.medium {
+	@include input-mixin.size-variables('medium');
+
+	--segment-control--font-size: var(--font-size--2xs);
+	--segment-control--item-padding: 0 var(--spacing--xs);
+}
+
+.large {
+	@include input-mixin.size-variables('large');
+
+	--segment-control--font-size: var(--font-size--xs);
+	--segment-control--item-padding: 0 var(--spacing--xs);
+}
+
+.xlarge {
+	@include input-mixin.size-variables('xlarge');
+
+	--segment-control--font-size: var(--font-size--sm);
+	--segment-control--item-padding: 0 var(--spacing--sm);
 }
 
 .group {
