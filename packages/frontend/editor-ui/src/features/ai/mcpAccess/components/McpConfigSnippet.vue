@@ -68,21 +68,17 @@ const handleCopy = async () => {
 		background: none !important;
 		overflow-x: auto;
 	}
-
-	&:hover .copy-wrapper {
-		display: block;
-	}
 }
 
 .copy-wrapper {
 	position: absolute;
-	top: var(--spacing--3xs);
-	right: var(--spacing--3xs);
-	display: none;
+	top: var(--spacing--2xs);
+	right: var(--spacing--2xs);
 }
 
-/* A bare glyph, no button chrome, in every state. */
+/* A bare glyph, no button chrome, in every state, hugging the corner. */
 .copy-button {
+	padding: var(--spacing--4xs) !important;
 	border: none !important;
 	box-shadow: none !important;
 	background: transparent !important;

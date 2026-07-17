@@ -237,23 +237,18 @@ onMounted(async () => {
 		tab-size: 1;
 		background: none !important;
 	}
-
-	&:hover {
-		.copy-json-wrapper {
-			display: block;
-		}
-	}
 }
 
+/* Below the "Configuration JSON" label, hugging the code block's top-right. */
 .copy-json-wrapper {
 	position: absolute;
 	top: var(--spacing--lg);
-	right: var(--spacing--3xs);
-	display: none;
+	right: var(--spacing--2xs);
 }
 
 /* A bare glyph, no button chrome, in every state. */
 .copy-json-button {
+	padding: var(--spacing--4xs) !important;
 	border: none !important;
 	outline: none !important;
 	box-shadow: none !important;
