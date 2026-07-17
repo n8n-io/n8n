@@ -757,6 +757,8 @@ export interface InstanceAiWebResearchService {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
+			/** When aborted, in-flight search requests should stop promptly. */
+			abortSignal?: AbortSignal;
 		},
 	): Promise<WebSearchResponse>;
 
@@ -766,6 +768,8 @@ export interface InstanceAiWebResearchService {
 			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
+			/** When aborted, in-flight page fetches should stop promptly. */
+			abortSignal?: AbortSignal;
 			/**
 			 * Called before following each redirect hop and on cache hits with a
 			 * cross-host `finalUrl`. Throw to abort the fetch (the tool will

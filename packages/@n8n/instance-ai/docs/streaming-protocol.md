@@ -469,6 +469,15 @@ The frontend can abort a running agent by sending:
   `run-finish` with `payload.status = "cancelled"`.
 - **Race behavior**: If the run already completed, cancel is a no-op.
 
+### In-flight tool calls
+
+Cancel aborts the run `AbortSignal` that is passed to every tool as
+`ctx.abortSignal`. Instance AI wraps tool handlers so Stop unblocks the
+executor promptly (handlers race the signal). Long-running I/O tools should
+also forward `ctx.abortSignal` into fetches and child work so the underlying
+request stops, not only the handler promise. Aborted tool calls are settled as
+cancelled tool results (no dangling `tool_call` entries).
+
 ## Frontend Rendering
 
 ### Agent Activity Tree
