@@ -17,6 +17,7 @@ export function mcpSkill(): RuntimeSkill {
 			'Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent.',
 		recommendedTools: [
 			'resolve_integration',
+			'ask_questions',
 			'ask_credential',
 			'verify_mcp_server',
 			'read_config',
@@ -56,7 +57,8 @@ connected MCP server.
 For a generic external-service request, \`resolve_integration\` must select the
 integration type before this skill is loaded. If no resolver result is
 available yet, call \`resolve_integration\` with queries matching the requested
-service.
+service. Resolve one requested service per call; use \`queries\` only for
+alternative search terms for that service.
 
 - If it returns \`kind: "node"\` for a generic service request, load
   \`agent-builder-node-tools\` and continue with the returned node results. Stop
@@ -65,15 +67,27 @@ service.
   do not silently substitute a node tool. Continue with manual MCP setup by
   asking for the URL and transport/authentication decision through
   \`${ASK_QUESTIONS_TOOL_NAME}\`.
-- If it returns \`kind: "mcp"\`, use the returned \`name\`, \`url\`, \`transport\`,
-  \`authentication\`, \`credentialType\`, \`tools\`, and optional \`metadata\`.
+- \`resolve_integration\` returns \`{ kind: "mcp", results: [...] }\` for MCP
+  matches. Never read server fields from the wrapper; select a result first:
+  - If \`results[]\` contains one entry, use it as \`selectedResult\`.
+  - If the request uniquely identifies one entry by \`name\` or \`title\`, use
+    that entry as \`selectedResult\`.
+  - If multiple candidates remain, call \`ask_questions\` with the candidate
+    titles and descriptions; never choose by array order. Use the chosen entry
+    as \`selectedResult\`. If \`ask_questions\` returns \`{ answered: false }\`,
+    stop MCP setup without selecting a server, asking for credentials, verifying
+    a connection, or mutating config. Do not re-present the question.
+- Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
+  \`tools\`, and optional \`metadata\` only from \`selectedResult\`.
 
-Follow these steps for an MCP result:
+Follow these steps for the selected MCP result:
 
-1. Credential: call \`ask_credential\` with the returned \`credentialType\`. Never
-   invent credential IDs.
-2. Verify: call \`verify_mcp_server\` with \`name\`, \`url\`, \`transport\`,
-   \`authentication\`, and (if applicable) \`credential\`.
+1. Credential: call \`ask_credential\` with a short \`purpose\`, using
+   \`selectedResult.credentialType\` as \`credentialType\`. Never invent
+   credential IDs.
+2. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
+   \`transport\`, and \`authentication\`, plus the returned \`credentialId\` as
+   \`credential\` when authentication is required.
 3. Capability check: confirm the verified tool names and descriptions cover the
    capability the user requested.
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
@@ -130,7 +144,7 @@ setup later:
 ### Selecting credentials
 
 When using a registry-backed server, always use the \`credentialType\` returned
-by the MCP discovery result.
+by \`selectedResult\`.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
@@ -153,9 +167,9 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
 - Never fabricate \`metadata.nodeTypeName\`.
-- When the MCP discovery result includes \`metadata.nodeTypeName\`, include
-  \`metadata: { nodeTypeName: <result.nodeTypeName> }\` in the entry so the UI
-  can render the correct server form.
+- When \`selectedResult\` includes \`metadata.nodeTypeName\`, include
+  \`metadata: { nodeTypeName: <selectedResult.metadata.nodeTypeName> }\` in the
+  entry so the UI can render the correct server form.
 - A registry match proves server availability, not support for the requested
   capability; use the verified live tool list for that decision.`,
 	};

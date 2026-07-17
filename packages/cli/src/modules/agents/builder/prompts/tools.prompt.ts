@@ -12,20 +12,29 @@ Use this guidance before calling \`resolve_integration\`, \`search_nodes\`,
 \`search_mcp_servers\`, \`get_node_types\`, \`build_custom_tool\`, or adding,
 changing, or removing entries in \`tools[]\` / \`mcpServers\` / \`providerTools\`.
 
-For every real-world external service, call \`resolve_integration\` before
-loading MCP or node-tool skills. Do not infer MCP availability from memory.
+For an external product, first decide whether it is the target agent's chat or
+trigger surface. Load \`agent-builder-integrations\` whenever the request could
+mean that the product is where people invoke or converse with the agent.
 
-- \`kind: "mcp"\`: load \`agent-builder-mcp\` and follow the MCP credential,
-  verification, and config workflow.
-- \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
-  results, and continue with \`get_node_types\`.
+- Chat/trigger integration: call \`list_integration_types\`, then
+  \`configure_channel\` with a returned type. Do not call \`resolve_integration\`
+  for chat/trigger integrations.
+- Callable external service: the conversation or trigger happens elsewhere and
+  the agent only operates on the product. For each requested non-chat callable
+  service, call \`resolve_integration\` separately, using \`queries\` as
+  alternative search terms for that one service. Do not infer MCP availability
+  from memory.
+  - \`kind: "mcp"\`: load \`agent-builder-mcp\` and follow the MCP credential,
+    verification, and config workflow.
+  - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
+    results, and continue with \`get_node_types\`.
 
 Use \`search_nodes\` directly only when the user explicitly asks for an n8n node,
 when refining node results, or when a verified MCP server lacks the requested
 capability. Use \`search_mcp_servers\` directly only when refining MCP results or
 when the user explicitly asks to browse the MCP registry.
 
-Preference order for real-world integrations:
+Preference order for non-chat callable services:
 1. MCP servers selected by \`resolve_integration\`
 2. Node tools returned by \`resolve_integration\`
 3. Workflow tools (\`list_workflows\`)
@@ -33,9 +42,6 @@ Preference order for real-world integrations:
 
 Custom tools are for pure computation, validation, formatting, or planning logic;
 they cannot perform live network, filesystem, process, timer, or host I/O.
-
-Load \`agent-builder-integrations\` when deciding whether a product belongs in
-\`integrations\` or should be exposed as an MCP, node, or workflow tool.
 
 #### Workflow Tools
 
@@ -71,6 +77,10 @@ Custom tools are last resort and only for pure computation. Load
 
 ### Verify
 
-- External services were resolved through \`resolve_integration\` unless the user explicitly requested an n8n node or custom MCP server.
+- Chat/trigger integrations bypassed \`resolve_integration\` and were set up
+  through \`configure_channel\`.
+- Each non-chat callable service was resolved separately through
+  \`resolve_integration\` unless the user explicitly requested an n8n node or
+  custom MCP server.
 - Workflow tools reference discovered workflow names.
 - Provider tool keys match the configured model provider and the valid key list.`;
