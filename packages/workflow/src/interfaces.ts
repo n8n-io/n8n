@@ -3308,6 +3308,7 @@ export interface IWorkflowGroup {
 	id: string;
 	name: string;
 	nodeIds: string[];
+	description?: string;
 }
 
 export interface IWorkflowBase {

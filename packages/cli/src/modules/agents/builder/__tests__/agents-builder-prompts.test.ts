@@ -166,6 +166,27 @@ describe('chat-channel credential guidance', () => {
 			'Batch every\n  question you currently need into a single call',
 		);
 	});
+
+	it('tells the builder how to remove an existing chat integration', () => {
+		const integrationsSkill = getBuilderRuntimeSkills().find(
+			(skill) => skill.id === 'agent-builder-integrations',
+		);
+
+		expect(integrationsSkill?.recommendedTools).toContain('ask_questions');
+		expect(integrationsSkill?.allowedTools).toContain('ask_questions');
+		expect(integrationsSkill?.instructions).toContain('To remove an existing chat integration');
+		expect(integrationsSkill?.instructions).toContain('config.integrations');
+		expect(integrationsSkill?.instructions).toContain(
+			'If multiple existing integrations match the requested platform, ask which one',
+		);
+		expect(integrationsSkill?.instructions).toContain(
+			'Do not call `configure_channel` to remove a channel.',
+		);
+		expect(getConfigMutationPrompt()).toContain('#### Remove An Existing Chat Integration');
+		expect(getConfigMutationPrompt()).toContain(
+			'Omitting `integrations` preserves existing channels.',
+		);
+	});
 });
 
 describe('MCP skill availability', () => {
