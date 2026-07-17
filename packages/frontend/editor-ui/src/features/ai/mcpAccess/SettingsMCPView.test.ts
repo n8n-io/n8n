@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
-import { createOAuthClient } from '@/features/ai/mcpAccess/mcp.test.utils';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -144,31 +143,17 @@ describe('SettingsMCPView', () => {
 			expect(queryByTestId('mcp-empty-state')).not.toBeInTheDocument();
 		});
 
-		it('should render up to three connected-client preview rows plus the view-all row', async () => {
-			mcpStore.oauthClientTotals = { mine: 5 };
-			mcpStore.oauthClients = [
-				createOAuthClient({ id: 'c1', name: 'Claude Code' }),
-				createOAuthClient({ id: 'c2', name: 'Cursor' }),
-				createOAuthClient({ id: 'c3', name: 'VS Code' }),
-				createOAuthClient({ id: 'c4', name: 'Codex' }),
-			];
-
-			const { getAllByTestId, getByTestId } = createComponent({ pinia });
-			await nextTick();
-
-			// The overview keeps the list visible, capped at three; the rest sit behind view-all.
-			expect(getAllByTestId('mcp-clients-preview-row')).toHaveLength(3);
-			expect(getByTestId('mcp-clients-view-all-row')).toBeVisible();
-		});
-
-		it('should show the no-clients empty state when there are no connected clients', async () => {
+		it('should keep the connected-clients row (stating the count) when there are none', async () => {
 			mcpStore.oauthClientTotals = { mine: 0 };
 
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			expect(getByTestId('mcp-clients-empty')).toBeVisible();
-			expect(queryByTestId('mcp-clients-view-all-row')).not.toBeInTheDocument();
+			// No dashed empty-state card on the overview; the settings row stays and states the count.
+			expect(queryByTestId('mcp-clients-empty')).not.toBeInTheDocument();
+			const row = getByTestId('mcp-clients-view-all-row');
+			expect(row).toBeVisible();
+			expect(row).toHaveTextContent('0');
 		});
 
 		it('should navigate to the connected clients page from the view-all row', async () => {
