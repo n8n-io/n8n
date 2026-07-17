@@ -29,7 +29,7 @@ export class GoogleDriveOAuth2Api implements ICredentialType {
 			type: 'notice',
 			default: '',
 			displayOptions: {
-				hideOnCloud: true,
+				showOnDeployment: 'hosted',
 			},
 		},
 	];

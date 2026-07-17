@@ -1,7 +1,7 @@
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-import { extractSubWorkflowRequirements } from '../sub-workflow-requirements';
+import { WorkflowRequirementsExtractor } from '../workflow-requirements.extractor';
 
 function makeWorkflow(nodes: INode[]): WorkflowEntity {
 	return {
@@ -27,13 +27,32 @@ function executeWorkflowNode(
 	};
 }
 
-describe('extractSubWorkflowRequirements', () => {
+describe('WorkflowRequirementsExtractor', () => {
+	const extractor = new WorkflowRequirementsExtractor();
+
 	it('extracts static Execute Workflow references', () => {
 		const workflow = makeWorkflow([
 			executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }),
 		]);
 
-		expect(extractSubWorkflowRequirements(workflow)).toEqual([
+		expect(extractor.extract(workflow)).toEqual([
+			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
+		]);
+	});
+
+	it('extracts static Tool Workflow references', () => {
+		const workflow = makeWorkflow([
+			executeWorkflowNode(
+				{ __rl: true, mode: 'list', value: 'wf-child' },
+				{
+					name: 'Call workflow',
+					type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+					typeVersion: 2.2,
+				},
+			),
+		]);
+
+		expect(extractor.extract(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
@@ -44,7 +63,7 @@ describe('extractSubWorkflowRequirements', () => {
 			executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }, { id: 'node-2' }),
 		]);
 
-		expect(extractSubWorkflowRequirements(workflow)).toEqual([
+		expect(extractor.extract(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
 		]);
 	});
@@ -52,7 +71,7 @@ describe('extractSubWorkflowRequirements', () => {
 	it('ignores dynamic workflow selectors', () => {
 		const workflow = makeWorkflow([executeWorkflowNode('={{ $json.workflowId }}')]);
 
-		expect(extractSubWorkflowRequirements(workflow)).toEqual([]);
+		expect(extractor.extract(workflow)).toEqual([]);
 	});
 
 	it('ignores non Execute Workflow nodes', () => {
@@ -63,6 +82,6 @@ describe('extractSubWorkflowRequirements', () => {
 			),
 		]);
 
-		expect(extractSubWorkflowRequirements(workflow)).toEqual([]);
+		expect(extractor.extract(workflow)).toEqual([]);
 	});
 });

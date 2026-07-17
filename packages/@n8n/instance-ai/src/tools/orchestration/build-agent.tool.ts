@@ -413,6 +413,28 @@ async function runBuilderConsumeLoop(params: {
 	await onSettled?.();
 	trackConfigMutations(context, target.agentId, result.workSummary);
 
+	// The builder names (and renames) the target agent via its config tools, so
+	// the orchestrator-supplied name can be missing or stale by the time the
+	// turn settles. Refresh it so the tool output (`targetIdentity`), the
+	// republished agent-spawned event, and the thread binding all carry the
+	// agent's real display name. Best-effort: a stale title is cosmetic and
+	// must not fail an otherwise-successful turn.
+	try {
+		const freshName = await delegate.resolveAgentName(target.agentId);
+		if (freshName && freshName !== target.name) {
+			target.name = freshName;
+			publishAgentSpawned(context, builderAgentId, target);
+			if (context.domainContext) {
+				await saveAgentBuilderTarget(context.domainContext, target);
+			}
+		}
+	} catch (error) {
+		context.logger.warn('Failed to refresh agent name after builder turn', {
+			agentId: target.agentId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
+
 	if (result.status !== 'suspended') {
 		const output = await finishTurn(context, builderAgentId, result, carriedConfigUpdated);
 		if (output.ok) {
@@ -621,9 +643,21 @@ async function resolveTargetForCall(
 		if (!domainContext.projectId) {
 			return { ok: false, error: AGENT_ID_NEEDS_PROJECT_ERROR };
 		}
+		// Best-effort name lookup so the first agent-spawned event already labels
+		// the artifact with the existing agent's display name.
+		let name: string | undefined;
+		try {
+			name = await delegate.resolveAgentName(input.agentId);
+		} catch {
+			name = undefined;
+		}
 		return {
 			ok: true,
-			target: { agentId: input.agentId, projectId: domainContext.projectId },
+			target: {
+				agentId: input.agentId,
+				projectId: domainContext.projectId,
+				...(name ? { name } : {}),
+			},
 			bindAfterTurn: true,
 		};
 	}
