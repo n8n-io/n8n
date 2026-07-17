@@ -185,6 +185,50 @@ describe('workflow package export', () => {
 			);
 		});
 
+		it('blocks exports when a legacy Execute Sub-workflow node statically references a missing workflow', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const child = await createWorkflow(
+				{ name: 'Legacy Child', nodes: [], connections: {} },
+				project,
+			);
+			// Legacy v1 stores the sub-workflow id as a plain string, not a resource-locator.
+			const parent = await createWorkflow(
+				{
+					name: 'Legacy Parent',
+					nodes: [
+						{
+							id: 'execute-legacy',
+							name: 'Execute Workflow',
+							type: 'n8n-nodes-base.executeWorkflow',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { workflowId: child.id },
+						},
+					],
+					connections: {},
+				},
+				project,
+			);
+
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow(PackageExportBlockedError);
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow('sub-workflow dependency not included in the package');
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [parent.id, child.id],
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+			});
+		});
+
 		it('exports Tool Workflow requirements and blocks when the target workflow is missing', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
