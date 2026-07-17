@@ -9,6 +9,8 @@ import type {
 	UpsertDataTableRowDto,
 	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
+	UpdateOtelSettingsDto,
+	TestOtelConnectionDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -418,4 +420,14 @@ export declare namespace LogStreamingRequest {
 
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
+}
+
+// ----------------------------------
+//        /settings/otel
+// ----------------------------------
+
+export declare namespace OtelSettingsRequest {
+	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
+	type Test = AuthenticatedRequest<{}, {}, TestOtelConnectionDto>;
 }
