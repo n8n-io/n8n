@@ -169,7 +169,10 @@ export async function execute(
 					});
 				}
 			} else {
-				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
+				const xlsxOptions: ParsingOptions = {
+					raw: options.rawData as boolean,
+					cellDates: !options.rawData,
+				};
 
 				let buffer: Buffer;
 				if (binaryData.id) {
