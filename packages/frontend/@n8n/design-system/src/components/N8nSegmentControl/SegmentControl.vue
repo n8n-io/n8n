@@ -21,7 +21,6 @@ interface SegmentOption {
 interface SegmentControlProps {
 	modelValue?: Value;
 	options?: SegmentOption[];
-	/** @default medium */
 	size?: SegmentControlSize;
 	disabled?: boolean;
 	squareButtons?: boolean;
@@ -43,66 +42,17 @@ const attrs = useAttrs();
 const rootClass = computed(() => attrs.class);
 const rootAttrs = computed(() => reactiveOmit(attrs, 'class'));
 
-/** Reka values are compared by identity; stringify so boolean options work. */
 const serializedModelValue = computed(() =>
 	props.modelValue === undefined ? undefined : String(props.modelValue),
 );
 
-/**
- * reka-ui selects on arrow keys by listening on window. Parent containers that
- * call stopPropagation on keydown (e.g. modals) can block that, so we track
- * arrow keys in capture phase and complete selection on focusin in the item.
- */
-const arrowKeyPressed = ref(false);
-const ARROW_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-
-/**
- * After keyboard selection the cursor may still sit over a segment, leaving a
- * sticky :hover. Suppress hover until the pointer moves again.
- */
-const suppressHover = ref(false);
-/** Ignore synthetic pointer events fired when focus/layout shifts under the cursor. */
-const canClearHover = ref(false);
-
-/** Last pointer event, so consumers like TabBar can read ctrl/meta for open-in-new-tab. */
 const lastPointerEvent = ref<MouseEvent>();
-
-function onKeyDownCapture(event: KeyboardEvent) {
-	if (ARROW_KEYS.includes(event.key)) {
-		arrowKeyPressed.value = true;
-		suppressHover.value = true;
-		canClearHover.value = false;
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				canClearHover.value = true;
-			});
-		});
-	}
-}
-
-function onKeyUp() {
-	arrowKeyPressed.value = false;
-}
-
-function onPointerInteract() {
-	if (!canClearHover.value) return;
-	suppressHover.value = false;
-}
 
 function onItemClickCapture(event: MouseEvent) {
 	const target = event.target;
 	if (!(target instanceof HTMLElement)) return;
 	if (target.closest('[role="radio"]')) {
 		lastPointerEvent.value = event;
-	}
-}
-
-function onItemFocusIn(event: FocusEvent) {
-	if (!arrowKeyPressed.value) return;
-
-	const target = event.target;
-	if (target instanceof HTMLElement && target.getAttribute('role') === 'radio') {
-		target.click();
 	}
 }
 
@@ -131,9 +81,6 @@ function onUpdate(raw: AcceptableValue) {
 			disabled && $style.disabled,
 			rootClass,
 		]"
-		:data-suppress-hover="suppressHover || undefined"
-		@pointermove="onPointerInteract"
-		@pointerdown="onPointerInteract"
 	>
 		<RadioGroupRoot
 			v-bind="rootAttrs"
@@ -143,8 +90,6 @@ function onUpdate(raw: AcceptableValue) {
 			:loop="true"
 			:class="$style.group"
 			@update:model-value="onUpdate"
-			@keydown.capture="onKeyDownCapture"
-			@keyup="onKeyUp"
 			@click.capture="onItemClickCapture"
 		>
 			<SegmentControlItem
@@ -154,7 +99,6 @@ function onUpdate(raw: AcceptableValue) {
 				:value="`${option.value}`"
 				:disabled="disabled || option.disabled"
 				:square="squareButtons"
-				@focusin="onItemFocusIn"
 			>
 				<slot name="option" v-bind="option" />
 			</SegmentControlItem>

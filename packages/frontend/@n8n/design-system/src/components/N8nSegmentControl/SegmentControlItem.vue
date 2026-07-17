@@ -71,7 +71,6 @@ defineSlots<{ default?: {} }>();
 
 	@include focus.focus-visible-ring-offset;
 
-	/* Keep the offset ring above neighboring hover/selected backgrounds */
 	&:focus-visible {
 		z-index: 1;
 	}
@@ -95,12 +94,6 @@ defineSlots<{ default?: {} }>();
 	.hoverable:hover:not([data-state='checked']):not([data-disabled]) {
 		color: var(--text-color);
 		background-color: var(--color--foreground--tint-1);
-	}
-
-	/* Sticky hover after keyboard nav — cleared when the pointer moves again */
-	:global(.n8n-segment-control[data-suppress-hover]) .hoverable:hover:not([data-state='checked']) {
-		color: var(--text-color--subtle);
-		background-color: transparent;
 	}
 }
 

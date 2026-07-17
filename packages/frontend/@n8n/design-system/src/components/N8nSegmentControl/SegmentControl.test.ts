@@ -1,6 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
-import { nextTick } from 'vue';
 
 import SegmentControl from './SegmentControl.vue';
 
@@ -60,34 +59,6 @@ describe('components.N8nSegmentControl', () => {
 
 		await waitFor(() => {
 			expect(emitted('update:modelValue')?.[0]?.[0]).toBe(true);
-		});
-	});
-
-	it('moves selection with arrow keys', async () => {
-		const user = userEvent.setup();
-		const { getByRole, emitted, rerender } = render(SegmentControl, {
-			props: {
-				modelValue: 'one',
-				options,
-			},
-		});
-
-		const first = getByRole('radio', { name: 'One' });
-		first.focus();
-		await user.keyboard('{ArrowRight}');
-
-		await waitFor(() => {
-			expect(emitted('update:modelValue')?.[0]?.[0]).toBe('two');
-		});
-
-		await rerender({ modelValue: 'two', options });
-		await nextTick();
-
-		getByRole('radio', { name: 'Two' }).focus();
-		await user.keyboard('{ArrowRight}');
-
-		await waitFor(() => {
-			expect(emitted('update:modelValue')?.[1]?.[0]).toBe('three');
 		});
 	});
 
