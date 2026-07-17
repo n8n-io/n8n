@@ -591,9 +591,6 @@ function onTagsUpdate(value: TagsInputValue[]) {
 .comboboxSeparator {
 	--combobox-separator-outline-inset: 1px;
 
-	width: calc(
-		100% + 2 * var(--combobox-viewport--padding) - 2 * var(--combobox-separator-outline-inset)
-	);
 	margin-block: var(--combobox-viewport--padding);
 	margin-inline: calc(
 		-1 * var(--combobox-viewport--padding) + var(--combobox-separator-outline-inset)
