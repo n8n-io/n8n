@@ -152,16 +152,16 @@ export class AiGatewayService {
 		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
-			throw new UserError(`Credential type "${credentialType}" is not supported by AI Gateway.`);
+			throw new UserError(`Credential type "${credentialType}" is not supported by n8n credits.`);
 		}
 
 		const resolvedUserId = await this.resolveUserId({ userId, projectId, workflowId });
 		if (!resolvedUserId) {
-			throw new UserError('Failed to resolve user for AI Gateway attribution.');
+			throw new UserError('Failed to resolve user for n8n credits attribution.');
 		}
 		const jwt = await this.getOrFetchToken(resolvedUserId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid AI Gateway token.');
+			throw new UserError('Failed to obtain a valid n8n credits token.');
 		}
 
 		const urlFields = this.buildUrlFields(baseUrl, providerConfig, { executionId, workflowId });
@@ -206,7 +206,7 @@ export class AiGatewayService {
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid AI Gateway token.');
+			throw new UserError('Failed to obtain a valid n8n credits token.');
 		}
 
 		const url = new URL(`${baseUrl}/v1/gateway/usage`);
@@ -222,7 +222,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway usage',
 		);
 		if (!Array.isArray(data.entries) || typeof data.total !== 'number') {
-			throw new UserError('AI Gateway returned an invalid usage response.');
+			throw new UserError('n8n credits returned an invalid usage response.');
 		}
 		return data;
 	}
@@ -235,7 +235,7 @@ export class AiGatewayService {
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
-			throw new UserError('Failed to obtain a valid AI Gateway token.');
+			throw new UserError('Failed to obtain a valid n8n credits token.');
 		}
 		const data = await this.gatewayRequest<unknown>(
 			{
@@ -252,7 +252,7 @@ export class AiGatewayService {
 	private parseWalletResponse(data: unknown): GatewayWalletResponse {
 		const d = data as GatewayWalletResponse;
 		if (typeof d.budget !== 'number' || typeof d.balance !== 'number') {
-			throw new UserError('AI Gateway returned an invalid wallet response.');
+			throw new UserError('n8n credits returned an invalid wallet response.');
 		}
 		return d;
 	}
@@ -286,7 +286,7 @@ export class AiGatewayService {
 
 	private requireBaseUrl(): string {
 		const url = this.globalConfig.aiAssistant.baseUrl;
-		if (!url) throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
+		if (!url) throw new UserError('n8n credits is not configured. Set the AI assistant base URL.');
 		return url;
 	}
 
@@ -320,7 +320,7 @@ export class AiGatewayService {
 			this.configFetchFailedAt > 0 &&
 			Date.now() - this.configFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
 		) {
-			throw new OperationalError('AI Gateway config fetch recently failed; retry is throttled.');
+			throw new OperationalError('n8n credits config fetch recently failed; retry is throttled.');
 		}
 
 		const baseUrl = this.requireBaseUrl();
@@ -335,7 +335,7 @@ export class AiGatewayService {
 			);
 			const parsed = AiGatewayConfigDto.safeParse(data);
 			if (!parsed.success) {
-				throw new UserError('AI Gateway returned an invalid config response.');
+				throw new UserError('n8n credits returned an invalid config response.');
 			}
 
 			this.gatewayConfig = parsed.data;
@@ -411,7 +411,7 @@ export class AiGatewayService {
 			'Failed to fetch AI Gateway token',
 		);
 		if (!token || typeof expiresIn !== 'number') {
-			throw new UserError('AI Gateway returned an invalid token response.');
+			throw new UserError('n8n credits returned an invalid token response.');
 		}
 		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
 			this.tokenCache.delete(this.tokenCache.keys().next().value as string);
