@@ -287,6 +287,7 @@ export class EphemeralNodeExecutor {
 			nodeTypes: this.nodeTypes,
 		});
 		const additionalData = await getBase({ projectId: tool.projectId });
+		additionalData.dataTableProjectId = tool.projectId;
 		const runExecutionData = createEmptyRunExecutionData();
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
