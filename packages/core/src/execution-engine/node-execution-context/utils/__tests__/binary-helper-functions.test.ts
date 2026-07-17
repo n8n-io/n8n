@@ -1320,17 +1320,12 @@ describe('getBinaryHelperFunctions', () => {
 			'binaryToString',
 			'prepareBinaryData',
 			'setBinaryDataBuffer',
-			'copyBinaryFile',
 		] as const;
 
 		expectedMethods.forEach((method) => {
 			expect(helperFunctions).toHaveProperty(method);
 			expect(typeof helperFunctions[method]).toBe('function');
 		});
-
-		await expect(async () => await helperFunctions.copyBinaryFile()).rejects.toThrow(
-			'`copyBinaryFile` has been removed',
-		);
 	});
 });
 
