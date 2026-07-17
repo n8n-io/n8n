@@ -12,8 +12,6 @@
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import * as Helpers from '@test/helpers';
-import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -51,6 +49,9 @@ import {
 import assert from 'node:assert';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+import * as Helpers from '@test/helpers';
+import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
 import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';

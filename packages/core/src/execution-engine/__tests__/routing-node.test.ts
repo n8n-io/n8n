@@ -1,4 +1,3 @@
-import { NodeTypes } from '@test/helpers';
 import get from 'lodash/get';
 import { Workflow, createEmptyRunExecutionData } from 'n8n-workflow';
 import type {
@@ -24,10 +23,11 @@ import type {
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { RoutingNode } from '../routing-node';
-
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';
+import { NodeTypes } from '@test/helpers';
+
+import { RoutingNode } from '../routing-node';
 
 const postReceiveFunction1 = async function (
 	this: IExecuteSingleFunctions,
