@@ -776,6 +776,7 @@ overrides:
   undici@5: ^6.27.0
   undici@6: ^6.27.0
   undici@7: ^7.28.0
+  node-gyp>undici: ^7.28.0
   '@babel/traverse': ^7.23.2
 
 patchedDependencies:
@@ -36940,7 +36941,7 @@ snapshots:
       semver: 7.7.3
       tar: 7.5.17
       tinyglobby: 0.2.15
-      undici: 6.27.0
+      undici: 7.28.0
       which: 6.0.1
 
   node-gyp@8.4.1:

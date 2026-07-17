@@ -662,16 +662,32 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
 	});
 
-	it('adds the Knowledge tab only when the knowledge base is enabled', async () => {
+	it('always includes the Knowledge tab and keeps it selectable regardless of the knowledge base flag', async () => {
+		routeQuery.section = 'knowledge';
 		const withoutKnowledge = await renderView();
 		expect(
 			withoutKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
-		).not.toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+		).toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+		expect(
+			withoutKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('activeMainTab'),
+		).toBe('knowledge');
+		expect(
+			withoutKnowledge
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.props('knowledgeBaseEnabled'),
+		).toBe(false);
 
 		const withKnowledge = await renderView({ knowledgeBaseEnabled: true });
 		expect(
 			withKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
 		).toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+	});
+
+	it('does not fetch knowledge files when the knowledge base is disabled', async () => {
+		routeQuery.section = 'knowledge';
+		await renderView();
+
+		expect(listAgentFilesMock).not.toHaveBeenCalled();
 	});
 
 	it('marks the knowledge files panel unpublished for an unpublished agent', async () => {
