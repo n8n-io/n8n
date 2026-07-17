@@ -36,18 +36,16 @@ jobs:
         with:
           fetch-depth: 0 # Fetch all history for git log
 
-      - name: Setup Node.js and install dependencies
+      - name: Setup Node.js, install dependencies and build the Public API schema
         uses: ./.github/actions/setup-nodejs
         with:
-          # API-39: build:data now runs the OpenAPI doc generator (packages/cli/src/public-api/v1/
-          # openapi-gen), which needs its own compiled dist output to exist — a plain YAML bundle
-          # no longer suffices. Scoped to n8n (packages/cli) + its dependency graph rather than a
-          # full `pnpm build`, since this workflow only needs the Public API schema.
+          # API-39: the schema is no longer a plain YAML bundle — cli's `build` script runs
+          # `build:data`, which runs the OpenAPI doc generator (packages/cli/src/public-api/v1/
+          # openapi-gen) and needs its own compiled dist output to exist first. So a full build of
+          # n8n (packages/cli) + its dependency graph replaces the previous no-op build + standalone
+          # `build:data` step. Scoped to `n8n...` rather than a full `pnpm build` since this
+          # workflow only needs the Public API schema.
           build-command: 'pnpm --filter "n8n..." build'
-
-      - name: Build Public API Schema
-        run: pnpm run build:data
-        working-directory: ./packages/cli
 
       - name: Verify OpenAPI schema exists
         id: verify_file
