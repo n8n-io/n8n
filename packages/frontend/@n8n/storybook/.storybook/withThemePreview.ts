@@ -2,14 +2,14 @@ import type { Decorator } from '@storybook/vue3';
 
 export const withThemePreview: Decorator = (story) => {
 	return {
-		components: { StoryComponent: story() },
+		components: { storyComponent: story() },
 		template: `
 			<div class="theme-side-by-side">
 				<section class="theme-side-by-side__panel" data-theme="light">
-					<StoryComponent />
+					<storyComponent />
 				</section>
 				<section class="theme-side-by-side__panel" data-theme="dark">
-					<StoryComponent />
+					<storyComponent />
 				</section>
 			</div>
 		`,
