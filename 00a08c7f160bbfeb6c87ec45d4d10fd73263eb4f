@@ -1,0 +1,18 @@
+packages/core/src/execution-engine/node-execution-context/utils/get-additional-keys.ts
+  h_c63dce324dfc7b 59,63
+packages/cli/src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts
+  h_c63dce324dfc7b 9,68-69,146-147,153,158,254,264
+packages/cli/src/modules/dynamic-credentials.ee/services/resolver-config-expression.service.ts
+  h_c63dce324dfc7b 24-25,41-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "00a08c7f160bbfeb6c87ec45d4d10fd73263eb4f",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}
