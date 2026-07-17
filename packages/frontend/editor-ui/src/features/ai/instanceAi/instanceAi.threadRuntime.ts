@@ -100,12 +100,18 @@ export interface ThreadRuntimeHooks {
 
 const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
 
-function getAgentBuilderTargetFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+export function getAgentBuilderTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
 	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
 	if (!raw || typeof raw !== 'object') return undefined;
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
-	return { agentId: target.agentId, projectId: target.projectId };
+	return {
+		agentId: target.agentId,
+		projectId: target.projectId,
+		...(typeof target.name === 'string' ? { name: target.name } : {}),
+	};
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
