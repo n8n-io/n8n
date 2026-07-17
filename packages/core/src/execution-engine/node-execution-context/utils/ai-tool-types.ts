@@ -19,7 +19,7 @@ export class StructuredToolkit extends BaseToolkit {
 	}
 
 	// The packaged app can materialize more than one copy of n8n-core,
-	// so `instanceof` misses toolkits built by another copy of n8n-core (NODE-5479)
+	// so `instanceof` misses toolkits built by another copy of n8n-core
 	static [Symbol.hasInstance](value: unknown): value is StructuredToolkit {
 		return (
 			typeof value === 'object' &&

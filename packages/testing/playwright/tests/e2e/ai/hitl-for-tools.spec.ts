@@ -166,7 +166,7 @@ test.describe(
 			await waitForWorkflowSuccess(n8n);
 		});
 
-		// NODE-5479: only reproduces against the packaged image (container mode)
+		// The duplicated-module bug this guards against only reproduces in the packaged image (container mode)
 		test('agent should send HITL-wrapped tools to the model on the first turn, before approval', async ({
 			n8n,
 			api,

@@ -75,7 +75,7 @@ function reportFailure(name, err) {
 }
 
 // `pnpm deploy` materializes a workspace package more than once when a peer
-// resolves differently per importer, breaking cross-package `instanceof` (NODE-5479).
+// resolves differently per importer, breaking cross-package `instanceof`.
 async function runWorkspaceDedupCheck() {
 	const name = 'workspace packages materialized once in image';
 	try {

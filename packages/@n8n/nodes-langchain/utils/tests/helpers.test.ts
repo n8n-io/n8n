@@ -342,9 +342,7 @@ describe('getConnectedTools', () => {
 		});
 	});
 
-	describe('toolkit detection across duplicated n8n-core copies (NODE-5479)', () => {
-		// Same shape as StructuredToolkit but a different class, like a toolkit
-		// from a second n8n-core copy (NODE-5479).
+	describe('toolkit detection across duplicated n8n-core copies', () => {
 		class ForeignStructuredToolkit {
 			constructor(readonly tools: Tool[]) {}
 

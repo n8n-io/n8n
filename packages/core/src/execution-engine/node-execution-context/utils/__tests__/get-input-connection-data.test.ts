@@ -1429,7 +1429,6 @@ describe('createHitlToolkit', () => {
 	});
 
 	it('should extract tools from a toolkit whose class identity differs', () => {
-		// Same shape as StructuredToolkit but a different class (NODE-5479).
 		const tool = new DynamicStructuredTool({
 			name: 'foreign_tool',
 			description: 'Tool from a foreign toolkit',
@@ -1643,7 +1642,6 @@ describe('extendResponseMetadata', () => {
 			schema: z.object({ input: z.string() }),
 			func: async () => 'result',
 		});
-		// Not `instanceof` the StructuredToolkit imported here (NODE-5479).
 		const foreignToolkit = { tools: [tool], getTools: () => [tool] };
 		extendResponseMetadata(foreignToolkit, { name: 'HITL Node' } as INode);
 		expect(tool.metadata?.sourceNodeName).toBe('HITL Node');
@@ -1659,7 +1657,6 @@ describe('extendResponseMetadata', () => {
 		expect(tool.metadata?.sourceNodeName).toBe('HITL Node');
 	});
 	it('should extend metadata for a single tool whose class identity differs (duplicated @langchain/core)', () => {
-		// Not `instanceof` StructuredTool/Tool (NODE-5479)
 		const foreignTool = {
 			name: 'foreign_tool',
 			description: 'Tool from another copy',
