@@ -268,7 +268,7 @@ export class PromptBuilder {
 	 * @returns this for chaining
 	 */
 	merge(other: PromptBuilder): this {
-		for (const section of other.sections) {
+		for (const section of [...other.sections]) {
 			this.sections.push({ ...section });
 		}
 		return this;

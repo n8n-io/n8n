@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+
 import { prompt, PromptBuilder } from './prompt-builder';
 
 describe('PromptBuilder', () => {
@@ -552,6 +554,27 @@ describe('PromptBuilder', () => {
 
 			expect(aIndex).toBeLessThan(middleIndex);
 			expect(middleIndex).toBeLessThan(bIndex);
+		});
+
+		it('should merge a builder into itself once', () => {
+			const output = execFileSync(
+				process.execPath,
+				[
+					'--eval',
+					`
+						const { prompt } = require('@n8n/ai-utilities/prompt-builder');
+						const builder = prompt().section('A', 'first').section('B', 'second');
+						process.stdout.write(builder.merge(builder).build());
+					`,
+				],
+				{ encoding: 'utf8', timeout: 500 },
+			);
+
+			expect(output).toBe(
+				['<a>\nfirst\n</a>', '<b>\nsecond\n</b>', '<a>\nfirst\n</a>', '<b>\nsecond\n</b>'].join(
+					'\n\n',
+				),
+			);
 		});
 
 		it('should handle merging empty builder', () => {
