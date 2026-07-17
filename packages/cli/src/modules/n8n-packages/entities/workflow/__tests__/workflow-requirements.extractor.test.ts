@@ -10,6 +10,12 @@ function makeWorkflow(nodes: INode[]): WorkflowEntity {
 	} as WorkflowEntity;
 }
 
+function makeWorkflowWithSettings(settings: WorkflowEntity['settings']): WorkflowEntity {
+	const workflow = makeWorkflow([]);
+	workflow.settings = settings;
+	return workflow;
+}
+
 function executeWorkflowNode(
 	workflowId: INode['parameters'][string],
 	overrides: Partial<INode> = {},
@@ -62,6 +68,33 @@ describe('WorkflowRequirementsExtractor', () => {
 			executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }, { id: 'node-1' }),
 			executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }, { id: 'node-2' }),
 		]);
+
+		expect(extractor.extract(workflow)).toEqual([
+			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
+		]);
+	});
+
+	it('extracts error workflow references', () => {
+		const workflow = makeWorkflowWithSettings({ errorWorkflow: 'wf-error-handler' });
+
+		expect(extractor.extract(workflow)).toEqual([
+			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-error-handler' },
+		]);
+	});
+
+	it('ignores default and empty error workflow settings', () => {
+		expect(extractor.extract(makeWorkflowWithSettings({ errorWorkflow: 'DEFAULT' }))).toEqual([]);
+		expect(extractor.extract(makeWorkflowWithSettings({ errorWorkflow: '' }))).toEqual([]);
+		expect(extractor.extract(makeWorkflowWithSettings({}))).toEqual([]);
+	});
+
+	it('dedupes error workflow references already extracted from nodes', () => {
+		const workflow = {
+			...makeWorkflow([
+				executeWorkflowNode({ __rl: true, mode: 'list', value: 'wf-child' }, { id: 'node-1' }),
+			]),
+			settings: { errorWorkflow: 'wf-child' },
+		} as WorkflowEntity;
 
 		expect(extractor.extract(workflow)).toEqual([
 			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },

@@ -12,16 +12,27 @@ export class WorkflowRequirementsExtractor
 	extract(workflow: WorkflowEntity): WorkflowSubWorkflowRequirement[] {
 		const byId = new Map<string, WorkflowSubWorkflowRequirement>();
 
-		for (const node of workflow.nodes ?? []) {
-			const referencedWorkflowId = getSubworkflowId(node);
-			if (!referencedWorkflowId || byId.has(referencedWorkflowId)) continue;
+		const addRequirement = (referencedWorkflowId: string | undefined) => {
+			if (!referencedWorkflowId || byId.has(referencedWorkflowId)) return;
 
 			byId.set(referencedWorkflowId, {
 				workflowId: workflow.id,
 				referencedWorkflowId,
 			});
+		};
+
+		for (const node of workflow.nodes ?? []) {
+			addRequirement(getSubworkflowId(node));
 		}
 
+		addRequirement(this.getErrorWorkflowId(workflow));
+
 		return [...byId.values()];
+	}
+
+	private getErrorWorkflowId(workflow: WorkflowEntity): string | undefined {
+		const errorWorkflow = workflow.settings?.errorWorkflow;
+
+		return !errorWorkflow || errorWorkflow === 'DEFAULT' ? undefined : errorWorkflow;
 	}
 }
