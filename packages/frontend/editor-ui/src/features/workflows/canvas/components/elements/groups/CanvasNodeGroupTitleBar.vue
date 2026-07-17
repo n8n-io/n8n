@@ -273,7 +273,7 @@ function autoResizeTextarea() {
 }
 
 function startEditingDescription() {
-	if (props.readOnly) return;
+	if (props.readOnly || isEditingDescription.value) return;
 	editDescriptionText.value = group.value.description ?? '';
 	isEditingDescription.value = true;
 	void nextTick(() => {
@@ -285,6 +285,20 @@ function startEditingDescription() {
 
 function cancelEditingDescription() {
 	isEditingDescription.value = false;
+}
+
+// A click anywhere on the panel opens the editor. Track editing state at
+// pointerdown so the same click that blurs (and saves) the textarea doesn't
+// immediately reopen it with stale text.
+let wasEditingOnPointerDown = false;
+
+function onDescriptionPanelPointerDown() {
+	wasEditingOnPointerDown = isEditingDescription.value;
+}
+
+function onDescriptionPanelClick() {
+	if (wasEditingOnPointerDown) return;
+	startEditingDescription();
 }
 
 function saveDescription() {
@@ -512,10 +526,15 @@ function onWrapperPointerDown(event: PointerEvent) {
 				$style.descriptionPanel,
 				{ [$style.descriptionPanelEditing]: isEditingDescription },
 			]"
-			:style="{ top: `calc(${HEADER_HEIGHT}px + var(--spacing--2xs))` }"
+			:style="{
+				top: `calc(${HEADER_HEIGHT}px + var(--spacing--2xs))`,
+				cursor: !readOnly && !isEditingDescription ? 'text' : 'default',
+			}"
 			data-test-id="canvas-node-group-description-panel"
 			@mouseenter="onDescriptionMouseEnter"
 			@mouseleave="onDescriptionMouseLeave"
+			@pointerdown="onDescriptionPanelPointerDown"
+			@click="onDescriptionPanelClick"
 		>
 			<div :class="$style.descriptionPanelContent">
 				<textarea
@@ -534,7 +553,6 @@ function onWrapperPointerDown(event: PointerEvent) {
 					v-else
 					:class="[$style.descriptionPanelText, { [$style.descriptionEmpty]: isDescriptionEmpty }]"
 					data-test-id="canvas-node-group-description-text"
-					@click="startEditingDescription"
 				>
 					{{ group.description || i18n.baseText('canvas.nodeGroup.descriptionPlaceholder') }}
 				</div>
@@ -836,11 +854,11 @@ function onWrapperPointerDown(event: PointerEvent) {
 	width: 100%;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--lg) var(--spacing--sm) var(--spacing--lg) var(--spacing--lg);
+	gap: var(--spacing--xs);
+	padding: var(--spacing--lg);
 	box-sizing: border-box;
 	background: var(--background--subtle);
-	border: var(--border-width) solid var(--border-color--strong);
+	@include styles.canvas-node-border;
 	border-radius: var(--radius--xs);
 	z-index: var.$index-popper;
 }
@@ -886,7 +904,8 @@ function onWrapperPointerDown(event: PointerEvent) {
 	flex-shrink: 0;
 }
 
-.descriptionPanel:hover .descriptionPanelActions,
+// Reveal the actions while hovering the collapsed group (header or panel).
+.wrapper.collapsed:hover .descriptionPanelActions,
 .descriptionPanelEditing .descriptionPanelActions {
 	display: flex;
 }
