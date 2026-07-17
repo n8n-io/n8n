@@ -25,11 +25,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "if(items.length !== 50){\n  throw new Error('Invalid RSS feed result');\n}else{\nreturn [];\n}\n"
+				"mode": "runOnceForAllItems",
+				"jsCode": "if($input.all().length !== 50){\n  throw new Error('Invalid RSS feed result');\n}else{\nreturn [];\n}\n"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [650, 300],
 			"notesInFlow": true,
 			"notes": "Throw error if result.length !=50",

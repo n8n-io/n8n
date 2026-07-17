@@ -54,7 +54,6 @@ const SAFE_NODE_TYPES = new Set([
 	'n8n-nodes-base.sort',
 	'n8n-nodes-base.limit',
 	'n8n-nodes-base.removeDuplicates',
-	'n8n-nodes-base.itemLists',
 	'n8n-nodes-base.renameKeys',
 	'n8n-nodes-base.dateTime',
 	'n8n-nodes-base.html',
@@ -91,11 +90,7 @@ const DESTRUCTIVE_NODE_TYPES = new Map<string, string>([
 	['n8n-nodes-base.executeWorkflow', 'Executes another workflow which may have side effects'],
 ]);
 
-const CODE_NODE_TYPES = new Set([
-	'n8n-nodes-base.code',
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.functionItem',
-]);
+const CODE_NODE_TYPES = new Set(['n8n-nodes-base.code']);
 
 const FORM_NODE_TYPE = 'n8n-nodes-base.form';
 const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
