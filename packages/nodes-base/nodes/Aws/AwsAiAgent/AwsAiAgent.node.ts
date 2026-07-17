@@ -19,7 +19,7 @@ export class AwsAiAgent implements INodeType {
 		icon: 'file:bedrock.svg',
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{$parameter["region"]}}',
+		subtitle: '={{$parameter["identity"]}}',
 		description:
 			'Invoke an AI agent deployed on AWS Bedrock AgentCore Runtime as a step in a workflow',
 		defaults: {
@@ -51,24 +51,8 @@ export class AwsAiAgent implements INodeType {
 						displayName: 'By ARN',
 						name: 'arn',
 						type: 'string',
-						placeholder:
-							'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/my-agent-abc123',
+						placeholder: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/my-agent-abc123',
 					},
-				],
-			},
-			{
-				displayName: 'Region',
-				name: 'region',
-				type: 'options',
-				default: 'us-east-1',
-				description: 'Overrides the region from your AWS credential',
-				options: [
-					{ name: 'Asia Pacific (Singapore) — ap-southeast-1', value: 'ap-southeast-1' },
-					{ name: 'Asia Pacific (Tokyo) — ap-northeast-1', value: 'ap-northeast-1' },
-					{ name: 'Europe (Frankfurt) — eu-central-1', value: 'eu-central-1' },
-					{ name: 'Europe (Ireland) — eu-west-1', value: 'eu-west-1' },
-					{ name: 'US East (N. Virginia) — us-east-1', value: 'us-east-1' },
-					{ name: 'US West (Oregon) — us-west-2', value: 'us-west-2' },
 				],
 			},
 			{
@@ -113,24 +97,12 @@ export class AwsAiAgent implements INodeType {
 				],
 			},
 			{
-				displayName: 'Bearer Token',
-				name: 'bearerToken',
-				type: 'string',
-				typeOptions: { password: true },
-				default: '',
-				description: "The end user's JWT, passed as the Authorization bearer token",
-				displayOptions: {
-					show: {
-						identity: ['oauthBearer'],
-					},
-				},
-			},
-			{
 				displayName: 'User ID',
 				name: 'userId',
 				type: 'string',
 				default: '',
-				description: 'The runtime user id the agent tools execute as',
+				description:
+					'Identifier of the end user the agent runs on behalf of (the bearer token itself comes from the credential, not from a node field)',
 				displayOptions: {
 					show: {
 						identity: ['oauthBearer'],
@@ -145,13 +117,6 @@ export class AwsAiAgent implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Qualifier / Endpoint',
-						name: 'qualifier',
-						type: 'string',
-						default: '',
-						description: 'Version, alias, or endpoint to target',
-					},
-					{
 						displayName: 'Actor ID',
 						name: 'actorId',
 						type: 'string',
@@ -159,12 +124,31 @@ export class AwsAiAgent implements INodeType {
 						description: 'Actor identifier passed to the invocation',
 					},
 					{
-						displayName: 'System Prompt Override',
-						name: 'systemPrompt',
-						type: 'string',
-						typeOptions: { rows: 3 },
-						default: '',
-						description: "Overrides the agent's system prompt for this invocation",
+						displayName: 'Allowed Tools',
+						name: 'allowedTools',
+						type: 'multiOptions',
+						default: [],
+						description: 'Restrict which tools the agent may use — leave empty to allow none',
+						options: [
+							{ name: 'Code Interpreter', value: 'code_interpreter' },
+							{ name: 'Knowledge Base Retrieval', value: 'kb_retrieval' },
+							{ name: 'SQL Query', value: 'sql_query' },
+							{ name: 'Web Search', value: 'web_search' },
+						],
+					},
+					{
+						displayName: 'Max Iterations',
+						name: 'maxIterations',
+						type: 'number',
+						default: 10,
+						description: 'Maximum reasoning/tool iterations the agent may run',
+					},
+					{
+						displayName: 'Max Tokens',
+						name: 'maxTokens',
+						type: 'number',
+						default: 4096,
+						description: 'Maximum number of tokens to generate',
 					},
 					{
 						displayName: 'Model Override',
@@ -175,34 +159,25 @@ export class AwsAiAgent implements INodeType {
 						description: "Overrides the agent's model for this invocation",
 					},
 					{
-						displayName: 'Max Iterations',
-						name: 'maxIterations',
-						type: 'number',
-						default: 10,
+						displayName: 'Qualifier / Endpoint',
+						name: 'qualifier',
+						type: 'string',
+						default: '',
+						description: 'Version, alias, or endpoint to target',
 					},
 					{
-						displayName: 'Max Tokens',
-						name: 'maxTokens',
-						type: 'number',
-						default: 4096,
-					},
-					{
-						displayName: 'Timeout (Ms)',
-						name: 'timeout',
-						type: 'number',
-						default: 60000,
-					},
-					{
-						displayName: 'Allowed Tools',
-						name: 'allowedTools',
-						type: 'multiOptions',
-						default: [],
-						description: 'Restrict which tools the agent may use. Leave empty to allow none.',
+						displayName: 'Region',
+						name: 'region',
+						type: 'options',
+						default: 'us-east-1',
+						description: 'Overrides the region from your AWS credential',
 						options: [
-							{ name: 'Web Search', value: 'web_search' },
-							{ name: 'Knowledge Base Retrieval', value: 'kb_retrieval' },
-							{ name: 'Code Interpreter', value: 'code_interpreter' },
-							{ name: 'SQL Query', value: 'sql_query' },
+							{ name: 'Asia Pacific (Singapore)', value: 'ap-southeast-1' },
+							{ name: 'Asia Pacific (Tokyo)', value: 'ap-northeast-1' },
+							{ name: 'Europe (Frankfurt)', value: 'eu-central-1' },
+							{ name: 'Europe (Ireland)', value: 'eu-west-1' },
+							{ name: 'US East (N. Virginia)', value: 'us-east-1' },
+							{ name: 'US West (Oregon)', value: 'us-west-2' },
 						],
 					},
 					{
@@ -211,6 +186,21 @@ export class AwsAiAgent implements INodeType {
 						type: 'boolean',
 						default: true,
 						description: 'Whether to stream partial output as it is produced',
+					},
+					{
+						displayName: 'System Prompt Override',
+						name: 'systemPrompt',
+						type: 'string',
+						typeOptions: { rows: 3 },
+						default: '',
+						description: "Overrides the agent's system prompt for this invocation",
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						type: 'number',
+						default: 60000,
+						description: 'Maximum time to wait for the agent to respond, in milliseconds',
 					},
 				],
 			},
@@ -226,18 +216,15 @@ export class AwsAiAgent implements INodeType {
 				const harnesses: INodeListSearchItems[] = [
 					{
 						name: 'Customer Support Agent',
-						value:
-							'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/support-agent-abc123',
+						value: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/support-agent-abc123',
 					},
 					{
 						name: 'Sales Research Agent',
-						value:
-							'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/sales-research-def456',
+						value: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/sales-research-def456',
 					},
 					{
 						name: 'Claims Triage Agent',
-						value:
-							'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/claims-triage-ghi789',
+						value: 'arn:aws:bedrock-agentcore:us-east-1:123456789012:harness/claims-triage-ghi789',
 					},
 				];
 

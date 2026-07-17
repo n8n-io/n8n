@@ -1,5 +1,6 @@
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+
 import { AwsAiAgent } from '../AwsAiAgent.node';
 
 describe('AWS AI Agent node — description', () => {
@@ -39,21 +40,26 @@ describe('AWS AI Agent node — parameters', () => {
 		expect(identity?.default).toBe('iamPrincipal');
 	});
 
-	it('shows bearer token and user id only for oauth bearer identity', () => {
-		for (const name of ['bearerToken', 'userId']) {
-			const p = prop(name);
-			expect(p?.displayOptions?.show?.identity).toEqual(['oauthBearer']);
-		}
+	it('shows user id only for oauth bearer identity', () => {
+		const p = prop('userId');
+		expect(p?.displayOptions?.show?.identity).toEqual(['oauthBearer']);
 	});
 
-	it('exposes region, session id and an advanced options collection', () => {
-		expect(prop('region')?.type).toBe('options');
+	it('keeps authentication/secret fields out of the node properties', () => {
+		// The bearer token is an auth secret and must come from the credential, not a node field.
+		expect(prop('bearerToken')).toBeUndefined();
+	});
+
+	it('exposes session id and an advanced options collection (region lives inside it)', () => {
 		expect(prop('sessionId')?.type).toBe('string');
+		// Region is a secondary override, so it belongs inside the collection, not top-level.
+		expect(prop('region')).toBeUndefined();
 		const options = prop('options');
 		expect(options?.type).toBe('collection');
 		const optionNames = ((options?.options ?? []) as Array<{ name: string }>).map((o) => o.name);
 		expect(optionNames).toEqual(
 			expect.arrayContaining([
+				'region',
 				'qualifier',
 				'actorId',
 				'systemPrompt',
