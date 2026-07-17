@@ -920,6 +920,12 @@ export const instanceAiAgentPreviewHandoffContextSchema = z.object({
 	agentId: z.string().min(1).max(128),
 	threadId: z.string().min(1).max(128),
 	executionId: z.string().min(1).max(64).optional(),
+	/** Display-only — the target agent's name, surfaced in the context chip. */
+	agentName: z.string().max(128).optional(),
+	/** Display-only — the target agent's personalisation icon, surfaced in the context chip. */
+	agentIcon: z.string().max(64).optional(),
+	/** Display-only — the preview session's title, surfaced in the context chip. */
+	sessionTitle: z.string().max(200).optional(),
 });
 export type InstanceAiAgentPreviewHandoffContext = z.infer<
 	typeof instanceAiAgentPreviewHandoffContextSchema
@@ -1627,10 +1633,17 @@ export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkfl
 
 /** A data table a seed references. Recreated on restore (its id is server-
  *  generated, so the seed workflows' references are rewritten to the new id).
- *  Schema only — no rows (the table just needs to exist; rows are the trace's
- *  highest-PII payload and are never sent here). */
-const instanceAiEvalSeedDataTableSchema = z.object({
-	id: z.string().min(1).max(64),
+ *  Real conversation seeds send `columns` only — rows are the trace's highest-PII
+ *  payload and are never sent for those. Authored eval scenarios (TRUST-311) may
+ *  additionally send `rows`, so a string id like `row_001` can be seeded into an
+ *  explicitly `string`-typed column instead of being rejected by free-text
+ *  `dataSetup` landing it in a `number` column. */
+export const instanceAiEvalSeedDataTableSchema = z.object({
+	// ≥8 chars: restore remaps this id by whole-document string replace, and a
+	// short id would risk corrupting unrelated substrings — so the restore path
+	// refuses shorter ids. Enforcing it here fails a bad fixture at load time
+	// instead of after a workflow has already been built.
+	id: z.string().min(8).max(64),
 	name: z.string().min(1).max(128),
 	columns: z
 		.array(
@@ -1640,16 +1653,46 @@ const instanceAiEvalSeedDataTableSchema = z.object({
 			}),
 		)
 		.max(50),
+	/** Optional seed rows, keyed by column name. Cell values arrive as JSON
+	 *  scalars (dates as ISO strings); the data-table service validates each cell
+	 *  against its declared column type on insert. */
+	rows: z
+		.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
+		.max(1000)
+		.optional(),
 });
 
 export type InstanceAiEvalSeedDataTable = z.infer<typeof instanceAiEvalSeedDataTableSchema>;
 
 export class InstanceAiEvalRestoreThreadRequest extends Z.class({
 	threadId: z.string().uuid(),
-	/** Native agent message log (ISO `createdAt`), stored verbatim. */
-	messages: z.array(z.record(z.unknown())).min(1).max(1000),
+	/** Native agent message log (ISO `createdAt`), stored verbatim. May be empty
+	 *  when the request only seeds data tables (TRUST-311 scenario seeding). */
+	messages: z.array(z.record(z.unknown())).max(1000),
 	/** Data tables the workflows reference; recreated first so ids can be rewritten. */
 	dataTables: z.array(instanceAiEvalSeedDataTableSchema).max(20).optional(),
 	/** Workflows the history references; recreated (node credentials stripped). */
 	workflows: z.array(instanceAiEvalSeedWorkflowSchema).max(50).optional(),
+	/** Append a unique suffix to each seed data table's name (default true — safe
+	 *  for id-remapped seed workflows). False keeps the EXACT declared name so a
+	 *  freshly-built workflow's by-name references resolve. */
+	uniquifyNames: z.boolean().optional(),
+}) {}
+
+/**
+ * Reset an existing data table's rows to exactly `rows` (clear-then-insert).
+ * Unlike restore-thread (which CREATES tables), this targets a table that
+ * already exists by id — used for the per-scenario row seeding of a case whose
+ * tables were created empty before the build turn (TRUST-311 follow-up). The
+ * table is scoped to the thread's project server-side.
+ */
+export class InstanceAiEvalSeedDataTableRowsRequest extends Z.class({
+	threadId: z.string().uuid(),
+	/** Id of the (already existing) data table whose rows are reset. */
+	tableId: z.string().min(8).max(64),
+	/** The exact row set the table should hold after seeding (may be empty to
+	 *  clear it). Cell values are validated against each column's type on insert. */
+	rows: z
+		.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])))
+		.max(1000),
 }) {}

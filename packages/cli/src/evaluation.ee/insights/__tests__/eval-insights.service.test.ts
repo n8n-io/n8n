@@ -218,6 +218,36 @@ describe('EvalInsightsService', () => {
 			expect(fluencyRegression).toBeUndefined();
 		});
 
+		it('scores on normalized quality metrics, ignoring token/time operational metrics', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					// A wins on correctness (5/5) despite far more tokens/time; B is
+					// worse on correctness (2/5). The winner + the only regression must
+					// be about correctness — never completionTokens / executionTime.
+					makeRun({
+						id: 'tr-a',
+						metrics: { correctness: 5, completionTokens: 1719, executionTime: 21368 },
+					}),
+					makeRun({
+						id: 'tr-b',
+						metrics: { correctness: 2, completionTokens: 540, executionTime: 11646 },
+					}),
+				],
+			});
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.insights.winner.versionLabel).toBe('A');
+			// correctness 5/5 → 100%, counted as a single score metric
+			expect(result.insights.winner.body).toContain('100%');
+			expect(result.insights.winner.body).toContain('1 metric');
+			const regressedMetrics = result.insights.regressions.map((r) => r.metric);
+			expect(regressedMetrics).toContain('correctness');
+			expect(regressedMetrics).not.toContain('completionTokens');
+			expect(regressedMetrics).not.toContain('executionTime');
+		});
+
 		it('returns a "lock in baseline" recommendation when no regressions cross the threshold', async () => {
 			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
 				collection: makeCollection(),

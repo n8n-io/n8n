@@ -51,7 +51,7 @@ import { RedactionEnforcementService } from '@/modules/redaction/redaction-enfor
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
 import { assertNever } from '@/utils';
-import { validateWorkflowNodeGroups } from '@/workflow-helpers';
+import { validateWorkflowNodeGroups, sanitizeNodeGroupDescriptions } from '@/workflow-helpers';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -794,6 +794,10 @@ export class SourceControlImportService {
 				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,
 			);
 			importedWorkflow.nodeGroups = [];
+		}
+
+		for (const warning of sanitizeNodeGroupDescriptions(importedWorkflow)) {
+			this.logger.warn(`Workflow file ${candidate.file}: ${warning}`);
 		}
 
 		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
