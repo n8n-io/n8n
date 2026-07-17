@@ -175,7 +175,7 @@ const tableHeaders = computed<Array<TableHeader<OAuthClientResponseDto>>>(() => 
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.connectedAt'),
 		key: 'grantedAt',
-		width: 140,
+		width: 110,
 		disableSort: true,
 		value() {
 			return;
