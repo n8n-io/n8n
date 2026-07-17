@@ -166,6 +166,58 @@ describe('memoryManagement', () => {
 			expect(result).toHaveLength(0);
 		});
 
+		it('should remove orphaned ToolMessage at end of chat history', async () => {
+			// Simulates memory trimming that removed messages after ToolMessage, leaving it trailing
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new ToolMessage({ content: 'Result', tool_call_id: 'orphaned-id', name: 'tool' }),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should remove trailing AIMessage with tool_calls not followed by ToolMessage', async () => {
+			// Simulates memory trimming that kept AIMessage with tool_calls but removed the ToolMessage
+			const orphanedAI = new AIMessage({
+				content: 'Calling tool',
+				tool_calls: [{ id: 'call-123', name: 'tool', args: {}, type: 'tool_call' }],
+			});
+			const chatHistory = [new HumanMessage('Question'), new AIMessage('Answer'), orphanedAI];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should remove chain of AIMessage(tool_calls) -> ToolMessage at end via recursive cleanup', async () => {
+			// After removing trailing ToolMessage, an orphaned AIMessage with tool_calls is revealed
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				new AIMessage({
+					content: 'Calling tool',
+					tool_calls: [{ id: 'call-1', name: 'tool1', args: {}, type: 'tool_call' as const }],
+				}),
+				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool1' }),
+			];
+			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
+
+			const result = await loadMemory(mockMemory);
+
+			expect(result).toHaveLength(2);
+			expect(result?.[0]).toBeInstanceOf(HumanMessage);
+			expect(result?.[1]).toBeInstanceOf(AIMessage);
+		});
+
 		it('should trim messages when maxTokens is provided', async () => {
 			const chatHistory = [
 				new SystemMessage('System prompt'),

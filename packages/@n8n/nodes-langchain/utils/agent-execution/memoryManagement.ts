@@ -185,6 +185,24 @@ function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
 				changed = true;
 			}
 		}
+
+		// Remove trailing orphaned ToolMessages
+		while (chatHistory.length > 0 && chatHistory[chatHistory.length - 1] instanceof ToolMessage) {
+			chatHistory.pop();
+			changed = true;
+		}
+
+		// Remove trailing AIMessage with tool_calls if not followed by ToolMessage
+		if (chatHistory.length > 0) {
+			const lastMessage = chatHistory[chatHistory.length - 1];
+			const hasOrphanedTrailingAI =
+				lastMessage instanceof AIMessage && (lastMessage.tool_calls?.length ?? 0) > 0;
+
+			if (hasOrphanedTrailingAI) {
+				chatHistory.pop();
+				changed = true;
+			}
+		}
 	}
 
 	return chatHistory;
