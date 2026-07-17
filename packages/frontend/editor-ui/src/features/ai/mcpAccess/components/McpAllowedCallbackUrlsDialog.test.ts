@@ -94,6 +94,20 @@ describe('McpAllowedCallbackUrlsDialog', () => {
 		expect(emitted('save')).toEqual([[[]]]);
 	});
 
+	it('should sync to the persisted URLs when they load after the dialog is already open', async () => {
+		// Dialog opened before the async allow-list resolved: it starts on "all".
+		const { rerender } = await renderDialog([]);
+		expect(body().queryByTestId('mcp-callback-url-input')).not.toBeInTheDocument();
+
+		// The load resolves and the prop updates; the form must adopt the trusted list
+		// rather than keep the default "all" (which would erase it on save).
+		await rerender({ open: true, uris: ['https://a.example.com/cb'] });
+
+		await waitFor(() => {
+			expect(body().getAllByTestId('mcp-callback-url-input')).toHaveLength(1);
+		});
+	});
+
 	it('should add and remove URL rows', async () => {
 		await renderDialog(['https://a.example.com/cb']);
 

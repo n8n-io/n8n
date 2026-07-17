@@ -32,12 +32,21 @@ const i18n = useI18n();
 const mode = ref<UrlMode>('all');
 const drafts = ref<string[]>(['']);
 
+function resetFromUris() {
+	mode.value = props.uris.length > 0 ? 'trusted' : 'all';
+	drafts.value = props.uris.length > 0 ? [...props.uris] : [''];
+}
+
+// Sync when the dialog opens AND whenever the persisted list changes while open:
+// the allow-list is loaded async, so a dialog opened before that resolves must
+// pick up the loaded value rather than keep the default "All" (which would erase
+// an existing trusted list on save). The store only mutates `uris` via load or a
+// successful save (which closes the dialog), so this never clobbers live edits.
 watch(
-	() => props.open,
-	(open) => {
+	[() => props.open, () => props.uris],
+	([open]) => {
 		if (!open) return;
-		mode.value = props.uris.length > 0 ? 'trusted' : 'all';
-		drafts.value = props.uris.length > 0 ? [...props.uris] : [''];
+		resetFromUris();
 	},
 	{ immediate: true },
 );

@@ -454,7 +454,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 /* ...and keep the revoke button out of the way until the row is hovered/focused. */
 .table :global(tbody tr .revoke-action) {
 	opacity: 0;
-	transition: opacity var(--duration--fast, 100ms) ease;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
 
 .table :global(tbody tr:hover .revoke-action),

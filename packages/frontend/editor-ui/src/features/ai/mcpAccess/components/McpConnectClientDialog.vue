@@ -13,10 +13,8 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps, TabOptions } from '@n8n/design-system';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { MCP_ENDPOINT } from '@/features/ai/mcpAccess/mcp.constants';
 import { getMcpClientCatalog } from '@/features/ai/mcpAccess/mcp.clients.catalog';
 import type { McpClientSetup } from '@/features/ai/mcpAccess/mcp.clients.catalog';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/ConnectionParameter.vue';
@@ -25,13 +23,18 @@ import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/MCPAcce
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const rootStore = useRootStore();
 const mcpStore = useMCPStore();
 
-const serverUrl = `${rootStore.urlBaseEditor}${MCP_ENDPOINT}`;
-const catalog = getMcpClientCatalog(serverUrl);
-const clientsById = new Map<string, McpClientSetup>(
-	catalog.flatMap((group) => group.clients.map((client) => [client.id, client])),
+// Prefer the backend's dedicated MCP server URL (falls back to the editor URL in
+// the store), so every copied command/config and the token tab target the endpoint
+// the instance actually exposes.
+const serverUrl = computed(() => mcpStore.serverUrl);
+const catalog = computed(() => getMcpClientCatalog(serverUrl.value));
+const clientsById = computed(
+	() =>
+		new Map<string, McpClientSetup>(
+			catalog.value.flatMap((group) => group.clients.map((client) => [client.id, client])),
+		),
 );
 
 type ConnectMethod = 'oauth' | 'apiKey';
@@ -43,7 +46,7 @@ const methodTabs = computed<Array<TabOptions<ConnectMethod>>>(() => [
 
 const activeClientId = ref('claude-code');
 
-const activeClient = computed(() => clientsById.get(activeClientId.value));
+const activeClient = computed(() => clientsById.value.get(activeClientId.value));
 
 type MenuItemData = { kind: 'header' } | { kind: 'client'; client: McpClientSetup };
 
@@ -51,7 +54,7 @@ type MenuItemData = { kind: 'header' } | { kind: 'client'; client: McpClientSetu
 // (non-selectable) followed by its clients; the active client carries `checked`.
 const clientMenuItems = computed<Array<DropdownMenuItemProps<string, MenuItemData>>>(() => {
 	const items: Array<DropdownMenuItemProps<string, MenuItemData>> = [];
-	for (const group of catalog) {
+	for (const group of catalog.value) {
 		items.push({
 			id: `header:${group.id}`,
 			label: i18n.baseText(`settings.mcp.connectDialog.category.${group.id}` as BaseTextKey),

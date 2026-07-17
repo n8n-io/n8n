@@ -219,7 +219,6 @@ onMounted(async () => {
 			</div>
 			<WorkflowsTable
 				v-model:table-options="workflowsTableState"
-				:data-test-id="'mcp-workflow-table'"
 				:workflows="availableWorkflows"
 				:total-count="availableWorkflowsTotal"
 				:loading="workflowsLoading"
