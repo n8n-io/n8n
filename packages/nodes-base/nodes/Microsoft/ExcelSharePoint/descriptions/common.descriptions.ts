@@ -15,7 +15,10 @@ export const workbookRLC: INodeProperties = {
 			displayName: 'By URL',
 			name: 'url',
 			type: 'string',
-			placeholder: 'e.g. https://contoso.sharepoint.com/sites/mysite/Shared Documents/book.xlsx',
+			// A real "Copy link" URL is this messy sourcedoc/Doc.aspx shape, not a
+			// clean human-readable path — a tidy example would look wrong to paste over.
+			placeholder:
+				'e.g. https://contoso.sharepoint.com/:x:/r/sites/mysite/_layouts/15/Doc.aspx?sourcedoc=%7B5A58BB09-…%7D&file=book.xlsx',
 			validation: [
 				{
 					type: 'regex',
