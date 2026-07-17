@@ -246,16 +246,12 @@ onMounted(async () => {
 	right: var(--spacing--2xs);
 }
 
-/* A bare glyph, no button chrome. Icon-only buttons are forced to a square with
-   the icon centred, leaving dead space on each side; shrink to the glyph so it
-   sits flush against the offset. */
+/* Icon-only buttons are forced to a square with the icon centred, leaving dead
+   space each side; shrink to the glyph so it sits flush. The !importants beat the
+   DS's `.button.iconOnly` width rules and `:hover` background; the ghost variant
+   already handles border/shadow/rest background. */
 .copy-json-button {
 	width: auto !important;
-	min-width: 0 !important;
-	padding: 0 !important;
-	border: none !important;
-	outline: none !important;
-	box-shadow: none !important;
 	background: transparent !important;
 
 	> * {
