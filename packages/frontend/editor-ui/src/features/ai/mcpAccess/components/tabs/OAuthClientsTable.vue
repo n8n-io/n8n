@@ -27,6 +27,7 @@ import {
 	scopeLabel,
 } from '../../clients.utils';
 import type { OAuthClientFilters } from '../../clients.utils';
+import McpClientLogoCards from '../McpClientLogoCards.vue';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
 import OAuthClientOwnerCell from './OAuthClientOwnerCell.vue';
 import OAuthClientsFilters from './OAuthClientsFilters.vue';
@@ -270,24 +271,23 @@ function onRevoke(item: OAuthClientResponseDto) {
 				@click:row="(_, { item }) => openDetails(item)"
 			>
 				<template v-if="mcpStore.oauthClientsCount === 0" #cover>
-					<div v-if="!hasActiveFilters" :class="$style['empty-state']">
-						<N8nText data-test-id="mcp-workflow-table-empty-state" size="large" color="text-base">
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.title') }}
+					<div v-if="!hasActiveFilters" :class="$style['clients-empty']">
+						<McpClientLogoCards :class="$style['clients-empty-cards']" />
+						<N8nText
+							data-test-id="mcp-workflow-table-empty-state"
+							bold
+							size="large"
+							color="text-dark"
+						>
+							{{ i18n.baseText('settings.mcp.connectedClients.empty.title') }}
 						</N8nText>
 						<N8nText
 							data-test-id="mcp-workflow-table-empty-state-description"
 							size="small"
-							color="text-base"
+							color="text-light"
 						>
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.description') }}
+							{{ i18n.baseText('settings.mcp.connectedClients.empty.description') }}
 						</N8nText>
-						<N8nButton
-							variant="solid"
-							data-test-id="mcp-oauth-create-client-button"
-							@click="mcpStore.openConnectPopover()"
-						>
-							{{ i18n.baseText('settings.mcp.oauth.table.empty.button') }}
-						</N8nButton>
 					</div>
 					<div v-else :class="$style['empty-state']">
 						<N8nText data-test-id="mcp-clients-no-results" size="small" color="text-base">
@@ -438,6 +438,22 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg) 0;
 	min-height: 250px;
+}
+
+/* Same dashed-card language as the disabled-MCP empty state. */
+.clients-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xl) var(--spacing--xl);
+	border: var(--border-width) dashed var(--border-color);
+	border-radius: var(--radius--lg);
+}
+
+.clients-empty-cards {
+	margin-bottom: var(--spacing--sm);
 }
 
 /* Fixed layout so the flexible access column gets a real width, fills the row,
