@@ -72,16 +72,21 @@ describe('OAuthClientsTable', () => {
 	});
 
 	describe('Empty state', () => {
-		it('should render empty state when clients array is empty', () => {
-			const { getByTestId } = createComponent({
+		it('should show only the empty state (no toolbar/table) when there are no clients', () => {
+			const { getByTestId, queryByTestId } = createComponent({
 				props: {
 					clients: [],
 					loading: false,
 				},
 			});
 
-			expect(getByTestId('mcp-workflow-table-empty-state')).toBeVisible();
-			expect(getByTestId('mcp-workflow-table-empty-state-description')).toBeVisible();
+			const empty = getByTestId('mcp-clients-empty');
+			expect(empty).toBeVisible();
+			expect(empty).toHaveTextContent('No clients connected yet');
+			expect(empty).toHaveTextContent('Clients you connect will appear here');
+			// The tabs, search/filters and table are hidden when there are no clients.
+			expect(queryByTestId('mcp-clients-search')).not.toBeInTheDocument();
+			expect(queryByTestId('oauth-clients-data-table')).not.toBeInTheDocument();
 		});
 	});
 
@@ -234,24 +239,26 @@ describe('OAuthClientsTable', () => {
 			});
 		});
 
-		it('should show a no-results message when the filtered set is empty', async () => {
-			// the server matched nothing for the active search
-			mockMcpStore.oauthClientsCount = 0;
+		it('should show a no-results message when a search filters the set to empty', async () => {
+			// Start with a client so the toolbar (and its search) is available.
+			mockMcpStore.oauthClientsCount = 1;
 
-			const { getByTestId, queryByTestId } = createComponent({
+			const { getByTestId, rerender } = createComponent({
 				props: {
-					clients: [],
+					clients: [createOAuthClient({ name: 'Claude Code' })],
 					loading: false,
 				},
 			});
 
 			await userEvent.type(getByTestId('mcp-clients-search'), 'nothing matches this');
 
+			// The server matched nothing: the parent pushes an empty result set back.
+			mockMcpStore.oauthClientsCount = 0;
+			await rerender({ clients: [], loading: false });
+
 			await waitFor(() => {
 				expect(getByTestId('mcp-clients-no-results')).toBeVisible();
 			});
-			// the connect CTA is reserved for a genuinely empty client list
-			expect(queryByTestId('mcp-oauth-create-client-button')).not.toBeInTheDocument();
 		});
 	});
 

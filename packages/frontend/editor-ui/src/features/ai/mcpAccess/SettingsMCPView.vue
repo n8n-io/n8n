@@ -14,7 +14,6 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
-	N8nText,
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -22,7 +21,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
 import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import McpAllowedCallbackUrlsDialog from '@/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.vue';
-import McpClientLogoCards from '@/features/ai/mcpAccess/components/McpClientLogoCards.vue';
+import McpEmptyStateCard from '@/features/ai/mcpAccess/components/McpEmptyStateCard.vue';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
 import McpStatusControl from '@/features/ai/mcpAccess/components/McpStatusControl.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -270,19 +269,12 @@ onMounted(async () => {
 			</N8nSettingsSection>
 
 			<N8nSettingsSection :title="i18n.baseText('settings.mcp.connectedClients.title')">
-				<div
+				<McpEmptyStateCard
 					v-if="connectedClientsTotal === 0"
-					:class="$style['clients-empty']"
 					data-test-id="mcp-clients-empty"
-				>
-					<McpClientLogoCards :class="$style['clients-empty-cards']" />
-					<N8nText bold size="medium" color="text-dark">
-						{{ i18n.baseText('settings.mcp.connectedClients.empty.title') }}
-					</N8nText>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('settings.mcp.connectedClients.empty.description') }}
-					</N8nText>
-				</div>
+					:title="i18n.baseText('settings.mcp.connectedClients.empty.title')"
+					:description="i18n.baseText('settings.mcp.connectedClients.empty.description')"
+				/>
 				<N8nSettingsRowGroup v-else>
 					<N8nSettingsRow
 						:title="i18n.baseText('settings.mcp.connectedClients.viewAll.title')"
@@ -342,21 +334,5 @@ onMounted(async () => {
    header starts at the layout's own 24px inset, like the prototype. */
 .layout {
 	margin-top: -70.5px;
-}
-
-/* No-clients state: same dashed-card language as the disabled-MCP empty state. */
-.clients-empty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	text-align: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xl) var(--spacing--xl);
-	border: var(--border-width) dashed var(--border-color);
-	border-radius: var(--radius--lg);
-}
-
-.clients-empty-cards {
-	margin-bottom: var(--spacing--sm);
 }
 </style>

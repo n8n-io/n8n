@@ -27,7 +27,7 @@ import {
 	scopeLabel,
 } from '../../clients.utils';
 import type { OAuthClientFilters } from '../../clients.utils';
-import McpClientLogoCards from '../McpClientLogoCards.vue';
+import McpEmptyStateCard from '../McpEmptyStateCard.vue';
 import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
 import OAuthClientOwnerCell from './OAuthClientOwnerCell.vue';
 import OAuthClientsFilters from './OAuthClientsFilters.vue';
@@ -96,6 +96,11 @@ const hasActiveFilters = computed(
 		filters.value.ownerId !== null ||
 		filters.value.connected !== null,
 );
+
+// No clients at all (not just filtered to nothing): show only the empty state,
+// hiding the tabs, search/filter toolbar and table. A search that returns nothing
+// keeps the toolbar (hasActiveFilters) so the user can clear it.
+const showEmptyState = computed(() => props.clients.length === 0 && !hasActiveFilters.value);
 
 function onFiltersChange(newFilters: OAuthClientFilters) {
 	filters.value = newFilters;
@@ -226,6 +231,12 @@ function onRevoke(item: OAuthClientResponseDto) {
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
+		<McpEmptyStateCard
+			v-else-if="showEmptyState"
+			data-test-id="mcp-clients-empty"
+			:title="i18n.baseText('settings.mcp.connectedClients.empty.title')"
+			:description="i18n.baseText('settings.mcp.connectedClients.empty.description')"
+		/>
 		<div v-else class="mt-s mb-xl">
 			<div :class="$style.toolbar">
 				<N8nTabs
@@ -271,25 +282,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 				@click:row="(_, { item }) => openDetails(item)"
 			>
 				<template v-if="mcpStore.oauthClientsCount === 0" #cover>
-					<div v-if="!hasActiveFilters" :class="$style['clients-empty']">
-						<McpClientLogoCards :class="$style['clients-empty-cards']" />
-						<N8nText
-							data-test-id="mcp-workflow-table-empty-state"
-							bold
-							size="large"
-							color="text-dark"
-						>
-							{{ i18n.baseText('settings.mcp.connectedClients.empty.title') }}
-						</N8nText>
-						<N8nText
-							data-test-id="mcp-workflow-table-empty-state-description"
-							size="small"
-							color="text-light"
-						>
-							{{ i18n.baseText('settings.mcp.connectedClients.empty.description') }}
-						</N8nText>
-					</div>
-					<div v-else :class="$style['empty-state']">
+					<div :class="$style['empty-state']">
 						<N8nText data-test-id="mcp-clients-no-results" size="small" color="text-base">
 							{{ i18n.baseText('settings.mcp.oAuthClients.search.noResults') }}
 						</N8nText>
@@ -438,22 +431,6 @@ function onRevoke(item: OAuthClientResponseDto) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg) 0;
 	min-height: 250px;
-}
-
-/* Same dashed-card language as the disabled-MCP empty state. */
-.clients-empty {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	text-align: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xl) var(--spacing--xl);
-	border: var(--border-width) dashed var(--border-color);
-	border-radius: var(--radius--lg);
-}
-
-.clients-empty-cards {
-	margin-bottom: var(--spacing--sm);
 }
 
 /* Fixed layout so the flexible access column gets a real width, fills the row,
