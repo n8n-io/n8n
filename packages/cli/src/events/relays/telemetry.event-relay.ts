@@ -1079,6 +1079,7 @@ export class TelemetryEventRelay extends EventRelay {
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
 			data_table_count: counts.dataTables,
+			variable_count: counts.variables,
 		});
 	}
 

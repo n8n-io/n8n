@@ -500,7 +500,7 @@ describe('build-agent tool', () => {
 	});
 
 	describe('configUpdated', () => {
-		it.each(['write_config', 'patch_config'])(
+		it.each(['write_config', 'patch_config', 'publish_agent', 'unpublish_agent'])(
 			'is true when the work summary has a succeeded %s call',
 			async (toolName) => {
 				const { context, delegate } = makeContext();
