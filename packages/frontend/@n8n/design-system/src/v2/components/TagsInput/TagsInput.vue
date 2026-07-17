@@ -279,7 +279,7 @@ function getInputClass(isEmpty: boolean): string {
 
 	--tags-input--padding: var(--spacing--4xs);
 	--tags-input--input--padding-inline-start: var(--spacing--5xs);
-	--tag--padding: 0 var(--spacing--5xs) 0px var(--spacing--4xs);
+	--tag--padding: 0 var(--spacing--5xs) 0 var(--spacing--4xs);
 	--tag--radius: var(--radius--4xs);
 	--tag--font-size: var(--font-size--3xs);
 	--tag--delete--offset: 1px;
