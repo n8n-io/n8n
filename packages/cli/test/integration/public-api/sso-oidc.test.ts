@@ -103,7 +103,7 @@ describe('OIDC SSO configuration in Public API', () => {
 
 		it('redacts the client secret on read', async () => {
 			testServer.license.enable('feat:oidc');
-			await testServer.publicApiAgentFor(owner).post('/settings/sso/oidc').send(validConfig);
+			await testServer.publicApiAgentFor(owner).put('/settings/sso/oidc').send(validConfig);
 
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/sso/oidc');
 
@@ -137,13 +137,13 @@ describe('OIDC SSO configuration in Public API', () => {
 		});
 	});
 
-	describe('POST /settings/sso/oidc', () => {
+	describe('PUT /settings/sso/oidc', () => {
 		it('sets the configuration and returns the updated values with the secret redacted', async () => {
 			testServer.license.enable('feat:oidc');
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send(validConfig);
 
 			expect(response.status).toBe(200);
@@ -160,7 +160,7 @@ describe('OIDC SSO configuration in Public API', () => {
 		it('takes effect the same way as the UI (write via public API, read via internal API)', async () => {
 			testServer.license.enable('feat:oidc');
 
-			await testServer.publicApiAgentFor(owner).post('/settings/sso/oidc').send(validConfig);
+			await testServer.publicApiAgentFor(owner).put('/settings/sso/oidc').send(validConfig);
 
 			// internal REST responses are wrapped in `{ data }`; the UI client unwraps it.
 			const internal = await testServer.authAgentFor(owner).get('/sso/oidc/config');
@@ -189,14 +189,14 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const enabled = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send({ ...validConfig, loginEnabled: true });
 			expect(enabled.status).toBe(200);
 			expect(enabled.body.loginEnabled).toBe(true);
 
 			const disabled = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send({ ...validConfig, loginEnabled: false });
 			expect(disabled.status).toBe(200);
 			expect(disabled.body.loginEnabled).toBe(false);
@@ -204,11 +204,11 @@ describe('OIDC SSO configuration in Public API', () => {
 
 		it('keeps the stored secret when the redacted sentinel is submitted', async () => {
 			testServer.license.enable('feat:oidc');
-			await testServer.publicApiAgentFor(owner).post('/settings/sso/oidc').send(validConfig);
+			await testServer.publicApiAgentFor(owner).put('/settings/sso/oidc').send(validConfig);
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send({
 					...validConfig,
 					clientId: 'updated-client',
@@ -227,7 +227,7 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send({ clientId: 'only-id' });
 
 			expect(response.status).toBe(400);
@@ -238,7 +238,7 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send({ ...validConfig, discoveryEndpoint: 'not-a-url' });
 
 			expect(response.status).toBe(400);
@@ -250,7 +250,7 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send(validConfig);
 
 			expect(response.status).toBe(401);
@@ -262,7 +262,7 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send(validConfig);
 
 			expect(response.status).toBe(403);
@@ -271,7 +271,7 @@ describe('OIDC SSO configuration in Public API', () => {
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send(validConfig);
 
 			expect(response.status).toBe(403);
@@ -284,7 +284,7 @@ describe('OIDC SSO configuration in Public API', () => {
 
 			const write = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/sso/oidc')
+				.put('/settings/sso/oidc')
 				.send(validConfig);
 
 			expect(write.status).toBe(409);

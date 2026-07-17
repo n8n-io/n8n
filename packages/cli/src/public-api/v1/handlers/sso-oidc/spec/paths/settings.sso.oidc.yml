@@ -20,7 +20,7 @@ get:
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '403':
       $ref: '../../../../shared/spec/responses/forbidden.yml'
-post:
+put:
   x-eov-operation-id: setOidcConfiguration
   x-required-scope: oidc:manage
   x-eov-operation-handler: v1/handlers/sso-oidc/sso-oidc.handler

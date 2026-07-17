@@ -208,7 +208,7 @@
 		"GET /settings/sso/oidc": {
 			"status": "gap"
 		},
-		"POST /settings/sso/oidc": {
+		"PUT /settings/sso/oidc": {
 			"status": "gap"
 		},
 		"POST /variables": {
