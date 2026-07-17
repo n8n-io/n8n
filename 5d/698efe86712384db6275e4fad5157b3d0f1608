@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_fd88e3166bde43::t_c8dd6fe941e1c2 63
+  s_fd88e3166bde43::t_e8df2f51627c45 5,9-10
+  s_fd88e3166bde43::t_bd05b1302d849f 103-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5d698efe86712384db6275e4fad5157b3d0f1608",
+  "prompts": {},
+  "sessions": {
+    "s_fd88e3166bde43": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f2ad785-b48e-41b7-99c4-c11bb72bed21",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}
