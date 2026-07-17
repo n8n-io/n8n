@@ -134,6 +134,7 @@ export {
 	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
 } from './schemas/workflow-version.schema';
 export type {
+	CredentialDependencyMetadata,
 	DependencyType,
 	DependencyResourceType,
 	ResolvedDependency,

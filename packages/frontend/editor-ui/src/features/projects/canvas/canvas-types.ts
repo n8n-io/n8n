@@ -4,7 +4,7 @@ import type { InjectionKey, Ref } from 'vue';
 import type { WorkflowRelationType } from './graph-model';
 
 export interface ProjectNodeData {
-	kind: 'workflow' | 'folder';
+	kind: 'workflow' | 'folder' | 'credential' | 'resource';
 	name: string;
 	active?: boolean;
 	triggerType?: WorkflowTriggerType;
@@ -14,6 +14,12 @@ export interface ProjectNodeData {
 	external?: boolean;
 	/** Folder: recursive workflow count for the pill. */
 	workflowCount?: number;
+	/** Credential: number of workflows using this credential. */
+	credentialUsageCount?: number;
+	/** Credential: the credential type name (e.g. 'slackApi') — used to resolve the icon. */
+	credentialType?: string;
+	/** Resource: the node type that defines this resource (e.g. 'n8n-nodes-base.slack'). */
+	nodeType?: string;
 	[key: string]: unknown;
 }
 
@@ -28,17 +34,25 @@ export interface ProjectContainerData {
 
 export interface ProjectEdgeData {
 	relationshipType: WorkflowRelationType;
+	/** Operation label for accesses-resource edges (e.g. 'send', 'POST'). */
+	operation?: string;
+	/** Credential type for credential edges — used to resolve the icon color. */
+	credentialType?: string;
+	/** Read/write direction for credential edges — determines left/right routing. */
+	direction?: 'read' | 'write' | 'unknown';
 	[key: string]: unknown;
 }
 
 /** What kind of element a canvas press started on. */
-export type CanvasPressKind = 'workflow' | 'folder' | 'container';
+export type CanvasPressKind = 'workflow' | 'folder' | 'container' | 'credential';
 
 /** Interaction context provided by ProjectCanvas to its node/container components. */
 export interface ProjectCanvasContext {
 	hoveredNodeId: Ref<string | null>;
 	dropHotId: Ref<string | null>;
 	liftedId: Ref<string | null>;
+	/** Set of workflow IDs currently selected via rubber-band selection. */
+	selectedIds: Ref<Set<string>>;
 	/** Leftmost x of any visible unit — backward edges loop around it. */
 	contentLeftX: Ref<number>;
 	/** Lowest bottom y of any visible unit — backward edges run beneath it. */

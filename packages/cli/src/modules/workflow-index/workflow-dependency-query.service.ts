@@ -1,4 +1,5 @@
 import type {
+	CredentialDependencyMetadata,
 	DependenciesBatchResponse,
 	DependencyCountsBatchResponse,
 	DependencyResourceType,
@@ -20,10 +21,15 @@ import { DataTableRepository } from '@/modules/data-table/data-table.repository'
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+interface CredentialDepEntry {
+	credentialId: string;
+	metadata?: CredentialDependencyMetadata;
+}
+
 interface RawDepMaps {
 	aiToolMap: Map<string, Set<string>>;
 	aiToolParentMap: Map<string, Set<string>>;
-	credMap: Map<string, Set<string>>;
+	credMap: Map<string, CredentialDepEntry[]>;
 	dtMap: Map<string, Set<string>>;
 	subMap: Map<string, Set<string>>;
 	parentMap: Map<string, Set<string>>;
@@ -63,7 +69,7 @@ export class WorkflowDependencyQueryService {
 			result[id] = {
 				aiToolWorkflowCall: maps.aiToolMap.get(id)?.size ?? 0,
 				aiToolWorkflowParent: maps.aiToolParentMap.get(id)?.size ?? 0,
-				credentialId: maps.credMap.get(id)?.size ?? 0,
+				credentialId: new Set((maps.credMap.get(id) ?? []).map((e) => e.credentialId)).size,
 				dataTableId: maps.dtMap.get(id)?.size ?? 0,
 				errorWorkflow: maps.errorWfMap.get(id)?.size ?? 0,
 				errorWorkflowParent: maps.errorWfParentMap.get(id)?.size ?? 0,
@@ -189,7 +195,7 @@ export class WorkflowDependencyQueryService {
 					...publishedVersionFilter,
 				},
 			],
-			select: ['workflowId', 'dependencyType', 'dependencyKey'],
+			select: ['workflowId', 'dependencyType', 'dependencyKey', 'dependencyInfo'],
 		});
 
 		if (rawDeps.length === 0) return null;
@@ -198,11 +204,16 @@ export class WorkflowDependencyQueryService {
 	}
 
 	private buildDepMaps(
-		rawDeps: Array<{ workflowId: string; dependencyType: string; dependencyKey: string }>,
+		rawDeps: Array<{
+			workflowId: string;
+			dependencyType: string;
+			dependencyKey: string;
+			dependencyInfo?: Record<string, unknown> | null;
+		}>,
 	): RawDepMaps {
 		const aiToolMap = new Map<string, Set<string>>();
 		const aiToolParentMap = new Map<string, Set<string>>();
-		const credMap = new Map<string, Set<string>>();
+		const credMap = new Map<string, CredentialDepEntry[]>();
 		const dtMap = new Map<string, Set<string>>();
 		const subMap = new Map<string, Set<string>>();
 		const parentMap = new Map<string, Set<string>>();
@@ -220,11 +231,21 @@ export class WorkflowDependencyQueryService {
 					addToSet(aiToolParentMap, dep.dependencyKey, dep.workflowId);
 					allWfIds.add(dep.dependencyKey);
 					break;
-				case 'credentialId':
-					addToSet(credMap, dep.workflowId, dep.dependencyKey);
+				case 'credentialId': {
+					const info = dep.dependencyInfo as Record<string, unknown> | null | undefined;
+					const metadata: CredentialDependencyMetadata | undefined = info
+						? {
+								nodeId: typeof info.nodeId === 'string' ? info.nodeId : undefined,
+								nodeType: typeof info.nodeType === 'string' ? info.nodeType : undefined,
+								resource: typeof info.resource === 'string' ? info.resource : undefined,
+								operation: typeof info.operation === 'string' ? info.operation : undefined,
+							}
+						: undefined;
+					addToCredMap(credMap, dep.workflowId, dep.dependencyKey, metadata);
 					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
 					allCredIds.add(dep.dependencyKey);
 					break;
+				}
 				case 'dataTableId':
 					addToSet(dtMap, dep.workflowId, dep.dependencyKey);
 					addToSet(parentMap, dep.dependencyKey, dep.workflowId);
@@ -335,15 +356,30 @@ export class WorkflowDependencyQueryService {
 				existing.existingWfIds,
 				'errorWorkflowParent',
 			);
-			resolve(
-				maps.credMap.get(resourceId),
-				accessMaps.credNames,
-				existing.existingCredIds,
-				'credentialId',
-			);
+
+			// Credential deps carry metadata (resource/operation) — one entry per
+			// unique (credentialId, resource, operation) combination so the graph
+			// can build resource nodes and labelled edges.
+			const seenCredKeys = new Set<string>();
+			for (const entry of maps.credMap.get(resourceId) ?? []) {
+				if (!existing.existingCredIds.has(entry.credentialId)) continue;
+				const name = accessMaps.credNames.get(entry.credentialId);
+				if (name === undefined) {
+					inaccessibleCount++;
+					continue;
+				}
+				const metaKey = `${entry.credentialId}:${entry.metadata?.resource ?? ''}:${entry.metadata?.operation ?? ''}`;
+				if (seenCredKeys.has(metaKey)) continue;
+				seenCredKeys.add(metaKey);
+				dependencies.push({
+					id: entry.credentialId,
+					name,
+					type: 'credentialId',
+					metadata: entry.metadata,
+				});
+			}
 
 			for (const id of maps.dtMap.get(resourceId) ?? []) {
-				if (!existing.existingDtIds.has(id)) continue;
 				const dt = accessMaps.dtNames.get(id);
 				if (dt) {
 					dependencies.push({ id, name: dt.name, type: 'dataTableId', projectId: dt.projectId });
@@ -415,4 +451,18 @@ function addToSet(map: Map<string, Set<string>>, key: string, val: string) {
 		map.set(key, set);
 	}
 	set.add(val);
+}
+
+function addToCredMap(
+	map: Map<string, CredentialDepEntry[]>,
+	workflowId: string,
+	credentialId: string,
+	metadata?: CredentialDependencyMetadata,
+) {
+	let list = map.get(workflowId);
+	if (!list) {
+		list = [];
+		map.set(workflowId, list);
+	}
+	list.push({ credentialId, metadata });
 }

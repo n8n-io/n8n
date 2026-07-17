@@ -91,9 +91,11 @@ function buildAtlas(model: GraphModel): void {
 		degree[target]++;
 	};
 	const relationVisible: Record<WorkflowRelationType, boolean> = {
+		'accesses-resource': config.showCredentials,
 		'calls-workflow': config.showCalls,
-		'uses-as-tool': config.showTools,
 		'handles-errors-for': config.showErrors,
+		'uses-as-tool': config.showTools,
+		'uses-credential': config.showCredentials,
 	};
 	for (const relation of model.relations) {
 		if (!relationVisible[relation.type]) continue;

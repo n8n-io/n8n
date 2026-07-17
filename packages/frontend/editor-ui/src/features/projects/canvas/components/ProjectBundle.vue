@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, reactive, ref, shallowRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
-import type { GraphModel } from '../graph-model';
+import type { GraphModel, WorkflowRelationType } from '../graph-model';
 import {
 	CREDENTIAL_TINT,
 	folderColor,
@@ -45,7 +45,7 @@ interface BundleEdge {
 	id: string;
 	sourceId: string;
 	targetId: string;
-	type: 'calls-workflow' | 'uses-as-tool' | 'handles-errors-for' | 'uses-credential';
+	type: WorkflowRelationType;
 	/** hierarchy control points, un-straightened */
 	points: Array<{ x: number; y: number }>;
 }

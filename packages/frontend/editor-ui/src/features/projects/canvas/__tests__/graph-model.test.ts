@@ -15,6 +15,8 @@ const ALL_TYPES = new Set<WorkflowRelationType>([
 	'calls-workflow',
 	'uses-as-tool',
 	'handles-errors-for',
+	'uses-credential',
+	'accesses-resource',
 ]);
 
 function workflowNode(
@@ -194,6 +196,113 @@ describe('resolveVisibleEdges', () => {
 		);
 		expect(edges).toHaveLength(1);
 		expect(edges[0].type).toBe('uses-as-tool');
+	});
+});
+
+function credentialNode(id: string, name: string): GraphNode {
+	return { id, type: 'credential', name, expanded: true, metadata: {} };
+}
+
+function resourceNode(id: string, name: string, nodeType: string): GraphNode {
+	return { id, type: 'resource', name, expanded: true, metadata: { nodeType } };
+}
+
+describe('credentials and resources', () => {
+	it('parses resource nodes from the graph', () => {
+		const g = graph(
+			[
+				workflowNode('w1'),
+				credentialNode('c1', 'Slack API'),
+				resourceNode('n8n-nodes-base.slack:message', 'message', 'n8n-nodes-base.slack'),
+			],
+			[
+				{
+					sourceId: 'w1',
+					targetId: 'n8n-nodes-base.slack:message',
+					type: 'accesses-resource',
+					metadata: { operation: 'send', nodeType: 'n8n-nodes-base.slack' },
+				},
+				{
+					sourceId: 'n8n-nodes-base.slack:message',
+					targetId: 'c1',
+					type: 'uses-credential',
+				},
+			],
+		);
+		const model = buildGraphModel([g]);
+		expect(model.resources.size).toBe(1);
+		expect(model.resources.get('n8n-nodes-base.slack:message')?.name).toBe('message');
+		expect(model.resourceLinks).toHaveLength(1);
+		expect(model.resourceLinks[0]).toMatchObject({
+			workflowId: 'w1',
+			resourceId: 'n8n-nodes-base.slack:message',
+			operation: 'send',
+		});
+		expect(model.resourceCredentialLinks).toHaveLength(1);
+		expect(model.resourceCredentialLinks[0]).toMatchObject({
+			resourceId: 'n8n-nodes-base.slack:message',
+			credentialId: 'c1',
+		});
+	});
+
+	it('parses direct credential links (no resource metadata)', () => {
+		const g = graph(
+			[workflowNode('w1'), credentialNode('c1', 'HTTP Auth')],
+			[edge('w1', 'c1', 'uses-credential')],
+		);
+		const model = buildGraphModel([g]);
+		expect(model.credentials.get('c1')?.name).toBe('HTTP Auth');
+		expect(model.credentialLinks).toHaveLength(1);
+		expect(model.credentialLinks[0]).toMatchObject({
+			workflowId: 'w1',
+			credentialId: 'c1',
+		});
+		// no resource nodes
+		expect(model.resources.size).toBe(0);
+		expect(model.resourceCredentialLinks).toHaveLength(0);
+	});
+
+	it('resolves credential/resource edges with operation labels', () => {
+		const g = graph(
+			[
+				workflowNode('w1'),
+				credentialNode('c1', 'Slack API'),
+				resourceNode('n8n-nodes-base.slack:message', 'message', 'n8n-nodes-base.slack'),
+			],
+			[
+				{
+					sourceId: 'w1',
+					targetId: 'n8n-nodes-base.slack:message',
+					type: 'accesses-resource',
+					metadata: { operation: 'send' },
+				},
+				{
+					sourceId: 'n8n-nodes-base.slack:message',
+					targetId: 'c1',
+					type: 'uses-credential',
+				},
+			],
+		);
+		const model = buildGraphModel([g]);
+		const edges = resolveVisibleEdges(model, new Set(), ALL_TYPES);
+		const resourceEdge = edges.find((e) => e.type === 'accesses-resource');
+		expect(resourceEdge).toBeDefined();
+		expect(resourceEdge?.operation).toBe('send');
+		const credEdge = edges.find((e) => e.type === 'uses-credential');
+		expect(credEdge).toBeDefined();
+		expect(credEdge?.source).toBe('n8n-nodes-base.slack:message');
+		expect(credEdge?.target).toBe('c1');
+	});
+
+	it('filters out credential edges when not in visibleTypes', () => {
+		const g = graph(
+			[workflowNode('w1'), credentialNode('c1', 'Auth')],
+			[edge('w1', 'c1', 'uses-credential')],
+		);
+		const model = buildGraphModel([g]);
+		const withoutCreds = new Set<WorkflowRelationType>(['calls-workflow', 'uses-as-tool']);
+		const edges = resolveVisibleEdges(model, new Set(), withoutCreds);
+		expect(edges.find((e) => e.type === 'uses-credential')).toBeUndefined();
 	});
 });
 

@@ -1,15 +1,40 @@
 <script lang="ts" setup>
-import { BaseEdge, type EdgeProps } from '@vue-flow/core';
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from '@vue-flow/core';
 import { computed, inject } from 'vue';
 
 import type { ProjectEdgeData } from '../canvas-types';
 import { ProjectCanvasContextKey } from '../canvas-types';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const props = defineProps<EdgeProps<ProjectEdgeData>>();
 
 const context = inject(ProjectCanvasContextKey, null);
+const credentialsStore = useCredentialsStore();
 
 const isToolUse = computed(() => props.data?.relationshipType === 'uses-as-tool');
+const isCredentialUse = computed(() => props.data?.relationshipType === 'uses-credential');
+const isResourceAccess = computed(() => props.data?.relationshipType === 'accesses-resource');
+const operationLabel = computed(() => props.data?.operation);
+const direction = computed(() => props.data?.direction);
+
+/** Whether this edge uses right-to-right or left-to-left routing (credential read/write). */
+const isRightRouting = computed(
+	() =>
+		(isCredentialUse.value || isResourceAccess.value) &&
+		(direction.value === 'write' || direction.value === 'unknown'),
+);
+const isLeftRouting = computed(
+	() => (isCredentialUse.value || isResourceAccess.value) && direction.value === 'read',
+);
+
+/** Resolve the credential type's icon color CSS variable (e.g. var(--node--icon--color--azure)). */
+const credentialColor = computed(() => {
+	const credType = props.data?.credentialType;
+	if (!credType) return undefined;
+	const type = credentialsStore.getCredentialTypeByName(credType);
+	if (!type?.iconColor) return undefined;
+	return `var(--node--icon--color--${type.iconColor})`;
+});
 
 /** A trigger edge whose target sits left of its source loops around instead of crossing. */
 const BACKWARD_THRESHOLD = 20;
@@ -64,6 +89,24 @@ const edgePath = computed(() => {
 		const o = Math.min(120, Math.max(40, Math.abs(p1.y - p0.y) * 0.45));
 		return `M ${p0.x} ${p0.y} C ${p0.x} ${p0.y + o}, ${p1.x} ${p1.y - o}, ${p1.x} ${p1.y}`;
 	}
+	// Right-to-right routing (write edges): go right from source, up, left into target's right
+	if (isRightRouting.value) {
+		const padX = Math.min(120, Math.max(50, Math.abs(p1.y - p0.y) * 0.4));
+		const targetRight = p1.x + padX;
+		return roundedPolylinePath(
+			[p0, { x: targetRight, y: p0.y }, { x: targetRight, y: p1.y }, p1],
+			BACKWARD_BORDER_RADIUS,
+		);
+	}
+	// Left-to-left routing (read edges): go left from source, up, right into target's left
+	if (isLeftRouting.value) {
+		const padX = Math.min(120, Math.max(50, Math.abs(p1.y - p0.y) * 0.4));
+		const targetLeft = Math.min(p0.x, p1.x) - padX;
+		return roundedPolylinePath(
+			[p0, { x: targetLeft, y: p0.y }, { x: targetLeft, y: p1.y }, p1],
+			BACKWARD_BORDER_RADIUS,
+		);
+	}
 	if (p0.x - BACKWARD_THRESHOLD > p1.x) {
 		// run beneath the lowest visible unit, so the loop follows content moved downwards
 		const contentBottom = context?.contentBottomY.value;
@@ -95,18 +138,26 @@ const hoverState = computed<'highlighted' | 'dimmed' | null>(() => {
 	return props.source === hovered || props.target === hovered ? 'highlighted' : 'dimmed';
 });
 
-const strokeColor = computed(() =>
-	isToolUse.value
-		? 'var(--color--secondary)'
-		: hoverState.value === 'highlighted'
-			? 'var(--color--text--shade-1)'
-			: 'var(--color--foreground--shade-1)',
-);
+const strokeColor = computed(() => {
+	if (isToolUse.value) return 'var(--color--secondary)';
+	if (isCredentialUse.value || isResourceAccess.value) {
+		return credentialColor.value ?? 'var(--color--warning)';
+	}
+	return hoverState.value === 'highlighted'
+		? 'var(--color--text--shade-1)'
+		: 'var(--color--foreground--shade-1)';
+});
 
 const edgeStyle = computed(() => ({
 	stroke: strokeColor.value,
 	strokeWidth: hoverState.value === 'highlighted' ? 2.4 : 1.8,
-	strokeDasharray: isToolUse.value ? '5 4' : undefined,
+	strokeDasharray: isToolUse.value
+		? '5 4'
+		: isCredentialUse.value
+			? '2 4'
+			: isResourceAccess.value
+				? '5 4'
+				: undefined,
 	opacity: hoverState.value === 'dimmed' ? 0.18 : 1,
 	transition: 'opacity 0.15s ease',
 }));
@@ -114,4 +165,30 @@ const edgeStyle = computed(() => ({
 
 <template>
 	<BaseEdge :id="props.id" :path="edgePath" :style="edgeStyle" :marker-end="props.markerEnd" />
+	<EdgeLabelRenderer v-if="operationLabel">
+		<div
+			class="project-canvas-edge__label nopan"
+			:style="{
+				transform: `translate(-50%, -50%) translate(${((props.sourceX ?? 0) + (props.targetX ?? 0)) / 2}px, ${((props.sourceY ?? 0) + (props.targetY ?? 0)) / 2}px)`,
+			}"
+		>
+			{{ operationLabel }}
+		</div>
+	</EdgeLabelRenderer>
 </template>
+
+<style scoped lang="scss">
+.project-canvas-edge__label {
+	position: absolute;
+	pointer-events: none;
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	background: var(--color--background--light-3);
+	padding: 1px 6px;
+	border-radius: var(--radius--sm);
+	border: var(--border-width) solid var(--color--foreground--shade-1);
+	white-space: nowrap;
+	z-index: 5;
+}
+</style>

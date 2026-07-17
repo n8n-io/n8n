@@ -84,7 +84,7 @@ const workflowsListStore = useWorkflowsListStore();
 const foldersStore = useFoldersStore();
 const folderHelpers = useFolders();
 const uiStore = useUIStore();
-const { project, viewportRef } = useVueFlow();
+const { project, viewportRef, onSelectionEnd, getSelectedNodes } = useVueFlow();
 
 const projectId = route.params.projectId as string;
 
@@ -111,6 +111,9 @@ const model = shallowRef<GraphModel>({
 	toolTargets: new Set(),
 	credentials: new Map(),
 	credentialLinks: [],
+	resources: new Map(),
+	resourceLinks: [],
+	resourceCredentialLinks: [],
 });
 
 /** World positions (top-left) of every unit; folder position = collapsed node anchor. */
@@ -121,9 +124,73 @@ const flowEdges = ref<FlowEdge[]>([]);
 
 const visibleTypes = ref<Set<WorkflowRelationType>>(new Set(['calls-workflow', 'uses-as-tool']));
 
+/** Currently selected credential ID (null = no credential shown). One at a time via dropdown. */
+const selectedCredentialId = ref<string | null>(null);
+
+/** Credential options for the dropdown. */
+const credentialOptions = computed(() =>
+	[...model.value.credentials.values()].map((c) => ({
+		label: c.name,
+		value: c.id,
+	})),
+);
+
+function onCredentialChange(): void {
+	if (selectedCredentialId.value) {
+		const types = new Set(visibleTypes.value);
+		types.add('uses-credential');
+		types.add('accesses-resource');
+		visibleTypes.value = types;
+		layoutSelectedCredential();
+	} else {
+		const types = new Set(visibleTypes.value);
+		types.delete('uses-credential');
+		types.delete('accesses-resource');
+		visibleTypes.value = types;
+	}
+	renderStructure();
+}
+
+/** Position the selected credential at the top center and resources in a row below it. */
+function layoutSelectedCredential(): void {
+	const m = model.value;
+	const credId = selectedCredentialId.value;
+	if (!credId) return;
+
+	// Credential at top center of existing content
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let topY = Infinity;
+	for (const [id, p] of pos) {
+		if (m.workflows.has(id) || m.folders.has(id)) {
+			minX = Math.min(minX, p.x);
+			maxX = Math.max(maxX, p.x + NODE.w);
+			topY = Math.min(topY, p.y);
+		}
+	}
+	const centerX = isFinite(minX) ? (minX + maxX) / 2 - NODE.w / 2 : 60;
+	const credY = isFinite(topY) ? Math.max(20, topY - NODE.h * 2 - 40) : 20;
+	pos.set(credId, { x: centerX, y: credY });
+
+	// Resources in a row below the credential
+	const credResources = m.resourceCredentialLinks
+		.filter((l) => l.credentialId === credId)
+		.map((l) => l.resourceId);
+	const uniqueResources = [...new Set(credResources)];
+	const resY = credY + NODE.h + 60;
+	const resSpacing = NODE.w + 40;
+	const resStartX = centerX + NODE.w / 2 - (uniqueResources.length * resSpacing) / 2;
+	uniqueResources.forEach((resId, i) => {
+		if (!pos.has(resId)) {
+			pos.set(resId, { x: resStartX + i * resSpacing, y: resY });
+		}
+	});
+}
+
 const hoveredNodeId = ref<string | null>(null);
 const dropHotId = ref<string | null>(null);
 const liftedId = ref<string | null>(null);
+const selectedIds = ref<Set<string>>(new Set());
 const contentLeftX = ref(0);
 const contentBottomY = ref(0);
 
@@ -180,7 +247,12 @@ function rememberChildOffset(folderId: string, childId: string): void {
 }
 
 function persistPositions(): void {
-	const knownIds = new Set([...model.value.workflows.keys(), ...model.value.folders.keys()]);
+	const knownIds = new Set([
+		...model.value.workflows.keys(),
+		...model.value.folders.keys(),
+		...model.value.credentials.keys(),
+		...model.value.resources.keys(),
+	]);
 	// nothing loaded (yet) — don't wipe a previously stored arrangement
 	if (knownIds.size === 0) return;
 	saveCanvasState(
@@ -297,7 +369,13 @@ function edgeMarker(type: WorkflowRelationType) {
 	return {
 		type: MarkerType.Arrow,
 		color:
-			type === 'uses-as-tool' ? 'var(--color--secondary)' : 'var(--color--foreground--shade-1)',
+			type === 'uses-as-tool'
+				? 'var(--color--secondary)'
+				: type === 'uses-credential'
+					? 'var(--color--warning)'
+					: type === 'accesses-resource'
+						? 'var(--color--success)'
+						: 'var(--color--foreground--shade-1)',
 		width: 16,
 		height: 16,
 		strokeWidth: 1.5,
@@ -308,7 +386,7 @@ function edgeMarker(type: WorkflowRelationType) {
 function renderStructure(): void {
 	const m = model.value;
 	const expanded = expandedSet();
-	const edges = resolveVisibleEdges(m, expanded, visibleTypes.value);
+	const edges = resolveVisibleEdges(m, expanded, visibleTypes.value, selectedCredentialId.value);
 	const edgeEndpoints = new Set<string>();
 	for (const edge of edges) {
 		edgeEndpoints.add(edge.source);
@@ -369,7 +447,7 @@ function renderStructure(): void {
 			type: 'projectNode',
 			position: pos.get(workflow.id) ?? { x: 0, y: 0 },
 			draggable: false,
-			selectable: false,
+			selectable: true,
 			focusable: false,
 			zIndex: 100,
 			data: {
@@ -383,17 +461,116 @@ function renderStructure(): void {
 		});
 	}
 
+	// credential node (only the selected credential)
+	if (selectedCredentialId.value) {
+		const credential = m.credentials.get(selectedCredentialId.value);
+		if (credential) {
+			// Count workflows using this credential
+			const credUsage = new Map<string, number>();
+			for (const link of m.credentialLinks) {
+				if (link.credentialId === credential.id)
+					credUsage.set(link.credentialId, (credUsage.get(link.credentialId) ?? 0) + 1);
+			}
+			for (const link of m.resourceCredentialLinks) {
+				if (link.credentialId === credential.id)
+					credUsage.set(link.credentialId, (credUsage.get(link.credentialId) ?? 0) + 1);
+			}
+			nodes.push({
+				id: credential.id,
+				type: 'projectNode',
+				position: pos.get(credential.id) ?? { x: 0, y: 0 },
+				draggable: false,
+				selectable: false,
+				focusable: false,
+				zIndex: 100,
+				data: {
+					kind: 'credential',
+					name: credential.name,
+					credentialUsageCount: credUsage.get(credential.id) ?? 0,
+					credentialType: credential.type,
+				},
+			});
+		}
+
+		// resource nodes connected to the selected credential
+		const credResourceIds = new Set(
+			m.resourceCredentialLinks
+				.filter((l) => l.credentialId === selectedCredentialId.value)
+				.map((l) => l.resourceId),
+		);
+		for (const resource of m.resources.values()) {
+			if (!credResourceIds.has(resource.id)) continue;
+			if (!edgeEndpoints.has(resource.id)) continue;
+			nodes.push({
+				id: resource.id,
+				type: 'projectNode',
+				position: pos.get(resource.id) ?? { x: 0, y: 0 },
+				draggable: false,
+				selectable: false,
+				focusable: false,
+				zIndex: 100,
+				data: {
+					kind: 'resource',
+					name: resource.name,
+					nodeType: resource.nodeType,
+				},
+			});
+		}
+	}
+
+	// Build credential type lookup: credentialId → type, resourceId → type (via resource→cred links)
+	const credTypeById = new Map<string, string | undefined>();
+	for (const [id, cred] of m.credentials) credTypeById.set(id, cred.type);
+	const credTypeByResource = new Map<string, string | undefined>();
+	for (const link of m.resourceCredentialLinks) {
+		credTypeByResource.set(link.resourceId, credTypeById.get(link.credentialId));
+	}
+
 	flowEdges.value = edges.map((edge) => {
 		const isTool = edge.type === 'uses-as-tool';
+		const isCredOrResource = edge.type === 'uses-credential' || edge.type === 'accesses-resource';
+		// For uses-credential edges, the target is the credential.
+		// For accesses-resource edges, the source is a resource → look up its credential type.
+		const edgeCredentialType = isCredOrResource
+			? edge.type === 'uses-credential'
+				? credTypeById.get(edge.target)
+				: credTypeByResource.get(edge.source)
+			: undefined;
+
+		// Determine handle routing based on edge type and direction
+		let sourceHandle: string;
+		let targetHandle: string;
+		if (isTool) {
+			sourceHandle = 'source-bottom';
+			targetHandle = 'target-top';
+		} else if (isCredOrResource && edge.direction === 'read') {
+			// Read edges: left side
+			sourceHandle = 'target-left';
+			targetHandle = 'cred-left';
+		} else if (isCredOrResource) {
+			// Write / unknown edges: right side
+			sourceHandle = 'source-right';
+			targetHandle = 'cred-right';
+		} else {
+			// Trigger edges
+			sourceHandle = 'source-right';
+			targetHandle = 'target-left';
+		}
+
 		return {
 			id: edge.id,
 			source: edge.source,
 			target: edge.target,
-			sourceHandle: isTool ? 'source-bottom' : 'source-right',
-			targetHandle: isTool ? 'target-top' : 'target-left',
+			sourceHandle,
+			targetHandle,
 			type: 'projectEdge',
 			markerEnd: edgeMarker(edge.type),
-			data: { relationshipType: edge.type },
+			data: {
+				relationshipType: edge.type,
+				...(isCredOrResource && edge.operation ? { operation: edge.operation } : {}),
+				...(edgeCredentialType ? { credentialType: edgeCredentialType } : {}),
+				...(edge.direction ? { direction: edge.direction } : {}),
+			},
 		};
 	});
 	flowNodes.value = nodes;
@@ -431,6 +608,13 @@ function applyPositions(): void {
 function ensureRootUnitPositions(): void {
 	const m = model.value;
 	const rootUnits = childEntities(m, null).map((c) => c.id);
+	// Include selected credential and its resources as root-level units
+	if (selectedCredentialId.value) {
+		rootUnits.push(selectedCredentialId.value);
+		for (const link of m.resourceCredentialLinks) {
+			if (link.credentialId === selectedCredentialId.value) rootUnits.push(link.resourceId);
+		}
+	}
 	const missing = rootUnits.filter((id) => !pos.has(id));
 	if (missing.length === 0) return;
 
@@ -497,6 +681,13 @@ async function initialise(): Promise<void> {
 	} else {
 		const m = model.value;
 		const rootUnits = childEntities(m, null).map((c) => c.id);
+		// Include selected credential and its resources in the initial force layout
+		if (selectedCredentialId.value) {
+			rootUnits.push(selectedCredentialId.value);
+			for (const link of m.resourceCredentialLinks) {
+				if (link.credentialId === selectedCredentialId.value) rootUnits.push(link.resourceId);
+			}
+		}
 		// lay out with the full folder-aggregated edge set so filter toggles never re-layout
 		const layoutEdges = resolveVisibleEdges(m, expandedSet(), new Set(WORKFLOW_RELATION_TYPES));
 		const positions = forceLayout(rootUnits, layoutEdges);
@@ -723,6 +914,14 @@ function onWindowPointerMove(event: PointerEvent): void {
 		const currentFolder = parentOf(model.value, press.id);
 		press.target = press.raw === currentFolder ? null : press.raw;
 		dropHotId.value = press.target;
+	} else if (press.kind === 'credential') {
+		// credentials are reposition-only (no folder filing), like folders
+		if (!press.lifted) {
+			press.lifted = true;
+			cancelSubtreeTweens(press.id);
+		}
+		const current = pos.get(press.id);
+		if (current) shiftUnitInstant(press.id, dragTo.x - current.x, dragTo.y - current.y);
 	} else {
 		// folder card or expanded container: reposition the whole unit live (no filing)
 		if (!press.lifted) {
@@ -755,6 +954,11 @@ function onWindowPointerUp(): void {
 	if (current.kind === 'container') {
 		// click on the header collapses; a drag already moved the container live
 		if (!current.moved) collapseFolder(current.id);
+		return;
+	}
+	if (current.kind === 'credential') {
+		// credentials: drag repositions, click does nothing
+		schedulePositionsSave();
 		return;
 	}
 	if (!current.lifted) {
@@ -1219,8 +1423,10 @@ const contextMenuTarget = ref<ContextMenuTarget>({ kind: 'canvas' });
 const contextMenuItems = ref<ProjectCanvasMenuItem[]>([]);
 
 function buildContextMenuItems(target: ContextMenuTarget): ProjectCanvasMenuItem[] {
+	const selectionCount = selectedIds.value.size;
+
 	if (target.kind === 'canvas') {
-		return [
+		const items: ProjectCanvasMenuItem[] = [
 			{ id: 'new-workflow', label: i18n.baseText('projectCanvas.menu.newWorkflow'), icon: 'plus' },
 			{
 				id: 'new-folder',
@@ -1228,6 +1434,17 @@ function buildContextMenuItems(target: ContextMenuTarget): ProjectCanvasMenuItem
 				icon: 'folder-plus',
 			},
 		];
+		if (selectionCount > 0) {
+			items.push({
+				id: 'create-folder-from-selection',
+				label: i18n.baseText('projectCanvas.menu.createFolderFromSelection', {
+					interpolate: { count: String(selectionCount) },
+				}),
+				icon: 'folder-plus',
+				divided: true,
+			});
+		}
+		return items;
 	}
 	if (target.kind === 'workflow') {
 		const items: ProjectCanvasMenuItem[] = [
@@ -1242,6 +1459,23 @@ function buildContextMenuItems(target: ContextMenuTarget): ProjectCanvasMenuItem
 				icon: 'pen',
 			},
 		];
+		if (selectionCount > 1 && selectedIds.value.has(target.id)) {
+			items.unshift(
+				{
+					id: 'create-folder-from-selection',
+					label: i18n.baseText('projectCanvas.menu.createFolderFromSelection', {
+						interpolate: { count: String(selectionCount) },
+					}),
+					icon: 'folder-plus',
+					divided: false,
+				},
+				{
+					id: 'separator-selection',
+					label: '',
+					divided: true,
+				},
+			);
+		}
 		// dropping on empty canvas repositions in place, so moving out of a folder is explicit
 		if (parentOf(model.value, target.id) !== null) {
 			items.push({
@@ -1296,6 +1530,10 @@ function openContextMenu(target: ContextMenuTarget, event: MouseEvent): void {
 }
 
 function onCardContextMenu(id: string, kind: CanvasPressKind, event: MouseEvent): void {
+	// clear selection if right-clicking a node that isn't part of it
+	if (kind === 'workflow' && !selectedIds.value.has(id)) {
+		selectedIds.value = new Set();
+	}
 	// folder cards and expanded containers share the same folder menu
 	openContextMenu(kind === 'workflow' ? { kind: 'workflow', id } : { kind: 'folder', id }, event);
 }
@@ -1314,6 +1552,9 @@ function onContextMenuSelect(actionId: string): void {
 			break;
 		case 'new-folder':
 			void createFolderIn(null);
+			break;
+		case 'create-folder-from-selection':
+			void createFolderFromSelection();
 			break;
 		case 'open-workflow':
 			if (target.kind === 'workflow') {
@@ -1353,12 +1594,56 @@ function onContextMenuSelect(actionId: string): void {
 	}
 }
 
+/* ============================== selection ============================== */
+
+onSelectionEnd(() => {
+	selectedIds.value = new Set(getSelectedNodes.value.map((n) => n.id));
+});
+
+function onPaneClick(): void {
+	selectedIds.value = new Set();
+}
+
+async function createFolderFromSelection(): Promise<void> {
+	const ids = [...selectedIds.value].filter((id) => model.value.workflows.has(id));
+	if (ids.length === 0) return;
+
+	const promptResponse = await message.prompt(
+		i18n.baseText('projectCanvas.selection.createFolder.message', {
+			interpolate: { count: String(ids.length) },
+		}),
+		{
+			confirmButtonText: i18n.baseText('generic.create'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			inputValidator: folderHelpers.validateFolderName,
+			customClass: 'add-folder-modal',
+		},
+	);
+	if (promptResponse.action !== MODAL_CONFIRM) return;
+
+	try {
+		const newFolder = await foldersStore.createFolder(promptResponse.value, projectId, undefined);
+		appendFolderNode({ id: newFolder.id, name: newFolder.name, parentFolderId: null });
+		rebuildModel();
+
+		selectedIds.value = new Set();
+
+		for (const workflowId of ids) {
+			const origPos = pos.get(workflowId);
+			if (origPos) await moveWorkflowToFolder(workflowId, newFolder.id, { ...origPos });
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('folders.create.error.title'));
+	}
+}
+
 /* ============================== interaction wiring ============================== */
 
 const canvasContext: ProjectCanvasContext = {
 	hoveredNodeId,
 	dropHotId,
 	liftedId,
+	selectedIds,
 	contentLeftX,
 	contentBottomY,
 	onCardPointerDown,
@@ -1468,6 +1753,19 @@ defineExpose({
 					<span>{{ opt.label }}</span>
 				</label>
 			</div>
+			<div v-if="activeTab === 'canvas'" class="project-canvas__credentials-toggle">
+				<select
+					v-model="selectedCredentialId"
+					class="project-canvas__credential-select"
+					data-testid="project-canvas-credential-select"
+					@change="onCredentialChange"
+				>
+					<option :value="null">{{ i18n.baseText('projectCanvas.toggle.noCredential') }}</option>
+					<option v-for="cred in credentialOptions" :key="cred.value" :value="cred.value">
+						{{ cred.label }}
+					</option>
+				</select>
+			</div>
 		</div>
 
 		<!-- keep the canvas mounted across tab switches so vue-flow state survives -->
@@ -1484,13 +1782,16 @@ defineExpose({
 				v-model:edges="flowEdges"
 				:nodes-draggable="false"
 				:nodes-connectable="false"
-				:elements-selectable="false"
+				:elements-selectable="true"
+				:selection-key-code="true"
+				:pan-on-drag="[1]"
 				:fit-view-on-init="true"
 				:min-zoom="0.12"
 				:max-zoom="2.2"
 				@node-mouse-enter="onNodeMouseEnter"
 				@node-mouse-leave="onNodeMouseLeave"
 				@pane-context-menu="onPaneContextMenu"
+				@pane-click="onPaneClick"
 			>
 				<Background />
 				<Controls :show-interactive="false" />
@@ -1589,6 +1890,31 @@ defineExpose({
 	display: flex;
 	gap: var(--spacing--2xs);
 	margin-left: auto;
+	align-items: center;
+}
+
+.project-canvas__credentials-toggle {
+	flex: none;
+}
+
+.project-canvas__credential-select {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	background: var(--color--background--light-3);
+	border: var(--border-width) solid var(--color--foreground);
+	border-radius: var(--radius--sm);
+	padding: 2px var(--spacing--3xs);
+	cursor: pointer;
+	outline: none;
+	max-width: 200px;
+
+	&:hover {
+		border-color: var(--color--text--tint-1);
+	}
+
+	&:focus {
+		border-color: var(--color--primary);
+	}
 }
 
 .project-canvas__filter {
@@ -1617,6 +1943,11 @@ defineExpose({
 		.project-canvas-container__head {
 			pointer-events: auto;
 		}
+	}
+
+	:deep(.vue-flow__selection) {
+		background: color-mix(in srgb, var(--color--primary) 12%, transparent);
+		border: 1px solid var(--color--primary);
 	}
 }
 

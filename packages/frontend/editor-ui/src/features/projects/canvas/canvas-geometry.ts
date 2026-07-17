@@ -194,6 +194,8 @@ const FORCE_SPRING_REST = 380;
 /** Directional constraints: trigger targets right of sources, tools below callers. */
 const FORCE_TRIGGER_GAP_X = NODE.w + 150;
 const FORCE_TOOL_GAP_Y = NODE.h + 100;
+/** Credential/resource directional: resources right of workflows, credentials right of resources. */
+const FORCE_CRED_GAP_X = NODE.w + 120;
 const FORCE_DIRECTIONAL = 0.06;
 const FORCE_ALIGN = 0.02;
 const FORCE_MAX_STEP = 30;
@@ -283,6 +285,18 @@ export function forceLayout(units: string[], edges: VisibleEdge[]): Map<string, 
 				const misalign = x[s] - x[t];
 				fx[t] += misalign * FORCE_ALIGN * 2;
 				fx[s] -= misalign * FORCE_ALIGN * 2;
+			} else if (spring.type === 'uses-credential' || spring.type === 'accesses-resource') {
+				// credentials/resources flow left → right, same as trigger edges but with
+				// a shorter gap so they cluster near their using workflows
+				const gap = FORCE_CRED_GAP_X;
+				const deficit = gap - (x[t] - x[s]);
+				if (deficit > 0) {
+					fx[s] -= deficit * FORCE_DIRECTIONAL;
+					fx[t] += deficit * FORCE_DIRECTIONAL;
+				}
+				const misalign = y[s] - y[t];
+				fy[t] += misalign * FORCE_ALIGN;
+				fy[s] -= misalign * FORCE_ALIGN;
 			} else {
 				// trigger flow runs left → right, roughly aligned vertically
 				const deficit = FORCE_TRIGGER_GAP_X - (x[t] - x[s]);
@@ -366,6 +380,173 @@ export function forceLayout(units: string[], edges: VisibleEdge[]): Map<string, 
 			y: gridTop + Math.floor(i / 5) * (NODE.h + 48),
 		});
 	});
+
+	return positions;
+}
+
+/**
+ * Partial force layout: positions new nodes while keeping existing ones fixed.
+ * Seeds each new node at the centroid of its already-placed neighbours, then runs
+ * a short force simulation (repulsion + springs) that only moves the new nodes.
+ * Finished with overlap resolution against fixed nodes.
+ */
+export function forceLayoutPartial(
+	newUnits: string[],
+	edges: VisibleEdge[],
+	fixedPositions: Map<string, XY>,
+): Map<string, XY> {
+	const positions = new Map<string, XY>();
+	if (newUnits.length === 0) return positions;
+
+	const newSet = new Set(newUnits);
+
+	// Seed: centroid of already-placed neighbours
+	for (const id of newUnits) {
+		const neighbours = edges
+			.filter((e) => (e.source === id || e.target === id) && e.source !== e.target)
+			.map((e) => (e.source === id ? e.target : e.source));
+		const placed = neighbours
+			.filter((n) => fixedPositions.has(n) || positions.has(n))
+			.map((n) => fixedPositions.get(n) ?? positions.get(n)!)
+			.filter((p): p is XY => p !== undefined);
+		if (placed.length > 0) {
+			positions.set(id, {
+				x: placed.reduce((s, p) => s + p.x, 0) / placed.length + 80,
+				y: placed.reduce((s, p) => s + p.y, 0) / placed.length + 40,
+			});
+		} else {
+			// no neighbours — place below the fixed content
+			let bottom = 0;
+			for (const p of fixedPositions.values()) bottom = Math.max(bottom, p.y + NODE.h);
+			positions.set(id, { x: 60 + (newUnits.indexOf(id) % 5) * (NODE.w + 60), y: bottom + 120 });
+		}
+	}
+
+	// Combined position lookup: fixed + new
+	const posOf = (id: string): XY | undefined => fixedPositions.get(id) ?? positions.get(id);
+
+	// Relevant edges involving new units
+	const relevantEdges = edges.filter((e) => newSet.has(e.source) || newSet.has(e.target));
+
+	const TICKS = 200;
+	for (let tick = 0; tick < TICKS; tick++) {
+		const alpha = 1 - tick / TICKS;
+		const fx = new Map<string, number>(newUnits.map((id) => [id, 0]));
+		const fy = new Map<string, number>(newUnits.map((id) => [id, 0]));
+
+		// Repulsion: new nodes vs all nodes (fixed + new)
+		for (const id of newUnits) {
+			const p = positions.get(id)!;
+			// vs fixed nodes
+			for (const [, fp] of fixedPositions) {
+				const dx = p.x - fp.x;
+				const dy = p.y - fp.y;
+				const dist2 = dx * dx + dy * dy;
+				if (dist2 > FORCE_REPULSION_CUTOFF * FORCE_REPULSION_CUTOFF) continue;
+				const dist = Math.sqrt(dist2) || 1;
+				const f = (FORCE_REPULSION / Math.max(dist2, 400)) * alpha;
+				fx.set(id, (fx.get(id) ?? 0) + (f * dx) / dist);
+				fy.set(id, (fy.get(id) ?? 0) + (f * dy) / dist);
+			}
+			// vs other new nodes
+			for (const otherId of newUnits) {
+				if (otherId === id) continue;
+				const op = positions.get(otherId)!;
+				const dx = p.x - op.x;
+				const dy = p.y - op.y;
+				const dist2 = dx * dx + dy * dy;
+				if (dist2 > FORCE_REPULSION_CUTOFF * FORCE_REPULSION_CUTOFF) continue;
+				const dist = Math.sqrt(dist2) || 1;
+				const f = (FORCE_REPULSION / Math.max(dist2, 400)) * alpha;
+				fx.set(id, (fx.get(id) ?? 0) + (f * dx) / dist);
+				fy.set(id, (fy.get(id) ?? 0) + (f * dy) / dist);
+			}
+		}
+
+		// Springs along edges
+		for (const edge of relevantEdges) {
+			const sPos = posOf(edge.source);
+			const tPos = posOf(edge.target);
+			if (!sPos || !tPos) continue;
+			const isNewSource = newSet.has(edge.source);
+			const isNewTarget = newSet.has(edge.target);
+			if (!isNewSource && !isNewTarget) continue;
+
+			const dx = tPos.x - sPos.x;
+			const dy = tPos.y - sPos.y;
+			const dist = Math.hypot(dx, dy) || 1;
+			const rest = FORCE_SPRING_REST;
+			const f = FORCE_SPRING * (dist - rest) * alpha;
+			const fxForce = (f * dx) / dist;
+			const fyForce = (f * dy) / dist;
+
+			if (isNewSource) {
+				fx.set(edge.source, (fx.get(edge.source) ?? 0) + fxForce);
+				fy.set(edge.source, (fy.get(edge.source) ?? 0) + fyForce);
+			}
+			if (isNewTarget) {
+				fx.set(edge.target, (fx.get(edge.target) ?? 0) - fxForce);
+				fy.set(edge.target, (fy.get(edge.target) ?? 0) - fyForce);
+			}
+
+			// Directional constraint: push credentials/resources right of their source
+			if (edge.type === 'uses-credential' || edge.type === 'accesses-resource') {
+				const gap = FORCE_CRED_GAP_X;
+				if (isNewTarget) {
+					const deficit = gap - (tPos.x - sPos.x);
+					if (deficit > 0) {
+						fx.set(edge.target, (fx.get(edge.target) ?? 0) + deficit * FORCE_DIRECTIONAL * alpha);
+					}
+				}
+				if (isNewSource) {
+					const deficit = gap - (tPos.x - sPos.x);
+					if (deficit > 0) {
+						fx.set(edge.source, (fx.get(edge.source) ?? 0) - deficit * FORCE_DIRECTIONAL * alpha);
+					}
+				}
+			}
+		}
+
+		// Apply forces to new nodes only
+		const maxStep = FORCE_MAX_STEP * alpha + 2;
+		for (const id of newUnits) {
+			const p = positions.get(id)!;
+			p.x += Math.max(-maxStep, Math.min(maxStep, fx.get(id) ?? 0));
+			p.y += Math.max(-maxStep, Math.min(maxStep, fy.get(id) ?? 0));
+		}
+	}
+
+	// Overlap resolution: push new nodes clear of fixed nodes and each other
+	const allRects = new Map<string, Rect>();
+	for (const [id, p] of fixedPositions) {
+		allRects.set(id, { x: p.x, y: p.y, w: NODE.w, h: NODE.h });
+	}
+	for (const id of newUnits) {
+		const p = positions.get(id)!;
+		allRects.set(id, { x: p.x, y: p.y, w: NODE.w, h: NODE.h });
+	}
+
+	for (let round = 0; round < 12; round++) {
+		let changed = false;
+		for (const id of newUnits) {
+			const r = allRects.get(id)!;
+			for (const [otherId, other] of allRects) {
+				if (otherId === id) continue;
+				if (!rectsOverlap(r, other, CLEARANCE / 2)) continue;
+				const v = separationVector(other, r);
+				r.x += v.x;
+				r.y += v.y;
+				changed = true;
+			}
+		}
+		if (!changed) break;
+	}
+
+	// Copy resolved positions back
+	for (const id of newUnits) {
+		const r = allRects.get(id)!;
+		positions.set(id, { x: r.x, y: r.y });
+	}
 
 	return positions;
 }

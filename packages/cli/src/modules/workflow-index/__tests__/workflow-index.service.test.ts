@@ -133,16 +133,24 @@ describe('WorkflowIndexService', () => {
 							dependencyKey: 'webhook-1',
 							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
 						}),
-						// credentialId dependencies
+						// credentialId dependencies — now include nodeType
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-1',
-							dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-2',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+							},
 						}),
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-2',
-							dependencyInfo: { nodeId: 'node-2', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-2',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+							},
 						}),
 						// workflowCall dependencies (both string and object format)
 						expect.objectContaining({
@@ -177,6 +185,106 @@ describe('WorkflowIndexService', () => {
 				'Failed to update workflow draft dependency index for workflow workflow-123: Database error',
 			);
 			expect(mockErrorReporter.error).toHaveBeenCalledWith(error);
+		});
+
+		it('should extract resource/operation for HTTP Request credential deps', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'http-node',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { method: 'POST', url: 'https://api.example.com/users' },
+					credentials: { httpAuth: { id: 'cred-http', name: 'HTTP Auth' } },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'credentialId',
+							dependencyKey: 'cred-http',
+							dependencyInfo: {
+								nodeId: 'http-node',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+								resource: 'https://api.example.com/users',
+								operation: 'POST',
+							},
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should extract resource/operation for standard node credential deps', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'slack-node',
+					type: 'n8n-nodes-base.slack',
+					parameters: { resource: 'message', operation: 'send' },
+					credentials: { slackApi: { id: 'cred-slack', name: 'Slack API' } },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'credentialId',
+							dependencyKey: 'cred-slack',
+							dependencyInfo: {
+								nodeId: 'slack-node',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.slack',
+								resource: 'message',
+								operation: 'send',
+							},
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should skip expression-based URLs and resources', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'http-expr',
+					type: 'n8n-nodes-base.httpRequest',
+					parameters: { method: 'GET', url: 'https://api.example.com/{{ $json.path }}' },
+					credentials: { httpAuth: { id: 'cred-expr', name: 'Auth' } },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'credentialId',
+							dependencyKey: 'cred-expr',
+							dependencyInfo: {
+								nodeId: 'http-expr',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+							},
+						}),
+					]),
+				}),
+			);
 		});
 
 		it('should not create workflowCall dependencies for parameter, localFile, and url sources', async () => {
@@ -263,17 +371,29 @@ describe('WorkflowIndexService', () => {
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-1',
-							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-1',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+							},
 						}),
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-2',
-							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-1',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+							},
 						}),
 						expect.objectContaining({
 							dependencyType: 'credentialId',
 							dependencyKey: 'cred-3',
-							dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+							dependencyInfo: {
+								nodeId: 'node-1',
+								nodeVersion: 1,
+								nodeType: 'n8n-nodes-base.httpRequest',
+							},
 						}),
 					]),
 				}),
@@ -312,7 +432,11 @@ describe('WorkflowIndexService', () => {
 					expect.objectContaining({
 						dependencyType: 'credentialId',
 						dependencyKey: 'cred-1',
-						dependencyInfo: { nodeId: 'node-1', nodeVersion: 1 },
+						dependencyInfo: {
+							nodeId: 'node-1',
+							nodeVersion: 1,
+							nodeType: 'n8n-nodes-base.httpRequest',
+						},
 					}),
 				]),
 			);

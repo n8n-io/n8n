@@ -1,8 +1,9 @@
 import type { ProjectIcon, ProjectType } from './project.schema';
 
-export type GraphNodeType = 'credential' | 'dataTable' | 'folder' | 'tag' | 'workflow';
+export type GraphNodeType = 'credential' | 'dataTable' | 'folder' | 'resource' | 'tag' | 'workflow';
 
 export type RelationshipType =
+	| 'accesses-resource'
 	| 'calls-workflow'
 	| 'contained-in-folder'
 	| 'handles-errors-for'
@@ -48,6 +49,10 @@ export interface GraphNode {
 		triggerType?: WorkflowTriggerType;
 		/** folder: recursive count of workflows inside (including nested folders) */
 		workflowCount?: number;
+		/** resource: the node type that defines this resource (e.g. 'n8n-nodes-base.slack') */
+		nodeType?: string;
+		/** credential: the credential type name (e.g. 'slackApi', 'httpBasicAuth') */
+		credentialType?: string;
 	};
 }
 
@@ -59,6 +64,10 @@ export interface GraphEdge {
 		/** which node within the source workflow created this dependency */
 		nodeId?: string;
 		nodeVersion?: number;
+		/** nodeType of the node that created this dependency (for resource/credential edges) */
+		nodeType?: string;
+		/** operation label for accesses-resource edges (e.g. 'send', 'POST') */
+		operation?: string;
 	};
 }
 

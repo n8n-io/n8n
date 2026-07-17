@@ -132,7 +132,7 @@ export class ProjectDependencyGraphService {
 				this.sharedCredentialsRepository.find({
 					where: { projectId, role: 'credential:owner' },
 					relations: { credentials: true },
-					select: { credentialsId: true, credentials: { id: true, name: true } },
+					select: { credentialsId: true, credentials: { id: true, name: true, type: true } },
 				}),
 				this.dataTableRepository.find({
 					where: { projectId },
@@ -190,6 +190,8 @@ export class ProjectDependencyGraphService {
 
 		const referencedNodeIds = new Set<string>();
 		const edges: GraphEdge[] = [];
+		/** Resource nodes discovered while processing credential deps — keyed by `${nodeType}:${resource}`. */
+		const resourceNodes = new Map<string, { nodeType: string; resource: string }>();
 
 		for (const [sourceWorkflowId, result] of Object.entries(depResponse)) {
 			if (!inScopeWorkflowIdSet.has(sourceWorkflowId)) continue;
@@ -197,8 +199,45 @@ export class ProjectDependencyGraphService {
 			for (const dep of result.dependencies) {
 				const relationshipType = DEP_TYPE_TO_RELATIONSHIP[dep.type];
 				if (!relationshipType) continue;
-				if (relationshipFilter && !relationshipFilter.has(relationshipType)) continue;
 				if (archivedWorkflowIds.has(dep.id)) continue;
+
+				// Credential deps with resource metadata are split into two edges:
+				//   workflow —[accesses-resource]→ resource —[uses-credential]→ credential
+				if (dep.type === 'credentialId' && dep.metadata?.resource && dep.metadata?.nodeType) {
+					const resourceNodeId = `${dep.metadata.nodeType}:${dep.metadata.resource}`;
+					if (
+						relationshipFilter &&
+						!relationshipFilter.has('accesses-resource') &&
+						!relationshipFilter.has('uses-credential')
+					)
+						continue;
+
+					resourceNodes.set(resourceNodeId, {
+						nodeType: dep.metadata.nodeType,
+						resource: dep.metadata.resource,
+					});
+					referencedNodeIds.add(resourceNodeId);
+					referencedNodeIds.add(dep.id);
+
+					edges.push({
+						sourceId: sourceWorkflowId,
+						targetId: resourceNodeId,
+						type: 'accesses-resource',
+						metadata: {
+							nodeId: dep.metadata.nodeId,
+							nodeType: dep.metadata.nodeType,
+							operation: dep.metadata.operation,
+						},
+					});
+					edges.push({
+						sourceId: resourceNodeId,
+						targetId: dep.id,
+						type: 'uses-credential',
+					});
+					continue;
+				}
+
+				if (relationshipFilter && !relationshipFilter.has(relationshipType)) continue;
 
 				referencedNodeIds.add(dep.id);
 
@@ -251,6 +290,7 @@ export class ProjectDependencyGraphService {
 			allFolders,
 			childFoldersByParent,
 			triggerTypes,
+			resourceNodes,
 		});
 
 		const memberList: ProjectGraphMember[] = members.map((m) => ({
@@ -407,7 +447,10 @@ export class ProjectDependencyGraphService {
 	private buildNodes(context: {
 		workflowDetails: WorkflowGraphDetails[];
 		inScopeWorkflowIdSet: Set<string>;
-		ownedCredentials: Array<{ credentialsId: string; credentials?: { id: string; name: string } }>;
+		ownedCredentials: Array<{
+			credentialsId: string;
+			credentials?: { id: string; name: string; type: string };
+		}>;
 		dataTables: Array<{ id: string; name: string }>;
 		folders: FolderGraphDetails[];
 		depResponse: DependenciesBatchResponse;
@@ -415,6 +458,7 @@ export class ProjectDependencyGraphService {
 		allFolders: FolderGraphDetails[];
 		childFoldersByParent: Map<string | null, FolderGraphDetails[]>;
 		triggerTypes: Map<string, WorkflowTriggerType>;
+		resourceNodes: Map<string, { nodeType: string; resource: string }>;
 	}): GraphNode[] {
 		const {
 			workflowDetails,
@@ -427,6 +471,7 @@ export class ProjectDependencyGraphService {
 			allFolders,
 			childFoldersByParent,
 			triggerTypes,
+			resourceNodes,
 		} = context;
 
 		const nodes: GraphNode[] = [];
@@ -504,9 +549,21 @@ export class ProjectDependencyGraphService {
 				type: 'credential',
 				name: cred.credentials?.name ?? cred.credentialsId,
 				expanded: true,
-				metadata: {},
+				metadata: { credentialType: cred.credentials?.type },
 			});
 			existingNodeIds.add(cred.credentialsId);
+		}
+
+		for (const [resourceNodeId, info] of resourceNodes) {
+			if (existingNodeIds.has(resourceNodeId)) continue;
+			nodes.push({
+				id: resourceNodeId,
+				type: 'resource',
+				name: info.resource,
+				expanded: true,
+				metadata: { nodeType: info.nodeType },
+			});
+			existingNodeIds.add(resourceNodeId);
 		}
 
 		for (const dt of dataTables) {

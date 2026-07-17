@@ -278,6 +278,7 @@ export class WorkflowIndexService {
 		if (!node.credentials) {
 			return;
 		}
+		const resourceInfo = this.extractResourceInfo(node);
 		for (const credentialDetails of Object.values(node.credentials)) {
 			const { id } = credentialDetails;
 			if (!id) {
@@ -286,9 +287,52 @@ export class WorkflowIndexService {
 			dependencyUpdates.add({
 				dependencyType: 'credentialId',
 				dependencyKey: id,
-				dependencyInfo: { nodeId: node.id, nodeVersion: node.typeVersion },
+				dependencyInfo: {
+					nodeId: node.id,
+					nodeVersion: node.typeVersion,
+					nodeType: node.type,
+					...resourceInfo,
+				},
 			});
 		}
+	}
+
+	/**
+	 * Extract resource/operation info from a node's parameters so the dependency graph
+	 * can show what a credential is being used for. For HTTP Request nodes, the resource
+	 * is the normalized URL (origin + pathname) and the operation is the HTTP method.
+	 * For other nodes, uses the `resource` and `operation` parameter pattern.
+	 */
+	private extractResourceInfo(node: INode): { resource?: string; operation?: string } {
+		const params = node.parameters;
+		if (!params) return {};
+
+		const HTTP_NODE_TYPE = 'n8n-nodes-base.httpRequest';
+		if (node.type === HTTP_NODE_TYPE) {
+			const method =
+				(params.method as string | undefined) ?? (params.requestMethod as string | undefined);
+			const url = params.url as string | undefined;
+			if (!url || typeof url !== 'string' || url.includes('{{')) return {};
+			let normalized: string | undefined;
+			try {
+				const parsed = new URL(url);
+				normalized = `${parsed.origin}${parsed.pathname}`;
+			} catch {
+				return {};
+			}
+			return { resource: normalized, operation: method };
+		}
+
+		const resource = params.resource as string | undefined;
+		const operation = params.operation as string | undefined;
+		const result: { resource?: string; operation?: string } = {};
+		if (resource && typeof resource === 'string' && !resource.includes('{{')) {
+			result.resource = resource;
+		}
+		if (operation && typeof operation === 'string' && !operation.includes('{{')) {
+			result.operation = operation;
+		}
+		return result;
 	}
 
 	private addDataTableDependencies(node: INode, dependencyUpdates: WorkflowDependencies): void {

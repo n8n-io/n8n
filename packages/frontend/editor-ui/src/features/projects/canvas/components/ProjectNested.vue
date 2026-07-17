@@ -3,7 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import type { GraphModel } from '../graph-model';
+import type { GraphModel, WorkflowRelationType } from '../graph-model';
 import {
 	CREDENTIAL_TINT,
 	folderColor,
@@ -43,7 +43,7 @@ interface NestedEdge {
 	id: string;
 	sourceId: string;
 	targetId: string;
-	type: 'calls-workflow' | 'uses-as-tool' | 'handles-errors-for' | 'uses-credential';
+	type: WorkflowRelationType;
 }
 
 const LEAF_RADIUS = 11;
