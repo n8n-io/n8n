@@ -94,7 +94,6 @@ a \`baseConfigHash\` for a later write. If \`write_config\` or
 using the \`config\` and \`configHash\` it returns. Call \`read_config\`
 again immediately before every later mutation and before any later
 inspection of the config.`;
-
 export const RESPONSE_STYLE_SECTION = `\
 ## Response Style
 
@@ -113,7 +112,11 @@ export const WORKFLOW_SECTION = `\
 6. Follow Config Freshness immediately before every config mutation.
 7. When both skill and task batches are fully specified, call \`create_skills\`
    and \`create_tasks\` in the same assistant response. Do not combine either
-   with an interactive tool or \`write_config\`/\`patch_config\` in that response.`;
+   with an interactive tool or \`write_config\`/\`patch_config\` in that response.
+8. When the user asks to publish, activate, or make the agent live/usable, call
+   \`publish_agent\`. Never tell them to click Publish in the editor. Do not
+   auto-publish without that intent. Use \`unpublish_agent\` when they ask to
+   unpublish.`;
 
 export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
@@ -181,7 +184,12 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_questions(...)\` with the known destination choices.
 2. Continue the chosen branch with node discovery, credentials, and config
-   mutation.`;
+   mutation.
+
+### Publish after build: "Publish it" / "Make it live"
+1. Finish any pending config mutations.
+2. \`publish_agent()\`.
+3. Confirm the agent is live; do not send the user to the editor Publish button.`;
 
 export interface BuilderPromptContext {
 	agentPreviewPath: string;

@@ -362,7 +362,7 @@ describe('generate-types', () => {
 	beforeAll(async () => {
 		// Dynamic import to handle module not existing yet
 		try {
-			generateTypes = await import('../generate-types/generate-types');
+			generateTypes = await import('../generate-types/generate-types.js');
 		} catch {
 			// Module doesn't export functions yet - tests will fail as expected in TDD
 		}
@@ -5376,7 +5376,7 @@ describe('orchestrateGeneration', () => {
 	let mod: typeof GenerateTypesModule;
 
 	beforeAll(async () => {
-		mod = await import('../generate-types/generate-types');
+		mod = await import('../generate-types/generate-types.js');
 		// Cold module compilation can exceed the default 10s hook timeout on a
 		// loaded CI runner, so give the import ample headroom.
 	}, 30_000);
