@@ -42,21 +42,22 @@ export class AgentSkillsService {
 		projectId: string,
 		skill: AgentSkill,
 	): Promise<AgentSkillMutationResponse> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
+		const [result] = await this.createSkillsBatch(agentId, projectId, [skill], false);
+		return result;
+	}
 
-		this.validateSkill(skill);
-		this.assertSkillNameIsUnique(entity.skills ?? {}, skill.name);
-
-		const skillId = this.addSkill(entity, skill);
-
-		markAgentDraftDirty(entity);
-		const saved = await this.agentRepository.save(entity);
-		await this.clearRuntimes(agentId);
-
-		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
-
-		return { id: skillId, skill, versionId: saved.versionId };
+	/**
+	 * Create multiple skill bodies in one load/save/cache-clear. All-or-nothing:
+	 * every skill is validated (including name uniqueness against existing
+	 * skills and within the batch) before any mutation. Does not attach config
+	 * refs — mirrors `createSkill`, just batched.
+	 */
+	async createSkills(
+		agentId: string,
+		projectId: string,
+		skills: AgentSkill[],
+	): Promise<AgentSkillMutationResponse[]> {
+		return await this.createSkillsBatch(agentId, projectId, skills, false);
 	}
 
 	async createAndAttachSkill(
@@ -64,23 +65,50 @@ export class AgentSkillsService {
 		projectId: string,
 		skill: AgentSkill,
 	): Promise<AgentSkillMutationResponse> {
+		const [result] = await this.createSkillsBatch(agentId, projectId, [skill], true);
+		return result;
+	}
+
+	/**
+	 * Shared implementation behind `createSkill`, `createSkills`, and
+	 * `createAndAttachSkill`. Rejects an empty batch before touching the
+	 * repository. Saves once and clears the runtime cache once.
+	 */
+	private async createSkillsBatch(
+		agentId: string,
+		projectId: string,
+		skills: AgentSkill[],
+		attach: boolean,
+	): Promise<AgentSkillMutationResponse[]> {
+		if (skills.length === 0) {
+			throw new UserError('At least one skill is required.');
+		}
+
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
-		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
+		if (attach && !entity.schema) throw new UserError('Agent has no JSON config yet.');
 
-		this.validateSkill(skill);
-		this.assertSkillNameIsUnique(entity.skills ?? {}, skill.name);
+		for (const skill of skills) {
+			this.validateSkill(skill);
+		}
+		this.assertBatchSkillNamesAreUnique(entity.skills ?? {}, skills);
 
-		const skillId = this.addSkill(entity, skill);
-		this.attachSkillRef(entity, skillId);
+		const results = skills.map((skill) => ({ id: this.addSkill(entity, skill), skill }));
+		if (attach) {
+			for (const { id } of results) this.attachSkillRef(entity, id);
+		}
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
 		await this.clearRuntimes(agentId);
 
-		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
+		this.logger.debug(attach ? 'Created and attached agent skill' : 'Created agent skills', {
+			agentId,
+			projectId,
+			skillIds: results.map((r) => r.id),
+		});
 
-		return { id: skillId, skill, versionId: saved.versionId };
+		return results.map((r) => ({ ...r, versionId: saved.versionId }));
 	}
 
 	async updateSkill(
@@ -187,6 +215,21 @@ export class AgentSkillsService {
 		return name.trim().toLowerCase();
 	}
 
+	private assertBatchSkillNamesAreUnique(
+		existing: Record<string, AgentSkill>,
+		skills: AgentSkill[],
+	): void {
+		const seenNames = new Set<string>();
+		for (const skill of skills) {
+			this.assertSkillNameIsUnique(existing, skill.name);
+			const normalizedName = this.normalizeSkillName(skill.name);
+			if (seenNames.has(normalizedName)) {
+				throw new UserError(`Duplicate skill name in batch: "${skill.name.trim()}".`);
+			}
+			seenNames.add(normalizedName);
+		}
+	}
+
 	private attachSkillRef(entity: Agent, skillId: string): void {
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
@@ -197,7 +240,7 @@ export class AgentSkillsService {
 	}
 
 	private async clearRuntimes(agentId: string): Promise<void> {
-		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service');
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
 		Container.get(AgentRuntimeCacheService).clearRuntimes(agentId);
 	}
 }

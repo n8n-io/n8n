@@ -131,6 +131,42 @@ describe('CredentialCard', () => {
 		expect(actions).toHaveTextContent('Move');
 	});
 
+	it('should hide the Delete action for an end-user credential without the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).not.toHaveTextContent('Delete');
+	});
+
+	it('should show the Delete action for an end-user credential with the createEndUser permission', async () => {
+		const data = createCredential({
+			isResolvable: true,
+			scopes: ['credential:delete', 'credential:createEndUser'],
+		});
+		const { getByTestId } = renderComponent({ props: { data } });
+		const cardActions = getByTestId('credential-card-actions');
+		const cardActionsOpener = within(cardActions).getByRole('button');
+		const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+		await userEvent.click(cardActionsOpener);
+		const actions = document.querySelector(`#${controllingId}`);
+		if (!actions) {
+			throw new Error('Actions menu not found');
+		}
+		expect(actions).toHaveTextContent('Delete');
+	});
+
 	it('should set readOnly variant based on prop', () => {
 		const data = createCredential({});
 		const { getByRole } = renderComponent({ props: { data, readOnly: true } });

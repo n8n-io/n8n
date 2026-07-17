@@ -95,6 +95,7 @@ erDiagram
   TEXT errorMessage
   varchar_36_ nodeId PK
   varchar_20_ status
+  varchar_20_ triggerKind
   datetime_3_ updatedAt
   varchar_36_ versionId FK
   varchar_36_ workflowId PK

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
 
@@ -63,6 +64,55 @@ describe('Instance AI runtime skills', () => {
 			throw new Error('Expected load_skill to return file content');
 		}
 		expect(loadResult.content).toContain('Fast Routing');
+	});
+
+	it('loads the bundled config-evals skill and its linked files', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
+
+		expect(configEvals).toMatchObject({
+			name: 'config-evals',
+			platforms: ['daytona'],
+			recommendedTools: ['eval-config', 'data-tables'],
+		});
+		expect(configEvals?.linkedFiles.references).toEqual([
+			expect.objectContaining({ path: 'references/config-eval-playbook.md' }),
+		]);
+
+		const loadTool = createSkillLoadTool(source);
+		const loadResult = await loadTool.handler?.(
+			{ skillId: 'config-evals', filePath: 'references/config-eval-playbook.md' },
+			{},
+		);
+		expect(loadResult).toMatchObject({
+			success: true,
+			skillId: 'config-evals',
+			name: 'config-evals',
+			filePath: 'references/config-eval-playbook.md',
+		});
+		if (
+			!loadResult ||
+			typeof loadResult !== 'object' ||
+			!('content' in loadResult) ||
+			typeof loadResult.content !== 'string'
+		) {
+			throw new Error('Expected load_skill to return file content');
+		}
+		expect(loadResult.content).toContain('Config Eval Playbook');
+	});
+
+	it('gates the config-evals skill by its folder id', () => {
+		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
+		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: false })).toContain(
+			CONFIG_EVALS_SKILL_ID,
+		);
+		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: true })).not.toContain(
+			CONFIG_EVALS_SKILL_ID,
+		);
+
+		const source = loadInstanceAiRuntimeSkillSource();
+		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
+		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
 	});
 
 	it('excludes the bundled intent-recognition skill unless the agents module is enabled', async () => {

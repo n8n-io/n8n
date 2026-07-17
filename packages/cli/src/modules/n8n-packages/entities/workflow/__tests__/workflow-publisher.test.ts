@@ -74,6 +74,7 @@ describe('WorkflowPublisher', () => {
 			sourceWorkflowId: 'wf-1',
 			decidedId: 'wf-1',
 			sourcePublished,
+			parentFolderId: null,
 			entity: mock<WorkflowEntity>(),
 		});
 
@@ -163,6 +164,7 @@ describe('WorkflowPublisher', () => {
 				action: 'update',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: false,
+				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
@@ -219,6 +221,7 @@ describe('WorkflowPublisher', () => {
 				action: 'update',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: true,
+				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};

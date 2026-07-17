@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/backend-network",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T10:06:30.845Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1779,
+            1577,
+            1639
+          ],
+          "min": 1577,
+          "median": 1639,
+          "mean": 1665
+        },
+        "build": {
+          "runsMs": [
+            1387,
+            1445,
+            1376
+          ],
+          "min": 1376,
+          "median": 1387,
+          "mean": 1403
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T10:08:15.231Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            688,
+            625,
+            659
+          ],
+          "min": 625,
+          "median": 659,
+          "mean": 657
+        },
+        "build": {
+          "runsMs": [
+            611,
+            616,
+            605
+          ],
+          "min": 605,
+          "median": 611,
+          "mean": 611
+        }
+      }
+    }
+  }
+}

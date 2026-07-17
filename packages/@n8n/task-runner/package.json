@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -26,14 +26,14 @@
   ],
   "exports": {
     "./start": {
+      "types": "./dist/start.d.ts",
       "require": "./dist/start.js",
-      "import": "./src/start.ts",
-      "types": "./dist/start.d.ts"
+      "import": "./src/start.ts"
     },
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./src/index.ts",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts"
     }
   },
   "dependencies": {
@@ -59,7 +59,7 @@
     "@types/luxon": "catalog:",
     "@types/ws": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

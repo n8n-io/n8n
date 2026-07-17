@@ -37,14 +37,13 @@ const props = defineProps<{
 	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
-	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 }>();
 
-const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
+const childrenDisabled = computed(() => !props.canEditAgent);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -144,10 +143,11 @@ const i18n = useI18n();
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'knowledge' && knowledgeBaseEnabled"
+					v-else-if="activeMainTab === 'knowledge'"
 					data-testid="agent-knowledge-tab-content"
 				>
 					<AgentFilesPanel
+						v-if="knowledgeBaseEnabled"
 						:files="agentFiles"
 						:disabled="childrenDisabled"
 						:loading="agentFilesLoading"

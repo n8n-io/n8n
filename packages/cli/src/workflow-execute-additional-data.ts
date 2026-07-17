@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentSource,
 	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
@@ -66,6 +67,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
@@ -317,11 +319,19 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
+	const { OwnershipService } = await import('@/services/ownership.service.js');
+	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+		Container.get(OwnershipService),
+		workflowData.id,
+	);
+
 	Container.get(EventService).emit('workflow-executed', {
 		user: additionalData.userId ? { id: additionalData.userId } : undefined,
 		workflowId: workflowData.id,
 		workflowName: workflowData.name,
 		executionId,
+		projectId,
+		projectName,
 		source: 'integrated',
 	});
 
@@ -341,10 +351,11 @@ export async function executeWorkflow(
 }
 
 /**
- * Executes an agent with the given ID and message.
+ * Executes an agent — a saved one by ID, or an inline definition embedded in
+ * the calling node's parameters.
  */
 export async function executeAgent(
-	agentId: string,
+	source: ExecuteAgentSource,
 	message: string,
 	executionId: string,
 	threadId: string,
@@ -361,7 +372,7 @@ export async function executeAgent(
 	// `webhooks/*`, `scaling/job-processor`). Resolve it from the workflow's
 	// owning project so the agent runs under the correct project scope.
 	if (!projectId && additionalData.workflowId) {
-		const { OwnershipService } = await import('@/services/ownership.service');
+		const { OwnershipService } = await import('@/services/ownership.service.js');
 		const ownershipService = Container.get(OwnershipService);
 		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
 		projectId = project.id;
@@ -373,28 +384,57 @@ export async function executeAgent(
 		);
 	}
 
-	const { AgentExecutionOrchestratorService } = await import(
-		'@/modules/agents/agent-execution-orchestrator.service'
+	const { AgentWorkflowExecutionService } = await import(
+		'@/modules/agents/agent-workflow-execution.service.js'
 	);
-	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
+	const agentWorkflowExecutionService = Container.get(AgentWorkflowExecutionService);
+
+	if (!additionalData.workflowId) {
+		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
+	}
+
+	// Scope session threads by workflow
+	const scopedThreadId = `wf:${additionalData.workflowId}:${threadId}`;
+
+	if (source.inlineAgent) {
+		return await agentWorkflowExecutionService.executeInlineForWorkflow(
+			source.inlineAgent,
+			message,
+			executionId,
+			scopedThreadId,
+			projectId,
+			telemetryUserId,
+			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			outputSchema,
+			workflowContext,
+		);
+	}
 
 	const useDraftVersion = isManualOrChatExecution(executionMode);
 
-	return await agentExecutionOrchestratorService.executeForWorkflow(
-		agentId,
+	const result = await agentWorkflowExecutionService.executeForWorkflow(
+		source.agentId,
 		message,
 		executionId,
-		threadId,
+		scopedThreadId,
 		projectId,
 		telemetryUserId,
 		useDraftVersion,
 		outputSchema,
 		workflowContext,
 	);
+
+	// Callers see the session id they supplied (or the derived per-call id), so
+	// feeding the output back into the node's Session ID continues the same
+	// conversation instead of re-prefixing. The scoped thread key stays
+	// internal, surfaced only as `session.threadId` for session deep links.
+	return result.session
+		? { ...result, session: { ...result.session, sessionId: threadId } }
+		: result;
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
-	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
 	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.
@@ -774,6 +814,9 @@ export async function getBase({
 		},
 		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
 			eventService.emit(eventName, payload);
+		},
+		logHitlResponse: (payload) => {
+			eventService.emit('hitl-response-actioned', payload);
 		},
 		getRunnerStatus: (taskType: string) =>
 			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).getRunnerStatus(taskType),

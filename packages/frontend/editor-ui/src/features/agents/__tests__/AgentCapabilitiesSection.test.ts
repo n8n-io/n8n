@@ -62,9 +62,10 @@ vi.mock('../composables/useAgentApi', () => ({
 	getAgentTasks: (...args: unknown[]) => getAgentTasksSpy(...args),
 }));
 
+const integrationsCatalogRef = ref<Array<{ type: string; label: string; icon?: string }>>([]);
 vi.mock('../composables/useAgentIntegrationsCatalog', () => ({
 	useAgentIntegrationsCatalog: () => ({
-		catalog: { value: [] },
+		catalog: integrationsCatalogRef,
 	}),
 }));
 
@@ -80,6 +81,7 @@ function mountSection(
 	config: AgentJsonConfig | null = null,
 	taskRefs: AgentJsonTaskConfig[] = [],
 	projectAgents: AgentResource[] = [],
+	extraProps: Record<string, unknown> = {},
 ) {
 	projectAgentsListRef.value = projectAgents;
 
@@ -94,6 +96,7 @@ function mountSection(
 			agentId: 'agent-id',
 			isPublished: false,
 			taskRefs,
+			...extraProps,
 		},
 		global: {
 			stubs: {
@@ -113,6 +116,11 @@ function mountSection(
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: { template: '<span><slot /></span>' },
+				AgentChannelModal: {
+					name: 'AgentChannelModal',
+					props: ['view', 'open'],
+					template: '<div v-if="open" data-testid="agent-channel-modal-stub" :data-view="view" />',
+				},
 			},
 		},
 	});
@@ -170,6 +178,7 @@ describe('AgentCapabilitiesSection', () => {
 		getAgentTasksSpy.mockResolvedValue([]);
 		projectAgentsListRef.value = [];
 		ensureProjectAgentsLoadedSpy.mockResolvedValue([]);
+		integrationsCatalogRef.value = [];
 	});
 
 	it('formats node and custom tool chip labels for display', () => {
@@ -625,6 +634,33 @@ describe('AgentCapabilitiesSection', () => {
 
 		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
+	});
+
+	describe('channel modal', () => {
+		it('opens the channel list view when clicking the add-channel button', async () => {
+			const wrapper = mountSection([]);
+
+			await wrapper.find('[data-testid="agent-capabilities-add-channel"]').trigger('click');
+			await flushPromises();
+
+			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+			expect(modal.exists()).toBe(true);
+			expect(modal.attributes('data-view')).toBe('list');
+		});
+
+		it('opens the per-channel edit view when clicking a configured channel chip', async () => {
+			integrationsCatalogRef.value = [{ type: 'linear', label: 'Linear', icon: 'zap' }];
+			const wrapper = mountSection([], {}, null, [], [], {
+				connectedTriggers: ['linear'],
+			});
+
+			await wrapper.find('[data-testid="agent-capabilities-channel-row"]').trigger('click');
+			await flushPromises();
+
+			const modal = wrapper.find('[data-testid="agent-channel-modal-stub"]');
+			expect(modal.exists()).toBe(true);
+			expect(modal.attributes('data-view')).toBe('linear_edit');
+		});
 	});
 
 	describe('sections allowlist', () => {

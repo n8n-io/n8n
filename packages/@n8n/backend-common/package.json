@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-common",
-  "version": "1.30.0",
+  "version": "1.31.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -44,7 +44,7 @@
     "@types/yargs-parser": "21.0.0",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "zod": "catalog:"

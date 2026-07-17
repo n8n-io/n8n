@@ -8,6 +8,7 @@ import {
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getLatestAgentArtifactResult,
+	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
@@ -112,23 +113,23 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 
 	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
 
-	// --- Workflow attachments (e.g. an editor hand-off) ---
-	// A workflow attached to a message surfaces as an artifact tab via the
+	// --- Resource attachments (workflow or agent hand-offs) ---
+	// A workflow or agent attached to a message surfaces as an artifact tab via the
 	// resource registry. The first one is opened on arrival. (Its execution, if
 	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
-	const firstAttachedWorkflowId = computed(() => {
+	const firstAttachedArtifactId = computed(() => {
 		for (const message of thread.messages) {
 			for (const attachment of message.attachments ?? []) {
-				if (attachment.type === 'workflow') return attachment.id;
+				if (attachment.type === 'workflow' || attachment.type === 'agent') return attachment.id;
 			}
 		}
 		return undefined;
 	});
 
-	// Open the attached workflow on arrival. Only when nothing is open, so it
+	// Open the attached resource on arrival. Only when nothing is open, so it
 	// never steals focus from an agent-driven open or a user selection.
 	watch(
-		firstAttachedWorkflowId,
+		firstAttachedArtifactId,
 		(id) => {
 			if (!id || activeTabId.value !== undefined) return;
 			activeTabId.value = id;
@@ -258,6 +259,36 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 			if (thread.isHydratingThread) return;
 
 			activeTabId.value = latestBuilderTarget.value.workflowId;
+			isPreviewOpen.value = true;
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Auto-open canvas when an agent-builder sub-agent spawns ---
+	// Mirrors the workflow-builder spawn-open above. The builder node id is
+	// stable per target agent (`agent-builder:<id>`), so this opens once per
+	// target per thread — later spawns for the same agent intentionally don't
+	// re-yank the view. Doesn't bump agentRefreshKey — the artifact-result
+	// watch below owns refreshes.
+
+	const latestAgentBuilderTarget = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const target = getLatestAgentBuilderTarget(msg.agentTree);
+				if (target) return target;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAgentBuilderTarget.value?.agentId,
+		(agentId) => {
+			if (!agentId || !latestAgentBuilderTarget.value) return;
+			if (thread.isHydratingThread) return;
+
+			activeTabId.value = latestAgentBuilderTarget.value.targetAgentId;
 			isPreviewOpen.value = true;
 		},
 		{ flush: 'sync' },

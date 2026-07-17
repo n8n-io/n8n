@@ -12,7 +12,8 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import type { CloudPlanState } from '@/Interface';
 
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { NEW_AGENT_VIEW, AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
@@ -294,7 +295,7 @@ describe('useGlobalEntityCreation', () => {
 			expect(ids).toEqual(['workflow', 'credential', 'agent', 'create-project']);
 			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
 				expect.objectContaining({
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
+					route: instanceAiCreateAgentRoute(personalProjectId),
 				}),
 			);
 		});
@@ -317,7 +318,7 @@ describe('useGlobalEntityCreation', () => {
 			expect(menu.value.find((item) => item.id === 'agent')).toStrictEqual(
 				expect.objectContaining({
 					disabled: false,
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
+					route: instanceAiCreateAgentRoute(personalProjectId),
 				}),
 			);
 		});
@@ -368,16 +369,13 @@ describe('useGlobalEntityCreation', () => {
 			expect(personal).toStrictEqual(
 				expect.objectContaining({
 					disabled: false,
-					route: { name: NEW_AGENT_VIEW, query: { projectId: personalProjectId } },
+					route: instanceAiCreateAgentRoute(personalProjectId),
 				}),
 			);
 
 			const teamWithScope = agentEntry?.submenu?.find((s) => s.id === 'agent-1');
 			expect(teamWithScope?.disabled).toBe(false);
-			expect(teamWithScope?.route).toEqual({
-				name: NEW_AGENT_VIEW,
-				query: { projectId: '1' },
-			});
+			expect(teamWithScope?.route).toEqual(instanceAiCreateAgentRoute('1'));
 
 			const teamWithoutScope = agentEntry?.submenu?.find((s) => s.id === 'agent-3');
 			expect(teamWithoutScope?.disabled).toBe(true);

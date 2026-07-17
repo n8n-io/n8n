@@ -106,13 +106,34 @@ export async function createSandbox(
 		snapshot: snapshot ?? '(none — building from image)',
 		source: config.snapshot ? 'override' : isProxyMode ? 'n8n-version' : 'image-only',
 	});
+
+	// The sandbox proxy can't serve image-build context uploads, so proxy mode is snapshot-only.
+	if (isProxyMode) {
+		if (!snapshot) {
+			throw new Error(
+				`No Instance AI sandbox snapshot is available for this n8n version (${config.n8nVersion ?? 'unknown'}) and sandbox images cannot be built through the sandbox proxy`,
+			);
+		}
+		const sharedConfig = toSharedDaytonaSandboxConfig(config);
+		delete sharedConfig.image;
+		return await createSharedSandbox(
+			{
+				...sharedConfig,
+				snapshot,
+			},
+			{
+				logger: options.logger,
+				errorReporter: options.errorReporter,
+			},
+		);
+	}
+
 	const image = await snapshotManager.ensureImage();
 
 	return await createSharedSandbox(
 		{
 			...toSharedDaytonaSandboxConfig(config),
 			image,
-			...(snapshot ? { snapshot } : {}),
 		},
 		{
 			logger: options.logger,

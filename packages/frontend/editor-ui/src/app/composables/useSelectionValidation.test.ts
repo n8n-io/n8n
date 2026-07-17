@@ -313,6 +313,65 @@ describe('useSelectionValidation', () => {
 		});
 	});
 
+	describe('resolveGroupableNodeIds', () => {
+		it('drops ids that do not resolve to a node before validating', () => {
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'b', 'missing'])).toEqual(['a', 'b']);
+		});
+
+		it('returns the sub-node-expanded ids when the selection is groupable', () => {
+			const graph = makeLinearGraph();
+			const memory = makeNode({ id: 'memory', name: 'Memory' });
+			graph.nodes.memory = memory;
+			graph.connections.Memory = { ai_memory: [[{ node: 'B', type: 'ai_memory', index: 0 }]] };
+
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(TEST_WF_ID));
+			vi.mocked(workflowDocumentStore.getParentNodes).mockImplementation((nodeName, type) => {
+				if (type !== 'ALL_NON_MAIN') return [];
+				if (nodeName === 'B') return ['Memory'];
+				return [];
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'b'])?.sort()).toEqual(['a', 'b', 'memory'].sort());
+		});
+
+		it('returns null when no id resolves to a node', () => {
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['missing', 'also-missing'])).toBeNull();
+			expect(resolveGroupableNodeIds([])).toBeNull();
+		});
+
+		it('returns null when the resolved selection is not groupable', () => {
+			// A → B → C; selecting only A and C is an invalid subgraph
+			const graph = makeLinearGraph();
+			setupGraph(graph, {
+				'n8n-nodes-base.set': makeNodeType({ name: 'n8n-nodes-base.set' }),
+			});
+
+			const { resolveGroupableNodeIds } = useSelectionValidation();
+
+			expect(resolveGroupableNodeIds(['a', 'c'])).toBeNull();
+		});
+	});
+
 	it('treats sub-node-augmented selections as groupable', () => {
 		// A → B with B owning a Memory sub-node; selecting {A, B} should expand
 		// to {A, B, Memory} and still validate, because the non-main edge is

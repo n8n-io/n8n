@@ -1,7 +1,6 @@
 export const AGENTS_LIST_VIEW = 'AgentsListView';
 export const AGENT_BUILDER_VIEW = 'AgentBuilderView';
 export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
-export const NEW_AGENT_VIEW = 'NewAgentView';
 export const AGENT_VIEW = 'AgentView';
 export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
@@ -39,5 +38,3 @@ export {
 
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
-
-export { EXTENDED_PROMPT_MAX_LENGTH as AGENT_BUILDER_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';

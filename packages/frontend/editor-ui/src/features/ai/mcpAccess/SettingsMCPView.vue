@@ -26,7 +26,6 @@ import {
 	N8nLink,
 	N8nInputLabel,
 	N8nInput,
-	N8nPreviewTag,
 } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -94,6 +93,8 @@ const redirectUrisError = ref('');
 const redirectUrisLoading = ref(false);
 
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
+
+const canEditRedirectUris = computed(() => canManageMcpInstance.value);
 
 const canSeeInstanceStats = canManageMcpInstance;
 
@@ -419,12 +420,7 @@ onMounted(async () => {
 	<div :class="$style.container">
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
 			<div :class="$style.headings">
-				<div :class="$style['heading-row']">
-					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-					<N8nTooltip :content="i18n.baseText('settings.mcp.preview.tooltip')">
-						<N8nPreviewTag size="medium" />
-					</N8nTooltip>
-				</div>
+				<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
 				<div v-show="mcpStore.mcpAccessEnabled" data-test-id="mcp-settings-description">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.mcp.description') }}.
@@ -508,6 +504,7 @@ onMounted(async () => {
 					v-else-if="selectedTab === 'oauth'"
 					:data-test-id="'mcp-oauth-clients-table'"
 					:clients="connectedOAuthClients"
+					:scope-tools="mcpStore.oauthClientScopeTools"
 					:loading="oAuthClientsLoading"
 					@revoke-client="revokeClientAccess"
 					@refresh="onTableRefresh"
@@ -527,7 +524,7 @@ onMounted(async () => {
 							type="textarea"
 							:rows="6"
 							:placeholder="i18n.baseText('settings.mcp.allowedRedirectUris.placeholder')"
-							:disabled="!canToggleMCP"
+							:disabled="!canEditRedirectUris"
 							data-test-id="mcp-redirect-uris-input"
 						/>
 					</N8nInputLabel>
@@ -538,7 +535,7 @@ onMounted(async () => {
 						<N8nButton
 							:label="i18n.baseText('settings.mcp.allowedRedirectUris.save')"
 							:loading="redirectUrisLoading"
-							:disabled="!canToggleMCP"
+							:disabled="!canEditRedirectUris"
 							size="small"
 							data-test-id="mcp-redirect-uris-save-button"
 							@click="saveRedirectUris"
@@ -572,13 +569,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	min-height: 60px;
-}
-
-.heading-row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--5xs);
 }
 
 .tabs-header {

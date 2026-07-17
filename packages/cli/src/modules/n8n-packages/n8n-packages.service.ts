@@ -3,6 +3,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
 import { N8nPackageParser } from './engine/n8n-package-parser';
@@ -11,16 +12,20 @@ import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
+import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
+import { VariableExporter } from './entities/variable/variable.exporter';
+import { PackageWorkflowRequirementValidator } from './entities/workflow/package-workflow-requirement.validator';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
-import type {
-	ExportPackageRequest,
-	ImportPackageRequest,
-	ImportResult,
+import {
+	MissingWorkflowDependencyPolicy,
+	type ExportPackageRequest,
+	type ImportPackageRequest,
+	type ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
 import {
@@ -38,15 +43,27 @@ export class N8nPackagesService {
 		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
 		private readonly dataTableExporter: DataTableExporter,
+		private readonly variableExporter: VariableExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly packageParser: N8nPackageParser,
 		private readonly packageImportConfig: PackageImportConfig,
 		private readonly projectPackageImporter: ProjectPackageImporter,
 		private readonly workflowPackageImporter: WorkflowPackageImporter,
 		private readonly eventService: EventService,
+		private readonly workflowRequirementValidator: PackageWorkflowRequirementValidator,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
+		// TODO: remove this once the other options are implemented
+		const missingWorkflowDependencyPolicy =
+			request.missingWorkflowDependencyPolicy ?? MissingWorkflowDependencyPolicy.Fail;
+
+		if (missingWorkflowDependencyPolicy !== MissingWorkflowDependencyPolicy.Fail) {
+			throw new PackageExportBlockedError(
+				`missingWorkflowDependencyPolicy="${missingWorkflowDependencyPolicy}" is not supported yet. Only "fail" is currently supported.`,
+			);
+		}
+
 		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
@@ -90,6 +107,33 @@ export class N8nPackagesService {
 			projectExportResult?.requirements,
 		);
 
+		const includeVariableValues = request.includeVariableValues ?? true;
+		if (
+			includeVariableValues &&
+			requirements.variables.length > 0 &&
+			request.canExportVariableValues === false
+		) {
+			throw new ForbiddenError(
+				'The exported workflows reference variables, but the API key is missing the variable:list scope needed to bundle their values. Add the scope or set includeVariableValues to false.',
+			);
+		}
+
+		const allFolders = [
+			...(folderExportResult?.entries ?? []),
+			...(projectExportResult?.folderEntries ?? []),
+		];
+
+		const allWorkflowsInPackage = [
+			...(workflowExportResult?.entries ?? []),
+			...(folderExportResult?.workflowEntries ?? []),
+			...(projectExportResult?.workflowEntries ?? []),
+		];
+
+		await this.workflowRequirementValidator.validateStaticSubWorkflowsIncluded(
+			request.user,
+			new Set(allWorkflowsInPackage.map(({ id }) => id)),
+		);
+
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,
 			requirements: requirements.credentials,
@@ -106,20 +150,18 @@ export class N8nPackagesService {
 			projectTargetsById: projectExportResult?.projectTargetsById,
 		});
 
-		const allFolders = [
-			...(folderExportResult?.entries ?? []),
-			...(projectExportResult?.folderEntries ?? []),
-		];
-
-		const allWorkflowsInPackage = [
-			...(workflowExportResult?.entries ?? []),
-			...(folderExportResult?.workflowEntries ?? []),
-			...(projectExportResult?.workflowEntries ?? []),
-		];
+		const variableExportResult = await this.variableExporter.export({
+			user: request.user,
+			requirements: requirements.variables,
+			writer,
+			includeVariableValues,
+			projectTargetsById: projectExportResult?.projectTargetsById,
+		});
 
 		const manifestRequirements = this.buildManifestRequirements(
 			credentialExportResult.requirements,
 			dataTableExportResult.requirements,
+			variableExportResult.requirements,
 		);
 
 		const manifest = packageManifestSchema.parse({
@@ -129,6 +171,12 @@ export class N8nPackagesService {
 			sourceId: this.instanceSettings.instanceId,
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
+				: {}),
+			...(dataTableExportResult.entries.length > 0
+				? { dataTables: dataTableExportResult.entries }
+				: {}),
+			...(variableExportResult.entries.length > 0
+				? { variables: variableExportResult.entries }
 				: {}),
 			...(manifestRequirements ? { requirements: manifestRequirements } : {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
@@ -156,6 +204,7 @@ export class N8nPackagesService {
 				folders: allFolders.length,
 				credentials: credentialExportResult.entries.length,
 				dataTables: dataTableExportResult.entries.length,
+				variables: variableExportResult.entries.length,
 			},
 		});
 
@@ -179,10 +228,12 @@ export class N8nPackagesService {
 	private buildManifestRequirements(
 		credentials: PackageRequirements['credentials'],
 		dataTables: PackageRequirements['dataTables'],
+		variables: PackageRequirements['variables'],
 	): PackageRequirements | undefined {
 		const requirements: PackageRequirements = {
 			...(credentials?.length ? { credentials } : {}),
 			...(dataTables?.length ? { dataTables } : {}),
+			...(variables?.length ? { variables } : {}),
 		};
 		return Object.keys(requirements).length > 0 ? requirements : undefined;
 	}

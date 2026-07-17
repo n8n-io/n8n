@@ -48,6 +48,7 @@ import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import AiGatewaySelector from '@/app/components/AiGatewaySelector.vue';
+import { useN8nCreditsCredentialSelectionExperiment } from '@/experiments/n8nCreditsCredentialSelection';
 
 import {
 	N8nButton,
@@ -78,6 +79,12 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
+	/** Skip the component's own credential fetch on mount. Hosts with a
+	 *  synthetic workflow document (e.g. the tool config modal) own the fetch
+	 *  themselves — the component's own fetch would query the synthetic
+	 *  document's nonexistent workflow id and replace the credential store
+	 *  with the empty result. */
+	skipCredentialsFetch?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -87,6 +94,7 @@ const props = withDefaults(defineProps<Props>(), {
 	hideIssues: false,
 	skipAutoSelect: false,
 	standalone: false,
+	skipCredentialsFetch: false,
 });
 
 const emit = defineEmits<{
@@ -133,6 +141,8 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 	useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const { isFeatureEnabled: shouldShowOwnCredentialFirst } =
+	useN8nCreditsCredentialSelectionExperiment();
 const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
@@ -313,8 +323,8 @@ watch(
 		if (allOptions.length === 0) {
 			// No credentials configured — auto-enable AI Gateway for supported types,
 			// but only on the initial setup so a later action change doesn't redirect
-			// the user onto n8n Connect.
-			if (aiGateway.isEnabled.value && isInitialEvaluation) {
+			// the user onto n8n credits. The experiment variant leaves it unselected.
+			if (aiGateway.isEnabled.value && isInitialEvaluation && !shouldShowOwnCredentialFirst.value) {
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
@@ -425,7 +435,7 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
-	const scope = getCredentialFetchScope();
+	const scope = props.skipCredentialsFetch ? undefined : getCredentialFetchScope();
 	if (scope) {
 		void credentialsStore.fetchAllCredentialsForWorkflow(scope);
 	}
@@ -941,11 +951,27 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
+						ref="selectRefs"
 						:class="$style.emptySelect"
 						size="small"
-						disabled
+						:disabled="!canCreateCredentials"
 						:placeholder="i18n.baseText('nodeCredentials.emptyState.noCredentials')"
-					/>
+						:popper-class="$style.selectPopper"
+					>
+						<template #empty> </template>
+						<template #footer>
+							<button
+								type="button"
+								data-test-id="node-credentials-select-item-new"
+								:class="[$style.newCredential]"
+								:disabled="!canCreateCredentials"
+								@click="onClickCreateCredential(type)"
+							>
+								<N8nIcon size="xsmall" icon="plus" />
+								{{ NEW_CREDENTIALS_TEXT }}
+							</button>
+						</template>
+					</N8nSelect>
 					<N8nButton
 						v-if="canCreateCredentials"
 						variant="subtle"

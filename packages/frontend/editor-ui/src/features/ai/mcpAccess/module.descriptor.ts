@@ -1,5 +1,5 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODALS } from '@/experiments/exposeAllWorkflowsToMcp/modals';
 import { SURFACE_MCP_TO_NEW_CLOUD_USERS_MODALS } from '@/experiments/surfaceMcpToNewCloudUsers/modals';
 import {
@@ -38,7 +38,6 @@ export const MCPModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.mcp'),
 			position: 'top',
 			route: { to: { name: MCP_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasPermission(['rbac'], {
 					rbac: { scope: ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'] },
