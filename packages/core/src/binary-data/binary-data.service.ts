@@ -36,7 +36,7 @@ export class BinaryDataService {
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
-		const { FileSystemManager } = await import('./file-system.manager');
+		const { FileSystemManager } = await import('./file-system.manager.js');
 		this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
 		this.managers['filesystem-v2'] = this.managers.filesystem;
 		await this.managers.filesystem.init();

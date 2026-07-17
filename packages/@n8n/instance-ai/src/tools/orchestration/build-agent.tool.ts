@@ -30,6 +30,8 @@ import {
 	CONFIG_MUTATION_TOOL_NAMES,
 	channelSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
+	questionAnswerSchema,
+	questionsResumeSchema,
 	questionsSuspendPayloadSchema,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -184,6 +186,10 @@ const buildAgentOutputSchema = z.object({
 			'Id of the agent this turn targeted. Record it and pass it as `agentId` when switching back to this agent later.',
 		),
 	agentName: z.string().optional().describe('Display name of the targeted agent, when known.'),
+	answers: z
+		.array(questionAnswerSchema)
+		.optional()
+		.describe('Answers submitted when resuming a cascaded questions request.'),
 });
 
 type BuildAgentOutput = z.infer<typeof buildAgentOutputSchema>;
@@ -476,6 +482,19 @@ async function runBuilderConsumeLoop(params: {
 	});
 }
 
+/** Discriminate via the suspend payload because questionsResumeSchema accepts unrelated objects. */
+function getResumedQuestionAnswers(
+	ctx: BuildAgentToolContext,
+): Array<z.infer<typeof questionAnswerSchema>> | undefined {
+	const isQuestionsSuspension = questionsSuspendPayloadSchema.safeParse(ctx.suspendPayload);
+	if (!isQuestionsSuspension.success) return undefined;
+
+	const resume = questionsResumeSchema.safeParse(ctx.resumeData);
+	if (!resume.success || !resume.data.answers) return undefined;
+
+	return resume.data.answers;
+}
+
 /**
  * Resume leg: re-derive the target agent and the builder's open suspension
  * from persistence, verify they match the `builderCheckpoint` ref carried in
@@ -647,7 +666,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'without either keep editing the current agent. To build ANOTHER agent in the same ' +
 				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
 				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
-				'switches the active target. When the builder needs user input (a choice, a ' +
+				'switches the active target. The builder can also publish or unpublish the target ' +
+				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
+				'forward that intent in `message`; never tell the user to open the agent editor and ' +
+				'click Publish. When the builder needs user input (a choice, a ' +
 				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
 				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
 				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +
@@ -667,7 +689,9 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			}
 
 			if (ctx.resumeData !== undefined && ctx.resumeData !== null) {
-				return await handleResume(context, domainContext, delegate, ctx);
+				const output = await handleResume(context, domainContext, delegate, ctx);
+				const answers = getResumedQuestionAnswers(ctx);
+				return answers ? { ...output, answers } : output;
 			}
 
 			const existingTarget = await resolveAgentBuilderTarget(domainContext);

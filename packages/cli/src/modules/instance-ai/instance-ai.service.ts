@@ -72,6 +72,7 @@ import {
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
 	orchestratorAgentId,
+	resolveAgentPreviewSession,
 	saveAgentBuilderTarget,
 	type ConfirmationData,
 	type DomainAccessTracker,
@@ -190,6 +191,7 @@ import {
 } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
 import { AgentExecutionService } from '../agents/agent-execution.service';
+import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -2304,6 +2306,42 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * Hydrate the thread-persisted preview-session reference (if any) and wire
+	 * the on-demand transcript resolver. Must run before createInstanceAgent so
+	 * createOrchestrationTools can register get-session on follow-up turns.
+	 */
+	private async bindAgentPreviewSession(
+		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+		user: User,
+	): Promise<void> {
+		await resolveAgentPreviewSession(context);
+		const projectId = context.projectId;
+		if (!context.agentPreviewSession || !projectId) return;
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
+			context.agentPreviewSession = undefined;
+			return;
+		}
+
+		context.resolvePreviewSession = async (ref) => {
+			const service = this.getAgentExecutionService();
+			if (!service) return null;
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			if (!detail) return null;
+			const transcript = formatPreviewSessionContext(
+				detail.thread,
+				detail.executions,
+				ref.executionId,
+			);
+			if (transcript === null) return null;
+			return {
+				title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+				sessionNumber: detail.thread.sessionNumber,
+				transcript,
+			};
+		};
+	}
+
 	private async dispatchPlannedTask(
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
@@ -3293,7 +3331,14 @@ export class InstanceAiService {
 				agentPreviewTitleFallback = resolved.titleFallback;
 
 				context.agentBuilderTarget = resolved.target;
-				await saveAgentBuilderTarget(context, resolved.target);
+				context.agentPreviewSession = {
+					agentId: handoffContext.agentId,
+					threadId: handoffContext.threadId,
+					...(handoffContext.executionId ? { executionId: handoffContext.executionId } : {}),
+				};
+				await saveAgentBuilderTarget(context, resolved.target, {
+					previewSession: context.agentPreviewSession,
+				});
 			} else {
 				handoffContextBlock = buildHandoffContextBlock(handoffContext);
 			}
@@ -4201,6 +4246,7 @@ export class InstanceAiService {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
+		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,
 			threadId,
@@ -4359,9 +4405,13 @@ export class InstanceAiService {
 		}
 	}
 
-	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {
+	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
 		const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
-		if (!(await userHasScopes(user, requiredScopes, false, { projectId }))) {
+		return await userHasScopes(user, requiredScopes, false, { projectId });
+	}
+
+	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
 			throw new ForbiddenError(
 				'You do not have permission to load or edit agent previews in this project.',
 			);
