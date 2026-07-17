@@ -145,6 +145,9 @@ export async function buildFromJson(
 
 	if (config.mcpServers?.length && options.buildMcpClient) {
 		for (const server of config.mcpServers) {
+			// Draft MCP connections may not have an endpoint URL yet.
+			if (!server.url.trim()) continue;
+
 			const client = await options.buildMcpClient(server);
 			agent.mcp(client);
 		}

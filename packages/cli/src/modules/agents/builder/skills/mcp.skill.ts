@@ -62,9 +62,11 @@ Follow these steps in order when adding an MCP server:
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry
    to \`mcpServers[]\` using the patch pattern below.
 
-If \`search_mcp_servers\` returns no matches and the user provides a custom
-server URL, skip the search result mapping and continue with manual
-transport/authentication plus credential selection.
+If \`search_mcp_servers\` returns no matches, continue with manual server
+setup. Ask for any missing URL or transport/authentication decision through
+\`${ASK_QUESTIONS_TOOL_NAME}\`. If the user skips the URL, still add a draft
+server entry with \`url: ""\`, preserve any known authentication choice, and
+skip verification. Do not abort the server addition.
 
 Full schema reference:
 
@@ -100,6 +102,8 @@ Before writing to config, call \`verify_mcp_server\` with server \`name\`,
   is not \`"none"\`, skip \`verify_mcp_server\` — an unauthenticated attempt
   would fail regardless. Go straight to \`read_config\` / \`patch_config\`
   with \`credential\` omitted.
+- If the URL is empty, skip \`verify_mcp_server\` and persist the draft entry
+  with \`url: ""\`.
 
 ### Selecting credentials
 
@@ -126,6 +130,7 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 ## Gotchas
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
+- A skipped URL is stored as \`url: ""\`; never invent a placeholder URL.
 - Never invent credential IDs. If the user declines, still add the server
   and omit only the \`credential\` field.
 - Never fabricate \`metadata.nodeTypeName\`.

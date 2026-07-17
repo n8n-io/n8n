@@ -91,7 +91,8 @@ Use \`patch_config\` with:
 - For fallback web search, use exact credential type names: \`braveSearchApi\` for \`provider: "brave"\`, and \`searXngApi\` for \`provider: "searxng"\`.
 - Node tools (\`tools[]\`) and MCP servers (\`mcpServers[]\`) support missing
   credentials: if setup is skipped, still add the entry and omit only the
-  credential field. Follow their respective skills for the exact shape.
+  credential field. MCP servers also support a pending URL as \`url: ""\`;
+  never invent a placeholder URL. Follow their respective skills for the exact shape.
 
 #### Add Node Or Workflow Tools
 
