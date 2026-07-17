@@ -458,6 +458,7 @@
       "dist/nodes/Asana/AsanaTrigger.node.js",
       "dist/nodes/Autopilot/Autopilot.node.js",
       "dist/nodes/Autopilot/AutopilotTrigger.node.js",
+      "dist/nodes/Aws/AwsAiAgent/AwsAiAgent.node.js",
       "dist/nodes/Aws/AwsLambda.node.js",
       "dist/nodes/Aws/AwsSns.node.js",
       "dist/nodes/Aws/AwsSnsTrigger.node.js",
