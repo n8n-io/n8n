@@ -60,11 +60,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify([{value1:true},{value2:5}]);\n\nif(JSON.stringify(items.map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : append');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify([{value1:true},{value2:5}]);\n\nif(JSON.stringify($input.all().map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : append');\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [780, 300],
 			"notesInFlow": true,
 			"notes": "Verify merge operation",
@@ -130,11 +131,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify(items[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify($input.all()[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn $input.all();"
 			},
 			"name": "Function1",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [780, 580],
 			"notesInFlow": true,
 			"notes": "Verify merge operation",
@@ -153,11 +155,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify([{title:'Input2item1'},{title:'Input2item2'},{title:'Input2item3'}]);\n\nif(JSON.stringify(items.map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : mergeByIndex: innerjoin');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify([{title:'Input2item1'},{title:'Input2item2'},{title:'Input2item3'}]);\n\nif(JSON.stringify($input.all().map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : mergeByIndex: innerjoin');\n}\nreturn $input.all();"
 			},
 			"name": "Function2",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [750, 900],
 			"notesInFlow": true,
 			"notes": "Verify mergeByIndex operation",
@@ -175,11 +178,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify([{title:'Input2item1'},{title:'Input2item2'},{title:'Input2item3'}]);\n\nif(JSON.stringify(items.map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : mergeByIndex: leftjoin');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify([{title:'Input2item1'},{title:'Input2item2'},{title:'Input2item3'}]);\n\nif(JSON.stringify($input.all().map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : mergeByIndex: leftjoin');\n}\nreturn $input.all();"
 			},
 			"name": "Function3",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [750, 750],
 			"notesInFlow": true,
 			"notes": "Verify mergeByIndex operation",
@@ -200,11 +204,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify([{title:'Input2item1'},{title:'Input2item2'},{title:'Input2item3'},{title:'Input2item4'}]);\n\nif(JSON.stringify(items.map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : mergeByIndex: outerjoin');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify([{title:'Input2item1'},{title:'Input2item2'},{title:'Input2item3'},{title:'Input2item4'}]);\n\nif(JSON.stringify($input.all().map(item => item.json)) !== testData){\n  throw new Error('Error in Merge node : mergeByIndex: outerjoin');\n}\nreturn $input.all();"
 			},
 			"name": "Function4",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [750, 1050],
 			"notesInFlow": true,
 			"notes": "Verify mergeByIndex operation",
@@ -251,11 +256,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify(items[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify($input.all()[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn $input.all();"
 			},
 			"name": "Function5",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [750, 1380],
 			"notesInFlow": true,
 			"notes": "Verify mergeByKey operation",
@@ -287,11 +293,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify(items[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify($input.all()[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn $input.all();"
 			},
 			"name": "Function6",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [750, 1230],
 			"notesInFlow": true,
 			"notes": "Verify mergeByKey operation",
@@ -312,11 +319,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify(items[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify({prop1:1,prop3:-1});\n\nif(JSON.stringify($input.all()[0].json) !== testData){\n  throw new Error('Error in Merge node : keepKeyMatches');\n}\nreturn $input.all();"
 			},
 			"name": "Function7",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [750, 1530],
 			"notesInFlow": true,
 			"notes": "Verify mergeByKey operation",
@@ -370,11 +378,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify({prop1: 1,prop2: -1,prop3: 2,prop4: -4});\n\nif(JSON.stringify(items[0].json) !== testData){\n  throw new Error('Error in Merge node : multiplex');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify({prop1: 1,prop2: -1,prop3: 2,prop4: -4});\n\nif(JSON.stringify($input.all()[0].json) !== testData){\n  throw new Error('Error in Merge node : multiplex');\n}\nreturn $input.all();"
 			},
 			"name": "Function8",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [780, 1780],
 			"notesInFlow": true,
 			"notes": "Verify multiplex operation",
@@ -438,11 +447,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify({prop1: 1,prop2: -1});\n\nif(JSON.stringify(items[0].json) !== testData){\n  throw new Error('Error in Merge node : passThrough');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify({prop1: 1,prop2: -1});\n\nif(JSON.stringify($input.all()[0].json) !== testData){\n  throw new Error('Error in Merge node : passThrough');\n}\nreturn $input.all();"
 			},
 			"name": "Function9",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [790, 2080],
 			"notesInFlow": true,
 			"notes": "Verify passThrough operation",
@@ -531,11 +541,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData= JSON.stringify({prop1: 1,prop2: -1});\n\nif(JSON.stringify(items[0].json) !== testData){\n  throw new Error('Error in Merge node : removeKeyMatches');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData= JSON.stringify({prop1: 1,prop2: -1});\n\nif(JSON.stringify($input.all()[0].json) !== testData){\n  throw new Error('Error in Merge node : removeKeyMatches');\n}\nreturn $input.all();"
 			},
 			"name": "Function10",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [800, 2380],
 			"notesInFlow": true,
 			"notes": "Verify removeKeyMatches operation",
@@ -543,11 +554,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "items = [{\n    json:{\n        title:'Input1item1'\n    }\n},{\n    json:{\n        title:'Input1item2'\n    }\n},{\n    json:{\n        title:'Input1item3'\n    }\n}]\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = [{\n    json:{\n        title:'Input1item1'\n    }\n},{\n    json:{\n        title:'Input1item2'\n    }\n},{\n    json:{\n        title:'Input1item3'\n    }\n}]\nreturn items;"
 			},
 			"name": "Function11",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [430, 810],
 			"notesInFlow": true,
 			"notes": "Input 1",
@@ -555,11 +567,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "items = [{\n    json:{\n        title:'Input2item1'\n    }\n},{\n    json:{\n        title:'Input2item2'\n    }\n},{\n    json:{\n        title:'Input2item3'\n    }\n},{\n    json:{\n        title:'Input2item4'\n    }\n}]\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "const items = [{\n    json:{\n        title:'Input2item1'\n    }\n},{\n    json:{\n        title:'Input2item2'\n    }\n},{\n    json:{\n        title:'Input2item3'\n    }\n},{\n    json:{\n        title:'Input2item4'\n    }\n}]\nreturn items;"
 			},
 			"name": "Function12",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [430, 960],
 			"notesInFlow": true,
 			"notes": "Input 2",
