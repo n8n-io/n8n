@@ -403,8 +403,6 @@ export function useWorkflowSaving({
 				createWorkflowDocumentId(workflowId.value),
 			);
 
-			// Same node group repair as in saveCurrentWorkflow, but only when saving
-			// the live document (explicit `data` payloads are the caller's concern).
 			if (!data) {
 				removeInvalidNodeGroups(currentDocumentStore);
 			}
