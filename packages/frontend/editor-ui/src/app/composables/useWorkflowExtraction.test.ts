@@ -373,7 +373,7 @@ describe('useWorkflowExtraction', () => {
 		it('keeps the group when only some members are extracted', async () => {
 			const nodeA = makeNode('A', [0, 0]);
 			const nodeB = makeNode('B', [200, 0]);
-			const nodeC = makeNode('C', [400, 0]); // sobrevive: no se extrae
+			const nodeC = makeNode('C', [400, 0]);
 			const group = { id: 'g1', name: 'Group 1', nodeIds: [nodeA.id, nodeB.id, nodeC.id] };
 
 			setWorkflowNodes([nodeA, nodeB, nodeC]);
