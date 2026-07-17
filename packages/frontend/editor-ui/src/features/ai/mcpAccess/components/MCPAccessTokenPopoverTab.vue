@@ -252,14 +252,11 @@ onMounted(async () => {
 	display: none;
 }
 
+/* A bare glyph, no button chrome, in every state. */
 .copy-json-button {
-	border: none;
-	outline: none;
-
-	&:hover {
-		border: none;
-		outline: none;
-		background: none;
-	}
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
 }
 </style>

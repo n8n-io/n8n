@@ -80,4 +80,11 @@ const handleCopy = async () => {
 	right: var(--spacing--3xs);
 	display: none;
 }
+
+/* A bare glyph, no button chrome, in every state. */
+.copy-button {
+	border: none !important;
+	box-shadow: none !important;
+	background: transparent !important;
+}
 </style>
