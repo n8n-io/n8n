@@ -16,7 +16,7 @@ export class AccessTokenRepository extends BaseRepository<AccessToken> {
 		super(AccessToken, dataSource.manager);
 	}
 
-	async insertToken(token: NewAccessToken, ctx?: OperationContext): Promise<void> {
+	async insertToken(token: NewAccessToken, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).insert(AccessToken, token);
 	}
 }

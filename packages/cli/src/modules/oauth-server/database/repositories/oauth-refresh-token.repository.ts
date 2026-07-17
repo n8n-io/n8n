@@ -21,7 +21,7 @@ export class RefreshTokenRepository extends BaseRepository<RefreshToken> {
 	async findByToken(
 		token: string,
 		clientId: string,
-		ctx?: OperationContext,
+		ctx: OperationContext,
 	): Promise<RefreshToken | null> {
 		return await this.managerFor(ctx).findOne(RefreshToken, { where: { token, clientId } });
 	}
@@ -31,7 +31,7 @@ export class RefreshTokenRepository extends BaseRepository<RefreshToken> {
 		token: string,
 		clientId: string,
 		now: number,
-		ctx?: OperationContext,
+		ctx: OperationContext,
 	): Promise<number> {
 		const result = await this.managerFor(ctx).delete(RefreshToken, {
 			token,
@@ -41,7 +41,7 @@ export class RefreshTokenRepository extends BaseRepository<RefreshToken> {
 		return result.affected ?? 0;
 	}
 
-	async insertToken(token: NewRefreshToken, ctx?: OperationContext): Promise<void> {
+	async insertToken(token: NewRefreshToken, ctx: OperationContext): Promise<void> {
 		await this.managerFor(ctx).insert(RefreshToken, token);
 	}
 }

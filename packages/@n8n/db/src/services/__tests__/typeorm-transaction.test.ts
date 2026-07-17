@@ -85,17 +85,13 @@ describe('TypeOrmTransactionRunner', () => {
 
 describe('BaseRepository.managerFor', () => {
 	class TestRepository extends BaseRepository<ObjectLiteral> {
-		resolve(ctx?: OperationContext): EntityManager {
+		resolve(ctx: OperationContext): EntityManager {
 			return this.managerFor(ctx);
 		}
 	}
 
 	const defaultManager = mock<EntityManager>();
 	const repository = new TestRepository(class Dummy {}, defaultManager);
-
-	it('returns the default manager when no context is given', () => {
-		expect(repository.resolve()).toBe(defaultManager);
-	});
 
 	it('returns the default manager when the context has no transaction', () => {
 		expect(repository.resolve({})).toBe(defaultManager);

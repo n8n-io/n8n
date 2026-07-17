@@ -16,10 +16,11 @@ import { TypeOrmTransaction } from '../services/typeorm-transaction';
 export abstract class BaseRepository<Entity extends ObjectLiteral> extends Repository<Entity> {
 	/**
 	 * The manager a query should run against: the context's active transaction if present,
-	 * otherwise this repository's default manager.
+	 * otherwise this repository's default manager. `ctx` is always required — thread the one
+	 * received from `TransactionRunner.run`; a non-transactional caller passes the root `{}`.
 	 */
-	protected managerFor(ctx?: OperationContext): EntityManager {
-		const { trx } = ctx ?? {};
+	protected managerFor(ctx: OperationContext): EntityManager {
+		const { trx } = ctx;
 		if (!trx) return this.manager;
 
 		if (!(trx instanceof TypeOrmTransaction)) {
