@@ -2198,6 +2198,9 @@ importers:
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.35.0
         version: 8.35.0(@typescript-eslint/parser@8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)))(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1))
+      '@typescript-eslint/parser':
+        specifier: ^8.35.0
+        version: 8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1))
       '@typescript-eslint/rule-tester':
         specifier: ^8.35.0
         version: 8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1))
