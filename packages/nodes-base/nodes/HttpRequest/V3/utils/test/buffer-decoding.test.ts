@@ -141,23 +141,80 @@ describe('buffer-decoding utils', () => {
 				expect(result).toBe('test content with proper chars');
 			});
 
-			it('should detect high ASCII pattern and try chardet for Buffer', async () => {
-				const buffer = Buffer.from([0x80, 0x81, 0x82, 0x83]); // High ASCII bytes
+			it('should not re-encode valid UTF-8 with consecutive Latin-1 characters', async () => {
+				const turkishText = 'Küçük Köpek Künyesi';
+				const buffer = Buffer.from(turkishText, 'utf8');
 				const contentType = 'text/html';
-				const highAsciiString = String.fromCharCode(0x80, 0x81, 0x82, 0x83);
 
-				mockBinaryToString
-					.mockResolvedValueOnce(highAsciiString) // First UTF-8 attempt
-					.mockResolvedValueOnce('proper decoded content'); // Second attempt with detected encoding
-
-				mockDetectBinaryEncoding.mockReturnValue('windows-1252');
+				mockBinaryToString.mockResolvedValue(turkishText);
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
-				expect(mockDetectBinaryEncoding).toHaveBeenCalledWith(buffer);
-				expect(mockBinaryToString).toHaveBeenCalledTimes(2);
-				expect(mockBinaryToString).toHaveBeenNthCalledWith(2, buffer, 'windows-1252');
-				expect(result).toBe('proper decoded content');
+				expect(result).toBe(turkishText);
+				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
+			});
+
+			it('should not re-encode valid UTF-8 with French accented characters', async () => {
+				const frenchText = 'François résumé naïve café';
+				const buffer = Buffer.from(frenchText, 'utf8');
+				const contentType = 'text/html';
+
+				mockBinaryToString.mockResolvedValue(frenchText);
+
+				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
+
+				expect(result).toBe(frenchText);
+				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
+			});
+
+			it('should not re-encode valid UTF-8 with German umlauts', async () => {
+				const germanText = 'Straße Grüße für München';
+				const buffer = Buffer.from(germanText, 'utf8');
+				const contentType = 'text/html';
+
+				mockBinaryToString.mockResolvedValue(germanText);
+
+				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
+
+				expect(result).toBe(germanText);
+				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
+			});
+
+			it('should not re-encode valid UTF-8 with Spanish characters', async () => {
+				const spanishText = 'Señor año niñomü';
+				const buffer = Buffer.from(spanishText, 'utf8');
+				const contentType = 'text/html';
+
+				mockBinaryToString.mockResolvedValue(spanishText);
+
+				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
+
+				expect(result).toBe(spanishText);
+				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
+			});
+
+			it('should still re-encode content with actual replacement characters (broken UTF-8)', async () => {
+				const brokenUtf8 = Buffer.from([0xc3, 0x28]); // Invalid UTF-8 sequence
+				const contentType = 'text/html';
+
+				mockBinaryToString
+					.mockResolvedValueOnce('test � content') // UTF-8 decode produces replacement char
+					.mockResolvedValueOnce('test ( content'); // Re-decode with detected encoding
+
+				mockDetectBinaryEncoding.mockReturnValue('iso-8859-1');
+
+				const result = await binaryToStringWithEncodingDetection(
+					brokenUtf8,
+					contentType,
+					mockHelpers,
+				);
+
+				expect(mockDetectBinaryEncoding).toHaveBeenCalledWith(brokenUtf8);
+				expect(result).toBe('test ( content');
 			});
 
 			it('should try Chinese encodings for Readable streams with replacement chars', async () => {
@@ -372,36 +429,20 @@ describe('buffer-decoding utils', () => {
 				expect(result).toBe('content with �'); // Should return original
 			});
 
-			it('should handle very short high ASCII sequences (less than 3 chars)', async () => {
-				const buffer = Buffer.from([0x80, 0x81]); // Only 2 high ASCII bytes
-				const contentType = 'text/html';
-				const shortHighAsciiString = String.fromCharCode(0x80, 0x81);
-
-				mockBinaryToString.mockResolvedValue(shortHighAsciiString);
-
-				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
-
-				expect(result).toBe(shortHighAsciiString);
-				expect(mockBinaryToString).toHaveBeenCalledTimes(1); // Should not trigger re-encoding
-				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
-			});
-
-			it('should handle mixed content with both replacement chars and high ASCII', async () => {
-				const buffer = Buffer.from(
-					'test � content ' + String.fromCharCode(0x80, 0x81, 0x82),
-					'utf8',
-				);
+			it('should handle mixed content with replacement chars and Latin-1 characters', async () => {
+				const buffer = Buffer.from('test content with Küçük and café', 'utf8');
 				const contentType = 'text/html';
 
+				// Simulate: UTF-8 decode succeeds for Latin-1 but fails for broken bytes
 				mockBinaryToString
-					.mockResolvedValueOnce('test � content ' + String.fromCharCode(0x80, 0x81, 0x82))
-					.mockResolvedValueOnce('test proper content decoded');
+					.mockResolvedValueOnce('test content with replacement � and Küçük')
+					.mockResolvedValueOnce('test content with proper and Küçük');
 
 				mockDetectBinaryEncoding.mockReturnValue('windows-1252');
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
-				expect(result).toBe('test proper content decoded');
+				expect(result).toBe('test content with proper and Küçük');
 				expect(mockDetectBinaryEncoding).toHaveBeenCalledWith(buffer);
 			});
 		});

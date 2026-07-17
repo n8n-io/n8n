@@ -3,7 +3,6 @@ import type { Readable } from 'stream';
 
 const CHINESE_ENCODINGS = ['gb18030', 'gbk', 'gb2312'] as const;
 const REPLACEMENT_CHAR = '�';
-const HIGH_ASCII_PATTERN = /[\x80-\xFF]{3,}/;
 const DEFAULT_ENCODING = 'utf-8';
 
 /**
@@ -54,7 +53,7 @@ export async function binaryToStringWithEncodingDetection(
 
 	const decodedString = await helpers.binaryToString(bufferedData);
 
-	if (decodedString.includes(REPLACEMENT_CHAR) || HIGH_ASCII_PATTERN.test(decodedString)) {
+	if (decodedString.includes(REPLACEMENT_CHAR)) {
 		const detected = helpers.detectBinaryEncoding(bufferedData).toLowerCase() as BufferEncoding;
 		if (detected && detected !== DEFAULT_ENCODING) {
 			return await helpers.binaryToString(bufferedData, detected);
