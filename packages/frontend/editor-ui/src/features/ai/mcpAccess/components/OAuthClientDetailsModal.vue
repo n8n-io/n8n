@@ -16,7 +16,7 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import TimeAgo from '@/app/components/TimeAgo.vue';
-import { getClientBrand, isFullAccessGrant, scopeLabel } from '../clients.utils';
+import { getClientBrand, scopeLabel } from '../clients.utils';
 
 const props = defineProps<{
 	client: OAuthClientResponseDto | null;
@@ -48,10 +48,6 @@ const subtitle = computed(() => {
 		},
 	});
 });
-
-// A grant covering every instance scope (e.g. a pre-scoping consent backfilled
-// to the full launch set) shows as a single "Full access" line.
-const isFullAccess = computed(() => isFullAccessGrant(props.client?.scopes ?? []));
 
 /** Granted scopes as human labels, listed plainly in grant order. */
 const grantedScopes = computed(() => props.client?.scopes ?? []);
@@ -100,12 +96,8 @@ function onRevoke() {
 					{{ i18n.baseText('settings.mcp.oAuthClients.details.access') }}
 				</N8nText>
 				<div :class="$style.access" data-test-id="mcp-client-details-access">
-					<N8nText v-if="isFullAccess" color="text-dark" size="small">
-						{{ i18n.baseText('settings.mcp.oAuthClients.access.full') }}
-					</N8nText>
 					<N8nText
 						v-for="scope in grantedScopes"
-						v-else
 						:key="scope"
 						color="text-dark"
 						size="small"
