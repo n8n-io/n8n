@@ -149,6 +149,9 @@ export class N8nPackagesService {
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
+			...(dataTableExportResult.entries.length > 0
+				? { dataTables: dataTableExportResult.entries }
+				: {}),
 			...(manifestRequirements ? { requirements: manifestRequirements } : {}),
 			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(allFolders.length > 0 ? { folders: allFolders } : {}),

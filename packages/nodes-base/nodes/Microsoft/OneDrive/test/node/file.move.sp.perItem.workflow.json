@@ -1,0 +1,113 @@
+{
+	"name": "OneDrive SP file:move per-item target with drive cache",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "41111111-1111-1111-1111-111111111111",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"data": [
+					{ "user": "alice@contoso.com", "fileId": "FILEA1" },
+					{ "user": "bob@contoso.com", "fileId": "FILEB" },
+					{ "user": "alice@contoso.com", "fileId": "FILEA2" }
+				]
+			},
+			"id": "42222222-2222-2222-2222-222222222222",
+			"name": "Test Data",
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [200, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "microsoftEntraServicePrincipalApi",
+				"resourceTarget": "user",
+				"userTarget": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $json.user }}"
+				},
+				"resource": "file",
+				"operation": "move",
+				"fileId": "={{ $json.fileId }}",
+				"destinationFolderId": "DESTFOLDER"
+			},
+			"id": "43333333-3333-3333-3333-333333333333",
+			"name": "Microsoft OneDrive",
+			"type": "n8n-nodes-base.microsoftOneDrive",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"credentials": {
+				"microsoftEntraServicePrincipalApi": {
+					"id": "1",
+					"name": "Microsoft Entra Service Principal account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft OneDrive": [
+			{
+				"json": {
+					"id": "FILEA1",
+					"name": "a1.txt",
+					"parentReference": {
+						"driveId": "b!driveA",
+						"id": "DESTFOLDER"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": "FILEB",
+					"name": "b.txt",
+					"parentReference": {
+						"driveId": "b!driveB",
+						"id": "DESTFOLDER"
+					}
+				}
+			},
+			{
+				"json": {
+					"id": "FILEA2",
+					"name": "a2.txt",
+					"parentReference": {
+						"driveId": "b!driveA",
+						"id": "DESTFOLDER"
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Test Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Test Data": {
+			"main": [
+				[
+					{
+						"node": "Microsoft OneDrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

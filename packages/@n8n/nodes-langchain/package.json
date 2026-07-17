@@ -205,7 +205,8 @@
     "@vitest/coverage-v8": "catalog:",
     "eslint-plugin-n8n-nodes-base": "catalog:",
     "fast-glob": "catalog:",
-    "typescript": "catalog:",
+    "@typescript/native": "catalog:typescript-tooling",
+    "typescript": "catalog:typescript-tooling",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

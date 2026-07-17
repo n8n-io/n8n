@@ -39,6 +39,17 @@ vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
 	}),
 }));
 
+const { showErrorMock, showMessageMock } = vi.hoisted(() => ({
+	showErrorMock: vi.fn(),
+	showMessageMock: vi.fn(),
+}));
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: showErrorMock,
+		showMessage: showMessageMock,
+	}),
+}));
+
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
@@ -108,6 +119,8 @@ describe('SettingsMCPView', () => {
 
 		mcpStore.getAllOAuthClients.mockResolvedValue([]);
 		mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
+		mcpStore.fetchAllowedRedirectUris.mockResolvedValue([]);
+		mcpStore.setAllowedRedirectUris.mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -761,6 +774,181 @@ describe('SettingsMCPView', () => {
 			await nextTick();
 
 			expect(mcpStore.getInstanceClientStats).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Redirect URI controls decoupled from env-lock', () => {
+		beforeEach(() => {
+			usersStore.isAdmin = true;
+			usersStore.isInstanceOwner = false;
+			mcpStore.fetchAllowedRedirectUris.mockResolvedValue(['https://example.com/oauth']);
+		});
+
+		it('should disable toggle but keep redirect-URI controls enabled when admin, env-managed, and MCP is enabled', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: true,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = true;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).toBeDisabled();
+
+			await clickTab(container, 'tab-settings');
+
+			const oauthSettingsTab = getByTestId('mcp-oauth-settings-tab');
+			expect(oauthSettingsTab).toBeVisible();
+
+			const redirectUriInput = getByTestId('mcp-redirect-uris-input');
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+
+			expect(redirectUriInput).not.toBeDisabled();
+			expect(saveButton).not.toBeDisabled();
+		});
+
+		it('should enable toggle and enable redirect-URI controls when admin, not env-managed, and MCP is enabled', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).not.toBeDisabled();
+
+			await clickTab(container, 'tab-settings');
+
+			const redirectUriInput = getByTestId('mcp-redirect-uris-input');
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+
+			expect(redirectUriInput).not.toBeDisabled();
+			expect(saveButton).not.toBeDisabled();
+		});
+
+		it('should disable both toggle and redirect-URI controls for a non-admin user', async () => {
+			usersStore.isAdmin = false;
+			usersStore.isInstanceOwner = false;
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).toBeDisabled();
+			expect(queryByTestId('mcp-oauth-settings-tab')).not.toBeInTheDocument();
+		});
+
+		it('should reactively disable toggle but keep redirect-URI controls enabled when env-lock is toggled to true', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			await clickTab(container, 'tab-settings');
+
+			expect(getByTestId('disable-mcp-button')).not.toBeDisabled();
+			expect(getByTestId('mcp-redirect-uris-input')).not.toBeDisabled();
+
+			// Reassign the whole object instead of mutating nested properties
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: true,
+				},
+			};
+			mcpStore.mcpManagedByEnv = true;
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).toBeDisabled();
+			expect(getByTestId('mcp-redirect-uris-input')).not.toBeDisabled();
+		});
+		it('should display an error toast if the API call to save redirect URIs fails', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+			mcpStore.setAllowedRedirectUris.mockRejectedValue(new Error('API Error'));
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			await clickTab(container, 'tab-settings');
+
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+			await userEvent.click(saveButton);
+
+			await nextTick();
+			expect(showErrorMock).toHaveBeenCalled();
+		});
+
+		it('should display a validation error message if the user enters an invalid URL', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			await clickTab(container, 'tab-settings');
+
+			const redirectUriInput = getByTestId('mcp-redirect-uris-input');
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+
+			await userEvent.clear(redirectUriInput);
+			await userEvent.type(redirectUriInput, 'invalid-url');
+			await userEvent.click(saveButton);
+
+			await nextTick();
+			const errorDiv = container.querySelector('[class*="error-message"]');
+			expect(errorDiv).toBeVisible();
+		});
+
+		it('should not show the OAuth section when MCP is disabled', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = false;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('mcp-oauth-settings-tab')).not.toBeInTheDocument();
 		});
 	});
 });

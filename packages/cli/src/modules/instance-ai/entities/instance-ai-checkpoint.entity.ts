@@ -13,6 +13,15 @@ export class InstanceAiCheckpoint extends WithTimestamps {
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	runId: string | null;
 
+	/**
+	 * The Instance AI (host) run id, distinct from `runId` above (the agent-SDK
+	 * id derived from the key). Lets the interrupted-run sweeper match a
+	 * crashed run's step checkpoint exactly. Nullable: rows written before the
+	 * column existed, and sub-agent checkpoints, don't carry it.
+	 */
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	hostRunId: string | null;
+
 	@ManyToOne(() => InstanceAiThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })
 	thread: InstanceAiThread;

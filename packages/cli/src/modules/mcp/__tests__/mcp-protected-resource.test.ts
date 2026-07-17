@@ -1,3 +1,4 @@
+import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import type { McpConfig } from '../mcp.config';
@@ -6,15 +7,55 @@ import type { UrlService } from '@/services/url.service';
 
 import { McpProtectedResource } from '../mcp-protected-resource';
 
+const makeGlobalConfig = ({ builderEnabled = true, tagsDisabled = false } = {}) =>
+	({
+		endpoints: { mcpBuilderEnabled: builderEnabled },
+		tags: { disabled: tagsDisabled },
+	}) as unknown as GlobalConfig;
+
 describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpConfig = mock<McpConfig>();
-	const resource = new McpProtectedResource(urlService, mcpSettingsService, mcpConfig);
+	const resource = new McpProtectedResource(
+		urlService,
+		mcpSettingsService,
+		mcpConfig,
+		makeGlobalConfig(),
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpConfig.baseUrl = '';
+	});
+
+	describe('getScopeTools', () => {
+		it('should expose the full tool mapping when all features are enabled', () => {
+			const scopeTools = resource.getScopeTools();
+
+			expect(scopeTools['workflow:read']).toContain('search_workflows');
+			expect(scopeTools['workflow:read']).toContain('search_nodes');
+			expect(scopeTools['tag:read']).toContain('list_tags');
+		});
+
+		it('should drop tools this instance does not expose', () => {
+			const limitedResource = new McpProtectedResource(
+				urlService,
+				mcpSettingsService,
+				mcpConfig,
+				makeGlobalConfig({ builderEnabled: false, tagsDisabled: true }),
+			);
+
+			const scopeTools = limitedResource.getScopeTools();
+
+			expect(scopeTools['workflow:read']).toContain('search_workflows');
+			// builder-only tools are hidden when the builder is off
+			expect(scopeTools['workflow:read']).not.toContain('search_nodes');
+			expect(scopeTools['workflow:write']).not.toContain('create_workflow_from_code');
+			expect(scopeTools['project:read']).toEqual([]);
+			// list_tags is hidden when tags are disabled
+			expect(scopeTools['tag:read']).toEqual([]);
+		});
 	});
 
 	describe('getResourceUrl', () => {

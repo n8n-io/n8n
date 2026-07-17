@@ -73,9 +73,9 @@ export class HttpRequestV3 implements INodeType {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
 			version: [3, 4, 4.1, 4.2, 4.3, 4.4],
+			iconColor: 'blue',
 			defaults: {
 				name: 'HTTP Request',
-				color: '#0004F5',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],

@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/n8n-nodes-langchain",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T12:09:22.053Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            9337,
+            7611,
+            8302
+          ],
+          "min": 7611,
+          "median": 8302,
+          "mean": 8417
+        },
+        "build": {
+          "runsMs": [
+            26683,
+            25790,
+            24573
+          ],
+          "min": 24573,
+          "median": 25790,
+          "mean": 25682
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T13:05:44.453Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            2441,
+            2106,
+            2139
+          ],
+          "min": 2106,
+          "median": 2139,
+          "mean": 2229
+        },
+        "build": {
+          "runsMs": [
+            20166,
+            21149,
+            20230
+          ],
+          "min": 20166,
+          "median": 20230,
+          "mean": 20515
+        }
+      }
+    }
+  }
+}

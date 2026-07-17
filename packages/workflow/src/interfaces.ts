@@ -1469,6 +1469,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -2739,10 +2741,6 @@ export interface INodeOutputConfiguration {
 export type ExpressionString = `={{${string}}}`;
 
 export type NodeDefaults = Partial<{
-	/**
-	 * @deprecated Use {@link INodeTypeBaseDescription.iconColor|iconColor} instead. `iconColor` supports dark mode and uses preset colors from n8n's design system.
-	 */
-	color: string;
 	name: string;
 }>;
 
@@ -3467,6 +3465,17 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+/** Telemetry emitted when an advanced HITL (human-in-the-loop) response is actioned. */
+export type HitlResponseTelemetryPayload = {
+	nodeType: string;
+	/** The decision the responder made. */
+	approved: boolean;
+	/** Whether the responder was on the node's approver allow-list (empty list = anyone). */
+	authorized: boolean;
+	executionId?: string;
+	workflowId?: string;
+};
+
 export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
@@ -3528,6 +3537,7 @@ export interface IWorkflowExecuteAdditionalData {
 	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
+	logHitlResponse?: (payload: HitlResponseTelemetryPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	/**
 	 * The execution mode of the root (top-level) workflow. Used to propagate manual
