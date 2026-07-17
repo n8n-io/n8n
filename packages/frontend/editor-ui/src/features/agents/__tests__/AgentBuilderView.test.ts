@@ -11,6 +11,7 @@ import type {
 	CustomToolEntry,
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '../utils/agentPersonalisation';
+import { agentsEventBus } from '../agents.eventBus';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -1054,6 +1055,43 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
 		expect(fetchConfigMock).toHaveBeenCalledWith('p2', 'a2');
+	});
+
+	it('refreshes the shell when another surface reports an update to this agent', async () => {
+		// Unique ids: earlier tests leave mounted instances (and their bus
+		// listeners) behind, so shared ids would inflate the mock call counts.
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-bus',
+				artifactAgentId: 'a-bus',
+				artifactRefreshKey: 0,
+			},
+		});
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'channel-setup-card' });
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p-bus',
+			'a-bus',
+		);
+		expect(fetchConfigMock).toHaveBeenCalledWith('p-bus', 'a-bus');
+
+		// Other agents' updates and the builder's own writes are ignored.
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-other', source: 'channel-setup-card' });
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'agent-builder' });
+		await flushPromises();
+
+		expect(getAgentMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+
+		wrapper.unmount();
 	});
 
 	it('replays artifact refresh key changes that arrive before initialization completes', async () => {

@@ -64,7 +64,7 @@ import {
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
-import { agentsEventBus } from '../agents.eventBus';
+import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
@@ -798,6 +798,22 @@ watch(
 		}
 	},
 );
+
+// Cross-surface: another surface (e.g. the Instance AI channel-setup card)
+// wrote this agent outside the builder's own save funnels — refetch so the
+// shell (config, Channels chips) doesn't sit stale until the build run ends.
+// Own writes are filtered by source to avoid re-entrancy (`onConfigUpdated`
+// itself emits `agentUpdated`).
+function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
+	if (event?.source === 'agent-builder') return;
+	if (!event?.agentId || event.agentId !== agentId.value) return;
+	// While initializing, the in-flight initial fetch already returns fresh data.
+	if (!initialized.value) return;
+	void refreshArtifactShell().catch(handleArtifactRefreshError);
+}
+
+agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
+onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onExternalAgentUpdated));
 
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
