@@ -11,8 +11,13 @@ import type {
 	EvaluationCollectionDetail,
 	EvaluationCollectionRecord,
 } from '../../evalCollections.types';
-import { buildScoreShapedMetricGroups, deriveRunsStatus } from '../../evaluation.utils';
+import {
+	buildScoreShapedMetricGroups,
+	countCompletedRuns,
+	deriveRunsStatus,
+} from '../../evaluation.utils';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
+import RunningIndicator from '../shared/RunningIndicator.vue';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
 const props = defineProps<{
@@ -39,19 +44,22 @@ const openCompare = () => {
 const status = computed<'done' | 'running' | 'error' | null>(() =>
 	props.detail ? deriveRunsStatus(props.detail.runs) : null,
 );
+const isRunning = computed(() => status.value === 'running');
 
-// Badge theme + label per status; `null` while detail is still loading (no badge).
+// Live "N/M versions complete" progress while runs are in flight. The store's
+// detail poll refreshes `detail.runs`, so the count advances on its own and the
+// indicator flips to the Done/Failed badge once the set settles.
+const completedCount = computed(() => countCompletedRuns(props.detail?.runs ?? []));
+const versionCount = computed(() => props.detail?.runs.length ?? 0);
+
+// Done/Failed badge per status; `null` while detail is still loading or while
+// running (the RunningIndicator renders instead) so neither reads as settled.
 const statusBadge = computed(() => {
 	switch (status.value) {
 		case 'done':
 			return {
 				theme: 'success' as const,
 				label: i18n.baseText('evaluation.collections.card.done'),
-			};
-		case 'running':
-			return {
-				theme: 'tertiary' as const,
-				label: i18n.baseText('evaluation.collections.card.running'),
 			};
 		case 'error':
 			return {
@@ -170,7 +178,8 @@ onMounted(() => observe(cardRef.value));
 			<div :class="$style.cardHeader">
 				<div :class="$style.cardHeading">
 					<N8nText size="medium" bold>{{ collection.name }}</N8nText>
-					<N8nBadge v-if="statusBadge" :theme="statusBadge.theme" size="small">
+					<RunningIndicator v-if="isRunning" :completed="completedCount" :total="versionCount" />
+					<N8nBadge v-else-if="statusBadge" :theme="statusBadge.theme" size="small">
 						{{ statusBadge.label }}
 					</N8nBadge>
 				</div>

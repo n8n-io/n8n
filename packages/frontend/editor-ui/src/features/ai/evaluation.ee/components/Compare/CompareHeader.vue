@@ -7,7 +7,8 @@ import { useToast } from '@/app/composables/useToast';
 
 import type { CompareVersion } from '../../composables/useCompareData';
 import { useEvalCollectionsStore } from '../../evalCollections.store';
-import { deriveRunsStatus } from '../../evaluation.utils';
+import { countCompletedRuns, deriveRunsStatus } from '../../evaluation.utils';
+import RunningIndicator from '../shared/RunningIndicator.vue';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
 const props = defineProps<{
@@ -23,11 +24,17 @@ const toast = useToast();
 const store = useEvalCollectionsStore();
 
 const status = computed(() => deriveRunsStatus(props.versions));
+const isRunning = computed(() => status.value === 'running');
+
+// Live "N/M versions complete" progress while runs are in flight. Reads from
+// `versions` (refreshed by the store's detail poll), so the count advances on
+// its own and the indicator disappears once the set settles.
+const completedCount = computed(() => countCompletedRuns(props.versions));
 
 // Re-run is offered once the current attempt has settled (done or failed) and
 // hidden while runs are still in flight, so a user can't schedule a second
 // wave on top of an unfinished one (the backend rejects that anyway).
-const canRerun = computed(() => status.value !== 'running');
+const canRerun = computed(() => !isRunning.value);
 
 const rerunning = ref(false);
 
@@ -43,25 +50,19 @@ async function onRerun() {
 	}
 }
 
-const statusBadge = computed(() => {
-	switch (status.value) {
-		case 'error':
-			return {
+// Done/Failed badge only; the running state renders a distinct RunningIndicator
+// instead so it can't be mistaken for a settled result.
+const statusBadge = computed(() =>
+	status.value === 'error'
+		? {
 				theme: 'warning' as const,
 				label: i18n.baseText('evaluation.collections.card.failed'),
-			};
-		case 'running':
-			return {
-				theme: 'tertiary' as const,
-				label: i18n.baseText('evaluation.collections.card.running'),
-			};
-		default:
-			return {
+			}
+		: {
 				theme: 'success' as const,
 				label: i18n.baseText('evaluation.collections.card.done'),
-			};
-	}
-});
+			},
+);
 
 const legend = computed(() =>
 	props.versions.map((version) => ({
@@ -77,7 +78,8 @@ const legend = computed(() =>
 		<div :class="$style.titleRow">
 			<div :class="$style.titleGroup">
 				<N8nText tag="h2" size="xlarge" bold>{{ collectionName }}</N8nText>
-				<N8nBadge :theme="statusBadge.theme" size="small">{{ statusBadge.label }}</N8nBadge>
+				<RunningIndicator v-if="isRunning" :completed="completedCount" :total="versions.length" />
+				<N8nBadge v-else :theme="statusBadge.theme" size="small">{{ statusBadge.label }}</N8nBadge>
 			</div>
 			<N8nButton
 				v-if="canRerun"

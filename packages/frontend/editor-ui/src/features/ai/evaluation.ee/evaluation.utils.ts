@@ -150,6 +150,13 @@ export function deriveRunsStatus(
 	return 'done';
 }
 
+// How many runs have settled, i.e. are no longer queued or executing. Uses the
+// same in-flight predicate as `deriveRunsStatus` (its inverse) so the "N/M
+// complete" progress count and the running/done/error status can't disagree.
+export function countCompletedRuns(runs: Array<{ status: EvalCollectionRunStatus }>): number {
+	return runs.filter((run) => run.status !== 'new' && run.status !== 'running').length;
+}
+
 // Reduce per-run aggregate metrics to the score metrics that both the
 // collection-card preview and the compare hero chart render, each normalized to
 // [0, 1] by its scale (AI-judge metrics are 1–5 → /5; see `normalizeMetricScore`).

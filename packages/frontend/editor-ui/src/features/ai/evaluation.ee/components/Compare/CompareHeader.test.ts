@@ -65,20 +65,40 @@ describe('CompareHeader', () => {
 		expect(getAllByText('★ best')).toHaveLength(1);
 	});
 
-	it('shows the running badge while a version is still in flight', () => {
-		const { container } = renderComponent({
+	it('shows a distinct running indicator with progress while a version is still in flight', () => {
+		const { getByTestId } = renderComponent({
 			props: {
 				collectionName: 'Exp',
-				versions: [version({ index: 0, status: 'running', avgScore: null })],
+				versions: [
+					version({ index: 0, status: 'completed' }),
+					version({ index: 1, status: 'running', avgScore: null }),
+				],
 				bestVersionIndex: null,
 			},
 		});
 
-		expect(container.textContent).toContain('Running');
+		const indicator = getByTestId('eval-running-indicator');
+		expect(indicator).toBeTruthy();
+		// One of two versions has settled, so it reads "1/2".
+		expect(indicator.textContent).toContain('1/2');
+		expect(indicator.querySelector('[data-icon="spinner"]')).toBeTruthy();
 	});
 
-	it('shows the failed badge when every run errored', () => {
-		const { container } = renderComponent({
+	it('hides the running indicator when the run set has settled', () => {
+		const { queryByTestId, container } = renderComponent({
+			props: {
+				collectionName: 'Exp',
+				versions: [version({ index: 0 }), version({ index: 1 })],
+				bestVersionIndex: 1,
+			},
+		});
+
+		expect(queryByTestId('eval-running-indicator')).toBeNull();
+		expect(container.textContent).toContain('Done');
+	});
+
+	it('shows the failed badge (not the running indicator) when every run errored', () => {
+		const { container, queryByTestId } = renderComponent({
 			props: {
 				collectionName: 'Exp',
 				versions: [
@@ -89,6 +109,7 @@ describe('CompareHeader', () => {
 			},
 		});
 
+		expect(queryByTestId('eval-running-indicator')).toBeNull();
 		expect(container.textContent).toContain('Failed');
 		expect(container.textContent).not.toContain('Done');
 	});

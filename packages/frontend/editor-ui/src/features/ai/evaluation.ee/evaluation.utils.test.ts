@@ -6,6 +6,7 @@ import {
 	buildScoreShapedMetricGroups,
 	computeDelta,
 	computeDurationMs,
+	countCompletedRuns,
 	extractAnswerText,
 	formatDeltaPercent,
 	formatDuration,
@@ -1570,6 +1571,28 @@ describe('utils', () => {
 
 		it('preserves name-based behavior for preset judge metrics', () => {
 			expect(averageNormalizedScore({ correctness: 4 })).toBeCloseTo(0.8);
+		});
+	});
+
+	describe('countCompletedRuns', () => {
+		it('counts only runs that have left the queued/executing states', () => {
+			expect(
+				countCompletedRuns([
+					{ status: 'completed' },
+					{ status: 'error' },
+					{ status: 'cancelled' },
+					{ status: 'running' },
+					{ status: 'new' },
+				]),
+			).toBe(3);
+		});
+
+		it('returns 0 while every run is still in flight', () => {
+			expect(countCompletedRuns([{ status: 'new' }, { status: 'running' }])).toBe(0);
+		});
+
+		it('returns 0 for an empty run set', () => {
+			expect(countCompletedRuns([])).toBe(0);
 		});
 	});
 });
