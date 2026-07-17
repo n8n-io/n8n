@@ -160,21 +160,24 @@ onMounted(async () => {
 					{{ i18n.baseText('settings.mcp.connectPopover.jsonConfig') }}
 				</label>
 				<N8nMarkdown id="mcp-json" :content="connectionCode"></N8nMarkdown>
-				<N8nTooltip
-					:disabled="!isSupported"
-					:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
-					:show-after="MCP_TOOLTIP_DELAY"
-				>
-					<N8nButton
-						v-if="isSupported && !loadingApiKey && !keyRotating"
-						variant="subtle"
-						iconOnly
-						:icon="copied ? 'check' : 'copy'"
-						:class="$style['copy-json-button']"
-						data-test-id="mcp-json-copy-button"
-						@click="handleConnectionStringCopy"
-					/>
-				</N8nTooltip>
+				<div :class="$style['copy-json-wrapper']">
+					<N8nTooltip
+						placement="bottom"
+						:disabled="!isSupported"
+						:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+						:show-after="MCP_TOOLTIP_DELAY"
+					>
+						<N8nButton
+							v-if="isSupported && !loadingApiKey && !keyRotating"
+							variant="subtle"
+							iconOnly
+							:icon="copied ? 'check' : 'copy'"
+							:class="$style['copy-json-button']"
+							data-test-id="mcp-json-copy-button"
+							@click="handleConnectionStringCopy"
+						/>
+					</N8nTooltip>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -233,22 +236,23 @@ onMounted(async () => {
 		padding: var(--spacing--2xs) !important;
 		tab-size: 1;
 		background: none !important;
-		border: var(--border);
-		border-radius: var(--radius);
 	}
 
 	&:hover {
-		.copy-json-button {
-			display: flex;
+		.copy-json-wrapper {
+			display: block;
 		}
 	}
 }
 
-.copy-json-button {
+.copy-json-wrapper {
 	position: absolute;
 	top: var(--spacing--lg);
 	right: var(--spacing--3xs);
 	display: none;
+}
+
+.copy-json-button {
 	border: none;
 	outline: none;
 
