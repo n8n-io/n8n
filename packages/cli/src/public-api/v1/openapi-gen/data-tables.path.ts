@@ -24,9 +24,10 @@ const createDataTableRequestRef = { $ref: '../schemas/createDataTableRequest.gen
 
 /**
  * `filter` IS the real DTO field (a `z.string().transform(jsonParse)`), `.openapi()`-overridden
- * at the registration site only — the underlying `@n8n/api-types` schema is untouched. See the
- * POC's fidelity test (`__tests__/data-tables.generate.test.ts`) for why this override is
- * required: ZodEffects has no OpenAPI-native representation.
+ * at the registration site only — the underlying `@n8n/api-types` schema is untouched. The
+ * override is required because ZodEffects (`.transform(...)`) has no OpenAPI-native
+ * representation: introspected as-is it collapses to a bare `{ type: 'string' }`, dropping the
+ * `jsonString` format and example.
  */
 const filterParam = PublicApiListDataTableQueryDto.schema.shape.filter.openapi({
 	param: { name: 'filter', in: 'query' },
@@ -49,10 +50,10 @@ const sortByParam = PublicApiListDataTableQueryDto.schema.shape.sortBy.openapi({
 /**
  * `limit`/`cursor` are intentionally NOT generated from `PublicApiListDataTableQueryDto` — its
  * `offset`/`limit` fields are `z.string().transform(...)` chains that introspect down to a bare
- * `{ type: 'string' }` with the `maximum`/`default` constraints silently dropped (see the
- * fidelity test), and the wire parameter is `cursor`, not `offset` (cursor decoding happens in
- * `validCursor` middleware, upstream of this DTO). Left as $refs to the existing shared
- * parameter files, same as today — nothing about pagination is changing in this swap.
+ * `{ type: 'string' }` with the `maximum`/`default` constraints silently dropped, and the wire
+ * parameter is `cursor`, not `offset` (cursor decoding happens in `validCursor` middleware,
+ * upstream of this DTO). Left as $refs to the existing shared parameter files, same as today —
+ * nothing about pagination is changing in this swap.
  */
 const limitParamRef = { $ref: '../../../../shared/spec/parameters/limit.yml' };
 const cursorParamRef = { $ref: '../../../../shared/spec/parameters/cursor.yml' };

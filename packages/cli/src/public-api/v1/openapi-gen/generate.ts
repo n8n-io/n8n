@@ -84,6 +84,26 @@ export function generateSchemaYaml(schema: ZodType, ref: string): string {
 }
 
 /**
+ * The single source of truth for every generated fragment: its `outputPath` (relative to the
+ * `v1` directory) and freshly-rendered `content`. Both the build (`generateDocs`, which writes
+ * these to disk) and the drift guard (`__tests__/generated-spec-drift.test.ts`, which asserts the
+ * committed files still match) iterate this, so adding a resource to `GENERATED_PATHS`/
+ * `GENERATED_SCHEMAS` automatically extends both.
+ */
+export function getGeneratedArtifacts(): Array<{ outputPath: string; content: string }> {
+	return [
+		...Object.values(GENERATED_PATHS).map(({ outputPath, pathItem }) => ({
+			outputPath,
+			content: generatePathYaml(pathItem),
+		})),
+		...Object.values(GENERATED_SCHEMAS).map(({ outputPath, ref, schema }) => ({
+			outputPath,
+			content: generateSchemaYaml(schema, ref),
+		})),
+	];
+}
+
+/**
  * Regenerates every path/schema in `GENERATED_PATHS`/`GENERATED_SCHEMAS` and writes it under
  * `v1Dir`.
  *
@@ -96,10 +116,7 @@ export function generateSchemaYaml(schema: ZodType, ref: string): string {
  * from `__dirname`.
  */
 export function generateDocs(v1Dir: string): void {
-	for (const { outputPath, pathItem } of Object.values(GENERATED_PATHS)) {
-		fs.writeFileSync(path.join(v1Dir, outputPath), generatePathYaml(pathItem));
-	}
-	for (const { outputPath, ref, schema } of Object.values(GENERATED_SCHEMAS)) {
-		fs.writeFileSync(path.join(v1Dir, outputPath), generateSchemaYaml(schema, ref));
+	for (const { outputPath, content } of getGeneratedArtifacts()) {
+		fs.writeFileSync(path.join(v1Dir, outputPath), content);
 	}
 }
