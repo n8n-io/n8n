@@ -48,11 +48,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData = ['5877e26c078d6409fde54d508bf25721','636396f02b6571e40d8fe91cba550515c0cdc0e7d314c210e00b02256375a796','c7049c8950ea211bec236edffb37cbecf2aa338443c5e048c1cbb4e2ee20eb60fa9a1d34699d7a86e7362b010bb4ffe7','a8a7eec953f1f31484a479c84982d52847de602d7f220ac3903518369a7536693d60882e5eb782599e72024fb649cc03aa0a19ebce632e9039b4f604335834af']\n\nfor(let i=0;i<4;i++){\n  if($node[`Crypto${i}`].json['data'] !== testData[i]){\n    throw new Error(`Error in HASH: ${$node[`Crypto${i}`].parameter[\"type\"]} operation`);\n  }\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData = ['5877e26c078d6409fde54d508bf25721','636396f02b6571e40d8fe91cba550515c0cdc0e7d314c210e00b02256375a796','c7049c8950ea211bec236edffb37cbecf2aa338443c5e048c1cbb4e2ee20eb60fa9a1d34699d7a86e7362b010bb4ffe7','a8a7eec953f1f31484a479c84982d52847de602d7f220ac3903518369a7536693d60882e5eb782599e72024fb649cc03aa0a19ebce632e9039b4f604335834af']\n\nfor(let i=0;i<4;i++){\n  if($node[`Crypto${i}`].json['data'] !== testData[i]){\n    throw new Error(`Error in HASH: ${$node[`Crypto${i}`].parameter[\"type\"]} operation`);\n  }\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [1880, 560],
 			"notesInFlow": true,
 			"id": "d4232a52-6eed-494e-b99a-13668c58f05b",
@@ -121,11 +122,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData = ['3fb7c95bca84c0bf49045b4e6a279dc0','a8066096944b87daa8d0459629d8f3958d35fa453c310e7370b619d0b81ce48e','08bec8212275cd79a1c6bf52cad5b31ccd46ec87c7a8a9d1c8589c816f8a7124313528040b138229e15c32c1b3c82b80','0f53f3a374314123991b32e47159ad44e1c61d1c0e96809c1f19d54a5e955c06d5b633f376f2a8419e36ea4b63346fcb39d389714c344771140fd512ac55723a']\n\nfor(let i=4;i<8;i++){\n  if($node[`Crypto${i}`].json['data'] !== testData[i-4]){\n    throw new Error(`Error in Hmac: ${$node[`Crypto${i}`].parameter[\"type\"]} operation`);\n  }\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData = ['3fb7c95bca84c0bf49045b4e6a279dc0','a8066096944b87daa8d0459629d8f3958d35fa453c310e7370b619d0b81ce48e','08bec8212275cd79a1c6bf52cad5b31ccd46ec87c7a8a9d1c8589c816f8a7124313528040b138229e15c32c1b3c82b80','0f53f3a374314123991b32e47159ad44e1c61d1c0e96809c1f19d54a5e955c06d5b633f376f2a8419e36ea4b63346fcb39d389714c344771140fd512ac55723a']\n\nfor(let i=4;i<8;i++){\n  if($node[`Crypto${i}`].json['data'] !== testData[i-4]){\n    throw new Error(`Error in Hmac: ${$node[`Crypto${i}`].parameter[\"type\"]} operation`);\n  }\n}\nreturn $input.all();"
 			},
 			"name": "Function1",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [1880, 710],
 			"notesInFlow": true,
 			"id": "b4c78dc0-9064-4de6-9c9d-1e6d6ce4b716",
@@ -217,11 +219,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "testData = [\n  '9d0bc120a967882743370f715dfa90789c4d9322a4faf691d1f80b306c6bd900bfcba5f62946ef88ba7e1fdd008ff3efe8545b979299b14e0e0eccd3e33b1afa11397494526e31968f13d2ac3e3deaa2bc4a27862b7025444c91ebed5f1b98d2c0390630d8eabc6a7662a9ab069cb3aab273ae1c09f20f51fa8e04af4bcccbc6',\n  '0b494c8146f7efd7aa53b418a7057a3a57317a0380c06c7d18114077a03fc6441b57ca8c03edff4ca6fdc2394d026893258b97d34bf0c5c44bc20bd264899eb1316da1e624db1455c73c9054ff732464f775b473b3ba67250ffd74ee42b1acfdf5539bf793d7002327d8d156424444624a625f8dd3f013d40a7ba7b6726186a9',\n  '0b494c8146f7efd7aa53b418a7057a3a57317a0380c06c7d18114077a03fc6441b57ca8c03edff4ca6fdc2394d026893258b97d34bf0c5c44bc20bd264899eb1316da1e624db1455c73c9054ff732464f775b473b3ba67250ffd74ee42b1acfdf5539bf793d7002327d8d156424444624a625f8dd3f013d40a7ba7b6726186a9',\n  '0b494c8146f7efd7aa53b418a7057a3a57317a0380c06c7d18114077a03fc6441b57ca8c03edff4ca6fdc2394d026893258b97d34bf0c5c44bc20bd264899eb1316da1e624db1455c73c9054ff732464f775b473b3ba67250ffd74ee42b1acfdf5539bf793d7002327d8d156424444624a625f8dd3f013d40a7ba7b6726186a9',\n  'b9d0c7c4acb8ef55b5c323f82755fb420e5145bafe4de34925e86c53c9f652eb08ec0d87a9be95ca0c0d90b16dd1b55f1200d87c13e4cdb1ae902f41998314f7b85ffc82f0f1d5296119bd92e23ae685b8b59a3a4ba4b8d54db2314c077b1b238c4ac582e36b51c18c0b5474f0d68c1f42e01c08985111ded4cfd3463068d89a',\n  '1387958052cf887bd50925a8d44bbf8f138cdd23f51a3422028edf39ad413a1591f5ebd653c4f225298cd6857044648bcfb768113674e7bd11c632fb0fc40cfa646301934b8fcf4da9799272a737155a239e1f8db5e92a23bfa2aeabc6732f5be14078a5815fff542842efed681ac3b919f9d42bfc822b0fd611c0b22286f241',\n  '922659a8d40b12f81080425a8676830be06f26dd8cd18cad25d02055332c94b8b9634598ef5b172ee53e53788d33c183bf0984ae3b48d792f426a601dbf2eb4771bc844bc2464de8ca5b6746bbdc2f1713a1e1d57a6970568f033e588c759e4b179b791b7fcb75d323c98cc5c6f33c3659410b159c94bc13834e81ce297ce98d'\n]\n\nfor(let i=10;i<17;i++){\n  if($node[`Crypto${i}`].json['data'] !== testData[i-10]){\n    throw new Error(`Error in Hmac: ${$node[`Crypto${i}`].parameter[\"algorithm\"]} operation (node:Crypto${i})`);\n  }\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "testData = [\n  '9d0bc120a967882743370f715dfa90789c4d9322a4faf691d1f80b306c6bd900bfcba5f62946ef88ba7e1fdd008ff3efe8545b979299b14e0e0eccd3e33b1afa11397494526e31968f13d2ac3e3deaa2bc4a27862b7025444c91ebed5f1b98d2c0390630d8eabc6a7662a9ab069cb3aab273ae1c09f20f51fa8e04af4bcccbc6',\n  '0b494c8146f7efd7aa53b418a7057a3a57317a0380c06c7d18114077a03fc6441b57ca8c03edff4ca6fdc2394d026893258b97d34bf0c5c44bc20bd264899eb1316da1e624db1455c73c9054ff732464f775b473b3ba67250ffd74ee42b1acfdf5539bf793d7002327d8d156424444624a625f8dd3f013d40a7ba7b6726186a9',\n  '0b494c8146f7efd7aa53b418a7057a3a57317a0380c06c7d18114077a03fc6441b57ca8c03edff4ca6fdc2394d026893258b97d34bf0c5c44bc20bd264899eb1316da1e624db1455c73c9054ff732464f775b473b3ba67250ffd74ee42b1acfdf5539bf793d7002327d8d156424444624a625f8dd3f013d40a7ba7b6726186a9',\n  '0b494c8146f7efd7aa53b418a7057a3a57317a0380c06c7d18114077a03fc6441b57ca8c03edff4ca6fdc2394d026893258b97d34bf0c5c44bc20bd264899eb1316da1e624db1455c73c9054ff732464f775b473b3ba67250ffd74ee42b1acfdf5539bf793d7002327d8d156424444624a625f8dd3f013d40a7ba7b6726186a9',\n  'b9d0c7c4acb8ef55b5c323f82755fb420e5145bafe4de34925e86c53c9f652eb08ec0d87a9be95ca0c0d90b16dd1b55f1200d87c13e4cdb1ae902f41998314f7b85ffc82f0f1d5296119bd92e23ae685b8b59a3a4ba4b8d54db2314c077b1b238c4ac582e36b51c18c0b5474f0d68c1f42e01c08985111ded4cfd3463068d89a',\n  '1387958052cf887bd50925a8d44bbf8f138cdd23f51a3422028edf39ad413a1591f5ebd653c4f225298cd6857044648bcfb768113674e7bd11c632fb0fc40cfa646301934b8fcf4da9799272a737155a239e1f8db5e92a23bfa2aeabc6732f5be14078a5815fff542842efed681ac3b919f9d42bfc822b0fd611c0b22286f241',\n  '922659a8d40b12f81080425a8676830be06f26dd8cd18cad25d02055332c94b8b9634598ef5b172ee53e53788d33c183bf0984ae3b48d792f426a601dbf2eb4771bc844bc2464de8ca5b6746bbdc2f1713a1e1d57a6970568f033e588c759e4b179b791b7fcb75d323c98cc5c6f33c3659410b159c94bc13834e81ce297ce98d'\n]\n\nfor(let i=10;i<17;i++){\n  if($node[`Crypto${i}`].json['data'] !== testData[i-10]){\n    throw new Error(`Error in Hmac: ${$node[`Crypto${i}`].parameter[\"algorithm\"]} operation (node:Crypto${i})`);\n  }\n}\nreturn $input.all();"
 			},
 			"name": "Function2",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [2470, 900],
 			"alwaysOutputData": true,
 			"notesInFlow": true,

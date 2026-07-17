@@ -80,8 +80,8 @@ describe('trimWorkflowJSON', () => {
 			const workflow: SimpleWorkflow = createWorkflow([
 				createNode({
 					id: 'node1',
-					name: 'Item Lists',
-					type: 'n8n-nodes-base.itemLists',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.test',
 					parameters: {
 						items: largeArray,
 						operation: 'aggregateItems',
@@ -104,10 +104,10 @@ describe('trimWorkflowJSON', () => {
 			const workflow: SimpleWorkflow = createWorkflow([
 				createNode({
 					id: 'node1',
-					name: 'Function',
-					type: 'n8n-nodes-base.function',
+					name: 'Test Node',
+					type: 'n8n-nodes-base.test',
 					parameters: {
-						functionCode: 'return items;',
+						code: 'return items;',
 						data: largeObject,
 					},
 				}),
@@ -116,7 +116,7 @@ describe('trimWorkflowJSON', () => {
 			const result = trimWorkflowJSON(workflow);
 
 			expect(result.nodes[0].parameters.data).toBe('[Large object omitted]');
-			expect(result.nodes[0].parameters.functionCode).toBe('return items;');
+			expect(result.nodes[0].parameters.code).toBe('return items;');
 		});
 
 		it('should handle null and undefined parameters correctly', () => {
