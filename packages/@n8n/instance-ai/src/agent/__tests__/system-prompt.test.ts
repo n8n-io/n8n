@@ -233,6 +233,28 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('do not route around that by delegating to `build-agent`');
 		});
 
+		it('routes agent-preview transcript handoffs through build-agent when agents are enabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('<agent-preview-context>');
+			expect(prompt).toContain('call `build-agent` with the given `agentId`');
+			expect(prompt).toContain(
+				'do not ask the user to re-describe what already appears in the transcript',
+			);
+		});
+
+		it('routes agent listing, switching, and publish guidance when agents are enabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('Each distinct agent the user asks for is its own build target');
+			expect(prompt).toContain('calls without either continue the most recent target');
+			expect(prompt).toContain('call `agents(action="list")` directly');
+			expect(prompt).toContain('find its id via `agents(action="list")` and pass it as `agentId`');
+			expect(prompt).toContain('forward that intent to `build-agent`');
+			expect(prompt).toContain('never tell the user to open the agent editor and click Publish');
+			expect(prompt).toContain('publishes, and unpublishes n8n **Agent** artifacts');
+		});
+
 		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
 			const prompt = await getSystemPromptWithEnabledModules(undefined);
 

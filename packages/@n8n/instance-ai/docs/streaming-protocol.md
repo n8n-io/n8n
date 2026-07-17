@@ -65,6 +65,7 @@ Every event follows this schema:
   type: string;        // event type
   runId: string;       // correlates all events in a single message → response cycle
   agentId: string;     // agent this event is attributed to in the UI
+  ts?: number;         // epoch ms stamped at publish — replays reconstruct real timing from it
   payload?: object;    // event-specific data
 }
 ```
@@ -123,9 +124,32 @@ decision-making and supports faster iteration.
 reasoning tokens; when a model doesn't support it, no `reasoning-delta` events
 are sent. The frontend should handle the absence gracefully.
 
+### `tool-input-start`
+
+A tool call's arguments have started streaming from the model. Sent before
+`tool-call` — for tools with large arguments (e.g. `build-workflow` streaming
+generated workflow code) this can precede the full `tool-call` event by a
+long time, so the frontend can surface the pending call immediately.
+
+```json
+{
+  "type": "tool-input-start",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "toolCallId": "tc_abc123",
+    "toolName": "build-workflow"
+  }
+}
+```
+
+The frontend adds a pending entry to the agent's `toolCalls` with empty `args`
+and `isLoading: true`; the subsequent `tool-call` event fills in the args.
+
 ### `tool-call`
 
-An agent is invoking a tool. Sent before the tool executes.
+An agent is invoking a tool. Sent when the tool's arguments are complete,
+before the tool executes.
 
 ```json
 {

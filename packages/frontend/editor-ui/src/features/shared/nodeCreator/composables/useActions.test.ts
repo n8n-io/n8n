@@ -8,6 +8,7 @@ import {
 	GITHUB_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
@@ -153,6 +154,45 @@ describe('useActions', () => {
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
 				connections: [],
 				nodes: [{ type: AGENT_NODE_TYPE, openDetail: true }],
+			});
+		});
+
+		test('should insert a ChatTrigger node when a Message an Agent node is added on an empty canvas', () => {
+			mockDocumentStoreState.workflowTriggerNodes = [];
+			mockDocumentStoreState.allNodes = [];
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: MESSAGE_AN_AGENT_NODE_TYPE }])).toEqual({
+				connections: [
+					{
+						from: {
+							nodeIndex: 0,
+						},
+						to: {
+							nodeIndex: 1,
+						},
+					},
+				],
+				nodes: [
+					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: MESSAGE_AN_AGENT_NODE_TYPE, openDetail: true },
+				],
+			});
+		});
+
+		test('should not insert a ChatTrigger node when a Message an Agent node is added with a non-trigger node present', () => {
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: GITHUB_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.allNodes = [
+				{ type: GITHUB_TRIGGER_NODE_TYPE } as INodeUi,
+				{ type: HTTP_REQUEST_NODE_TYPE } as INodeUi,
+			];
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: MESSAGE_AN_AGENT_NODE_TYPE }])).toEqual({
+				connections: [],
+				nodes: [{ type: MESSAGE_AN_AGENT_NODE_TYPE, openDetail: true }],
 			});
 		});
 
