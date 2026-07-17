@@ -61,10 +61,11 @@ export function getModelProvider(modelId: string): string {
 
 /**
  * Deterministic, non-reversible per-agent-version OpenAI `promptCacheKey`.
- * Combines agent name with a hash of the model id and base instructions so
- * the key stays stable across runs but changes when the "version" (model or
- * instructions) changes. Never embeds raw instructions, user input, thread
- * ids, or tenant/user identifiers.
+ * Hashes the agent name, model id, and base instructions together so the key
+ * stays stable across runs but changes when any of them change. Never embeds
+ * raw agent names, instructions, user input, thread ids, or tenant/user
+ * identifiers. Fixed at 64 characters (OpenAI's max) regardless of agent name
+ * length.
  */
 function createOpenAIPromptCacheKey(input: {
 	agentName: string;
@@ -72,11 +73,11 @@ function createOpenAIPromptCacheKey(input: {
 	instructions: string;
 }): string {
 	const hash = createHash('sha256')
-		.update(`${input.modelId}\n${input.instructions}`)
+		.update(`${input.agentName}\n${input.modelId}\n${input.instructions}`)
 		.digest('hex')
-		.slice(0, 16);
+		.slice(0, 58);
 	// Provider-neutral namespace — this is a generic SDK, not an n8n-only surface.
-	return `agent:${input.agentName}:${hash}`;
+	return `agent:${hash}`;
 }
 
 /** `{ anthropic: { cacheControl: { type: 'ephemeral', ttl } } }` using the configured TTL. */

@@ -1,6 +1,73 @@
-import { getCaseRunStatus, getCheckedRunCount, getRunScoredCounts } from '../summary';
-import type { TestCaseAggregation, WorkflowTestCaseResult } from '../types';
+import {
+	getCaseRunStatus,
+	getCheckedRunCount,
+	getRunScoredCounts,
+	rollupCaseVerification,
+} from '../summary';
+import type {
+	ExecutionScenarioAggregation,
+	TestCaseAggregation,
+	WorkflowTestCaseResult,
+} from '../types';
 import { baseTestCase } from './fixtures';
+
+describe('rollupCaseVerification', () => {
+	function scenarioAgg(
+		overrides: Partial<ExecutionScenarioAggregation> = {},
+	): ExecutionScenarioAggregation {
+		return {
+			scenario: { name: 's', description: '', dataSetup: '', successCriteria: 'ok' },
+			runs: [],
+			evaluatedCount: 1,
+			passCount: 1,
+			passRate: 1,
+			passAtK: [1],
+			passHatK: [1],
+			...overrides,
+		};
+	}
+
+	function caseAgg(overrides: Partial<TestCaseAggregation>): TestCaseAggregation {
+		return {
+			testCase: baseTestCase(),
+			runs: [],
+			buildSuccessCount: 1,
+			executionScenarios: [],
+			buildExpectations: [],
+			status: 'verified',
+			...overrides,
+		};
+	}
+
+	it('counts a not-verified case separately from passed and failed', () => {
+		const cases: TestCaseAggregation[] = [
+			caseAgg({ status: 'verified', executionScenarios: [scenarioAgg({ passCount: 1 })] }),
+			caseAgg({
+				status: 'verified',
+				executionScenarios: [scenarioAgg({ passCount: 0, passRate: 0 })],
+			}),
+			caseAgg({
+				status: 'notVerified',
+				executionScenarios: [scenarioAgg({ evaluatedCount: 0, passCount: 0, passRate: 0 })],
+			}),
+		];
+
+		expect(rollupCaseVerification(cases)).toEqual({ passed: 1, failed: 1, notVerified: 1 });
+	});
+
+	it('does not count a not-verified case as passed', () => {
+		const cases: TestCaseAggregation[] = [
+			caseAgg({
+				status: 'notVerified',
+				executionScenarios: [scenarioAgg({ evaluatedCount: 0, passCount: 0, passRate: 0 })],
+			}),
+		];
+
+		const rollup = rollupCaseVerification(cases);
+		expect(rollup.passed).toBe(0);
+		expect(rollup.notVerified).toBe(1);
+	});
+});
 
 // A scenario-less case (e.g. an agent build that saves its artifact outside the workflow path)
 // legitimately produces no workflow (workflowBuildSuccess: false). These lock in that such a run

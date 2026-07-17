@@ -124,6 +124,12 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { workflowId, nodeId });
 	}
 
+	/** The jobs with the given ids, read back within a transaction. */
+	async findManyByIds(manager: EntityManager, ids: number[]): Promise<ScheduledJob[]> {
+		if (ids.length === 0) return [];
+		return await manager.findBy(ScheduledJob, { id: In(ids) });
+	}
+
 	/**
 	 * Insert new job rows and return one id per input job, in the same order as
 	 * `jobs`, so the caller can zip the ids back to the jobs by index.

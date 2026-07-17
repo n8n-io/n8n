@@ -62,9 +62,9 @@ Follow these steps in order when adding an MCP server:
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry
    to \`mcpServers[]\` using the patch pattern below.
 
-If \`search_mcp_servers\` returns no matches and the user provides a custom
-server URL, skip the search result mapping and continue with manual
-transport/authentication plus credential selection.
+If \`search_mcp_servers\` returns no matches, continue with manual server
+setup: ask for the URL and transport/authentication decision through
+\`${ASK_QUESTIONS_TOOL_NAME}\`.
 
 Full schema reference:
 
@@ -80,8 +80,6 @@ ${mcpServerSchemaText}
   \`credentialType: "httpMultipleHeadersAuth"\`.
 - For \`mcpOAuth2Api\`, call \`ask_credential\` with
   \`credentialType: "mcpOAuth2Api"\`.
-- Never invent credential IDs. If the user declines, omit the server entirely
-  rather than persisting a stub.
 
 ### Testing the connection
 
@@ -95,6 +93,21 @@ Before writing to config, call \`verify_mcp_server\` with server \`name\`,
 - Failure returns \`{ ok: false, error: "..." }\`.
 - If verification fails, explain the error and ask the user to check the URL
   or credentials before proceeding.
+
+### Incomplete setup
+
+The user can skip the credential prompt, the URL question, or both. Never
+invent a credential ID or a placeholder URL to fill the gap, and never abort
+the server addition — always persist what is known and let the user finish
+setup later:
+
+- Credential skipped (\`ask_credential\` returned \`{ skipped: true }\`): omit
+  only the \`credential\` field.
+- URL skipped: persist \`url: ""\`.
+- Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
+  connect to), then \`read_config\` and \`patch_config\` the entry, preserving
+  every other known field — \`name\`, \`transport\`, \`authentication\`, an
+  already-selected credential, and registry \`metadata\`.
 
 ### Selecting credentials
 
@@ -121,7 +134,6 @@ Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 ## Gotchas
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
-- Never invent credential IDs. If the user declines, omit the server entirely.
 - Never fabricate \`metadata.nodeTypeName\`.
 - When \`search_mcp_servers\` returns \`metadata.nodeTypeName\`, include
   \`metadata: { nodeTypeName: <result.nodeTypeName> }\` in the entry so the UI

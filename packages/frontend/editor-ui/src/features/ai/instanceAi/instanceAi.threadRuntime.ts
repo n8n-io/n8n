@@ -171,6 +171,21 @@ function hasUnresolvedConfirmation(
 	return node.children.some((child) => hasUnresolvedConfirmation(child, resolved));
 }
 
+/** Settle persisted activity only after thread status confirms there is no live work. */
+function settleStaleAgentTree(node: InstanceAiAgentNode): void {
+	if (node.status === 'active') {
+		node.status = 'cancelled';
+	}
+	for (const tc of node.toolCalls) {
+		if (tc.isLoading) {
+			tc.isLoading = false;
+		}
+	}
+	for (const child of node.children) {
+		settleStaleAgentTree(child);
+	}
+}
+
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const tasks = messages[i].agentTree?.tasks;
@@ -950,20 +965,37 @@ export function createThreadRuntime(
 	}
 
 	async function loadThreadStatus(): Promise<void> {
+		const runIdAtRequest = activeRunId.value;
 		try {
 			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
 
-			const hasActivity = isOrchestratorLive(status) || status.backgroundTasks.length > 0;
-			if (!hasActivity) return;
-
-			const runId = syncLiveRunFromStatus(status, messages.value);
-			if (runId) {
-				activeRunId.value = runId;
-				triggerRef(messages);
+			// A newer local run started while this request was in flight — this
+			// response is stale and must not clobber it.
+			if (activeRunId.value !== runIdAtRequest && activeRunId.value !== (status.runId ?? null)) {
+				return;
 			}
 
-			// Background task visibility is handled by the run-sync control frame
-			// that is sent on SSE connect. No need to inject children directly here.
+			if (isOrchestratorLive(status)) {
+				const runId = syncLiveRunFromStatus(status, messages.value);
+				if (runId) {
+					activeRunId.value = runId;
+					triggerRef(messages);
+				}
+				return;
+			}
+
+			activeRunId.value = null;
+
+			// Background work is still visible via SSE run-sync on reconnect —
+			// settling trees here would race with that authoritative snapshot.
+			if (status.backgroundTasks.length > 0) return;
+
+			for (const message of messages.value) {
+				if (message.role !== 'assistant') continue;
+				message.isStreaming = false;
+				if (message.agentTree) settleStaleAgentTree(message.agentTree);
+			}
+			triggerRef(messages);
 		} catch {
 			// Silently ignore
 		}
@@ -985,6 +1017,7 @@ export function createThreadRuntime(
 	function pushOptimisticUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 	): InstanceAiMessage {
 		const userMessage: InstanceAiMessage = {
 			id: uuidv4(),
@@ -994,6 +1027,7 @@ export function createThreadRuntime(
 			reasoning: '',
 			isStreaming: false,
 			attachments: attachments && attachments.length > 0 ? attachments : undefined,
+			context: handoffContext,
 		};
 		messages.value.push(userMessage);
 		return userMessage;
@@ -1060,31 +1094,35 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
 		handoffContext?: InstanceAiHandoffContext,
-	): Promise<void> {
+	): Promise<boolean> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
-			const optimistic = pushOptimisticUserMessage(message, attachments);
+			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			trackUserMessageSent(isFirstMessage);
 
 			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
+				return false;
 			}
+			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
 		}
 	}
 
 	async function cancelRun(): Promise<void> {
-		if (!activeRunId.value) return;
 		try {
 			await postCancel(rootStore.restApiContext, threadId);
-			// Don't clear activeRunId here — wait for the run-finish event via SSE
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
+			return;
 		}
+		// Cancel is idempotent, so an already-dead run emits no run-finish SSE —
+		// re-check authoritative status to settle stale local state either way.
+		await loadThreadStatus();
 	}
 
 	/** Cancel a specific background task. */

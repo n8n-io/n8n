@@ -3,6 +3,7 @@ import type * as SharedSandboxMod from '@n8n/agents/sandbox';
 
 import './source-map-filter';
 
+import type * as ApplyAgentThinkingMod from './agent/apply-agent-thinking';
 import type * as InstanceAgentMod from './agent/instance-agent';
 import type * as SystemPromptMod from './agent/system-prompt';
 import type * as DomainAccessMod from './domain-access';
@@ -89,6 +90,9 @@ const loadTraceReplay = lazyModule(
 );
 const loadInstanceAgent = lazyModule(
 	() => require('./agent/instance-agent') as typeof InstanceAgentMod,
+);
+const loadApplyAgentThinking = lazyModule(
+	() => require('./agent/apply-agent-thinking') as typeof ApplyAgentThinkingMod,
 );
 const loadDomainAccess = lazyModule(() => require('./domain-access') as typeof DomainAccessMod);
 const loadSystemPrompt = lazyModule(
@@ -188,6 +192,11 @@ export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export { saveAgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export {
+	resolveAgentPreviewSession,
+	saveAgentPreviewSession,
+} from './tools/orchestration/agent-preview-session-binding';
+
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -276,6 +285,10 @@ export type {
 
 export const createInstanceAgent: typeof InstanceAgentMod.createInstanceAgent = lazyFunction(
 	() => loadInstanceAgent().createInstanceAgent,
+);
+
+export const applyAgentThinking: typeof ApplyAgentThinkingMod.applyAgentThinking = lazyFunction(
+	() => loadApplyAgentThinking().applyAgentThinking,
 );
 
 export const getDateTimeSection: typeof SystemPromptMod.getDateTimeSection = lazyFunction(
