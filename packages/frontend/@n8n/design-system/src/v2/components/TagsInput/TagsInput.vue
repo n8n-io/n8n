@@ -87,7 +87,15 @@ const rootProps = computed(() => {
 });
 
 function getTagKey(value: TagsInputValue, index: number): string {
-	return typeof value === 'string' ? `${value}-${index}` : `tag-${index}`;
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') {
+		return `${value.toString()}-${index}`;
+	}
+
+	if (value === null) {
+		return `null-${index}`;
+	}
+
+	return `tag-${index}`;
 }
 
 function getDisplayValue(value: TagsInputValue): string {
@@ -97,6 +105,14 @@ function getDisplayValue(value: TagsInputValue): string {
 
 	if (typeof value === 'string') {
 		return value;
+	}
+
+	if (typeof value === 'number' || typeof value === 'bigint') {
+		return value.toString();
+	}
+
+	if (value === null) {
+		return 'null';
 	}
 
 	if ('label' in value && typeof value.label === 'string') {
@@ -181,6 +197,7 @@ function getInputClass(isEmpty: boolean): string {
 					:key="getTagKey(tag, index)"
 					:value="tag"
 					:class="$style.tag"
+					data-test-id="tags-input-tag"
 				>
 					<slot
 						name="tag"
