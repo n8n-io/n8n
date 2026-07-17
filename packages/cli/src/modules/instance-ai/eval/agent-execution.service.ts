@@ -35,6 +35,7 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { createMcpMockFetch } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
 import { truncateForLlm } from './request-sanitizer';
 
@@ -148,6 +149,45 @@ export class EvalAgentExecutionService {
 			this.logger,
 		);
 
+		// Mock MCP server for the agent's configured servers — tools/list and
+		// tools/call are LLM-generated, steered by the same seed hints (keyed by
+		// server name). Calls land in the tool ledger under the client-side
+		// prefixed name (`<server>_<tool>`) so they merge with GenerateResult's
+		// tool calls like every other tool kind.
+		const mcpServers = config.mcpServers ?? [];
+		const mcpFetch =
+			mcpServers.length > 0
+				? createMcpMockFetch({
+						servers: mcpServers.map((server) => ({
+							name: server.name,
+							url: server.url,
+							description: server.description,
+						})),
+						agentInstructions: config.instructions,
+						scenarioHints: options.scenarioHints,
+						globalContext: seed.globalContext,
+						serverHints: seed.toolHints,
+						logger: this.logger,
+						onToolCall: (call) => {
+							const key = `${call.serverName}_${call.toolName}`;
+							let entries = toolLedger.get(key);
+							if (!entries) {
+								entries = [];
+								toolLedger.set(key, entries);
+							}
+							entries.push({
+								url:
+									mcpServers.find((server) => server.name === call.serverName)?.url ??
+									call.serverName,
+								method: 'POST',
+								nodeType: `mcp:${call.serverName}`,
+								requestBody: call.args,
+								mockResponse: call.result,
+							});
+						},
+					})
+				: undefined;
+
 		const reconstruction = Container.get(AgentRuntimeReconstructionService);
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
@@ -164,6 +204,7 @@ export class EvalAgentExecutionService {
 				user,
 				{
 					modelFetch: recorder.fetch,
+					...(mcpFetch ? { mcpFetch } : {}),
 					configureToolAdditionalData: (additionalData, toolContext) => {
 						const helper = new EvalMockedCredentialsHelper(
 							additionalData.credentialsHelper,
@@ -246,11 +287,16 @@ export class EvalAgentExecutionService {
 		}
 
 		const kindByToolName = new Map(toolSummaries.map((tool) => [tool.name, tool.kind]));
+		// MCP summaries are keyed by SERVER name; the model calls the client-side
+		// prefixed `<server>_<tool>` names.
+		const kindForTool = (tool: string): InstanceAiEvalAgentToolCallRecord['kind'] =>
+			kindByToolName.get(tool) ??
+			(mcpServers.some((server) => tool.startsWith(`${server.name}_`)) ? 'mcp' : 'other');
 		const toolCalls = (result.toolCalls ?? []).map((entry): InstanceAiEvalAgentToolCallRecord => {
 			const interceptedRequests = toolLedger.get(entry.tool) ?? [];
 			return {
 				tool: entry.tool,
-				kind: kindByToolName.get(entry.tool) ?? 'other',
+				kind: kindForTool(entry.tool),
 				input: truncateRecordedValue(entry.input),
 				output: truncateRecordedValue(entry.output),
 				...(entry.canceled ? { error: 'canceled' } : {}),
@@ -268,7 +314,7 @@ export class EvalAgentExecutionService {
 			if (reportedTools.has(tool)) continue;
 			toolCalls.push({
 				tool,
-				kind: kindByToolName.get(tool) ?? 'other',
+				kind: kindForTool(tool),
 				error: 'Tool call failed (not reported in the run result — see interceptedRequests)',
 				mocked: interceptedRequests.length > 0,
 				interceptedRequests,
@@ -397,12 +443,16 @@ export function pruneConfigForEval(original: AgentJsonConfig): {
 		config.vectorStores = undefined;
 	}
 
-	if ((config.mcpServers?.length ?? 0) > 0) {
+	// Streamable-HTTP MCP servers are served by the mock MCP fetch; only the
+	// non-default SSE transport (stateful long-lived stream) stays unmockable.
+	const sseServers = (config.mcpServers ?? []).filter((server) => server.transport === 'sse');
+	if (sseServers.length > 0) {
 		skippedFeatures.push({
-			feature: 'mcpServers',
-			reason: 'MCP servers are not mockable yet (JSON-RPC mock envelope pending).',
+			feature: 'mcpServers (sse transport)',
+			reason: `SSE-transport MCP servers are not mockable yet (streamable-HTTP ones are): ${sseServers.map((server) => server.name).join(', ')}.`,
 		});
-		config.mcpServers = undefined;
+		const remaining = (config.mcpServers ?? []).filter((server) => server.transport !== 'sse');
+		config.mcpServers = remaining.length > 0 ? remaining : undefined;
 	}
 
 	if ((config.subAgents?.agents?.length ?? 0) > 0) {
@@ -473,6 +523,15 @@ export function summarizeTools(
 				});
 			}
 		}
+	}
+	// MCP servers are summarized by SERVER name — the seed's hint for that name
+	// steers both the generated tool catalog and every tool result it serves.
+	for (const server of config.mcpServers ?? []) {
+		summaries.push({
+			name: server.name,
+			kind: 'mcp',
+			description: server.description ?? `MCP tool server at ${server.url}`,
+		});
 	}
 	return summaries;
 }

@@ -17,6 +17,8 @@ export interface AgentToolInstrumentationContext {
 export interface AgentRuntimeInstrumentation {
 	/** Replaces the default proxy-aware transport for the agent's model calls. */
 	modelFetch?: FetchFn;
+	/** Replaces the default SSRF-guarded transport for MCP server traffic. */
+	mcpFetch?: FetchFn;
 	/**
 	 * Decorates the `additionalData` used for node-tool executions and
 	 * workflow-tool sub-executions (e.g. plants `evalLlmMockHandler` and a

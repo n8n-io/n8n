@@ -256,7 +256,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			...baseConfig,
 			memory: { enabled: true },
 			vectorStores: [{ provider: 'pinecone' }],
-			mcpServers: [{ name: 'mcp-1' }],
+			mcpServers: [{ name: 'mcp-1', url: 'https://legacy.example/sse', transport: 'sse' }],
 			subAgents: { agents: [{ agentId: 'child-1' }] },
 		} as unknown as AgentJsonConfig;
 		findByIdAndProjectId.mockResolvedValue(makeEntity(fullConfig, [{ type: 'slack' }]));
@@ -269,7 +269,7 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 
 		expect(result.skippedFeatures.map((entry) => entry.feature).sort()).toEqual([
 			'integrations',
-			'mcpServers',
+			'mcpServers (sse transport)',
 			'memory',
 			'subAgents',
 			'vectorStores',
@@ -393,6 +393,23 @@ describe('pruneConfigForEval', () => {
 		expect(config.tools).toEqual(baseConfig.tools);
 	});
 
+	it('keeps streamable-HTTP MCP servers and strips only SSE-transport ones', () => {
+		const withMcp = {
+			...baseConfig,
+			mcpServers: [
+				{ name: 'acme_kb', url: 'https://mcp.acme-kb.example/mcp', transport: 'streamableHttp' },
+				{ name: 'legacy', url: 'https://legacy.example/sse', transport: 'sse' },
+			],
+		} as unknown as AgentJsonConfig;
+
+		const { config, skippedFeatures } = pruneConfigForEval(withMcp);
+
+		expect(config.mcpServers?.map((server) => server.name)).toEqual(['acme_kb']);
+		expect(skippedFeatures).toHaveLength(1);
+		expect(skippedFeatures[0].feature).toContain('sse');
+		expect(skippedFeatures[0].reason).toContain('legacy');
+	});
+
 	it('strips fallback web search for a provider without native search', () => {
 		const withSearch = {
 			...baseConfig,
@@ -408,6 +425,19 @@ describe('pruneConfigForEval', () => {
 });
 
 describe('summarizeTools', () => {
+	it('summarizes MCP servers by server name with kind mcp', () => {
+		const config = {
+			...baseConfig,
+			tools: [],
+			mcpServers: [
+				{ name: 'acme_kb', url: 'https://mcp.acme-kb.example/mcp', description: 'KB server' },
+			],
+		} as unknown as AgentJsonConfig;
+
+		const summaries = summarizeTools(config, {} as never, (name) => name);
+		expect(summaries).toEqual([{ name: 'acme_kb', kind: 'mcp', description: 'KB server' }]);
+	});
+
 	it('maps node, workflow, and custom tools with sanitized names', () => {
 		const config = {
 			...baseConfig,

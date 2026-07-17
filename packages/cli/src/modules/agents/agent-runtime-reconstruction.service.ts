@@ -350,11 +350,9 @@ export class AgentRuntimeReconstructionService {
 		// Transport for LLM calls
 		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
 		// Transport for MCP calls
-		const aiMcpFetch = createAiMcpFetch(
-			this.outboundHttp,
-			this.ssrfConfig,
-			this.ssrfProtectionService,
-		);
+		const aiMcpFetch =
+			instrumentation?.mcpFetch ??
+			createAiMcpFetch(this.outboundHttp, this.ssrfConfig, this.ssrfProtectionService);
 
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {

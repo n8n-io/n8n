@@ -1582,7 +1582,7 @@ export interface InstanceAiEvalAgentToolCallRecord {
 	/** Sanitized tool name — matches what the model called. */
 	tool: string;
 	/** Where the tool executes. 'other' covers built-ins (skills, todos, environment). */
-	kind: 'node' | 'workflow' | 'custom' | 'other';
+	kind: 'node' | 'workflow' | 'custom' | 'mcp' | 'other';
 	input?: unknown;
 	output?: unknown;
 	/** Tool-level failure. Unlike workflow node errors, this does NOT flip run `success` — agents may recover. */

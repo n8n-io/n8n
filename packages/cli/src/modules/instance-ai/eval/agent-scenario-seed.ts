@@ -14,7 +14,7 @@ import { buildDateAnchors } from './date-anchors';
 export interface AgentSeedToolSummary {
 	/** Sanitized tool name — the identifier the model will call and the mock layer keys on. */
 	name: string;
-	kind: 'node' | 'workflow' | 'custom';
+	kind: 'node' | 'workflow' | 'custom' | 'mcp';
 	description?: string;
 	/** Node type for node tools (e.g. n8n-nodes-base.slackTool). */
 	nodeType?: string;
@@ -35,7 +35,7 @@ RULES:
    - Write it as a real user would — natural language, first person, no meta-commentary about testing.
    - It must actually trigger the behavior under test: include the concrete names, IDs, dates, and values the agent needs to act (drawn from globalContext / the Test Scenario).
    - CRITICAL: openingMessage must NEVER be empty. When the scenario describes vague input ("user asks something unclear"), write that vague message verbatim, not a description of it.
-3. Create a "toolHints" object with one entry per tool, keyed EXACTLY by the tool names provided. Each hint describes what data that tool's API responses should contain, referencing entities from the global context.
+3. Create a "toolHints" object with one entry per tool, keyed EXACTLY by the tool names provided. Each hint describes what data that tool's API responses should contain, referencing entities from the global context. Entries marked (mcp) are MCP tool servers: their hint should describe both the tools that server plausibly exposes and the data those tools return.
 4. Hints describe DATA CONTENT, not API response format. The mock server already knows the API schema.
 5. Ensure data flows logically: if the scenario implies the agent looks something up and then acts on it, the looked-up data must contain what the action needs.
 6. Use realistic but clearly fake values (e.g., "jane@example.com", "U_abc123").
