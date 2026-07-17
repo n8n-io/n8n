@@ -98,6 +98,7 @@ import {
 	getNodesGroupSize,
 	PUSH_NODES_OFFSET,
 	HORIZONTAL_NODE_STEP,
+	NODE_X_SPACING,
 	doRectsOverlap,
 } from '@/app/utils/nodeViewUtils';
 import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
@@ -189,6 +190,26 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	isAutoAdd?: boolean;
 	actionName?: string;
 };
+
+/**
+ * Rendered width used for horizontal placement math. Mirrors the fixed-width
+ * model the placement code assumes elsewhere (agent card / configurable node),
+ * so a node placed after a neighbor keeps a constant NODE_X_SPACING gap
+ * regardless of that neighbor's width.
+ */
+function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
+	if (isAgentNodeV2(node)) {
+		return AGENT_NODE_WIDTH;
+	}
+	const { inputs } = nodeTypeDescription;
+	const isConfigurable =
+		typeof inputs === 'string'
+			? true
+			: Array.isArray(inputs)
+				? NodeHelpers.getConnectionTypes(inputs).some((input) => input !== NodeConnectionTypes.Main)
+				: false;
+	return isConfigurable ? CONFIGURABLE_NODE_SIZE[0] : DEFAULT_NODE_SIZE[0];
+}
 
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
@@ -988,9 +1009,13 @@ export function useCanvasOperations() {
 				continue;
 			}
 
-			// When we're adding multiple nodes, increment the X position for the next one
+			// When we're adding multiple nodes, place the next one a constant
+			// NODE_X_SPACING gap past this node's right edge — using its actual width
+			// so the gap stays 128 even next to a wide agent/configurable node.
 			insertPosition = [
-				lastAddedNode.position[0] + HORIZONTAL_NODE_STEP,
+				lastAddedNode.position[0] +
+					getPlacementNodeWidth(lastAddedNode, nodeTypeDescription) +
+					NODE_X_SPACING,
 				lastAddedNode.position[1],
 			];
 		}

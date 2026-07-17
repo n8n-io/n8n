@@ -112,7 +112,12 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
-import { GRID_SIZE, HORIZONTAL_NODE_STEP } from '@/app/utils/nodeViewUtils';
+import {
+	GRID_SIZE,
+	HORIZONTAL_NODE_STEP,
+	NODE_X_SPACING,
+	CONFIGURABLE_NODE_SIZE,
+} from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -1473,6 +1478,40 @@ describe('useCanvasOperations', () => {
 				position: [32 + HORIZONTAL_NODE_STEP + 2 * GRID_SIZE, 32 + GRID_SIZE],
 				parameters: {},
 			});
+		});
+
+		it('keeps a constant gap when sequencing a node after a wide configurable node', async () => {
+			const nodeTypesStore = useNodeTypesStore();
+			const wideType = 'wideType';
+			const defaultType = 'defaultType';
+			const nodes: AddedNode[] = [
+				{ name: 'Wide', type: wideType },
+				{ name: 'Next', type: defaultType },
+			];
+
+			nodeTypesStore.nodeTypes = {
+				// Non-main input marks the node as configurable → rendered at CONFIGURABLE_NODE_SIZE width
+				[wideType]: {
+					1: mockNodeTypeDescription({
+						name: wideType,
+						inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiTool],
+					}),
+				},
+				[defaultType]: { 1: mockNodeTypeDescription({ name: defaultType }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			await addNodes(nodes, { position: [0, 0] });
+
+			const wideX = (addNodeSpy.mock.calls[0][0].position as [number, number])[0];
+			const nextX = (addNodeSpy.mock.calls[1][0].position as [number, number])[0];
+
+			// The next node must clear the wide node's actual right edge by exactly NODE_X_SPACING,
+			// not overlap it with a flat 224 step.
+			expect(nextX).toBe(wideX + CONFIGURABLE_NODE_SIZE[0] + NODE_X_SPACING);
+			expect(nextX - (wideX + CONFIGURABLE_NODE_SIZE[0])).toBe(NODE_X_SPACING);
 		});
 	});
 
