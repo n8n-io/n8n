@@ -243,62 +243,68 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.8 second",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [2700, 300],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "47de5dd5-9705-4186-a0f4-9579467897e3"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.8 second1",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [2280, 300],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "0987168a-7db4-4e81-bde8-4a6961f514a1"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.8 second2",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1820, 450],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "eb7f14c0-6925-4c32-89f6-835e09498bce"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.8 second3",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1370, 450],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "04e7f940-2bd4-4191-8157-89a3c067fdd1"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.8 second4",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [920, 450],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "6977a587-99f4-4998-953f-7ea20768a92b"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(800);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 0.8 second5",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [650, 450],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "7e920caf-326c-44ad-9f49-bb11d8378d12"
 		}
 	],

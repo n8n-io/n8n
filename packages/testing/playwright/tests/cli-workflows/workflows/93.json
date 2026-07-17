@@ -26,11 +26,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "item = {\n  name:'test',\n  indexes:[1,2,3],\n  subobj:{\n    name:'subtest'\n  }\n};\nreturn item;"
+				"mode": "runOnceForEachItem",
+				"jsCode": "$input.item.json = {\n  name:'test',\n  indexes:[1,2,3],\n  subobj:{\n    name:'subtest'\n  }\n};\nreturn $input.item;"
 			},
 			"name": "FunctionItem",
-			"type": "n8n-nodes-base.functionItem",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [450, 300],
 			"notesInFlow": true,
 			"notes": "Set json data",
@@ -48,11 +49,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "if(JSON.stringify($node['FunctionItem'].json)!==JSON.stringify($node['Move Binary Data1'].json)){\n  throw new Error('Problem in move binary node');\n}\n\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "if(JSON.stringify($node['FunctionItem'].json)!==JSON.stringify($node['Move Binary Data1'].json)){\n  throw new Error('Problem in move binary node');\n}\n\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [900, 300],
 			"notesInFlow": true,
 			"notes": "Evaluate the conversion result",
