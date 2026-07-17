@@ -449,6 +449,71 @@ describe('v2/components/Combobox', () => {
 				expect(wrapper.emitted('update:open')).toBeTruthy();
 			});
 		});
+
+		it('should wrap highlight from last to first option on ArrowDown', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			input.focus();
+
+			const { popover } = await getPopoverContainer();
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Option 1' })).toHaveAttribute(
+					'data-highlighted',
+				);
+			});
+
+			await userEvent.keyboard('{ArrowDown}');
+			await userEvent.keyboard('{ArrowDown}');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Option 3' })).toHaveAttribute(
+					'data-highlighted',
+				);
+			});
+
+			await userEvent.keyboard('{ArrowDown}');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Option 1' })).toHaveAttribute(
+					'data-highlighted',
+				);
+			});
+		});
+
+		it('should wrap highlight from first to last option on ArrowUp', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+					defaultOpen: true,
+				},
+			});
+
+			const input = getComboboxInput(wrapper);
+			input.focus();
+
+			const { popover } = await getPopoverContainer();
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Option 1' })).toHaveAttribute(
+					'data-highlighted',
+				);
+			});
+
+			await userEvent.keyboard('{ArrowUp}');
+
+			await waitFor(() => {
+				expect(within(popover).getByRole('option', { name: 'Option 3' })).toHaveAttribute(
+					'data-highlighted',
+				);
+			});
+		});
 	});
 
 	describe('slots', () => {

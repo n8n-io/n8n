@@ -30,6 +30,7 @@ import type {
 	ComboboxSizes,
 	ComboboxSlots,
 } from './Combobox.types';
+import ComboboxArrowKeyLoop from './ComboboxArrowKeyLoop.vue';
 import N8nComboboxItem from './ComboboxItem.vue';
 
 defineOptions({ inheritAttrs: false });
@@ -213,6 +214,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 		:default-value="props.defaultValue"
 		:model-value="props.modelValue"
 	>
+		<ComboboxArrowKeyLoop />
 		<ComboboxAnchor
 			ref="anchor"
 			data-test-id="combobox"
