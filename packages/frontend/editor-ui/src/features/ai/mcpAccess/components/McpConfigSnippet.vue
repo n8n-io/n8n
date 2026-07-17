@@ -30,21 +30,24 @@ const handleCopy = async () => {
 <template>
 	<div :class="$style.container" data-test-id="mcp-config-snippet">
 		<N8nMarkdown :content="code" />
-		<N8nTooltip
-			:disabled="!isSupported"
-			:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
-			:show-after="MCP_TOOLTIP_DELAY"
-		>
-			<N8nButton
-				v-if="isSupported"
-				variant="subtle"
-				iconOnly
-				:icon="copied ? 'check' : 'copy'"
-				:class="$style['copy-button']"
-				data-test-id="mcp-config-snippet-copy"
-				@click="handleCopy"
-			/>
-		</N8nTooltip>
+		<div :class="$style['copy-wrapper']">
+			<N8nTooltip
+				placement="bottom"
+				:disabled="!isSupported"
+				:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
+				:show-after="MCP_TOOLTIP_DELAY"
+			>
+				<N8nButton
+					v-if="isSupported"
+					variant="subtle"
+					iconOnly
+					:icon="copied ? 'check' : 'copy'"
+					:class="$style['copy-button']"
+					data-test-id="mcp-config-snippet-copy"
+					@click="handleCopy"
+				/>
+			</N8nTooltip>
+		</div>
 	</div>
 </template>
 
@@ -63,17 +66,15 @@ const handleCopy = async () => {
 		padding: var(--spacing--2xs) !important;
 		tab-size: 1;
 		background: none !important;
-		border: var(--border);
-		border-radius: var(--radius);
 		overflow-x: auto;
 	}
 
-	&:hover .copy-button {
-		display: flex;
+	&:hover .copy-wrapper {
+		display: block;
 	}
 }
 
-.copy-button {
+.copy-wrapper {
 	position: absolute;
 	top: var(--spacing--3xs);
 	right: var(--spacing--3xs);
