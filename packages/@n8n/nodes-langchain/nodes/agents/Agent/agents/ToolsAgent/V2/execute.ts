@@ -18,7 +18,7 @@ import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import { loadMemory } from '@utils/agent-execution';
+import { loadMemory, ModelTextStreamBuffer } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import {
@@ -143,10 +143,13 @@ async function processEventStream(
 	if (returnIntermediateSteps) {
 		agentResult.intermediateSteps = [];
 	}
+	const textStream = new ModelTextStreamBuffer((chunk) => {
+		ctx.sendChunk('item', itemIndex, chunk);
+		agentResult.output += chunk;
+	});
 
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
-		// Stream chat model tokens as they come in
 		switch (event.event) {
 			case 'on_chat_model_stream':
 				const chunk = event.data?.chunk as AIMessageChunk;
@@ -162,19 +165,18 @@ async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
-
-					agentResult.output += chunkText;
+					textStream.append(event.run_id, chunkText);
 				}
 				break;
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
-				if (returnIntermediateSteps && event.data) {
+				if (event.data) {
 					const chatModelData = event.data as any;
 					const output = chatModelData.output;
+					const hasToolCalls = Boolean(output?.tool_calls?.length);
+					textStream.complete(event.run_id, !hasToolCalls);
 
-					// Check if this LLM response contains tool calls
-					if (output?.tool_calls && output.tool_calls.length > 0) {
+					if (returnIntermediateSteps && hasToolCalls) {
 						for (const toolCall of output.tool_calls) {
 							agentResult.intermediateSteps!.push({
 								action: {
@@ -209,6 +211,7 @@ async function processEventStream(
 				break;
 		}
 	}
+	textStream.flushPending();
 	ctx.sendChunk('end', itemIndex);
 
 	return agentResult;

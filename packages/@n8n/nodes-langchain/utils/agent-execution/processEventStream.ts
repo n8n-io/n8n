@@ -4,6 +4,7 @@ import type { IterableReadableStream } from '@langchain/core/utils/stream';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import type { AgentResult, ToolCallRequest } from './types';
+import { ModelTextStreamBuffer } from './modelTextStreamBuffer';
 
 /**
  * Processes the event stream from a streaming agent execution.
@@ -27,10 +28,13 @@ export async function processEventStream(
 	};
 
 	const toolCalls: ToolCallRequest[] = [];
+	const textStream = new ModelTextStreamBuffer((chunk) => {
+		ctx.sendChunk('item', itemIndex, chunk);
+		agentResult.output += chunk;
+	});
 
 	ctx.sendChunk('begin', itemIndex);
 	for await (const event of eventStream) {
-		// Stream chat model tokens as they come in
 		switch (event.event) {
 			case 'on_chat_model_stream':
 				const chunk = event.data?.chunk as AIMessageChunk;
@@ -46,9 +50,7 @@ export async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
-
-					agentResult.output += chunkText;
+					textStream.append(event.run_id, chunkText);
 				}
 				break;
 			case 'on_chat_model_end':
@@ -57,8 +59,10 @@ export async function processEventStream(
 					const chatModelData = event.data;
 					const output = chatModelData.output;
 
-					// Check if this LLM response contains tool calls
-					if (output?.tool_calls && output.tool_calls.length > 0) {
+					const hasToolCalls = Boolean(output?.tool_calls?.length);
+					textStream.complete(event.run_id, !hasToolCalls);
+
+					if (hasToolCalls) {
 						// Collect tool calls for request building
 						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
 						// so the signature can be applied to each when rebuilding
@@ -83,6 +87,7 @@ export async function processEventStream(
 				break;
 		}
 	}
+	textStream.flushPending();
 	ctx.sendChunk('end', itemIndex);
 
 	// Include collected tool calls in the result

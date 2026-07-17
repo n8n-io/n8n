@@ -13,6 +13,7 @@ export { executeEngineAction } from './executeEngineAction';
 export { buildResponseMetadata } from './buildResponseMetadata';
 export { buildSteps } from './buildSteps';
 export { processEventStream } from './processEventStream';
+export { ModelTextStreamBuffer } from './modelTextStreamBuffer';
 export { loadMemory, saveToMemory, buildToolContext } from './memoryManagement';
 export { processHitlResponses, type HitlProcessingResult } from './processHitlResponses';
 export { serializeIntermediateSteps } from './serializeIntermediateSteps';
