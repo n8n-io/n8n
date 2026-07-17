@@ -42,6 +42,8 @@ export const CONFIGURATION_NODE_SIZE: [number, number] = [
 	CONFIGURATION_NODE_RADIUS * 2,
 ]; // the node has circle shape
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6];
+// Width of the rich agent card (CanvasNodeAgent.vue binds its CSS width to this)
+export const AGENT_NODE_WIDTH = GRID_SIZE * 24;
 export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
 export const HEADER_HEIGHT = 65;

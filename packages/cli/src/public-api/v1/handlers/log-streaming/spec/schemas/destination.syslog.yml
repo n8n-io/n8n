@@ -1,0 +1,42 @@
+allOf:
+  - $ref: './destination.common.yml'
+  - type: object
+    additionalProperties: true
+    required:
+      - type
+      - host
+    properties:
+      type:
+        type: string
+        enum: [syslog]
+        description: Sends each event to a syslog server.
+        example: syslog
+      host:
+        type: string
+        description: Syslog server host.
+        example: syslog.example.com
+      port:
+        type: integer
+        description: Syslog server port.
+        example: 514
+      protocol:
+        type: string
+        enum: [udp, tcp, tls]
+        description: Transport protocol.
+        example: udp
+      facility:
+        type: integer
+        minimum: 0
+        maximum: 23
+        description: >
+          Syslog facility code (0–23, per RFC 5424). Common values: 0 Kernel, 1 User,
+          3 System, 13 Audit, 14 Alert, 16 Local0, 17 Local1, 18 Local2, 19 Local3,
+          20 Local4, 21 Local5, 22 Local6, 23 Local7.
+        example: 16
+      app_name:
+        type: string
+        description: Application name reported in the syslog message.
+        example: n8n
+      tlsCa:
+        type: string
+        description: PEM-encoded CA certificate used when `protocol` is `tls`.

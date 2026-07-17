@@ -449,6 +449,11 @@ export class OAuthServerService implements OAuthServerProvider {
 		});
 	}
 
+	/** Tool names each scope unlocks on this instance, for the clients list UI. */
+	getInstanceScopeTools(): Record<string, string[]> | undefined {
+		return this.resourceRegistry.getDefaultResource()?.getScopeTools?.();
+	}
+
 	/**
 	 * Revoke the requesting user's grant for a client: their consent, tokens,
 	 * and authorization codes. Other users' grants for the same client are

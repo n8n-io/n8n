@@ -520,7 +520,7 @@ export class AgentRuntimeReconstructionService {
 
 		if (
 			runtimeProfile !== 'inline' &&
-			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
+			isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled()) &&
 			(await this.agentFileRepository.hasFilesForAgent(agentId))
 		) {
 			const { createKnowledgeRetrievalTools } = await import(

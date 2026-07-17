@@ -102,6 +102,13 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * local SSE subscribers, and relayed to sibling mains with its id.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
+		// Stamp publish time once — replays (SSE reconnect, snapshot rebuilds)
+		// rely on it to reconstruct real timing instead of processing time.
+		// Before the durable-log branch on purpose: persisted events must carry
+		// it too.
+		if (event.ts === undefined) {
+			event = { ...event, ts: Date.now() };
+		}
 		if (this.durableLogEnabled) {
 			this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
 			return;
