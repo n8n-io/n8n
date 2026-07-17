@@ -56,55 +56,46 @@ export function startTelegramTypingIndicator(
 		agentId: string;
 	},
 ): BridgeStatusHandle {
-	let failed = false;
-	let stopped = false;
+	let failedStreak = false;
 	let inFlight: Promise<void> | null = null;
 
-	const sendTyping = async () => {
-		try {
-			await thread.startTyping();
-			failed = false;
-		} catch (error) {
-			// Warn once per failure streak; an interval failing every 4s must not
-			// spam the logs.
-			const log = failed ? options.logger.debug : options.logger.warn;
-			failed = true;
-
-			log.call(options.logger, '[AgentChatBridge] Failed to send Telegram typing indicator', {
-				agentId: options.agentId,
-				threadId: thread.id,
-				error: error instanceof Error ? error.message : String(error),
+	const sendTyping = () => {
+		// A slow send outliving the refresh interval must not pile up requests.
+		if (inFlight) return;
+		inFlight = thread
+			.startTyping()
+			.then(() => {
+				failedStreak = false;
+			})
+			.catch((error) => {
+				// Warn once per failure streak; a send failing every 4s must not
+				// spam the logs.
+				const log = failedStreak ? options.logger.debug : options.logger.warn;
+				failedStreak = true;
+				log.call(options.logger, '[AgentChatBridge] Failed to send Telegram typing indicator', {
+					agentId: options.agentId,
+					threadId: thread.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			})
+			.finally(() => {
+				inFlight = null;
 			});
-		}
 	};
 
-	// Single in-flight send: if the Telegram API is slow, skip ticks instead of
-	// stacking concurrent requests.
-	const trySend = () => {
-		if (stopped || inFlight) return;
-		inFlight = sendTyping().finally(() => {
-			inFlight = null;
-		});
-	};
-
-	trySend();
-
-	const interval = setInterval(trySend, TELEGRAM_TYPING_REFRESH_MS);
+	sendTyping();
+	const interval = setInterval(sendTyping, TELEGRAM_TYPING_REFRESH_MS);
 	interval.unref();
-
 	const maxLifetime = setTimeout(() => clearInterval(interval), TELEGRAM_TYPING_MAX_LIFETIME_MS);
 	maxLifetime.unref();
 
 	return {
 		clearBeforeResponse: async () => {
-			stopped = true;
 			clearInterval(interval);
 			clearTimeout(maxLifetime);
-
-			// An in-flight send can't be recalled — wait for it to land so the
-			// reply message posts after it and Telegram's clear-on-message wipes
-			// the indicator, instead of the send resurrecting it post-reply.
-			if (inFlight) await inFlight;
+			// Let an in-flight typing send land before the reply posts, so the
+			// send can't arrive after the message and re-show a stale indicator.
+			await inFlight;
 		},
 	};
 }
