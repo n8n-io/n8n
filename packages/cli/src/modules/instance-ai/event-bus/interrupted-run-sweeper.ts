@@ -13,12 +13,20 @@ import { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-
 export const TOOL_INTERRUPTED_MESSAGE =
 	'Interrupted by a process restart — effect unverified; verify before retrying.';
 
+export const AGENT_INTERRUPTED_MESSAGE = 'Interrupted by a process restart.';
+
 /** A tool call that was in flight (no terminal fact) when the process died. */
 interface InFlightToolCall {
 	toolCallId: string;
 	toolName: string;
 	agentId: string;
 	args: Record<string, unknown>;
+}
+
+/** A spawned sub-agent with no terminal fact when the process died. */
+interface OrphanedSpawnedAgent {
+	agentId: string;
+	role: string;
 }
 
 /**
@@ -39,7 +47,10 @@ export interface InterruptedRunResumeHost {
  *
  * 1. In-flight tool calls (tool-call with no terminal fact) become durable
  *    `tool-interrupted` facts — effect unverified, never re-executed blindly.
- * 2. One `run-finish { status: 'interrupted' }` is appended — the fold renders
+ * 2. Spawned sub-agents with no `agent-completed` get one appended with an
+ *    error — `run-finish` only settles the root, so without it a dead child
+ *    would render `active` forever.
+ * 3. One `run-finish { status: 'interrupted' }` is appended — the fold renders
  *    every in-flight item as terminated; no walk-and-mutate. (A later phase of
  *    the RFC re-drives runs with a `running` step checkpoint from that
  *    checkpoint instead; until then every swept run is marked interrupted.)
@@ -180,7 +191,8 @@ export class InterruptedRunSweeper {
 	}
 
 	/**
-	 * Shared zombie resolution: appends `tool-interrupted` for in-flight calls
+	 * Shared zombie resolution: appends `tool-interrupted` for in-flight calls,
+	 * `agent-completed { error }` for spawned sub-agents with no terminal fact,
 	 * and one terminal `run-finish`, unless the run is live in this process,
 	 * HITL-suspended, or (multi-main) shows recent durable activity. Returns
 	 * the number of in-flight calls terminalized, or null when the run was
@@ -241,6 +253,23 @@ export class InterruptedRunSweeper {
 			this.metrics.recordSweepToolInterruptedFact();
 		}
 
+		// `run-finish` settles only the root, so a spawned child with no
+		// terminal fact would render `active` forever. Terminalize it here —
+		// at the source — so no client ever needs to walk-and-mutate a tree.
+		for (const agent of collectOrphanedSpawnedAgents(events)) {
+			this.eventBus.publish(threadId, {
+				type: 'agent-completed',
+				runId,
+				agentId: agent.agentId,
+				payload: {
+					role: agent.role,
+					result: '',
+					// Matches the live cancel path's wording for spawned agents.
+					error: finish.status === 'cancelled' ? 'Cancelled by user' : AGENT_INTERRUPTED_MESSAGE,
+				},
+			});
+		}
+
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
@@ -249,6 +278,19 @@ export class InterruptedRunSweeper {
 		});
 		return inFlight.length;
 	}
+}
+
+/** agent-spawned facts with no matching agent-completed. */
+export function collectOrphanedSpawnedAgents(events: InstanceAiEvent[]): OrphanedSpawnedAgent[] {
+	const open = new Map<string, OrphanedSpawnedAgent>();
+	for (const event of events) {
+		if (event.type === 'agent-spawned') {
+			open.set(event.agentId, { agentId: event.agentId, role: event.payload.role });
+		} else if (event.type === 'agent-completed') {
+			open.delete(event.agentId);
+		}
+	}
+	return [...open.values()];
 }
 
 /** tool-call facts with no matching terminal fact (result/error/interrupted). */

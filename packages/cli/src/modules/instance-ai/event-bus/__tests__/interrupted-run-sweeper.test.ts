@@ -8,6 +8,7 @@ import type { EventService } from '@/events/event.service';
 
 import { DurableLogMetrics } from '../durable-log-metrics';
 import {
+	AGENT_INTERRUPTED_MESSAGE,
 	InterruptedRunSweeper,
 	TOOL_INTERRUPTED_MESSAGE,
 	type InterruptedRunResumeHost,
@@ -41,6 +42,24 @@ function toolCall(toolCallId: string, args: Record<string, unknown> = {}): Insta
 
 function toolResult(toolCallId: string): InstanceAiEvent {
 	return { type: 'tool-result', runId: RUN, agentId: AGENT, payload: { toolCallId, result: {} } };
+}
+
+function agentSpawned(agentId: string, role = 'agent-builder'): InstanceAiEvent {
+	return {
+		type: 'agent-spawned',
+		runId: RUN,
+		agentId,
+		payload: { parentId: AGENT, role, tools: [] },
+	};
+}
+
+function agentCompleted(agentId: string, role = 'agent-builder'): InstanceAiEvent {
+	return {
+		type: 'agent-completed',
+		runId: RUN,
+		agentId,
+		payload: { role, result: 'done' },
+	};
 }
 
 function runningCheckpoint(overrides: Partial<InstanceAiCheckpoint> = {}): InstanceAiCheckpoint {
@@ -146,6 +165,28 @@ describe('InterruptedRunSweeper', () => {
 		expect(finish.type === 'run-finish' && finish.payload.reason).toBe('crash_interrupted');
 		expect(metrics.sweep.runsMarkedInterrupted).toBe(1);
 		expect(metrics.sweep.toolInterruptedFacts).toBe(1);
+	});
+
+	it('appends agent-completed{error} for spawned children with no terminal fact', async () => {
+		const { sweeper, published } = buildSweeper({
+			events: [
+				runStart(),
+				agentSpawned('child-done'),
+				agentCompleted('child-done'),
+				agentSpawned('child-orphaned'),
+			],
+		});
+
+		await sweeper.sweep();
+
+		// run-finish settles only the root: without this fact the orphaned
+		// child would render `active` forever in every fold of the log.
+		expect(published.map((e) => e.type)).toEqual(['agent-completed', 'run-finish']);
+		const completed = published[0];
+		expect(completed.type === 'agent-completed' && completed.agentId).toBe('child-orphaned');
+		expect(completed.type === 'agent-completed' && completed.payload.error).toBe(
+			AGENT_INTERRUPTED_MESSAGE,
+		);
 	});
 
 	it('does nothing when the durable log is disabled', async () => {
@@ -303,6 +344,22 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		// Sweep-outcome metrics stay sweep-only.
 		expect(metrics.sweep.runsMarkedInterrupted).toBe(0);
 		expect(metrics.sweep.runsCrashResumed).toBe(0);
+	});
+
+	it('terminalizes orphaned spawned children with the user-cancel wording', async () => {
+		const { sweeper, published } = buildSweeper({
+			events: [runStart(), agentSpawned('child-orphaned')],
+		});
+
+		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(1);
+
+		expect(published.map((e) => e.type)).toEqual(['agent-completed', 'run-finish']);
+		const completed = published[0];
+		expect(completed.type === 'agent-completed' && completed.agentId).toBe('child-orphaned');
+		// Matches the live cancel path's wording for spawned agents.
+		expect(completed.type === 'agent-completed' && completed.payload.error).toBe(
+			'Cancelled by user',
+		);
 	});
 
 	it('is idempotent and scoped to the requested thread', async () => {
