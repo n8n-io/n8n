@@ -26,13 +26,17 @@ export class AgentRunnableStateService {
 			projectId,
 			user,
 		);
-		const [{ missing }, hasPublishHistory] = await Promise.all([
-			this.agentValidationService.validateAgentIsRunnable(agent.id, projectId, credentialProvider),
+		const [validation, hasPublishHistory] = await Promise.all([
+			this.agentValidationService.validateAgentConfiguration(
+				agent.id,
+				projectId,
+				credentialProvider,
+			),
 			this.agentPublishService.hasPublishHistory(agent.id),
 		]);
 
 		return Object.assign(agent, {
-			isRunnable: missing.length === 0,
+			isRunnable: validation.status === 'valid',
 			hasPublishHistory,
 		});
 	}

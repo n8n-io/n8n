@@ -23,6 +23,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiService } from '@/services/ai.service';
@@ -265,6 +266,15 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 		);
+		agentValidationService = new AgentValidationService(
+			agentRepository,
+			mock<AiService>(),
+			agentTaskRepository,
+			agentTaskSnapshotRepository,
+			mock<NodeTypes>(),
+			mock<WorkflowRepository>(),
+			chatIntegrationRegistry,
+		);
 		agentPublishService = new AgentPublishService(
 			logger,
 			agentRepository,
@@ -273,9 +283,10 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentCustomToolsService,
 			runtimeCacheService,
 			mock<SubAgentCleanupService>(),
+			agentValidationService,
+			credentialsService,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,

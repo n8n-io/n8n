@@ -78,6 +78,12 @@ const STUBS = {
 		props: ['items', 'placement', 'activatorIcon'],
 		emits: ['select'],
 	},
+	N8nTooltip: {
+		name: 'N8nTooltip',
+		template:
+			'<span data-testid="stub-tooltip" :data-disabled="disabled" :data-content="content"><slot /></span>',
+		props: ['disabled', 'content'],
+	},
 };
 
 const activeVersion: AgentVersion = {
@@ -110,6 +116,8 @@ interface RenderProps {
 	projectId?: string;
 	agentId?: string;
 	beforeRevertToPublished?: () => Promise<void> | void;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	beforePublish?: () => Promise<boolean>;
 }
 
 function getModalCallbacks() {
@@ -390,6 +398,97 @@ describe('AgentPublishButton', () => {
 			expect(dot.exists()).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorChanges'))).toBe(true);
 			expect(dot.classes().some((c) => c.includes('indicatorPublished'))).toBe(false);
+		});
+	});
+
+	// Configuration validation gating
+	describe('configuration validation gating', () => {
+		it('disables Publish and shows the generic tooltip when the config is invalid', async () => {
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({ agent, configValidationStatus: 'invalid' });
+
+			const button = wrapper.find('[data-testid="publish-agent-button"]');
+			expect(button.attributes('disabled')).toBeDefined();
+
+			const tooltip = wrapper.find('[data-testid="stub-tooltip"]');
+			expect(tooltip.attributes('data-disabled')).toBe('false');
+			expect(tooltip.attributes('data-content')).toBe('agents.publish.button.invalidConfigTooltip');
+		});
+
+		it('treats an unknown (null) validation result as not publishable', async () => {
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({ agent, configValidationStatus: null });
+
+			const button = wrapper.find('[data-testid="publish-agent-button"]');
+			expect(button.attributes('disabled')).toBeDefined();
+		});
+
+		it('does not show the invalid-config tooltip when the button is already disabled for another reason', async () => {
+			// Published with no pending changes — disabled regardless of validation.
+			const agent = createAgent({ versionId: 'v1', activeVersionId: 'v1', activeVersion });
+			const wrapper = await renderComponent({ agent, configValidationStatus: 'invalid' });
+
+			const button = wrapper.find('[data-testid="publish-agent-button"]');
+			expect(button.attributes('disabled')).toBeDefined();
+
+			const tooltip = wrapper.find('[data-testid="stub-tooltip"]');
+			expect(tooltip.attributes('data-disabled')).toBe('true');
+		});
+
+		it('enables Publish when the config is valid', async () => {
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({ agent, configValidationStatus: 'valid' });
+
+			const button = wrapper.find('[data-testid="publish-agent-button"]');
+			expect(button.attributes('disabled')).toBeUndefined();
+		});
+
+		it('does not call publishAgent when Publish is clicked while the config is invalid', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({ agent, configValidationStatus: 'invalid' });
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('aborts the publish request when beforePublish resolves false', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const beforePublish = vi.fn().mockResolvedValue(false);
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({
+				agent,
+				configValidationStatus: 'valid',
+				beforePublish,
+			});
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(beforePublish).toHaveBeenCalled();
+			expect(publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('publishes when beforePublish resolves true', async () => {
+			const { publishAgent } = await import('../composables/useAgentApi');
+			const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
+			vi.mocked(publishAgent).mockResolvedValue(updatedAgent);
+			const beforePublish = vi.fn().mockResolvedValue(true);
+			const agent = createAgent({ activeVersionId: null });
+			const wrapper = await renderComponent({
+				agent,
+				configValidationStatus: 'valid',
+				beforePublish,
+			});
+
+			await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+			await flushPromises();
+
+			expect(beforePublish).toHaveBeenCalled();
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 	});
 

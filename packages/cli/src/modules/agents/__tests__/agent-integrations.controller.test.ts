@@ -259,7 +259,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
 		agentPublishService.publishAgent.mockResolvedValue(agent as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		} as never);
 		const { controller } = makeController({
 			agentIntegrationPersistenceService,
 			agentPublishService,
@@ -378,7 +381,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 			savedAgent as never,
 		);
 		agentPublishService.publishAgent.mockResolvedValue(publishedAgent as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+			status: 'valid',
+			issues: [],
+		} as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockResolvedValue(undefined);
 		chatIntegrationService.broadcastIntegrationChange.mockResolvedValue(undefined);

@@ -4,10 +4,13 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentPublishService } from '../agent-publish.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentTaskService } from '../agent-task.service';
+import type { AgentValidationService } from '../agent-validation.service';
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -97,6 +100,8 @@ function makeService() {
 	const chatIntegrationService = mock<ChatIntegrationService>();
 	const taskService = mock<AgentTaskService>();
 	const subAgentCleanupService = mock<SubAgentCleanupService>();
+	const agentValidationService = mock<AgentValidationService>();
+	const credentialsService = mock<CredentialsService>();
 	const { trx, taskRepo, transaction } = makeTransaction();
 
 	Object.defineProperty(agentRepository, 'manager', {
@@ -111,6 +116,14 @@ function makeService() {
 	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	taskService.requestReconcile.mockResolvedValue();
 	subAgentCleanupService.removeSubAgentFromParents.mockResolvedValue();
+	agentValidationService.validateAgentConfiguration.mockResolvedValue({
+		status: 'valid',
+		issues: [],
+	});
+	agentValidationService.validateAgentHistoryConfiguration.mockResolvedValue({
+		status: 'valid',
+		issues: [],
+	});
 	Container.set(ChatIntegrationService, chatIntegrationService);
 	Container.set(AgentTaskService, taskService);
 
@@ -122,6 +135,8 @@ function makeService() {
 		customToolsService,
 		runtimeCacheService,
 		subAgentCleanupService,
+		agentValidationService,
+		credentialsService,
 	);
 
 	return {
@@ -134,6 +149,8 @@ function makeService() {
 		chatIntegrationService,
 		taskService,
 		subAgentCleanupService,
+		agentValidationService,
+		credentialsService,
 		trx,
 		taskRepo,
 	};
@@ -143,6 +160,78 @@ describe('AgentPublishService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		Container.reset();
+	});
+
+	it('rejects publishing the current draft when validation reports it invalid', async () => {
+		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+			makeService();
+		const agent = makeAgent();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentValidationService.validateAgentConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
+		});
+
+		await expect(service.publishAgent(agentId, projectId, user)).rejects.toThrow(
+			'Agent configuration has errors that must be resolved before publishing',
+		);
+
+		expect(agentValidationService.validateAgentConfiguration).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			expect.anything(),
+		);
+		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBeNull();
+	});
+
+	it('validates the target historical snapshot, not the current draft, when publishing a specific version', async () => {
+		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+			makeService();
+		const agent = makeAgent({
+			versionId: 'draft-v2',
+			activeVersionId: 'v0',
+			integrations: [{ type: 'slack', credentialId: 'slack-1' }],
+		});
+		const target = makeHistory({ versionId: 'v1' });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+
+		await service.publishAgent(agentId, projectId, user, 'v1');
+
+		expect(agentValidationService.validateAgentHistoryConfiguration).toHaveBeenCalledWith(
+			agentId,
+			projectId,
+			target,
+			agent.integrations,
+			expect.anything(),
+		);
+		expect(agentValidationService.validateAgentConfiguration).not.toHaveBeenCalled();
+		expect(agent.activeVersionId).toBe('v1');
+	});
+
+	it('rejects publishing a specific version when its snapshot fails validation', async () => {
+		const { service, agentRepository, agentHistoryRepository, agentValidationService } =
+			makeService();
+		const agent = makeAgent({ versionId: 'draft-v2', activeVersionId: 'v0' });
+		const target = makeHistory({ versionId: 'v1' });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(target);
+		agentValidationService.validateAgentHistoryConfiguration.mockResolvedValue({
+			status: 'invalid',
+			issues: [
+				{
+					code: 'missing_reference',
+					path: 'tools.0.id',
+					capability: { kind: 'tool', id: 'gone', toolType: 'custom' },
+				},
+			],
+		});
+
+		await expect(service.publishAgent(agentId, projectId, user, 'v1')).rejects.toThrow(
+			'Agent configuration has errors that must be resolved before publishing',
+		);
+		expect(agent.activeVersionId).toBe('v0');
 	});
 
 	it('publishes the current draft as a snapshot and activates that version', async () => {

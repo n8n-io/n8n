@@ -4,7 +4,7 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
@@ -39,6 +39,8 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+		/** Structured backend validation issues — drives the invalid state on capability chips. */
+		validationIssues?: AgentConfigValidationIssue[];
 		/**
 		 * Allowlist of sections to render. Defaults to all — the Agent Builder
 		 * shows everything; the NDV passes `['tools', 'skills']` to hide Channels,
@@ -51,6 +53,7 @@ const props = withDefaults(
 	{
 		disabled: false,
 		taskRefs: () => [],
+		validationIssues: () => [],
 		sections: () => ['channels', 'tools', 'skills', 'subAgents', 'tasks'],
 	},
 );
@@ -88,6 +91,7 @@ const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
 
 type TaskRow = AgentTaskDto & {
 	enabled: boolean;
+	invalid: boolean;
 };
 
 const channelModalOpen = ref(false);
@@ -102,13 +106,16 @@ function channelIcon(integrationIcon?: string): IconName {
 	return 'zap';
 }
 
-const channelRows = computed<Array<{ type: string; label: string; icon: IconName }>>(() =>
+const channelRows = computed<
+	Array<{ type: string; label: string; icon: IconName; invalid: boolean }>
+>(() =>
 	props.connectedTriggers.map((channel) => {
 		const integration = catalog.value?.find(({ type }) => type === channel);
 		return {
 			type: channel,
 			label: integration?.label ?? channel,
 			icon: channelIcon(integration?.icon),
+			invalid: invalidChannelTypes.value.has(channel),
 		};
 	}),
 );
@@ -137,6 +144,7 @@ const selectedSubAgents = computed(() =>
 			id: agentId,
 			name: agent?.name ?? agentId,
 			useWhen: useWhen ?? '',
+			invalid: invalidSubAgentIds.value.has(agentId),
 		};
 	}),
 );
@@ -153,11 +161,35 @@ const taskRows = computed<TaskRow[]>(() => {
 			return {
 				...body,
 				enabled: taskRef.enabled,
+				invalid: invalidTaskIds.value.has(taskRef.id),
 			};
 		})
 		.filter((task): task is TaskRow => task !== null);
 });
 const hasTasks = computed(() => taskRows.value.length > 0);
+
+function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
+	return props.validationIssues.filter((issue) => issue.capability.kind === kind);
+}
+
+const invalidChannelTypes = computed(
+	() => new Set(issuesFor('channel').map((issue) => issue.capability.id)),
+);
+const invalidToolIndices = computed(
+	() => new Set(issuesFor('tool').map((issue) => issue.capability.index)),
+);
+const invalidMcpServerNames = computed(
+	() => new Set(issuesFor('mcpServer').map((issue) => issue.capability.id)),
+);
+const invalidSkillIds = computed(
+	() => new Set(issuesFor('skill').map((issue) => issue.capability.id)),
+);
+const invalidTaskIds = computed(
+	() => new Set(issuesFor('task').map((issue) => issue.capability.id)),
+);
+const invalidSubAgentIds = computed(
+	() => new Set(issuesFor('subAgent').map((issue) => issue.capability.id)),
+);
 
 async function reloadTasks() {
 	taskErrorMessage.value = '';
@@ -305,6 +337,11 @@ function toolTypeLabel(entry: CapabilityToolEntry, nodeType = toolNodeType(entry
 	return toolLabel(entry);
 }
 
+function isToolEntryInvalid(entry: CapabilityToolEntry): boolean {
+	if (entry.kind === 'mcpServer') return invalidMcpServerNames.value.has(entry.server.name);
+	return invalidToolIndices.value.has(entry.index);
+}
+
 const toolRows = computed<ToolRow[]>(() => {
 	return buildToolRows(
 		capabilityTools.value.map((entry) => {
@@ -317,6 +354,7 @@ const toolRows = computed<ToolRow[]>(() => {
 				fallbackIcon: toolIcon(entry),
 				toolType: entry.kind === 'tool' ? entry.tool.type : 'mcpServer',
 				openTarget: entry.openTarget,
+				invalid: isToolEntryInvalid(entry),
 			};
 		}),
 	);
@@ -467,6 +505,7 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="channel in channelRows"
 						:key="channel.type"
 						:icon="channel.icon"
+						:invalid="channel.invalid"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-channel-row"
 						@click="openChannelEdit(channel.type)"
@@ -512,6 +551,7 @@ function handleChannelDisconnected(channelType: string) {
 						>
 							<template #trigger>
 								<AgentChipButton
+									:invalid="tool.invalid"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
 								>
@@ -535,6 +575,7 @@ function handleChannelDisconnected(channelType: string) {
 						</N8nDropdownMenu>
 						<AgentChipButton
 							v-else-if="tool.nodeType"
+							:invalid="tool.invalid"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -547,6 +588,7 @@ function handleChannelDisconnected(channelType: string) {
 						<AgentChipButton
 							v-else
 							:icon="tool.fallbackIcon"
+							:invalid="tool.invalid"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -587,6 +629,7 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="{ id, skill } in skills"
 						:key="id"
 						icon="sparkles"
+						:invalid="invalidSkillIds.has(id)"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-skill-row"
 						@click="emit('open-skill', id)"
@@ -625,6 +668,7 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="subAgent in selectedSubAgents"
 						:key="subAgent.id"
 						icon="bot"
+						:invalid="subAgent.invalid"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-sub-agent-row"
 						@click="openExistingSubAgentModal(subAgent)"
@@ -660,6 +704,7 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="task in taskRows"
 						:key="task.id"
 						icon="clipboard-list"
+						:invalid="task.invalid"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-task-row"
 						@click="openTaskModal(task)"

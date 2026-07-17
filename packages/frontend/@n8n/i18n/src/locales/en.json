@@ -6948,6 +6948,7 @@
 	"agents.list.readonly": "Read only",
 	"agents.publish.button.publish": "Publish",
 	"agents.publish.button.published": "Published",
+	"agents.publish.button.invalidConfigTooltip": "This agent's configuration has errors. Resolve them before publishing.",
 	"agents.publish.dropdown.publish": "Publish",
 	"agents.publish.dropdown.revertToPublished": "Revert changes",
 	"agents.publish.dropdown.unpublish": "Unpublish",

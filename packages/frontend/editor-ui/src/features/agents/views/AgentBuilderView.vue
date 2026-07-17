@@ -48,6 +48,7 @@ import type {
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
+import { useAgentConfigValidation } from '../composables/useAgentConfigValidation';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
@@ -193,6 +194,12 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string>>>(() =>
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
+const {
+	validation: configValidation,
+	repoint: repointConfigValidation,
+	invalidate: invalidateConfigValidation,
+	refresh: refreshConfigValidation,
+} = useAgentConfigValidation();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
@@ -524,7 +531,10 @@ function onCloseVersionHistory() {
 async function onReverted(updated: AgentResource) {
 	agent.value = updated;
 	agentName.value = updated.name;
-	await fetchConfig(projectId.value, agentId.value);
+	await Promise.all([
+		fetchConfig(projectId.value, agentId.value),
+		refreshConfigValidation(projectId.value, agentId.value),
+	]);
 	tasksReloadKey.value += 1;
 	builderTelemetry.captureToolsBaseline();
 	builderTelemetry.captureSkillsBaseline();
@@ -596,7 +606,10 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
-	await fetchAgent(snapshot.projectId, snapshot.agentId);
+	await Promise.all([
+		fetchAgent(snapshot.projectId, snapshot.agentId),
+		refreshConfigValidation(snapshot.projectId, snapshot.agentId),
+	]);
 }
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
@@ -671,6 +684,23 @@ async function flushAutosave() {
 	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
 }
 
+/**
+ * Authoritative pre-publish gate for the frontend: flush any pending edit so
+ * the backend validates the config the user is about to publish (not a
+ * stale persisted version), then refresh the readiness result and report
+ * whether it is safe to call the publish endpoint. The publish endpoint
+ * re-validates independently, so this is a UX affordance, not the only guard.
+ */
+async function refreshValidationBeforePublish(): Promise<boolean> {
+	try {
+		await flushAutosave();
+	} catch {
+		return false;
+	}
+	await refreshConfigValidation(projectId.value, agentId.value);
+	return configValidation.value?.status === 'valid';
+}
+
 /** Hand the current agent off to a new Instance AI thread (mirrors the canvas hand-off). */
 async function onOpenInstanceAi() {
 	// Flush pending edits first so the assistant sees the latest config.
@@ -706,6 +736,9 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	// Record BEFORE assigning so the composable can diff against the pre-update state.
 	builderTelemetry.recordConfigEdit(updates);
+	// The persisted validation result no longer reflects the working copy —
+	// Publish must not stay enabled against a result that predates this edit.
+	invalidateConfigValidation();
 	Object.assign(localConfig.value, updates);
 	// Mirror identity edits onto the agent resource so the header reflects them
 	// before the next fetch.
@@ -755,6 +788,7 @@ const appliedSkills = caps.appliedSkills;
 
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
 	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
+	invalidateConfigValidation();
 	localConfig.value = deepCopy(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
 	configAutosave.scheduleAutosave({
@@ -779,7 +813,11 @@ async function onConfigUpdated() {
 	// Modal flows (e.g. skill creation) write through their own API calls, not
 	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
 	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
-	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+	await Promise.all([
+		fetchAgent(),
+		fetchConfig(projectId.value, agentId.value),
+		refreshConfigValidation(projectId.value, agentId.value),
+	]);
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
@@ -997,11 +1035,13 @@ async function initialize() {
 		agentFilesLoading.value = false;
 		agentFilesUploading.value = false;
 		deletingAgentFileId.value = null;
+		repointConfigValidation(projectId.value, agentId.value);
 
 		await Promise.all([
 			fetchAgent(),
 			fetchConfig(projectId.value, agentId.value),
 			fetchAgentFiles(),
+			refreshConfigValidation(projectId.value, agentId.value),
 		]);
 		persistMissingPersonalisationGradient();
 		builderTelemetry.captureToolsBaseline();
@@ -1207,6 +1247,8 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			:before-revert-to-published="settleAutosave"
 			:is-version-history-open="isVersionHistoryOpen"
 			:artifact-mode="isArtifactMode"
+			:config-validation-status="configValidation?.status ?? null"
+			:before-publish="refreshValidationBeforePublish"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@published="onPublished"
@@ -1282,6 +1324,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:main-tab-options="mainTabOptions"
 					:executions-description="executionsDescription"
 					:artifact-mode="isArtifactMode"
+					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"

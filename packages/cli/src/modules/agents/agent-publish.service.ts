@@ -13,8 +13,10 @@ import { v4 as uuid } from 'uuid';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import { AgentValidationService } from './agent-validation.service';
 import { AgentTask } from './entities/agent-task.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
@@ -22,6 +24,7 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 export interface PublishAgentOptions {
@@ -38,6 +41,8 @@ export class AgentPublishService {
 		private readonly customToolsService: AgentCustomToolsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly subAgentCleanupService: SubAgentCleanupService,
+		private readonly agentValidationService: AgentValidationService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	async publishAgent(
@@ -59,6 +64,8 @@ export class AgentPublishService {
 		if (versionId !== undefined && versionId === agent.activeVersionId) {
 			return agent;
 		}
+
+		await this.assertPublishable(agent, projectId, user, versionId);
 
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (versionId) {
@@ -118,6 +125,59 @@ export class AgentPublishService {
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
 		return agent;
+	}
+
+	/**
+	 * Authoritative pre-publish guard: re-validates the configuration that is
+	 * about to become live, independent of any frontend check. Validating the
+	 * current draft is not enough when a specific historical `versionId` is
+	 * being republished — that snapshot's schema/tool/skill bodies must be
+	 * checked instead. Integrations are never versioned, so the agent's
+	 * *current* integrations are always part of the check.
+	 */
+	private async assertPublishable(
+		agent: Agent,
+		projectId: string,
+		user: User,
+		versionId?: string,
+	): Promise<void> {
+		const credentialProvider = new AgentsCredentialProvider(
+			this.credentialsService,
+			projectId,
+			user,
+		);
+
+		const validation = versionId
+			? await this.validateHistoryVersion(agent, projectId, versionId, credentialProvider)
+			: await this.agentValidationService.validateAgentConfiguration(
+					agent.id,
+					projectId,
+					credentialProvider,
+				);
+
+		if (validation.status === 'invalid') {
+			throw new UserError('Agent configuration has errors that must be resolved before publishing');
+		}
+	}
+
+	private async validateHistoryVersion(
+		agent: Agent,
+		projectId: string,
+		versionId: string,
+		credentialProvider: AgentsCredentialProvider,
+	) {
+		const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agent.id);
+		if (!target) {
+			throw new NotFoundError(`Version "${versionId}" not found for agent "${agent.id}"`);
+		}
+
+		return await this.agentValidationService.validateAgentHistoryConfiguration(
+			agent.id,
+			projectId,
+			target,
+			agent.integrations ?? [],
+			credentialProvider,
+		);
 	}
 
 	async unpublishAgent(agentId: string, projectId: string): Promise<Agent> {

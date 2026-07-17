@@ -108,7 +108,15 @@ const globalStubs = {
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
-		props: ['agent', 'projectId', 'agentId', 'isSaving', 'beforeRevertToPublished'],
+		props: [
+			'agent',
+			'projectId',
+			'agentId',
+			'isSaving',
+			'beforeRevertToPublished',
+			'configValidationStatus',
+			'beforePublish',
+		],
 		emits: ['published', 'unpublished', 'reverted'],
 	},
 };
@@ -122,6 +130,8 @@ function mountHeader(
 		artifactMode: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
+		configValidationStatus: 'valid' | 'invalid' | null;
+		beforePublish: () => Promise<boolean>;
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
@@ -135,6 +145,8 @@ function mountHeader(
 			artifactMode: overrides.artifactMode,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
+			configValidationStatus: overrides.configValidationStatus,
+			beforePublish: overrides.beforePublish,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -314,6 +326,15 @@ describe('AgentBuilderHeader', () => {
 		) as DropdownStubWrapper;
 		nav.vm.$emit('select', 'a2');
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
+	});
+
+	it('forwards config validation status and beforePublish to AgentPublishButton', () => {
+		const beforePublish = vi.fn().mockResolvedValue(true);
+		const wrapper = mountHeader({ configValidationStatus: 'invalid', beforePublish });
+		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
+
+		expect(publish.props('configValidationStatus')).toBe('invalid');
+		expect(publish.props('beforePublish')).toBe(beforePublish);
 	});
 
 	it('navigates to Instance AI for agent creation from the switcher footer', async () => {

@@ -8,11 +8,14 @@ const props = withDefaults(
 		disabled?: boolean;
 		variant?: 'default' | 'suggestion';
 		active?: boolean;
+		/** Marks the chip as having an unresolved configuration error (e.g. a missing credential). */
+		invalid?: boolean;
 	}>(),
 	{
 		disabled: false,
 		variant: 'default',
 		active: false,
+		invalid: false,
 	},
 );
 
@@ -32,7 +35,7 @@ const emit = defineEmits<{
 		:class="[
 			$style.chip,
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
-			{ [$style.active]: props.active },
+			{ [$style.active]: props.active, [$style.invalid]: props.invalid },
 		]"
 		:disabled="props.disabled"
 		@click="emit('click', $event)"
@@ -50,6 +53,13 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
+		<N8nIcon
+			v-if="props.invalid"
+			icon="triangle-alert"
+			:size="14"
+			:class="$style.invalidIcon"
+			data-testid="agent-chip-invalid-icon"
+		/>
 	</button>
 </template>
 
@@ -75,6 +85,14 @@ const emit = defineEmits<{
 .chip:disabled {
 	cursor: not-allowed;
 	opacity: 0.6;
+}
+
+.invalid {
+	border-color: var(--canvas-node--border-color--error, var(--color--danger));
+}
+
+.invalidIcon {
+	flex-shrink: 0;
 }
 
 .suggestion {

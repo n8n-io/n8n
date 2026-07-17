@@ -663,6 +663,150 @@ describe('AgentCapabilitiesSection', () => {
 		});
 	});
 
+	describe('validation issues', () => {
+		it('marks a node tool chip invalid when a matching issue is present', () => {
+			const wrapper = mountSection(
+				[
+					{
+						type: 'node',
+						name: 'create_issue',
+						node: {
+							nodeType: 'n8n-nodes-base.linearTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+						},
+					},
+				],
+				{},
+				null,
+				[],
+				[],
+				{
+					validationIssues: [
+						{
+							code: 'missing_credential',
+							path: 'tools.0.node.credentials.linearOAuth2Api',
+							capability: { kind: 'tool', id: 'create_issue', index: 0, toolType: 'node' },
+						},
+					],
+				},
+			);
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
+		});
+
+		it('leaves a tool chip unmarked when no issue matches it', () => {
+			const wrapper = mountSection(
+				[
+					{
+						type: 'node',
+						name: 'create_issue',
+						node: {
+							nodeType: 'n8n-nodes-base.linearTool',
+							nodeTypeVersion: 1,
+							nodeParameters: {},
+						},
+					},
+				],
+				{},
+				null,
+				[],
+				[],
+				{ validationIssues: [] },
+			);
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(false);
+		});
+
+		it('marks the matching MCP server chip invalid by server name, not tool index', () => {
+			const wrapper = mountSection(
+				[],
+				{},
+				configWithMcpServers([
+					{
+						name: 'github',
+						url: 'https://mcp.github.com',
+						transport: 'streamableHttp',
+						authentication: 'bearerAuth',
+					},
+				]),
+				[],
+				[],
+				{
+					validationIssues: [
+						{
+							code: 'missing_credential',
+							path: 'mcpServers.0.credential',
+							capability: { kind: 'mcpServer', id: 'github', index: 0 },
+						},
+					],
+				},
+			);
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
+		});
+
+		it('marks the matching channel chip invalid by integration type', () => {
+			integrationsCatalogRef.value = [{ type: 'slack', label: 'Slack', icon: 'zap' }];
+			const wrapper = mountSection([], {}, null, [], [], {
+				connectedTriggers: ['slack'],
+				validationIssues: [
+					{
+						code: 'missing_credential',
+						path: 'integrations.0.credentialId',
+						capability: { kind: 'channel', id: 'slack', index: 0 },
+					},
+				],
+			});
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-channel-row"]');
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
+		});
+
+		it('marks the matching task chip invalid by task id', async () => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const wrapper = mountSection([], {}, null, [taskRef('task-1')], [], {
+				validationIssues: [
+					{
+						code: 'missing_reference',
+						path: 'tasks.0.id',
+						capability: { kind: 'task', id: 'task-1', index: 0 },
+					},
+				],
+			});
+			await flushPromises();
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-task-row"]');
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
+		});
+
+		it('marks the matching sub-agent chip invalid by agent id', async () => {
+			const config: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				subAgents: { agents: [{ agentId: 'agent-2' }] },
+			};
+			const wrapper = mountSection([], {}, config, [], [makeAgent()], {
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'subAgents.agents.0.agentId',
+						capability: { kind: 'subAgent', id: 'agent-2', index: 0 },
+					},
+				],
+			});
+			await flushPromises();
+
+			const chip = wrapper.find('[data-testid="agent-capabilities-sub-agent-row"]');
+			expect(chip.classes().some((c) => c.includes('invalid'))).toBe(true);
+		});
+	});
+
 	describe('sections allowlist', () => {
 		it('renders every section by default', () => {
 			const wrapper = mountSection([]);
