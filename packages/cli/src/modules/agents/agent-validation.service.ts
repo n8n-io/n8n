@@ -1,9 +1,6 @@
 import { type CredentialProvider, type ToolDescriptor } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
-import {
-	detectAuthenticationParameterValue,
-	getRequiredNodeCredentialSlots,
-} from '@n8n/ai-utilities/node-catalog';
+import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
 	agentTaskSchema,
@@ -527,28 +524,28 @@ export class AgentValidationService {
 			return;
 		}
 
-		const nodeParameters = (tool.node.nodeParameters ?? {}) as INodeParameters;
+		// Materialize parameter defaults the same way the Workflow constructor
+		// does, so validity mirrors how the tool will actually execute (e.g. an
+		// absent `authentication` selector resolves to the node's default).
+		const nodeParameters =
+			NodeHelpers.getNodeParameters(
+				nodeType.description.properties,
+				(tool.node.nodeParameters ?? {}) as INodeParameters,
+				true,
+				false,
+				{ typeVersion: tool.node.nodeTypeVersion },
+				nodeType.description,
+			) ?? {};
 		const requiredSlots = getRequiredNodeCredentialSlots(nodeType.description);
 		for (const slot of requiredSlots) {
 			const credentialDefinition = nodeType.description.credentials?.find(
 				(credential) => credential.name === slot.credentialType,
 			);
 
-			let displayParameters = nodeParameters;
-			if (!nodeParameters.authentication) {
-				const detectedAuthentication = detectAuthenticationParameterValue(
-					nodeType.description,
-					slot.credentialType,
-				);
-				if (detectedAuthentication) {
-					displayParameters = { ...nodeParameters, authentication: detectedAuthentication };
-				}
-			}
-
 			if (
 				credentialDefinition &&
 				!NodeHelpers.displayParameter(
-					displayParameters,
+					nodeParameters,
 					credentialDefinition,
 					{ typeVersion: tool.node.nodeTypeVersion },
 					nodeType.description,

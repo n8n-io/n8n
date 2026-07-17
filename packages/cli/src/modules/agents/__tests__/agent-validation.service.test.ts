@@ -258,7 +258,7 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
-	it('uses the credential authentication fallback when the node selector is absent', async () => {
+	it("applies the node's default authentication when the selector is absent", async () => {
 		const { service, agentRepository, nodeTypes } = makeService();
 		nodeTypes.getByNameAndVersion.mockReturnValue({
 			description: {
@@ -313,6 +313,81 @@ describe('AgentValidationService — structured issues', () => {
 				}),
 			]),
 		);
+	});
+
+	it('validates a multi-auth node tool against its default authentication only, not every auth branch', async () => {
+		const { service, agentRepository, nodeTypes } = makeService();
+		nodeTypes.getByNameAndVersion.mockReturnValue({
+			description: {
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'OAuth2 (recommended)', value: 'oAuth2' },
+							{ name: 'Service Account', value: 'serviceAccount' },
+						],
+						default: 'oAuth2',
+					},
+				],
+				credentials: [
+					{
+						name: 'googleApi',
+						required: true,
+						displayOptions: { show: { authentication: ['serviceAccount'] } },
+					},
+					{
+						name: 'gmailOAuth2',
+						required: true,
+						displayOptions: { show: { authentication: ['oAuth2'] } },
+					},
+				],
+			},
+		} as never);
+		const gmailNode = {
+			nodeType: 'n8n-nodes-base.gmail',
+			nodeTypeVersion: 2.2,
+			nodeParameters: {},
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				tools: [
+					{
+						type: 'node',
+						name: 'send_email',
+						node: {
+							...gmailNode,
+							credentials: { gmailOAuth2: { id: 'gmail-1', name: 'Gmail' } },
+						},
+					},
+					{
+						type: 'node',
+						name: 'send_email_unconfigured',
+						node: gmailNode,
+					},
+				],
+			}),
+		);
+
+		const result = await service.validateAgentConfiguration(
+			agentId,
+			projectId,
+			makeCredentialProvider([
+				{ id: 'openai-main', type: 'openAiApi' },
+				{ id: 'gmail-1', type: 'gmailOAuth2' },
+			]),
+		);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
+				path: 'tools.1.node.credentials.gmailOAuth2',
+				capability: { kind: 'tool', id: 'send_email_unconfigured', index: 1, toolType: 'node' },
+			}),
+		]);
 	});
 
 	it('flags MCP servers with missing or incompatible credential authentication', async () => {
@@ -541,7 +616,9 @@ describe('AgentValidationService — structured issues', () => {
 					],
 					subAgents: { agents: [{ agentId: 'ghost' }] },
 					tools: [{ type: 'custom', id: 'missing_tool' }],
-					mcpServers: [{ name: 'docs', url: '', authentication: 'none' }],
+					mcpServers: [
+						{ name: 'docs', url: '', transport: 'streamableHttp', authentication: 'none' },
+					],
 				},
 				{},
 				{ integrations: [{ type: 'slack', credentialId: '' }] },
@@ -596,7 +673,7 @@ describe('AgentValidationService — structured issues', () => {
 						{ agentId: 'sub-1' },
 						{ agentId: 'sub-1' },
 						{ agentId: 'sub-2' },
-						{ agentId: agentId },
+						{ agentId },
 						{ agentId: 'sub-3' },
 					],
 				},
