@@ -48,6 +48,11 @@ resolves to the real TS 6 JS API that the tooling needs.
 - value-imports the `typescript` module for its API (`import ts from
   'typescript'`, `ts.createProgram`, …) — **not** type-only imports.
 
+First-party code in these packages must `import ts from 'typescript'` — the
+catalog points that specifier at the TS6 API. Do **not** add a separately-named
+alias dependency (e.g. `"typescript6": "npm:@typescript/typescript6@…"`); keep
+the single `typescript-tooling` convention so the 7.1 cleanup is one catalog flip.
+
 Currently on `typescript-tooling`: `@n8n/eslint-config`,
 `@n8n/eslint-plugin-community-nodes`, `@n8n/node-cli`, `@n8n/nodes-langchain`.
 

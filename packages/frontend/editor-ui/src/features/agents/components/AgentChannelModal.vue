@@ -36,24 +36,9 @@ interface Props {
 	view: ChannelView;
 	connectedChannels: string[];
 	isPublished: boolean;
-	/**
-	 * Force creating a new credential in the setup flow (hides the existing-credential
-	 * picker). Used by the AIA channel-setup HITL so a new agent gets its own credential.
-	 */
-	forceNewCredential?: boolean;
-	/**
-	 * Restrict the modal to the simple, guided per-channel setup — used when the
-	 * modal is opened from the AI-assistant-embedded agent preview (artifact mode).
-	 * Forces a new credential and skips the advanced list/edit UI: any request to
-	 * edit a connected channel is redirected to the simple setup view instead.
-	 */
-	simpleSetup?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-	forceNewCredential: false,
-	simpleSetup: false,
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -77,21 +62,12 @@ const {
 	disconnect,
 } = useAgentIntegrationStatus(props.projectId, props.agentId);
 
-// In simple-setup mode there is no advanced edit UI, so any request to edit a
-// connected channel is redirected to its (simple) setup view instead.
-function normalizeView(view: ChannelView): ChannelView {
-	if (props.simpleSetup && view.endsWith('_edit')) {
-		return view.replace('_edit', '_setup') as ChannelView;
-	}
-	return view;
-}
-
-const currentView = ref<ChannelView>(normalizeView(props.view));
+const currentView = ref<ChannelView>(props.view);
 
 watch(
 	() => props.view,
 	(newView) => {
-		currentView.value = normalizeView(newView);
+		currentView.value = newView;
 	},
 );
 
@@ -137,10 +113,6 @@ const showFooterActions = computed(
 	() =>
 		isEditMode.value && selectedChannelType.value !== null && selectedChannelType.value !== 'slack',
 );
-
-// Simple-setup mode always creates a fresh credential — mirrors the AIA
-// channel-setup HITL card so the artifact preview gets the same guided flow.
-const effectiveForceNewCredential = computed(() => props.forceNewCredential || props.simpleSetup);
 
 const currentChannelCredentialId = computed(() =>
 	getChannelCredentialId(selectedChannelType.value),
@@ -198,7 +170,7 @@ function goToSetup(channelType: string) {
 }
 
 function goToEdit(channelType: string) {
-	currentView.value = normalizeView(`${channelType}_edit` as ChannelView);
+	currentView.value = `${channelType}_edit` as ChannelView;
 }
 
 function goBackToList() {
@@ -257,7 +229,7 @@ watch(
 	(isOpen) => {
 		if (isOpen) {
 			void loadChannelState();
-			currentView.value = normalizeView(props.view);
+			currentView.value = props.view;
 		}
 	},
 	{ immediate: true },
@@ -339,8 +311,6 @@ watch(
 						:loading="isLoading('slack')"
 						:error-message="hasError('slack') ? errorMessages.slack : ''"
 						:error-is-conflict="errorIsConflict.slack"
-						:force-new-credential="effectiveForceNewCredential"
-						:setup-mode="simpleSetup ? 'simple' : 'advanced'"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -366,7 +336,6 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:force-new-credential="effectiveForceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -392,7 +361,6 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:force-new-credential="effectiveForceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"

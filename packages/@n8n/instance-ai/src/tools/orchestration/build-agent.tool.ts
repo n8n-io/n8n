@@ -127,8 +127,13 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 	});
 	return {
 		threadId: `${instanceAiBuilderThreadPrefix(context.threadId)}${agentId}`,
+		hostThreadId: context.threadId,
+		runId: context.runId,
 		modelConfig: context.modelId,
 		...(telemetry ? { telemetry } : {}),
+		...(context.tracing?.onMemoryTaskEvent
+			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
+			: {}),
 	};
 }
 
@@ -409,7 +414,7 @@ async function runBuilderConsumeLoop(params: {
 		} else {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
-		context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
+		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
 		return { ...output, ...targetIdentity(target) };
 	}
 
@@ -434,7 +439,11 @@ async function runBuilderConsumeLoop(params: {
 			"The agent builder's confirmation request could not be shown in this chat; the build turn was cancelled.";
 		await failTraceRun(context, traceRun, new Error(message));
 		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
-		context.claimSubAgentUsage?.(`${dedupeBase}:s:invalid`, result.usage?.usage ?? [], 'errored');
+		await context.claimSubAgentUsage?.(
+			`${dedupeBase}:s:invalid`,
+			result.usage?.usage ?? [],
+			'errored',
+		);
 		return {
 			ok: false,
 			error: message,
@@ -446,7 +455,7 @@ async function runBuilderConsumeLoop(params: {
 	// The builder-level requestId must not leak up: the FE confirms against the
 	// orchestrator's own suspension, so a fresh one is minted here.
 	await finishTraceRun(context, traceRun, { metadata: { outcome: 'suspended' } });
-	context.claimSubAgentUsage?.(
+	await context.claimSubAgentUsage?.(
 		`${dedupeBase}:s:${result.suspension.toolCallId}`,
 		result.usage?.usage ?? [],
 		'suspended',
@@ -638,7 +647,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				'without either keep editing the current agent. To build ANOTHER agent in the same ' +
 				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
 				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
-				'switches the active target. When the builder needs user input (a choice, a ' +
+				'switches the active target. The builder can also publish or unpublish the target ' +
+				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
+				'forward that intent in `message`; never tell the user to open the agent editor and ' +
+				'click Publish. When the builder needs user input (a choice, a ' +
 				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
 				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
 				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +

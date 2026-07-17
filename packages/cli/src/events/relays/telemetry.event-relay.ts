@@ -212,8 +212,25 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionCreated(event),
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
 				this.instanceAiMcpRegistryConnectionDeleted(event),
+			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 		});
 	}
+
+	// #region HITL
+
+	private hitlResponseActioned({
+		nodeType,
+		approved,
+		authorized,
+	}: RelayEventMap['hitl-response-actioned']) {
+		this.telemetry.track('Advanced HITL response actioned', {
+			node_type: nodeType,
+			is_approved: approved,
+			is_authorized: authorized,
+		});
+	}
+
+	// #endregion
 
 	// #region Instance AI MCP
 
@@ -1062,6 +1079,7 @@ export class TelemetryEventRelay extends EventRelay {
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
 			data_table_count: counts.dataTables,
+			variable_count: counts.variables,
 		});
 	}
 

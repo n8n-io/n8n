@@ -12,7 +12,9 @@
 			"n8n-playwright",
 			"n8n-workflow",
 			"typescript",
-			"@typescript/*"
+			"@typescript/*",
+			"tsdown",
+			"rolldown-plugin-dts"
 		]
 	}
 }

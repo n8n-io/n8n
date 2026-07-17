@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/task-runner",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T08:56:23.946Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            1657,
+            1627,
+            1639
+          ],
+          "min": 1627,
+          "median": 1639,
+          "mean": 1641
+        },
+        "build": {
+          "runsMs": [
+            1555,
+            1566,
+            1554
+          ],
+          "min": 1554,
+          "median": 1555,
+          "mean": 1558
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T08:57:37.671Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            799,
+            749,
+            739
+          ],
+          "min": 739,
+          "median": 749,
+          "mean": 762
+        },
+        "build": {
+          "runsMs": [
+            950,
+            862,
+            840
+          ],
+          "min": 840,
+          "median": 862,
+          "mean": 884
+        }
+      }
+    }
+  }
+}
