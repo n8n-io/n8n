@@ -50,7 +50,11 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	siteIdCache?: Map<string, string>,
+): Promise<IDataObject> {
 	// https://learn.microsoft.com/en-us/graph/api/driveitem-put-content
 	const fileName = this.getNodeParameter('fileName', i) as string;
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
@@ -96,7 +100,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	}
 
 	// resolveSiteId validates the site field itself, including the empty case
-	const siteId = await resolveSiteId.call(this, i);
+	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 
 	body ??= await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 

@@ -36,7 +36,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							`The operation "${operation}" is not supported!`,
 						);
 					}
-					responseData = await file[sharePointTypeData.operation].execute.call(this, i);
+					responseData = await file[sharePointTypeData.operation].execute.call(
+						this,
+						i,
+						siteIdCache,
+					);
 					break;
 				case 'list':
 					if (!(sharePointTypeData.operation in list)) {
