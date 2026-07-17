@@ -9,6 +9,12 @@ on:
       # Trigger if:
       # - any of the public API files change
       - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'
+      # - the OpenAPI doc generator source changes (API-39: generates some paths/schemas from
+      #   @n8n/api-types Zod DTOs instead of hand-written YAML)
+      - 'packages/cli/src/public-api/v1/openapi-gen/**/*.ts'
+      # - a Zod DTO/schema the generator reads from changes
+      - 'packages/@n8n/api-types/src/dto/**/*.ts'
+      - 'packages/@n8n/api-types/src/schemas/**/*.ts'
       # - the build script or dependencies change
       - 'packages/cli/package.json'
       # - any main dependencies change
@@ -33,7 +39,11 @@ jobs:
       - name: Setup Node.js and install dependencies
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: ''
+          # API-39: build:data now runs the OpenAPI doc generator (packages/cli/src/public-api/v1/
+          # openapi-gen), which needs its own compiled dist output to exist — a plain YAML bundle
+          # no longer suffices. Scoped to n8n (packages/cli) + its dependency graph rather than a
+          # full `pnpm build`, since this workflow only needs the Public API schema.
+          build-command: 'pnpm --filter "n8n..." build'
 
       - name: Build Public API Schema
         run: pnpm run build:data
@@ -103,7 +113,10 @@ jobs:
             RELEVANT_COMMITS=$(git log --pretty=format:"- [%h](https://github.com/${{ github.repository }}/commit/%H) %s" "${LAST_SUCCESS_SHA}..${{ github.sha }}" -- \
               'packages/cli/src/public-api/**/*.css' \
               'packages/cli/src/public-api/**/*.yaml' \
-              'packages/cli/src/public-api/**/*.yml')
+              'packages/cli/src/public-api/**/*.yml' \
+              'packages/cli/src/public-api/v1/openapi-gen/**/*.ts' \
+              'packages/@n8n/api-types/src/dto/**/*.ts' \
+              'packages/@n8n/api-types/src/schemas/**/*.ts')
           fi
 
           if [[ -z "$RELEVANT_COMMITS" ]]; then

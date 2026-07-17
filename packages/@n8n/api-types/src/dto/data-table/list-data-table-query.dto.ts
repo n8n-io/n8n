@@ -61,7 +61,8 @@ const publicApiFilterValidator = makeFilterValidator(publicApiFilterSchema);
 
 const sortByValidator = z
 	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
-	.optional();
+	.optional()
+	.describe('Sort format: field:asc or field:desc');
 
 export class ListDataTableQueryDto extends Z.class({
 	...paginationSchema,
