@@ -979,6 +979,7 @@ export function createThreadRuntime(
 	function pushOptimisticUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 	): InstanceAiMessage {
 		const userMessage: InstanceAiMessage = {
 			id: uuidv4(),
@@ -988,6 +989,7 @@ export function createThreadRuntime(
 			reasoning: '',
 			isStreaming: false,
 			attachments: attachments && attachments.length > 0 ? attachments : undefined,
+			context: handoffContext,
 		};
 		messages.value.push(userMessage);
 		return userMessage;
@@ -1054,18 +1056,20 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
 		handoffContext?: InstanceAiHandoffContext,
-	): Promise<void> {
+	): Promise<boolean> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
-			const optimistic = pushOptimisticUserMessage(message, attachments);
+			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			trackUserMessageSent(isFirstMessage);
 
 			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
+				return false;
 			}
+			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
 		}

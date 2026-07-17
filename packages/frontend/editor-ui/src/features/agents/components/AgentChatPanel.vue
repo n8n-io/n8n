@@ -23,6 +23,7 @@ const props = withDefaults(
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
+		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 	}>(),
@@ -31,6 +32,7 @@ const props = withDefaults(
 		mode: 'panel',
 		continueSessionId: undefined,
 		canEditAgent: true,
+		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
 	},
@@ -40,6 +42,10 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
+	'initial-consumed': [];
+	back: [];
+	'open-build': [];
+	'send-to-assistant': [];
 }>();
 
 const locale = useI18n();
@@ -197,7 +203,11 @@ onBeforeUnmount(() => {
 			:messages="messages"
 			:messaging-state="messagingState"
 			:project-id="projectId"
+			:agent-id="agentId"
+			:session-id="continueSessionId"
+			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
+			@send-to-assistant="emit('send-to-assistant')"
 		/>
 
 		<div :class="$style.inputArea">

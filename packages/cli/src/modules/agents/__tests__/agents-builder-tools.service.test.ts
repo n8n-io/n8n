@@ -407,6 +407,53 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('patch_config can remove one integration while preserving siblings', async () => {
+			const { service, agentsService } = makeService();
+			const currentIntegrations = [
+				{ type: 'slack', credentialId: 'slack-1' },
+				{ type: 'linear', credentialId: 'linear-1' },
+				{
+					type: 'telegram',
+					credentialId: 'telegram-1',
+					settings: { accessMode: 'public' as const, allowedUsers: [] },
+				},
+			] as NonNullable<AgentJsonConfig['integrations']>;
+			const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+			const updatedConfig = {
+				...currentConfig,
+				integrations: [currentIntegrations[0], currentIntegrations[2]],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
+			};
+			const agent = makeAgent(baseConfig);
+			agent.integrations = currentIntegrations;
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([{ op: 'remove', path: '/integrations/1' }]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				expect.objectContaining({
+					integrations: [currentIntegrations[0], currentIntegrations[2]],
+				}),
+			);
+			expect(result).toEqual({ ok: true });
+		});
+
 		it('patch_config strips legacy schedule integrations from the current snapshot', async () => {
 			const { service, agentsService } = makeService();
 			const scheduleIntegration = {
