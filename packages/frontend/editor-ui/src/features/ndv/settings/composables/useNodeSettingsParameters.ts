@@ -6,7 +6,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type NodeParameterValue,
-	DeploymentCondition,
+	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
