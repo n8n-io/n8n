@@ -68,6 +68,7 @@ import {
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
 import {
+	abortedWorkflowTestCaseResult,
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
@@ -79,6 +80,7 @@ import {
 	type BuildResult,
 } from '../harness/runner';
 import {
+	classifyScenarioExecutionError,
 	extractErrorMessage,
 	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
@@ -422,15 +424,21 @@ async function main(): Promise<void> {
 	const cleanupBuiltWorkflows =
 		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
+	// Hoisted out of the try so the finally can guarantee an eval-results.json is
+	// written even if the run throws (a budget/timeout abort, a lane meltdown, an
+	// OOM). Without a file the dispatcher discards the whole run — including every
+	// scenario that already passed — so a partial file is strictly better.
+	let evaluation: MultiRunEvaluation | undefined;
+	let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
+	const mcpBuildSpend: McpBuildSpend[] = [];
+	let resultsWritten = false;
+
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
-		let evaluation: MultiRunEvaluation;
 		let experimentName: string | undefined;
 		let experimentUrl: string | undefined;
 		let outcome: ComparisonOutcome | undefined;
-		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
-		const mcpBuildSpend: McpBuildSpend[] = [];
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
@@ -482,6 +490,7 @@ async function main(): Promise<void> {
 			mcpBuildSpend,
 			experimentUrl,
 		);
+		resultsWritten = true;
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
 		const reportResults = flattenRunsForReport(evaluation);
@@ -515,6 +524,33 @@ async function main(): Promise<void> {
 			}
 		}
 	} finally {
+		// Never let the dispatcher find no results file. If the run threw before the
+		// happy-path write (a budget/timeout abort propagating past the per-case
+		// guard, an OOM, a lane meltdown), emit whatever aggregation we captured —
+		// aggregation already tolerates missing/incomplete entries, so partial input
+		// is safe and the already-passed scenarios survive. An empty evaluation is
+		// still better than nothing (the dispatcher distinguishes it from a crash).
+		if (!resultsWritten) {
+			try {
+				const { jsonPath } = writeEvalResults(
+					evaluation ?? { totalRuns: args.iterations, testCases: [] },
+					Date.now() - startTime,
+					args.outputDir,
+					undefined,
+					undefined,
+					process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA,
+					slugByTestCase,
+					ciRerunHint(),
+					undefined,
+					mcpBuildSpend,
+					undefined,
+				);
+				logger.error(`Eval run did not finish cleanly — wrote partial results to ${jsonPath}`);
+			} catch (writeError: unknown) {
+				logger.error(`Failed to write partial eval results: ${extractErrorMessage(writeError)}`);
+			}
+		}
+
 		// Per-lane cleanup: each lane only holds the workflows built/fetched on it,
 		// so delete them via that lane's own client (multi-lane MCP builds spread
 		// workflows across lanes; a single-lane cleanup would 404 on the rest).
@@ -987,6 +1023,27 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const iteration = inputs._iteration ?? 0;
 		try {
 			return await targetRow(inputs, iteration);
+		} catch (error: unknown) {
+			// targetRow guards scenario execution internally, but a build-phase throw
+			// (getOrBuild) or a budget abort must not reject up to evaluate() and
+			// abort the whole experiment — that would discard every OTHER row's
+			// completed results. Record this row as an aborted (framework_issue)
+			// output instead so evaluate() finalizes and writeEvalResults still runs.
+			const message = extractErrorMessage(error);
+			logger.error(`    ERROR [${inputs.scenarioName}] (${inputs.testCaseFile}): ${message}`);
+			const classified = classifyScenarioExecutionError(message);
+			return {
+				buildSuccess: false,
+				passed: false,
+				score: 0,
+				reasoning: classified.reasoning,
+				failureCategory: classified.failureCategory,
+				rootCause: classified.rootCause,
+				execErrors: [message],
+				buildDurationMs: 0,
+				execDurationMs: 0,
+				nodeCount: 0,
+			};
 		} finally {
 			await releaseCaseRow(iteration, inputs.testCaseFile);
 		}
@@ -1091,18 +1148,22 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
 					continue;
 				}
-				// Mirror direct mode's per-scenario guard — without this, n8n API errors
-				// or verifier timeouts from executeWithLlmMock / verifyChecklist would
-				// escape to LangSmith, come back as a Run with null outputs, and be
-				// misclassified as builder regressions by the feedback extractor.
+				// Mirror direct mode's per-scenario guard — without this, n8n API errors,
+				// verifier timeouts, or a per-iteration budget abort from
+				// executeWithLlmMock / verifyChecklist would escape to LangSmith, come
+				// back as a Run with null outputs, and be misclassified as builder
+				// regressions by the feedback extractor. classifyScenarioExecutionError
+				// stamps framework_issue + a timeout-flavoured rootCause for budget aborts.
 				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				const classified = classifyScenarioExecutionError(errorMessage);
 				return await attachExpectations({
 					buildSuccess: true,
 					workflowId: build.workflowId,
 					passed: false,
 					score: 0,
-					reasoning: `Scenario execution error: ${errorMessage}`,
-					failureCategory: 'framework_issue',
+					reasoning: classified.reasoning,
+					failureCategory: classified.failureCategory,
+					rootCause: classified.rootCause,
 					execErrors: [errorMessage],
 					buildDurationMs,
 					execDurationMs: Date.now() - execStart,
@@ -1558,29 +1619,40 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								tc.fileSlug,
 								iter,
 							);
-							const result = await runWorkflowTestCase({
-								client: lane.client,
-								baseUrl: lane.baseUrl,
-								testCase: tc.testCase,
-								timeoutMs: args.timeoutMs,
-								createdCredentialIds: lane.createdCredentialIds,
-								preRunWorkflowIds: lane.preRunWorkflowIds,
-								claimedWorkflowIds: lane.claimedWorkflowIds,
-								logger,
-								keepWorkflows: args.keepWorkflows,
-								laneTag,
-								prebuiltWorkflowId,
-								pinAiRoots: args.pinAiRoots,
-							});
-							if (
-								prebuiltWorkflowId !== undefined &&
-								cleanupBuiltWorkflows &&
-								result.workflowBuildSuccess &&
-								result.workflowId
-							) {
-								lane.workflowIdsToDelete.add(result.workflowId);
+							try {
+								const result = await runWorkflowTestCase({
+									client: lane.client,
+									baseUrl: lane.baseUrl,
+									testCase: tc.testCase,
+									timeoutMs: args.timeoutMs,
+									createdCredentialIds: lane.createdCredentialIds,
+									preRunWorkflowIds: lane.preRunWorkflowIds,
+									claimedWorkflowIds: lane.claimedWorkflowIds,
+									logger,
+									keepWorkflows: args.keepWorkflows,
+									laneTag,
+									prebuiltWorkflowId,
+									pinAiRoots: args.pinAiRoots,
+								});
+								if (
+									prebuiltWorkflowId !== undefined &&
+									cleanupBuiltWorkflows &&
+									result.workflowBuildSuccess &&
+									result.workflowId
+								) {
+									lane.workflowIdsToDelete.add(result.workflowId);
+								}
+								return result;
+							} catch (error: unknown) {
+								// runWorkflowTestCase guards its own scenario loop, but a throw
+								// from the build phase (or a per-iteration budget abort) would
+								// otherwise reject runWithConcurrency and take every OTHER case's
+								// completed results down with it. Record this one case as an
+								// aborted (framework_issue) result and keep the batch alive.
+								const message = extractErrorMessage(error);
+								logger.error(`  ERROR running ${tc.fileSlug}${laneTag}: ${message}`);
+								return abortedWorkflowTestCaseResult(tc.testCase, lane.baseUrl, message);
 							}
-							return result;
 						},
 						MAX_CONCURRENT_BUILDS,
 					);
