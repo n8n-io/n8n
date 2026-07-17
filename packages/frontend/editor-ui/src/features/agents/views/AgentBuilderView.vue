@@ -134,6 +134,8 @@ const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissio
 const isVersionHistoryOpen = ref(false);
 const initialized = ref(false);
 const pendingArtifactRefreshKey = ref<number>();
+/** Queues `agentUpdated` bus events that land mid-initialize for replay (see `onExternalAgentUpdated`). */
+const pendingExternalRefresh = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const agentFiles = ref<AgentFileDto[]>([]);
@@ -799,17 +801,23 @@ watch(
 	},
 );
 
-// Cross-surface: another surface (e.g. the Instance AI channel-setup card)
-// wrote this agent outside the builder's own save funnels — refetch so the
-// shell (config, Channels chips) doesn't sit stale until the build run ends.
-// Own writes are filtered by source to avoid re-entrancy (`onConfigUpdated`
-// itself emits `agentUpdated`).
 function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
 	if (event?.source === 'agent-builder') return;
 	if (!event?.agentId || event.agentId !== agentId.value) return;
-	// While initializing, the in-flight initial fetch already returns fresh data.
-	if (!initialized.value) return;
+	// Mid-initialize the write may have landed after initialize()'s own config
+	// fetch already resolved, so queue a replay instead of dropping the event.
+	// Unlike `replayPendingArtifactRefresh` this isn't gated on artifact mode.
+	if (!initialized.value) {
+		pendingExternalRefresh.value = true;
+		return;
+	}
 	void refreshArtifactShell().catch(handleArtifactRefreshError);
+}
+
+async function replayPendingExternalRefresh() {
+	if (!pendingExternalRefresh.value) return;
+	pendingExternalRefresh.value = false;
+	await refreshArtifactShell();
 }
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
@@ -966,6 +974,10 @@ async function onHeaderAction(action: string) {
 
 async function initialize() {
 	initialized.value = false;
+	// A refresh queued before this (re)initialize is obsolete: it targeted the
+	// agent that was current when the event fired, and the fetches below return
+	// fresh data anyway. Only events arriving during this init need replaying.
+	pendingExternalRefresh.value = false;
 	try {
 		// Flush any pending/in-flight save for the previous agent before we tear
 		// down its state — without this, an autosave scheduled by edits in the
@@ -1032,6 +1044,7 @@ async function initialize() {
 	} finally {
 		initialized.value = true;
 		void replayPendingArtifactRefresh().catch(handleArtifactRefreshError);
+		void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 		warmAgentKnowledgeSandboxForPage();
 	}
 }
