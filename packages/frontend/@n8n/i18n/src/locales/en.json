@@ -5549,7 +5549,7 @@
 	"agentNode.card.noModel": "No model selected",
 	"agentNode.ndv.banner.suffix": ". Alternatively, fill in the form below.",
 	"agentNode.ndv.section.agent": "Agent",
-	"agentNode.ndv.referenced.editInBuilder": "Edit in Agent Builder",
+	"agentNode.ndv.referenced.editInBuilder": "Edit agent",
 	"agentNode.ndv.unavailable": "This agent was deleted or you lost access.",
 	"agentSelector.createAgentFailed": "Error creating agent",
 	"evaluation.listRuns.status.new": "New",

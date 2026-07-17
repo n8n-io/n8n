@@ -9,7 +9,14 @@
  */
 import { computed, inject, watch } from 'vue';
 import type { AgentCapabilitySummary } from '@n8n/api-types';
-import { N8nLink, N8nLoading, N8nSectionHeader, N8nText } from '@n8n/design-system';
+import {
+	N8nLink,
+	N8nLoading,
+	N8nMarkdown,
+	N8nSectionHeader,
+	N8nText,
+	N8nButton,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -17,6 +24,7 @@ import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	isAgentModelProvider,
 } from '@/features/agents/model-providers';
+import AgentPersonalisationIcon from '@/features/agents/components/AgentPersonalisationIcon.vue';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
 import { toCapabilitySummaryTools } from '@/features/agents/utils/capabilitySummaryTools';
 import { parseModelString } from '@/features/agents/utils/model-string';
@@ -115,16 +123,6 @@ async function onEditInBuilder() {
 		data-test-id="agent-ndv-referenced-summary"
 	>
 		<N8nSectionHeader :title="i18n.baseText('agentNode.ndv.section.agent')" bordered>
-			<template #actions>
-				<N8nLink
-					v-if="!isUnavailable"
-					size="small"
-					data-test-id="agent-ndv-edit-in-builder"
-					@click="onEditInBuilder"
-				>
-					{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}
-				</N8nLink>
-			</template>
 		</N8nSectionHeader>
 
 		<!-- Terminal state: the referenced agent was deleted or access was lost. -->
@@ -142,42 +140,81 @@ async function onEditInBuilder() {
 		<N8nLoading v-else-if="loading && !config" :rows="4" data-test-id="agent-ndv-loading" />
 
 		<template v-else-if="config">
-			<div :class="$style.identityRow">
-				<N8nText bold data-test-id="agent-ndv-summary-name">{{ config.name }}</N8nText>
-				<div :class="$style.modelRow" data-test-id="agent-ndv-summary-model">
-					<CredentialIcon
-						v-if="modelCredentialType"
-						:credential-type-name="modelCredentialType"
-						:size="16"
-					/>
-					<N8nText size="small" color="text-light">
-						{{ modelName || i18n.baseText('agentNode.card.noModel') }}
-					</N8nText>
-				</div>
+			<div :class="$style.config">
+				<N8nButton
+					v-if="!isUnavailable"
+					size="small"
+					icon="external-link"
+					variant="subtle"
+					:class="$style.editButton"
+					data-test-id="agent-ndv-edit-in-builder"
+					@click="onEditInBuilder"
+				>
+					{{ i18n.baseText('agentNode.ndv.referenced.editInBuilder') }}
+				</N8nButton>
+				<header :class="$style.header">
+					<AgentPersonalisationIcon :personalisation="config.personalisation" :size="48" />
+					<div :class="$style.identityRow">
+						<N8nText bold step="2xl" data-test-id="agent-ndv-summary-name">{{
+							config.name
+						}}</N8nText>
+						<div :class="$style.modelRow" data-test-id="agent-ndv-summary-model">
+							<CredentialIcon
+								v-if="modelCredentialType"
+								:credential-type-name="modelCredentialType"
+								:size="16"
+							/>
+							<N8nText bold color="text-light">
+								{{ modelName || i18n.baseText('agentNode.card.noModel') }}
+							</N8nText>
+						</div>
+					</div>
+				</header>
+
+				<N8nMarkdown
+					v-if="instructions"
+					:content="instructions"
+					:class="$style.instructions"
+					data-test-id="agent-ndv-summary-instructions"
+				/>
+
+				<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
 			</div>
-
-			<N8nText
-				v-if="instructions"
-				size="small"
-				color="text-base"
-				:class="$style.instructions"
-				data-test-id="agent-ndv-summary-instructions"
-			>
-				{{ instructions }}
-			</N8nText>
-
-			<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
 		</template>
 	</div>
 </template>
 
 <style module lang="scss">
-.summary {
+.header {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.summary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
 	width: 100%;
-	margin-top: var(--spacing--lg);
+	margin-top: var(--spacing--xl);
+}
+
+.editButton {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+}
+
+.config {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: calc(var(--spacing--lg) * 1.2) var(--spacing--lg);
+	border: var(--border);
+	border-radius: var(--radius);
+	background-color: var(--background--surface);
+	box-shadow: var(--shadow--xs);
 }
 
 .unavailable {
@@ -195,12 +232,8 @@ async function onEditInBuilder() {
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
-
 .instructions {
-	display: -webkit-box;
-	-webkit-line-clamp: 6;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	white-space: pre-line;
+	font-size: var(--font-size--sm);
+	--font-size--md: var(--font-size--sm);
 }
 </style>

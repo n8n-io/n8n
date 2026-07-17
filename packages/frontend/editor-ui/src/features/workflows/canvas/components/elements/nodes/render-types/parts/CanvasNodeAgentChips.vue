@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nActionDropdown, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import AgentChipButton from '@/features/agents/components/AgentChipButton.vue';
 import { type AgentCardChip, MAX_INLINE_AGENT_CHIPS } from './canvasNodeAgentChips.utils';
 
 const props = withDefaults(
@@ -36,21 +37,18 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 
 <template>
 	<div :class="$style.chips" data-test-id="canvas-node-agent-chips">
-		<span
+		<AgentChipButton
 			v-for="chip in inlineChips"
 			:key="chip.key"
-			:class="$style.chip"
+			:icon="chip.nodeTypeDescription ? undefined : chip.icon"
+			:clickable="false"
 			data-test-id="canvas-node-agent-chip"
 		>
-			<NodeIcon
-				v-if="chip.nodeTypeDescription"
-				:node-type="chip.nodeTypeDescription"
-				:size="16"
-				:class="$style.nodeIcon"
-			/>
-			<N8nIcon v-else :icon="chip.icon" :size="16" :class="$style.chipIcon" />
-			<N8nText size="small" :class="$style.chipLabel">{{ chip.label }}</N8nText>
-		</span>
+			<template v-if="chip.nodeTypeDescription" #icon>
+				<NodeIcon :node-type="chip.nodeTypeDescription" :size="16" :class="$style.nodeIcon" />
+			</template>
+			{{ chip.label }}
+		</AgentChipButton>
 		<N8nActionDropdown
 			v-if="overflowChips.length"
 			:items="overflowItems"
@@ -59,15 +57,13 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			data-test-id="canvas-node-agent-chips-overflow"
 		>
 			<template #activator>
-				<span :class="[$style.chip, $style.overflow]">
-					<N8nText size="small" :class="$style.chipLabel">
-						{{
-							i18n.baseText('agentNode.card.moreChips', {
-								interpolate: { count: overflowChips.length },
-							})
-						}}
-					</N8nText>
-				</span>
+				<AgentChipButton>
+					{{
+						i18n.baseText('agentNode.card.moreChips', {
+							interpolate: { count: overflowChips.length },
+						})
+					}}
+				</AgentChipButton>
 			</template>
 		</N8nActionDropdown>
 	</div>
@@ -80,36 +76,7 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 	gap: var(--spacing--2xs);
 }
 
-.chip {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	max-width: 100%;
-	padding: var(--spacing--5xs) var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--full);
-	background: var(--background--surface);
-	box-shadow: var(--shadow--xs);
-}
-
-.overflow {
-	cursor: pointer;
-}
-
-.chipIcon {
-	flex-shrink: 0;
-	color: var(--text-color--subtle);
-}
-
 .nodeIcon {
 	flex-shrink: 0;
-}
-
-.chipLabel {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	color: var(--text-color--subtle);
 }
 </style>
