@@ -91,7 +91,6 @@ onMounted(() => {
 
 	void store.loadThreads();
 	void store.fetchCredits();
-	store.startCreditsPushListener();
 
 	// Subscribe to push + fetch backend gateway state. The backend keeps the
 	// pairing alive across reloads, so the client never contacts the daemon
@@ -138,7 +137,6 @@ onUnmounted(() => {
 	// Stopping the store-level push listeners on a remount would kill the ones the
 	// new instance relies on (its start calls no-op while the old one is registered).
 	if (!isInstanceAiChatRoute(route.name)) {
-		store.stopCreditsPushListener();
 		settingsStore.stopGatewayPushListener();
 	}
 });
