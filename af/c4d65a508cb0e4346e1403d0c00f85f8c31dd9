@@ -1,0 +1,26 @@
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_1fe9e065afa63e::t_06f061cf7cf7e6 174,184-187,190-192
+  s_1fe9e065afa63e::t_7b9aea579db4f3 7
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_1fe9e065afa63e::t_46adf757a419c6 276
+  s_1fe9e065afa63e::t_ff080f207d3149 304,307,311-313
+  s_1fe9e065afa63e::t_cdf40234149e64 13
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_1fe9e065afa63e::t_7bbd07813e6b5d 53-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "afc4d65a508cb0e4346e1403d0c00f85f8c31dd9",
+  "prompts": {},
+  "sessions": {
+    "s_1fe9e065afa63e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ad170aba-a651-473f-a272-b5c49387454f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
