@@ -39,9 +39,13 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	siteIdCache?: Map<string, string>,
+): Promise<IDataObject> {
 	// https://learn.microsoft.com/en-us/graph/api/list-get — {list-id} accepts the list ID or title
-	const siteId = await resolveSiteId.call(this, i);
+	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 	const listIdOrTitle = (
 		this.getNodeParameter('list', i, '', { extractValue: true }) as string
 	).trim();

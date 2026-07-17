@@ -21,6 +21,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		operation,
 	} as MicrosoftSharePointType;
 
+	// Operations run once per item, so the site ID cache is hoisted here to
+	// span the whole run — each distinct site URL then costs one Graph lookup.
+	const siteIdCache = new Map<string, string>();
+
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (sharePointTypeData.resource) {
@@ -31,7 +35,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 							`The operation "${operation}" is not supported!`,
 						);
 					}
-					responseData = await list[sharePointTypeData.operation].execute.call(this, i);
+					responseData = await list[sharePointTypeData.operation].execute.call(
+						this,
+						i,
+						siteIdCache,
+					);
 					break;
 				default:
 					throw new NodeOperationError(

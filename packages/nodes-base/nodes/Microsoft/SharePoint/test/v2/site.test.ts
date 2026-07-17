@@ -238,6 +238,20 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('resolves a repeated site URL once when given a per-run cache', async () => {
+		setSite({ mode: 'url', value: 'https://contoso.sharepoint.com/sites/a' });
+		const siteIdCache = new Map<string, string>();
+
+		await expect(resolveSiteId.call(ctx, 0, siteIdCache)).resolves.toBe(
+			'contoso.sharepoint.com,g1,g2',
+		);
+		await expect(resolveSiteId.call(ctx, 1, siteIdCache)).resolves.toBe(
+			'contoso.sharepoint.com,g1,g2',
+		);
+
+		expect(apiRequest).toHaveBeenCalledTimes(1);
+	});
+
 	// The empty-site guard lives here so every action inherits it
 	it.each([
 		['ID', { mode: 'id', value: '' }],

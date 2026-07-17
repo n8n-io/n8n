@@ -124,12 +124,17 @@ export async function getSites(
 	return { results, paginationToken: response['@odata.nextLink'] };
 }
 
-// One URL lookup per distinct site URL per execution — without this, a
-// multi-item run doubles its Graph request volume and risks 429 throttling.
-const siteIdCache = new WeakMap<IExecuteFunctions, Map<string, string>>();
-
-/** Resolves the `site` field to a Graph site ID; URL mode costs one lookup. */
-export async function resolveSiteId(this: IExecuteFunctions, itemIndex: number): Promise<string> {
+/**
+ * Resolves the `site` field to a Graph site ID; URL mode costs one lookup.
+ * Callers with a per-item loop pass `siteIdCache` (hoisted in the router) so
+ * a multi-item run resolves each distinct URL once instead of per item —
+ * without it the run doubles its Graph request volume and risks 429 throttling.
+ */
+export async function resolveSiteId(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	siteIdCache?: Map<string, string>,
+): Promise<string> {
 	const site = this.getNodeParameter('site', itemIndex) as INodeParameterResourceLocator;
 	const value = String(site.value ?? '').trim();
 
@@ -169,12 +174,7 @@ export async function resolveSiteId(this: IExecuteFunctions, itemIndex: number):
 	const endpoint =
 		path === '' ? `/v1.0/sites/${parsed.hostname}` : `/v1.0/sites/${parsed.hostname}:${path}`;
 
-	let cache = siteIdCache.get(this);
-	if (!cache) {
-		cache = new Map();
-		siteIdCache.set(this, cache);
-	}
-	const cached = cache.get(endpoint);
+	const cached = siteIdCache?.get(endpoint);
 	if (cached !== undefined) {
 		return cached;
 	}
@@ -195,6 +195,6 @@ export async function resolveSiteId(this: IExecuteFunctions, itemIndex: number):
 	}
 
 	const siteId = String(response.id);
-	cache.set(endpoint, siteId);
+	siteIdCache?.set(endpoint, siteId);
 	return siteId;
 }
