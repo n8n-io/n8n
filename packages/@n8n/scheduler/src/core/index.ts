@@ -44,7 +44,14 @@ export type {
 	ProvisionedJob,
 	ProvisionSummary,
 } from './provisioning';
-export type { ExecutorOptions, TaskHandler } from './executor';
+export { createDispatchReporter } from './executor';
+export type {
+	ExecutorOptions,
+	TaskHandler,
+	DispatchReporter,
+	DispatchDecision,
+} from './executor';
+export { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
 export type {
 	MaterializerOptions,
 	MaterializerSummary,

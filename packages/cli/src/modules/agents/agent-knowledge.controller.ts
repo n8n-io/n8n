@@ -7,6 +7,7 @@ import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AiService } from '@/services/ai.service';
 
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
@@ -25,11 +26,12 @@ export class AgentKnowledgeController {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly aiService: AiService,
 	) {}
 
-	/** Knowledge base endpoints are gated behind Daytona sandbox env vars. */
+	/** Knowledge base endpoints are gated behind Daytona sandbox env vars or AI Assistant proxy availability. */
 	private assertKnowledgeBaseEnabled() {
-		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
+		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled())) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}
