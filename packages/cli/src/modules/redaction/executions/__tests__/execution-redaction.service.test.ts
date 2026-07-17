@@ -2,6 +2,7 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import { shouldRedactConsoleOutput } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -853,6 +854,36 @@ describe('ExecutionRedactionService', () => {
 			await service.processExecution(execution, { user: mockUser });
 
 			expect(execution.data.executionData?.runtimeData?.credentials).toBeUndefined();
+		});
+	});
+
+	describe('console-gate equivalence', () => {
+		// The console gate (shouldRedactConsoleOutput) and the execution-data
+		// pipeline resolve the same snapshot independently; this pins them to
+		// identical answers for every snapshot/mode combination (no dynamic
+		// credentials, no reveal scope — the concerns the console gate lacks).
+		it.each([
+			[{ version: 2 as const, production: true, manual: true }, 'manual' as const],
+			[{ version: 2 as const, production: true, manual: true }, 'trigger' as const],
+			[{ version: 2 as const, production: true, manual: false }, 'manual' as const],
+			[{ version: 2 as const, production: true, manual: false }, 'webhook' as const],
+			[{ version: 2 as const, production: false, manual: false }, 'manual' as const],
+			[{ version: 2 as const, production: false, manual: false }, 'trigger' as const],
+			[{ version: 1 as const, policy: 'all' as const }, 'manual' as const],
+			[{ version: 1 as const, policy: 'non-manual' as const }, 'manual' as const],
+			[{ version: 1 as const, policy: 'non-manual' as const }, 'trigger' as const],
+			[{ version: 1 as const, policy: 'none' as const }, 'trigger' as const],
+		])('snapshot %j mode %s: console gate matches data pipeline', async (redaction, mode) => {
+			const execution = makeExecution(
+				redaction.version === 2
+					? { mode, channels: { production: redaction.production, manual: redaction.manual } }
+					: { mode, policy: redaction.policy },
+			);
+
+			await service.processExecutions([execution], { user: mockUser });
+			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
+
+			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(dataPipelineRedacts);
 		});
 	});
 });

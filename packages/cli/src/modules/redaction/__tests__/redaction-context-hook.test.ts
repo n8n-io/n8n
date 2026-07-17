@@ -1,4 +1,5 @@
 import type { RedactionFloor } from '@n8n/api-types';
+import type { LicenseState } from '@n8n/backend-common';
 import type { ContextEstablishmentOptions } from '@n8n/decorators';
 import type { Workflow, WorkflowSettings } from 'n8n-workflow';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -9,6 +10,7 @@ import { RedactionContextHook } from '../redaction-context-hook';
 
 describe('RedactionContextHook', () => {
 	let service: MockProxy<InstanceRedactionEnforcementService>;
+	let licenseState: MockProxy<LicenseState>;
 	let hook: RedactionContextHook;
 
 	const buildOptions = (
@@ -34,7 +36,9 @@ describe('RedactionContextHook', () => {
 
 	beforeEach(() => {
 		service = mock<InstanceRedactionEnforcementService>();
-		hook = new RedactionContextHook(service);
+		licenseState = mock<LicenseState>();
+		licenseState.isDataRedactionLicensed.mockReturnValue(true);
+		hook = new RedactionContextHook(service, licenseState);
 	});
 
 	describe("floor 'off' — workflow setting applies", () => {
@@ -159,6 +163,27 @@ describe('RedactionContextHook', () => {
 			const result = await hook.execute(buildOptions('manual-only'));
 
 			expect(result.contextUpdate!.redaction).toMatchObject({ source: 'workflow' });
+		});
+	});
+
+	describe('unlicensed instance', () => {
+		it('writes an explicit no-redaction snapshot regardless of workflow policy and floor', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+			setFloor('all');
+
+			const result = await hook.execute(buildOptions('all'));
+
+			expect(result).toEqual({
+				contextUpdate: { redaction: { version: 2, production: false, manual: false } },
+			});
+		});
+
+		it('does not read the instance floor when unlicensed', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+
+			await hook.execute(buildOptions('all'));
+
+			expect(service.get).not.toHaveBeenCalled();
 		});
 	});
 

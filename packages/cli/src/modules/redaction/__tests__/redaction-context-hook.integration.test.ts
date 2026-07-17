@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { parse as flattedParse, stringify as flattedStringify } from 'flatted';
 import {
@@ -57,11 +58,14 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 	});
 
 	let enforcementService: ReturnType<typeof mock<InstanceRedactionEnforcementService>>;
+	let licenseState: ReturnType<typeof mock<LicenseState>>;
 
 	beforeEach(() => {
 		enforcementService = mock<InstanceRedactionEnforcementService>();
+		licenseState = mock<LicenseState>();
+		licenseState.isDataRedactionLicensed.mockReturnValue(true);
 
-		const hook = new RedactionContextHook(enforcementService);
+		const hook = new RedactionContextHook(enforcementService, licenseState);
 
 		const hookRegistry = mock<ExecutionContextHookRegistry>();
 		hookRegistry.getGlobalHooks.mockReturnValue([hook]);
