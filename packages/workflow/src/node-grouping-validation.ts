@@ -21,7 +21,7 @@ type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfigur
 type IODirection = 'inputs' | 'outputs';
 
 /** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
-export const GROUP_DESCRIPTION_MAX_LENGTH = 155;
+export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
 
 /**
  * Drops non-string values, caps to the max length, and treats empty as "no description".
