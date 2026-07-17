@@ -411,13 +411,6 @@ async function refreshAgentAfterIntegrationChange(
 	]);
 }
 
-/**
- * Prefer an already-active / continued session, else the most recent thread.
- * Returns undefined when there is no history so the preview page can mint via
- * `bindPreviewSession`. Do not invent a UUID here — putting a brand-new id into
- * `continueSessionId` across a route change makes `onContinueLoaded` treat it as
- * a stale deep-link and can leave the chat blank on the destination page.
- */
 function sessionIdForPreview(): string | undefined {
 	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
 }
