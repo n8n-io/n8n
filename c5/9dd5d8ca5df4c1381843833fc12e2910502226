@@ -4,6 +4,7 @@ packages/nodes-base/nodes/Microsoft/SharePoint/v2/site/index.ts
   s_dd6b1476a89205::t_402bc5dd0257eb 133-135,137
   s_dd6b1476a89205::t_34f043eab5cba3 10
   s_dd6b1476a89205::t_b2c0c7f9502403 62
+  s_dd6b1476a89205::t_d5259cbd063d25 130-131
 packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/list/getAll.test.ts
   s_dd6b1476a89205::t_726b21d1f13e99 1,3-8,14-15,17-63,65-79,82-89,91-97,99-101,108-118,120-122,129-139,143-161,163-176,178-179,181-192,194-204,206-207,209,217-226,228-229,231-238,240-242,249-259,261-265,267,273,275,281-284,306-315,317-327,329-334
   s_dd6b1476a89205::t_b9b4be4b971895 210-216,227
@@ -32,11 +33,13 @@ packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/list/getAll.operation.
   s_dd6b1476a89205::t_689c777a7d5f28 1,2-24,33,35-37,41-43,45-64
   s_dd6b1476a89205::t_f30fba2e212cb0 25-27,29
   s_dd6b1476a89205::t_acd2abb9de68d8 38-40
+  s_dd6b1476a89205::t_417b6a2cf9a97e 28,30-32
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/index.ts
   s_dd6b1476a89205::t_c042e6c92faf99 8,43
   s_dd6b1476a89205::t_188f20d1a3a872 7,9-11,45-56,59,60-92
   s_dd6b1476a89205::t_35aaf226ea7090 1-6,12-42
   s_dd6b1476a89205::t_3d16c828cad3c5 44
+  s_dd6b1476a89205::t_502467860e1a2c 57-58
 packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
   s_dd6b1476a89205::t_e3d7b6198462c1 234-237
   s_dd6b1476a89205::t_e0b4fa3d8efb06 31-34
