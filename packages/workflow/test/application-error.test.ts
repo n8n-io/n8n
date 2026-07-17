@@ -1,4 +1,5 @@
 import { ApplicationError as ErrorsApplicationError } from '@n8n/errors';
+
 import { ApplicationError } from 'n8n-workflow';
 
 // This file is the compatibility boundary, exempt from the `no-application-error` lint rule.

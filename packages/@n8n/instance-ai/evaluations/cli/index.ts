@@ -68,6 +68,7 @@ import {
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
 import {
+	abortedWorkflowTestCaseResult,
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
@@ -79,6 +80,7 @@ import {
 	type BuildResult,
 } from '../harness/runner';
 import {
+	classifyScenarioExecutionError,
 	extractErrorMessage,
 	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
@@ -186,6 +188,10 @@ interface RunConfig {
 	 *  LangSmith experiment metadata and eval-results.json — the run's only spend
 	 *  record beyond raw session logs, for a suite that's manual-only due to cost. */
 	mcpBuildSpend: McpBuildSpend[];
+	/** Optional sink the direct loop pushes each completed iteration's results into
+	 *  as they finish, so an abort that rejects the run still leaves the caller
+	 *  (runEvalAndPersist) with the scenarios that already completed. */
+	partialResults?: WorkflowTestCaseResult[][];
 }
 
 /** Map eval CLI args to the shared MCP builder's settings. */
@@ -423,66 +429,67 @@ async function main(): Promise<void> {
 	const cleanupBuiltWorkflows =
 		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
+	const mcpBuildSpend: McpBuildSpend[] = [];
+	const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
-		let evaluation: MultiRunEvaluation;
-		let experimentName: string | undefined;
-		let experimentUrl: string | undefined;
-		let outcome: ComparisonOutcome | undefined;
-		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
-		const mcpBuildSpend: McpBuildSpend[] = [];
+		// runEvalAndPersist owns the always-write guarantee: it writes
+		// eval-results.json even if the run below throws (a budget/timeout abort, a
+		// lane meltdown, an OOM), aggregating whatever completed scenarios were
+		// pushed into `partialResults` so the dispatcher never finds no file.
+		const { evaluation, slugByTestCase, outcome, gate, jsonPath, prCommentPath } =
+			await runEvalAndPersist(
+				{
+					logger,
+					outputDir: args.outputDir,
+					startTime,
+					iterations: args.iterations,
+					tier: args.tier,
+					commitSha,
+					rerun: ciRerunHint(),
+					mcpBuildSpend,
+				},
+				async (partialResults) => {
+					if (hasLangSmith) {
+						logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
+						const langsmithRun = await runWithLangSmith({
+							args,
+							lanes,
+							logger,
+							testCasesWithFiles,
+							prebuiltManifest,
+							cleanupBuiltWorkflows,
+							mcpBuildLogDir,
+							mcpBuildSpend,
+						});
+						return {
+							evaluation: langsmithRun.evaluation,
+							experimentName: langsmithRun.experimentName,
+							experimentUrl: langsmithRun.experimentUrl,
+							outcome: langsmithRun.outcome,
+							slugByTestCase: langsmithRun.slugByTestCase,
+						};
+					}
+					logger.info(
+						'No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)',
+					);
+					const directRun = await runDirectLoop({
+						args,
+						lanes,
+						logger,
+						testCasesWithFiles,
+						prebuiltManifest,
+						cleanupBuiltWorkflows,
+						mcpBuildLogDir,
+						mcpBuildSpend,
+						partialResults,
+					});
+					return { evaluation: directRun.evaluation, slugByTestCase: directRun.slugByTestCase };
+				},
+			);
 
-		if (hasLangSmith) {
-			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			const langsmithRun = await runWithLangSmith({
-				args,
-				lanes,
-				logger,
-				testCasesWithFiles,
-				prebuiltManifest,
-				cleanupBuiltWorkflows,
-				mcpBuildLogDir,
-				mcpBuildSpend,
-			});
-			evaluation = langsmithRun.evaluation;
-			experimentName = langsmithRun.experimentName;
-			experimentUrl = langsmithRun.experimentUrl;
-			outcome = langsmithRun.outcome;
-			slugByTestCase = langsmithRun.slugByTestCase;
-		} else {
-			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			const directRun = await runDirectLoop({
-				args,
-				lanes,
-				logger,
-				testCasesWithFiles,
-				prebuiltManifest,
-				cleanupBuiltWorkflows,
-				mcpBuildLogDir,
-				mcpBuildSpend,
-			});
-			evaluation = directRun.evaluation;
-			slugByTestCase = directRun.slugByTestCase;
-		}
-
-		const totalDuration = Date.now() - startTime;
-		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
-		// Gated tiers report an absolute green verdict in place of the baseline comparison.
-		const gate = isGatedTier(args.tier) ? evaluateGate(evaluation, { slugByTestCase }) : undefined;
-		const { jsonPath, prCommentPath } = writeEvalResults(
-			evaluation,
-			totalDuration,
-			args.outputDir,
-			experimentName,
-			outcome,
-			commitSha,
-			slugByTestCase,
-			ciRerunHint(),
-			gate,
-			mcpBuildSpend,
-			experimentUrl,
-		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
 		const reportResults = flattenRunsForReport(evaluation);
@@ -988,6 +995,27 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const iteration = inputs._iteration ?? 0;
 		try {
 			return await targetRow(inputs, iteration);
+		} catch (error: unknown) {
+			// targetRow guards scenario execution internally, but a build-phase throw
+			// (getOrBuild) or a budget abort must not reject up to evaluate() and
+			// abort the whole experiment — that would discard every OTHER row's
+			// completed results. Record this row as an aborted (framework_issue)
+			// output instead so evaluate() finalizes and writeEvalResults still runs.
+			const message = extractErrorMessage(error);
+			logger.error(`    ERROR [${inputs.scenarioName}] (${inputs.testCaseFile}): ${message}`);
+			const classified = classifyScenarioExecutionError(message);
+			return {
+				buildSuccess: false,
+				passed: false,
+				score: 0,
+				reasoning: classified.reasoning,
+				failureCategory: classified.failureCategory,
+				rootCause: classified.rootCause,
+				execErrors: [message],
+				buildDurationMs: 0,
+				execDurationMs: 0,
+				nodeCount: 0,
+			};
 		} finally {
 			await releaseCaseRow(iteration, inputs.testCaseFile);
 		}
@@ -1092,18 +1120,22 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
 					continue;
 				}
-				// Mirror direct mode's per-scenario guard — without this, n8n API errors
-				// or verifier timeouts from executeWithLlmMock / verifyChecklist would
-				// escape to LangSmith, come back as a Run with null outputs, and be
-				// misclassified as builder regressions by the feedback extractor.
+				// Mirror direct mode's per-scenario guard — without this, n8n API errors,
+				// verifier timeouts, or a per-iteration budget abort from
+				// executeWithLlmMock / verifyChecklist would escape to LangSmith, come
+				// back as a Run with null outputs, and be misclassified as builder
+				// regressions by the feedback extractor. classifyScenarioExecutionError
+				// stamps framework_issue + a timeout-flavoured rootCause for budget aborts.
 				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				const classified = classifyScenarioExecutionError(errorMessage);
 				return await attachExpectations({
 					buildSuccess: true,
 					workflowId: build.workflowId,
 					passed: false,
 					score: 0,
-					reasoning: `Scenario execution error: ${errorMessage}`,
-					failureCategory: 'framework_issue',
+					reasoning: classified.reasoning,
+					failureCategory: classified.failureCategory,
+					rootCause: classified.rootCause,
 					execErrors: [errorMessage],
 					buildDurationMs,
 					execDurationMs: Date.now() - execStart,
@@ -1559,29 +1591,40 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								tc.fileSlug,
 								iter,
 							);
-							const result = await runWorkflowTestCase({
-								client: lane.client,
-								baseUrl: lane.baseUrl,
-								testCase: tc.testCase,
-								timeoutMs: args.timeoutMs,
-								createdCredentialIds: lane.createdCredentialIds,
-								preRunWorkflowIds: lane.preRunWorkflowIds,
-								claimedWorkflowIds: lane.claimedWorkflowIds,
-								logger,
-								keepWorkflows: args.keepWorkflows,
-								laneTag,
-								prebuiltWorkflowId,
-								pinAiRoots: args.pinAiRoots,
-							});
-							if (
-								prebuiltWorkflowId !== undefined &&
-								cleanupBuiltWorkflows &&
-								result.workflowBuildSuccess &&
-								result.workflowId
-							) {
-								lane.workflowIdsToDelete.add(result.workflowId);
+							try {
+								const result = await runWorkflowTestCase({
+									client: lane.client,
+									baseUrl: lane.baseUrl,
+									testCase: tc.testCase,
+									timeoutMs: args.timeoutMs,
+									createdCredentialIds: lane.createdCredentialIds,
+									preRunWorkflowIds: lane.preRunWorkflowIds,
+									claimedWorkflowIds: lane.claimedWorkflowIds,
+									logger,
+									keepWorkflows: args.keepWorkflows,
+									laneTag,
+									prebuiltWorkflowId,
+									pinAiRoots: args.pinAiRoots,
+								});
+								if (
+									prebuiltWorkflowId !== undefined &&
+									cleanupBuiltWorkflows &&
+									result.workflowBuildSuccess &&
+									result.workflowId
+								) {
+									lane.workflowIdsToDelete.add(result.workflowId);
+								}
+								return result;
+							} catch (error: unknown) {
+								// runWorkflowTestCase guards its own scenario loop, but a throw
+								// from the build phase (or a per-iteration budget abort) would
+								// otherwise reject runWithConcurrency and take every OTHER case's
+								// completed results down with it. Record this one case as an
+								// aborted (framework_issue) result and keep the batch alive.
+								const message = extractErrorMessage(error);
+								logger.error(`  ERROR running ${tc.fileSlug}${laneTag}: ${message}`);
+								return abortedWorkflowTestCaseResult(tc.testCase, lane.baseUrl, message);
 							}
-							return result;
 						},
 						MAX_CONCURRENT_BUILDS,
 					);
@@ -1590,7 +1633,12 @@ async function runDirectLoop(config: RunConfig): Promise<{
 			);
 			const flat = laneResults.flat();
 			flat.sort((a, b) => a.origIdx - b.origIdx);
-			return flat.map((x) => x.result);
+			const iterationResults = flat.map((x) => x.result);
+			// Capture each iteration as it completes (source-ordered, full-length) so
+			// an abort in a LATER iteration still leaves runEvalAndPersist the ones
+			// that finished — every captured array is a complete, index-aligned row.
+			config.partialResults?.push(iterationResults);
+			return iterationResults;
 		}),
 	);
 
@@ -1719,6 +1767,103 @@ function ciRerunHint(): RerunHint | undefined {
 		prNumber: EVAL_PR_NUMBER,
 		dispatchUrl: `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/workflows/ci-instance-ai-evals.yml`,
 	};
+}
+
+/** What `runEval` produces on success — the aggregation plus the LangSmith-only
+ *  comparison metadata (undefined in direct-loop mode). */
+export interface EvalRunOutput {
+	evaluation: MultiRunEvaluation;
+	experimentName?: string;
+	experimentUrl?: string;
+	outcome?: ComparisonOutcome;
+	slugByTestCase?: Map<WorkflowTestCase, string>;
+}
+
+export interface PersistEvalConfig {
+	logger: EvalLogger;
+	outputDir: string | undefined;
+	startTime: number;
+	iterations: number;
+	tier: CliArgs['tier'];
+	commitSha: string | undefined;
+	rerun: RerunHint | undefined;
+	mcpBuildSpend: McpBuildSpend[];
+}
+
+export interface PersistedEval extends EvalRunOutput {
+	gate: GateResult | undefined;
+	jsonPath: string;
+	prCommentPath: string;
+}
+
+/**
+ * Run the eval via `runEval` and ALWAYS persist eval-results.json +
+ * eval-pr-comment.md. On success returns the aggregation + write metadata so the
+ * caller can render the HTML report / terminal summary.
+ *
+ * If `runEval` throws — a per-iteration budget/timeout abort, a lane meltdown, an
+ * OOM — whatever it pushed into `partialResults` before throwing is aggregated
+ * and written before the error is re-thrown. Aggregation already tolerates
+ * missing/incomplete entries, so the scenarios that already completed survive
+ * instead of the dispatcher finding no file and discarding the entire run.
+ */
+export async function runEvalAndPersist(
+	config: PersistEvalConfig,
+	runEval: (partialResults: WorkflowTestCaseResult[][]) => Promise<EvalRunOutput>,
+): Promise<PersistedEval> {
+	const partialResults: WorkflowTestCaseResult[][] = [];
+	let persisted = false;
+	try {
+		const out = await runEval(partialResults);
+		// Gated tiers report an absolute green verdict in place of the baseline comparison.
+		const gate = isGatedTier(config.tier)
+			? evaluateGate(out.evaluation, { slugByTestCase: out.slugByTestCase })
+			: undefined;
+		const { jsonPath, prCommentPath } = writeEvalResults(
+			out.evaluation,
+			Date.now() - config.startTime,
+			config.outputDir,
+			out.experimentName,
+			out.outcome,
+			config.commitSha,
+			out.slugByTestCase,
+			config.rerun,
+			gate,
+			config.mcpBuildSpend,
+			out.experimentUrl,
+		);
+		persisted = true;
+		return { ...out, gate, jsonPath, prCommentPath };
+	} finally {
+		if (!persisted) {
+			try {
+				const evaluation: MultiRunEvaluation =
+					partialResults.length > 0
+						? aggregateResults(partialResults, partialResults.length)
+						: { totalRuns: config.iterations, testCases: [] };
+				const { jsonPath } = writeEvalResults(
+					evaluation,
+					Date.now() - config.startTime,
+					config.outputDir,
+					undefined,
+					undefined,
+					config.commitSha,
+					undefined,
+					config.rerun,
+					undefined,
+					config.mcpBuildSpend,
+					undefined,
+				);
+				config.logger.error(
+					`Eval run did not finish cleanly — wrote partial results (${String(partialResults.length)} iteration(s)) to ${jsonPath}`,
+				);
+			} catch (writeError: unknown) {
+				config.logger.error(
+					`Failed to write partial eval results: ${extractErrorMessage(writeError)}`,
+				);
+			}
+		}
+	}
 }
 
 export function writeEvalResults(
@@ -1917,9 +2062,10 @@ async function tryRunComparison(config: {
 	}
 }
 
-// Guard so the module can be imported (e.g. by tests exercising `writeEvalResults`)
-// without kicking off a real eval run — mirrors `report.ts`.
-if (require.main === module) {
+// Only auto-run as the CLI entry point. Importing this module (e.g. from a unit
+// test that exercises the exported runEvalAndPersist / writeEvalResults seams)
+// must not kick off a real eval run against process.argv.
+if (!process.env.VITEST) {
 	main().catch((error) => {
 		console.error('Fatal error:', error);
 		process.exit(1);

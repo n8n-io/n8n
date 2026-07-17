@@ -1,0 +1,61 @@
+{
+  "package": "@n8n/engine",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T09:46:22.078Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            826,
+            749,
+            710
+          ],
+          "min": 710,
+          "median": 749,
+          "mean": 762
+        },
+        "build": {
+          "runsMs": [
+            700,
+            785,
+            791
+          ],
+          "min": 700,
+          "median": 785,
+          "mean": 759
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-15T09:47:52.009Z",
+      "tasks": {
+        "typecheck": {
+          "runsMs": [
+            494,
+            459,
+            470
+          ],
+          "min": 459,
+          "median": 470,
+          "mean": 474
+        },
+        "build": {
+          "runsMs": [
+            465,
+            456,
+            475
+          ],
+          "min": 456,
+          "median": 465,
+          "mean": 466
+        }
+      }
+    }
+  }
+}

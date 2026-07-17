@@ -1,7 +1,7 @@
 import { renderComponent } from '@/__tests__/render';
-import { fireEvent, waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { h } from 'vue';
 import type { IWorkflowGroup } from 'n8n-workflow';
@@ -10,6 +10,8 @@ import type { IWorkflowGroup } from 'n8n-workflow';
 // title bar can render in isolation. Other VueFlow imports are type-only.
 const removeSelectedNodesMock = vi.fn();
 const selectedNodesRef = { value: [] as Array<{ id: string }> };
+// Mutable so tests can drive zoom-based gating.
+const viewportRef = { value: { x: 0, y: 0, zoom: 1 } };
 vi.mock('@vue-flow/core', () => ({
 	Handle: {
 		name: 'Handle',
@@ -25,12 +27,14 @@ vi.mock('@vue-flow/core', () => ({
 	useVueFlow: () => ({
 		getSelectedNodes: selectedNodesRef,
 		removeSelectedNodes: removeSelectedNodesMock,
-		viewport: { value: { x: 0, y: 0, zoom: 1 } },
+		viewport: viewportRef,
 	}),
 }));
 
 import CanvasNodeGroupTitleBar from './CanvasNodeGroupTitleBar.vue';
 import { GROUP_HEADER_HEIGHT } from '../../../stores/canvasNodeGroups.constants';
+import { useCanvasNodeGroupDescriptionVisibility } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
+import { NodeGroupDescriptionVisibilityKey } from '../../../composables/useCanvasNodeGroupDescriptionVisibility';
 import type { CanvasGroupNodeData } from '../../../canvas.types';
 
 const baseGroup: IWorkflowGroup = {
@@ -49,6 +53,11 @@ function makeData(overrides: Partial<CanvasGroupNodeData> = {}): CanvasGroupNode
 }
 
 describe('CanvasNodeGroupTitleBar', () => {
+	beforeEach(() => {
+		viewportRef.value = { x: 0, y: 0, zoom: 1 };
+		localStorage.clear();
+	});
+
 	function render(
 		props: Partial<{
 			data: CanvasGroupNodeData;
@@ -57,9 +66,15 @@ describe('CanvasNodeGroupTitleBar', () => {
 			readOnly: boolean;
 			selected: boolean;
 		}> = {},
+		descriptionVisibility?: ReturnType<typeof useCanvasNodeGroupDescriptionVisibility>,
 	) {
 		return renderComponent(CanvasNodeGroupTitleBar, {
 			pinia: createTestingPinia(),
+			global: {
+				provide: descriptionVisibility
+					? { [NodeGroupDescriptionVisibilityKey as symbol]: descriptionVisibility }
+					: {},
+			},
 			props: {
 				data: props.data ?? makeData(),
 				autofocusGroupId: props.autofocusGroupId ?? null,
@@ -186,6 +201,172 @@ describe('CanvasNodeGroupTitleBar', () => {
 		});
 	});
 
+	describe('description', () => {
+		it('shows the description under the title when expanded', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeTruthy();
+		});
+
+		it('hides the description when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			expect(wrapper.queryByTestId('canvas-node-group-description')).toBeNull();
+		});
+
+		it('shows the add-description placeholder when empty', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+			const description = within(wrapper.getByTestId('canvas-node-group-description'));
+			expect(description.getByTestId('inline-edit-preview')).toHaveTextContent('Add description');
+		});
+
+		it('emits update:description when the description is edited', async () => {
+			const wrapper = render({ data: makeData({ isCollapsed: false }) });
+
+			const description = within(wrapper.getByTestId('canvas-node-group-description'));
+			await fireEvent.click(description.getByTestId('inline-edit-preview'));
+			const input = description.getByTestId('inline-edit-input') as HTMLInputElement;
+			await fireEvent.update(input, 'A helpful description');
+			await fireEvent.keyDown(input, { key: 'Enter' });
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'A helpful description']]);
+		});
+	});
+
+	describe('collapsed description', () => {
+		const withDescription = (description: string) =>
+			makeData({ isCollapsed: true, group: { ...baseGroup, description } });
+
+		it('shows the info icon when collapsed', () => {
+			const wrapper = render({ data: makeData({ isCollapsed: true }) });
+			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeTruthy();
+		});
+
+		it('hides the info icon and description below the zoom threshold', () => {
+			viewportRef.value = { x: 0, y: 0, zoom: 0.5 };
+			const collapsed = render({ data: makeData({ isCollapsed: true }) });
+			expect(collapsed.queryByTestId('canvas-node-group-info')).toBeNull();
+
+			const expanded = render({ data: makeData({ isCollapsed: false }) });
+			expect(expanded.queryByTestId('canvas-node-group-description')).toBeNull();
+		});
+
+		it('shows the pinned description panel with the description text', () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Pinned copy') }, visibility);
+
+			expect(wrapper.getByTestId('canvas-node-group-description-panel')).toBeVisible();
+			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent(
+				'Pinned copy',
+			);
+			// Pinned → info icon is replaced by the panel, pin shows eye-off.
+			expect(wrapper.queryByTestId('canvas-node-group-info')).toBeNull();
+		});
+
+		it('unpins the description when the pin button is clicked', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Pinned copy') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-pin-description'));
+
+			expect(visibility.isVisible('g1')).toBe(false);
+		});
+
+		it('starts editing when the edit icon is clicked', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-edit-description'));
+
+			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeTruthy();
+		});
+
+		it('emits update:description when editing from the pinned panel', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'After');
+			await fireEvent.blur(input);
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'After']]);
+		});
+
+		it('emits update:description when Enter is pressed', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'After');
+			await fireEvent.keyDown(input, { key: 'Enter' });
+
+			expect(wrapper.emitted()['update:description']).toEqual([['g1', 'After']]);
+			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeNull();
+		});
+
+		it('keeps editing and does not commit on Shift+Enter', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-text'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'After');
+			await fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+
+			expect(wrapper.emitted()['update:description']).toBeUndefined();
+			expect(wrapper.queryByTestId('canvas-node-group-description-input')).toBeTruthy();
+		});
+
+		it('discards edits when cancel is clicked', async () => {
+			const visibility = useCanvasNodeGroupDescriptionVisibility({
+				workflowId: () => 'wf-1',
+				getCurrentGroups: () => [{ id: 'g1', name: 'My group', nodeIds: [], description: 'x' }],
+				onNodeGroupsChange: () => ({ off: () => {} }),
+			});
+			visibility.setVisible('g1', true);
+
+			const wrapper = render({ data: withDescription('Before') }, visibility);
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-edit-description'));
+			const input = wrapper.getByTestId('canvas-node-group-description-input');
+			await fireEvent.update(input, 'Changed');
+			await fireEvent.click(wrapper.getByTestId('canvas-node-group-description-cancel'));
+
+			expect(wrapper.emitted()['update:description']).toBeUndefined();
+			expect(wrapper.getByTestId('canvas-node-group-description-text')).toHaveTextContent('Before');
+		});
+	});
+
 	describe('execution-status classes', () => {
 		it('applies no status class when executionStatus is undefined (idle)', () => {
 			const wrapper = render({ data: makeData({ executionStatus: undefined }) });
@@ -283,8 +464,9 @@ describe('CanvasNodeGroupTitleBar', () => {
 	describe('title rename + ungroup parity with old overlay', () => {
 		it('emits update:name on commit', async () => {
 			const wrapper = render({ data: makeData({ isCollapsed: false }) });
-			await fireEvent.click(wrapper.getByTestId('inline-edit-preview'));
-			const input = wrapper.getByTestId('inline-edit-input') as HTMLInputElement;
+			const title = within(wrapper.getByTestId('canvas-node-group-title'));
+			await fireEvent.click(title.getByTestId('inline-edit-preview'));
+			const input = title.getByTestId('inline-edit-input') as HTMLInputElement;
 			await fireEvent.update(input, 'Renamed');
 			await fireEvent.keyDown(input, { key: 'Enter' });
 			expect(wrapper.emitted()['update:name']).toEqual([['g1', 'Renamed']]);

@@ -1,0 +1,41 @@
+{
+  "package": "@n8n/extension-sdk",
+  "runs": {
+    "before": {
+      "label": "before",
+      "tsVersion": "6.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T10:24:45.207Z",
+      "tasks": {
+        "build": {
+          "runsMs": [
+            4397,
+            2652,
+            2648
+          ],
+          "min": 2648,
+          "median": 2652,
+          "mean": 3232
+        }
+      }
+    },
+    "after": {
+      "label": "after",
+      "tsVersion": "7.0.2",
+      "node": "v24.13.0",
+      "timestamp": "2026-07-16T10:26:40.515Z",
+      "tasks": {
+        "build": {
+          "runsMs": [
+            3258,
+            2513,
+            2479
+          ],
+          "min": 2479,
+          "median": 2513,
+          "mean": 2750
+        }
+      }
+    }
+  }
+}

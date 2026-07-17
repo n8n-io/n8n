@@ -36,9 +36,32 @@ const openCompare = () => {
 // `null` until the detail (with run statuses) has loaded — the list view only
 // pre-fetches detail for the first few cards and lazy-loads the rest on hover,
 // so we must not assert "Done" for a card whose runs might still be in flight.
-const status = computed<'done' | 'running' | null>(() =>
+const status = computed<'done' | 'running' | 'error' | null>(() =>
 	props.detail ? deriveRunsStatus(props.detail.runs) : null,
 );
+
+// Badge theme + label per status; `null` while detail is still loading (no badge).
+const statusBadge = computed(() => {
+	switch (status.value) {
+		case 'done':
+			return {
+				theme: 'success' as const,
+				label: i18n.baseText('evaluation.collections.card.done'),
+			};
+		case 'running':
+			return {
+				theme: 'tertiary' as const,
+				label: i18n.baseText('evaluation.collections.card.running'),
+			};
+		case 'error':
+			return {
+				theme: 'warning' as const,
+				label: i18n.baseText('evaluation.collections.card.failed'),
+			};
+		default:
+			return null;
+	}
+});
 
 // Append a right arrow so the CTA reads "Open compare →" the way the
 // Figma mock does. N8nButton doesn't accept a trailing icon prop today,
@@ -145,14 +168,8 @@ onMounted(() => observe(cardRef.value));
 			<div :class="$style.cardHeader">
 				<div :class="$style.cardHeading">
 					<N8nText size="medium" bold>{{ collection.name }}</N8nText>
-					<N8nBadge v-if="status" :theme="status === 'done' ? 'success' : 'tertiary'" size="small">
-						{{
-							i18n.baseText(
-								status === 'done'
-									? 'evaluation.collections.card.done'
-									: 'evaluation.collections.card.running',
-							)
-						}}
+					<N8nBadge v-if="statusBadge" :theme="statusBadge.theme" size="small">
+						{{ statusBadge.label }}
 					</N8nBadge>
 				</div>
 				<N8nText size="xsmall" color="text-light">

@@ -167,19 +167,24 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 			? jsonParse<SlackInteractionPayload>(body.payload, { fallbackValue: {} })
 			: (body as SlackInteractionPayload);
 
-	// No approvers configured means anyone can respond (the original default). If a list is set,
-	// a click from anyone not on it is ignored: tell them privately and keep waiting.
-	const approvers = this.getNodeParameter('approvers', []) as string[];
-	if (approvers.length > 0 && !approvers.includes(payload.user?.id ?? '')) {
-		await notifyNotAuthorized(this, payload);
-		return { noWebhookResponse: true };
-	}
-
 	// Fail closed: approve only when both signals agree — the HMAC-minted callback reference
 	// (verified at the CLI layer) and Slack's native action_id. Anything else counts as declined.
 	const action = payload.actions?.[0];
 	const parsed = parseHitlCallbackReference(action?.value ?? '');
 	const approved = parsed?.decision === 'a' && action?.action_id === HITL_APPROVE_ACTION_ID;
+
+	// No approvers configured means anyone can respond (the original default). If a list is set,
+	// a click from anyone not on it is ignored: tell them privately and keep waiting.
+	const approvers = this.getNodeParameter('approvers', []) as string[];
+	if (approvers.length > 0 && !approvers.includes(payload.user?.id ?? '')) {
+		this.logHitlResponse({ approved, authorized: false });
+		// Acknowledge the interaction before the best-effort notification so Slack does not time out and retry the click.
+		this.getResponseObject().status(200).send('');
+		await notifyNotAuthorized(this, payload);
+		return { noWebhookResponse: true };
+	}
+
+	this.logHitlResponse({ approved, authorized: true });
 	const responder = await extractSlackResponder(this, payload);
 
 	// Slack tells us when the button was clicked via action_ts (epoch seconds). If it's

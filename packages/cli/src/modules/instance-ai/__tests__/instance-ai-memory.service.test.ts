@@ -607,6 +607,159 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(result.messages[0].role).toBe('user');
 	});
 
+	it('excludes an in-flight group when the caller passes no exclusions (multi-main sibling read)', async () => {
+		// On a main that is not driving the run the controller's per-process run
+		// state is empty, so no excludeRunIds arrive. The log alone must identify
+		// the in-flight group: its run has a run-start but no terminal run-finish.
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_done',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1' },
+				},
+				at,
+			),
+			...toolCallRows('run_done', 1),
+			eventRow(
+				{
+					type: 'run-finish',
+					runId: 'run_done',
+					agentId: 'agent-001',
+					payload: { status: 'completed' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_live',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-2', messageGroupId: 'mg-2' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'text-block',
+					runId: 'run_live',
+					agentId: 'agent-001',
+					payload: { text: 'partial segment driven by another main' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		// Only run_done's entry is derived, exactly as the driving main would.
+		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
+		expect(result.messages[1].agentTree?.toolCalls).toHaveLength(1);
+		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+	});
+
+	it('renders nothing when the only group is in flight on another main instead of falling back', async () => {
+		mockListMessages.mockResolvedValue({ messages: [userMessage] });
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_live',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'text-block',
+					runId: 'run_live',
+					agentId: 'agent-001',
+					payload: { text: 'partial segment driven by another main' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(result.messages).toHaveLength(1);
+		expect(result.messages[0].role).toBe('user');
+	});
+
+	it('keeps folding a HITL-suspended run without a run-finish', async () => {
+		// A suspended run legitimately never wrote its run-finish, but its turn
+		// must keep rendering: the fold entry pairs with the checkpoint-surfaced
+		// assistant message. The suspension is recognized by the run's own
+		// checkpoint — the same predicate that spares it from the interrupted-run
+		// sweep.
+		mockListMessages.mockResolvedValue({ messages: [userMessage] });
+		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
+			{
+				key: 'cp-1',
+				runId: 'sdk-run-1',
+				hostRunId: 'run_susp',
+				threadId: 'thread-1',
+				expiredAt: null,
+				state: {
+					status: 'suspended',
+					messageList: {
+						messages: [
+							{
+								id: 'cp-assistant-1',
+								role: 'assistant',
+								content: [{ type: 'text', text: 'Confirm before I continue' }],
+								createdAt: '2026-01-01T00:00:01.000Z',
+							},
+						],
+					},
+				},
+				createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
+			},
+		]);
+		mockEventLogRepository.getForThread.mockResolvedValue([
+			eventRow(
+				{
+					type: 'run-start',
+					runId: 'run_susp',
+					agentId: 'agent-001',
+					payload: { messageId: 'm-1', messageGroupId: 'mg-1' },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'tool-call',
+					runId: 'run_susp',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', toolName: 'execute_workflow', args: {} },
+				},
+				at,
+			),
+			eventRow(
+				{
+					type: 'confirmation-request',
+					runId: 'run_susp',
+					agentId: 'agent-001',
+					payload: { toolCallId: 'tc-1', requestId: 'req-1', message: 'Run it?' },
+				},
+				at,
+			),
+		]);
+
+		const service = createService({ durableLog: true });
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		expect(result.messages).toHaveLength(2);
+		const assistant = result.messages[1];
+		expect(assistant.agentTree?.toolCalls[0]?.confirmation?.requestId).toBe('req-1');
+	});
+
 	it('anchors a group at its parent run so late background completions do not shift pairing', async () => {
 		// Turn 1's group has a background run that finishes AFTER turn 2. A
 		// stored snapshot's createdAt is stamped at parent-run end and never

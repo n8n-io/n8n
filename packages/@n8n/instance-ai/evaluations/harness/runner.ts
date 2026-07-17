@@ -34,6 +34,7 @@ import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed'
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import {
+	classifyScenarioExecutionError,
 	extractErrorMessage,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -265,6 +266,35 @@ interface WorkflowTestCaseConfig {
 }
 
 /**
+ * Synthetic result for a test case whose run threw before it could produce one
+ * (a budget/timeout abort, a lane meltdown, an OOM). Recording it — instead of
+ * letting the throw reject the batch — keeps every OTHER case's already-completed
+ * results, and keeps this case index-aligned so the aggregator counts it rather
+ * than losing the whole run. One `framework_issue` row per declared scenario
+ * carries the pinned cross-repo contract (timeout-flavoured rootCause for budget
+ * aborts) so the lang-tracer side buckets it as infra, not product quality.
+ */
+export function abortedWorkflowTestCaseResult(
+	testCase: WorkflowTestCase,
+	baseUrl: string,
+	errorMessage: string,
+): WorkflowTestCaseResult {
+	const classified = classifyScenarioExecutionError(errorMessage);
+	return {
+		testCase,
+		workflowBuildSuccess: false,
+		buildError: errorMessage,
+		n8nBaseUrl: baseUrl,
+		executionScenarioResults: (testCase.executionScenarios ?? []).map((scenario) => ({
+			scenario,
+			success: false,
+			score: 0,
+			...classified,
+		})),
+	};
+}
+
+/**
  * All-in-one test case runner: build workflow + run all scenarios + cleanup.
  * Used by the CLI. The split API (buildWorkflow + executeScenario + cleanupBuild)
  * is available for custom orchestration (e.g. LangSmith evaluate).
@@ -442,16 +472,18 @@ export async function runWorkflowTestCase(
 					}
 					// executeScenario categorizes builder/mock/verification failures
 					// internally; an error escaping it is an infra/framework problem
-					// (network drop, n8n API error, verifier timeout). Tag it
-					// framework_issue so the report and baseline keep it out of builder
-					// regressions instead of scoring it as an uncategorized failure.
+					// (network drop, n8n API error, verifier timeout, per-iteration
+					// budget abort). Tag it framework_issue — with a timeout-flavoured
+					// rootCause when it's a budget abort — so the report and baseline
+					// keep it out of builder regressions instead of scoring it as an
+					// uncategorized failure, and this one timed-out scenario doesn't
+					// take the whole case's already-completed scenarios down with it.
 					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
 					return {
 						scenario,
 						success: false,
 						score: 0,
-						reasoning: `Scenario execution error: ${errorMessage}`,
-						failureCategory: 'framework_issue',
+						...classifyScenarioExecutionError(errorMessage),
 					} satisfies ExecutionScenarioResult;
 				}
 			}
