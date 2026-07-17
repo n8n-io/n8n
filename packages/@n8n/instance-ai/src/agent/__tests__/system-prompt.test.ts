@@ -257,6 +257,19 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`publish_agent` / `unpublish_agent`');
 		});
 
+		it('delegates direct agent tool additions instead of wrapping them in workflows', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain(
+				'Pass requests to add tools or capabilities to an agent to `build-agent` near-verbatim',
+			);
+			expect(prompt).toContain('multiple independent tools do not become one workflow');
+			expect(prompt).toContain('one agent tool call must execute an ordered multi-node procedure');
+			expect(prompt).not.toContain(
+				'Actions the agent should invoke as reusable tools are built as workflows',
+			);
+		});
+
 		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
 			const prompt = await getSystemPromptWithEnabledModules(undefined);
 
