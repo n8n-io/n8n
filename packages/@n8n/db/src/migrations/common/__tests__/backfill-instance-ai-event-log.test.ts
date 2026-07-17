@@ -320,6 +320,53 @@ describe('synthesizeThreadEvents', () => {
 		expect(folded.timeline.filter((e) => e.type === 'text')).toHaveLength(2);
 	});
 
+	it('emits aggregate reasoning for interim-era trees whose timeline lacks reasoning entries', () => {
+		// Real dev-DB shape (found by the local dry run): the timeline carries
+		// text/tool entries but reasoning lives only in the aggregate field. The
+		// read path heals this via normalizeLegacyReasoningTimeline; the
+		// synthesis must emit the same reasoning-block first.
+		const tree = {
+			agentId: 'agent-001',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: 'answer',
+			reasoning: 'aggregate-only thinking',
+			timeline: [
+				{ type: 'text', content: 'answer' },
+				{ type: 'tool-call', toolCallId: 'tc-1' },
+			],
+			toolCalls: [
+				{ toolCallId: 'tc-1', toolName: 'search-workflows', args: {}, result: {}, isLoading: false },
+			],
+			children: [],
+		};
+		const rows = synthesizeThreadEvents({
+			snapshots: [snapshotRow({ tree: JSON.stringify(tree) })],
+			assistantMessages: [],
+			existingRunIds: new Set(),
+		});
+
+		const folded = fold(rows);
+		expect(folded.reasoning).toBe('aggregate-only thinking');
+		expect(folded.timeline.map((e) => e.type)).toEqual(['reasoning', 'text', 'tool-call']);
+		// The dedicated legacy path (no timeline at all) still emits it exactly once.
+		const legacyRows = synthesizeThreadEvents({
+			snapshots: [
+				snapshotRow({
+					runId: 'run-legacy',
+					tree: JSON.stringify({ ...tree, timeline: undefined }),
+				}),
+			],
+			assistantMessages: [],
+			existingRunIds: new Set(),
+		});
+		const legacyFolded = fold(legacyRows);
+		expect(legacyFolded.reasoning).toBe('aggregate-only thinking');
+		expect(
+			legacyRows.filter((r) => r.type === 'reasoning-block'),
+		).toHaveLength(1);
+	});
+
 	it('degenerate or unparseable trees produce lifecycle-only rows', () => {
 		const rows = synthesizeThreadEvents({
 			snapshots: [

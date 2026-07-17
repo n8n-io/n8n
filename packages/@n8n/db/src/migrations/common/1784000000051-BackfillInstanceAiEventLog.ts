@@ -260,6 +260,17 @@ function emitNodeContent(synth: RunSynthesizer, node: TreeNode, agentId: string)
 		emitNodeContent(synth, childNode, childAgentId);
 
 	const timeline = Array.isArray(node.timeline) ? node.timeline : [];
+	// Mirror the reducer's normalizeLegacyReasoningTimeline: trees persisted
+	// before reasoning became a timeline entry (or from the interim era where
+	// the timeline carried text/tools but not reasoning) hold the text only in
+	// the aggregate field. The read path unshifts it; the synthesis emits it
+	// first, so the folded aggregate matches the normalized stored tree.
+	const timelineHasReasoning = timeline.some(
+		(entry) => entry.type === 'reasoning' && isNonEmptyString(entry.content),
+	);
+	if (isNonEmptyString(node.reasoning) && !timelineHasReasoning) {
+		synth.push('reasoning-block', agentId, { text: node.reasoning }, synth.nextResponseId());
+	}
 	if (timeline.length > 0) {
 		for (const entry of timeline) {
 			if (entry.type === 'text' && isNonEmptyString(entry.content)) {
@@ -280,14 +291,10 @@ function emitNodeContent(synth: RunSynthesizer, node: TreeNode, agentId: string)
 				}
 			}
 		}
-	} else {
-		// Legacy snapshots without a timeline: aggregate order.
-		if (isNonEmptyString(node.reasoning)) {
-			synth.push('reasoning-block', agentId, { text: node.reasoning }, synth.nextResponseId());
-		}
-		if (isNonEmptyString(node.textContent)) {
-			synth.push('text-block', agentId, { text: node.textContent }, synth.nextResponseId());
-		}
+	} else if (isNonEmptyString(node.textContent)) {
+		// Legacy snapshots without a timeline: aggregate text (the aggregate
+		// reasoning was already emitted above).
+		synth.push('text-block', agentId, { text: node.textContent }, synth.nextResponseId());
 	}
 	// Anything the timeline did not reference still renders (defensive).
 	for (const [toolCallId, tc] of toolCallsById) {
