@@ -3721,6 +3721,9 @@ type TaskControlInternals = {
 	publisher: { publishCommand: Mock };
 	backgroundTasks: { getTaskSnapshots: Mock };
 	logger: { error: Mock };
+	runState: { hasLiveRun: Mock };
+	eventLog: { flush: Mock };
+	interruptedRunSweeper: { cancelUnfinishedRuns: Mock };
 	sendCorrectionToTask: Mock;
 	cancelBackgroundTask: Mock;
 	cancelRun: Mock;
@@ -3738,6 +3741,12 @@ function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
 	service.publisher = { publishCommand: vi.fn().mockResolvedValue(undefined) };
 	service.backgroundTasks = { getTaskSnapshots: vi.fn(() => []) };
 	service.logger = { error: vi.fn() };
+	// Inert cancel-time zombie fallback — its behavior is covered by the
+	// dedicated 'routeCancelRun zombie fallback' suite; these tests are about
+	// routing.
+	service.runState = { hasLiveRun: vi.fn(() => false) };
+	service.eventLog = { flush: vi.fn(async () => {}) };
+	service.interruptedRunSweeper = { cancelUnfinishedRuns: vi.fn(async () => 0) };
 	service.sendCorrectionToTask = vi.fn(() => 'queued');
 	service.cancelBackgroundTask = vi.fn();
 	service.cancelRun = vi.fn();
