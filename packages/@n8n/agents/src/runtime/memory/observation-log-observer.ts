@@ -12,6 +12,7 @@ import type {
 	TokenCounter,
 } from '../../types/sdk/observation-log';
 import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -72,6 +73,7 @@ export interface RunObservationLogObserverOpts {
 	now?: Date;
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type RunObservationLogObserverResult =
@@ -197,6 +199,7 @@ export async function runObservationLogObserver(
 		observationLogTail,
 		renderedObservationLogTail,
 		executionCounter: opts.executionCounter,
+		telemetry: opts.telemetry,
 	});
 
 	const parsed = parseObservationLogMarkdown(markdown);

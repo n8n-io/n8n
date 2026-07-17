@@ -83,7 +83,7 @@
     "@types/qs": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "nock": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

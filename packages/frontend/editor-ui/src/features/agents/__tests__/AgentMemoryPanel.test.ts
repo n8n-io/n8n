@@ -17,6 +17,12 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nDialog: {
+		template: '<div v-if="open"><slot /></div>',
+		props: ['open'],
+	},
+	N8nDialogHeader: { template: '<div><slot /></div>' },
+	N8nDialogTitle: { template: '<div><slot /></div>' },
 	N8nIconButton: {
 		template: '<button :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\', $event)" />',
 		props: ['disabled'],
@@ -30,6 +36,14 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nText: { template: '<span><slot /></span>', props: ['bold', 'size', 'color'] },
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
+}));
+
+vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue', () => ({
+	default: {
+		name: 'CredentialPicker',
+		template: '<div />',
+		props: ['selectedCredentialId'],
+	},
 }));
 
 vi.mock('../components/AgentModelSelector.vue', () => ({
@@ -95,6 +109,7 @@ describe('AgentMemoryPanel', () => {
 		const wrapper = mountPanel({ aiAssistantEnabled: true });
 		const uiStore = useUIStore();
 
+		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
 		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
@@ -118,6 +133,7 @@ describe('AgentMemoryPanel', () => {
 		const wrapper = mountPanel({ aiAssistantEnabled: false });
 		const uiStore = useUIStore();
 
+		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
 		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 
 		expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);

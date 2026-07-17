@@ -61,6 +61,18 @@ type UpdatableEntityColumns = Omit<
  */
 @Service()
 export class ExecutionPersistence {
+	/** Batch size for bulk deletion: stays below SQLite's expression-tree depth limit (~1000). */
+	private static readonly bulkDeletionBatchSize = 500;
+
+	/**
+	 * Fallback runaway safeguard: caps one bulk-deletion run at 10M executions.
+	 * On Postgres the cap scales with the table-size estimate instead (see
+	 * `maxBulkDeletionBatches`). Deletion resumes on retry, so a larger history
+	 * still converges across runs — only a workflow that keeps producing
+	 * executions hits the cap repeatedly.
+	 */
+	private static readonly maxBulkDeletionBatchesPerRun = 20_000;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -93,8 +105,10 @@ export class ExecutionPersistence {
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
+		let reclaimedTombstone: DeletionTarget | null = null;
 		try {
-			return await this.executionRepository.manager.transaction(async (tx) => {
+			const executionId = await this.executionRepository.manager.transaction(async (tx) => {
+				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
@@ -116,11 +130,92 @@ export class ExecutionPersistence {
 
 				return executionId;
 			});
+
+			// Clear the reclaimed tombstone's blob only now, once the replacement has
+			// committed (blob deletes are not transactional; see the method).
+			await this.deleteReclaimedTombstoneData(reclaimedTombstone);
+
+			return executionId;
 		} catch (error) {
 			if (executionEntity.deduplicationKey && this.isDuplicateExecutionError(error)) {
 				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
 			}
 			throw error;
+		}
+	}
+
+	/**
+	 * Clear an orphaned tombstone before claiming its dedup key.
+	 *
+	 * A prior attempt can insert the execution under this key and then die before
+	 * dispatching it, so the row never advances past `new`. That tombstone asserts
+	 * an effect that never happened: without clearing it, the redelivered occurrence
+	 * collides on insert and the caller mistakes it for an already-run handoff,
+	 * dropping the occurrence. Deleting the row lets the redelivery take over the key;
+	 * in `db` mode that cascades its data, while blob-stored data (fs/s3/az) lives out
+	 * of band and is returned here so `create` can delete it after the replacement
+	 * commits. Any other status reflects a real dispatch, so it is left in place and the
+	 * insert still surfaces the duplicate.
+	 *
+	 * Known imprecision, accepted under the scheduler's at-least-once contract: in
+	 * queue mode an execution stays `new` between being enqueued and a worker picking
+	 * it up, so a redelivery racing that window deletes a genuinely enqueued row and
+	 * re-dispatches the occurrence (the worker's job then finds no execution and fails
+	 * noisily, but the occurrence still runs). Telling "inserted, never enqueued" from
+	 * "enqueued, not yet picked up" apart needs schema the misfire-policy work owns.
+	 *
+	 * @returns the deleted tombstone's storage location, so `create` can clear its
+	 * out-of-band data after committing, or `null` when there was nothing to reclaim.
+	 */
+	private async reclaimTombstone(
+		tx: EntityManager,
+		deduplicationKey: string | null | undefined,
+	): Promise<DeletionTarget | null> {
+		if (!deduplicationKey) return null;
+
+		// Load the tombstone before deleting it so its out-of-band blob can be cleared
+		// after the replacement commits. The unique `deduplicationKey` index means at
+		// most one row carries this key.
+		const tombstone = await tx.findOne(ExecutionEntity, {
+			where: { deduplicationKey, status: 'new' },
+			select: ['id', 'workflowId', 'storedAt'],
+		});
+		if (!tombstone) return null;
+
+		// Scope the delete to `new`: the `findOne` above takes no lock, so a worker may
+		// start the row (moving it out of `new`) between the read and here. Deleting only
+		// while still `new` leaves a started execution in place; the redelivery's insert
+		// then collides and is handled as an existing handoff. Return null when nothing
+		// was deleted, so no blob cleanup runs for a row we kept.
+		const { affected } = await tx.delete(ExecutionEntity, { id: tombstone.id, status: 'new' });
+		if (!affected) return null;
+		return {
+			workflowId: tombstone.workflowId,
+			executionId: tombstone.id,
+			storedAt: tombstone.storedAt,
+		};
+	}
+
+	/**
+	 * Delete a reclaimed tombstone's out-of-band data blob, best-effort. Called after
+	 * the replacement execution has committed, since blob deletes are not
+	 * transactional: doing it earlier would strand the tombstone's blob if the insert
+	 * rolled back. `toBlobRefs` skips a `db`-stored tombstone, whose data the row
+	 * delete already removed. A failed cleanup only leaks the orphan blob, so it is
+	 * reported rather than allowed to fail the (already-persisted) create.
+	 */
+	private async deleteReclaimedTombstoneData(target: DeletionTarget | null): Promise<void> {
+		if (!target) return;
+		// A `db`-stored tombstone's data cascaded with the row delete, so `toBlobRefs`
+		// narrows it away and there is nothing to clear out of band.
+		const blobRefs = this.toBlobRefs([target]);
+		if (blobRefs.length === 0) return;
+		try {
+			await this.jsonStore.delete(blobRefs);
+		} catch (error) {
+			this.errorReporter.error(error, {
+				extra: { executionId: target.executionId, storedAt: target.storedAt },
+			});
 		}
 	}
 
@@ -522,6 +617,92 @@ export class ExecutionPersistence {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
 		await this.jsonStore.delete(this.toBlobRefs(refs));
+	}
+
+	/**
+	 * Hard-delete all executions of a workflow, in batches small enough that no
+	 * single statement can exceed a DB statement timeout, no matter how large
+	 * the execution history is. Each batch commits independently, so an
+	 * interrupted deletion picks up where it left off when retried.
+	 *
+	 * Callers must deactivate the workflow first — if something keeps producing
+	 * executions for it, this throws once the per-run batch cap is exhausted,
+	 * instead of looping forever.
+	 */
+	async hardDeleteByWorkflowId(workflowId: string) {
+		const maxBatches = await this.maxBulkDeletionBatches();
+
+		for (let batch = 0; batch < maxBatches; batch++) {
+			const executions = await this.executionRepository.find({
+				select: ['id', 'workflowId', 'storedAt'],
+				where: { workflowId },
+				take: ExecutionPersistence.bulkDeletionBatchSize,
+				withDeleted: true, // sweep soft-deleted executions too, or they'd be left to the FK cascade
+			});
+
+			if (executions.length === 0) return;
+
+			await this.hardDelete(
+				executions.map((execution) => ({
+					executionId: execution.id,
+					workflowId: execution.workflowId,
+					storedAt: execution.storedAt,
+				})),
+			);
+		}
+
+		// The loop may have converged exactly on its last allowed batch - only
+		// fail if executions actually remain.
+		const remaining = await this.executionRepository.find({
+			select: ['id'],
+			where: { workflowId },
+			take: 1,
+			withDeleted: true,
+		});
+		if (remaining.length === 0) return;
+
+		throw new UnexpectedError(
+			`Failed to delete all executions of workflow ${workflowId}: executions keep being added while deleting them - is the workflow still active?`,
+		);
+	}
+
+	/**
+	 * Runaway-safeguard cap for `hardDeleteByWorkflowId`: twice the table-size
+	 * estimate when one is available — no single workflow can have more
+	 * executions than the whole table, so large deployments never hit the cap
+	 * on legitimate work — floored at the fixed per-run cap, which is also the
+	 * fallback when no estimate is available.
+	 */
+	private async maxBulkDeletionBatches(): Promise<number> {
+		const { bulkDeletionBatchSize, maxBulkDeletionBatchesPerRun: fallback } = ExecutionPersistence;
+
+		const estimate = await this.estimateExecutionsTableSize();
+		if (estimate === null) return fallback;
+
+		return Math.max(Math.ceil((estimate * 2) / bulkDeletionBatchSize), fallback);
+	}
+
+	/**
+	 * Table-size estimate for executions from the Postgres system catalogs
+	 * (O(1) lookup). Returns null on other DBs, on never-analyzed tables
+	 * (`reltuples` is -1), or when the lookup fails — this is best-effort only.
+	 */
+	private async estimateExecutionsTableSize(): Promise<number | null> {
+		if (this.databaseConfig.type !== 'postgresdb') return null;
+
+		try {
+			const { schema, tableName } = this.executionRepository.metadata;
+			const table = schema ? `"${schema}"."${tableName}"` : `"${tableName}"`;
+			const rows = (await this.executionRepository.query(
+				'SELECT reltuples::bigint AS estimate FROM pg_class WHERE oid = to_regclass($1)',
+				[table],
+			)) as Array<{ estimate: string | number }>;
+
+			const estimate = Number(rows[0]?.estimate);
+			return Number.isFinite(estimate) && estimate >= 0 ? estimate : null;
+		} catch {
+			return null;
+		}
 	}
 
 	/** Narrow deletion targets to those whose data lives in a blob store, i.e. all but `db`. */
