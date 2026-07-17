@@ -132,8 +132,12 @@ onMounted(async () => {
 				<div :class="[$style.logo, $style.n8n]">
 					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
 				</div>
-				<div :class="$style.arrow">
-					<N8nIcon icon="arrow-right" size="large" color="text-light" />
+				<!-- Pending-connection connector: marching dashes from the n8n tile toward the
+				     client tile, with a spinner mid-way. Purely decorative. -->
+				<div :class="$style.connector" aria-hidden="true">
+					<span :class="$style.dashes" />
+					<span :class="$style.spinner" />
+					<span :class="$style.dashes" />
 				</div>
 				<div :class="$style.logo">
 					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
@@ -340,6 +344,62 @@ onMounted(async () => {
 	&.n8n > div {
 		position: relative;
 		bottom: var(--spacing--5xs);
+	}
+}
+
+.connector {
+	display: flex;
+	flex: 1 1 auto;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--3xs);
+}
+
+.dashes {
+	flex: 1 1 auto;
+	max-width: var(--spacing--xl);
+	height: 2px;
+	/* Two dash cells (dash + gap) so a single-cell shift loops seamlessly. */
+	background-image: repeating-linear-gradient(
+		to right,
+		var(--color--primary) 0 6px,
+		transparent 6px 12px
+	);
+	background-size: 12px 100%;
+	animation: mcp-connector-march 600ms linear infinite;
+}
+
+.spinner {
+	flex: 0 0 auto;
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	border: 2px solid var(--color--text);
+	border-top-color: transparent;
+	border-radius: var(--radius--full);
+	animation: mcp-connector-spin 800ms linear infinite;
+}
+
+/* Dashes march toward the client tile (rightward). */
+@keyframes mcp-connector-march {
+	from {
+		background-position: 0 0;
+	}
+
+	to {
+		background-position: 12px 0;
+	}
+}
+
+@keyframes mcp-connector-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dashes,
+	.spinner {
+		animation: none;
 	}
 }
 
