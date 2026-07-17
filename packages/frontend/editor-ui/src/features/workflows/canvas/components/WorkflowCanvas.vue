@@ -208,6 +208,7 @@ provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
 // the menu lives in the shared layer and can't reach this canvas' view state.
 provide(ContextMenuGroupViewKey, {
 	isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+	isDescriptionVisible: (id) => nodeGroupDescriptionVisibility.isVisible(id),
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636

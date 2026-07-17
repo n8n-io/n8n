@@ -84,6 +84,7 @@ import {
 	type CanvasNodeGroupEventSource,
 } from '../composables/useCanvasNodeGroupTelemetry';
 import { NodeGroupViewKey } from '../composables/useCanvasNodeGroupView';
+import { NodeGroupDescriptionVisibilityKey } from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
@@ -260,6 +261,7 @@ const selectableNodesAndGroups = computed(() =>
 const isPaneReady = ref(false);
 const autofocusGroupTitleId = ref<string | null>(null);
 const injectedNodeGroupView = inject(NodeGroupViewKey, null);
+const injectedNodeGroupDescriptionVisibility = inject(NodeGroupDescriptionVisibilityKey, null);
 
 const classes = computed(() => ({
 	[$style.canvas]: true,
@@ -769,6 +771,22 @@ function onSetAllGroupsExpanded(expanded: boolean, source: CanvasNodeGroupEventS
 		expanded,
 		source,
 	);
+}
+
+// Pin or unpin the descriptions of every group that has one — the workflow-wide
+// counterpart to the per-group pin toggle in the title bar.
+function onSetAllDescriptionsVisible(visible: boolean) {
+	if (!injectedNodeGroupDescriptionVisibility) return;
+	const groupIds = workflowDocumentStore.value.allGroups
+		.filter((group) => !!group.description?.trim())
+		.map((group) => group.id);
+	injectedNodeGroupDescriptionVisibility.setVisibleForGroups(groupIds, visible);
+}
+
+// Pin or unpin a single group's description, from its own context menu.
+function onSetGroupDescriptionVisible(groupId: string | undefined, visible: boolean) {
+	if (!injectedNodeGroupDescriptionVisibility || !groupId) return;
+	injectedNodeGroupDescriptionVisibility.setVisible(groupId, visible);
 }
 
 // Distinct groups behind a context menu target: the carried group when a
@@ -1307,6 +1325,14 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), true, 'context-menu');
 		case 'collapse_selected_groups':
 			return setGroupsExpanded(resolveTargetGroupIds(nodeIds, groupId), false, 'context-menu');
+		case 'show_all_group_descriptions':
+			return onSetAllDescriptionsVisible(true);
+		case 'hide_all_group_descriptions':
+			return onSetAllDescriptionsVisible(false);
+		case 'show_group_description':
+			return onSetGroupDescriptionVisible(groupId, true);
+		case 'hide_group_description':
+			return onSetGroupDescriptionVisible(groupId, false);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}
