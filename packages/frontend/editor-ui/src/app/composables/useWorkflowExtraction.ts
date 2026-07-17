@@ -460,8 +460,6 @@ export function useWorkflowExtraction() {
 			return;
 		}
 
-		// Some group members survived aside the Subworkflow, and the Subworkflow would not be the single
-		// remaining node, so keep the group and add the Execute node.
 		workflowDocumentStore.value.addNodesToGroup(groupId, [replacementNodeId]);
 		const groupAfterReplacements = workflowDocumentStore.value.getGroupById(groupId);
 		if (groupAfterReplacements) {
