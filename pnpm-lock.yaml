@@ -4467,6 +4467,9 @@ importers:
       ts-essentials:
         specifier: ^7.0.3
         version: 7.0.3(@typescript/typescript6@6.0.2)
+      tsc-watch:
+        specifier: ^7.2.1
+        version: 7.2.1(@typescript/typescript6@6.0.2)
       tsconfig-paths:
         specifier: ^4.2.0
         version: 4.2.0
@@ -20945,6 +20948,10 @@ packages:
     resolution: {integrity: sha512-a1uQGz7IyVy9YwhqjZIZu1c8JO8dNIe20xBmSS6qu9kv++k3JGzCVmprbNN5Kn+BgzD5E7YYwg1CcjuJMRNsvg==}
     engines: {node: '>=0.6.19'}
 
+  string-argv@0.3.2:
+    resolution: {integrity: sha512-aqD2Q0144Z+/RqG52NeHEkZauTAUWJO8c6yTftGJKO3Tja5tUgIfmIl6kExvhtxSDP7fXB6DvzkfMpCd/F3G+Q==}
+    engines: {node: '>=0.6.19'}
+
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
     engines: {node: '>=8'}
@@ -21466,6 +21473,13 @@ packages:
 
   tsc-watch@6.2.0:
     resolution: {integrity: sha512-2LBhf9kjKXnz7KQ/puLHlozMzzUNHAdYBNMkg3eksQJ9GBAgMg8czznM83T5PmsoUvDnXzfIeQn2lNcIYDr8LA==}
+    engines: {node: '>=12.12.0'}
+    hasBin: true
+    peerDependencies:
+      typescript: '*'
+
+  tsc-watch@7.2.1:
+    resolution: {integrity: sha512-FcntBnz5bXGQ/q265acfDzU7xi6R/sgwMokI+Iu293n14Wu8ovAtcwqNfU9vv/DM1THlnmmxatSSyGOvWsSblg==}
     engines: {node: '>=12.12.0'}
     hasBin: true
     peerDependencies:
@@ -40249,6 +40263,8 @@ snapshots:
 
   string-argv@0.3.1: {}
 
+  string-argv@0.3.2: {}
+
   string-width@4.2.3:
     dependencies:
       emoji-regex: 8.0.0
@@ -40998,6 +41014,14 @@ snapshots:
       ps-tree: 1.2.0
       string-argv: 0.3.1
       typescript: 6.0.2
+
+  tsc-watch@7.2.1(@typescript/typescript6@6.0.2):
+    dependencies:
+      cross-spawn: 7.0.6
+      node-cleanup: 2.1.2
+      ps-tree: 1.2.0
+      string-argv: 0.3.2
+      typescript: '@typescript/typescript6@6.0.2'
 
   tsconfig-paths@4.2.0:
     dependencies:

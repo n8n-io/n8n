@@ -2296,6 +2296,7 @@ describe('TelemetryEventRelay', () => {
 					folders: 1,
 					credentials: 2,
 					dataTables: 1,
+					variables: 4,
 				},
 			};
 
@@ -2307,6 +2308,7 @@ describe('TelemetryEventRelay', () => {
 				folder_count: 1,
 				credential_count: 2,
 				data_table_count: 1,
+				variable_count: 4,
 			});
 		});
 
