@@ -17,7 +17,8 @@ import { useToast } from './useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { RemoveNodeGroupCommand, UpdateNodeGroupCommand } from '@/app/models/history';
+import { UpdateNodeGroupCommand } from '@/app/models/history';
+import { deleteGroupWithHistory } from '@/features/workflows/canvas/nodeGroups.utils';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useSelectionValidation } from './useSelectionValidation';
 
@@ -451,12 +452,7 @@ export function useWorkflowExtraction() {
 		// Whole group extracted: the only node left would be the Execute node. In this case, a single-node
 		// group is invalid, so dissolve the group and leave the Execute node ungrouped.
 		if (remainingGroupMembers.length === 0) {
-			const snapshot = {
-				...groupBeforeReplacements,
-				nodeIds: [...groupBeforeReplacements.nodeIds],
-			};
-			workflowDocumentStore.value.deleteGroup(groupId);
-			historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
+			deleteGroupWithHistory(groupBeforeReplacements, workflowDocumentStore.value, historyStore);
 			return;
 		}
 
