@@ -560,4 +560,354 @@ describe('FilterConditions.vue', () => {
 			expect(get(emitted('valueChanged'), '0.0.value.conditions.0.operator.type')).toBe('number');
 		});
 	});
+
+	it('preserves stored diverging caseSensitive on initial load without emission', async () => {
+		// Scenario: stored value has caseSensitive:false, but ignoreCase expression resolves to true (caseSensitive:false)
+		const storedValue: FilterValue = {
+			options: {
+				caseSensitive: false,
+				leftValue: '',
+				typeValidation: 'loose',
+				version: 2,
+			},
+			conditions: [
+				{
+					id: '1',
+					leftValue: 'foo',
+					rightValue: 'bar',
+					operator: getFilterOperator('string:equals'),
+				},
+			],
+			combinator: 'and',
+		};
+
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockResolvedValue({
+			caseSensitive: false, // This matches the stored value
+		});
+
+		const { emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: storedValue,
+				parameter: createTestNodeProperties({
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						filter: {
+							caseSensitive: '={{!$parameter.options.ignoreCase}}',
+						} as unknown as FilterTypeOptions,
+					},
+				}),
+				node: createTestNode({
+					...DEFAULT_SETUP.props.node,
+					parameters: { options: { ignoreCase: true } }, // This makes expression resolve to false
+				}),
+			},
+		});
+
+		await flushPromises();
+
+		// Should not emit on initial render even though expression is being resolved
+		expect(emitted('valueChanged')).toBeUndefined();
+
+		// Verify stored caseSensitive is preserved
+		const state = get(emitted('valueChanged'), '0.0.value.options.caseSensitive');
+		expect(state ?? false).toBe(false);
+	});
+
+	it('emits reflection to source toggle when stored caseSensitive diverges from expression', async () => {
+		// Scenario: stored value has caseSensitive:true, but ignoreCase expression resolves to false (caseSensitive:false)
+		// This represents a programmatic node with a manually-set caseSensitive that diverges from the toggle
+		const storedValue: FilterValue = {
+			options: {
+				caseSensitive: true, // Manually set to true, differs from resolved false
+				leftValue: '',
+				typeValidation: 'loose',
+				version: 2,
+			},
+			conditions: [
+				{
+					id: '1',
+					leftValue: 'foo',
+					rightValue: 'bar',
+					operator: getFilterOperator('string:equals'),
+				},
+			],
+			combinator: 'and',
+		};
+
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockResolvedValue({
+			caseSensitive: false, // Expression resolves to false (from !ignoreCase where ignoreCase:true)
+		});
+
+		const { emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: storedValue,
+				parameter: createTestNodeProperties({
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						filter: {
+							caseSensitive: '={{!$parameter.options.ignoreCase}}',
+						} as unknown as FilterTypeOptions,
+					},
+				}),
+				node: createTestNode({
+					...DEFAULT_SETUP.props.node,
+					parameters: { options: { ignoreCase: true } }, // Expression resolves to false
+				}),
+			},
+		});
+
+		await flushPromises();
+
+		// Should emit reflection to the source parameter on initial render divergence
+		// with "parameters." prefix for correct NodeSettings routing
+		const events = emitted('valueChanged') ?? [];
+		expect(events).toHaveLength(1);
+		expect(get(events[0], '0.name')).toBe('parameters.options.ignoreCase');
+		expect(get(events[0], '0.value')).toBe(false); // !storedCaseSensitive = !true = false
+	});
+
+	it('does not emit reflection when read-only, even if caseSensitive diverges', async () => {
+		// Viewing a read-only workflow must stay side-effect free: no parameter update, no dirtying.
+		const storedValue: FilterValue = {
+			options: {
+				caseSensitive: true, // diverges from resolved false
+				leftValue: '',
+				typeValidation: 'loose',
+				version: 2,
+			},
+			conditions: [
+				{
+					id: '1',
+					leftValue: 'foo',
+					rightValue: 'bar',
+					operator: getFilterOperator('string:equals'),
+				},
+			],
+			combinator: 'and',
+		};
+
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockResolvedValue({
+			caseSensitive: false,
+		});
+
+		const { emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				readOnly: true,
+				value: storedValue,
+				parameter: createTestNodeProperties({
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						filter: {
+							caseSensitive: '={{!$parameter.options.ignoreCase}}',
+						} as unknown as FilterTypeOptions,
+					},
+				}),
+				node: createTestNode({
+					...DEFAULT_SETUP.props.node,
+					parameters: { options: { ignoreCase: true } },
+				}),
+			},
+		});
+
+		await flushPromises();
+
+		expect(emitted('valueChanged')).toBeUndefined();
+	});
+
+	it('updates caseSensitive when ignoreCase toggle changes', async () => {
+		// Set up initial mock
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockResolvedValue({
+			caseSensitive: true, // Initial: ignoreCase:false -> caseSensitive:true
+		});
+
+		const { emitted, rerender } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: {
+					options: DEFAULT_OPTIONS,
+					conditions: [
+						{
+							id: '1',
+							leftValue: 'foo',
+							rightValue: 'bar',
+							operator: getFilterOperator('string:equals'),
+						},
+					],
+					combinator: 'and',
+				},
+				parameter: createTestNodeProperties({
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						filter: {
+							caseSensitive: '={{!$parameter.options.ignoreCase}}',
+						} as unknown as FilterTypeOptions,
+					},
+				}),
+				node: createTestNode({
+					...DEFAULT_SETUP.props.node,
+					parameters: { options: { ignoreCase: false } },
+				}),
+			},
+		});
+
+		await flushPromises();
+
+		// No emission on initial render
+		expect(emitted('valueChanged')).toBeUndefined();
+
+		// Update mock for the new ignoreCase value
+		vi.mocked(workFlowHelpers.resolveParameter).mockResolvedValue({
+			caseSensitive: false, // After toggle: ignoreCase:true -> caseSensitive:false
+		});
+
+		// Simulate ignoreCase toggle change
+		await rerender({
+			node: {
+				...DEFAULT_SETUP.props.node,
+				parameters: { options: { ignoreCase: true } }, // Toggle changed
+			},
+		});
+
+		await waitFor(() => {
+			expect(emitted('valueChanged') ?? []).toHaveLength(1);
+		});
+
+		const events = emitted('valueChanged') ?? [];
+		expect(get(events[0], '0.value.options.caseSensitive')).toBe(false);
+	});
+
+	it('converges without infinite loop on reflection', async () => {
+		// Verify that the reflection emission converges: initial divergence → reflection emitted → no further emissions
+		const storedValue: FilterValue = {
+			options: {
+				caseSensitive: true,
+				leftValue: '',
+				typeValidation: 'loose',
+				version: 2,
+			},
+			conditions: [
+				{
+					id: '1',
+					leftValue: 'foo',
+					rightValue: 'bar',
+					operator: getFilterOperator('string:equals'),
+				},
+			],
+			combinator: 'and',
+		};
+
+		let resolveCallCount = 0;
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockImplementation(async () => {
+			resolveCallCount++;
+			// First call: divergence triggers reflection
+			// After reflection syncs the toggle, subsequent calls should resolve to matching value
+			return { caseSensitive: false };
+		});
+
+		const { emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: storedValue,
+				parameter: createTestNodeProperties({
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						filter: {
+							caseSensitive: '={{!$parameter.options.ignoreCase}}',
+						} as unknown as FilterTypeOptions,
+					},
+				}),
+				node: createTestNode({
+					...DEFAULT_SETUP.props.node,
+					parameters: { options: { ignoreCase: true } },
+				}),
+			},
+		});
+
+		await flushPromises();
+
+		// Exactly one emission on initial load (the reflection correction)
+		const events = emitted('valueChanged') ?? [];
+		expect(events).toHaveLength(1);
+		// Verify emit name includes "parameters." prefix for correct NodeSettings routing
+		expect(get(events[0], '0.name')).toBe('parameters.options.ignoreCase');
+
+		// Prove convergence: resolveParameter was called multiple times (watchEffect may run again)
+		// but emissions were bounded to exactly 1 (the reflection)
+		expect(resolveCallCount).toBeGreaterThanOrEqual(1);
+	});
+
+	it('emits reflection with the "parameters."-prefixed name that NodeSettings routing requires', async () => {
+		// Pins the emit contract: the reflection name must start with "parameters." so that
+		// NodeSettings.valueChanged -> nameIsParameter() routes it to updateNodeParameter and
+		// updates node.parameters.options.ignoreCase. A bare "options.ignoreCase" would fail
+		// that guard and write a phantom top-level node.options instead. This asserts the emit
+		// payload only (not the NodeSettings handler itself).
+		const storedValue: FilterValue = {
+			options: {
+				caseSensitive: true, // Diverges from resolved false
+				leftValue: '',
+				typeValidation: 'loose',
+				version: 2,
+			},
+			conditions: [
+				{
+					id: '1',
+					leftValue: 'foo',
+					rightValue: 'bar',
+					operator: getFilterOperator('string:equals'),
+				},
+			],
+			combinator: 'and',
+		};
+
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockResolvedValue({
+			caseSensitive: false, // Expression resolves to false (ignoreCase: true)
+		});
+
+		const { emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: storedValue,
+				parameter: createTestNodeProperties({
+					...DEFAULT_SETUP.props.parameter,
+					typeOptions: {
+						filter: {
+							caseSensitive: '={{!$parameter.options.ignoreCase}}',
+						} as unknown as FilterTypeOptions,
+					},
+				}),
+				node: createTestNode({
+					...DEFAULT_SETUP.props.node,
+					parameters: { options: { ignoreCase: true } },
+				}),
+			},
+		});
+
+		await flushPromises();
+
+		const events = emitted('valueChanged') ?? [];
+		expect(events).toHaveLength(1);
+
+		// Extract the emitted event object
+		const eventPayload = get(events[0], '0');
+		expect(eventPayload).toBeDefined();
+
+		// Verify the emit name starts with "parameters." (required for NodeSettings.nameIsParameter check)
+		expect(get(eventPayload, 'name')).toBe('parameters.options.ignoreCase');
+		// Verify value is the inverted stored caseSensitive (makes !ignoreCase === storedCaseSensitive)
+		expect(get(eventPayload, 'value')).toBe(false); // !true = false
+		expect(get(eventPayload, 'node')).toBe(DEFAULT_SETUP.props.node.name);
+
+		// Regression guard: a bare 'options.ignoreCase' (no "parameters." prefix) would fail
+		// NodeSettings.nameIsParameter and be misrouted; the prefix is what keeps it correct.
+	});
 });
