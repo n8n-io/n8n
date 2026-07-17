@@ -2223,7 +2223,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-imported` event with params and counts', () => {
 			const event: RelayEventMap['n8n-package-imported'] = {
 				user: { id: 'user123' },
-				projectId: 'project123',
+				projectIds: ['project123'],
 				folderId: 'folder123',
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				options: {
@@ -2296,6 +2296,7 @@ describe('TelemetryEventRelay', () => {
 					folders: 1,
 					credentials: 2,
 					dataTables: 1,
+					variables: 4,
 				},
 			};
 
@@ -2307,6 +2308,7 @@ describe('TelemetryEventRelay', () => {
 				folder_count: 1,
 				credential_count: 2,
 				data_table_count: 1,
+				variable_count: 4,
 			});
 		});
 
@@ -3695,6 +3697,26 @@ describe('TelemetryEventRelay', () => {
 			expect(typeof result.major).toBe('number');
 			expect(typeof result.minor).toBe('number');
 			expect(typeof result.patch).toBe('number');
+		});
+	});
+
+	describe('HITL events', () => {
+		it('should track on `hitl-response-actioned` event', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: false,
+			});
 		});
 	});
 });

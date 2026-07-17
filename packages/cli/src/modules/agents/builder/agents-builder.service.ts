@@ -11,12 +11,10 @@ import type {
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n8n/agents';
-import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
+import { applyAgentThinking, tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
 import { IsNull } from '@n8n/typeorm';
 import { jsonParse } from 'n8n-workflow';
 
@@ -28,12 +26,11 @@ import { AgentsService } from '../agents.service';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
+import { AgentsBuilderToolsService } from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
 import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { streamAgentChunks } from '../utils/agent-stream';
 
@@ -85,7 +82,6 @@ export class AgentsBuilderService {
 		private readonly instanceAiCreditService: InstanceAiCreditService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
-		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -216,24 +212,10 @@ export class AgentsBuilderService {
 		// always runs on it directly.
 		const modelConfig = session.modelConfig;
 
-		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
-		const currentToolsMap = agent.tools ?? {};
-		const toolList =
-			Object.entries(currentToolsMap)
-				.map(([id, t]) => `- ${id}: ${t.descriptor.name} -- ${t.descriptor.description}`)
-				.join('\n') || '(none)';
-
-		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
 		const modelRecommendationsSection = await getModelRecommendationsSection();
-		const enabledModules = this.agentsConfig.modules;
 		const instructions = buildBuilderPrompt({
-			configJson,
-			configHash: getAgentConfigHash(currentConfig),
-			configUpdatedAt: agent.updatedAt.toISOString(),
-			toolList,
 			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
 			modelRecommendationsSection,
-			enabledModules,
 		});
 		const finalInstructions = session.instructionsAddendum
 			? `${instructions}\n\n${session.instructionsAddendum}`
@@ -280,6 +262,7 @@ export class AgentsBuilderService {
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
+			.promptCaching({ anthropic: { ttl: '5m' } })
 			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
@@ -292,6 +275,8 @@ export class AgentsBuilderService {
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
 		}
+
+		applyAgentThinking(builder, modelConfig);
 
 		return builder;
 	}
