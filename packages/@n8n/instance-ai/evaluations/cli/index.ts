@@ -68,6 +68,7 @@ import {
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
 import {
+	abortedWorkflowTestCaseResult,
 	buildWorkflow,
 	executeScenario,
 	cleanupBuild,
@@ -79,7 +80,9 @@ import {
 	type BuildResult,
 } from '../harness/runner';
 import {
+	classifyScenarioExecutionError,
 	extractErrorMessage,
+	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
 	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
@@ -104,6 +107,39 @@ import { caseDisplayPrompt, conversationUserTurnsAsText } from '../utils/convers
 
 // n8n degrades above ~4 concurrent builds.
 const MAX_CONCURRENT_BUILDS = 4;
+
+/** Attempts (initial + retries) for a build hitting transient network errors. */
+const MAX_BUILD_ATTEMPTS = 3;
+
+/** Framework-noise share above which a baseline capture gets a quality warning. */
+const BASELINE_MAX_FRAMEWORK_NOISE_RATE = 0.05;
+
+/** Count framework-noise trials and cases that failed on nothing but noise. */
+function assessFrameworkNoise(
+	evaluation: MultiRunEvaluation,
+	slugByTestCase?: Map<WorkflowTestCase, string>,
+): { frameworkTrials: number; totalTrials: number; fullyNoisyCases: string[] } {
+	let frameworkTrials = 0;
+	let totalTrials = 0;
+	const fullyNoisyCases: string[] = [];
+	for (const tc of evaluation.testCases) {
+		let caseFramework = 0;
+		let caseTotal = 0;
+		for (const sa of tc.executionScenarios) {
+			for (const run of sa.runs) {
+				if (run.incomplete) continue;
+				caseTotal++;
+				if (!run.success && run.failureCategory === 'framework_issue') caseFramework++;
+			}
+		}
+		frameworkTrials += caseFramework;
+		totalTrials += caseTotal;
+		if (caseTotal > 0 && caseFramework === caseTotal) {
+			fullyNoisyCases.push(slugByTestCase?.get(tc.testCase) ?? caseDisplayPrompt(tc.testCase));
+		}
+	}
+	return { frameworkTrials, totalTrials, fullyNoisyCases };
+}
 
 /** Target input shape with the iteration index we inject for multi-run. */
 type TargetInputs = DatasetExampleInputs & { _iteration?: number };
@@ -151,6 +187,10 @@ interface RunConfig {
 	 *  LangSmith experiment metadata and eval-results.json — the run's only spend
 	 *  record beyond raw session logs, for a suite that's manual-only due to cost. */
 	mcpBuildSpend: McpBuildSpend[];
+	/** Optional sink the direct loop pushes each completed iteration's results into
+	 *  as they finish, so an abort that rejects the run still leaves the caller
+	 *  (runEvalAndPersist) with the scenarios that already completed. */
+	partialResults?: WorkflowTestCaseResult[][];
 }
 
 /** Map eval CLI args to the shared MCP builder's settings. */
@@ -388,66 +428,67 @@ async function main(): Promise<void> {
 	const cleanupBuiltWorkflows =
 		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
+	const mcpBuildSpend: McpBuildSpend[] = [];
+	const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
-		let evaluation: MultiRunEvaluation;
-		let experimentName: string | undefined;
-		let experimentUrl: string | undefined;
-		let outcome: ComparisonOutcome | undefined;
-		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
-		const mcpBuildSpend: McpBuildSpend[] = [];
+		// runEvalAndPersist owns the always-write guarantee: it writes
+		// eval-results.json even if the run below throws (a budget/timeout abort, a
+		// lane meltdown, an OOM), aggregating whatever completed scenarios were
+		// pushed into `partialResults` so the dispatcher never finds no file.
+		const { evaluation, slugByTestCase, outcome, gate, jsonPath, prCommentPath } =
+			await runEvalAndPersist(
+				{
+					logger,
+					outputDir: args.outputDir,
+					startTime,
+					iterations: args.iterations,
+					tier: args.tier,
+					commitSha,
+					rerun: ciRerunHint(),
+					mcpBuildSpend,
+				},
+				async (partialResults) => {
+					if (hasLangSmith) {
+						logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
+						const langsmithRun = await runWithLangSmith({
+							args,
+							lanes,
+							logger,
+							testCasesWithFiles,
+							prebuiltManifest,
+							cleanupBuiltWorkflows,
+							mcpBuildLogDir,
+							mcpBuildSpend,
+						});
+						return {
+							evaluation: langsmithRun.evaluation,
+							experimentName: langsmithRun.experimentName,
+							experimentUrl: langsmithRun.experimentUrl,
+							outcome: langsmithRun.outcome,
+							slugByTestCase: langsmithRun.slugByTestCase,
+						};
+					}
+					logger.info(
+						'No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)',
+					);
+					const directRun = await runDirectLoop({
+						args,
+						lanes,
+						logger,
+						testCasesWithFiles,
+						prebuiltManifest,
+						cleanupBuiltWorkflows,
+						mcpBuildLogDir,
+						mcpBuildSpend,
+						partialResults,
+					});
+					return { evaluation: directRun.evaluation, slugByTestCase: directRun.slugByTestCase };
+				},
+			);
 
-		if (hasLangSmith) {
-			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			const langsmithRun = await runWithLangSmith({
-				args,
-				lanes,
-				logger,
-				testCasesWithFiles,
-				prebuiltManifest,
-				cleanupBuiltWorkflows,
-				mcpBuildLogDir,
-				mcpBuildSpend,
-			});
-			evaluation = langsmithRun.evaluation;
-			experimentName = langsmithRun.experimentName;
-			experimentUrl = langsmithRun.experimentUrl;
-			outcome = langsmithRun.outcome;
-			slugByTestCase = langsmithRun.slugByTestCase;
-		} else {
-			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			const directRun = await runDirectLoop({
-				args,
-				lanes,
-				logger,
-				testCasesWithFiles,
-				prebuiltManifest,
-				cleanupBuiltWorkflows,
-				mcpBuildLogDir,
-				mcpBuildSpend,
-			});
-			evaluation = directRun.evaluation;
-			slugByTestCase = directRun.slugByTestCase;
-		}
-
-		const totalDuration = Date.now() - startTime;
-		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
-		// Gated tiers report an absolute green verdict in place of the baseline comparison.
-		const gate = isGatedTier(args.tier) ? evaluateGate(evaluation, { slugByTestCase }) : undefined;
-		const { jsonPath, prCommentPath } = writeEvalResults(
-			evaluation,
-			totalDuration,
-			args.outputDir,
-			experimentName,
-			outcome,
-			commitSha,
-			slugByTestCase,
-			ciRerunHint(),
-			gate,
-			mcpBuildSpend,
-			experimentUrl,
-		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
 		const reportResults = flattenRunsForReport(evaluation);
@@ -458,6 +499,28 @@ async function main(): Promise<void> {
 		console.log(
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
+
+		// Advisory only: findLatestBaseline trusts the newest experiment by
+		// prefix, so surface elevated harness noise for the humans reading the log.
+		if (args.experimentName?.startsWith('instance-ai-baseline')) {
+			const { frameworkTrials, totalTrials, fullyNoisyCases } = assessFrameworkNoise(
+				evaluation,
+				slugByTestCase,
+			);
+			const noiseRate = totalTrials > 0 ? frameworkTrials / totalTrials : 0;
+			if (noiseRate > BASELINE_MAX_FRAMEWORK_NOISE_RATE || fullyNoisyCases.length > 0) {
+				console.warn(
+					`Baseline quality warning: ${String(frameworkTrials)}/${String(totalTrials)} trials (${(noiseRate * 100).toFixed(1)}%) failed for harness reasons` +
+						' (lane transport, seeding, timeouts) rather than agent behavior' +
+						(fullyNoisyCases.length > 0
+							? `; cases with only framework failures: ${fullyNoisyCases.join(', ')}`
+							: '') +
+						'. This experiment becomes the comparison target for future runs, but those scenarios will' +
+						' under-count the agent — deltas against them may reflect harness noise, not regressions or' +
+						' improvements. Consider fixing the noise and re-capturing.',
+				);
+			}
+		}
 	} finally {
 		// Per-lane cleanup: each lane only holds the workflows built/fetched on it,
 		// so delete them via that lane's own client (multi-lane MCP builds spread
@@ -557,6 +620,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	> & { timeoutMs: number };
 	interface LaneState {
 		runner: Lane;
+		laneNum: number;
 		activeBuilds: number;
 		inflightKeys: Set<string>;
 		tracedBuild: (buildArgs: BuildArgs) => Promise<BuildResult>;
@@ -574,6 +638,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
 		return {
 			runner: lane,
+			laneNum,
 			activeBuilds: 0,
 			inflightKeys: new Set<string>(),
 			tracedBuild: traceable(
@@ -630,14 +695,49 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	});
 
+	// Direct fetch (not N8nClient) so a hung lane can't stall the probe.
+	async function laneHealthy(lane: LaneState): Promise<boolean> {
+		try {
+			const res = await fetch(`${lane.runner.baseUrl}/healthz/readiness`, {
+				signal: AbortSignal.timeout(5_000),
+			});
+			return res.ok;
+		} catch {
+			return false;
+		}
+	}
+
+	// A build that sat out its timeout against a dead lane reports "Run timed
+	// out", not "fetch failed" — so any failed build also health-probes its lane.
+	async function isTransportFailure(build: BuildResult, lane: LaneState): Promise<boolean> {
+		if (build.success) return false;
+		if (build.error !== undefined && isTransientNetworkError(build.error)) return true;
+		return !(await laneHealthy(lane));
+	}
+
 	// Work-stealing: each build acquires a lane that isn't already running its
-	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use the
-	// lane that built their workflow.
-	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
+	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use
+	// the lane that built their workflow. Health options quarantine a dead lane
+	// instead of letting its instant failures attract the whole queue.
+	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS, {
+		probe: laneHealthy,
+		onQuarantine: (lane) =>
+			logger.error(
+				`[lane ${String(lane.laneNum)}] quarantined after consecutive transport failures; probing ${lane.runner.baseUrl} for recovery`,
+			),
+		onReadmit: (lane) => logger.info(`[lane ${String(lane.laneNum)}] healthy again — re-admitted`),
+		onAllQuarantined: () =>
+			logger.error('All lanes quarantined — builds paused pending lane recovery'),
+	});
 	const buildCache = new Map<
 		string,
 		Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }>
 	>();
+	// Transport-evicted builds leave buildCache before any cleanup pass sees
+	// them, but their artifacts (restored workflows, data tables, thread — and
+	// with it the sandbox) are real. Stash them for the end-of-run drain; the
+	// lane may be mid-restart at eviction time, so immediate cleanup can't work.
+	const orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }> = [];
 	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
@@ -676,6 +776,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					// LLM-judged bookkeeping below needs only the fetched JSON, and
 					// holding the slot through it would idle the lane's build capacity.
 					allocator.release(lane, fileSlug);
+				}
+				{
+					const transient = await isTransportFailure(build, lane);
+					if (!build.success) build.transportFailure = transient;
+					allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
 				}
 				const buildDurationMs = Date.now() - start;
 				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
@@ -728,39 +833,72 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			}
 			// Orchestrator path: allocator spreads distinct fileSlugs across lanes;
 			// the build cache dedupes scenarios within one file.
-			const lane = await allocator.acquire(fileSlug);
 			const entry = testCaseByFileSlug.get(fileSlug);
 			if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
-			try {
-				const start = Date.now();
-				const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
-				if (timeoutMs !== args.timeoutMs) {
-					logger.info(
-						`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
-					);
-				}
-				const build = await lane.tracedBuild({
-					conversation: entry.conversation,
-					messageBudget: entry.messageBudget,
-					credentials: entry.credentials,
-					seedFile: entry.seedFile,
-					priorConversation: entry.priorConversation,
-					seedThread: entry.seedThread,
-					executionScenarios: entry.executionScenarios,
-					outcomeExpectations: entry.outcomeExpectations,
-					timeoutMs,
-				});
-				const buildDurationMs = Date.now() - start;
-				buildDurations.set(key, buildDurationMs);
-				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, build, false);
-				stashRunDebug(lane.runner.client, build);
-				return { build, lane, buildDurationMs };
-			} finally {
-				allocator.release(lane, fileSlug);
+			const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
+			if (timeoutMs !== args.timeoutMs) {
+				logger.info(
+					`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+				);
 			}
+			// Transport failures are not agent verdicts — retry on a different lane
+			// instead of recording 0-score rows for every scenario of the case.
+			let lane = await allocator.acquire(fileSlug);
+			let build: BuildResult;
+			let buildDurationMs: number;
+			for (let attempt = 1; ; attempt++) {
+				const start = Date.now();
+				try {
+					build = await lane.tracedBuild({
+						conversation: entry.conversation,
+						messageBudget: entry.messageBudget,
+						credentials: entry.credentials,
+						seedFile: entry.seedFile,
+						priorConversation: entry.priorConversation,
+						seedThread: entry.seedThread,
+						executionScenarios: entry.executionScenarios,
+						outcomeExpectations: entry.outcomeExpectations,
+						timeoutMs,
+					});
+				} finally {
+					allocator.release(lane, fileSlug);
+				}
+				buildDurationMs = Date.now() - start;
+				const transient =
+					(await isTransportFailure(build, lane)) ||
+					(!build.success && allocator.wasQuarantinedSince(lane, start));
+				if (!build.success) build.transportFailure = transient;
+				allocator.reportBuildOutcome(lane, transient ? 'transient-failure' : 'ok');
+				if (!transient || attempt >= MAX_BUILD_ATTEMPTS) break;
+				logger.warn(
+					`Build ${fileSlug} attempt ${String(attempt)}/${String(MAX_BUILD_ATTEMPTS)} failed transiently on lane ${String(lane.laneNum)} (${build.error ?? 'unknown'}); retrying on another lane`,
+				);
+				lane = await allocator.acquire(fileSlug, { not: lane });
+			}
+			buildDurations.set(key, buildDurationMs);
+			stashTranscript(build);
+			stashBuildExpectations(key, fileSlug, build, false);
+			stashRunDebug(lane.runner.client, build);
+			logger.info(
+				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
+			);
+			// Only the pairwise flow reads captured events — drop the largest chunk
+			// of each BuildResult from the run-long cache.
+			build.events = undefined;
+			return { build, lane, buildDurationMs };
 		})();
 		buildCache.set(key, promise);
+		// Evict transport-failed builds so a later scenario rebuilds. Agent build
+		// failures stay cached — they are the verdict; rebuilding just multiplies cost.
+		void promise.then(
+			({ build, lane }) => {
+				if (build.transportFailure) {
+					orphanedBuilds.push({ build, client: lane.runner.client });
+					buildCache.delete(key);
+				}
+			},
+			() => buildCache.delete(key),
+		);
 		return await promise;
 	}
 
@@ -812,8 +950,77 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		);
 	}
 
+	// Rows remaining per `iteration:fileSlug` build. When the last row of a
+	// build finishes, its backend artifacts (workflow, data tables, thread — and
+	// with the thread its sandbox) are deleted right away instead of at the end
+	// of the run: sandboxes have no auto-cleanup, so end-of-run-only deletion
+	// let the sandbox runner grow to ~15 GB over a full N=10 baseline.
+	// --keep-workflows deliberately keeps everything, thread/sandbox included —
+	// it's a debugging flag for small filtered runs, not baselines.
+	const remainingRowsByKey = new Map<string, number>();
+
+	function rowsPerCase(fileSlug: string): number {
+		const scenarios = testCaseByFileSlug.get(fileSlug)?.executionScenarios?.length ?? 0;
+		return Math.max(1, scenarios); // scenario-less cases get one build-only row
+	}
+
+	async function releaseCaseRow(iteration: number, fileSlug: string): Promise<void> {
+		const key = `${String(iteration)}:${fileSlug}`;
+		const remaining = (remainingRowsByKey.get(key) ?? rowsPerCase(fileSlug)) - 1;
+		remainingRowsByKey.set(key, remaining);
+		if (remaining > 0 || args.keepWorkflows) return;
+		const cached = buildCache.get(key);
+		if (!cached) return; // evicted (transport failure) — nothing to clean
+		try {
+			const { build, lane } = await cached;
+			// Run-debug capture reads the thread — let it settle before deletion.
+			if (build.threadId) await runDebugByThreadId.get(build.threadId)?.catch(() => {});
+			const clean = await cleanupBuild(lane.runner.client, build, logger);
+			if (!clean) {
+				// Leave the entry in buildCache — the end-of-run pass retries it.
+				logger.verbose(
+					`  [cleanup] ${fileSlug} (iteration ${String(iteration)}) incomplete, retrying at end of run`,
+				);
+				return;
+			}
+			buildCache.delete(key);
+			logger.verbose(`  [cleanup] ${fileSlug} (iteration ${String(iteration)}) artifacts deleted`);
+		} catch {
+			// Best-effort — a failed cleanup must never fail the row.
+		}
+	}
+
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
+		try {
+			return await targetRow(inputs, iteration);
+		} catch (error: unknown) {
+			// targetRow guards scenario execution internally, but a build-phase throw
+			// (getOrBuild) or a budget abort must not reject up to evaluate() and
+			// abort the whole experiment — that would discard every OTHER row's
+			// completed results. Record this row as an aborted (framework_issue)
+			// output instead so evaluate() finalizes and writeEvalResults still runs.
+			const message = extractErrorMessage(error);
+			logger.error(`    ERROR [${inputs.scenarioName}] (${inputs.testCaseFile}): ${message}`);
+			const classified = classifyScenarioExecutionError(message);
+			return {
+				buildSuccess: false,
+				passed: false,
+				score: 0,
+				reasoning: classified.reasoning,
+				failureCategory: classified.failureCategory,
+				rootCause: classified.rootCause,
+				execErrors: [message],
+				buildDurationMs: 0,
+				execDurationMs: 0,
+				nodeCount: 0,
+			};
+		} finally {
+			await releaseCaseRow(iteration, inputs.testCaseFile);
+		}
+	};
+
+	const targetRow = async (inputs: TargetInputs, iteration: number): Promise<TargetOutput> => {
 		const scenario: ExecutionScenario = {
 			name: inputs.scenarioName,
 			description: inputs.scenarioDescription,
@@ -872,9 +1079,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				passed: false,
 				score: 0,
 				reasoning: `Build failed: ${build.error ?? 'unknown'}`,
-				// Seeding failures are a harness setup problem, not an agent build
-				// failure — keep them out of the agent's build_failure bucket.
-				failureCategory: build.seedingFailed ? 'framework_issue' : 'build_failure',
+				// Seeding and transport failures are harness problems, not agent build
+				// failures — keep them out of the agent's build_failure bucket.
+				failureCategory:
+					build.seedingFailed || build.transportFailure ? 'framework_issue' : 'build_failure',
 				execErrors: build.error ? [build.error] : [],
 				buildDurationMs,
 				execDurationMs: 0,
@@ -911,18 +1119,22 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
 					continue;
 				}
-				// Mirror direct mode's per-scenario guard — without this, n8n API errors
-				// or verifier timeouts from executeWithLlmMock / verifyChecklist would
-				// escape to LangSmith, come back as a Run with null outputs, and be
-				// misclassified as builder regressions by the feedback extractor.
+				// Mirror direct mode's per-scenario guard — without this, n8n API errors,
+				// verifier timeouts, or a per-iteration budget abort from
+				// executeWithLlmMock / verifyChecklist would escape to LangSmith, come
+				// back as a Run with null outputs, and be misclassified as builder
+				// regressions by the feedback extractor. classifyScenarioExecutionError
+				// stamps framework_issue + a timeout-flavoured rootCause for budget aborts.
 				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				const classified = classifyScenarioExecutionError(errorMessage);
 				return await attachExpectations({
 					buildSuccess: true,
 					workflowId: build.workflowId,
 					passed: false,
 					score: 0,
-					reasoning: `Scenario execution error: ${errorMessage}`,
-					failureCategory: 'framework_issue',
+					reasoning: classified.reasoning,
+					failureCategory: classified.failureCategory,
+					rootCause: classified.rootCause,
 					execErrors: [errorMessage],
 					buildDurationMs,
 					execDurationMs: Date.now() - execStart,
@@ -1133,6 +1345,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		};
 	} finally {
 		if (!args.keepWorkflows) {
+			// Entries still here had no rows run, or their per-case cleanup failed
+			// (releaseCaseRow leaves those cached so this pass can retry them).
 			await Promise.all(
 				[...buildCache.values()].map(async (promise) => {
 					try {
@@ -1140,6 +1354,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						await cleanupBuild(lane.runner.client, build, logger);
 					} catch {
 						// Best-effort
+					}
+				}),
+			);
+			await Promise.all(
+				orphanedBuilds.map(async ({ build, client }) => {
+					try {
+						await cleanupBuild(client, build, logger);
+					} catch {
+						// Best-effort — the lane may still be unreachable
 					}
 				}),
 			);
@@ -1367,29 +1590,40 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								tc.fileSlug,
 								iter,
 							);
-							const result = await runWorkflowTestCase({
-								client: lane.client,
-								baseUrl: lane.baseUrl,
-								testCase: tc.testCase,
-								timeoutMs: args.timeoutMs,
-								createdCredentialIds: lane.createdCredentialIds,
-								preRunWorkflowIds: lane.preRunWorkflowIds,
-								claimedWorkflowIds: lane.claimedWorkflowIds,
-								logger,
-								keepWorkflows: args.keepWorkflows,
-								laneTag,
-								prebuiltWorkflowId,
-								pinAiRoots: args.pinAiRoots,
-							});
-							if (
-								prebuiltWorkflowId !== undefined &&
-								cleanupBuiltWorkflows &&
-								result.workflowBuildSuccess &&
-								result.workflowId
-							) {
-								lane.workflowIdsToDelete.add(result.workflowId);
+							try {
+								const result = await runWorkflowTestCase({
+									client: lane.client,
+									baseUrl: lane.baseUrl,
+									testCase: tc.testCase,
+									timeoutMs: args.timeoutMs,
+									createdCredentialIds: lane.createdCredentialIds,
+									preRunWorkflowIds: lane.preRunWorkflowIds,
+									claimedWorkflowIds: lane.claimedWorkflowIds,
+									logger,
+									keepWorkflows: args.keepWorkflows,
+									laneTag,
+									prebuiltWorkflowId,
+									pinAiRoots: args.pinAiRoots,
+								});
+								if (
+									prebuiltWorkflowId !== undefined &&
+									cleanupBuiltWorkflows &&
+									result.workflowBuildSuccess &&
+									result.workflowId
+								) {
+									lane.workflowIdsToDelete.add(result.workflowId);
+								}
+								return result;
+							} catch (error: unknown) {
+								// runWorkflowTestCase guards its own scenario loop, but a throw
+								// from the build phase (or a per-iteration budget abort) would
+								// otherwise reject runWithConcurrency and take every OTHER case's
+								// completed results down with it. Record this one case as an
+								// aborted (framework_issue) result and keep the batch alive.
+								const message = extractErrorMessage(error);
+								logger.error(`  ERROR running ${tc.fileSlug}${laneTag}: ${message}`);
+								return abortedWorkflowTestCaseResult(tc.testCase, lane.baseUrl, message);
 							}
-							return result;
 						},
 						MAX_CONCURRENT_BUILDS,
 					);
@@ -1398,7 +1632,12 @@ async function runDirectLoop(config: RunConfig): Promise<{
 			);
 			const flat = laneResults.flat();
 			flat.sort((a, b) => a.origIdx - b.origIdx);
-			return flat.map((x) => x.result);
+			const iterationResults = flat.map((x) => x.result);
+			// Capture each iteration as it completes (source-ordered, full-length) so
+			// an abort in a LATER iteration still leaves runEvalAndPersist the ones
+			// that finished — every captured array is a complete, index-aligned row.
+			config.partialResults?.push(iterationResults);
+			return iterationResults;
 		}),
 	);
 
@@ -1464,8 +1703,8 @@ function terminalRate(arr: number[]): number {
 
 function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetrics {
 	const { testCases } = evaluation;
-	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge
-	// and the terminal per-case table so the headline rate can't disagree with them.
+	// Units = scenarios + evaluated build-expectations — mirrors the per-card badge and the
+	// terminal per-case table so the headline rate can't disagree with them.
 	const units = testCases.flatMap((tc) => [
 		...tc.executionScenarios.filter((sa) => sa.evaluatedCount > 0),
 		...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
@@ -1529,7 +1768,104 @@ function ciRerunHint(): RerunHint | undefined {
 	};
 }
 
-function writeEvalResults(
+/** What `runEval` produces on success — the aggregation plus the LangSmith-only
+ *  comparison metadata (undefined in direct-loop mode). */
+export interface EvalRunOutput {
+	evaluation: MultiRunEvaluation;
+	experimentName?: string;
+	experimentUrl?: string;
+	outcome?: ComparisonOutcome;
+	slugByTestCase?: Map<WorkflowTestCase, string>;
+}
+
+export interface PersistEvalConfig {
+	logger: EvalLogger;
+	outputDir: string | undefined;
+	startTime: number;
+	iterations: number;
+	tier: CliArgs['tier'];
+	commitSha: string | undefined;
+	rerun: RerunHint | undefined;
+	mcpBuildSpend: McpBuildSpend[];
+}
+
+export interface PersistedEval extends EvalRunOutput {
+	gate: GateResult | undefined;
+	jsonPath: string;
+	prCommentPath: string;
+}
+
+/**
+ * Run the eval via `runEval` and ALWAYS persist eval-results.json +
+ * eval-pr-comment.md. On success returns the aggregation + write metadata so the
+ * caller can render the HTML report / terminal summary.
+ *
+ * If `runEval` throws — a per-iteration budget/timeout abort, a lane meltdown, an
+ * OOM — whatever it pushed into `partialResults` before throwing is aggregated
+ * and written before the error is re-thrown. Aggregation already tolerates
+ * missing/incomplete entries, so the scenarios that already completed survive
+ * instead of the dispatcher finding no file and discarding the entire run.
+ */
+export async function runEvalAndPersist(
+	config: PersistEvalConfig,
+	runEval: (partialResults: WorkflowTestCaseResult[][]) => Promise<EvalRunOutput>,
+): Promise<PersistedEval> {
+	const partialResults: WorkflowTestCaseResult[][] = [];
+	let persisted = false;
+	try {
+		const out = await runEval(partialResults);
+		// Gated tiers report an absolute green verdict in place of the baseline comparison.
+		const gate = isGatedTier(config.tier)
+			? evaluateGate(out.evaluation, { slugByTestCase: out.slugByTestCase })
+			: undefined;
+		const { jsonPath, prCommentPath } = writeEvalResults(
+			out.evaluation,
+			Date.now() - config.startTime,
+			config.outputDir,
+			out.experimentName,
+			out.outcome,
+			config.commitSha,
+			out.slugByTestCase,
+			config.rerun,
+			gate,
+			config.mcpBuildSpend,
+			out.experimentUrl,
+		);
+		persisted = true;
+		return { ...out, gate, jsonPath, prCommentPath };
+	} finally {
+		if (!persisted) {
+			try {
+				const evaluation: MultiRunEvaluation =
+					partialResults.length > 0
+						? aggregateResults(partialResults, partialResults.length)
+						: { totalRuns: config.iterations, testCases: [] };
+				const { jsonPath } = writeEvalResults(
+					evaluation,
+					Date.now() - config.startTime,
+					config.outputDir,
+					undefined,
+					undefined,
+					config.commitSha,
+					undefined,
+					config.rerun,
+					undefined,
+					config.mcpBuildSpend,
+					undefined,
+				);
+				config.logger.error(
+					`Eval run did not finish cleanly — wrote partial results (${String(partialResults.length)} iteration(s)) to ${jsonPath}`,
+				);
+			} catch (writeError: unknown) {
+				config.logger.error(
+					`Failed to write partial eval results: ${extractErrorMessage(writeError)}`,
+				);
+			}
+		}
+	}
+}
+
+export function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
 	outputDir: string | undefined,
@@ -1718,7 +2054,12 @@ async function tryRunComparison(config: {
 	}
 }
 
-main().catch((error) => {
-	console.error('Fatal error:', error);
-	process.exit(1);
-});
+// Only auto-run as the CLI entry point. Importing this module (e.g. from a unit
+// test that exercises the exported runEvalAndPersist / writeEvalResults seams)
+// must not kick off a real eval run against process.argv.
+if (!process.env.VITEST) {
+	main().catch((error) => {
+		console.error('Fatal error:', error);
+		process.exit(1);
+	});
+}

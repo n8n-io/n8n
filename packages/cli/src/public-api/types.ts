@@ -8,6 +8,7 @@ import type {
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
 	UpdateSecurityPolicyDto,
+	PublicCreateDestination,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -95,6 +96,8 @@ export declare namespace TestRunRequest {
 			lastId?: string;
 		}
 	>;
+	type Create = AuthenticatedRequest<{ id: string }>;
+	type Cancel = AuthenticatedRequest<{ id: string; runId: string }>;
 }
 
 export declare namespace TagRequest {
@@ -138,10 +141,20 @@ export declare namespace WorkflowRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity & { projectId?: string }, {}>;
+	type Create = AuthenticatedRequest<
+		{},
+		{},
+		WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
+		{}
+	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		WorkflowEntity & { parentFolderId?: string | null },
+		{}
+	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
 		{},
@@ -387,4 +400,22 @@ export declare namespace AuditRequest {
 export declare namespace SecurityPolicyRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSecurityPolicyDto>;
+}
+
+export declare namespace LogStreamingRequest {
+	type GetEventTypes = AuthenticatedRequest;
+	type GetDestinations = AuthenticatedRequest;
+	type GetDestination = AuthenticatedRequest<{ id: string }>;
+	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
+	type UpdateDestination = AuthenticatedRequest<{ id: string }, {}, PublicCreateDestination>;
+	type TestDestination = AuthenticatedRequest<{ id: string }>;
+	type DeleteDestination = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//        /settings/sso/saml
+// ----------------------------------
+
+export declare namespace SsoSamlRequest {
+	type Get = AuthenticatedRequest;
 }

@@ -2,6 +2,7 @@ import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
 	CancellationReason,
+	HitlResponseTelemetryPayload,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
@@ -93,7 +94,7 @@ export type RelayEventMap = {
 
 	'n8n-package-imported': {
 		user: UserLike;
-		projectId: string;
+		projectIds: string[];
 		folderId: string | null;
 		workflowIds: string[];
 		options: ImportPackageEventOptions;
@@ -201,6 +202,8 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
+		projectId: string;
+		projectName: string;
 		source:
 			| 'user-manual'
 			| 'user-retry'
@@ -241,6 +244,8 @@ export type RelayEventMap = {
 		nodeName: string;
 		nodeType?: string;
 	};
+
+	'hitl-response-actioned': HitlResponseTelemetryPayload;
 
 	// #endregion
 
@@ -481,6 +486,11 @@ export type RelayEventMap = {
 		reason: 'cookie-missing' | 'hash-mismatch';
 		credentialId?: string;
 		origin?: 'static-credential' | 'dynamic-credential';
+	};
+
+	'dynamic-credential-authorize-rejected': {
+		reason: 'unauthenticated' | 'user-mismatch';
+		credentialId?: string;
 	};
 
 	'private-credential-created': {

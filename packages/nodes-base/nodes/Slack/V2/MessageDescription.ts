@@ -192,6 +192,43 @@ export const userRLC: INodeProperties = {
 	],
 };
 
+export const captureResponderField: INodeProperties = {
+	displayName: 'Capture Who Responded',
+	name: 'captureResponder',
+	type: 'boolean',
+	default: false,
+	// Approval only: the form response types need the plain link button. Both auth modes
+	// carry a signing secret, so either works for the interactive callback.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+	description:
+		"Whether to use Slack interactive buttons so the responder's identity (ID, name, email) is captured and returned with the response. Requires the Slack app to have Interactivity enabled (Request URL pointed at this n8n instance), a signing secret on the credential, and the users:read and users:read.email scopes.",
+};
+
+export const approversField: INodeProperties = {
+	displayName: 'Approver Names or IDs',
+	name: 'approvers',
+	type: 'multiOptions',
+	typeOptions: {
+		loadOptionsMethod: 'getUsers',
+	},
+	default: [],
+	// Only meaningful for the interactive-button flow (approval + capture responder).
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+			captureResponder: [true],
+		},
+	},
+	description:
+		'Restrict who can approve or decline: a click from anyone not listed is ignored and they get a private notice. Leave empty to let anyone respond. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+};
+
 export const replyToMessageField: INodeProperties = {
 	displayName: 'Reply to a Message',
 	name: 'thread_ts',

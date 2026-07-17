@@ -192,6 +192,20 @@ describe('domain tool construction', () => {
 		});
 	});
 
+	it('gates the eval-config tool on the config-evals flag (evaluationConfigService presence)', () => {
+		// Flag off: adapter leaves evaluationConfigService unset → tool absent.
+		const disabled = makeContext();
+		expect(createAllTools(disabled).get('eval-config')).toBeUndefined();
+		expect(createOrchestratorDomainTools(disabled).get('eval-config')).toBeUndefined();
+
+		// Flag on: adapter wires evaluationConfigService → tool exposed.
+		const enabled = makeContext({
+			evaluationConfigService: {} as InstanceAiContext['evaluationConfigService'],
+		});
+		expect(createAllTools(enabled).get('eval-config')).toBeDefined();
+		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
+	});
+
 	it('registers create-tasks but not the removed plan orchestration tool', () => {
 		const context = makeContext({
 			workflowTaskService: {},
@@ -219,5 +233,22 @@ describe('domain tool construction', () => {
 		expect(Object.fromEntries(withDelegate)).toMatchObject({
 			'build-agent': { id: 'build-agent' },
 		});
+	});
+
+	it('registers get-session only when a preview session and resolver are present', () => {
+		const withoutSession = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutSession.has('get-session')).toBe(false);
+
+		const withSession = createOrchestrationTools(
+			makeContext({
+				domainContext: {
+					agentPreviewSession: { agentId: 'agent-1', threadId: 'preview-1' },
+					resolvePreviewSession: async () => await Promise.resolve(null),
+				},
+			} as Partial<InstanceAiContext>) as never,
+		);
+		expect(withSession.has('get-session')).toBe(true);
 	});
 });

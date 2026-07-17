@@ -137,6 +137,8 @@ interface ProcessToolCallParams {
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
+	/** Checkpointed suspend payload of the tool call being resumed. */
+	suspendPayload?: unknown;
 }
 
 function isDeniedApprovalResumeData(value: unknown): boolean {
@@ -448,6 +450,7 @@ export class ToolCallExecutor {
 			executionCounter,
 			abortSignal,
 			countToolCall: false,
+			suspendPayload: resumedEntry.suspended ? resumedEntry.suspendPayload : undefined,
 		});
 
 		if (processResult.outcome === 'suspended') {
@@ -730,6 +733,7 @@ export class ToolCallExecutor {
 			resolvedTelemetry,
 			executionCounter,
 			abortSignal,
+			suspendPayload,
 		} = params;
 		return await this.telemetry.withToolSpan(
 			toolCallId,
@@ -743,6 +747,7 @@ export class ToolCallExecutor {
 					emitEvent: (event) => this.eventBus.emit(event),
 					abortSignal,
 					executionCounter,
+					suspendPayload,
 				}),
 		);
 	}

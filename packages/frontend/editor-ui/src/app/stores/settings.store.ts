@@ -183,8 +183,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
 
-	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
-	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+	// Opt-in flag: enabled when the backend's Daytona sandbox env vars
+	// (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` + `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`)
+	// are set, OR the AI Assistant proxy is available.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
 		() =>
 			isModuleActive('agents') === true &&

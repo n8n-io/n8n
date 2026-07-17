@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { onClickOutside } from '@vueuse/core';
+import { useRouter } from 'vue-router';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.vue';
@@ -18,13 +19,23 @@ import ParameterIssues from '../ParameterIssues.vue';
 import { useResourceLocatorDropdown } from '../../composables/useResourceLocatorDropdown';
 import { useResourceLocatorModes } from '../../composables/useResourceLocatorModes';
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectNameResolver } from '@/features/agents/composables/useAgentProjectNameResolver';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -64,7 +75,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const projectStore = useProjectsStore();
+const router = useRouter();
 const { onDocumentVisible } = useDocumentVisibility();
 const { debounce } = useDebounce();
 
@@ -78,23 +89,9 @@ const width = ref(0);
 // so every surface reads/writes the same agent record.
 const projectId = useAgentScopeProjectId();
 
-// Resolve a project by id from the stores the picker already has loaded, so the
-// per-agent subtitle stays consistent with the `projectId` the catalog is
-// scoped to.
-function findProject(id: string) {
-	if (!id) return null;
-	if (projectStore.currentProject?.id === id) return projectStore.currentProject;
-	if (projectStore.personalProject?.id === id) return projectStore.personalProject;
-	return projectStore.myProjects.find((candidate) => candidate.id === id) ?? null;
-}
-
-function resolveProjectName(id: string): string | null {
-	// Only surface a project subtitle for non-personal team projects
-	if (!projectStore.isTeamProjectFeatureEnabled) return null;
-	const project = findProject(id);
-	if (!project || project.type === 'personal') return null;
-	return project.name ?? null;
-}
+// Resolve project subtitles from the stores the picker already has loaded, so
+// they stay consistent with the `projectId` the catalog is scoped to.
+const { resolveProjectName } = useAgentProjectNameResolver();
 
 const {
 	agentsResources,
@@ -139,6 +136,23 @@ const placeholder = computed(() => {
 
 	return i18n.baseText('resourceLocator.id.placeholder');
 });
+
+// Mirror the generic RLC's open-resource affordance: link the selected agent
+// to its builder page. Only a concrete list-mode selection can resolve — free
+// text / expressions in id mode may not reference a real agent.
+const agentUrl = computed(() => {
+	if (!isListMode.value || !projectId.value) return null;
+	const agentId = props.modelValue?.value;
+	if (typeof agentId !== 'string' || !agentId) return null;
+	return router.resolve({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId },
+	}).href;
+});
+
+function openAgentLink() {
+	if (agentUrl.value) openSafeUrl(agentUrl.value);
+}
 
 function setWidth() {
 	const containerRef = container.value as HTMLElement | undefined;
@@ -264,7 +278,10 @@ watch(
 	},
 );
 
-onClickOutside(dropdown, () => {
+onClickOutside(dropdown, (event) => {
+	if (event.target instanceof HTMLElement && dropdown.value?.isWithinDropdown(event.target)) {
+		return;
+	}
 	isDropdownVisible.value = false;
 });
 
@@ -402,6 +419,11 @@ defineExpose({ showDropdown });
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
 					/>
+					<div v-else-if="agentUrl" :class="$style.openResourceLink">
+						<N8nLink theme="text" data-test-id="rlc-open-resource-link" @click.stop="openAgentLink">
+							<N8nIcon icon="external-link" :title="i18n.baseText('agentNode.card.openAgent')" />
+						</N8nLink>
+					</div>
 				</div>
 			</div>
 		</ResourceLocatorDropdown>

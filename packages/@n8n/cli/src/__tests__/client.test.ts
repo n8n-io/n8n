@@ -78,6 +78,23 @@ describe('N8nClient packages', () => {
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], folderIds: ['f1'] }));
 		});
 
+		it('includes the missing workflow dependency policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				projectIds: ['proj-1'],
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({
+					projectIds: ['proj-1'],
+					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			);
+		});
+
 		it('omits an empty collection from the body', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
@@ -85,6 +102,33 @@ describe('N8nClient packages', () => {
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ folderIds: ['f1'] }));
+		});
+
+		it('includes includeVariableValues=false in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeVariableValues: false });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeVariableValues: false }));
+		});
+
+		it('includes includeVariableValues=true in the body when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'], includeVariableValues: true });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeVariableValues: true }));
+		});
+
+		it('omits includeVariableValues from the body when not provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({ workflowIds: ['a'] });
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'] }));
 		});
 	});
 
@@ -143,6 +187,31 @@ describe('N8nClient packages', () => {
 
 			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
 			expect(form.get('credentialMissingMode')).toBe('create-stub');
+		});
+
+		it('sends the data table modes when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'do-nothing',
+					dataTableSchemaConflictPolicy: 'fail',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('dataTableMatchingMode')).toBe('by-id');
+			expect(form.get('dataTableMissingMode')).toBe('do-nothing');
+			expect(form.get('dataTableSchemaConflictPolicy')).toBe('fail');
 		});
 
 		it('forwards bindings verbatim as a form field', async () => {

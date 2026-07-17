@@ -4,7 +4,7 @@ import type {
 	InstanceAiHandoffContext,
 	InstanceAiThreadOrigin,
 	InstanceAiThreadSource,
-	InstanceAiWorkflowAttachment,
+	InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -42,10 +42,12 @@ export function buildInstanceAiArtifactCredentialQuestion(
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
+const pendingHandoffContextKey = (threadId: string) =>
+	`n8n-instance-ai-handoff-context:${threadId}`;
 
 export interface PendingFirstMessage {
 	message: string;
-	attachments?: InstanceAiWorkflowAttachment[];
+	attachments?: InstanceAiResourceAttachment[];
 	context?: InstanceAiHandoffContext;
 }
 
@@ -63,6 +65,23 @@ export function buildInstanceAiCredentialHandoffContext(
 			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
 			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
 		},
+	};
+}
+
+export function buildInstanceAiAgentPreviewHandoffContext(params: {
+	agentId: string;
+	threadId: string;
+	agentName?: string;
+	agentIcon?: string;
+	sessionTitle?: string;
+}): InstanceAiHandoffContext {
+	return {
+		source: 'agent-preview',
+		agentId: params.agentId,
+		threadId: params.threadId,
+		...(params.agentName ? { agentName: params.agentName } : {}),
+		...(params.agentIcon ? { agentIcon: params.agentIcon } : {}),
+		...(params.sessionTitle ? { sessionTitle: params.sessionTitle } : {}),
 	};
 }
 
@@ -92,6 +111,24 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 	localStorage.removeItem(pendingFirstMessageKey(threadId));
 	try {
 		return JSON.parse(raw) as PendingFirstMessage;
+	} catch {
+		return null;
+	}
+}
+
+export function stashPendingHandoffContext(
+	threadId: string,
+	context: InstanceAiHandoffContext,
+): void {
+	localStorage.setItem(pendingHandoffContextKey(threadId), JSON.stringify(context));
+}
+
+export function consumePendingHandoffContext(threadId: string): InstanceAiHandoffContext | null {
+	const raw = localStorage.getItem(pendingHandoffContextKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingHandoffContextKey(threadId));
+	try {
+		return JSON.parse(raw) as InstanceAiHandoffContext;
 	} catch {
 		return null;
 	}
@@ -131,6 +168,21 @@ export async function provisionLaunchedThread(
 	return threadId;
 }
 
+export async function provisionContextOnlyThread(
+	projectId: string,
+	context: InstanceAiHandoffContext,
+	launch?: InstanceAiThreadLaunch,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+	} catch {
+		return null;
+	}
+	stashPendingHandoffContext(threadId, context);
+	return threadId;
+}
+
 // One hand-off at a time across all entry points (module-level to share the guard).
 let handoffInFlight = false;
 
@@ -144,10 +196,40 @@ export function useInstanceAiHandoff() {
 	const router = useRouter();
 	const toast = useToast();
 
+	async function openThreadWithContext(
+		projectId: string,
+		context: InstanceAiHandoffContext,
+		options?: {
+			newTab?: boolean;
+			launch?: InstanceAiThreadLaunch;
+		},
+	): Promise<boolean> {
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const tab = options?.newTab ? window.open('', '_blank') : null;
+			const threadId = await provisionContextOnlyThread(projectId, context, options?.launch);
+			if (!threadId) {
+				tab?.close();
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return false;
+			}
+			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
+			if (tab) {
+				tab.location.href = router.resolve(route).href;
+			} else {
+				await router.push(route);
+			}
+			return true;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
 	async function startThread(
 		projectId: string,
 		message: string,
-		attachments?: InstanceAiWorkflowAttachment[],
+		attachments?: InstanceAiResourceAttachment[],
 		prepare?: (threadId: string) => void,
 		options?: {
 			newTab?: boolean;
@@ -196,5 +278,5 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread };
+	return { startThread, openThreadWithContext };
 }

@@ -4,6 +4,7 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	MemoryTaskUsageReport,
 	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
@@ -19,7 +20,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	INodeInputConfiguration,
@@ -37,8 +38,10 @@ import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
+import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
+import type { BuilderUsageItem } from './stream/usage-accumulator';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -669,7 +672,9 @@ export type EvaluationConfigMetricPreset = 'correctness' | 'helpfulness';
 export interface EvaluationConfigMetricInput {
 	name: string;
 	preset: EvaluationConfigMetricPreset;
-	provider: string;
+	/** LLM-judge chat-model node type. Optional: when omitted it is derived from
+	 *  the credential (each credential type maps to exactly one provider). */
+	provider?: string;
 	credentialId: string;
 	model: string;
 	outputType: 'numeric' | 'boolean';
@@ -846,12 +851,28 @@ export interface SessionWorkflowRef {
 export interface BuilderDelegateSession {
 	/** Builder persistence thread id, e.g. `ia-builder:<instanceThreadId>:<agentId>`. */
 	threadId: string;
+	/** The visible Instance AI thread this build turn belongs to — used to bill builder OM usage against the conversation the user sees, not the private `ia-builder:` session. */
+	hostThreadId: string;
+	/** The Instance AI run id this build turn belongs to — used for OM billing dedupe. */
+	runId: string;
 	/**
 	 * Host-resolved model for the builder run — overrides the agents-module
 	 * builder's own model settings so the sub-agent inherits the instance-AI
-	 * model.
+	 * model. Always set: Instance AI is the only streaming caller.
 	 */
-	modelConfig?: ModelConfig;
+	modelConfig: ModelConfig;
+	/**
+	 * Host telemetry for the builder run — produced from the parent instance-AI
+	 * trace context so the builder's LLM/tool spans join the parent trace.
+	 */
+	telemetry?: Telemetry | BuiltTelemetry;
+	/**
+	 * Parent trace's memory-task lease hook (`InstanceAiTraceContext.onMemoryTaskEvent`).
+	 * When set, the builder forwards its own observational-memory task events
+	 * to it via `Agent.memoryTaskObserver()`, so the builder's memory LLM spans
+	 * can outlive the parent trace's root finalization.
+	 */
+	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */
@@ -860,11 +881,18 @@ export interface BuilderTurnStream {
 	text: Promise<string>;
 }
 
+/** Reference to a suspended builder tool call awaiting user input. */
+export interface BuilderOpenSuspension {
+	runId: string;
+	toolCallId: string;
+}
+
 /**
  * Narrow delegate wrapping the agents-module builder for sub-agent use.
- * Provided by the host (cli) only when the agents module is active. This
- * version excludes interactive builder tools at the session level, so every
- * `streamBuild` call completes, errors, or is cancelled — never suspends.
+ * Provided by the host (cli) only when the agents module is active. Runs the
+ * builder's full interactive toolset — `streamBuild`/`resumeBuild` may
+ * suspend, which the caller cascades through its own suspend/resume so the
+ * builder's questions survive a process restart.
  */
 export interface InstanceAiBuilderDelegate {
 	createAgent(name: string): Promise<{ agentId: string; projectId: string }>;
@@ -873,6 +901,22 @@ export interface InstanceAiBuilderDelegate {
 		message: string,
 		session: BuilderDelegateSession,
 	): Promise<BuilderTurnStream>;
+	resumeBuild(
+		agentId: string,
+		resume: { runId: string; toolCallId: string; resumeData: unknown },
+		session: BuilderDelegateSession,
+	): Promise<BuilderTurnStream>;
+	/** All suspended tool calls on the builder's open checkpoint for this session thread ([] when none). */
+	findOpenSuspensions(
+		agentId: string,
+		session: BuilderDelegateSession,
+	): Promise<BuilderOpenSuspension[]>;
+	/** Expire the builder checkpoint for `runId` so a failed cascade leaves no orphaned open suspension. */
+	cancelOpenSuspension(agentId: string, runId: string): Promise<void>;
+	/** Agents in the bound project, most recently updated first. */
+	listAgents(): Promise<
+		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
+	>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
@@ -908,6 +952,18 @@ export interface InstanceAiContext {
 	agentBuilderTarget?: { agentId: string; projectId: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
+	/**
+	 * The agent-preview session referenced by this thread, bound when a user sends
+	 * a preview session to Instance AI (and rehydrated from thread metadata on
+	 * follow-up turns). Presence gates the `get-session` tool.
+	 */
+	agentPreviewSession?: { agentId: string; threadId: string; executionId?: string };
+
+	resolvePreviewSession?: (ref: {
+		agentId: string;
+		threadId: string;
+		executionId?: string;
+	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
 	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;
@@ -983,6 +1039,11 @@ export interface InstanceAiContext {
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
 	 *  is reachable. */
 	nodeTypesProvider?: INodeTypes;
+	/** Node output `__schema__` lookup used to shape simulation fixtures.
+	 *  Plumbed from the CLI adapter (`LoadNodesAndCredentials.createOutputSchemaLookup`);
+	 *  absent in pure-package contexts — fixture generation then falls back to
+	 *  the model's API knowledge. */
+	outputSchemaLookup?: OutputSchemaLookup;
 	/**
 	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
 	 * reports build outcomes here so planned build follow-ups and verification
@@ -1208,6 +1269,8 @@ export interface InstanceAiMemoryConfig {
 	observationalMemory?: {
 		observerThresholdTokens: number;
 		reflectorThresholdTokens: number;
+		/** Called with token usage after each observer/reflector LLM call, so the host can meter it. */
+		onTaskUsage?: (report: MemoryTaskUsageReport) => void | Promise<void>;
 	};
 }
 
@@ -1332,6 +1395,14 @@ export interface InstanceAiTraceContext {
 		options?: InstanceAiToolTraceOptions,
 	) => InstanceAiToolRegistry;
 	getTelemetry?: (options: InstanceAiTelemetryOptions) => Telemetry | BuiltTelemetry;
+	/**
+	 * Forward an observational-memory task lifecycle event so its LLM span can
+	 * outlive root-trace finalization. A `queued` event retains the trace's
+	 * telemetry provider; the matching `completed`/`failed`/`skipped` event
+	 * releases it. Wire this to `Agent.memoryTaskObserver()` / `CreateInstanceAgentOptions.onMemoryTaskEvent`
+	 * for any agent (main or sub-agent) whose spans should join this trace.
+	 */
+	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
@@ -1436,6 +1507,20 @@ export interface OrchestrationContext {
 	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
+	/**
+	 * Claim AI credits for a sub-agent stream segment. Wired by the host (cli);
+	 * absent when billing doesn't apply. Callers await this before returning or
+	 * cascading a terminal segment outcome (completed/errored/suspended), so a
+	 * result or suspension is never observed while its claim is still in
+	 * flight. The host decides whether a billing failure is fatal — it is
+	 * expected to catch and log rather than reject, so a billing hiccup never
+	 * breaks the builder flow.
+	 */
+	claimSubAgentUsage?: (
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+		status: TraceStatus,
+	) => Promise<void>;
 	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;

@@ -138,6 +138,51 @@ describe('AiGatewayService', () => {
 			const service = makeService();
 			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
 		});
+
+		it('throws UserError when providerConfig is null', async () => {
+			requestMock.mockResolvedValueOnce(
+				ok({ nodes: [], credentialTypes: [], providerConfig: null }),
+			);
+			const service = makeService();
+			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
+		});
+	});
+
+	describe('isAvailable()', () => {
+		it('returns available:false when the AI Gateway is not licensed', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+			expect(requestMock).not.toHaveBeenCalled();
+		});
+
+		it('returns available:false when baseUrl is not configured', async () => {
+			const service = makeService({ baseUrl: null });
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+		});
+
+		it('returns available:false when the gateway request fails (fail open)', async () => {
+			requestMock.mockResolvedValueOnce(fail(503));
+			const service = makeService();
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: false });
+		});
+
+		it('returns available:true with config when licensed and gateway responds', async () => {
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
+			const service = makeService();
+
+			const result = await service.isAvailable();
+
+			expect(result).toEqual({ available: true, config: MOCK_GATEWAY_CONFIG });
+		});
 	});
 
 	describe('getSyntheticCredential()', () => {
@@ -373,7 +418,7 @@ describe('AiGatewayService', () => {
 					userId: undefined,
 					projectId: 'project-123',
 				}),
-			).rejects.toThrow('Failed to resolve user for AI Gateway attribution.');
+			).rejects.toThrow('Failed to resolve user for n8n credits attribution.');
 		});
 
 		it('embeds executionId and workflowId in gateway URL when both are provided', async () => {
@@ -716,6 +761,49 @@ describe('AiGatewayService', () => {
 			// Past TTL (1 hour + 1 ms)
 			dateSpy.mockReturnValue(60 * 60 * 1000 + 1);
 			await service.getGatewayConfig();
+			expect(requestMock).toHaveBeenCalledTimes(2);
+
+			dateSpy.mockRestore();
+		});
+
+		it('caches a failed fetch and does not re-fetch within the failure TTL', async () => {
+			requestMock.mockResolvedValue(fail(503));
+			const service = makeService();
+			const dateSpy = vi.spyOn(Date, 'now');
+			const now = 1_700_000_000_000;
+
+			dateSpy.mockReturnValue(now);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Within the 60s failure window — throttled, no new request
+			dateSpy.mockReturnValue(now + 30 * 1000);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Past the failure window — retries
+			dateSpy.mockReturnValue(now + 60 * 1000 + 1);
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(2);
+
+			dateSpy.mockRestore();
+		});
+
+		it('clears the failure throttle after a successful fetch', async () => {
+			const service = makeService();
+			const dateSpy = vi.spyOn(Date, 'now');
+			const now = 1_700_000_000_000;
+
+			dateSpy.mockReturnValue(now);
+			requestMock.mockResolvedValueOnce(fail(503));
+			await expect(service.getGatewayConfig()).rejects.toThrow();
+			expect(requestMock).toHaveBeenCalledTimes(1);
+
+			// Past the failure window — a retry succeeds and clears the marker
+			dateSpy.mockReturnValue(now + 60 * 1000 + 1);
+			requestMock.mockResolvedValueOnce(ok(MOCK_GATEWAY_CONFIG));
+			const result = await service.getGatewayConfig();
+			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
 			expect(requestMock).toHaveBeenCalledTimes(2);
 
 			dateSpy.mockRestore();

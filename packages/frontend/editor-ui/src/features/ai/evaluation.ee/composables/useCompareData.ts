@@ -3,7 +3,7 @@ import { computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
 import type { EvalCollectionRunStatus, EvaluationCollectionDetail } from '../evalCollections.types';
-import { buildScoreShapedMetricGroups, formatMetricLabel } from '../evaluation.utils';
+import { buildScoreShapedMetricGroups, formatMetricLabel, indexOfMax } from '../evaluation.utils';
 import { versionLetter } from '../components/shared/versionPalette';
 
 // One column in the compare view: a single run positioned by `index`, which
@@ -33,20 +33,6 @@ export interface CompareData {
 	metricGroups: CompareMetricGroup[];
 	// Version index with the highest overall `avgScore`, or null if none scored.
 	bestVersionIndex: number | null;
-}
-
-// Index of the max value in `values`, ignoring nulls. Ties resolve to the
-// first (left-most) version, matching the letter order users read.
-function indexOfMax(values: Array<number | null>): number | null {
-	let best: number | null = null;
-	let bestValue = -Infinity;
-	values.forEach((value, index) => {
-		if (value !== null && value > bestValue) {
-			bestValue = value;
-			best = index;
-		}
-	});
-	return best;
 }
 
 /**

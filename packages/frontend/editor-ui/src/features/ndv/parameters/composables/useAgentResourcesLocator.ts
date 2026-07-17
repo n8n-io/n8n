@@ -1,5 +1,6 @@
 import { ref, computed, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import {
 	listAgentsPage,
 	getAgent,
@@ -8,6 +9,12 @@ import {
 import type { AgentResource } from '@/features/agents/types';
 
 const PAGE_SIZE = 40;
+
+export interface AgentResourceOption {
+	name: string;
+	value: string;
+	personalisation: AgentJsonConfig['personalisation'] | null;
+}
 
 /**
  * Paged, searchable agent catalog for the NDV agent picker. Scoped to the
@@ -21,7 +28,7 @@ export function useAgentResourcesLocator(
 ) {
 	const rootStore = useRootStore();
 
-	const agentsResources = ref<Array<{ name: string; value: string }>>([]);
+	const agentsResources = ref<AgentResourceOption[]>([]);
 	const isLoadingResources = ref(true);
 	const loadError = ref<unknown | null>(null);
 	const searchFilter = ref('');
@@ -40,10 +47,10 @@ export function useAgentResourcesLocator(
 		return projectName ? `${projectName} — ${agent.name}` : agent.name;
 	}
 
-	function agentToResourceMapper(agent: AgentResource) {
+	function agentToResourceMapper(agent: AgentResource): AgentResourceOption {
 		const name = constructName(agent);
 		nameCache.set(agent.id, name);
-		return { name, value: agent.id };
+		return { name, value: agent.id, personalisation: agent.schema?.personalisation ?? null };
 	}
 
 	function getAgentName(id: string): string {

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -68,11 +68,6 @@
       "types": "./dist/esm/utils/http-proxy-agent.d.ts",
       "import": "./dist/esm/utils/http-proxy-agent.js",
       "require": "./dist/cjs/utils/http-proxy-agent.js"
-    },
-    "./lazy-import": {
-      "types": "./dist/esm/utils/lazy-import.d.ts",
-      "import": "./dist/esm/utils/lazy-import.js",
-      "require": "./dist/cjs/utils/lazy-import.js"
     },
     "./web-search": {
       "types": "./dist/esm/web-search/index.d.ts",

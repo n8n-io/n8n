@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -26,6 +26,7 @@
     "test:unit": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run",
     "test:unit:changed": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite janitor test-scoped",
     "test:integration": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run --config vitest.config.integration.ts",
+    "test:integration:dev": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest --silent=false --config vitest.config.integration.ts",
     "test:integration:changed": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite janitor test-scoped -- --config vitest.config.integration.ts",
     "test:dev": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest --silent=false",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_SQLITE_POOL_SIZE=4 DB_TYPE=sqlite vitest run --config vitest.config.integration.ts",
@@ -42,7 +43,7 @@
     "test:sqlite:win": "set N8N_LOG_LEVEL=silent&& set DB_SQLITE_POOL_SIZE=4&& set DB_TYPE=sqlite&& vitest run --config vitest.config.integration.ts",
     "test:postgres:win": "set N8N_LOG_LEVEL=silent&& set DB_TYPE=postgresdb&& set DB_POSTGRESDB_SCHEMA=alt_schema&& set DB_TABLE_PREFIX=test_&& vitest run --config vitest.config.integration.ts",
     "test:mariadb:win": "echo true",
-    "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
+    "watch": "tsc-watch --compiler @typescript/native/bin/tsc -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\""
   },
   "bin": {
     "n8n": "./bin/n8n"
@@ -114,10 +115,12 @@
     "openai": "catalog:",
     "openapi-types": "^12.1.3",
     "supertest": "^7.1.1",
+    "tsc-watch": "^7.2.1",
     "ts-essentials": "^7.0.3",
     "tsconfig-paths": "^4.2.0",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "@typescript/native": "catalog:typescript-tooling",
+    "typescript": "catalog:typescript-tooling",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

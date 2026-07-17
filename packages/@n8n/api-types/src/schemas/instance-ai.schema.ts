@@ -104,6 +104,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'reasoning-delta',
 	'text-block',
 	'reasoning-block',
+	'tool-input-start',
 	'tool-call',
 	'tool-result',
 	'tool-error',
@@ -217,7 +218,8 @@ export const runFinishPayloadSchema = z.object({
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
-	type: z.enum(['workflow', 'data-table', 'credential', 'agent', 'other']),
+	// 'agent'/'config-eval': provisional eval-artifact discovery signals; the assistant doesn't emit them yet.
+	type: z.enum(['workflow', 'data-table', 'credential', 'other', 'agent', 'config-eval']),
 	id: z.string().optional(),
 	name: z.string().optional(),
 	projectId: z.string().optional(),
@@ -260,6 +262,14 @@ export const toolCallPayloadSchema = z.object({
 	toolCallId: z.string(),
 	toolName: z.string(),
 	args: z.record(z.unknown()),
+});
+
+/** Emitted when a tool call's arguments BEGIN streaming — args arrive later
+ *  via the `tool-call` event. Lets the UI surface the pending call while
+ *  large arguments (e.g. generated workflow code) are still streaming. */
+export const toolInputStartPayloadSchema = z.object({
+	toolCallId: z.string(),
+	toolName: z.string(),
 });
 
 export const toolResultPayloadSchema = z.object({
@@ -570,9 +580,26 @@ export const statusPayloadSchema = z.object({
 	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
 });
 
+/** Machine-readable error classes the UI can render a tailored state for. */
+export const INSTANCE_AI_ERROR_CODES = ['quota_exhausted'] as const;
+
+export type InstanceAiErrorCode = (typeof INSTANCE_AI_ERROR_CODES)[number];
+
+/** Whether `code` is a class the UI recognizes and has a tailored state for.
+ *  Consumers narrow the permissive wire `code` (a plain string, for forward
+ *  compatibility) through this before rendering a code-specific state. */
+export function isKnownInstanceAiErrorCode(code: string | undefined): code is InstanceAiErrorCode {
+	return code !== undefined && INSTANCE_AI_ERROR_CODES.some((known) => known === code);
+}
+
 export const errorPayloadSchema = z.object({
 	content: z.string(),
 	statusCode: z.number().optional(),
+	/** Set when the failure maps to a known class (e.g. out of credits) so the UI
+	 *  can tailor it. Kept a plain string (not an enum) so an error event carrying
+	 *  a code a newer service added still parses on older clients instead of being
+	 *  dropped wholesale — recognized codes are matched via isKnownInstanceAiErrorCode. */
+	code: z.string().optional(),
 	provider: z.string().optional(),
 	technicalDetails: z.string().optional(),
 });
@@ -716,6 +743,9 @@ const eventBase = {
 	userId: z.string().optional(),
 	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
 	responseId: z.string().optional(),
+	/** Epoch ms stamped once at publish — replays (SSE reconnect, snapshot
+	 *  rebuilds) use it to reconstruct real timing instead of "now". */
+	ts: z.number().optional(),
 };
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
@@ -732,6 +762,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('reasoning-delta'),
 		...eventBase,
 		payload: reasoningDeltaPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('tool-input-start'),
+		...eventBase,
+		payload: toolInputStartPayloadSchema,
 	}),
 	// Coalesced full text/reasoning of one streamed segment, produced by the
 	// durable event log (deltas are live-only and never persisted). On replay the
@@ -787,6 +822,7 @@ export type InstanceAiAgentSpawnedEvent = Extract<InstanceAiEvent, { type: 'agen
 export type InstanceAiAgentCompletedEvent = Extract<InstanceAiEvent, { type: 'agent-completed' }>;
 export type InstanceAiTextDeltaEvent = Extract<InstanceAiEvent, { type: 'text-delta' }>;
 export type InstanceAiReasoningDeltaEvent = Extract<InstanceAiEvent, { type: 'reasoning-delta' }>;
+export type InstanceAiToolInputStartEvent = Extract<InstanceAiEvent, { type: 'tool-input-start' }>;
 export type InstanceAiToolCallEvent = Extract<InstanceAiEvent, { type: 'tool-call' }>;
 export type InstanceAiToolResultEvent = Extract<InstanceAiEvent, { type: 'tool-result' }>;
 export type InstanceAiToolErrorEvent = Extract<InstanceAiEvent, { type: 'tool-error' }>;
@@ -835,10 +871,31 @@ export const instanceAiWorkflowAttachmentSchema = z.object({
 });
 export type InstanceAiWorkflowAttachment = z.infer<typeof instanceAiWorkflowAttachmentSchema>;
 
+/**
+ * An agent reference the agents page hands off to a message. Carries no bytes —
+ * the agent resolves it with its tools and the FE shows it as an artifact tab.
+ */
+export const instanceAiAgentAttachmentSchema = z.object({
+	type: z.literal('agent'),
+	id: z.string().min(1).max(64),
+	name: z.string().max(255).optional(),
+	/** Project that owns the agent — required so the FE artifact preview can render. */
+	projectId: z.string().min(1).max(64),
+});
+export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
+
+/** A resource reference attachable to a message (as opposed to a binary file). */
+export const instanceAiResourceAttachmentSchema = z.discriminatedUnion('type', [
+	instanceAiWorkflowAttachmentSchema,
+	instanceAiAgentAttachmentSchema,
+]);
+export type InstanceAiResourceAttachment = z.infer<typeof instanceAiResourceAttachmentSchema>;
+
 /** Anything attachable to a message: a binary file or a resource reference. */
 export const instanceAiAttachmentSchema = z.discriminatedUnion('type', [
 	instanceAiFileAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
+	instanceAiAgentAttachmentSchema,
 ]);
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
@@ -858,8 +915,25 @@ export type InstanceAiCredentialHandoffContext = z.infer<
 	typeof instanceAiCredentialHandoffContextSchema
 >;
 
+export const instanceAiAgentPreviewHandoffContextSchema = z.object({
+	source: z.literal('agent-preview'),
+	agentId: z.string().min(1).max(128),
+	threadId: z.string().min(1).max(128),
+	executionId: z.string().min(1).max(64).optional(),
+	/** Display-only — the target agent's name, surfaced in the context chip. */
+	agentName: z.string().max(128).optional(),
+	/** Display-only — the target agent's personalisation icon, surfaced in the context chip. */
+	agentIcon: z.string().max(64).optional(),
+	/** Display-only — the preview session's title, surfaced in the context chip. */
+	sessionTitle: z.string().max(200).optional(),
+});
+export type InstanceAiAgentPreviewHandoffContext = z.infer<
+	typeof instanceAiAgentPreviewHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
+	instanceAiAgentPreviewHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1029,6 +1103,10 @@ export interface InstanceAiAgentNode {
 	error?: string;
 	errorDetails?: {
 		statusCode?: number;
+		/** Mirrors {@link errorPayloadSchema} `code` — lets the UI render a tailored error
+		 *  state. A plain string (not the enum) so an unrecognized code from a newer
+		 *  service is preserved; recognized codes are matched via isKnownInstanceAiErrorCode. */
+		code?: string;
 		provider?: string;
 		technicalDetails?: string;
 	};
@@ -1053,6 +1131,8 @@ export interface InstanceAiMessage {
 	isStreaming: boolean;
 	agentTree?: InstanceAiAgentNode;
 	attachments?: InstanceAiAttachment[];
+	/** Structured handoff context reconstructed from a stored user message. */
+	context?: InstanceAiHandoffContext;
 }
 
 export interface InstanceAiThreadSummary {
@@ -1479,6 +1559,14 @@ export interface InstanceAiEvalMockedCredential {
  *     silently run the rewrite.
  */
 export const EVAL_VENDOR_SDK_INTERCEPTION_FLAG = '085_eval_vendor_sdk_interception';
+
+/** The config-evaluations experiment that surfaces/runs config evals in the UI.
+ *  Instance AI's config-based eval tool + skill are gated on it so it can't
+ *  create evals the user has no UI to run. Mirrors the editor-ui wizard. */
+export const CONFIG_EVALUATIONS_FLAG = '088_config_evaluations';
+
+/** Enabled arm of `CONFIG_EVALUATIONS_FLAG` (matches the editor-ui experiment). */
+export const CONFIG_EVALUATIONS_ENABLED_VARIANT = 'variant';
 
 /**
  * Records a credential field that was rewritten (e.g. routed to the eval wire

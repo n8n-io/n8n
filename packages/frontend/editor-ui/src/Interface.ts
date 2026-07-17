@@ -1,5 +1,6 @@
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
+	AgentJsonConfig,
 	FrontendSettings,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
@@ -10,6 +11,7 @@ import type { NodeViewItemSection } from '@/features/shared/nodeCreator/views/vi
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
 import type { NodeCreatorTag, IconName, BinaryMetadata } from '@n8n/design-system';
+import type { ModalState } from '@n8n/frontend-module-sdk';
 import type {
 	GenericValue,
 	IConnections,
@@ -512,6 +514,14 @@ export interface OpenTemplateItemProps {
 	compact?: boolean;
 }
 
+export interface AgentItemProps {
+	name: string;
+	description?: string;
+	variant: 'create' | 'existing';
+	agentId?: string;
+	personalisation?: AgentJsonConfig['personalisation'] | null;
+}
+
 export interface ActionTypeDescription extends SimplifiedNodeType {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
@@ -598,6 +608,11 @@ export interface ActionCreateElement extends CreateElementBase {
 	properties: ActionTypeDescription;
 }
 
+export interface AgentCreateElement extends CreateElementBase {
+	type: 'agent';
+	properties: AgentItemProps;
+}
+
 export type INodeCreateElement =
 	| NodeCreateElement
 	| CategoryCreateElement
@@ -606,6 +621,7 @@ export type INodeCreateElement =
 	| ViewCreateElement
 	| LabelCreateElement
 	| ActionCreateElement
+	| AgentCreateElement
 	| LinkCreateElement
 	| OpenTemplateElement;
 
@@ -645,14 +661,9 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
-export type ModalState = {
-	open: boolean;
-	mode?: string | null;
-	data?: Record<string, unknown>;
-	activeId?: string | null;
-	curlCommand?: string;
-	httpNodeParameters?: string;
-};
+// `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
+// `@/Interface` importers stay unchanged.
+export type { ModalState };
 
 export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;

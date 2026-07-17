@@ -12,7 +12,7 @@ import { DurableScheduler } from '../durable-scheduler';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from '../schedule-trigger-node/schedule-trigger-task';
 import type { ScheduleTriggerTaskHandler } from '../schedule-trigger-node/schedule-trigger-task-handler';
 
-// Keep the real exports (e.g. executorLookaheadSeconds) so the wiring is tested
+// Keep the real exports (e.g. pollLookaheadSeconds) so the wiring is tested
 // against the actual formula; only the scheduler factory is stubbed.
 vi.mock('@n8n/scheduler', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/scheduler')>()),
@@ -28,11 +28,13 @@ describe('DurableScheduler', () => {
 			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
 		});
 		const tracing = mock<Tracing>();
+		const tasks = mock<ScheduledTaskRepository>();
+		tasks.readDbTime.mockResolvedValue(new Date());
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
 			mock<ScheduledJobRepository>(),
-			mock<ScheduledTaskRepository>(),
+			tasks,
 			mock<InstanceSettings>({ instanceType: instanceType as 'main' | 'worker' | 'webhook' }),
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
@@ -43,7 +45,7 @@ describe('DurableScheduler', () => {
 			scheduleTriggerTaskHandler,
 			mock<PrometheusSchedulerMetricsService>(),
 		);
-		return { scheduler, inner, logger, tracing };
+		return { scheduler, inner, logger, tracing, tasks };
 	}
 
 	describe('composition', () => {
@@ -133,6 +135,17 @@ describe('DurableScheduler', () => {
 			scheduler.start();
 
 			expect(inner.start).not.toHaveBeenCalled();
+		});
+
+		// The skew detection itself lives in the scheduler package (behind the event
+		// sink); the host only supplies the clock read, which here is the database.
+		it('wires the coordination clock reader to the repository', async () => {
+			const { tasks } = makeScheduler();
+			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
+
+			await deps?.now?.();
+
+			expect(tasks.readDbTime).toHaveBeenCalledTimes(1);
 		});
 	});
 

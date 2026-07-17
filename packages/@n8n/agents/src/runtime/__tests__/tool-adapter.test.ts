@@ -254,4 +254,23 @@ describe('executeTool — context propagation', () => {
 
 		expect(handler).toHaveBeenCalledWith({}, expect.objectContaining({ executionCounter }));
 	});
+
+	it('passes the checkpointed suspend payload to interruptible tool handlers on resume', async () => {
+		const handler = vi.fn().mockResolvedValue('ok');
+		const tool: BuiltTool = {
+			name: 'interruptible-resumed',
+			description: 'd',
+			handler,
+			suspendSchema: z.object({ requestId: z.string() }),
+		};
+
+		await executeTool({}, tool, { approved: true }, undefined, 'call-1', {
+			suspendPayload: { requestId: 'r1' },
+		});
+
+		expect(handler).toHaveBeenCalledWith(
+			{},
+			expect.objectContaining({ suspendPayload: { requestId: 'r1' } }),
+		);
+	});
 });

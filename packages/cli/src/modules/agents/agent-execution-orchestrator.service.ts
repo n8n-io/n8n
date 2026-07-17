@@ -1,45 +1,23 @@
-import type {
-	Agent as RuntimeAgent,
-	AgentExecutionCounter,
-	BuiltAgent,
-	BuiltTool,
-	CredentialProvider,
-	StreamChunk,
-} from '@n8n/agents';
+import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import type { AgentPersistedMessageDto } from '@n8n/api-types';
-import { AGENT_WORKFLOW_TRIGGER_TYPE, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { JSONSchema7 } from 'json-schema';
-import {
-	OperationalError,
-	type ExecuteAgentData,
-	type ExecuteAgentWorkflowContext,
-	UserError,
-} from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
-import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
-import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
-import { createInputDataTool } from './tools/input-data-tool';
-import { createWorkflowContextTool } from './tools/workflow-context-tool';
-import { createAgentCredentialProvider } from './utils/agent-credential-provider';
+import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
-import { describeStructuredOutputError } from './utils/structured-output-error';
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -164,59 +142,23 @@ function getMaxIterationsChunks(): StreamChunk[] {
 	];
 }
 
+/**
+ * Executes agents for the interactive surfaces — in-app test chat, published
+ * chat integrations (Slack, Telegram, …), and scheduled/manual tasks — as
+ * streaming runs against cached runtimes, with HITL suspend/resume via
+ * checkpoints. Workflow-invoked runs (AI Agent node, "Message an Agent")
+ * live in `AgentWorkflowExecutionService`.
+ */
 @Service()
 export class AgentExecutionOrchestratorService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly agentRepository: AgentRepository,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly telemetry: Telemetry,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
-		private readonly credentialsService: CredentialsService,
-		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
-
-	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
-		const normalizedError = error instanceof Error ? error : new Error(String(error));
-		if (!outputSchema || normalizedError instanceof OperationalError) return normalizedError;
-
-		const structuredOutputError = describeStructuredOutputError(normalizedError.message);
-		if (!structuredOutputError) return normalizedError;
-
-		return new OperationalError(structuredOutputError, { cause: normalizedError });
-	}
-
-	createAgentExecutionCounter({
-		agentId,
-		userId,
-	}: {
-		agentId: string;
-		userId?: string;
-	}): AgentExecutionCounter {
-		const attribution = userId ? { user_id: userId } : {};
-		return {
-			incrementMessageCount: () =>
-				this.telemetry.trackAgentExecution({
-					agent_id: agentId,
-					...attribution,
-					message_count: 1,
-				}),
-			incrementTokenCount: (tokenCount) =>
-				this.telemetry.trackAgentExecution({
-					agent_id: agentId,
-					...attribution,
-					token_count: tokenCount,
-				}),
-			incrementToolCallCount: () =>
-				this.telemetry.trackAgentExecution({
-					agent_id: agentId,
-					...attribution,
-					tool_call_count: 1,
-				}),
-		};
-	}
 
 	/**
 	 * Return user-visible conversation history for a persisted chat thread.
@@ -292,7 +234,10 @@ export class AgentExecutionOrchestratorService {
 			const resultStream = await agentInstance.resume('stream', resumeData, {
 				runId,
 				toolCallId,
-				executionCounter: this.createAgentExecutionCounter({ agentId, userId: user?.id }),
+				executionCounter: createAgentExecutionCounter(this.telemetry, {
+					agentId,
+					userId: user?.id,
+				}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -498,7 +443,7 @@ export class AgentExecutionOrchestratorService {
 		try {
 			const resultStream = await agentInstance.stream(message, {
 				persistence: { threadId, resourceId },
-				executionCounter: this.createAgentExecutionCounter({ agentId, userId }),
+				executionCounter: createAgentExecutionCounter(this.telemetry, { agentId, userId }),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -548,221 +493,5 @@ export class AgentExecutionOrchestratorService {
 					});
 				});
 		}
-	}
-
-	/**
-	 * Compile an agent in isolation without writing to the shared runtime cache.
-	 * Used by executeForWorkflow so that concurrent Slack / chat executions
-	 * are not affected.
-	 */
-	async compileIsolated(
-		agentEntity: Agent,
-		credentialProvider: CredentialProvider,
-		outputSchema?: JSONSchema7,
-		extraTools?: BuiltTool[],
-	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
-		if (!agentEntity.schema) {
-			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
-		}
-
-		try {
-			// No `user`: this path runs an agent invoked from inside a workflow
-			// execution (AI Agent node, or a "Message an Agent" tool call from
-			// another workflow) — there is no interactive n8n user, only a bare
-			// telemetry id (see `executeForWorkflow`'s `telemetryUserId`), and for
-			// webhook/trigger-fired executions even that can be absent. This
-			// runtime also isn't cached (see the docstring above), so there's no
-			// cache-key concern here either — just no per-user tool filtering.
-			const { agent: reconstructed } =
-				await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-					agentEntity,
-					credentialProvider,
-				);
-			// Apply a per-call structured-output schema before casting to runtime.
-			if (outputSchema) {
-				reconstructed.structuredOutput(outputSchema);
-			}
-			// Inject per-call extra tools (e.g. the workflow-data tools for
-			// MessageAnAgent invocations). A name already declared on the agent would
-			// otherwise be silently dropped (losing workflow data access) or trigger a
-			// "Static tool name collision" error from the SDK at stream time — surface
-			// it instead so the agent author can rename their tool.
-			if (extraTools?.length) {
-				const declared = new Set(reconstructed.declaredTools.map((t) => t.name));
-				const collisions = extraTools.filter((t) => declared.has(t.name)).map((t) => t.name);
-				if (collisions.length) {
-					const names = collisions.map((n) => `"${n}"`).join(', ');
-					const plural = collisions.length > 1;
-					return {
-						ok: false,
-						error:
-							`Agent declares ${plural ? 'tools' : 'a tool'} named ${names}, ` +
-							`which ${plural ? 'are' : 'is'} reserved by n8n for workflow data access. ` +
-							`Rename the agent ${plural ? 'tools' : 'tool'} to avoid the collision.`,
-					};
-				}
-				reconstructed.tool(extraTools);
-			}
-			return { ok: true, agent: reconstructed as BuiltAgent };
-		} catch (e) {
-			return {
-				ok: false,
-				error: e instanceof Error ? e.message : 'Unknown compilation error',
-			};
-		}
-	}
-
-	async executeForWorkflow(
-		agentId: string,
-		message: string,
-		executionId: string,
-		threadId: string,
-		projectId: string,
-		telemetryUserId?: string,
-		useDraftVersion?: boolean,
-		outputSchema?: JSONSchema7,
-		workflowContext?: ExecuteAgentWorkflowContext,
-	): Promise<ExecuteAgentData> {
-		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agentEntity) {
-			throw new OperationalError('Agent not found or not accessible.');
-		}
-
-		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
-
-		let agentData: Agent = agentEntity;
-
-		if (!useDraftVersion) {
-			agentData = getPublishedAgentSnapshot(agentEntity);
-		}
-		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
-
-		const extraTools: BuiltTool[] = [];
-		if (workflowContext) {
-			extraTools.push(createInputDataTool(workflowContext));
-			if (workflowContext.exposeWorkflowData) {
-				extraTools.push(createWorkflowContextTool(workflowContext));
-			}
-		}
-		const compiled = await this.compileIsolated(
-			agentData,
-			credentialProvider,
-			outputSchema,
-			extraTools.length ? extraTools : undefined,
-		);
-		if (!compiled.ok || !compiled.agent) {
-			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
-		}
-
-		const agentInstance = compiled.agent;
-		const recorder = new ExecutionRecorder();
-
-		let structuredOutput: unknown = null;
-		const toolCalls: ExecuteAgentData['toolCalls'] = [];
-		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
-		let streamError: Error | undefined;
-
-		try {
-			const resultStream = await agentInstance.stream(message, {
-				persistence: { resourceId: executionId, threadId },
-				executionCounter: this.createAgentExecutionCounter({ agentId, userId: telemetryUserId }),
-			});
-
-			for await (const value of streamAgentChunks(resultStream.stream)) {
-				recorder.record(value);
-
-				if (value.type === 'tool-call') {
-					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-				} else if (value.type === 'tool-result') {
-					const pending = toolInputs.get(value.toolCallId);
-					toolCalls.push({
-						toolName: value.toolName,
-						input: pending?.input ?? null,
-						result: value.output,
-					});
-					toolInputs.delete(value.toolCallId);
-				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
-				}
-			}
-		} catch (error) {
-			const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
-			recorder.record({ type: 'error', error: normalizedError });
-			recorder.record({ type: 'finish', finishReason: 'error' });
-			streamError = normalizedError;
-		}
-
-		const messageRecord = recorder.getMessageRecord();
-
-		void this.agentExecutionService
-			.recordMessage({
-				threadId,
-				agentId,
-				agentName: agentInstance.name,
-				projectId,
-				userMessage: message,
-				record: messageRecord,
-				source: AGENT_WORKFLOW_TRIGGER_TYPE,
-				telemetry: {
-					runType: useDraftVersion ? 'test' : 'production',
-					configuration: telemetryConfiguration,
-				},
-			})
-			.catch((error) => {
-				this.logger.warn('Failed to record agent execution from workflow', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			});
-
-		if (streamError !== undefined) {
-			throw streamError;
-		}
-
-		if (recorder.suspended) {
-			throw new OperationalError(
-				'Agent execution suspended waiting for tool approval. ' +
-					'Suspend/resume is not supported in workflow execution context.',
-			);
-		}
-
-		if (messageRecord.error) {
-			if (outputSchema) {
-				const structuredOutputError = describeStructuredOutputError(messageRecord.error);
-				if (structuredOutputError) {
-					throw new OperationalError(structuredOutputError);
-				}
-			}
-			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
-		}
-
-		if (messageRecord.finishReason === 'error') {
-			throw new OperationalError(
-				outputSchema
-					? 'Agent execution finished with an error while producing structured output. ' +
-							"The agent's model or provider may not support JSON Schema structured output."
-					: 'Agent execution finished with an error.',
-			);
-		}
-
-		return {
-			response: messageRecord.assistantResponse,
-			structuredOutput: structuredOutput ?? null,
-			usage: messageRecord.usage
-				? {
-						promptTokens: messageRecord.usage.promptTokens,
-						completionTokens: messageRecord.usage.completionTokens,
-						totalTokens: messageRecord.usage.totalTokens,
-					}
-				: null,
-			toolCalls,
-			finishReason: messageRecord.finishReason,
-			session: {
-				agentId,
-				projectId,
-				sessionId: threadId,
-			},
-		};
 	}
 }

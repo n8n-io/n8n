@@ -32,11 +32,11 @@ vi.spyOn(middlewares, 'isLicensed').mockReturnValue(createMockMiddleware as any)
 // `discover.service` builds its endpoint registry at module-evaluation time by
 // reading middleware metadata, so it must be imported *after* the spies above
 // are installed. A static import is hoisted above them, so load it dynamically.
-let buildDiscoverResponse: typeof import('../discover.service').buildDiscoverResponse;
-let _resetCache: typeof import('../discover.service')._resetCache;
+let buildDiscoverResponse: typeof import('../discover.service.js').buildDiscoverResponse;
+let _resetCache: typeof import('../discover.service.js')._resetCache;
 
 beforeAll(async () => {
-	({ buildDiscoverResponse, _resetCache } = await import('../discover.service'));
+	({ buildDiscoverResponse, _resetCache } = await import('../discover.service.js'));
 	// Warm the registry once. The first call cold-loads and transforms all
 	// handler modules (and their transitive graph) through Vite, which can
 	// approach the default 5s test timeout. Paying it here in the hook keeps
