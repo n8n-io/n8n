@@ -100,6 +100,19 @@ export function useCanvasNodeGroupActions(
 		);
 	}
 
+	function updateGroupDescription(id: string, description: string) {
+		if (isReadOnly.value) return;
+		const before = workflowDocumentStore.value.getGroupById(id);
+		if (!before) return;
+		const beforeSnapshot = snapshotGroup(before);
+		workflowDocumentStore.value.updateDescription(id, description);
+		const after = workflowDocumentStore.value.getGroupById(id);
+		if (!after || after.description === beforeSnapshot.description) return;
+		historyStore.pushCommandToUndo(
+			new UpdateNodeGroupCommand(beforeSnapshot, snapshotGroup(after), Date.now()),
+		);
+	}
+
 	function ungroup(id: string) {
 		if (isReadOnly.value) return;
 		const group = workflowDocumentStore.value.getGroupById(id);
@@ -116,6 +129,7 @@ export function useCanvasNodeGroupActions(
 		groupNodes,
 		groupSelection,
 		renameGroup,
+		updateGroupDescription,
 		ungroup,
 	};
 }
