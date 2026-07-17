@@ -379,6 +379,18 @@ function initializeRoute() {
 		evaluationsWizardSidepanelStore.open(0);
 	}
 
+	// A test case seeded from the executions page hands off a pending execution
+	// via the wizard store, then navigates here. Open the Tests panel from the
+	// editor route — the only route that renders the focus panel — so the handoff
+	// doesn't depend on focus-panel state set before navigation.
+	if (
+		evaluationsWizardSidepanelStore.pendingSeedExecution &&
+		isEvaluationsWizardSidepanelEnabled.value
+	) {
+		focusPanelStore.setSelectedTab('evaluations');
+		focusPanelStore.openFocusPanel();
+	}
+
 	// Handle debug mode event binding (data loading is handled by WorkflowLayout)
 	// Always remove first to prevent duplicate listeners, then add only if on debug route
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
