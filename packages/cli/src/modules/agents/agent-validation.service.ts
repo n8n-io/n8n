@@ -5,12 +5,8 @@ import {
 	getRequiredNodeCredentialSlots,
 } from '@n8n/ai-utilities/node-catalog';
 import {
-	AGENT_VECTOR_STORE_CREDENTIAL_TYPES,
 	AgentModelSchema,
-	MANAGED_CREDENTIAL_TOKEN,
-	SUB_AGENT_TASK_DIFFICULTIES,
 	agentTaskSchema,
-	type AgentCapabilityKind,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
@@ -26,7 +22,6 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
-import { AiService } from '@/services/ai.service';
 
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
@@ -74,18 +69,10 @@ function agentIssue(
 	return issue(code, path, { kind: 'agent' });
 }
 
-function memoryIssue(
-	code: AgentConfigValidationIssueCode,
-	path: string,
-): AgentConfigValidationIssue {
-	return issue(code, path, { kind: 'memory' });
-}
-
 @Service()
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly aiService: AiService,
 		private readonly agentTaskRepository: AgentTaskRepository,
 		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly nodeTypes: NodeTypes,
@@ -265,10 +252,6 @@ export class AgentValidationService {
 
 		this.collectCoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, issues);
-		await this.collectMemoryIssues(config, findCredential, issues);
-		await this.collectWebSearchIssues(config, findCredential, issues);
-		await this.collectVectorStoreIssues(config, findCredential, issues);
-		await this.collectSubAgentDifficultyModelIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
 		if (scope === 'publish') {
@@ -359,146 +342,6 @@ export class AgentValidationService {
 			!this.credentialSupportsModel(credential.type, model)
 		) {
 			issues.push(agentIssue('incompatible_credential', 'credential'));
-		}
-	}
-
-	private async collectMemoryIssues(
-		config: AgentJsonConfig,
-		findCredential: FindCredential,
-		issues: AgentConfigValidationIssue[],
-	) {
-		if (!config.memory?.enabled) return;
-
-		await this.validateMemoryWorkerModel(
-			config.memory.observationalMemory?.observerModel,
-			'memory.observationalMemory.observerModel',
-			'memory',
-			findCredential,
-			issues,
-		);
-		await this.validateMemoryWorkerModel(
-			config.memory.observationalMemory?.reflectorModel,
-			'memory.observationalMemory.reflectorModel',
-			'memory',
-			findCredential,
-			issues,
-		);
-
-		const episodicMemory = config.memory.episodicMemory;
-		if (episodicMemory?.enabled === true) {
-			const episodicCredentialId = episodicMemory.credential?.trim();
-			const isManagedEmbeddingCredential =
-				episodicCredentialId === MANAGED_CREDENTIAL_TOKEN && this.aiService.isProxyEnabled();
-			if (!isManagedEmbeddingCredential) {
-				if (!episodicCredentialId) {
-					issues.push(memoryIssue('missing_credential', 'episodicMemory.credential'));
-				} else if (!(await this.findCredentialSafe(findCredential, episodicCredentialId))) {
-					issues.push(memoryIssue('invalid_credential', 'episodicMemory.credential'));
-				}
-			}
-			await this.validateMemoryWorkerModel(
-				episodicMemory.extractorModel,
-				'memory.episodicMemory.extractorModel',
-				'memory',
-				findCredential,
-				issues,
-			);
-			await this.validateMemoryWorkerModel(
-				episodicMemory.reflectorModel,
-				'memory.episodicMemory.reflectorModel',
-				'memory',
-				findCredential,
-				issues,
-			);
-		}
-	}
-
-	private async collectWebSearchIssues(
-		config: AgentJsonConfig,
-		findCredential: FindCredential,
-		issues: AgentConfigValidationIssue[],
-	) {
-		const webSearch = config.config?.webSearch;
-		if (
-			!webSearch?.enabled ||
-			(webSearch.provider !== 'brave' && webSearch.provider !== 'searxng')
-		) {
-			return;
-		}
-
-		const webSearchCredentialId = webSearch.credential?.trim();
-		if (!webSearchCredentialId) {
-			issues.push(issue('missing_credential', 'webSearch.credential', { kind: 'webSearch' }));
-			return;
-		}
-
-		if (!(await this.findCredentialSafe(findCredential, webSearchCredentialId))) {
-			issues.push(issue('invalid_credential', 'webSearch.credential', { kind: 'webSearch' }));
-		}
-	}
-
-	private async collectVectorStoreIssues(
-		config: AgentJsonConfig,
-		findCredential: FindCredential,
-		issues: AgentConfigValidationIssue[],
-	) {
-		for (const vectorStore of config.vectorStores ?? []) {
-			const credentialPath = `vectorStores.${vectorStore.name}.credential`;
-			const credentialCapability: AgentConfigValidationIssue['capability'] = {
-				kind: 'vectorStore',
-				id: vectorStore.name,
-			};
-			const credentialId = vectorStore.credential?.trim();
-			if (!credentialId) {
-				issues.push(issue('missing_credential', credentialPath, credentialCapability));
-			} else {
-				const credential =
-					credentialId !== MANAGED_CREDENTIAL_TOKEN
-						? await this.findCredentialSafe(findCredential, credentialId)
-						: undefined;
-				if (!credential) {
-					issues.push(issue('invalid_credential', credentialPath, credentialCapability));
-				} else if (credential.type !== AGENT_VECTOR_STORE_CREDENTIAL_TYPES[vectorStore.provider]) {
-					issues.push(issue('incompatible_credential', credentialPath, credentialCapability));
-				}
-			}
-
-			const embeddingCredentialId = vectorStore.embedding.credential?.trim();
-			if (!embeddingCredentialId) {
-				issues.push(
-					issue('missing_credential', `vectorStores.${vectorStore.name}.embedding.credential`, {
-						kind: 'vectorStore',
-						id: vectorStore.name,
-					}),
-				);
-			} else if (!(await this.findCredentialSafe(findCredential, embeddingCredentialId))) {
-				issues.push(
-					issue('invalid_credential', `vectorStores.${vectorStore.name}.embedding.credential`, {
-						kind: 'vectorStore',
-						id: vectorStore.name,
-					}),
-				);
-			}
-		}
-	}
-
-	private async collectSubAgentDifficultyModelIssues(
-		config: AgentJsonConfig,
-		findCredential: FindCredential,
-		issues: AgentConfigValidationIssue[],
-	) {
-		const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
-		if (!modelsByDifficulty) return;
-
-		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
-			await this.validateMemoryWorkerModel(
-				modelsByDifficulty[difficulty],
-				`subAgents.modelsByDifficulty.${difficulty}`,
-				'subAgent',
-				findCredential,
-				issues,
-				difficulty,
-			);
 		}
 	}
 
@@ -776,44 +619,6 @@ export class AgentValidationService {
 				return credentialType === 'httpMultipleHeadersAuth';
 			default:
 				return isMcpOAuth2Authentication(authentication) ? credentialType === authentication : true;
-		}
-	}
-
-	private async validateMemoryWorkerModel(
-		modelConfig: { model?: string | null; credential?: string | null } | string | null | undefined,
-		path: string,
-		capabilityKind: AgentCapabilityKind,
-		findCredential: FindCredential,
-		issues: AgentConfigValidationIssue[],
-		capabilityId?: string,
-	) {
-		if (modelConfig === undefined || modelConfig === null) return;
-		const capability: AgentConfigValidationIssue['capability'] = capabilityId
-			? { kind: capabilityKind, id: capabilityId }
-			: { kind: capabilityKind };
-
-		if (typeof modelConfig === 'string') {
-			issues.push(issue('missing_credential', `${path}.credential`, capability));
-			return;
-		}
-
-		if (!modelConfig.model?.trim()) {
-			issues.push(issue('missing_required', `${path}.model`, capability));
-		} else if (!AgentModelSchema.safeParse(modelConfig.model).success) {
-			issues.push(issue('invalid_value', `${path}.model`, capability));
-		}
-
-		const credentialId = modelConfig.credential?.trim();
-		if (!credentialId) {
-			issues.push(issue('missing_credential', `${path}.credential`, capability));
-			return;
-		}
-
-		const credential = await this.findCredentialSafe(findCredential, credentialId);
-		if (!credential) {
-			issues.push(issue('invalid_credential', `${path}.credential`, capability));
-		} else if (!this.credentialSupportsModel(credential.type, modelConfig.model ?? '')) {
-			issues.push(issue('incompatible_credential', `${path}.credential`, capability));
 		}
 	}
 

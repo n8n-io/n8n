@@ -87,13 +87,7 @@ const {
 const RUNTIME_ISSUE_PATH_PREFIXES = [
 	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
 	{ prefix: 'mcpServers.', key: 'agents.chat.misconfigured.missing.mcpServers' },
-	{
-		prefix: 'subAgents.modelsByDifficulty.',
-		key: 'agents.chat.misconfigured.missing.subAgents.modelsByDifficulty',
-	},
 	{ prefix: 'subAgents.agents.', key: 'agents.chat.misconfigured.missing.subAgents.agents' },
-	{ prefix: 'vectorStores.', key: 'agents.chat.misconfigured.missing.vectorStores' },
-	{ prefix: 'memory.', key: 'agents.chat.misconfigured.missing.memory' },
 ] as const;
 
 function humaniseMissingField(field: string): string {

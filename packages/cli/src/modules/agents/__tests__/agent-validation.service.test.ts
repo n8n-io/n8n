@@ -4,7 +4,6 @@ import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
-import type { AiService } from '@/services/ai.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentValidationService } from '../agent-validation.service';
@@ -48,11 +47,7 @@ function makeCredentialProvider(credentials: Array<{ id: string; type: string }>
 	} as unknown as CredentialProvider;
 }
 
-function makeAiService(proxyEnabled = false) {
-	return { isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled) } as unknown as AiService;
-}
-
-function makeService(aiService = makeAiService()) {
+function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const agentSkillsService = mock<AgentSkillsService>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
@@ -70,7 +65,6 @@ function makeService(aiService = makeAiService()) {
 	return {
 		service: new AgentValidationService(
 			agentRepository,
-			aiService,
 			agentTaskRepository,
 			agentTaskSnapshotRepository,
 			nodeTypes,
@@ -84,7 +78,6 @@ function makeService(aiService = makeAiService()) {
 		nodeTypes,
 		workflowRepository,
 		chatIntegrationRegistry,
-		aiService,
 	};
 }
 
@@ -124,252 +117,6 @@ describe('AgentValidationService', () => {
 				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
 			),
 		).resolves.toEqual({ missing: [] });
-	});
-
-	it('consolidates missing optional credential-backed features', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					observationalMemory: {
-						observerModel: { model: 'openai/gpt-4o', credential: 'missing-observer' },
-					},
-					episodicMemory: {
-						enabled: true,
-						credential: 'missing-episodic',
-						extractorModel: { model: 'openai/gpt-4o', credential: 'missing-extractor' },
-						reflectorModel: { model: 'openai/gpt-4o', credential: 'missing-reflector' },
-					},
-				},
-				config: {
-					webSearch: { enabled: true, provider: 'brave', credential: 'missing-web-search' },
-				},
-				subAgents: {
-					enabled: true,
-					modelsByDifficulty: {
-						easy: { model: 'openai/gpt-4o', credential: 'missing-easy' },
-						medium: { model: 'openai/gpt-4o', credential: 'missing-medium' },
-						hard: { model: 'openai/gpt-4o', credential: 'missing-hard' },
-					},
-				},
-				skills: [{ type: 'skill', id: 'skill-1' }],
-			} as AgentJsonConfig),
-		);
-
-		const result = await service.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.missing).toEqual(
-			expect.arrayContaining([
-				'memory.observationalMemory.observerModel.credential',
-				'episodicMemory.credential',
-				'memory.episodicMemory.extractorModel.credential',
-				'memory.episodicMemory.reflectorModel.credential',
-				'webSearch.credential',
-				'subAgents.modelsByDifficulty.medium.credential',
-				'skill:skill-1',
-			]),
-		);
-	});
-
-	it('flags worker model credentials that do not match the configured provider', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					observationalMemory: {
-						observerModel: { model: 'anthropic/claude-sonnet-4-6', credential: 'openai-main' },
-					},
-				},
-			}),
-		);
-
-		await expect(
-			service.validateAgentIsRunnable(
-				agentId,
-				projectId,
-				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-			),
-		).resolves.toEqual({
-			missing: ['memory.observationalMemory.observerModel.credential'],
-		});
-	});
-
-	it('reports missing episodic memory credentials without skipping worker model checks', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					episodicMemory: {
-						enabled: true,
-						credential: null as unknown as string,
-						extractorModel: { model: 'openai/gpt-4o', credential: 'missing-extractor' },
-					},
-				},
-			}),
-		);
-
-		const result = await service.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.missing).toEqual(
-			expect.arrayContaining([
-				'episodicMemory.credential',
-				'memory.episodicMemory.extractorModel.credential',
-			]),
-		);
-	});
-
-	it('accepts managed episodic memory credential when the assistant proxy is enabled', async () => {
-		const { service, agentRepository } = makeService(makeAiService(true));
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					episodicMemory: {
-						enabled: true,
-						credential: 'managed',
-					},
-				},
-			} as AgentJsonConfig),
-		);
-
-		const result = await service.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.missing).not.toContain('credential');
-		expect(result.missing).not.toContain('episodicMemory.credential');
-	});
-
-	it('flags vector store connections with missing or inaccessible credentials', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				vectorStores: [
-					{
-						provider: 'qdrant',
-						name: 'missing_creds',
-						credential: '',
-						useWhen: 'Search docs',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'missing-embed' },
-						collectionName: 'docs',
-					},
-					{
-						provider: 'postgres',
-						name: 'ok_store',
-						credential: 'postgres-cred',
-						useWhen: 'Search FAQ',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
-						tableName: 'faq',
-					},
-				],
-			} as AgentJsonConfig),
-		);
-
-		const result = await service.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			makeCredentialProvider([
-				{ id: 'openai-main', type: 'openAiApi' },
-				{ id: 'postgres-cred', type: 'postgres' },
-			]),
-		);
-
-		expect(result.missing).toEqual(
-			expect.arrayContaining([
-				'vectorStores.missing_creds.credential',
-				'vectorStores.missing_creds.embedding.credential',
-			]),
-		);
-		expect(result.missing).not.toContain('vectorStores.ok_store.credential');
-		expect(result.missing).not.toContain('vectorStores.ok_store.embedding.credential');
-	});
-
-	it('flags vector store connections whose credential type does not match the provider', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				vectorStores: [
-					{
-						provider: 'qdrant',
-						name: 'wrong_type',
-						credential: 'postgres-cred',
-						useWhen: 'Search docs',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
-						collectionName: 'docs',
-					},
-					{
-						provider: 'qdrant',
-						name: 'right_type',
-						credential: 'qdrant-cred',
-						useWhen: 'Search notes',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
-						collectionName: 'notes',
-					},
-				],
-			}),
-		);
-
-		const result = await service.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			makeCredentialProvider([
-				{ id: 'openai-main', type: 'openAiApi' },
-				{ id: 'postgres-cred', type: 'postgres' },
-				{ id: 'qdrant-cred', type: 'qdrantApi' },
-			]),
-		);
-
-		expect(result.missing).toContain('vectorStores.wrong_type.credential');
-		expect(result.missing).not.toContain('vectorStores.right_type.credential');
-		expect(result.missing).not.toContain('vectorStores.wrong_type.embedding.credential');
-	});
-
-	it('rejects managed episodic memory credential when the assistant proxy is disabled', async () => {
-		const { service, agentRepository } = makeService(makeAiService(false));
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					episodicMemory: {
-						enabled: true,
-						credential: 'managed',
-					},
-				},
-			} as AgentJsonConfig),
-		);
-
-		const result = await service.validateAgentIsRunnable(
-			agentId,
-			projectId,
-			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
-		);
-
-		expect(result.missing).toContain('episodicMemory.credential');
 	});
 });
 
@@ -1027,8 +774,6 @@ describe('AgentValidationService — structured issues', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
 				...runnableConfig,
-				memory: { enabled: false, storage: 'n8n' },
-				config: { webSearch: { enabled: false } },
 				tasks: [{ type: 'task', id: 'disabled_task', enabled: false }],
 			}),
 		);
@@ -1060,154 +805,6 @@ describe('AgentValidationService — structured issues', () => {
 			expect.arrayContaining([
 				expect.objectContaining({ code: 'invalid_credential', path: 'credential' }),
 			]),
-		);
-	});
-
-	it('reports invalid_credential for every configured credential path when lookups fail, without skipping later checks', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				memory: {
-					enabled: true,
-					storage: 'n8n',
-					observationalMemory: {
-						observerModel: { model: 'openai/gpt-4o', credential: 'observer-cred' },
-						reflectorModel: { model: 'openai/gpt-4o', credential: 'reflector-cred' },
-					},
-				},
-				config: {
-					webSearch: { enabled: true, provider: 'brave', credential: 'web-search-cred' },
-				},
-				vectorStores: [
-					{
-						provider: 'qdrant',
-						name: 'docs',
-						credential: 'vector-conn-cred',
-						useWhen: 'Search docs',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'vector-embed-cred' },
-						collectionName: 'docs',
-					},
-				],
-				subAgents: {
-					enabled: true,
-					modelsByDifficulty: {
-						low: { model: 'openai/gpt-4o', credential: 'low-cred' },
-						medium: { model: 'openai/gpt-4o', credential: 'medium-cred' },
-					},
-				},
-			} as AgentJsonConfig),
-		);
-		const failingCredentialProvider = {
-			list: vi.fn().mockRejectedValue(new Error('credentials unavailable')),
-		} as unknown as CredentialProvider;
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			failingCredentialProvider,
-		);
-
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'invalid_credential',
-					path: 'memory.observationalMemory.observerModel.credential',
-				}),
-				expect.objectContaining({
-					code: 'invalid_credential',
-					path: 'memory.observationalMemory.reflectorModel.credential',
-				}),
-				expect.objectContaining({ code: 'invalid_credential', path: 'webSearch.credential' }),
-				expect.objectContaining({
-					code: 'invalid_credential',
-					path: 'vectorStores.docs.credential',
-				}),
-				expect.objectContaining({
-					code: 'invalid_credential',
-					path: 'vectorStores.docs.embedding.credential',
-				}),
-				expect.objectContaining({
-					code: 'invalid_credential',
-					path: 'subAgents.modelsByDifficulty.low.credential',
-				}),
-				expect.objectContaining({
-					code: 'invalid_credential',
-					path: 'subAgents.modelsByDifficulty.medium.credential',
-				}),
-			]),
-		);
-	});
-
-	it('distinguishes missing invalid and incompatible vector-store connection credentials', async () => {
-		const { service, agentRepository } = makeService();
-		agentRepository.findByIdAndProjectId.mockResolvedValue(
-			makeAgent({
-				...runnableConfig,
-				vectorStores: [
-					{
-						provider: 'pinecone',
-						name: 'no_cred',
-						credential: '',
-						useWhen: 'Search docs',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
-						indexName: 'docs',
-					},
-					{
-						provider: 'supabase',
-						name: 'inaccessible_cred',
-						credential: 'nonexistent-cred',
-						useWhen: 'Search FAQ',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
-						tableName: 'faq',
-					},
-					{
-						provider: 'qdrant',
-						name: 'wrong_type_cred',
-						credential: 'postgres-cred',
-						useWhen: 'Search notes',
-						embedding: { model: 'openai/text-embedding-3-small', credential: 'openai-main' },
-						collectionName: 'notes',
-					},
-				],
-			} as AgentJsonConfig),
-		);
-
-		const result = await service.validateAgentConfiguration(
-			agentId,
-			projectId,
-			makeCredentialProvider([
-				{ id: 'openai-main', type: 'openAiApi' },
-				{ id: 'postgres-cred', type: 'postgres' },
-			]),
-		);
-
-		expect(result.status).toBe('invalid');
-		expect(result.issues).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					code: 'missing_credential',
-					path: 'vectorStores.no_cred.credential',
-				}),
-				expect.objectContaining({
-					code: 'invalid_credential',
-					path: 'vectorStores.inaccessible_cred.credential',
-				}),
-				expect.objectContaining({
-					code: 'incompatible_credential',
-					path: 'vectorStores.wrong_type_cred.credential',
-				}),
-			]),
-		);
-		expect(result.issues).not.toContainEqual(
-			expect.objectContaining({ path: 'vectorStores.no_cred.embedding.credential' }),
-		);
-		expect(result.issues).not.toContainEqual(
-			expect.objectContaining({ path: 'vectorStores.inaccessible_cred.embedding.credential' }),
-		);
-		expect(result.issues).not.toContainEqual(
-			expect.objectContaining({ path: 'vectorStores.wrong_type_cred.embedding.credential' }),
 		);
 	});
 

@@ -268,7 +268,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
-			mock<AiService>(),
 			agentTaskRepository,
 			agentTaskSnapshotRepository,
 			mock<NodeTypes>(),

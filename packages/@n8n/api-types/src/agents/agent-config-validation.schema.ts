@@ -2,9 +2,9 @@ import { z } from 'zod';
 
 /**
  * Capability areas an agent configuration issue can be attributed to. Mirrors
- * the sections rendered by `AgentCapabilitiesSection` plus the core config
- * primitives (agent identity, memory, web search, vector stores) that don't
- * have a dedicated capability chip.
+ * the sections rendered by `AgentCapabilitiesSection` plus `agent`, the core
+ * identity primitive (instructions, model, credential) that doesn't have a
+ * dedicated capability chip.
  */
 export const agentCapabilityKindSchema = z.enum([
 	'agent',
@@ -14,9 +14,6 @@ export const agentCapabilityKindSchema = z.enum([
 	'skill',
 	'task',
 	'subAgent',
-	'memory',
-	'vectorStore',
-	'webSearch',
 ]);
 export type AgentCapabilityKind = z.infer<typeof agentCapabilityKindSchema>;
 
