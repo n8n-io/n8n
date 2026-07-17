@@ -72,7 +72,11 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<IDataObject> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	siteIdCache?: Map<string, string>,
+): Promise<IDataObject> {
 	// https://learn.microsoft.com/en-us/graph/api/driveitem-update
 	const fileId = (this.getNodeParameter('file', i, '', { extractValue: true }) as string).trim();
 	const fileName = (this.getNodeParameter('fileName', i, '') as string).trim();
@@ -104,7 +108,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<IData
 	}
 
 	// resolveSiteId validates the site field itself, including the empty case
-	const siteId = await resolveSiteId.call(this, i);
+	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 	const itemPath = `/v1.0/sites/${encodeURIComponent(siteId)}/drive/items/${encodeURIComponent(fileId)}`;
 
 	let response: IDataObject = {};

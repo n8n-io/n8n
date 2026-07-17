@@ -62,7 +62,11 @@ type DriveItemReply = IDataObject & {
 	'@microsoft.graph.downloadUrl'?: string;
 };
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData> {
+export async function execute(
+	this: IExecuteFunctions,
+	i: number,
+	siteIdCache?: Map<string, string>,
+): Promise<INodeExecutionData> {
 	// https://learn.microsoft.com/en-us/graph/api/driveitem-get-content
 	const fileId = (this.getNodeParameter('file', i, '', { extractValue: true }) as string).trim();
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
@@ -75,7 +79,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	}
 
 	// resolveSiteId validates the site field itself, including the empty case
-	const siteId = await resolveSiteId.call(this, i);
+	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 
 	// One metadata GET yields the filename, the mime type, and the pre-authorized
 	// download link (returned by default, no $select).
