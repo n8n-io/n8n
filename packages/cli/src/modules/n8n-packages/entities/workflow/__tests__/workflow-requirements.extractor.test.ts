@@ -88,6 +88,16 @@ describe('WorkflowRequirementsExtractor', () => {
 		expect(extractor.extract(makeWorkflowWithSettings({}))).toEqual([]);
 	});
 
+	it('ignores expression-based error workflow settings', () => {
+		// An expression resolves at runtime (often via a variable) so it is not a
+		// concrete workflow dependency; the variable extractor owns that case.
+		expect(
+			extractor.extract(
+				makeWorkflowWithSettings({ errorWorkflow: '={{ $vars.ERROR_WORKFLOW_ID }}' }),
+			),
+		).toEqual([]);
+	});
+
 	it('dedupes error workflow references already extracted from nodes', () => {
 		const workflow = {
 			...makeWorkflow([

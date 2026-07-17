@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowRequirementsExtractor } from './workflow-requirements.extractor';
-import type { WorkflowWorkflowRequirement } from './workflow.types';
+import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 export interface WorkflowDependencyResolveRequest {
 	user: User;
@@ -18,10 +18,12 @@ export class WorkflowDependencyResolver {
 		private readonly workflowRequirementsExtractor: WorkflowRequirementsExtractor,
 	) {}
 
-	async resolve(request: WorkflowDependencyResolveRequest): Promise<WorkflowWorkflowRequirement[]> {
+	async resolve(
+		request: WorkflowDependencyResolveRequest,
+	): Promise<WorkflowSubWorkflowRequirement[]> {
 		const queue = [...new Set(request.workflowIds)];
 		const seenWorkflowIds = new Set(queue);
-		const requirements: WorkflowWorkflowRequirement[] = [];
+		const requirements: WorkflowSubWorkflowRequirement[] = [];
 
 		while (queue.length > 0) {
 			const workflowIds = queue.splice(0);

@@ -54,7 +54,7 @@
     "@types/luxon": "catalog:",
     "@types/md5": "^2.3.5",
     "esbuild": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
   "files": [

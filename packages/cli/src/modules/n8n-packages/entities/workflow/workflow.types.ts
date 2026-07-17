@@ -1,4 +1,4 @@
-export interface WorkflowWorkflowRequirement {
+export interface WorkflowSubWorkflowRequirement {
 	workflowId: string;
 	referencedWorkflowId: string;
 }

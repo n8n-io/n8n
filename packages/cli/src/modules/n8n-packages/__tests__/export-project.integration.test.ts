@@ -15,13 +15,15 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { createProjectVariable } from '@test-integration/db/variables';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import {
-	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
+	buildWorkflowCallingSubWorkflow,
+	buildWorkflowReferencingVariables,
 } from './utils/test-builders';
 
 let service: N8nPackagesService;
@@ -43,6 +45,7 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		'CredentialsEntity',
 		'SharedCredentials',
+		'Variables',
 		'ProjectRelation',
 		'Project',
 	]);
@@ -319,6 +322,40 @@ describe('project package export — with folders / workflows', () => {
 				},
 			],
 		});
+	});
+
+	it('namespaces a project-owned variable inside the project directory and counts it in telemetry', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('team-ligo', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		const variable = await createProjectVariable('API_URL', 'https://team.example.com', project);
+		const workflow = await buildWorkflowReferencingVariables({
+			name: 'triage',
+			project,
+			variableNames: ['API_URL'],
+			parentFolder: folder,
+		});
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		const { manifest, entries } = await exportProject(owner, project.id);
+
+		const projectEntry = manifest.projects!.find((p) => p.id === project.id)!;
+		expect(manifest.variables).toHaveLength(1);
+		const variableEntry = manifest.variables![0];
+		expect(variableEntry.id).toBe(variable.id);
+		expect(variableEntry.target).toMatch(new RegExp(`^${projectEntry.target}/variables/[^/]+$`));
+		expect(entries.find((e) => e.name === `${variableEntry.target}/variable.json`)).toBeDefined();
+		expect(manifest.requirements).toEqual({
+			variables: [
+				{ name: 'API_URL', value: 'https://team.example.com', usedByWorkflows: [workflow.id] },
+			],
+		});
+
+		const events = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+		expect(events).toHaveLength(1);
+		const payload = events[0][1] as RelayEventMap['n8n-package-exported'];
+		expect(payload.counts.variables).toBe(1);
 	});
 
 	it('keeps a credential owned by a non-exported project at the package top level', async () => {
