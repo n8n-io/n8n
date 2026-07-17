@@ -68,8 +68,24 @@ describe('WorkflowRequirementsExtractor', () => {
 		]);
 	});
 
+	it('extracts legacy plain-string Execute Workflow references', () => {
+		const workflow = makeWorkflow([executeWorkflowNode('wf-child')]);
+
+		expect(extractor.extract(workflow)).toEqual([
+			{ workflowId: 'wf-parent', referencedWorkflowId: 'wf-child' },
+		]);
+	});
+
 	it('ignores dynamic workflow selectors', () => {
 		const workflow = makeWorkflow([executeWorkflowNode('={{ $json.workflowId }}')]);
+
+		expect(extractor.extract(workflow)).toEqual([]);
+	});
+
+	it('ignores a resource-locator in expression mode', () => {
+		const workflow = makeWorkflow([
+			executeWorkflowNode({ __rl: true, mode: 'id', value: '={{ $json.workflowId }}' }),
+		]);
 
 		expect(extractor.extract(workflow)).toEqual([]);
 	});

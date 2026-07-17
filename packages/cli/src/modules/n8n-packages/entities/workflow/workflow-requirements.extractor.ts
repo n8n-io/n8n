@@ -1,8 +1,8 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { getSubworkflowId } from 'n8n-workflow';
 
 import type { RequirementsExtractor } from '../requirements-extractor';
+import { getStaticSubWorkflowId } from './static-sub-workflow-id';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 @Service()
@@ -13,7 +13,7 @@ export class WorkflowRequirementsExtractor
 		const byId = new Map<string, WorkflowSubWorkflowRequirement>();
 
 		for (const node of workflow.nodes ?? []) {
-			const referencedWorkflowId = getSubworkflowId(node);
+			const referencedWorkflowId = getStaticSubWorkflowId(node);
 			if (!referencedWorkflowId || byId.has(referencedWorkflowId)) continue;
 
 			byId.set(referencedWorkflowId, {
