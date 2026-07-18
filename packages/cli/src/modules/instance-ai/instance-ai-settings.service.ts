@@ -413,19 +413,15 @@ export class InstanceAiSettingsService {
 
 	/** Resolve search config from the admin-selected instance credential. */
 	async resolveSearchConfig(): Promise<{ braveApiKey?: string; searxngUrl?: string }> {
+		const { braveSearchApiKey, searxngUrl } = this.config;
+		const envConfig = {
+			braveApiKey: braveSearchApiKey || undefined,
+			searxngUrl: searxngUrl || undefined,
+		};
 		const credentialId = this.adminSearchCredentialId;
-		if (!credentialId) {
-			// Fall back to env vars
-			const { braveSearchApiKey, searxngUrl } = this.config;
-			return {
-				braveApiKey: braveSearchApiKey || undefined,
-				searxngUrl: searxngUrl || undefined,
-			};
-		}
+		if (!credentialId) return envConfig;
 		const resolved = await this.resolveSearchCredential(credentialId).catch(() => null);
-		if (!resolved) {
-			return {};
-		}
+		if (!resolved) return envConfig;
 		const { type, data } = resolved;
 		if (type === 'braveSearchApi') {
 			return { braveApiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined };

@@ -20,10 +20,10 @@ credentials, and disallowed credential types fail closed.
 
    ```typescript
    Container.get(InstanceCredentialBroker).registerConsumer({
-   	id: 'my-feature:purpose',
-   	credentialTypes: ['someApi'],
-   	isCredentialInUse: async (credentialId) =>
-   		await myFeatureSettings.isCredentialInUse(credentialId),
+		id: 'my-feature:purpose',
+		credentialTypes: ['someApi'],
+		isCredentialInUse: async (credentialId) =>
+			await myFeatureSettings.isCredentialInUse(credentialId),
    });
    ```
 
@@ -43,10 +43,10 @@ credentials, and disallowed credential types fail closed.
 
    ```typescript
    private async resolveMyCredential(credentialId: string) {
-   	return await this.instanceCredentialBroker.resolveForConsumer(
-   		'my-feature:purpose',
-   		credentialId,
-   	);
+		return await this.instanceCredentialBroker.resolveForConsumer(
+			'my-feature:purpose',
+			credentialId,
+		);
    }
    ```
 

@@ -65,6 +65,8 @@ describe('InstanceAiSettingsService', () => {
 			n8nSandboxServiceApiKey: '',
 			mcpServers: '',
 			browserMcp: false,
+			braveSearchApiKey: '',
+			searxngUrl: '',
 		});
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForConsumer.mockResolvedValue([]);
@@ -335,6 +337,29 @@ describe('InstanceAiSettingsService', () => {
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
 			expect(instanceCredentialBroker.resolveForConsumer).not.toHaveBeenCalled();
 			await expect(service.listInstanceModelCredentials()).resolves.toEqual([]);
+		});
+	});
+
+	describe('search credential', () => {
+		it('falls back to environment config when the selected credential cannot be resolved', async () => {
+			const logger = mock<Logger>();
+			logger.scoped.mockReturnValue(logger);
+			Container.set(Logger, logger);
+			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
+			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ searchCredentialId: 'missing-credential' }),
+				loadOnStartup: true,
+			} as never);
+			instanceCredentialBroker.resolveForConsumer.mockRejectedValue(new Error('not found'));
+
+			await service.loadFromDb();
+
+			await expect(service.resolveSearchConfig()).resolves.toEqual({
+				braveApiKey: 'env-key',
+				searxngUrl: 'https://search.example.com',
+			});
 		});
 	});
 
