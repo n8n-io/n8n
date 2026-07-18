@@ -14,7 +14,7 @@ import {
 	N8nNotice,
 	N8nText,
 } from '@n8n/design-system';
-import { MCP_DOCS_PAGE_URL, MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
@@ -194,40 +194,36 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText v-if="resourceName" color="text-base" size="small">
+					<N8nText v-if="resourceName" color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<N8nText v-else-if="hasScopes" color="text-base" size="small">
+					<N8nText v-else-if="hasScopes" color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.scopes.description', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<N8nText v-else color="text-base" size="small">
+					<N8nText v-else color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.description', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<template v-if="hasScopes">
-						<ScopesSelector
-							v-model="selectedScopes"
-							:available-scopes="availableScopes"
-							:groups="MCP_SCOPE_GROUPS"
-							:scope-tools="clientDetails?.scopeTools"
-							i18n-key-prefix="oauth.consentView.scopes"
-							root-test-id="consent-scopes"
-						/>
-						<N8nText color="text-light" size="xsmall" data-test-id="consent-scopes-note">
-							{{ i18n.baseText('oauth.consentView.scopes.note') }}
-						</N8nText>
-					</template>
+					<ScopesSelector
+						v-if="hasScopes"
+						v-model="selectedScopes"
+						:available-scopes="availableScopes"
+						:groups="MCP_SCOPE_GROUPS"
+						:scope-tools="clientDetails?.scopeTools"
+						i18n-key-prefix="oauth.consentView.scopes"
+						root-test-id="consent-scopes"
+					/>
 					<ul v-else-if="!resourceName" :class="$style['permission-list']">
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
@@ -237,17 +233,6 @@ onMounted(async () => {
 						<li>{{ i18n.baseText('oauth.consentView.action.createDataTables') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.searchProjectsAndFolders') }}</li>
 					</ul>
-					<p :class="$style['docs-link']">
-						<span
-							v-n8n-html="
-								i18n.baseText('oauth.consentView.readMore', {
-									interpolate: {
-										docsUrl: MCP_DOCS_PAGE_URL,
-									},
-								})
-							"
-						></span>
-					</p>
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
@@ -336,8 +321,8 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	min-width: 500px;
-	max-width: 70%;
+	width: 100%;
+	max-width: 40rem;
 	padding: var(--spacing--lg);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
@@ -463,11 +448,6 @@ onMounted(async () => {
 		color: var(--color--text);
 		font-size: var(--font-size--2xs);
 	}
-}
-
-.docs-link {
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
 }
 
 .redirect-warning-content {

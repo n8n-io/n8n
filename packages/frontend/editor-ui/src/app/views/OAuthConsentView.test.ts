@@ -188,7 +188,6 @@ describe('OAuthConsentView', () => {
 			await waitAllPromises();
 
 			expect(getByTestId('consent-scopes')).toBeVisible();
-			expect(getByTestId('consent-scopes-note')).toBeVisible();
 			expect(queryByText('Get a list of your workflows')).toBeNull();
 		});
 
