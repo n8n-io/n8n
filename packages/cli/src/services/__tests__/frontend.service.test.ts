@@ -247,6 +247,22 @@ describe('FrontendService', () => {
 			);
 		});
 
+		it('should refresh the workflow reviews policy on every settings fetch', async () => {
+			process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+			licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
+			workflowReviewPolicyService.get
+				.mockResolvedValueOnce({ enabled: true })
+				.mockResolvedValueOnce({ enabled: false });
+			const { service } = createMockService();
+
+			const initialSettings = await service.getSettings();
+			expect(initialSettings.workflowReviews).toEqual({ enabled: true });
+
+			const refreshedSettings = await service.getSettings();
+			expect(refreshedSettings.workflowReviews).toEqual({ enabled: false });
+			expect(workflowReviewPolicyService.get).toHaveBeenCalledTimes(2);
+		});
+
 		it('should cache dynamic banner filters for 30 seconds', async () => {
 			vi.useFakeTimers({ now: new Date('2026-01-01T00:00:00.000Z') });
 			globalConfig.diagnostics.enabled = true;
