@@ -5,6 +5,13 @@
 export const LOGS_EXECUTION_DATA_THROTTLE_DURATION = 1000;
 export const CANVAS_EXECUTION_DATA_THROTTLE_DURATION = 500;
 
+/**
+ * Repeat group-header clicks within this window are treated as one
+ * double-click and toggle collapse only once. Kept well below the OS
+ * double-click interval (~500ms) so deliberate fast re-clicks still register.
+ */
+export const CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION = 250;
+
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;

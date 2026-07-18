@@ -1056,6 +1056,60 @@ describe('AgentChatBridge — consumeStream', () => {
 			);
 		});
 	});
+
+	describe('status handle cleanup', () => {
+		it('clears the status handle when execution fails before stream consumption', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const clearBeforeResponse = vi.fn().mockResolvedValue(undefined);
+
+			class StatusHandleTestIntegration extends AgentChatIntegration {
+				readonly type = 'test-status-handle';
+				readonly credentialTypes: string[] = [];
+				readonly supportedComponents: readonly RichCardComponentType[] = [];
+				readonly displayLabel = 'Test Status Handle';
+				readonly displayIcon = 'circle';
+				readonly disableStreaming = true;
+				async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+					return {};
+				}
+				async createBridgeExecutionContext() {
+					return { platformAgentContext: {}, statusHandle: { clearBeforeResponse } };
+				}
+			}
+			registry.register(new StatusHandleTestIntegration());
+
+			const agentExecutor = {
+				executeForChatPublished: vi.fn(() => {
+					throw new Error('setup failed');
+				}),
+				resumeForChat: vi.fn(),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'test-status-handle',
+					credentialId: 'cred-1',
+				} as unknown as AgentIntegrationConfig,
+			);
+
+			await handlers.mention!(thread, {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(clearBeforeResponse).toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(
+				'⚠️ Something went wrong while processing your request. Please try again.',
+			);
+		});
+	});
 });
 
 describe('AgentChatBridge — Slack thread history', () => {

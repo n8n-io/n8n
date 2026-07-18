@@ -10,7 +10,12 @@ export const packageCredentialRequirementSchema = z.object({
 export const packageDataTableRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
-	sourceProjectId: z.string().min(1),
+	usedByWorkflows: z.array(z.string().min(1)).min(1),
+});
+
+export const packageWorkflowRequirementSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 
@@ -57,6 +62,12 @@ export const packageRequirementsSchema = z.object({
 		.superRefine((dataTables, ctx) =>
 			assertNoDuplicateKey(dataTables, ({ id }) => id, 'data table id', ctx),
 		),
+	workflows: z
+		.array(packageWorkflowRequirementSchema)
+		.optional()
+		.superRefine((workflows, ctx) =>
+			assertNoDuplicateKey(workflows, ({ id }) => id, 'workflow id', ctx),
+		),
 	variables: z
 		.array(packageVariableRequirementSchema)
 		.optional()
@@ -67,5 +78,6 @@ export const packageRequirementsSchema = z.object({
 
 export type PackageCredentialRequirement = z.infer<typeof packageCredentialRequirementSchema>;
 export type PackageDataTableRequirement = z.infer<typeof packageDataTableRequirementSchema>;
+export type PackageWorkflowRequirement = z.infer<typeof packageWorkflowRequirementSchema>;
 export type PackageVariableRequirement = z.infer<typeof packageVariableRequirementSchema>;
 export type PackageRequirements = z.infer<typeof packageRequirementsSchema>;

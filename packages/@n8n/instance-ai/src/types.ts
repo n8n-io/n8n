@@ -917,6 +917,8 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Current display name of the agent, or undefined when not found. */
+	resolveAgentName(agentId: string): Promise<string | undefined>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
