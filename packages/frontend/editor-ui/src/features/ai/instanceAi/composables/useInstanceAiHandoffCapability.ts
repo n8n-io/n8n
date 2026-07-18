@@ -17,7 +17,11 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { buildInstanceAiCredentialQuestion, useInstanceAiHandoff } from './useInstanceAiHandoff';
+import {
+	buildInstanceAiCredentialHandoffContext,
+	buildInstanceAiCredentialQuestion,
+	useInstanceAiHandoff,
+} from './useInstanceAiHandoff';
 
 /**
  * The standalone editor's `InstanceAiEditorCapability` (behavior; visibility is the
@@ -158,7 +162,10 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			await router.push({ name: INSTANCE_AI_VIEW });
 			return false;
 		}
-		await startThread(projectId, question, undefined, undefined, { newTab: true });
+		await startThread(projectId, question, undefined, undefined, {
+			newTab: true,
+			context: buildInstanceAiCredentialHandoffContext(credential),
+		});
 		telemetry.track('Instance AI opened from editor', {
 			source,
 			workflow_id: null,

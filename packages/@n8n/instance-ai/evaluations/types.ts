@@ -194,13 +194,17 @@ export interface WorkflowTestCase {
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-	executionScenarios: ExecutionScenario[];
+	/** Optional — a build-only case is graded by process/outcome expectations instead. */
+	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
-	/** Optional NL assertions about the build conversation; LLM-judged and counted toward the
-	 *  per-case + headline pass rate alongside execution scenarios (baseline-regression folding
-	 *  tracked separately in TRUST-158). */
-	buildExpectations?: string[];
+	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
+	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
+	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
+	processExpectations?: string[];
+	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
+	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
+	outcomeExpectations?: string[];
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
@@ -214,10 +218,11 @@ export interface WorkflowTestCase {
 	 *  Mutually exclusive with `seedFile`. */
 	priorConversation?: ConversationTurn[];
 	/** Reproduce a real conversation from its LangSmith trace at run time: restore
-	 *  up to the last user message, send that live. Commits only the thread id
-	 *  (workspace auto-discovered; `project` overrides the source project).
-	 *  Supplies the live turn, so `conversation` is optional. Transient (~14d). */
-	seedThread?: { threadId: string; project?: string };
+	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
+	 *  and send that live. Commits only the thread id (workspace auto-discovered;
+	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
+	 *  turn, so `conversation` is optional. Transient (~14d). */
+	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }

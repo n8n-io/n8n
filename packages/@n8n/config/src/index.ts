@@ -29,6 +29,7 @@ import { InstanceAiConfig } from './configs/instance-ai.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
+import { McpClientConfig } from './configs/mcp-client.config';
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
@@ -70,6 +71,7 @@ export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
+export { McpClientConfig } from './configs/mcp-client.config';
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { HttpRequestConfig } from './configs/http-request.config';
@@ -273,6 +275,9 @@ export class GlobalConfig {
 
 	@Nested
 	compressionNode: CompressionNodeConfig;
+
+	@Nested
+	mcpClient: McpClientConfig;
 
 	@Nested
 	instanceAi: InstanceAiConfig;

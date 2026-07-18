@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
@@ -8,23 +8,13 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import {
-	N8nCard,
-	N8nIcon,
-	N8nIconButton,
-	N8nInputNumber2,
-	N8nScrollArea,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nIconButton, N8nInputNumber2, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { useAgentModelCredentials } from '../composables/useAgentModelCredentials';
 import { useModelCatalog } from '../composables/useModelCatalog';
-import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import AgentModelSelector from './AgentModelSelector.vue';
 import {
 	type AgentCredentialsByProvider,
@@ -35,7 +25,6 @@ import {
 	isAgentModelProvider,
 } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
-import { AGENT_SUB_AGENTS_MODAL_KEY } from '../constants';
 import { parseModelString, sanitizeModelId } from '../utils/model-string';
 
 const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
@@ -63,11 +52,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const toast = useToast();
-const uiStore = useUIStore();
 const usersStore = useUsersStore();
-const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } = useProjectAgentsList(
-	computed(() => props.projectId),
-);
 const { ensureLoaded, getModelsForPicker, isLoading } = useModelCatalog();
 const projectIdRef = computed(() => props.projectId);
 const { credentialsByProvider } = useAgentModelCredentials(
@@ -78,10 +63,6 @@ const maxChildrenHintInterpolate = {
 	min: String(SUB_AGENT_MAX_CHILDREN_MIN),
 	max: String(SUB_AGENT_MAX_CHILDREN_MAX),
 };
-
-onMounted(() => {
-	void ensureProjectAgentsLoaded().catch(() => {});
-});
 
 watch(
 	projectIdRef,
@@ -107,45 +88,6 @@ watch(
 		maxChildrenModelValue.value = resolveMaxChildrenDisplay(value);
 	},
 );
-
-const selectedSubAgentRefs = computed(() => props.config?.subAgents?.agents ?? []);
-const selectedSubAgentIds = computed(() =>
-	selectedSubAgentRefs.value.map(({ agentId }) => agentId),
-);
-const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
-const availableSubAgents = computed(() =>
-	(projectAgents.value ?? []).filter(
-		(agent) =>
-			agent.id !== props.agentId &&
-			Boolean(agent.activeVersionId) &&
-			!selectedSubAgentIdSet.value.has(agent.id),
-	),
-);
-const selectedSubAgents = computed(() =>
-	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
-		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
-		return {
-			id: agentId,
-			name: agent?.name ?? agentId,
-			...(useWhen !== undefined ? { useWhen } : {}),
-		};
-	}),
-);
-
-function buildSubAgentsUpdate(
-	overrides: Partial<NonNullable<AgentJsonConfig['subAgents']>>,
-): Partial<AgentJsonConfig> {
-	return {
-		subAgents: {
-			...(props.config?.subAgents ?? {}),
-			...overrides,
-		},
-	};
-}
-
-function emitSubAgentsAgents(agents: typeof selectedSubAgentRefs.value) {
-	emit('update:config', buildSubAgentsUpdate({ agents }));
-}
 
 function onMaxChildrenChange(n: number) {
 	if (props.disabled) return;
@@ -264,66 +206,6 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 
 	emitModelsByDifficulty(difficulty, undefined);
 }
-
-async function onOpenAddSubAgentsModal() {
-	if (props.disabled) return;
-
-	try {
-		await ensureProjectAgentsLoaded();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.subAgents.loadError'));
-		return;
-	}
-
-	uiStore.openModalWithData({
-		name: AGENT_SUB_AGENTS_MODAL_KEY,
-		data: {
-			agents: availableSubAgents.value.map(({ id, name }) => ({
-				id,
-				name,
-			})),
-			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
-				if (selectedSubAgentIdSet.value.has(agentId)) return;
-
-				emitSubAgentsAgents([
-					...selectedSubAgentRefs.value,
-					{ agentId, ...(useWhen ? { useWhen } : {}) },
-				]);
-			},
-		},
-	});
-}
-
-function onOpenEditSubAgentModal(subAgent: { id: string; name: string; useWhen?: string }) {
-	if (props.disabled) return;
-
-	uiStore.openModalWithData({
-		name: AGENT_SUB_AGENTS_MODAL_KEY,
-		data: {
-			selectedAgent: {
-				id: subAgent.id,
-				name: subAgent.name,
-			},
-			...(subAgent.useWhen ? { useWhen: subAgent.useWhen } : {}),
-			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
-				emitSubAgentsAgents(
-					selectedSubAgentRefs.value.map((ref) =>
-						ref.agentId === agentId ? { agentId, ...(useWhen ? { useWhen } : {}) } : ref,
-					),
-				);
-			},
-			onRemove: onRemoveSubAgent,
-		},
-	});
-}
-
-function onRemoveSubAgent(agentId: string) {
-	if (props.disabled) return;
-
-	emitSubAgentsAgents(
-		selectedSubAgentRefs.value.filter((subAgent) => subAgent.agentId !== agentId),
-	);
-}
 </script>
 
 <template>
@@ -336,20 +218,6 @@ function onRemoveSubAgent(agentId: string) {
 				<N8nText size="small" color="text-light">
 					{{ i18n.baseText('agents.builder.subAgents.description') }}
 				</N8nText>
-			</div>
-			<div :class="$style.subAgentsHeaderActions">
-				<N8nTooltip :content="i18n.baseText('agents.builder.subAgents.add')" placement="top">
-					<N8nIconButton
-						icon="plus"
-						variant="ghost"
-						size="small"
-						icon-size="medium"
-						:disabled="disabled"
-						:aria-label="i18n.baseText('agents.builder.subAgents.add')"
-						data-testid="agent-sub-agents-open-add-modal"
-						@click="onOpenAddSubAgentsModal"
-					/>
-				</N8nTooltip>
 			</div>
 		</div>
 
@@ -440,60 +308,6 @@ function onRemoveSubAgent(agentId: string) {
 				</div>
 			</div>
 		</div>
-
-		<hr v-if="selectedSubAgentRefs.length > 0" aria-hidden="true" :class="$style.divider" />
-
-		<div v-if="selectedSubAgents.length > 0" :class="$style.subAgentsContent">
-			<N8nScrollArea
-				max-height="calc((var(--spacing--2xl) + var(--spacing--sm)) * 5)"
-				type="auto"
-				:class="$style.rows"
-			>
-				<div :class="$style.rowList">
-					<N8nCard
-						v-for="subAgent in selectedSubAgents"
-						:key="subAgent.id"
-						:class="$style.row"
-						data-testid="agent-sub-agent-row"
-						@click="onOpenEditSubAgentModal(subAgent)"
-					>
-						<template #prepend>
-							<N8nIcon icon="bot" size="medium" :class="$style.itemIcon" />
-						</template>
-
-						<N8nText size="xsmall" color="text-dark" :bold="true" :class="$style.name">
-							{{ subAgent.name }}
-						</N8nText>
-
-						<template #append>
-							<N8nTooltip
-								:content="
-									i18n.baseText('agents.builder.subAgents.remove', {
-										interpolate: { name: subAgent.name },
-									})
-								"
-								placement="top"
-							>
-								<N8nIconButton
-									icon="trash-2"
-									variant="ghost"
-									size="mini"
-									icon-size="small"
-									:disabled="disabled"
-									:aria-label="
-										i18n.baseText('agents.builder.subAgents.remove', {
-											interpolate: { name: subAgent.name },
-										})
-									"
-									data-testid="agent-sub-agent-remove"
-									@click.stop="onRemoveSubAgent(subAgent.id)"
-								/>
-							</N8nTooltip>
-						</template>
-					</N8nCard>
-				</div>
-			</N8nScrollArea>
-		</div>
 	</div>
 </template>
 
@@ -522,13 +336,6 @@ function onRemoveSubAgent(agentId: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
-}
-
-.subAgentsHeaderActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
 }
 
 .settingRow {
@@ -601,48 +408,5 @@ function onRemoveSubAgent(agentId: string) {
 .difficultyControls > :first-child {
 	flex: 1;
 	min-width: calc(var(--spacing--5xl) - var(--spacing--xl));
-}
-
-.divider {
-	border: none;
-	border-top: var(--border);
-	margin: var(--spacing--2xs) 0;
-}
-
-.subAgentsContent {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	width: 100%;
-}
-
-.rowList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding-right: var(--spacing--xs);
-}
-
-.rows {
-	scrollbar-gutter: stable;
-}
-
-.row {
-	--card--append--width: auto;
-	flex-shrink: 0;
-	cursor: pointer;
-}
-
-.itemIcon {
-	flex-shrink: 0;
-	color: var(--text-color--subtle);
-}
-
-.name {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	max-width: 100%;
 }
 </style>

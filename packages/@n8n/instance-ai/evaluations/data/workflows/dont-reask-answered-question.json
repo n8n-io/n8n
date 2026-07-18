@@ -22,7 +22,7 @@
 	"tags": ["behaviour", "clarification", "repeat-questions", "no-repeat-ask", "schedule", "slack"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"processExpectations": [
 		"After the user answered with the destination (Slack #growth) and the time (8am), the agent did not ask again for either detail.",
 		"The agent did not repeat the same clarifying question across turns — each distinct question was asked at most once.",
 		"The agent treated the user's answers as authoritative and proceeded to build the workflow."

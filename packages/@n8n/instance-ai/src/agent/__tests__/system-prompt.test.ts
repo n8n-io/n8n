@@ -51,6 +51,14 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('need clarification');
 			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
 		});
+
+		it('does not route missing workflow setup values through ask-user before build', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('use `ask-user` only for choices that change the workflow intent');
+			expect(prompt).toContain('Do not use `ask-user` before the first build');
+			expect(prompt).toContain('leave them for post-build workflow setup');
+		});
 	});
 
 	describe('license hints', () => {
@@ -188,6 +196,15 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`post-build-flow`');
 			expect(prompt).toContain('`planned-task-runtime`');
 			expect(prompt).toContain('`debugging-executions`');
+		});
+
+		it('routes n8n docs and credential setup help through the docs skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**n8n docs/product guidance**');
+			expect(prompt).toContain('credential setup');
+			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('`n8n-docs`');
 		});
 
 		it('keeps replan stall prevention in the core follow-up triggers', () => {

@@ -3,8 +3,9 @@ import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository, User, WorkflowRepository } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { EntityManager, FindOperator } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -16,8 +17,8 @@ import { McpSettingsService } from '../mcp.settings.service';
 
 describe('McpSettingsService', () => {
 	let service: McpSettingsService;
-	let findByKey: jest.Mock<Promise<Settings | null>, [string]>;
-	let upsert: jest.Mock;
+	let findByKey: Mock<(...args: [string]) => Promise<Settings | null>>;
+	let upsert: Mock;
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -29,9 +30,9 @@ describe('McpSettingsService', () => {
 	} as unknown as GlobalConfig;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		findByKey = jest.fn<Promise<Settings | null>, [string]>();
-		upsert = jest.fn();
+		vi.clearAllMocks();
+		findByKey = vi.fn<(...args: [string]) => Promise<Settings | null>>();
+		upsert = vi.fn();
 		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
 		collaborationService.filterOpenWorkflowIds.mockImplementation(
 			async (workflowIds) => workflowIds,
@@ -145,7 +146,7 @@ describe('McpSettingsService', () => {
 				seeded.map((w) => [w.id, { ...w, isArchived: w.isArchived ?? false }]),
 			);
 
-			const find = jest.fn(
+			const find = vi.fn(
 				async (
 					_entity: unknown,
 					options: {
@@ -164,7 +165,7 @@ describe('McpSettingsService', () => {
 				},
 			);
 
-			const update = jest.fn(
+			const update = vi.fn(
 				async (_entity: unknown, where: { id: string }, patch: Partial<WorkflowEntity>) => {
 					const existing = storage.get(where.id);
 					if (!existing) return;
@@ -174,7 +175,7 @@ describe('McpSettingsService', () => {
 
 			const trx = { find, update } as unknown as EntityManager;
 			const manager = {
-				transaction: jest.fn(async (run: (trx: EntityManager) => Promise<unknown>) => {
+				transaction: vi.fn(async (run: (trx: EntityManager) => Promise<unknown>) => {
 					return await run(trx);
 				}),
 			};
@@ -652,12 +653,13 @@ describe('McpSettingsService', () => {
 			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(seeded.map((w) => w.id));
 
 			// Force the first chunk's transaction to fail; the second runs normally.
-			const originalTransaction = stubs.manager.transaction;
 			stubs.manager.transaction
 				.mockImplementationOnce(async () => {
 					throw new Error('chunk transaction failed');
 				})
-				.mockImplementationOnce(originalTransaction.getMockImplementation()!);
+				.mockImplementationOnce(
+					async (run: (trx: EntityManager) => Promise<unknown>) => await run(stubs.trx),
+				);
 
 			const dto = new UpdateWorkflowsAvailabilityDto({
 				availableInMCP: true,

@@ -29,21 +29,23 @@ import {
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {
 		mockInstance(VariablesService, {
 			async getAllCached() {
+				// Project VAR2 is listed before its global twin so resolution must
+				// be order-independent: the project value still has to win.
 				return [
 					{ id: '1', key: 'VAR1', value: 'value1' },
-					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '3',
 						key: 'VAR2',
 						value: 'value1Project',
 						project: { id: '1', name: 'project1' } as Project,
 					},
+					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '4',
 						key: 'VAR4',
@@ -86,6 +88,11 @@ describe('workflow-helpers', () => {
 		it('should prioritize passed of projectId over workflowId', async () => {
 			const variables = await getVariables('1', '2');
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2', VAR5: 'value5' });
+		});
+
+		it('should let a project variable override a same-key global regardless of order', async () => {
+			const variables = await getVariables(undefined, '1');
+			expect(variables.VAR2).toBe('value1Project');
 		});
 	});
 });
@@ -199,7 +206,7 @@ describe('preserveInputOverride', () => {
 describe('replaceInvalidCredentials', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	function makeWorkflow(credentials: Record<string, { id: string | null; name: string }>) {
 		return {

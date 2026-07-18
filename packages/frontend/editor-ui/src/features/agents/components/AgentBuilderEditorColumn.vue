@@ -201,7 +201,7 @@ const i18n = useI18n();
 	flex-direction: column;
 	background-color: var(--background--surface);
 	min-height: 0;
-	min-width: 0;
+	min-width: var(--agent-builder-editor-min-width, 35rem);
 }
 
 .panelArea {

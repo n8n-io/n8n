@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentChatMessageList from '../components/AgentChatMessageList.vue';
-import type { ChatMessage } from '../composables/agentChatMessages';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 const copySpy = vi.fn();
 

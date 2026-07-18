@@ -26,12 +26,11 @@ import {
 	isInteractiveToolName,
 	rebuildInteractiveFromHistory,
 	setMessageInteractives,
-	type ChatMessage,
-	type ToolCall,
 	upsertMessageInteractive,
-} from './agentChatMessages';
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
-import { summariseToolCall } from '../utils/interactive-summary';
+import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {

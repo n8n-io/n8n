@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, provide, ref } from 'vue';
 import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import type { AskCredentialResume } from '@n8n/api-types';
+import type { AskCredentialResume, AskEmbeddingCredentialResume } from '@n8n/api-types';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import { ChatHubToolContextKey } from '@/app/constants';
+
+const MANAGED_CREDENTIAL_LABEL_KEY = 'agents.chat.askCredential.managed' as BaseTextKey;
 
 const props = defineProps<{
 	purpose: string;
@@ -16,7 +18,7 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	disabled?: boolean;
-	resolvedValue?: AskCredentialResume;
+	resolvedValue?: AskCredentialResume | AskEmbeddingCredentialResume;
 }>();
 
 const emit = defineEmits<{
@@ -120,6 +122,11 @@ function onSkip() {
 					<N8nIcon icon="circle-check" size="small" color="success" />
 					<N8nText size="small">
 						{{
+							(resolvedValue &&
+							'credential' in resolvedValue &&
+							resolvedValue.credential === 'managed'
+								? i18n.baseText(MANAGED_CREDENTIAL_LABEL_KEY)
+								: null) ??
 							(resolvedValue && 'credentialName' in resolvedValue
 								? resolvedValue.credentialName
 								: null) ??

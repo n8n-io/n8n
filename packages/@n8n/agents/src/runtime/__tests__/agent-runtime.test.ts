@@ -888,7 +888,10 @@ describe('AgentRuntime.stream() — fallback error observability', () => {
 				finishReason: 'error',
 			}),
 		);
-		expect(errorEvents).toHaveLength(1);
+		// The post-loop persistence failure surfaces as a sourceless error event. (The
+		// eager input persist also fails against this memory mock and emits its own
+		// source-tagged event, which has dedicated coverage elsewhere.)
+		expect(errorEvents.filter((e) => !(e as { source?: string }).source)).toHaveLength(1);
 		expect(runtime.getState().status).toBe('failed');
 	});
 });

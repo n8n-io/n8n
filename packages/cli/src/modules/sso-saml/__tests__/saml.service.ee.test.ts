@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from 'vitest';
 import type { SamlPreferences } from '@n8n/api-types';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -6,7 +7,7 @@ import { SettingsRepository } from '@n8n/db';
 import type { UserRepository, Settings, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
@@ -162,9 +163,9 @@ describe('SamlService', () => {
 	let userRepository: UserRepository;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
-	let cacheService: jest.Mocked<CacheService>;
-	let outboundHttp: jest.Mocked<OutboundHttp>;
-	let httpRequest: jest.Mock;
+	let cacheService: Mocked<CacheService>;
+	let outboundHttp: Mocked<OutboundHttp>;
+	let httpRequest: Mock;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -199,7 +200,7 @@ describe('SamlService', () => {
 	const originalEnv = process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
 
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
 
 		settingsRepository = mockInstance(SettingsRepository);
@@ -213,19 +214,19 @@ describe('SamlService', () => {
 		});
 		provisioningService = mock<ProvisioningService>();
 		cipher = mock<Cipher>();
-		cipher.encryptV2 = jest.fn(async (data: string) => `encrypted:${data}`) as Cipher['encryptV2'];
-		cipher.decryptV2 = jest.fn(async (data: string) =>
+		cipher.encryptV2 = vi.fn(async (data: string) => `encrypted:${data}`) as Cipher['encryptV2'];
+		cipher.decryptV2 = vi.fn(async (data: string) =>
 			data.replace('encrypted:', ''),
 		) as Cipher['decryptV2'];
 		cacheService = mock<CacheService>();
-		httpRequest = jest.fn();
+		httpRequest = vi.fn();
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: httpRequest }));
 
-		jest
-			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
-			.mockImplementation(async () => await Promise.resolve());
-		jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
+		vi.spyOn(ssoHelpers, 'reloadAuthenticationMethod').mockImplementation(
+			async () => await Promise.resolve(),
+		);
+		vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(true);
 
 		samlService = new SamlService(
 			logger,
@@ -279,20 +280,18 @@ describe('SamlService', () => {
 	describe('getAttributesFromLoginResponse', () => {
 		test('throws when any attribute is missing', async () => {
 			// ARRANGE
-			jest
-				.spyOn(samlService, 'getIdentityProviderInstance')
-				.mockReturnValue(mock<IdentityProviderInstance>());
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(
+				mock<IdentityProviderInstance>(),
+			);
 
 			const serviceProviderInstance = mock<ServiceProviderInstance>();
 			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
 				samlContent: '',
 				extract: {},
 			});
-			jest
-				.spyOn(samlService, 'getServiceProviderInstance')
-				.mockReturnValue(serviceProviderInstance);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(serviceProviderInstance);
 
-			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+			vi.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
 				attributes: {} as never,
 				missingAttributes: [
 					'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
@@ -312,19 +311,17 @@ describe('SamlService', () => {
 		});
 
 		test('returns the attributes when they are present', async () => {
-			jest
-				.spyOn(samlService, 'getIdentityProviderInstance')
-				.mockReturnValue(mock<IdentityProviderInstance>());
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(
+				mock<IdentityProviderInstance>(),
+			);
 			const serviceProviderInstance = mock<ServiceProviderInstance>();
 			serviceProviderInstance.parseLoginResponse.mockResolvedValue({
 				samlContent: '',
 				extract: {},
 			});
-			jest
-				.spyOn(samlService, 'getServiceProviderInstance')
-				.mockReturnValue(serviceProviderInstance);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(serviceProviderInstance);
 
-			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+			vi.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
 				attributes: {
 					email: 'test@test.com',
 					firstName: 'test',
@@ -359,10 +356,10 @@ describe('SamlService', () => {
 	describe('init', () => {
 		test('calls `reset` if an InvalidSamlMetadataUrlError is thrown', async () => {
 			// ARRANGE
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new InvalidSamlMetadataUrlError('https://www.google.com'));
-			jest.spyOn(samlService, 'reset');
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(
+				new InvalidSamlMetadataUrlError('https://www.google.com'),
+			);
+			vi.spyOn(samlService, 'reset');
 
 			// ACT
 			await samlService.init();
@@ -373,10 +370,10 @@ describe('SamlService', () => {
 
 		test('calls `reset` if an InvalidSamlMetadataError is thrown', async () => {
 			// ARRANGE
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new InvalidSamlMetadataError());
-			jest.spyOn(samlService, 'reset');
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(
+				new InvalidSamlMetadataError(),
+			);
+			vi.spyOn(samlService, 'reset');
 
 			// ACT
 			await samlService.init();
@@ -387,10 +384,10 @@ describe('SamlService', () => {
 
 		test('calls `reset` if a SyntaxError is thrown', async () => {
 			// ARRANGE
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new SyntaxError());
-			jest.spyOn(samlService, 'reset');
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(
+				new SyntaxError(),
+			);
+			vi.spyOn(samlService, 'reset');
 
 			// ACT
 			await samlService.init();
@@ -401,10 +398,8 @@ describe('SamlService', () => {
 
 		test('does not call reset and rethrows if another error is thrown', async () => {
 			// ARRANGE
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockRejectedValue(new TypeError());
-			jest.spyOn(samlService, 'reset');
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(new TypeError());
+			vi.spyOn(samlService, 'reset');
 
 			// ACT & ASSERT
 			await expect(samlService.init()).rejects.toThrowError(TypeError);
@@ -413,7 +408,7 @@ describe('SamlService', () => {
 
 		test('does not call reset if no error is thrown', async () => {
 			// ARRANGE
-			jest.spyOn(samlService, 'reset');
+			vi.spyOn(samlService, 'reset');
 
 			// ACT
 			await samlService.init();
@@ -425,7 +420,7 @@ describe('SamlService', () => {
 
 	describe('handleSamlLogin', () => {
 		it('throws error for invalid email', async () => {
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: { email: 'invalid', firstName: '', lastName: '', userPrincipalName: '' },
 				raw: {},
 			});
@@ -450,11 +445,11 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -478,12 +473,12 @@ describe('SamlService', () => {
 				email: samlAttributes.email,
 				authIdentities: [],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
-			jest.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
+			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
+			vi.spyOn(samlHelpers, 'updateUserFromSamlAttributes').mockResolvedValue(mockUser);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -503,12 +498,12 @@ describe('SamlService', () => {
 				userPrincipalName: 'foo@bar.com',
 			};
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
-			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
+			vi.mocked(userRepository.findOne).mockResolvedValue(null);
+			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(false);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -531,13 +526,13 @@ describe('SamlService', () => {
 			mockUser.firstName = '';
 			mockUser.lastName = '';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
-			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
-			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
+			vi.mocked(userRepository.findOne).mockResolvedValue(null);
+			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -560,13 +555,13 @@ describe('SamlService', () => {
 			mockUser.firstName = 'Jane';
 			mockUser.lastName = 'Doe';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
-			jest.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
-			jest.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
+			vi.mocked(userRepository.findOne).mockResolvedValue(null);
+			vi.spyOn(samlHelpers, 'createUserFromSamlAttributes').mockResolvedValue(mockUser);
+			vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -594,11 +589,11 @@ describe('SamlService', () => {
 					{ providerType: 'saml', providerId: samlAttributes.userPrincipalName } as any,
 				],
 			} as any;
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -628,15 +623,15 @@ describe('SamlService', () => {
 				],
 			} as any;
 
-			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(true);
-			provisioningService.provisionExpressionMappedRolesForUser = jest
+			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(true);
+			provisioningService.provisionExpressionMappedRolesForUser = vi
 				.fn()
 				.mockResolvedValue(undefined);
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: rawAttributes,
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -664,12 +659,12 @@ describe('SamlService', () => {
 				],
 			} as any;
 
-			provisioningService.isExpressionMappingEnabled = jest.fn().mockResolvedValue(false);
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(false);
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: samlAttributes,
 				raw: {},
 			});
-			jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser);
+			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -684,7 +679,7 @@ describe('SamlService', () => {
 	describe('loadFromDbAndApplySamlPreferences', () => {
 		test('does throw `InvalidSamlMetadataError` when no valid SAML metadata could have been loaded', async () => {
 			// ARRANGE
-			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(InvalidSamlSetting);
+			vi.mocked(settingsRepository.findOne).mockResolvedValue(InvalidSamlSetting);
 
 			// ACT && ASSERT
 			await expect(samlService.loadFromDbAndApplySamlPreferences(true, false)).rejects.toThrowError(
@@ -694,9 +689,9 @@ describe('SamlService', () => {
 
 		test('does throw `InvalidSamlMetadataError` when invalid SAML url and no saml metadata is available', async () => {
 			// ARRANGE
-			jest
-				.spyOn(settingsRepository, 'findOne')
-				.mockResolvedValue(SamlSettingWithInvalidUrlAndInvalidMetadataXML);
+			vi.mocked(settingsRepository.findOne).mockResolvedValue(
+				SamlSettingWithInvalidUrlAndInvalidMetadataXML,
+			);
 
 			// ACT && ASSERT
 			await expect(samlService.loadFromDbAndApplySamlPreferences(true, false)).rejects.toThrowError(
@@ -706,7 +701,7 @@ describe('SamlService', () => {
 
 		test('does not throw an error when the metadata url is invalid, but valid metadata is available in the database', async () => {
 			// ARRANGE
-			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(SamlSettingWithInvalidUrl);
+			vi.mocked(settingsRepository.findOne).mockResolvedValue(SamlSettingWithInvalidUrl);
 
 			// ACT && ASSERT
 			await samlService.loadFromDbAndApplySamlPreferences(true, false);
@@ -714,12 +709,10 @@ describe('SamlService', () => {
 
 		test('does not throw an error when the metadata url is valid', async () => {
 			// ARRANGE
-			jest.spyOn(settingsRepository, 'findOne').mockResolvedValue(SamlSettingWithValidUrl);
-			jest
-				.spyOn(samlService, 'fetchMetadataFromUrl')
-				.mockResolvedValue(
-					'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
-				);
+			vi.mocked(settingsRepository.findOne).mockResolvedValue(SamlSettingWithValidUrl);
+			vi.spyOn(samlService, 'fetchMetadataFromUrl').mockResolvedValue(
+				'<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid" validUntil="2035-05-07T13:33:47.181Z">\n  <md:IDPSSODescriptor WantAuthnRequestsSigned="true" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">\n    <md:KeyDescriptor use="signing">\n      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n        <ds:X509Data>\n          <ds:X509Certificate>MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJV\nSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4\nMjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQK\nDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTDCCASIwDQYJKoZIhvcNAQEBBQAD\nggEPADCCAQoCggEBALGfYettMsct1T6tVUwTudNJH5Pnb9GGnkXi9Zw/e6x45DD0\nRuRONbFlJ2T4RjAE/uG+AjXxXQ8o2SZfb9+GgmCHuTJFNgHoZ1nFVXCmb/Hg8Hpd\n4vOAGXndixaReOiq3EH5XvpMjMkJ3+8+9VYMzMZOjkgQtAqO36eAFFfNKX7dTj3V\npwLkvz6/KFCq8OAwY+AUi4eZm5J57D31GzjHwfjH9WTeX0MyndmnNB1qV75qQR3b\n2/W5sGHRv+9AarggJkF+ptUkXoLtVA51wcfYm6hILptpde5FQC8RWY1YrswBWAEZ\nNfyrR4JeSweElNHg4NVOs4TwGjOPwWGqzTfgTlECAwEAATANBgkqhkiG9w0BAQsF\nAAOCAQEAAYRlYflSXAWoZpFfwNiCQVE5d9zZ0DPzNdWhAybXcTyMf0z5mDf6FWBW\n5Gyoi9u3EMEDnzLcJNkwJAAc39Apa4I2/tml+Jy29dk8bTyX6m93ngmCgdLh5Za4\nkhuU3AM3L63g7VexCuO7kwkjh/+LqdcIXsVGO6XDfu2QOs1Xpe9zIzLpwm/RNYeX\nUjbSj5ce/jekpAw7qyVVL4xOyh8AtUW1ek3wIw1MJvEgEPt0d16oshWJpoS1OT8L\nr/22SvYEo3EmSGdTVGgk3x3s+A0qWAqTcyjr7Q4s/GKYRFfomGwz0TZ4Iw1ZN99M\nm0eo2USlSRTVl7QHRTuiuSThHpLKQQ==</ds:X509Certificate>\n        </ds:X509Data>\n      </ds:KeyInfo>\n    </md:KeyDescriptor>\n    <md:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</md:NameIDFormat>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>\n    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>\n  </md:IDPSSODescriptor>\n</md:EntityDescriptor>',
+			);
 
 			// ACT && ASSERT
 			await samlService.loadFromDbAndApplySamlPreferences(true, false);
@@ -839,16 +832,16 @@ describe('SamlService', () => {
 
 	describe('signing key configuration', () => {
 		beforeEach(() => {
-			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
-			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
-			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			jest
-				.spyOn(samlService, 'saveSamlPreferencesToDb')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
-			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
-			jest
-				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
-				.mockResolvedValue(undefined);
+			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			vi.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
+			vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+			vi.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand').mockResolvedValue(
+				undefined,
+			);
 		});
 
 		describe('feature flag gate', () => {
@@ -1032,7 +1025,7 @@ describe('SamlService', () => {
 				await samlService.loadPreferencesWithoutValidation({
 					signingPrivateKey: 'corrupted-encrypted-data',
 				});
-				cipher.decryptV2 = jest.fn(async () => {
+				cipher.decryptV2 = vi.fn(async () => {
 					throw new Error('Decryption failed');
 				}) as Cipher['decryptV2'];
 
@@ -1077,11 +1070,11 @@ describe('SamlService', () => {
 
 			it('should survive loadFromDbAndApplySamlPreferences after saving encrypted key', async () => {
 				// Mock methods needed for setSamlPreferences and loadFromDbAndApplySamlPreferences
-				jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
-				jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-				jest
-					.spyOn(samlService, 'saveSamlPreferencesToDb')
-					.mockResolvedValue(mockSamlConfig as SamlPreferences);
+				vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+				vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+				vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+					mockSamlConfig as SamlPreferences,
+				);
 
 				// Step 1: Save preferences with a valid PEM key+cert (simulating API call)
 				await samlService.setSamlPreferences({
@@ -1096,7 +1089,7 @@ describe('SamlService', () => {
 				expect(storedPrefs.signingPrivateKey).toContain('encrypted:');
 
 				// Step 3: Mock DB to return the stored (encrypted) preferences
-				settingsRepository.findOne = jest.fn().mockResolvedValue({
+				settingsRepository.findOne = vi.fn().mockResolvedValue({
 					key: SAML_PREFERENCES_DB_KEY,
 					value: JSON.stringify(storedPrefs),
 					loadOnStartup: true,
@@ -1352,18 +1345,18 @@ describe('SamlService', () => {
 	});
 
 	describe('broadcastReloadSAMLConfigurationCommand', () => {
-		const mockPublisher = { publishCommand: jest.fn() };
+		const mockPublisher = { publishCommand: vi.fn() };
 		beforeEach(() => {
 			mockInstance(Publisher, mockPublisher);
 			// Mock all the validation and setup methods that setSamlPreferences calls
-			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
-			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
-			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			jest
-				.spyOn(samlService, 'saveSamlPreferencesToDb')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			vi.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 			// Mock SAML login as disabled to avoid metadata validation
-			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+			vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 		});
 
 		test('should publish reload command in multi-main setup', async () => {
@@ -1407,10 +1400,10 @@ describe('SamlService', () => {
 
 	describe('reload', () => {
 		test('should reload SAML configuration from database', async () => {
-			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			settingsRepository.findOne = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 
 			await samlService.reload();
 
@@ -1423,9 +1416,9 @@ describe('SamlService', () => {
 		});
 
 		test('should prevent concurrent reloads with isReloading flag', async () => {
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 
 			// Start first reload without awaiting
 			const firstReload = samlService.reload();
@@ -1441,7 +1434,7 @@ describe('SamlService', () => {
 
 		test('should handle errors during reload gracefully', async () => {
 			const error = new Error('Database connection failed');
-			jest.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(error);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockRejectedValue(error);
 
 			await samlService.reload();
 
@@ -1451,20 +1444,20 @@ describe('SamlService', () => {
 			);
 			// Should reset isReloading flag even on error
 			// Test by calling reload again - should not be blocked
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 
 			await samlService.reload();
 			expect(samlService.loadFromDbAndApplySamlPreferences).toHaveBeenCalledTimes(2);
 		});
 
 		test('should update GlobalConfig with login status', async () => {
-			jest
-				.spyOn(samlService, 'loadFromDbAndApplySamlPreferences')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			vi.spyOn(samlService, 'loadFromDbAndApplySamlPreferences').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
 			// Mock SAML as disabled
-			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+			vi.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
 
 			await samlService.reload();
 
@@ -1476,19 +1469,19 @@ describe('SamlService', () => {
 	describe('loadFromDbAndApplySamlPreferences with broadcastReload parameter', () => {
 		beforeEach(() => {
 			// Mock required methods to avoid complex initialization
-			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
-			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
-			jest
-				.spyOn(samlService, 'saveSamlPreferencesToDb')
-				.mockResolvedValue(mockSamlConfig as SamlPreferences);
-			jest
-				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
-				.mockResolvedValue(undefined);
-			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
+			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			vi.spyOn(samlService, 'saveSamlPreferencesToDb').mockResolvedValue(
+				mockSamlConfig as SamlPreferences,
+			);
+			vi.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand').mockResolvedValue(
+				undefined,
+			);
+			vi.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
 		});
 
 		test('should broadcast reload by default', async () => {
-			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findOne = vi.fn().mockResolvedValue(mockConfigFromDB);
 
 			await samlService.loadFromDbAndApplySamlPreferences(true);
 
@@ -1496,7 +1489,7 @@ describe('SamlService', () => {
 		});
 
 		test('should not broadcast reload when broadcastReload=false', async () => {
-			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
+			settingsRepository.findOne = vi.fn().mockResolvedValue(mockConfigFromDB);
 
 			await samlService.loadFromDbAndApplySamlPreferences(true, false);
 
@@ -1507,8 +1500,8 @@ describe('SamlService', () => {
 	describe('reset', () => {
 		test('disables saml login and deletes the saml `features.saml` key in the db', async () => {
 			// ARRANGE
-			jest.spyOn(samlHelpers, 'setSamlLoginEnabled');
-			jest.spyOn(settingsRepository, 'delete');
+			vi.spyOn(samlHelpers, 'setSamlLoginEnabled');
+			vi.mocked(settingsRepository.delete);
 
 			// ACT
 			await samlService.reset();
@@ -1528,8 +1521,8 @@ describe('SamlService', () => {
 		type SamlServicePrivate = { _samlPreferences: SamlPreferences };
 
 		beforeEach(() => {
-			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
-			jest.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
+			vi.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			vi.spyOn(samlService['validator'], 'validateMetadata').mockResolvedValue(true);
 		});
 
 		test('fetches metadata with SSRF protection disabled', async () => {
@@ -1623,10 +1616,10 @@ describe('SamlService', () => {
 		test('uses a temporary IdP built from the provided metadata instead of the stored one', async () => {
 			const overrideMetadata = '<EntityDescriptor override/>';
 			const overrideIdp = { id: 'override-idp' };
-			const getStoredIdp = jest
+			const getStoredIdp = vi
 				.spyOn(samlService, 'getIdentityProviderInstance')
 				.mockReturnValue(mock<IdentityProviderInstance>());
-			const createFromMetadata = jest
+			const createFromMetadata = vi
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				.spyOn(samlService as any, 'createIdentityProviderFromMetadata')
 				.mockResolvedValue(overrideIdp);
@@ -1636,11 +1629,9 @@ describe('SamlService', () => {
 				samlContent: '',
 				extract: {},
 			});
-			jest
-				.spyOn(samlService, 'getServiceProviderInstance')
-				.mockReturnValue(serviceProviderInstance);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(serviceProviderInstance);
 
-			jest.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
+			vi.spyOn(samlHelpers, 'getMappedSamlAttributesFromFlowResult').mockReturnValue({
 				attributes: {
 					email: 'test@test.com',
 					firstName: 'test',

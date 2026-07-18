@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { ConversationTurn, ToolInteraction, TranscriptStep, TranscriptTurn } from '../types';
 
@@ -32,16 +32,33 @@ export function userTurnsAsText(transcript: TranscriptTurn[]): string {
 	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
 }
 
+/**
+ * User-side turns from an authored conversation (test-case JSON), flattened the
+ * same way as userTurnsAsText. The prebuilt/MCP path has no captured transcript,
+ * so prompt-aware binary checks (e.g. fulfills_user_request) source the request
+ * text from the authored conversation instead of receiving an empty prompt.
+ *
+ * Accepts `undefined` because `testCase.conversation` is optional (seedThread-only
+ * cases carry none) and callers pass it straight through — no conversation → ''.
+ */
+export function conversationUserTurnsAsText(conversation: ConversationTurn[] | undefined): string {
+	if (!conversation) return '';
+	const turns = conversation
+		.filter((t) => t.role === 'user')
+		.map((t) => t.text)
+		.filter((text) => text.length > 0);
+
+	if (turns.length === 0) return '';
+	if (turns.length === 1) return turns[0];
+	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
+}
+
 /** Full transcript (agent narration + tool interactions, in order) as plain text for LLM-judged checks. */
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			// Seeded turns are restored prior context — they predate the evaluated
-			// run, and judges must not score them as live behaviour.
-			const seededSuffix = turn.seeded
-				? ' (seeded prior context — predates the evaluated run)'
-				: '';
-			const lines: string[] = [`### Turn ${String(i + 1)}${seededSuffix}`];
+			// No seeded label: the judge evaluates the whole conversation as one.
+			const lines: string[] = [`### Turn ${String(i + 1)}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);
@@ -57,17 +74,35 @@ export function agentTextOf(turn: TranscriptTurn): string {
 	return turn.steps.flatMap((s) => (s.kind === 'agent-text' ? [s.text] : [])).join('');
 }
 
+/** The most recent turn's agent narration — a finalText fallback for seeded
+ *  conversations whose live turn produced no text-delta events. */
+export function lastAgentText(transcript: TranscriptTurn[]): string {
+	for (let i = transcript.length - 1; i >= 0; i--) {
+		const text = agentTextOf(transcript[i]);
+		if (text.length > 0) return text;
+	}
+	return '';
+}
+
 /** Tool id the builder calls to create or modify the workflow graph. */
 export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
 
-// build-workflow calls per turn (a suspend→resume is one call, so approvals don't inflate it).
-export function buildWorkflowCallsPerTurn(transcript: TranscriptTurn[]): number[] {
-	return transcript.map(
-		(turn) =>
-			turn.steps.filter(
-				(step) => step.kind === 'tool-call' && step.toolName === BUILD_WORKFLOW_TOOL_NAME,
-			).length,
-	);
+// Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: build-workflow×6") —
+// every tool, every turn; lets it reason from the counts instead of recounting prose.
+export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
+	const lines: string[] = [];
+	transcript.forEach((turn, i) => {
+		const counts = new Map<string, number>();
+		for (const step of turn.steps) {
+			if (step.kind === 'tool-call') {
+				counts.set(step.toolName, (counts.get(step.toolName) ?? 0) + 1);
+			}
+		}
+		if (counts.size === 0) return;
+		const summary = [...counts.entries()].map(([name, n]) => `${name}×${String(n)}`).join(', ');
+		lines.push(`Turn ${String(i + 1)}: ${summary}`);
+	});
+	return lines.length > 0 ? lines.join('\n') : '(no tool calls in any turn)';
 }
 
 // build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —

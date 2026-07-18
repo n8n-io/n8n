@@ -51,8 +51,8 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('executes the mirrored tool node when config stores the base node type', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
-		const getByNameAndVersion = jest.fn().mockReturnValue({
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const getByNameAndVersion = vi.fn().mockReturnValue({
 			description: { description: 'HTTP Request Tool' },
 		});
 		Container.set(NodeTypes, { getByNameAndVersion } as unknown as NodeTypes);
@@ -101,7 +101,7 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('passes node parameters through unchanged at execution time', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
 		const tool = await resolveNodeTool(
 			{
 				...baseToolSchema,
@@ -131,11 +131,11 @@ describe('resolveNodeTool → tool name sanitization', () => {
 
 	it('uses the introspected supplyData schema directly', async () => {
 		const inputSchema = z.object({ query: z.string() });
-		const introspectSupplyDataToolSchema = jest.fn().mockResolvedValue(inputSchema);
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(inputSchema);
 		Container.set(NodeTypes, {
-			getByNameAndVersion: jest.fn().mockReturnValue({
+			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Search Wikipedia' },
-				supplyData: jest.fn(),
+				supplyData: vi.fn(),
 			}),
 		} as unknown as NodeTypes);
 
@@ -159,12 +159,12 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('uses a string-compatible object schema when native string tool introspection returns null', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
-		const introspectSupplyDataToolSchema = jest.fn().mockResolvedValue(null);
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(null);
 		Container.set(NodeTypes, {
-			getByNameAndVersion: jest.fn().mockReturnValue({
+			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Think about something' },
-				supplyData: jest.fn(),
+				supplyData: vi.fn(),
 			}),
 		} as unknown as NodeTypes);
 
