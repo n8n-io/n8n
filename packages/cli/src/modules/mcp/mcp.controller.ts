@@ -85,7 +85,8 @@ export class McpController {
 
 		const enabled = await this.mcpSettingsService.getEnabled();
 		if (!enabled) {
-			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+			res.setHeader('Cache-Control', 'no-store');
+			res.status(404).json({ message: 'Not Found' });
 			return;
 		}
 
@@ -142,8 +143,8 @@ export class McpController {
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 				});
 			}
-			// Return 403 Forbidden
-			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+			res.setHeader('Cache-Control', 'no-store');
+			res.status(404).json({ message: 'Not Found' });
 			return;
 		}
 

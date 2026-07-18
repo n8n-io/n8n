@@ -21,6 +21,7 @@ import { UrlService } from '@/services/url.service';
 import { OAuthServerConfig } from './oauth-server.config';
 import { OAuthServerService } from './oauth-server.service';
 import { buildOAuthClientLimitReachedMessage } from './oauth.errors';
+import { mcpEnabledForDiscovery } from './mcp-enabled-discovery.middleware';
 
 const oauthServerService = Container.get(OAuthServerService);
 const globalConfig = Container.get(GlobalConfig);
@@ -133,6 +134,7 @@ export class OAuthController {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
+		middlewares: [mcpEnabledForDiscovery],
 	})
 	metadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -152,6 +154,7 @@ export class OAuthController {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
+		middlewares: [mcpEnabledForDiscovery],
 	})
 	metadata(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -183,6 +186,7 @@ export class OAuthController {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
+		middlewares: [mcpEnabledForDiscovery],
 	})
 	protectedResourceMetadataOptions(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
@@ -198,6 +202,7 @@ export class OAuthController {
 		skipAuth: true,
 		usesTemplates: true,
 		ipRateLimit: wellKnownIpRateLimit,
+		middlewares: [mcpEnabledForDiscovery],
 	})
 	async protectedResourceMetadata(req: Request, res: Response) {
 		this.setCorsHeaders(res);
