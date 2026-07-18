@@ -176,6 +176,34 @@ describe('N8nDropdownMenuItem', () => {
 	});
 
 	describe('select event', () => {
+		it('should render a checkbox item and keep the menu open when selected', async () => {
+			const wrapper = render({
+				components: { DropdownMenuRoot, DropdownMenuContent, DropdownMenuItem },
+				template: `
+					<DropdownMenuRoot :open="true">
+						<DropdownMenuContent>
+							<DropdownMenuItem
+								id="checkbox-item"
+								label="Checkbox item"
+								checkbox
+								:checked="true"
+								:close-on-select="false"
+								@select="$emit('select', $event)"
+							/>
+						</DropdownMenuContent>
+					</DropdownMenuRoot>
+				`,
+			});
+
+			const item = await wrapper.findByRole('menuitemcheckbox', { name: 'Checkbox item' });
+			expect(item).toHaveAttribute('aria-checked', 'true');
+
+			await userEvent.click(item);
+
+			expect(wrapper.emitted('select')?.[0]).toEqual(['checkbox-item']);
+			expect(wrapper.getByRole('menu')).toBeInTheDocument();
+		});
+
 		it('should emit select event when clicked', async () => {
 			const wrapper = render({
 				components: { DropdownMenuRoot, DropdownMenuContent, DropdownMenuItem },
