@@ -20,6 +20,8 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW } from '@/app/constants/localStorage';
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -133,6 +135,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	let uiStore: MockedStore<typeof useUIStore>;
 	let collaborationStore: MockedStore<typeof useCollaborationStore>;
 	let projectsStore: MockedStore<typeof useProjectsStore>;
+	let settingsStore: MockedStore<typeof useSettingsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 	const setupEnabledPublishButton = () => {
@@ -144,6 +147,18 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		uiStore = mockedStore(useUIStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 		projectsStore = mockedStore(useProjectsStore);
+		settingsStore = mockedStore(useSettingsStore);
+		settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings();
+		settingsStore.settings = {
+			...settingsStore.settings,
+			workflowReviews: { enabled: false },
+			envFeatureFlags: {
+				...settingsStore.settings.envFeatureFlags,
+				N8N_ENV_FEAT_WORKFLOW_REVIEWS: 'false',
+			},
+		};
+		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW);
+		useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
 
 		const nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.setNodeTypes([
@@ -688,10 +703,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	});
 
 	describe('Dropdown menu actions', () => {
-		let settingsStore: MockedStore<typeof useSettingsStore>;
-
 		beforeEach(() => {
-			settingsStore = mockedStore(useSettingsStore);
 			setupEnabledPublishButton();
 		});
 
@@ -733,6 +745,102 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const versionMenuButton = getByTestId('version-menu-button');
 			expect(versionMenuButton).toBeDisabled();
+		});
+	});
+
+	describe('Review required toggle', () => {
+		const setWorkflowReviewGates = ({
+			licensed = true,
+			environmentEnabled = true,
+			instanceEnabled = true,
+		}: Partial<{
+			licensed: boolean;
+			environmentEnabled: boolean;
+			instanceEnabled: boolean;
+		}> = {}) => {
+			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.WorkflowReviews]: licensed,
+			});
+			settingsStore.settings = {
+				...settingsStore.settings,
+				workflowReviews: { enabled: instanceEnabled },
+				envFeatureFlags: {
+					...settingsStore.settings.envFeatureFlags,
+					N8N_ENV_FEAT_WORKFLOW_REVIEWS: environmentEnabled ? 'true' : 'false',
+				},
+			};
+		};
+
+		const openVersionMenu = async (getByTestId: (id: string) => HTMLElement) => {
+			await userEvent.click(getByTestId('version-menu-button'));
+		};
+
+		it.each([
+			{ licensed: false, environmentEnabled: true, instanceEnabled: true },
+			{ licensed: true, environmentEnabled: false, instanceEnabled: true },
+			{ licensed: true, environmentEnabled: true, instanceEnabled: false },
+		])('is hidden when an enabled gate is false', async (gates) => {
+			setWorkflowReviewGates(gates);
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			await openVersionMenu(getByTestId);
+
+			expect(queryByTestId('workflow-review-required-toggle')).not.toBeInTheDocument();
+		});
+
+		it('is hidden for a new workflow', () => {
+			setWorkflowReviewGates();
+
+			const { queryByTestId } = renderComponent({
+				props: { ...defaultWorkflowProps, isNewWorkflow: true },
+			});
+
+			expect(queryByTestId('workflow-review-required-toggle')).not.toBeInTheDocument();
+		});
+
+		it('is visible for a saved workflow when all gates pass', async () => {
+			setWorkflowReviewGates();
+			const { getByTestId, findByTestId } = renderComponent();
+
+			await openVersionMenu(getByTestId);
+
+			expect(await findByTestId('workflow-review-required-toggle')).toBeInTheDocument();
+		});
+
+		it('updates the preference and leaves the dropdown open', async () => {
+			setWorkflowReviewGates();
+			const reviewRequiredStore = useReviewRequiredStore();
+			const { getByTestId, findByTestId } = renderComponent();
+
+			await openVersionMenu(getByTestId);
+			await userEvent.click(await findByTestId('workflow-review-required-toggle'));
+
+			expect(reviewRequiredStore.isReviewRequired(defaultWorkflowProps.id)).toBe(true);
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			expect(getByTestId('version-menu-item-publish')).toHaveTextContent('Publish');
+			expect(getByTestId('version-menu-item-publish-timeline')).toHaveTextContent('View timeline');
+			expect(getByTestId('version-menu-item-unpublish')).toHaveTextContent('Unpublish');
+		});
+
+		it('can be reached and toggled using keyboard menu navigation', async () => {
+			setWorkflowReviewGates();
+			const user = userEvent.setup();
+			const reviewRequiredStore = useReviewRequiredStore();
+			const { getByTestId, findByRole } = renderComponent();
+			const versionMenuButton = getByTestId('version-menu-button');
+
+			versionMenuButton.focus();
+			await user.keyboard('{Enter}');
+			const reviewRequiredItem = await findByRole('menuitemcheckbox', {
+				name: /Review required/,
+			});
+
+			await user.keyboard('{End}');
+			expect(reviewRequiredItem).toHaveFocus();
+
+			await user.keyboard('{Enter}');
+			expect(reviewRequiredStore.isReviewRequired(defaultWorkflowProps.id)).toBe(true);
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
 		});
 	});
 

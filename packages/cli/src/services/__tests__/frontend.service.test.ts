@@ -225,7 +225,7 @@ describe('FrontendService', () => {
 	};
 
 	beforeEach(() => {
-		originalEnv = process.env;
+		originalEnv = { ...process.env };
 		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = false;
 	});

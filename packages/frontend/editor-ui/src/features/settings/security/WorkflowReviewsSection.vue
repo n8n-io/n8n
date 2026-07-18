@@ -50,7 +50,7 @@ async function persist(value: boolean): Promise<void> {
 		showToast({
 			type: 'success',
 			title: i18n.baseText(
-				`settings.security.workflowReviews.success.${value ? 'enabled' : 'disabled'}`,
+				`settings.security.workflowReviews.success.${enabled.value ? 'enabled' : 'disabled'}`,
 			),
 			message: '',
 		});
