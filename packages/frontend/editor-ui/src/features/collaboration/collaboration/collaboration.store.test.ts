@@ -6,6 +6,7 @@ import { useCollaborationStore } from './collaboration.store';
 const mockFetchWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
 const mockUiStore = reactive({ stateIsDirty: false });
+const mockGetWorkflowWriteLock = vi.fn().mockResolvedValue(null);
 
 const mockPushStore = {
 	send: vi.fn(),
@@ -76,7 +77,7 @@ vi.mock('@/features/ai/assistant/builder.store', () => ({
 }));
 
 vi.mock('@/app/api/workflows', () => ({
-	getWorkflowWriteLock: vi.fn().mockResolvedValue(null),
+	getWorkflowWriteLock: (...args: unknown[]) => mockGetWorkflowWriteLock(...args),
 }));
 
 vi.mock('vue-router', () => ({
@@ -95,13 +96,16 @@ describe('useCollaborationStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
+		vi.useFakeTimers();
 		mockWorkflowId.value = 'workflow-1';
 		mockIsWorkflowSaved.value = { 'workflow-1': true, 'workflow-2': true };
 		mockUiStore.stateIsDirty = false;
 		mockShowMessage.mockImplementation(() => ({ close: vi.fn() }));
+		mockGetWorkflowWriteLock.mockResolvedValue(null);
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 	});
 
@@ -177,6 +181,111 @@ describe('useCollaborationStore', () => {
 			await nextTick();
 
 			expect(close).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('write-lock state polling', () => {
+		test('should stop polling when fetchWriteLockState returns null due to error (e.g. session expired)', async () => {
+			mockGetWorkflowWriteLock.mockResolvedValue({
+				clientId: 'other-client',
+				userId: 'other-user',
+			});
+			const store = useCollaborationStore();
+
+			await store.initialize('workflow-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as (event: {
+				type: string;
+				data: { workflowId: string; clientId: string; userId: string };
+			}) => void;
+
+			handler({
+				type: 'writeAccessAcquired',
+				data: { workflowId: 'workflow-1', clientId: 'other-client', userId: 'other-user' },
+			});
+
+			expect(store.isAnyoneWriting).toBe(true);
+
+			// Simulate session expiry: fetch returns null (401 error caught internally)
+			mockGetWorkflowWriteLock.mockResolvedValue(null);
+
+			// Advance timer to trigger the first poll
+			await vi.advanceTimersByTimeAsync(20_000);
+
+			// Verify the lock was cleared
+			expect(store.isAnyoneWriting).toBe(false);
+
+			// Record the call count after the first poll stopped it
+			const callsAfterStop = mockGetWorkflowWriteLock.mock.calls.length;
+
+			// Advance another full interval — no more polls should fire
+			await vi.advanceTimersByTimeAsync(20_000);
+
+			expect(mockGetWorkflowWriteLock).toHaveBeenCalledTimes(callsAfterStop);
+		});
+
+		test('should stop polling when writer leaves collaborators list', async () => {
+			mockGetWorkflowWriteLock.mockResolvedValue({
+				clientId: 'other-client',
+				userId: 'other-user',
+			});
+			const store = useCollaborationStore();
+
+			await store.initialize('workflow-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as (event: {
+				type: string;
+				data: {
+					workflowId: string;
+					clientId: string;
+					userId: string;
+					collaborators: unknown[];
+				};
+			}) => void;
+
+			handler({
+				type: 'writeAccessAcquired',
+				data: { workflowId: 'workflow-1', clientId: 'other-client', userId: 'other-user' },
+			});
+
+			expect(store.isAnyoneWriting).toBe(true);
+
+			// Simulate the writer leaving (collaborators list no longer includes them)
+			handler({
+				type: 'collaboratorsChanged',
+				data: {
+					workflowId: 'workflow-1',
+					collaborators: [{ user: { id: 'user-1' } }],
+				},
+			});
+
+			expect(store.isAnyoneWriting).toBe(false);
+		});
+
+		test('should not continue polling after terminate is called', async () => {
+			mockGetWorkflowWriteLock.mockResolvedValue({
+				clientId: 'other-client',
+				userId: 'other-user',
+			});
+			const store = useCollaborationStore();
+
+			await store.initialize('workflow-1');
+			const handler = mockPushStore.addEventListener.mock.calls[0][0] as (event: {
+				type: string;
+				data: { workflowId: string; clientId: string; userId: string };
+			}) => void;
+
+			handler({
+				type: 'writeAccessAcquired',
+				data: { workflowId: 'workflow-1', clientId: 'other-client', userId: 'other-user' },
+			});
+
+			store.terminate();
+
+			mockGetWorkflowWriteLock.mockClear();
+
+			// Advance timer - should NOT trigger any more polls
+			await vi.advanceTimersByTimeAsync(40_000);
+
+			expect(mockGetWorkflowWriteLock).not.toHaveBeenCalled();
 		});
 	});
 });

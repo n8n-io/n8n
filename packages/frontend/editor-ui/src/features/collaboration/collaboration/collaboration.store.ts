@@ -177,8 +177,9 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		const writeLock = await fetchWriteLockState(workflowId);
 
-		// If lock is gone on backend but still exists in frontend, clear it
-		if (!writeLock && currentWriterLock.value) {
+		// If lock is gone on backend (or fetch failed, e.g. session expired),
+		// clear frontend lock state and stop polling
+		if (!writeLock) {
 			currentWriterLock.value = null;
 			stopLockStatePolling();
 		}
@@ -361,6 +362,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		if (!writerStillPresent) {
 			currentWriterLock.value = null;
+			stopLockStatePolling();
 		}
 	}
 
