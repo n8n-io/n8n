@@ -6,8 +6,6 @@ import {
 	validateJSON,
 } from '../GenericFunctions';
 
-const jest = vi;
-
 type RequestOptions = {
 	method?: string;
 	uri?: string;
@@ -19,7 +17,7 @@ type RequestOptions = {
 
 describe('RocketChat > GenericFunctions', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('validateJSON', () => {
@@ -46,10 +44,10 @@ describe('RocketChat > GenericFunctions', () => {
 
 	describe('rocketchatApiRequest', () => {
 		function createContext() {
-			const requestWithAuthentication = jest.fn();
+			const requestWithAuthentication = vi.fn();
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					domain: 'https://chat.example.com',
 				}),
 				helpers: {
@@ -127,10 +125,10 @@ describe('RocketChat > GenericFunctions', () => {
 
 	describe('rocketchatApiRequestAllItems', () => {
 		function createContext() {
-			const requestWithAuthentication = jest.fn();
+			const requestWithAuthentication = vi.fn();
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue({
+				getCredentials: vi.fn().mockResolvedValue({
 					domain: 'https://chat.example.com',
 				}),
 				helpers: {

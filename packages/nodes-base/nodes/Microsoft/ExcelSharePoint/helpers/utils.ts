@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INode, INodeParameterResourceLocator } from 'n8n-workflow';
+import type { INode, INodeParameterResourceLocator } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { AuthContext } from './interfaces';
@@ -32,10 +32,16 @@ export function validatePathSegment(node: INode, label: string, value: string): 
  * `workbookRootCache`/`siteIdCache` are the caller's per-execution caches (one
  * lookup per distinct pasted address, not one per item) — the caller hoists
  * them once above its item loop and passes the same instances every call.
+ *
+ * `itemIndex` defaults to 0 so load-options contexts (list-search methods for
+ * the sheet/table dropdowns), which have no item index and no loop to
+ * amortize a cache across, can call this too without passing any of the
+ * three — `AuthContext.getNodeParameter`'s 2nd arg is itemIndex in execute
+ * and the fallback in load-options; 0 is a valid, harmless value either way.
  */
 export async function resolveWorkbookRoot(
-	this: IExecuteFunctions,
-	itemIndex: number,
+	this: AuthContext,
+	itemIndex = 0,
 	workbookRootCache: Map<string, string> = new Map(),
 	siteIdCache: Map<string, string> = new Map(),
 ): Promise<string> {

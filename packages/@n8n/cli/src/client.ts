@@ -27,6 +27,7 @@ export interface ExportPackageFields {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	includeVariableValues?: boolean;
 	missingWorkflowDependencyPolicy?: string;
 }
 
@@ -439,11 +440,14 @@ export class N8nClient {
 			workflowIds?: string[];
 			folderIds?: string[];
 			projectIds?: string[];
+			includeVariableValues?: boolean;
 			missingWorkflowDependencyPolicy?: string;
 		} = {};
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
+		// `undefined` is dropped by JSON serialization, so the API's default applies.
+		body.includeVariableValues = fields.includeVariableValues;
 		if (fields.missingWorkflowDependencyPolicy)
 			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
 

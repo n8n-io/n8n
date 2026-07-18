@@ -197,9 +197,8 @@ export function serializedWorkflowWithDataTable(options: {
 export function dataTableRequirement(
 	table: SerializedDataTable,
 	usedByWorkflows: string[],
-	sourceProjectId = 'source-project',
 ): PackageDataTableRequirement {
-	return { id: table.id, name: table.name, sourceProjectId, usedByWorkflows };
+	return { id: table.id, name: table.name, usedByWorkflows };
 }
 
 export function serializedFolder(overrides: Partial<SerializedFolder> = {}): SerializedFolder {

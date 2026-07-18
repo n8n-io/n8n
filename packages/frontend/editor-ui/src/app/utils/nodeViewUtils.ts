@@ -42,8 +42,10 @@ export const CONFIGURATION_NODE_SIZE: [number, number] = [
 	CONFIGURATION_NODE_RADIUS * 2,
 ]; // the node has circle shape
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6];
-// Width of the rich agent card (CanvasNodeAgent.vue binds its CSS width to this)
-export const AGENT_NODE_WIDTH = GRID_SIZE * 24;
+// Rendered size of the v2 AI Agent canvas card. CanvasNodeAgent.vue binds its
+// width from here; the height is content-driven, so [1] is only a layout
+// fallback estimate used before the card has been measured.
+export const AGENT_NODE_SIZE: [number, number] = [GRID_SIZE * 20, GRID_SIZE * 8];
 export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
 export const HEADER_HEIGHT = 65;
@@ -182,6 +184,17 @@ export function snapPositionToGrid(position: XYPosition): XYPosition {
 		closestNumberDivisibleBy(position[0], GRID_SIZE),
 		closestNumberDivisibleBy(position[1], GRID_SIZE),
 	];
+}
+
+export function snapPositionToGridByCenter(
+	position: XYPosition,
+	[nodeWidth, nodeHeight]: [number, number],
+): XYPosition {
+	const snappedCenter: XYPosition = [
+		Math.round((position[0] + nodeWidth / 2) / GRID_SIZE) * GRID_SIZE,
+		Math.round((position[1] + nodeHeight / 2) / GRID_SIZE) * GRID_SIZE,
+	];
+	return [snappedCenter[0] - nodeWidth / 2, snappedCenter[1] - nodeHeight / 2];
 }
 
 /**
