@@ -105,9 +105,11 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 	// Sticky notes have no connections, so the subgraph/connectivity rules
 	// below are checked against connectable nodes only — stickies ride along
 	// as plain members. A sticky-only group is valid *data* (a group can
-	// degenerate to one when its last connectable node is deleted); creation
-	// surfaces are expected to additionally require at least one connectable
-	// node (see `resolveGroupableNodeIds` in the editor).
+	// degenerate to one when its last connectable node is deleted); stricter
+	// rules live with the callers: creation surfaces require at least one
+	// connectable node (see `resolveGroupableNodeIds` in the editor) and
+	// persistence rejects memberless groups (see `validateWorkflowNodeGroups`
+	// in the CLI), which also keeps empty selections out of this fast path.
 	const connectableNodes = input.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
 	if (connectableNodes.length === 0) {
 		return {

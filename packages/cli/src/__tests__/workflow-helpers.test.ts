@@ -524,6 +524,18 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
+	it('should throw when a group has no members', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: [] }],
+				},
+				null,
+			),
+		).toThrow('Group "My Group" has no members.');
+	});
+
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
