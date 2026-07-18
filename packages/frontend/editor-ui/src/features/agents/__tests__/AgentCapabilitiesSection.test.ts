@@ -115,7 +115,10 @@ function mountSection(
 				},
 				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
-				N8nTooltip: { template: '<span><slot /></span>' },
+				N8nTooltip: {
+					template:
+						'<span><slot /><span data-testid="stub-tooltip-content"><slot name="content" /></span></span>',
+				},
 				AgentChannelModal: {
 					name: 'AgentChannelModal',
 					props: ['view', 'open'],
@@ -440,6 +443,15 @@ describe('AgentCapabilitiesSection', () => {
 			config,
 			[],
 			[makeAgent(), makeAgent({ id: 'agent-3', name: 'Research Agent', versionId: 'version-3' })],
+			{
+				validationIssues: [
+					{
+						code: 'incompatible_reference',
+						path: 'subAgents.agents.0.agentId',
+						capability: { kind: 'subAgent', id: 'agent-2', index: 0 },
+					},
+				],
+			},
 		);
 		await flushPromises();
 
@@ -451,6 +463,7 @@ describe('AgentCapabilitiesSection', () => {
 				data: expect.objectContaining({
 					selectedAgent: { id: 'agent-2', name: 'Helper Agent' },
 					useWhen: 'Use for billing support requests.',
+					invalidReasons: ['agents.builder.validation.issue.subAgent.incompatibleReference'],
 				}),
 			}),
 		);
@@ -727,12 +740,55 @@ describe('AgentCapabilitiesSection', () => {
 				true,
 			);
 			expect(wrapper.findAll('[data-testid="agent-chip-invalid-icon"]').length).toBeGreaterThan(0);
+			expect(toolChips[0].find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.missingCredential',
+			);
 
 			const channelChip = wrapper.find('[data-testid="agent-capabilities-channel-row"]');
 			expect(channelChip.classes().some((c) => c.includes('invalid'))).toBe(true);
 
 			const taskChip = wrapper.find('[data-testid="agent-capabilities-task-row"]');
 			expect(taskChip.classes().some((c) => c.includes('invalid'))).toBe(true);
+			expect(taskChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.missingReference',
+			);
+		});
+
+		it('shows capability-specific tooltip messages for workflow tools and sub-agents', async () => {
+			const tools: AgentJsonToolRef[] = [{ type: 'workflow', workflow: 'Ghost' }];
+			const config: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: '',
+				instructions: '',
+				tools: [],
+				subAgents: { agents: [{ agentId: 'sub-1' }] },
+			};
+
+			const wrapper = mountSection(tools, {}, config, [], [makeAgent({ id: 'sub-1' })], {
+				validationIssues: [
+					{
+						code: 'missing_reference',
+						path: 'tools.0.workflow',
+						capability: { kind: 'tool', id: 'Ghost', index: 0, toolType: 'workflow' },
+					},
+					{
+						code: 'incompatible_reference',
+						path: 'subAgents.agents.0.agentId',
+						capability: { kind: 'subAgent', id: 'sub-1', index: 0 },
+					},
+				],
+			});
+			await flushPromises();
+
+			const toolChip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+			expect(toolChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.tool.workflow.missingReference',
+			);
+
+			const subAgentChip = wrapper.find('[data-testid="agent-capabilities-sub-agent-row"]');
+			expect(subAgentChip.find('[data-testid="stub-tooltip-content"]').text()).toContain(
+				'agents.builder.validation.issue.subAgent.incompatibleReference',
+			);
 		});
 
 		it('leaves capability chips unmarked when there are no matching validation issues', () => {
@@ -791,7 +847,10 @@ describe('AgentCapabilitiesSection', () => {
 						},
 						N8nIcon: { template: '<span />' },
 						N8nText: { template: '<span><slot /></span>' },
-						N8nTooltip: { template: '<span><slot /></span>' },
+						N8nTooltip: {
+							template:
+								'<span><slot /><span data-testid="stub-tooltip-content"><slot name="content" /></span></span>',
+						},
 						AgentChannelModal: { template: '<div data-testid="agent-channel-modal" />' },
 					},
 				},

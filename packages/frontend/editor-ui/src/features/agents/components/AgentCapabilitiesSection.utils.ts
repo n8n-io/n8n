@@ -20,6 +20,7 @@ type BaseToolRow = {
 	toolType: AgentJsonToolRef['type'] | 'mcpServer';
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
+	invalidReasons: string[];
 };
 
 function toUngroupedToolRow(row: BaseToolRow): ToolRow {
@@ -29,6 +30,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		nodeType: row.nodeType,
 		openTarget: row.openTarget,
 		invalid: row.invalid,
+		invalidReasons: row.invalidReasons,
 	};
 
 	return {
@@ -38,6 +40,7 @@ function toUngroupedToolRow(row: BaseToolRow): ToolRow {
 		nodeType: row.nodeType,
 		fallbackIcon: row.fallbackIcon,
 		invalid: row.invalid,
+		invalidReasons: row.invalidReasons,
 		isGrouped: false,
 		tool: item,
 	};
@@ -53,6 +56,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 		nodeType: first.nodeType,
 		fallbackIcon: first.fallbackIcon,
 		invalid: group.some((row) => row.invalid),
+		invalidReasons: [...new Set(group.flatMap((row) => row.invalidReasons))],
 		isGrouped: true,
 		tools: group.map((row) => ({
 			index: row.index,
@@ -60,6 +64,7 @@ function toGroupedToolRow(group: BaseToolRow[]): GroupedToolRow {
 			nodeType: row.nodeType,
 			openTarget: row.openTarget,
 			invalid: row.invalid,
+			invalidReasons: row.invalidReasons,
 		})),
 	};
 }

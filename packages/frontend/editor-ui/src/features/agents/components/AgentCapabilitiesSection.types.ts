@@ -22,6 +22,7 @@ export type ToolRowItem = {
 	nodeType: ToolRowNodeType;
 	openTarget: ToolOpenTarget;
 	invalid: boolean;
+	invalidReasons: string[];
 };
 
 type ToolRowBase = {
@@ -32,6 +33,8 @@ type ToolRowBase = {
 	fallbackIcon: IconName;
 	/** True for a single row when it has a configuration error; true for a grouped row when any of its tools do. */
 	invalid: boolean;
+	/** Human-readable reasons behind `invalid`; the union of member reasons for a grouped row. */
+	invalidReasons: string[];
 };
 
 export type GroupedToolRow = ToolRowBase & {

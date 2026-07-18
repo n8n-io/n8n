@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon';
 
 const props = withDefaults(
@@ -10,12 +10,15 @@ const props = withDefaults(
 		active?: boolean;
 		/** Marks the chip as having an unresolved configuration error (e.g. a missing credential). */
 		invalid?: boolean;
+		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
+		invalidReasons?: string[];
 	}>(),
 	{
 		disabled: false,
 		variant: 'default',
 		active: false,
 		invalid: false,
+		invalidReasons: () => [],
 	},
 );
 
@@ -53,13 +56,17 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
-		<N8nIcon
-			v-if="props.invalid"
-			icon="triangle-alert"
-			:size="14"
-			:class="$style.invalidIcon"
-			data-testid="agent-chip-invalid-icon"
-		/>
+		<N8nTooltip v-if="props.invalid" :disabled="props.invalidReasons.length === 0" placement="top">
+			<N8nIcon
+				icon="triangle-alert"
+				:size="14"
+				:class="$style.invalidIcon"
+				data-testid="agent-chip-invalid-icon"
+			/>
+			<template #content>
+				<div v-for="reason in props.invalidReasons" :key="reason">{{ reason }}</div>
+			</template>
+		</N8nTooltip>
 	</button>
 </template>
 
