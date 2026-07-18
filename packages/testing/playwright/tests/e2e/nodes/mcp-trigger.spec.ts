@@ -193,6 +193,8 @@ test.describe(
 						capabilities: {},
 						clientInfo: { name: 'test', version: '1.0.0' },
 					}),
+					maxNotFoundRetries: 5,
+					notFoundRetryDelayMs: 500,
 				});
 
 				expect(noAuthResponse.status()).toBe(403);
@@ -234,7 +236,10 @@ test.describe(
 			});
 
 			test('should accept valid header auth', async ({ api }) => {
-				const headerName = `X-Auth-${nanoid(8)}`;
+				// Keep the header NAME underscore-free: proxies commonly drop request headers
+				// with underscores in the name (the multi-main CI stack's Caddy LB does), and
+				// nanoid's default alphabet includes '_'. Values are unaffected.
+				const headerName = `X-Auth-${nanoid(8).replaceAll('_', '-')}`;
 				const headerValue = `secret-value-${nanoid()}`;
 				const credential = await api.credentials.createCredential({
 					type: 'httpHeaderAuth',
@@ -261,6 +266,12 @@ test.describe(
 				const mcpNode = createdWorkflow.nodes?.find((n) => n.type.includes('mcpTrigger'));
 				const mcpPath = `mcp/${mcpNode?.parameters.path as string}`;
 
+				// Try with valid auth - should succeed
+				const session = await api.mcp.streamableHttpInitialize(mcpPath, {
+					headers: { [headerName]: headerValue },
+				});
+				expect(session.sessionId).toBeTruthy();
+
 				// Try without auth - should fail
 				const noAuthResponse = await api.webhooks.trigger(mcpPath, {
 					method: 'POST',
@@ -272,13 +283,6 @@ test.describe(
 					}),
 				});
 				expect(noAuthResponse.status()).toBe(403);
-
-				// Try with valid auth - should succeed
-				const session = await api.mcp.streamableHttpInitialize(mcpPath, {
-					headers: { [headerName]: headerValue },
-				});
-
-				expect(session.sessionId).toBeTruthy();
 			});
 		});
 

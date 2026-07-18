@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { Project, User, WorkflowEntity } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -12,19 +13,19 @@ import { WorkflowPublisher } from '../workflow-publisher';
 import { WorkflowPublishingPolicy } from '../workflow-publishing-policy.types';
 
 // The publish/unpublish matrix is covered end-to-end by
-// `import-pipeline.integration.test.ts`. These unit tests cover the permission
+// `import-package.integration.test.ts`. These unit tests cover the permission
 // gate and the publish-failure fallback the integration suite can't reach (it
 // always runs as an authorized owner against publishable workflows).
 describe('WorkflowPublisher', () => {
 	const user = mock<User>({ id: 'user-1' });
 	const logger = mock<Logger>();
-	const projectRepository = mock<{ existsBy: jest.Mock }>();
+	const projectRepository = mock<{ existsBy: Mock }>();
 	const projectService = mock<ProjectService>();
 	const workflowService = mock<WorkflowService>();
 	let publisher: WorkflowPublisher;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		publisher = new WorkflowPublisher(
 			logger,
 			projectRepository as never,
@@ -36,6 +37,18 @@ describe('WorkflowPublisher', () => {
 	describe('assertCanPublish', () => {
 		it('does nothing for policies other than publish-all', async () => {
 			await publisher.assertCanPublish(user, 'project-1', WorkflowPublishingPolicy.MatchSource);
+
+			expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
+		});
+
+		it('does nothing for a pending-create project even under publish-all', async () => {
+			// The project does not exist yet; its creator will be admin, so there is nothing to check.
+			await publisher.assertCanPublish(
+				user,
+				'new-project',
+				WorkflowPublishingPolicy.PublishAll,
+				true,
+			);
 
 			expect(projectService.getProjectWithScope).not.toHaveBeenCalled();
 		});
@@ -73,6 +86,7 @@ describe('WorkflowPublisher', () => {
 			sourceWorkflowId: 'wf-1',
 			decidedId: 'wf-1',
 			sourcePublished,
+			parentFolderId: null,
 			entity: mock<WorkflowEntity>(),
 		});
 
@@ -162,6 +176,7 @@ describe('WorkflowPublisher', () => {
 				action: 'update',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: false,
+				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};
@@ -218,6 +233,7 @@ describe('WorkflowPublisher', () => {
 				action: 'update',
 				sourceWorkflowId: 'wf-stubbed',
 				sourcePublished: true,
+				parentFolderId: null,
 				entity: mock<WorkflowEntity>(),
 				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
 			};

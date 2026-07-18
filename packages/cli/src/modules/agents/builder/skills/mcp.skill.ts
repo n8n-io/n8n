@@ -1,5 +1,5 @@
 import type { RuntimeSkill } from '@n8n/agents';
-import { ASK_QUESTION_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
+import { ASK_QUESTIONS_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -15,6 +15,22 @@ export function mcpSkill(): RuntimeSkill {
 		name: 'Agent builder MCP servers',
 		description:
 			'Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent.',
+		recommendedTools: [
+			'search_mcp_servers',
+			'ask_credential',
+			'verify_mcp_server',
+			'read_config',
+			'patch_config',
+		],
+		allowedTools: [
+			'search_mcp_servers',
+			'ask_credential',
+			'verify_mcp_server',
+			'ask_questions',
+			'read_config',
+			'patch_config',
+			'write_config',
+		],
 		instructions: `\
 ## Purpose
 
@@ -46,9 +62,9 @@ Follow these steps in order when adding an MCP server:
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry
    to \`mcpServers[]\` using the patch pattern below.
 
-If \`search_mcp_servers\` returns no matches and the user provides a custom
-server URL, skip the search result mapping and continue with manual
-transport/authentication plus credential selection.
+If \`search_mcp_servers\` returns no matches, continue with manual server
+setup: ask for the URL and transport/authentication decision through
+\`${ASK_QUESTIONS_TOOL_NAME}\`.
 
 Full schema reference:
 
@@ -64,8 +80,6 @@ ${mcpServerSchemaText}
   \`credentialType: "httpMultipleHeadersAuth"\`.
 - For \`mcpOAuth2Api\`, call \`ask_credential\` with
   \`credentialType: "mcpOAuth2Api"\`.
-- Never invent credential IDs. If the user declines, omit the server entirely
-  rather than persisting a stub.
 
 ### Testing the connection
 
@@ -80,6 +94,21 @@ Before writing to config, call \`verify_mcp_server\` with server \`name\`,
 - If verification fails, explain the error and ask the user to check the URL
   or credentials before proceeding.
 
+### Incomplete setup
+
+The user can skip the credential prompt, the URL question, or both. Never
+invent a credential ID or a placeholder URL to fill the gap, and never abort
+the server addition — always persist what is known and let the user finish
+setup later:
+
+- Credential skipped (\`ask_credential\` returned \`{ skipped: true }\`): omit
+  only the \`credential\` field.
+- URL skipped: persist \`url: ""\`.
+- Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
+  connect to), then \`read_config\` and \`patch_config\` the entry, preserving
+  every other known field — \`name\`, \`transport\`, \`authentication\`, an
+  already-selected credential, and registry \`metadata\`.
+
 ### Selecting credentials
 
 When using a registry-backed server, always use the \`credentialType\` returned
@@ -87,7 +116,7 @@ by \`search_mcp_servers\`.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
-Auth, or None) via \`${ASK_QUESTION_TOOL_NAME}\`. Then map to:
+Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
 - \`bearerAuth\` -> \`ask_credential\` with \`credentialType: "httpBearerAuth"\`
 - \`headerAuth\` -> \`ask_credential\` with \`credentialType: "httpHeaderAuth"\`
@@ -105,7 +134,6 @@ Auth, or None) via \`${ASK_QUESTION_TOOL_NAME}\`. Then map to:
 ## Gotchas
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
-- Never invent credential IDs. If the user declines, omit the server entirely.
 - Never fabricate \`metadata.nodeTypeName\`.
 - When \`search_mcp_servers\` returns \`metadata.nodeTypeName\`, include
   \`metadata: { nodeTypeName: <result.nodeTypeName> }\` in the entry so the UI

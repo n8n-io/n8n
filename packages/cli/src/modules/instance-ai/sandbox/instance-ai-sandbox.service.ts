@@ -14,6 +14,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { normalizeSandboxProvider, requireN8nSandboxServiceUrl } from '../sandbox-provider';
 
@@ -116,7 +117,7 @@ export type InstanceAiSandboxProxy = {
 	getClient: () => Promise<{
 		getSandboxProxyConfig: () => Promise<{ image?: string }>;
 		getSandboxProxyBaseUrl: () => string;
-		getBuilderApiProxyToken: (
+		getInstanceAiApiProxyToken: (
 			user: { id: string },
 			options: { userMessageId: string },
 		) => Promise<{ accessToken: string }>;
@@ -229,16 +230,27 @@ export class InstanceAiSandboxService {
 			// If AI assistant service is available, route Daytona calls through its sandbox proxy
 			if (this.options.aiService.isProxyEnabled()) {
 				const client = await this.options.aiService.getClient();
-				const proxyConfig = await client.getSandboxProxyConfig();
+				const proxyConfig = await callAiServiceWithRetry(
+					'Sandbox proxy config fetch',
+					async () => await client.getSandboxProxyConfig(),
+					this.logger,
+					this.options.errorReporter,
+				);
 				return {
 					...base,
 					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
 					image: proxyConfig.image,
 					logger: this.logger,
 					getAuthToken: async () => {
-						const token = await client.getBuilderApiProxyToken(
-							{ id: user.id },
-							{ userMessageId: nanoid() },
+						const token = await callAiServiceWithRetry(
+							'Sandbox proxy token mint',
+							async () =>
+								await client.getInstanceAiApiProxyToken(
+									{ id: user.id },
+									{ userMessageId: nanoid() },
+								),
+							this.logger,
+							this.options.errorReporter,
 						);
 
 						return token.accessToken;

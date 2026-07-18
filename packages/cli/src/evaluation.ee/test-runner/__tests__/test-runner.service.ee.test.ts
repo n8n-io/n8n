@@ -4,14 +4,13 @@ import { TestCaseExecutionErrorCode } from '@n8n/db';
 import type {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
+	Project,
 	TestRun,
 	TestCaseExecutionRepository,
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	createRunExecutionData,
@@ -21,9 +20,8 @@ import {
 } from 'n8n-workflow';
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
-
-import { TestRunnerService } from '../test-runner.service.ee';
-import type { WorkflowCompilerService } from '../workflow-compiler.service';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -31,9 +29,14 @@ import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
+
+import { TestRunnerService } from '../test-runner.service.ee';
+import type { WorkflowCompilerService } from '../workflow-compiler.service';
 
 // Tier high enough that the resolver's tier-default branch lifts the cap to
 // 5, which is greater than every concurrency value used in these tests.
@@ -43,8 +46,8 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 // default, which is the path the surrounding tests assume.
 const buildLicenseMock = (planName = 'Enterprise', concurrencyQuota?: number) =>
 	mock<License>({
-		getPlanName: jest.fn().mockReturnValue(planName),
-		getValue: jest.fn((feature: string) =>
+		getPlanName: vi.fn().mockReturnValue(planName),
+		getValue: vi.fn((feature: string) =>
 			feature === 'quota:evaluations:concurrencyLimit' ? concurrencyQuota : undefined,
 		) as never,
 	});
@@ -71,6 +74,7 @@ describe('TestRunnerService', () => {
 	const evaluationCollectionRepository = mock<EvaluationCollectionRepository>();
 	const evaluationConfigRepository = mock<EvaluationConfigRepository>();
 	const workflowCompiler = mock<WorkflowCompilerService>();
+	const ownershipService = mock<OwnershipService>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -97,13 +101,17 @@ describe('TestRunnerService', () => {
 			evaluationCollectionRepository,
 			evaluationConfigRepository,
 			workflowCompiler,
+			ownershipService,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(
+			mock<Project>({ id: 'project-1', name: 'Test Project' }),
+		);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('findEvaluationTriggerNode', () => {
@@ -545,6 +553,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -817,7 +826,7 @@ describe('TestRunnerService', () => {
 			const abortController = new AbortController();
 
 			// Mock addEventListener on AbortSignal
-			const mockAddEventListener = jest.fn();
+			const mockAddEventListener = vi.fn();
 			const originalAddEventListener = abortController.signal.addEventListener;
 			abortController.signal.addEventListener = mockAddEventListener;
 
@@ -869,6 +878,7 @@ describe('TestRunnerService', () => {
 					evaluationCollectionRepository,
 					evaluationConfigRepository,
 					workflowCompiler,
+					ownershipService,
 				);
 			});
 
@@ -1997,7 +2007,7 @@ describe('TestRunnerService', () => {
 		// Builds a minimal workflow that passes validateWorkflowConfiguration.
 		// Using a plain object cast (not mock<IWorkflowBase>) so per-node
 		// boolean fields like `disabled` read as undefined instead of being
-		// auto-mocked as truthy functions by jest-mock-extended's deep proxy.
+		// auto-mocked as truthy functions by vitest-mock-extended's deep proxy.
 		const buildWorkflow = (): IWorkflowBase =>
 			({
 				id: WORKFLOW_ID,
@@ -2091,11 +2101,11 @@ describe('TestRunnerService', () => {
 			testRunRepository.isCancellationRequested.mockResolvedValue(false);
 			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
 			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
-			// Path C pre-seeds N pending rows up front; runner then claims them
-			// via tryMarkCaseAsRunning. Mocks return synthetic ids so the runner
-			// has something to update in place of inline create.
-			testCaseExecutionRepository.createPendingBatch.mockImplementation(async (_runId, count) =>
-				Array.from({ length: count }, (_, i) => ({ id: `seeded-case-${i}` }) as never),
+			// Pre-seeds one pending row per index in `runIndices`; runner then claims
+			// them via tryMarkCaseAsRunning. Synthetic ids stand in for real DB rows.
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(
+				async (_runId, runIndices) =>
+					runIndices.map((_, i) => ({ id: `seeded-case-${i}` }) as never),
 			);
 			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
 			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
@@ -2104,7 +2114,7 @@ describe('TestRunnerService', () => {
 			// paths run end-to-end.
 			Object.assign(testRunRepository, {
 				manager: {
-					transaction: jest
+					transaction: vi
 						.fn()
 						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
 				},
@@ -2178,7 +2188,7 @@ describe('TestRunnerService', () => {
 			// `clearAllMocks` resets call history but not implementations. The
 			// `createTestRun` stub is set in the outer `beforeEach`, so it needs
 			// re-stubbing here. `setupHappyPathMocks` re-wires everything else.
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
 			setupHappyPathMocks(5);
 			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
@@ -2373,6 +2383,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 			setupHappyPathMocks(2);
 			const originalEnv = process.env.N8N_CONCURRENCY_EVALUATION_LIMIT;
@@ -2452,6 +2463,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 
 			const { inFlightTracker } = setupHappyPathMocks(6);
@@ -2551,6 +2563,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 
 			setupHappyPathMocks(4);
@@ -2693,6 +2706,49 @@ describe('TestRunnerService', () => {
 			);
 		});
 
+		test('compiles from the supplied snapshot and does not re-read the live config', async () => {
+			// Collection runs pass a frozen config snapshot so a config edit racing
+			// the run can't change later versions' compilation. The runner must
+			// compile from that snapshot and skip the live DB lookup.
+			evaluationConfigRepository.findByIdAndWorkflowId.mockClear();
+			workflowRepository.findById.mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Live',
+				nodes: [{ name: 'LiveNode' }],
+				connections: {},
+				settings: {},
+			} as never);
+			workflowHistoryService.findVersion.mockResolvedValueOnce({
+				versionId: 'wfv-x',
+				nodes: [{ name: 'SnapshotNode' } as never],
+				connections: {} as never,
+			} as never);
+			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-snap' }));
+
+			const snapshot = { id: 'cfg-1', name: 'frozen', metrics: [] } as never;
+			let compiledConfig: unknown;
+			workflowCompiler.compile.mockImplementationOnce((wf, config) => {
+				compiledConfig = config;
+				return wf as never;
+			});
+
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, {
+				collectionId: 'col-1',
+				workflowVersionId: 'wfv-x',
+				evaluationConfigId: 'cfg-1',
+				evaluationConfigSnapshot: snapshot,
+				compileFromConfig: true,
+			});
+			await finished.catch(() => undefined);
+
+			expect(evaluationConfigRepository.findByIdAndWorkflowId).not.toHaveBeenCalled();
+			expect(compiledConfig).toBe(snapshot);
+			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(
+				'wf-1',
+				expect.objectContaining({ evaluationConfigSnapshot: snapshot }),
+			);
+		});
+
 		test('overwrites workflowData.versionId with the pinned history versionId', async () => {
 			// `ExecutionPersistence` reads `workflowData.versionId` and stores
 			// it on the execution row. If the live workflow's `versionId` leaks
@@ -2717,7 +2773,7 @@ describe('TestRunnerService', () => {
 			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-pin-v' }));
 
 			let capturedWorkflow: { versionId?: string } | undefined;
-			const validateSpy = jest
+			const validateSpy = vi
 				.spyOn(
 					testRunnerService as unknown as {
 						validateWorkflowConfiguration: (wf: { versionId?: string }) => void;
@@ -2790,6 +2846,7 @@ describe('TestRunnerService', () => {
 				evaluationCollectionRepository,
 				evaluationConfigRepository,
 				workflowCompiler,
+				ownershipService,
 			);
 
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-running' } as never]);
@@ -2842,7 +2899,7 @@ describe('TestRunnerService', () => {
 			// on the pre-fix code path that *would* take it for this run.
 			// Without this, the test would fail on a transaction TypeError
 			// before reaching the abort assertions, hiding the actual bug.
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(async (cb: (trx: unknown) => Promise<void>) => {
 				await cb({});
 			});
@@ -2867,10 +2924,10 @@ describe('TestRunnerService', () => {
 				testRunnerService as unknown as { abortControllers: Map<string, AbortController> }
 			).abortControllers.set('tr-mine', new AbortController());
 
-			const trxUpdate = jest.fn().mockResolvedValue({ affected: 1 });
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const trxUpdate = vi.fn().mockResolvedValue({ affected: 1 });
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+				async (cb: (trx: { update: Mock }) => Promise<void>) => {
 					await cb({ update: trxUpdate });
 				},
 			);
@@ -2908,10 +2965,10 @@ describe('TestRunnerService', () => {
 			// re-mark a `completed` run as `cancelled` and corrupt the record.
 			testRunRepository.find.mockResolvedValue([{ id: 'tr-just-finished' } as never]);
 
-			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 }); // race: row no longer 'new'/'running'
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const trxUpdate = vi.fn().mockResolvedValue({ affected: 0 }); // race: row no longer 'new'/'running'
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+				async (cb: (trx: { update: Mock }) => Promise<void>) => {
 					await cb({ update: trxUpdate });
 				},
 			);
@@ -3022,14 +3079,15 @@ describe('TestRunnerService', () => {
 			testRunRepository.isCancellationRequested.mockResolvedValue(false);
 			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
 			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
-			testCaseExecutionRepository.createPendingBatch.mockImplementation(async (_runId, count) =>
-				Array.from({ length: count }, (_, i) => ({ id: `seeded-case-${i}` }) as never),
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(
+				async (_runId, runIndices) =>
+					runIndices.map((_, i) => ({ id: `seeded-case-${i}` }) as never),
 			);
 			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
 			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
 			Object.assign(testRunRepository, {
 				manager: {
-					transaction: jest
+					transaction: vi
 						.fn()
 						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
 				},
@@ -3114,6 +3172,222 @@ describe('TestRunnerService', () => {
 		});
 	});
 
+	describe('rowIndices - subset execution', () => {
+		const TRIGGER_NODE_NAME = 'Dataset Trigger';
+		const METRICS_NODE_NAME = 'Set Metrics';
+		const USER = mock<{ id: string }>({ id: 'user-1' });
+		const WORKFLOW_ID = 'wf-1';
+
+		const buildWorkflow = (): IWorkflowBase =>
+			({
+				id: WORKFLOW_ID,
+				name: 'Eval Workflow',
+				active: false,
+				nodes: [
+					{
+						id: 'trigger',
+						name: TRIGGER_NODE_NAME,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0] as [number, number],
+						parameters: { source: 'dataTable', dataTableId: 'dt-1' },
+					},
+					{
+						id: 'metrics',
+						name: METRICS_NODE_NAME,
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [200, 0] as [number, number],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: { assignments: [{ id: '1', name: 'score', value: 1 }] },
+						},
+					},
+				],
+				connections: {},
+				settings: {},
+			}) as unknown as IWorkflowBase;
+
+		const buildDatasetExecution = (rowCount: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[TRIGGER_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [
+											Array.from({ length: rowCount }, (_, i) => ({
+												json: { caseId: i },
+											})),
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		const buildCaseExecution = (score: number): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[METRICS_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: { score } }]],
+									},
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		// Wires all standard mocks for a rowIndices test. Returns a capture of
+		// which runIndices were passed to createPendingBatch so the test can
+		// assert the correct dataset indices were seeded.
+		const setupRowIndicesMocks = (datasetSize: number) => {
+			const workflow = buildWorkflow();
+			workflowRepository.findById.mockResolvedValue(workflow as never);
+			concurrencyControlService.throttle.mockResolvedValue(undefined as never);
+			testRunRepository.markAsRunning.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCompleted.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCancelled.mockResolvedValue(undefined as never);
+			testRunRepository.clearInstanceTracking.mockResolvedValue(undefined as never);
+			testRunRepository.isCancellationRequested.mockResolvedValue(false);
+			testCaseExecutionRepository.createTestCaseExecution.mockResolvedValue(undefined as never);
+			testCaseExecutionRepository.markAllPendingAsCancelled.mockResolvedValue(undefined as never);
+
+			const capturedRunIndices: number[][] = [];
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(
+				async (_runId, runIndices) => {
+					capturedRunIndices.push([...runIndices]);
+					return runIndices.map((_, i) => ({ id: `seeded-case-${i}` }) as never);
+				},
+			);
+			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
+			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
+			Object.assign(testRunRepository, {
+				manager: {
+					transaction: vi
+						.fn()
+						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
+				},
+			});
+
+			let runCallIndex = 0;
+			workflowRunner.run.mockImplementation(async () => {
+				const id = runCallIndex === 0 ? 'dataset-exec' : `case-exec-${runCallIndex}`;
+				runCallIndex++;
+				return id;
+			});
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') return buildDatasetExecution(datasetSize);
+				return buildCaseExecution(1);
+			});
+
+			return { capturedRunIndices };
+		};
+
+		test('with no rowIndices, all rows run and createPendingBatch receives sequential indices', async () => {
+			const { capturedRunIndices } = setupRowIndicesMocks(5);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			// All 5 rows should have run (1 dataset trigger + 5 cases).
+			expect(workflowRunner.run).toHaveBeenCalledTimes(6);
+			// createPendingBatch should have been called with [0, 1, 2, 3, 4].
+			expect(capturedRunIndices[0]).toEqual([0, 1, 2, 3, 4]);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('with rowIndices: [7], only dataset row 7 runs and its runIndex equals 7', async () => {
+			// Dataset has 10 rows (indices 0–9). We only want row 7.
+			const { capturedRunIndices } = setupRowIndicesMocks(10);
+			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'tr-subset' }));
+
+			await testRunnerService
+				.startTestRun(USER as never, WORKFLOW_ID, 1, {
+					rowIndices: [7],
+				})
+				.then(async ({ finished }) => await finished);
+
+			// Only 1 case run (+ 1 dataset trigger).
+			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+			// The pending batch must be seeded with exactly index 7 — not 0.
+			expect(capturedRunIndices[0]).toEqual([7]);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('with rowIndices: [2, 5], only those two rows run with correct runIndex values', async () => {
+			const { capturedRunIndices } = setupRowIndicesMocks(8);
+			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'tr-two-rows' }));
+
+			await testRunnerService
+				.startTestRun(USER as never, WORKFLOW_ID, 1, {
+					rowIndices: [2, 5],
+				})
+				.then(async ({ finished }) => await finished);
+
+			// 2 cases + 1 dataset trigger.
+			expect(workflowRunner.run).toHaveBeenCalledTimes(3);
+			expect(capturedRunIndices[0]).toEqual([2, 5]);
+			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+		});
+
+		test('out-of-range indices are silently dropped', async () => {
+			// Dataset has 3 rows; indices 1, 99 and -1 are passed. Only 1 is valid.
+			const { capturedRunIndices } = setupRowIndicesMocks(3);
+			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'tr-oor' }));
+
+			await testRunnerService
+				.startTestRun(USER as never, WORKFLOW_ID, 1, {
+					rowIndices: [1, 99],
+				})
+				.then(async ({ finished }) => await finished);
+
+			// Only row 1 is valid; 99 is out of range.
+			expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+			expect(capturedRunIndices[0]).toEqual([1]);
+		});
+
+		test('empty rowIndices runs all rows (same as omitting rowIndices)', async () => {
+			const { capturedRunIndices } = setupRowIndicesMocks(3);
+			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'tr-empty-indices' }));
+
+			await testRunnerService
+				.startTestRun(USER as never, WORKFLOW_ID, 1, {
+					rowIndices: [],
+				})
+				.then(async ({ finished }) => await finished);
+
+			// All 3 rows should run.
+			expect(workflowRunner.run).toHaveBeenCalledTimes(4);
+			expect(capturedRunIndices[0]).toEqual([0, 1, 2]);
+		});
+
+		test('telemetry test_case_count reflects the subset count, not the total dataset size', async () => {
+			setupRowIndicesMocks(10);
+			testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'tr-telem-subset' }));
+
+			await testRunnerService
+				.startTestRun(USER as never, WORKFLOW_ID, 1, {
+					rowIndices: [0, 3, 9],
+				})
+				.then(async ({ finished }) => await finished);
+
+			const payload = telemetry.track.mock.calls.find(
+				([e]) => e === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			// Only 3 of the 10 dataset rows were run.
+			expect(payload.test_case_count).toBe(3);
+		});
+	});
+
 	describe('cancelTestRun', () => {
 		test('fallback update does not clobber a run that completed between requestCancellation and update', async () => {
 			// Mirrors the collection-level race: between `requestCancellation`
@@ -3122,10 +3396,10 @@ describe('TestRunnerService', () => {
 			// so the terminal state wins.
 			// No abort controller registered → `cancelTestRunLocally` returns
 			// false → fallback path fires.
-			const trxUpdate = jest.fn().mockResolvedValue({ affected: 0 });
-			const dbManager = mock<{ transaction: jest.Mock }>();
+			const trxUpdate = vi.fn().mockResolvedValue({ affected: 0 });
+			const dbManager = mock<{ transaction: Mock }>();
 			dbManager.transaction.mockImplementation(
-				async (cb: (trx: { update: jest.Mock }) => Promise<void>) => {
+				async (cb: (trx: { update: Mock }) => Promise<void>) => {
 					await cb({ update: trxUpdate });
 				},
 			);

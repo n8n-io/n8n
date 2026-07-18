@@ -11,14 +11,12 @@ Use this after deciding a config change is needed and before calling
 
 ### Workflow
 
-1. Call \`read_config\` immediately before every \`write_config\` or \`patch_config\`.
-2. Use only the \`config\` and \`configHash\` returned by that same \`read_config\`.
-3. For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
-4. For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
-5. Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
-6. On \`stage: "stale"\`, retry once from the returned \`config\` and \`configHash\`.
-7. On parse, patch, or schema errors, fix the payload, call \`read_config\`
-   again, and retry from the fresh \`configHash\`.
+Follow Config Freshness for authoritative reads, hashes, and stale recovery.
+- For \`write_config\`, send the complete config JSON string plus \`baseConfigHash\`.
+- For \`patch_config\`, send RFC 6902 operations as a JSON string plus \`baseConfigHash\`.
+- Use JSON Pointer paths like \`/field\`, \`/nested/field\`, \`/array/0\`, and \`/array/-\`.
+- On parse, patch, or schema errors, fix the payload, call \`read_config\`
+  again, and retry from the fresh \`configHash\`.
 
 ### Rules
 
@@ -30,7 +28,7 @@ ${getSchemaReferenceSection()}
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
 - Never write placeholder instructions, tool descriptions, or skill descriptions.
-- Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
+- Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\` or \`ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
 
@@ -66,9 +64,24 @@ Use \`patch_config\` with:
 - If \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
 
+#### Remove An Existing Chat Integration
+
+- Chat-channel removal is a config edit, not a \`configure_channel\` action.
+- Call \`read_config\` first and inspect \`config.integrations\`.
+- If you know the exact array index to remove, prefer:
+\`\`\`json
+[{ "op": "remove", "path": "/integrations/1" }]
+\`\`\`
+- If replacing the whole list is clearer, replace \`/integrations\` with the
+  filtered array of surviving entries.
+- Omitting \`integrations\` preserves existing channels. To remove one, send an
+  explicit \`remove\` op or an explicit filtered \`integrations\` array.
+
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
+- Prompt caching follows Agent Config Rules above; the write path enforces it
+  automatically.
 - Web search lives under \`config.webSearch\`.
 - Only OpenAI and Anthropic models support native web search. For those models, set
   \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the
@@ -123,6 +136,8 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`write_config\` replaces the full config; include every field that should survive.
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
+- Removing an integration means deleting its entry from \`integrations[]\`; do
+  not call \`configure_channel\` for removal.
 - Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
 - Empty, placeholder, or guessed \`instructions\` values are rejected; ask for details instead.
 
@@ -136,7 +151,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 
 ### Error Recovery
 
-- \`stage: "stale"\`: retry once from the returned \`config\` and \`configHash\`.
+- \`stage: "stale"\`: follow Config Freshness.
 - \`stage: "parse"\`: fix JSON syntax, then call \`read_config\` before retrying.
 - \`stage: "patch"\`: fix JSON Pointer paths or operation shape, then call \`read_config\` before retrying.
 - \`stage: "schema"\`: compare the payload against the Config schema reference, then call \`read_config\` before retrying.

@@ -14,14 +14,28 @@ import {
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import type { RememberedManualExecution } from '../canvasPreview.utils';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
+
+// Map-backed stand-in for the thread runtime's user-run memory. A plain Map (not the
+// disposed execution-state store) so a remembered user run survives the simulated
+// tab-switch dispose, exactly like the real per-thread runtime.
+const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
 
 const thread = reactive({
 	messages: [],
 	consumePendingHandoff: vi.fn(),
 	sendMessage: vi.fn(),
+	rememberManualExecution: (
+		workflowId: string,
+		executionId: string,
+		agentExecutionId: string | undefined,
+	) => rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId }),
+	getRememberedManualExecution: (workflowId: string) => rememberedManualExecutions.get(workflowId),
+	forgetManualExecution: (workflowId: string) => rememberedManualExecutions.delete(workflowId),
 });
 
 vi.mock('../instanceAi.store', () => ({
@@ -139,6 +153,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		thread.messages = [];
 		thread.consumePendingHandoff.mockReset();
 		thread.sendMessage.mockReset();
+		rememberedManualExecutions.clear();
 	});
 
 	it('restores the cached agent execution after the artifact workflow reloads', async () => {
@@ -297,5 +312,135 @@ describe('InstanceAiWorkflowPreview', () => {
 		}
 
 		expect(executionState.activeExecutionId).toBe('exec-user-1');
+	});
+
+	it('restores the user execution after a tab switch disposes preview state', async () => {
+		const { wrapper, listeners, workflowsStore } = await mountPreview();
+		const documentId = createWorkflowDocumentId('wf-1');
+		const executionState = useWorkflowExecutionStateStore(documentId);
+
+		// Agent run is shown when the preview first opens.
+		expect(executionState.displayedExecutionId).toBe('exec-agent-1');
+
+		// User triggers a manual run in the embedded canvas.
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-user-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+
+		// Switching artifact tabs unmounts the canvas and disposes its execution state.
+		executionState.resetExecutionState();
+		disposeWorkflowExecutionStateStore(executionState);
+
+		// Switching back reloads the workflow.
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+		await flushPromises();
+
+		const restoredExecutionState = useWorkflowExecutionStateStore(documentId);
+		expect(restoredExecutionState.displayedExecutionId).toBe('exec-user-1');
+		expect(workflowsStore.fetchExecutionDataById).toHaveBeenLastCalledWith('exec-user-1');
+	});
+
+	it('prefers a newer agent run over the remembered user run after the agent re-runs', async () => {
+		const { wrapper, listeners, workflowsStore } = await mountPreview();
+		const documentId = createWorkflowDocumentId('wf-1');
+		const executionState = useWorkflowExecutionStateStore(documentId);
+
+		// User triggers a manual run while the agent run (exec-agent-1) is showing.
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-user-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+
+		// Tab switch disposes the canvas state.
+		executionState.resetExecutionState();
+		disposeWorkflowExecutionStateStore(executionState);
+
+		// While on another tab, the agent runs the workflow again.
+		await wrapper.setProps({ executionResult: { executionId: 'exec-agent-2', status: 'success' } });
+		await flushPromises();
+
+		// Switching back reloads the workflow.
+		await wrapper.get('[data-test-id="workflow-loaded"]').trigger('click');
+		await flushPromises();
+
+		const restoredExecutionState = useWorkflowExecutionStateStore(documentId);
+		expect(restoredExecutionState.displayedExecutionId).toBe('exec-agent-2');
+		expect(workflowsStore.fetchExecutionDataById).toHaveBeenLastCalledWith('exec-agent-2');
+	});
+
+	it('opens the logs panel when an execution starts for the previewed workflow', async () => {
+		const { listeners } = await mountPreview();
+		const logsStore = useLogsStore();
+		logsStore.toggleOpen(false);
+
+		// User run from the embedded canvas.
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-user-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+		expect(logsStore.isOpen).toBe(true);
+
+		// Agent run while the artifact is open.
+		logsStore.toggleOpen(false);
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-agent-2',
+					mode: 'manual',
+					source: 'instance_ai',
+					startedAt: new Date(),
+					workflowId: 'wf-1',
+					flattedRunData: '[]',
+				},
+			});
+		}
+		expect(logsStore.isOpen).toBe(true);
+	});
+
+	it('does not open the logs panel for executions of other workflows', async () => {
+		const { listeners } = await mountPreview();
+		const logsStore = useLogsStore();
+		logsStore.toggleOpen(false);
+
+		for (const listener of listeners) {
+			listener({
+				type: 'executionStarted',
+				data: {
+					executionId: 'exec-other-1',
+					mode: 'manual',
+					startedAt: new Date(),
+					workflowId: 'wf-2',
+					flattedRunData: '[]',
+				},
+			});
+		}
+
+		expect(logsStore.isOpen).toBe(false);
 	});
 });

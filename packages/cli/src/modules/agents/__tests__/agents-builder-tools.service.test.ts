@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -11,8 +12,8 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
-import type { User, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -23,24 +24,26 @@ import type { DynamicNodeParametersService } from '@/services/dynamic-node-param
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
+import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
 } from '../builder/agents-builder-tools.service';
-import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
+import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
-import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import type { AiService } from '@/services/ai.service';
+import * as checkAccess from '@/permissions.ee/check-access';
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
@@ -48,7 +51,7 @@ type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'
 	Pick<AgentConfigService, 'updateConfig'> &
 	Pick<AgentCustomToolsService, 'buildCustomTool'> &
 	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
-	Pick<AgentSkillsService, 'createSkill'>;
+	Pick<AgentSkillsService, 'createSkills'>;
 
 function makeService() {
 	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
@@ -56,23 +59,23 @@ function makeService() {
 	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
 	const agentIntegrationPersistenceService =
 		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
-	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkill'>>();
+	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkills'>>();
 	const purposeServices = {
 		findById: agentsService.findById,
 		findByProjectId: agentsService.findByProjectId,
 		updateConfig: agentConfigService.updateConfig,
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
 		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
-		createSkill: agentSkillsService.createSkill,
-	} as jest.Mocked<BuilderPurposeServices>;
+		createSkills: agentSkillsService.createSkills,
+	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
-	const workflowRepository = mock<WorkflowRepository>();
+	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
 	const agentsToolsService = mock<AgentsToolsService>();
-	const builderModelLookupService = mock<BuilderModelLookupService>();
+	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
-	const agentRepository = mock<AgentRepository>();
+	const agentPublishService = mock<AgentPublishService>();
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -83,7 +86,7 @@ function makeService() {
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const transport = mock<HttpTransport>();
-	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 
@@ -94,14 +97,14 @@ function makeService() {
 		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
-		workflowRepository,
+		attachableWorkflowsService,
 		agentsToolsService,
-		builderModelLookupService,
+		builderModelLiveLookupService,
 		mcpRegistryService,
 		mock(),
 		credentialTypes,
 		agentTaskService,
-		agentRepository,
+		agentPublishService,
 		aiService,
 		outboundHttp,
 		dynamicNodeParametersService,
@@ -114,8 +117,9 @@ function makeService() {
 		service,
 		agentsService: purposeServices,
 		secureRuntime,
+		attachableWorkflowsService,
 		agentTaskService,
-		agentRepository,
+		agentPublishService,
 		nodeTypes,
 		outboundHttp,
 	};
@@ -217,7 +221,11 @@ describe('AgentsBuilderToolsService', () => {
 	const user = mock<User>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	describe('JSON config tools', () => {
@@ -236,6 +244,16 @@ describe('AgentsBuilderToolsService', () => {
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
 		});
 
+		it('registers publish and unpublish tools in the builder toolset', () => {
+			const { service } = makeService();
+
+			const toolNames = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.map((tool) => tool.name);
+			expect(toolNames).toContain(BUILDER_TOOLS.PUBLISH_AGENT);
+			expect(toolNames).toContain(BUILDER_TOOLS.UNPUBLISH_AGENT);
+		});
+
 		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
 			const { service, outboundHttp } = makeService();
 
@@ -246,7 +264,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 		});
 
-		it('read_config returns the current config snapshot metadata', async () => {
+		it('read_config returns the full config and its hash, without agent metadata', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.findById.mockResolvedValue(makeAgent());
 
@@ -256,8 +274,6 @@ describe('AgentsBuilderToolsService', () => {
 				ok: true,
 				config: { ...baseConfig, integrations: [] },
 				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
-				updatedAt: '2026-01-01T00:00:00.000Z',
-				versionId: 'v1',
 			});
 		});
 
@@ -279,6 +295,7 @@ describe('AgentsBuilderToolsService', () => {
 				{},
 				ctx,
 			);
+			const description = getJsonTool(service, BUILDER_TOOLS.LIST_INTEGRATION_TYPES).description;
 
 			expect(result).toEqual([
 				{
@@ -291,6 +308,8 @@ describe('AgentsBuilderToolsService', () => {
 					useNodeToolWhen: ['The agent only needs to create or update Linear tickets'],
 				},
 			]);
+			expect(description).toContain('pass the selected integration `type` to `configure_channel`');
+			expect(description).toContain('never use `ask_credential` for chat-channel credentials');
 		});
 
 		it('list_sub_agents returns published same-project agents except the target agent', async () => {
@@ -339,10 +358,11 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -362,18 +382,11 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({
-				ok: true,
-				config: normalizedConfig,
-				configHash: getAgentConfigHash(normalizedConfig),
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
+			expect(result).toEqual({ ok: true });
 		});
 
-		it('patch_config rejects stale baseConfigHash without updating', async () => {
+		it('patch_config rejects stale baseConfigHash without updating or echoing the config', async () => {
 			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
@@ -391,11 +404,54 @@ describe('AgentsBuilderToolsService', () => {
 				ok: false,
 				stage: 'stale',
 				errors: expect.arrayContaining([expect.objectContaining({ path: '(root)' })]),
-				config: currentConfig,
-				configHash: getAgentConfigHash(currentConfig),
-				updatedAt: '2026-01-01T00:00:00.000Z',
-				versionId: 'v1',
 			});
+		});
+
+		it('patch_config can remove one integration while preserving siblings', async () => {
+			const { service, agentsService } = makeService();
+			const currentIntegrations = [
+				{ type: 'slack', credentialId: 'slack-1' },
+				{ type: 'linear', credentialId: 'linear-1' },
+				{
+					type: 'telegram',
+					credentialId: 'telegram-1',
+					settings: { accessMode: 'public' as const, allowedUsers: [] },
+				},
+			] as NonNullable<AgentJsonConfig['integrations']>;
+			const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+			const updatedConfig = {
+				...currentConfig,
+				integrations: [currentIntegrations[0], currentIntegrations[2]],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
+			};
+			const agent = makeAgent(baseConfig);
+			agent.integrations = currentIntegrations;
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([{ op: 'remove', path: '/integrations/1' }]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				expect.objectContaining({
+					integrations: [currentIntegrations[0], currentIntegrations[2]],
+				}),
+			);
+			expect(result).toEqual({ ok: true });
 		});
 
 		it('patch_config strips legacy schedule integrations from the current snapshot', async () => {
@@ -443,10 +499,11 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -464,13 +521,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({
-				ok: true,
-				config: normalizedConfig,
-				configHash: getAgentConfigHash(normalizedConfig),
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
+			expect(result).toEqual({ ok: true });
 		});
 
 		it('write_config strips legacy schedule integrations before saving', async () => {
@@ -605,10 +656,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				tools: [makeLinearToolWithParameters(nodeParameters)],
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -627,13 +679,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({
-				ok: true,
-				config: normalizedConfig,
-				configHash: getAgentConfigHash(normalizedConfig),
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
+			expect(result).toEqual({ ok: true });
 		});
 
 		it('patch_config allows $fromAI on runtime fields when dynamic selectors are fixed', async () => {
@@ -653,10 +699,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				tools: [nodeTool],
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -675,13 +722,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({
-				ok: true,
-				config: normalizedConfig,
-				configHash: getAgentConfigHash(normalizedConfig),
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
+			expect(result).toEqual({ ok: true });
 		});
 
 		it('write_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
@@ -695,10 +736,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				instructions: 'Help with approved support tickets.',
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -717,13 +759,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({
-				ok: true,
-				config: normalizedConfig,
-				configHash: getAgentConfigHash(normalizedConfig),
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
+			expect(result).toEqual({ ok: true });
 		});
 
 		it('patch_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
@@ -737,10 +773,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				instructions: 'Updated instructions',
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -761,116 +798,13 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({
-				ok: true,
-				config: normalizedConfig,
-				configHash: getAgentConfigHash(normalizedConfig),
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
+			expect(result).toEqual({ ok: true });
 		});
 
-		it('write_config adds OpenAI native web search defaults', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = {
-				...currentConfig,
-				model: 'openai/gpt-5',
-				credential: 'OpenAI Key',
-			};
-			const normalizedConfig = {
-				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: {
-					'openai.web_search': { externalWebAccess: true, searchContextSize: 'medium' },
-				},
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
-
-		it('write_config fills missing native web search default settings', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig: AgentJsonConfig = {
-				...currentConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': {} },
-			};
-			const normalizedConfig = {
-				...updatedConfig,
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
-
-		it('patch_config swaps native web search defaults when changing supported providers', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig: AgentJsonConfig = {
-				...baseConfig,
-				model: 'openai/gpt-5',
-				credential: 'OpenAI Key',
-				config: { webSearch: { enabled: true } },
-				providerTools: {
-					'openai.web_search': { externalWebAccess: true, searchContextSize: 'medium' },
-				},
-				integrations: [],
-			};
-			const normalizedConfig = {
-				...currentConfig,
-				model: 'anthropic/claude-sonnet-4-5',
-				credential: 'Anthropic Key',
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/model', value: 'anthropic/claude-sonnet-4-5' },
-						{ op: 'replace', path: '/credential', value: 'Anthropic Key' },
-					]),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
+		// Native web-search provider-tool derivation (add defaults, fill missing
+		// settings, swap on provider change, strip stale tools for fallback
+		// providers) now lives in AgentConfigService.updateConfig and is covered by
+		// config-normalization.test.ts.
 
 		it('write_config rejects native web search for unsupported providers', async () => {
 			const { service, agentsService } = makeService();
@@ -938,72 +872,6 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
-		it('write_config preserves fallback web search config for unsupported providers', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig: AgentJsonConfig = {
-				...currentConfig,
-				model: 'xai/grok-4',
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-				providerTools: {
-					'anthropic.web_search': { maxUses: 5 },
-				},
-			};
-			const normalizedConfig: AgentJsonConfig = {
-				...currentConfig,
-				model: 'xai/grok-4',
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
-
-		it('write_config preserves fallback web search config for native-capable providers', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig: AgentJsonConfig = {
-				...currentConfig,
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-				providerTools: {
-					'anthropic.web_search': { maxUses: 5 },
-				},
-			};
-			const normalizedConfig: AgentJsonConfig = {
-				...currentConfig,
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
-
 		it('write_config rejects draft LLM config without updating', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
@@ -1028,7 +896,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('write_config rejects stale baseConfigHash without updating', async () => {
+		it('write_config rejects stale baseConfigHash without updating or echoing the config', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
@@ -1047,11 +915,194 @@ describe('AgentsBuilderToolsService', () => {
 				ok: false,
 				stage: 'stale',
 				errors: expect.arrayContaining([expect.objectContaining({ path: '(root)' })]),
-				config: currentConfig,
-				configHash: getAgentConfigHash(currentConfig),
-				updatedAt: '2026-01-01T00:00:00.000Z',
-				versionId: 'v1',
 			});
+		});
+
+		describe('prompt caching defaults', () => {
+			it('write_config defaults prompt caching to enabled for a supported provider when omitted', async () => {
+				const { service, agentsService } = makeService();
+				const currentConfig = { ...baseConfig, integrations: [] };
+				// Explicitly disable web search so its own write-path normalizer
+				// doesn't add unrelated config/providerTools keys to the expectation.
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					config: { webSearch: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config strips prompt caching when switching to an unsupported provider', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'google/gemini-2.5-flash',
+					credential: 'Google Key',
+				};
+				const { config: _droppedConfig, ...normalizedConfig } = updatedConfig;
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config force-enables prompt caching even when the config says enabled: false', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					model: 'openai/gpt-5',
+					credential: 'OpenAI Key',
+					integrations: [],
+					config: { promptCaching: { enabled: false } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'Anthropic Key',
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'Anthropic Key',
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config preserves an explicit Anthropic ttl', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: {
+						webSearch: { enabled: false },
+						promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+					},
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: {
+						webSearch: { enabled: false },
+						promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } },
+					},
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+		});
+	});
+
+	describe('list_workflows tool', () => {
+		function getListWorkflowsTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === 'list_workflows')!;
+		}
+
+		it('passes the search term to the attachable workflows service', async () => {
+			const { service, attachableWorkflowsService } = makeService();
+			attachableWorkflowsService.list.mockResolvedValue([
+				{ name: 'Billing follow-up', active: true, triggerType: 'manual' },
+			]);
+
+			const result = await getListWorkflowsTool(service).handler!({ searchTerm: 'billing' }, ctx);
+
+			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, projectId, 'billing');
+			expect(result).toEqual({
+				workflows: [{ name: 'Billing follow-up', active: true, triggerType: 'manual' }],
+			});
+			expect(getListWorkflowsTool(service).description).not.toContain('ALWAYS call this');
+			expect(getListWorkflowsTool(service).description).not.toContain('preferred');
 		});
 	});
 
@@ -1062,7 +1113,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns the tool name as id', async () => {
+		it('stores a custom tool and returns only its id and name, not the full descriptor', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -1097,38 +1148,70 @@ describe('AgentsBuilderToolsService', () => {
 			expect(result).toEqual({
 				ok: true,
 				id: 'seo_analyzer',
-				descriptor,
+				name: 'seo_analyzer',
 			});
 		});
 	});
 
-	describe('create_skill tool', () => {
-		function getCreateSkillTool(service: AgentsBuilderToolsService) {
+	describe('create_skills tool', () => {
+		function getCreateSkillsTool(service: AgentsBuilderToolsService) {
 			return service
 				.getTools(agentId, projectId, credentialProvider, user)
-				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_SKILL)!;
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_SKILLS)!;
 		}
 
-		it('is available to the builder with config attachment guidance', () => {
+		function makeSkillInput(name: string) {
+			return {
+				name,
+				description: 'Use when summarizing meeting notes',
+				instructions: 'Extract decisions and action items.',
+			};
+		}
+
+		it('is available to the builder with batch and config attachment guidance', () => {
 			const { service } = makeService();
 
-			const tool = getCreateSkillTool(service);
+			const tool = getCreateSkillsTool(service);
 
 			expect(tool).toBeDefined();
-			expect(tool.description).toContain('does NOT attach the skill to the agent config');
+			expect(tool.description).toContain('does NOT attach the skills to the agent config');
 			expect(tool.description).toContain('patch_config');
-			expect(tool.description).toContain('when to load it');
-			expect(tool.description).toContain('ask the user clarifying');
-			expect(tool.description).toContain('Gotchas');
+			expect(tool.description).toContain('all-or-nothing');
+			expect(tool.description).toContain(
+				'Pass every skill you currently know how to write in one `skills` array',
+			);
+			expect(tool.description).toContain('{ ok: true, skills:');
+			expect(tool.description).toContain('{ ok: false, errors }');
 		});
 
-		it('puts the structured body template in the body parameter', () => {
+		it('puts quality and batching guardrails in systemInstruction, not description', () => {
 			const { service } = makeService();
 
-			const tool = getCreateSkillTool(service);
-			const bodySchema = (
-				tool.inputSchema as unknown as { shape: { body: { description?: string } } }
-			).shape.body;
+			const tool = getCreateSkillsTool(service);
+
+			expect(tool.systemInstruction).toContain('vague or placeholder skill');
+			expect(tool.systemInstruction).toContain('ask the user clarifying');
+			expect(tool.systemInstruction).toContain('Gotchas');
+			expect(tool.systemInstruction).toContain('exact target-agent tool names');
+			expect(tool.systemInstruction).toContain('references are not automatically loaded');
+			expect(tool.systemInstruction).toContain(
+				'instructions must say exactly when to load each one',
+			);
+			expect(tool.systemInstruction).toContain('Do not invent tool names or reference paths');
+			expect(tool.systemInstruction).toContain('Batch every skill');
+			expect(tool.description).not.toContain('ask the user clarifying');
+			expect(tool.description).not.toContain('Gotchas');
+		});
+
+		it('puts the structured body template in each skill instructions parameter', () => {
+			const { service } = makeService();
+
+			const tool = getCreateSkillsTool(service);
+			const instructionsSchema = (
+				tool.inputSchema as unknown as {
+					shape: { skills: { element: { shape: { instructions: { description?: string } } } } };
+				}
+			).shape.skills.element.shape.instructions;
 
 			for (const heading of [
 				'## Overview',
@@ -1138,108 +1221,162 @@ describe('AgentsBuilderToolsService', () => {
 				'## Example',
 				'## Gotchas',
 			]) {
-				expect(bodySchema.description).toContain(heading);
+				expect(instructionsSchema.description).toContain(heading);
 			}
 		});
 
-		it('creates a skill and returns the generated skill id', async () => {
+		it('creates multiple skills in one call and returns only ids and names, not the bodies, in order', async () => {
 			const { service, agentsService } = makeService();
-			agentsService.createSkill.mockResolvedValue({
-				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
-				skill: {
-					name: 'Summarize Meetings',
-					description: 'Use when summarizing meeting notes',
-					instructions: 'Extract decisions and action items.',
-				},
-				versionId: 'v2',
-			});
-
-			const result = await getCreateSkillTool(service).handler!(
-				{
-					name: 'Summarize Meetings',
-					description: 'Use when summarizing meeting notes',
-					body: 'Extract decisions and action items.',
-				},
-				ctx,
-			);
-
-			expect(agentsService.createSkill).toHaveBeenCalledWith(agentId, projectId, {
+			const skillOne = {
 				name: 'Summarize Meetings',
 				description: 'Use when summarizing meeting notes',
 				instructions: 'Extract decisions and action items.',
-			});
+			};
+			const skillTwo = {
+				name: 'Draft Follow-up',
+				description: 'Use when drafting a follow-up email',
+				instructions: 'Summarize next steps and send a draft.',
+			};
+			agentsService.createSkills.mockResolvedValue([
+				{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill: skillOne, versionId: 'v2' },
+				{ id: 'skill_1Cd8YkNm4Rz6Wv3M', skill: skillTwo, versionId: 'v2' },
+			]);
+
+			const result = await getCreateSkillsTool(service).handler!(
+				{ skills: [skillOne, skillTwo] },
+				ctx,
+			);
+
+			expect(agentsService.createSkills).toHaveBeenCalledWith(agentId, projectId, [
+				skillOne,
+				skillTwo,
+			]);
 			expect(result).toEqual({
 				ok: true,
-				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
-				skill: {
-					name: 'Summarize Meetings',
-					description: 'Use when summarizing meeting notes',
-					instructions: 'Extract decisions and action items.',
-				},
+				skills: [
+					{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', name: skillOne.name },
+					{ id: 'skill_1Cd8YkNm4Rz6Wv3M', name: skillTwo.name },
+				],
 			});
 		});
 
-		it('enforces name and body size limits via the input schema', () => {
+		it('surfaces a service error (e.g. duplicate name) for the whole batch', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.createSkills.mockRejectedValue(
+				new Error('Agent already has a skill named "Summarize Meetings".'),
+			);
+
+			const result = await getCreateSkillsTool(service).handler!(
+				{ skills: [makeSkillInput('Summarize Meetings')] },
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Agent already has a skill named "Summarize Meetings".' }],
+			});
+		});
+
+		it('rejects an empty skills array via the input schema', () => {
 			const { service } = makeService();
 
 			const result = (
-				getCreateSkillTool(service).inputSchema as unknown as {
+				getCreateSkillsTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({ skills: [] });
+
+			expect(result.success).toBe(false);
+		});
+
+		it('enforces name and instruction size limits via the input schema', () => {
+			const { service } = makeService();
+
+			const result = (
+				getCreateSkillsTool(service).inputSchema as unknown as {
 					safeParse: (input: unknown) => { success: boolean };
 				}
 			).safeParse({
-				name: 'a'.repeat(129),
-				description: 'Use when summarizing meeting notes',
-				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+				skills: [
+					{
+						name: 'a'.repeat(129),
+						description: 'Use when summarizing meeting notes',
+						instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+					},
+				],
 			});
 
 			expect(result.success).toBe(false);
 		});
 	});
 
-	describe('create_task tool', () => {
-		function getCreateTaskTool(service: AgentsBuilderToolsService) {
+	describe('create_tasks tool', () => {
+		function getCreateTasksTool(service: AgentsBuilderToolsService) {
 			return service
 				.getTools(agentId, projectId, credentialProvider, user)
-				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_TASK)!;
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_TASKS)!;
 		}
 
-		const publishedAgent = { activeVersionId: 'v1' } as unknown as Agent;
-		const unpublishedAgent = { activeVersionId: null } as unknown as Agent;
-
-		const taskInput = {
+		const taskOneInput = {
 			name: 'Daily summary',
 			objective: 'Summarize the team Slack #general channel from the last 24h and post a recap.',
 			cronExpression: '0 9 * * *',
 		};
+		const taskTwoInput = {
+			name: 'Weekly digest',
+			objective: 'Summarize the week across #general and email a digest to the team.',
+			cronExpression: '0 9 * * 1',
+		};
 
-		function makeTaskDto(): AgentTaskDto {
+		function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
 			return {
 				id: 'task-1',
-				...taskInput,
+				...taskOneInput,
 				createdAt: '2026-01-01T00:00:00.000Z',
 				updatedAt: '2026-01-01T00:00:00.000Z',
+				...overrides,
 			};
 		}
 
-		it('instructs the builder to clarify before creating a task', () => {
+		it('is available to the builder with batch and config attachment guidance', () => {
 			const { service } = makeService();
 
-			const tool = getCreateTaskTool(service);
+			const tool = getCreateTasksTool(service);
 
 			expect(tool).toBeDefined();
-			expect(tool.description).toContain('ask the user clarifying questions');
-			expect(tool.description).toContain('self-contained');
-			expect(tool.description).toContain('MUST NOT');
-			expect(tool.description).toContain('Success criteria');
+			expect(tool.description).toContain('all-or-nothing');
+			expect(tool.description).toContain(
+				'Pass every task you currently know how to write in one `tasks` array',
+			);
+			expect(tool.description).toContain('config.tasks');
+			expect(tool.description).toContain('{ ok: true, tasks:');
+			expect(tool.description).toContain('{ ok: false, errors }');
 		});
 
-		it('puts the structured objective template in the objective parameter', () => {
+		it('puts quality and batching guardrails in systemInstruction, not description', () => {
 			const { service } = makeService();
 
-			const tool = getCreateTaskTool(service);
+			const tool = getCreateTasksTool(service);
+
+			expect(tool.systemInstruction).toContain('vague, broad, or placeholder objective');
+			expect(tool.systemInstruction).toContain('ask the user clarifying questions');
+			expect(tool.systemInstruction).toContain('self-contained');
+			expect(tool.systemInstruction).toContain('Success criteria');
+			expect(tool.systemInstruction).toContain('A task can only use tools the agent already has');
+			expect(tool.systemInstruction).toContain('Batch every task');
+			expect(tool.description).not.toContain('ask the user clarifying questions');
+			expect(tool.description).not.toContain('Success criteria');
+		});
+
+		it('puts the structured objective template in each task objective parameter', () => {
+			const { service } = makeService();
+
+			const tool = getCreateTasksTool(service);
 			const objectiveSchema = (
-				tool.inputSchema as unknown as { shape: { objective: { description?: string } } }
-			).shape.objective;
+				tool.inputSchema as unknown as {
+					shape: { tasks: { element: { shape: { objective: { description?: string } } } } };
+				}
+			).shape.tasks.element.shape.objective;
 
 			for (const heading of [
 				'## Objective',
@@ -1253,64 +1390,206 @@ describe('AgentsBuilderToolsService', () => {
 			}
 		});
 
-		it('creates a task with the config ref enabled by default', async () => {
-			const { service, agentTaskService, agentRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
-			agentTaskService.create.mockResolvedValue(makeTaskDto());
+		it('creates multiple tasks in one call and returns only ids, names, and enabled, not objectives or crons, in order', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.createTasks.mockResolvedValue([
+				makeTaskDto(),
+				makeTaskDto({ id: 'task-2', ...taskTwoInput }),
+			]);
 
-			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+			const result = await getCreateTasksTool(service).handler!(
+				{ tasks: [taskOneInput, taskTwoInput] },
+				ctx,
+			);
 
-			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(agentId, projectId);
-			expect(agentTaskService.create).toHaveBeenCalledWith(agentId, {
-				...taskInput,
-				enabled: true,
+			expect(agentTaskService.createTasks).toHaveBeenCalledWith(agentId, projectId, [
+				{ ...taskOneInput, enabled: true },
+				{ ...taskTwoInput, enabled: true },
+			]);
+			expect(result).toEqual({
+				ok: true,
+				tasks: [
+					{ id: 'task-1', name: taskOneInput.name, enabled: true },
+					{ id: 'task-2', name: taskTwoInput.name, enabled: true },
+				],
 			});
-			expect(result).toEqual({ ok: true, task: makeTaskDto() });
 		});
 
-		it('enables the task even when the agent is not published', async () => {
-			const { service, agentTaskService, agentRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(unpublishedAgent);
-			agentTaskService.create.mockResolvedValue(makeTaskDto());
+		it('rejects an empty tasks array via the input schema', () => {
+			const { service } = makeService();
 
-			await getCreateTaskTool(service).handler!(taskInput, ctx);
+			const result = (
+				getCreateTasksTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({ tasks: [] });
 
-			expect(agentTaskService.create).toHaveBeenCalledWith(agentId, {
-				...taskInput,
-				enabled: true,
-			});
+			expect(result.success).toBe(false);
 		});
 
 		it('requires a non-empty objective via the input schema', () => {
 			const { service } = makeService();
 
 			const result = (
-				getCreateTaskTool(service).inputSchema as unknown as {
+				getCreateTasksTool(service).inputSchema as unknown as {
 					safeParse: (input: unknown) => { success: boolean };
 				}
-			).safeParse({ name: 'x', objective: '', cronExpression: '0 9 * * *' });
+			).safeParse({ tasks: [{ name: 'x', objective: '', cronExpression: '0 9 * * *' }] });
 
 			expect(result.success).toBe(false);
 		});
 
-		it('surfaces a service error (e.g. invalid cron) to the model', async () => {
-			const { service, agentTaskService, agentRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
-			agentTaskService.create.mockRejectedValue(new Error('Invalid cron expression'));
+		it('surfaces a service error (e.g. invalid cron) for the whole batch', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.createTasks.mockRejectedValue(new Error('Invalid cron expression'));
 
-			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
 			expect(result).toEqual({ ok: false, errors: [{ message: 'Invalid cron expression' }] });
 		});
 
 		it('returns an error when the agent is not in the project', async () => {
-			const { service, agentTaskService, agentRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+			const { service, agentTaskService } = makeService();
+			agentTaskService.createTasks.mockRejectedValue(new Error('Agent "agent-1" not found'));
 
-			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+			const result = await getCreateTasksTool(service).handler!({ tasks: [taskOneInput] }, ctx);
 
-			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
-			expect(agentTaskService.create).not.toHaveBeenCalled();
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent "agent-1" not found' }] });
+		});
+	});
+
+	describe('publish_agent / unpublish_agent tools', () => {
+		function getPublishTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
+		}
+
+		function getUnpublishTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.find((tool) => tool.name === BUILDER_TOOLS.UNPUBLISH_AGENT)!;
+		}
+
+		it('publishes the bound agent draft when the user has agent:publish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.publishAgent.mockResolvedValue({
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+			} as Agent);
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:publish'], false, {
+				projectId,
+			});
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				undefined,
+			);
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-active',
+				versionId: 'v-active',
+			});
+		});
+
+		it('forwards an optional versionId to publishAgent', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.publishAgent.mockResolvedValue({
+				activeVersionId: 'v-history',
+				versionId: 'v-draft',
+			} as Agent);
+
+			const result = await getPublishTool(service).handler!({ versionId: 'v-history' }, ctx);
+
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				user,
+				'v-history',
+			);
+			expect(result).toEqual({
+				ok: true,
+				agentId,
+				activeVersionId: 'v-history',
+				versionId: 'v-draft',
+			});
+		});
+
+		it('denies publish when the user lacks agent:publish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'You do not have permission to publish agents in this project.' }],
+			});
+			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
+		});
+
+		it('surfaces publish service errors to the model', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.publishAgent.mockRejectedValue(
+				new Error('Cannot publish agent with missing custom tools: my_tool'),
+			);
+
+			const result = await getPublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Cannot publish agent with missing custom tools: my_tool' }],
+			});
+		});
+
+		it('unpublishes the bound agent when the user has agent:unpublish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.unpublishAgent.mockResolvedValue({
+				activeVersionId: null,
+			} as Agent);
+
+			const result = await getUnpublishTool(service).handler!({}, ctx);
+
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:unpublish'], false, {
+				projectId,
+			});
+			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(agentId, projectId);
+			expect(result).toEqual({ ok: true, agentId, activeVersionId: null });
+		});
+
+		it('denies unpublish when the user lacks agent:unpublish', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			const result = await getUnpublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'You do not have permission to unpublish agents in this project.' }],
+			});
+			expect(agentPublishService.unpublishAgent).not.toHaveBeenCalled();
+		});
+
+		it('surfaces unpublish service errors to the model', async () => {
+			const { service, agentPublishService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentPublishService.unpublishAgent.mockRejectedValue(new Error('Agent "agent-1" not found'));
+
+			const result = await getUnpublishTool(service).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [{ message: 'Agent "agent-1" not found' }],
+			});
 		});
 	});
 });

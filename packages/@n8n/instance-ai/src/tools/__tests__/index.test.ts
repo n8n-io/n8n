@@ -36,12 +36,12 @@ vi.mock('../n8n-docs.tool', () => ({
 	createN8nDocsTool: vi.fn(() => ({ id: 'n8n-docs' })),
 }));
 
-vi.mock('../orchestration/complete-checkpoint.tool', () => ({
-	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
+vi.mock('../orchestration/build-agent.tool', () => ({
+	createBuildAgentTool: vi.fn(() => ({ id: 'build-agent' })),
 }));
 
-vi.mock('../orchestration/delegate.tool', () => ({
-	createDelegateTool: vi.fn(() => ({ id: 'delegate' })),
+vi.mock('../orchestration/complete-checkpoint.tool', () => ({
+	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
 
 vi.mock('../evals/evals.tool', () => ({
@@ -159,9 +159,9 @@ describe('domain tool construction', () => {
 			'build-workflow': { id: 'build-workflow' },
 		});
 
-		const { createWorkflowsTool } = await import('../workflows.tool');
-		const { createNodesTool } = await import('../nodes.tool');
-		const { createDataTablesTool } = await import('../data-tables.tool');
+		const { createWorkflowsTool } = await import('../workflows.tool.js');
+		const { createNodesTool } = await import('../nodes.tool.js');
+		const { createDataTablesTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
@@ -192,6 +192,20 @@ describe('domain tool construction', () => {
 		});
 	});
 
+	it('gates the eval-config tool on the config-evals flag (evaluationConfigService presence)', () => {
+		// Flag off: adapter leaves evaluationConfigService unset → tool absent.
+		const disabled = makeContext();
+		expect(createAllTools(disabled).get('eval-config')).toBeUndefined();
+		expect(createOrchestratorDomainTools(disabled).get('eval-config')).toBeUndefined();
+
+		// Flag on: adapter wires evaluationConfigService → tool exposed.
+		const enabled = makeContext({
+			evaluationConfigService: {} as InstanceAiContext['evaluationConfigService'],
+		});
+		expect(createAllTools(enabled).get('eval-config')).toBeDefined();
+		expect(createOrchestratorDomainTools(enabled).get('eval-config')).toBeDefined();
+	});
+
 	it('registers create-tasks but not the removed plan orchestration tool', () => {
 		const context = makeContext({
 			workflowTaskService: {},
@@ -202,5 +216,39 @@ describe('domain tool construction', () => {
 
 		expect(orchestrationTools.has('create-tasks')).toBe(true);
 		expect(orchestrationTools.has('plan')).toBe(false);
+		expect(orchestrationTools.has('delegate')).toBe(false);
+	});
+
+	it('registers build-agent only when a builder delegate is present on the domain context', () => {
+		const withoutDelegate = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutDelegate.has('build-agent')).toBe(false);
+
+		const withDelegate = createOrchestrationTools(
+			makeContext({
+				domainContext: { builderDelegate: {} },
+			} as Partial<InstanceAiContext>) as never,
+		);
+		expect(Object.fromEntries(withDelegate)).toMatchObject({
+			'build-agent': { id: 'build-agent' },
+		});
+	});
+
+	it('registers get-session only when a preview session and resolver are present', () => {
+		const withoutSession = createOrchestrationTools(
+			makeContext({ domainContext: {} } as Partial<InstanceAiContext>) as never,
+		);
+		expect(withoutSession.has('get-session')).toBe(false);
+
+		const withSession = createOrchestrationTools(
+			makeContext({
+				domainContext: {
+					agentPreviewSession: { agentId: 'agent-1', threadId: 'preview-1' },
+					resolvePreviewSession: async () => await Promise.resolve(null),
+				},
+			} as Partial<InstanceAiContext>) as never,
+		);
+		expect(withSession.has('get-session')).toBe(true);
 	});
 });

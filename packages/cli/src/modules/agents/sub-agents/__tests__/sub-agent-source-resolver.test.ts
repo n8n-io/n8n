@@ -1,6 +1,7 @@
-import { type AgentJsonConfig } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
-import { mock } from 'jest-mock-extended';
+import { type AgentJsonConfig } from '@n8n/api-types';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentHistory } from '../../entities/agent-history.entity';
 import type { Agent } from '../../entities/agent.entity';
@@ -38,19 +39,6 @@ const customToolDescriptor: ToolDescriptor = {
 	providerOptions: null,
 };
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
-	return {
-		id: agentId,
-		projectId,
-		versionId,
-		schema: runnableConfig,
-		integrations: [],
-		tools: {},
-		skills: {},
-		...overrides,
-	} as unknown as Agent;
-}
-
 function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 	return {
 		agentId,
@@ -62,29 +50,41 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 	} as unknown as AgentHistory;
 }
 
+function makeAgent(overrides: Partial<Agent> = {}): Agent {
+	return {
+		id: agentId,
+		projectId,
+		versionId,
+		schema: runnableConfig,
+		integrations: [],
+		tools: {},
+		skills: {},
+		activeVersionId: versionId,
+		activeVersion: makeAgentHistory(),
+		...overrides,
+	} as unknown as Agent;
+}
+
 describe('SubAgentSourceResolver', () => {
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentHistoryRepository: jest.Mocked<AgentHistoryRepository>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentHistoryRepository: Mocked<AgentHistoryRepository>;
 	let resolver: SubAgentSourceResolver;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		agentRepository = mock<AgentRepository>();
 		agentHistoryRepository = mock<AgentHistoryRepository>();
 		resolver = new SubAgentSourceResolver(agentRepository, agentHistoryRepository);
 	});
 
-	it('resolves a saved draft n8n agent in the same project', async () => {
+	it('resolves the current published version of a saved n8n agent when no version is pinned', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 
 		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).resolves.toMatchObject({
 			source: {
 				sourceId: agentId,
 				versionId,
-				config: {
-					...runnableConfig,
-					integrations: [],
-				},
+				config: runnableConfig,
 			},
 		});
 	});
@@ -104,22 +104,32 @@ describe('SubAgentSourceResolver', () => {
 		});
 	});
 
-	it('resolves runtime assets for saved n8n agent drafts', async () => {
+	it('resolves runtime assets from the published version, not the draft', async () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
 			makeAgent({
+				// Draft-only assets that must NOT be used for an unpinned delegation.
 				tools: {
-					tool_1: {
-						code: 'return input;',
-						descriptor: customToolDescriptor,
+					draft_only_tool: {
+						code: 'return "draft";',
+						descriptor: { ...customToolDescriptor, name: 'draft_only_tool' },
 					},
 				},
-				skills: {
-					skill_1: {
-						name: 'Skill 1',
-						description: 'Helps with tests',
-						instructions: 'Skill body',
+				skills: {},
+				activeVersion: makeAgentHistory({
+					tools: {
+						tool_1: {
+							code: 'return input;',
+							descriptor: customToolDescriptor,
+						},
 					},
-				},
+					skills: {
+						skill_1: {
+							name: 'Skill 1',
+							description: 'Helps with tests',
+							instructions: 'Skill body',
+						},
+					},
+				}),
 			}),
 		);
 
@@ -151,11 +161,23 @@ describe('SubAgentSourceResolver', () => {
 		);
 	});
 
-	it('rejects n8n agents with no config', async () => {
-		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: null }));
+	it('rejects a sub-agent with no published version when no version is pinned', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ activeVersionId: null, activeVersion: null }),
+		);
 
 		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).rejects.toThrow(
-			`Agent "${agentId}" has no config`,
+			`Sub-agent "${agentId}" is not published`,
+		);
+	});
+
+	it('rejects a sub-agent whose published version has no schema', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ activeVersion: makeAgentHistory({ schema: null }) }),
+		);
+
+		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).rejects.toThrow(
+			`Sub-agent "${agentId}" is not published`,
 		);
 	});
 
@@ -170,7 +192,9 @@ describe('SubAgentSourceResolver', () => {
 
 	it('rejects a resolved config that is not runnable', async () => {
 		const { credential: _credential, ...invalidConfig } = runnableConfig;
-		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ schema: invalidConfig }));
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ activeVersion: makeAgentHistory({ schema: invalidConfig }) }),
+		);
 
 		await expect(resolver.resolveForRuntime({ agentId }, { projectId })).rejects.toThrow(
 			'Invalid sub-agent config',

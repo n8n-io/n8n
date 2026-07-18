@@ -1,32 +1,51 @@
-import { findPlaceholderDetails, isPlaceholderString, isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
+import { findPlaceholderDetails, isPlaceholderString } from '@n8n/utils/placeholder';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	isTriggerNodeType as isCanonicalTriggerNodeType,
+} from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import type { InstanceAiContext } from '../../types';
 
+/**
+ * Trigger types whose verification input is shaped deterministically by the
+ * CLI adapter's `getPinDataForTrigger` switch instead of a generated fixture.
+ * Must stay in lockstep with that switch (instance-ai-run-pin-data.ts).
+ */
 const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.manualTrigger',
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'n8n-nodes-base.scheduleTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
+	MANUAL_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 ]);
 
 const WEBHOOK_NODE_TYPES = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'@n8n/n8n-nodes-langchain.mcpTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
+	WEBHOOK_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
 ]);
 
 export function isMockableTriggerNodeType(nodeType: string | undefined): boolean {
 	return nodeType !== undefined && KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType);
 }
 
+/**
+ * Delegates to n8n-workflow's canonical trigger detection, which covers types
+ * without a "trigger" suffix (webhook, cron, emailReadImap, start, …) that a
+ * local suffix heuristic would miss.
+ */
 export function isTriggerNodeType(nodeType: string | undefined): boolean {
 	if (!nodeType) return false;
-	if (isMockableTriggerNodeType(nodeType)) return true;
-	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
+	return isCanonicalTriggerNodeType(nodeType);
 }
 
 function extractWorkflowIdParameter(value: unknown): string | undefined {

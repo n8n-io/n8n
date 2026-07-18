@@ -388,14 +388,19 @@ describe('SsrfProtectionService', () => {
 			const { service } = createService({}, dnsResolver);
 			const lookup = service.createSecureLookup();
 
-			const error = await new Promise<Error | null>((resolve) =>
-				lookup('evil.com', { all: false }, (lookupError) => resolve(lookupError)),
-			);
-
-			expect(error).toBeTruthy();
-			expect(error?.message).toContain(
-				'The request was blocked because it resolves to a restricted IP address',
-			);
+			await new Promise<void>((resolve, reject) => {
+				lookup('evil.com', { all: false }, (lookupError) => {
+					try {
+						expect(lookupError).toBeTruthy();
+						expect(lookupError?.message).toContain(
+							'The request was blocked because it resolves to a restricted IP address',
+						);
+						resolve();
+					} catch (error) {
+						reject(error as Error);
+					}
+				});
+			});
 		});
 
 		it('should return all addresses when all=true', async () => {
@@ -792,14 +797,19 @@ describe('SsrfProtectionService', () => {
 				const { service } = createService({}, dnsResolver);
 				const lookup = service.createSecureLookup();
 
-				const error = await new Promise<Error | null>((resolve) =>
-					lookup('rebinding.evil.com', { all: false }, (lookupError) => resolve(lookupError)),
-				);
-
-				expect(error).toBeTruthy();
-				expect(error?.message).toContain(
-					'The request was blocked because it resolves to a restricted IP address',
-				);
+				await new Promise<void>((resolve, reject) => {
+					lookup('rebinding.evil.com', { all: false }, (lookupError) => {
+						try {
+							expect(lookupError).toBeTruthy();
+							expect(lookupError?.message).toContain(
+								'The request was blocked because it resolves to a restricted IP address',
+							);
+							resolve();
+						} catch (error) {
+							reject(error as Error);
+						}
+					});
+				});
 			});
 		});
 

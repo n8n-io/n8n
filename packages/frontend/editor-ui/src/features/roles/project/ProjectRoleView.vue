@@ -22,6 +22,7 @@ import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
+import { PROJECT_CUSTOM_ROLE_SCOPES } from '@n8n/permissions';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -46,6 +47,8 @@ const {
 	showCreateButton,
 	hasUnsavedChanges,
 	displayNameValidationRules,
+	submitted,
+	validateOnSubmit,
 	resetForm,
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
@@ -57,6 +60,7 @@ const {
 					[],
 			),
 		),
+	filterScopes: (scopes) => scopes.filter((s) => PROJECT_CUSTOM_ROLE_SCOPES.has(s)),
 	fetchError: 'Error fetching role',
 });
 
@@ -131,6 +135,10 @@ function toggleScope(scope: string) {
 }
 
 async function createProjectRole() {
+	if (!validateOnSubmit('projectRoles.action.create.error')) {
+		return;
+	}
+
 	try {
 		const role = await rolesStore.createRole({
 			...form.value,
@@ -143,6 +151,7 @@ async function createProjectRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions: role.scopes,
 		});
 
@@ -200,6 +209,7 @@ async function updateProjectRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'project',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});
@@ -232,7 +242,9 @@ function setPreset(slug: string) {
 		return;
 	}
 
-	form.value.scopes = structuredClone(toRaw(preset.scopes));
+	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
+		PROJECT_CUSTOM_ROLE_SCOPES.has(s),
+	);
 }
 
 async function deleteRole() {
@@ -313,6 +325,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 		:back-button-text="backButtonText"
 		:labels="editorLabels"
 		:display-name-validation-rules="displayNameValidationRules"
+		:show-display-name-error="submitted"
 		@back="onBackClick"
 		@save="handleSubmit"
 		@discard="resetForm(initialState)"

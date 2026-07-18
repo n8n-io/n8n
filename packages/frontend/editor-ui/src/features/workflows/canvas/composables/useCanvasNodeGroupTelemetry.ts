@@ -6,7 +6,9 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 
 export type CanvasNodeGroupEventSource =
 	| 'group-toolbar'
+	| 'group-header'
 	| 'keyboard-shortcut'
+	| 'context-menu'
 	| 'update-blocked-toast';
 
 /**

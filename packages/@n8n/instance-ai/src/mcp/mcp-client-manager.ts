@@ -2,8 +2,9 @@ import {
 	McpClient,
 	type BuiltTool,
 	type McpServerConfig as NativeMcpServerConfig,
+	type McpToolCallSettledEvent as NativeMcpToolCallSettledEvent,
 } from '@n8n/agents';
-import type { Result } from 'n8n-workflow';
+import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
 import {
@@ -20,6 +21,16 @@ import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
 
+export interface McpToolCallSettledEvent {
+	server: McpServerConfig;
+	toolName: string;
+	success: boolean;
+}
+
+export interface McpClientManagerOptions {
+	onToolCallSettled?: (event: McpToolCallSettledEvent) => void;
+}
+
 /**
  * SSRF policy gate for outbound MCP URLs. The cli's `SsrfProtectionService`
  * satisfies this structurally; we keep the local shape narrow to avoid pulling
@@ -32,26 +43,34 @@ export interface SsrfUrlValidator {
 function buildNativeMcpConfigs(
 	configs: McpServerConfig[],
 	requireApproval: boolean,
+	onToolCallSettled?: McpClientManagerOptions['onToolCallSettled'],
 ): NativeMcpServerConfig[] {
 	const servers: NativeMcpServerConfig[] = [];
 	for (const server of configs) {
+		const baseConfig = {
+			name: server.name,
+			toolFilter: server.toolFilter,
+			requireApproval,
+			...(onToolCallSettled
+				? {
+						onToolCallSettled: ({ toolName, success }: NativeMcpToolCallSettledEvent) =>
+							onToolCallSettled({ server, toolName, success }),
+					}
+				: {}),
+		};
 		if (server.url) {
 			servers.push({
-				name: server.name,
+				...baseConfig,
 				url: server.url,
 				transport: server.transport,
-				toolFilter: server.toolFilter,
 				fetch: server.fetch,
-				requireApproval,
 			});
 		} else if (server.command) {
 			servers.push({
-				name: server.name,
+				...baseConfig,
 				command: server.command,
 				args: server.args,
 				env: server.env,
-				toolFilter: server.toolFilter,
-				requireApproval,
 			});
 		}
 	}
@@ -117,7 +136,10 @@ export class McpClientManager {
 
 	private clientsByKey = new Map<string, McpClient>();
 
-	constructor(private readonly ssrfValidator?: SsrfUrlValidator) {}
+	constructor(
+		private readonly ssrfValidator?: SsrfUrlValidator,
+		private readonly options: McpClientManagerOptions = {},
+	) {}
 
 	async getRegularTools(
 		configs: McpServerConfig[],
@@ -216,7 +238,9 @@ export class McpClientManager {
 		logger: Logger,
 		source: string,
 	): Promise<McpToolRegistry> {
-		const client = new McpClient(buildNativeMcpConfigs(configs, requireApproval));
+		const client = new McpClient(
+			buildNativeMcpConfigs(configs, requireApproval, this.options.onToolCallSettled),
+		);
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());

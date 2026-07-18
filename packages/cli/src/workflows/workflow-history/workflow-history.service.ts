@@ -1,5 +1,5 @@
-import { Logger } from '@n8n/backend-common';
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -14,13 +14,15 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { ensureError, UnexpectedError } from 'n8n-workflow';
-
-import { WorkflowFinderService } from '../workflow-finder.service';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
+import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
+
+import { WorkflowFinderService } from '../workflow-finder.service';
 
 @Service()
 export class WorkflowHistoryService {
@@ -176,7 +178,9 @@ export class WorkflowHistoryService {
 		},
 		workflowId: string,
 		autosaved = false,
+		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
+		versionMetadata?: { name?: string; description?: string },
 	) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
@@ -184,7 +188,8 @@ export class WorkflowHistoryService {
 			);
 		}
 
-		const authors = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+		const authors = source === 'n8n-mcp' ? `${name} (via MCP)` : name;
 
 		const repository = transactionManager
 			? transactionManager.getRepository(WorkflowHistory)
@@ -199,6 +204,8 @@ export class WorkflowHistoryService {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved,
+				...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
+				...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
 			});
 		} catch (e) {
 			const error = ensureError(e);

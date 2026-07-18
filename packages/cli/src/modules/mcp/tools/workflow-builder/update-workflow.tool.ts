@@ -10,9 +10,19 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials } from './credentials-auto-assign';
+import {
+	autoPopulateNodeCredentials,
+	trackAutoassignOutcomes,
+	type SlotOutcome,
+} from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
-import { sanitizeSkillsUsed } from './skills-used';
+import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
+import {
+	buildUpdateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
@@ -29,6 +39,7 @@ import type { WorkflowPublishedDataService } from '@/workflows/workflow-publishe
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
 import type { TagService } from '@/services/tag.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
@@ -204,10 +215,7 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 
 const inputSchema: z.ZodRawShape = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
-	skillsUsed: z
-		.array(z.string())
-		.optional()
-		.describe('n8n skill IDs used for this update; normalized server-side.'),
+	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	operations: z
 		.array(operationInputSchema)
 		.min(1)
@@ -215,6 +223,12 @@ const inputSchema: z.ZodRawShape = {
 		.describe(
 			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
 		),
+	versionName: versionNameInputSchema.describe(
+		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+	),
+	versionDescription: versionDescriptionInputSchema.describe(
+		'Longer description of what changed and why, shown in the version history alongside the version name.',
+	),
 };
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
@@ -235,6 +249,7 @@ const outputSchema = {
 				nodeName: z.string(),
 				credentialName: z.string(),
 				credentialType: z.string(),
+				source: z.enum(['user', 'aiGateway']).optional(),
 			}),
 		)
 		.optional()
@@ -438,6 +453,7 @@ export const createUpdateWorkflowTool = (
 	globalConfig: GlobalConfig,
 	subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	workflowPublishedDataService: WorkflowPublishedDataService,
+	aiGatewayService: AiGatewayService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_UPDATE_WORKFLOW_TOOL.toolName,
 	config: {
@@ -457,10 +473,14 @@ export const createUpdateWorkflowTool = (
 		workflowId,
 		skillsUsed,
 		operations,
+		versionName,
+		versionDescription,
 	}: {
 		workflowId: string;
 		skillsUsed?: string[];
 		operations: OperationInput[];
+		versionName?: string;
+		versionDescription?: string;
 	}) => {
 		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
@@ -471,6 +491,8 @@ export const createUpdateWorkflowTool = (
 				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
+				hasVersionName: !!versionName,
+				hasVersionDescription: !!versionDescription,
 			},
 		};
 
@@ -647,8 +669,10 @@ export const createUpdateWorkflowTool = (
 				nodeName: string;
 				credentialName: string;
 				credentialType: string;
+				source?: 'user' | 'aiGateway';
 			}> = [];
 			let skippedHttpNodes: string[] = [];
+			let autoAssignOutcomes: SlotOutcome[] = [];
 
 			if (result.addedNodeNames.length > 0) {
 				const addedNodeSet = new Set(result.addedNodeNames);
@@ -660,9 +684,11 @@ export const createUpdateWorkflowTool = (
 					nodeTypes,
 					credentialsService,
 					workflowProjectId,
+					aiGatewayService,
 				);
 				credentialAssignments = autoAssign.assignments;
 				skippedHttpNodes = autoAssign.skippedHttpNodes;
+				autoAssignOutcomes = autoAssign.outcomes;
 			}
 
 			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
@@ -696,11 +722,35 @@ export const createUpdateWorkflowTool = (
 				}
 			}
 
+			// Fallback is diff-based; it only ends up persisted when the update
+			// actually produces a new history version (node/connection/group changes).
+			const versionMetadata = resolveVersionMetadata(
+				{ versionName, versionDescription },
+				buildUpdateVersionMetadata(
+					{ nodes: existingWorkflow.nodes, connections: existingWorkflow.connections },
+					{ nodes: workflowUpdateData.nodes, connections: workflowUpdateData.connections },
+				),
+			);
+
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: hasNonTagOperations,
 				source: 'n8n-mcp',
+				versionName: versionMetadata.name,
+				versionDescription: versionMetadata.description,
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
+
+			if (autoAssignOutcomes.length > 0) {
+				const nodeTypesByName = new Map(updatedWorkflow.nodes.map((n) => [n.name, n.type]));
+				trackAutoassignOutcomes(
+					telemetry,
+					user.id,
+					'update_workflow',
+					autoAssignOutcomes,
+					nodeTypesByName,
+					workflowId,
+				);
+			}
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 

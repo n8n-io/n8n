@@ -1,9 +1,5 @@
 import { ApiError } from '../../client';
 
-const BETA_HINT =
-	'The n8n Packages API is beta and disabled by default. Enable it on the instance with ' +
-	'N8N_PUBLIC_API_PACKAGES_ENABLED=true (requires the n8n Packages license).';
-
 type BlockingIssue =
 	| {
 			type: 'workflow-conflict';
@@ -35,9 +31,6 @@ function issuesHint(details: unknown): string | undefined {
 
 export function toPackagesError(error: unknown): unknown {
 	if (!(error instanceof ApiError)) return error;
-	if (error.statusCode === 404) {
-		return new ApiError(error.statusCode, error.message, BETA_HINT, error.details);
-	}
 	const hint = issuesHint(error.details);
 	if (hint) {
 		return new ApiError(error.statusCode, error.message, hint, error.details);

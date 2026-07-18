@@ -18,6 +18,7 @@ import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
+	BuiltTelemetry,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
 } from '../../types';
@@ -29,6 +30,7 @@ import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import type { AgentMessageList } from '../model/message-list';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
 import type { AgentEventBus } from '../state/event-bus';
+import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const logger = createFilteredLogger();
@@ -67,6 +69,7 @@ export class MemoryOrchestrator {
 		private readonly config: AgentRuntimeConfig,
 		private readonly backgroundTasks: BackgroundTaskTracker,
 		private readonly eventBus: AgentEventBus,
+		private readonly runtimeTelemetry: RuntimeTelemetry,
 	) {}
 
 	async loadHistoryMessages(persistence: AgentPersistenceOptions): Promise<AgentDbMessage[]> {
@@ -195,16 +198,18 @@ export class MemoryOrchestrator {
 	}
 
 	/**
-	 * Persist the turn-so-far when the run suspends (HITL), before the turn completes.
-	 * Saves the full `turnDelta()` (input + accumulated response) so a suspended turn that
-	 * is later cancelled or abandoned still leaves its assistant work — the built workflow,
-	 * resolved tool results — in memory. Like `persistInputMessages`, it skips the
-	 * observation-log / episodic-memory / title jobs that `saveToMemory` schedules; those
-	 * stay at end-of-turn. Idempotent with the end-of-turn save: the message list is
-	 * serialized into the checkpoint and deserialized on resume preserving ids, so both
-	 * writes target the same rows and TypeORM upserts (pending tool-call → resolved in place).
+	 * Persist the turn-so-far before the turn reaches its end-of-turn save — on HITL
+	 * suspend or on abort/cancel. Saves the full `turnDelta()` (input + accumulated
+	 * response) so a turn that is suspended-then-abandoned, or cancelled mid-flight,
+	 * still leaves its assistant work — the built workflow, resolved tool results — in
+	 * memory. Like `persistInputMessages`, it skips the observation-log / episodic-memory
+	 * / title jobs that `saveToMemory` schedules; those stay at end-of-turn. Idempotent
+	 * with the end-of-turn save: ids are stable across serialize/deserialize, so both
+	 * writes target the same rows and TypeORM upserts (pending tool-call → resolved in
+	 * place). A still-pending tool-call left by an abort is stripped on the next load
+	 * (`stripOrphanedToolMessages`), so persisting an incomplete turn can't malform history.
 	 */
-	async persistTurnOnSuspend(
+	async persistTurnDelta(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
@@ -220,17 +225,17 @@ export class MemoryOrchestrator {
 			);
 		} catch (error) {
 			// Best-effort: a completed turn's end-of-turn save still persists this delta,
-			// so a transient failure here must not abort the suspend flow. Only a turn that
-			// suspends and is then abandoned, whose save here also failed, loses its output.
-			logger.warn('Failed to persist turn on suspend', {
+			// so a transient failure here must not abort the suspend/cancel flow. Only a turn
+			// that ends early (suspend-abandon or abort) whose save here also failed loses output.
+			logger.warn('Failed to persist turn delta', {
 				error,
 				threadId: options.persistence.threadId,
 			});
 			this.eventBus.emit({
 				type: AgentEvent.Error,
-				message: 'Failed to persist turn on suspend',
+				message: 'Failed to persist turn delta',
 				error,
-				source: 'turn-suspend-persistence',
+				source: 'turn-delta-persistence',
 			});
 		}
 	}
@@ -253,9 +258,11 @@ export class MemoryOrchestrator {
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
 
+		const telemetry = this.runtimeTelemetry.resolve(options);
 		const observationTasks = this.scheduleObservationLogJobs(
 			options.persistence,
 			options.executionCounter,
+			telemetry,
 		);
 		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks, options.executionCounter);
 	}
@@ -263,6 +270,7 @@ export class MemoryOrchestrator {
 	private scheduleObservationLogJobs(
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		telemetry?: BuiltTelemetry,
 	): Array<Promise<unknown>> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return [];
@@ -291,6 +299,7 @@ export class MemoryOrchestrator {
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
 							executionCounter,
+							telemetry,
 						}),
 				),
 			);
@@ -311,6 +320,7 @@ export class MemoryOrchestrator {
 							reflectorThresholdTokens,
 							reflect,
 							executionCounter,
+							telemetry,
 						}),
 				),
 			);

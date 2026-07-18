@@ -5,6 +5,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useAnnotationTagsStore } from '../tags.store';
 import { ANNOTATION_TAGS_MANAGER_MODAL_KEY } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
+import { useAnnotationTagPermissions } from '../useTagPermissions';
 
 interface TagsDropdownWrapperProps {
 	placeholder?: string;
@@ -28,6 +29,7 @@ const emit = defineEmits<{
 
 const tagsStore = useAnnotationTagsStore();
 const uiStore = useUIStore();
+const { canCreate: canCreateTag, canManage } = useAnnotationTagPermissions();
 
 const selectedTags = computed({
 	get: () => props.modelValue,
@@ -37,6 +39,9 @@ const selectedTags = computed({
 const allTags = computed(() => tagsStore.allTags);
 const isLoading = computed(() => tagsStore.isLoading);
 const tagsById = computed(() => tagsStore.tagsById);
+
+const isCreateEnabled = computed(() => props.createEnabled && canCreateTag.value);
+const isManageEnabled = computed(() => canManage.value);
 
 async function createTag(name: string) {
 	return await tagsStore.create(name);
@@ -62,7 +67,8 @@ void tagsStore.fetchAll();
 	<TagsDropdown
 		v-model="selectedTags"
 		:placeholder="placeholder"
-		:create-enabled="createEnabled"
+		:create-enabled="isCreateEnabled"
+		:manage-enabled="isManageEnabled"
 		:event-bus="eventBus"
 		:all-tags="allTags"
 		:is-loading="isLoading"

@@ -1,5 +1,6 @@
 import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -9,7 +10,6 @@ import {
 	type IPinData,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
-	ensureError,
 	jsonStringify,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
@@ -42,10 +42,8 @@ const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
 	executionMode: z
 		.enum(['manual', 'production'])
-		.optional()
-		.default('production')
 		.describe(
-			'Use "manual" to test the current version of the workflow. Use "production" to execute the published (active) version.',
+			'Required execution intent. Use "manual" for testing or validating the current workflow, including tests against live external services. Use "production" only when intentionally running the published workflow as a live execution.',
 		),
 	inputs: z
 		.discriminatedUnion('type', [
@@ -202,8 +200,8 @@ export const executeWorkflow = async (
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,
 	workflowId: string,
-	inputs?: z.infer<typeof inputSchema>['inputs'],
-	executionMode: z.infer<typeof inputSchema>['executionMode'] = 'production',
+	inputs: z.infer<typeof inputSchema>['inputs'],
+	executionMode: z.infer<typeof inputSchema>['executionMode'],
 ): Promise<ExecuteWorkflowOutput> => {
 	const workflow = await getMcpWorkflow(
 		workflowId,

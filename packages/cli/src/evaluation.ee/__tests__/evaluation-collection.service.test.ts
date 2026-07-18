@@ -12,7 +12,8 @@ import type {
 	WorkflowPublishedVersion,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -99,14 +100,14 @@ function makePayload(
 
 describe('EvaluationCollectionService', () => {
 	let service: EvaluationCollectionService;
-	let collectionRepo: jest.Mocked<EvaluationCollectionRepository>;
-	let testRunRepo: jest.Mocked<TestRunRepository>;
-	let evalConfigRepo: jest.Mocked<EvaluationConfigRepository>;
-	let workflowHistoryRepo: jest.Mocked<WorkflowHistoryRepository>;
-	let publishedVersionRepo: jest.Mocked<WorkflowPublishedVersionRepository>;
-	let workflowHistoryService: jest.Mocked<WorkflowHistoryService>;
-	let testRunnerService: jest.Mocked<TestRunnerService>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let collectionRepo: Mocked<EvaluationCollectionRepository>;
+	let testRunRepo: Mocked<TestRunRepository>;
+	let evalConfigRepo: Mocked<EvaluationConfigRepository>;
+	let workflowHistoryRepo: Mocked<WorkflowHistoryRepository>;
+	let publishedVersionRepo: Mocked<WorkflowPublishedVersionRepository>;
+	let workflowHistoryService: Mocked<WorkflowHistoryService>;
+	let testRunnerService: Mocked<TestRunnerService>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
@@ -449,6 +450,48 @@ describe('EvaluationCollectionService', () => {
 			expect(a?.lastRun?.isCritical).toBe(false);
 			expect(b?.lastRun?.isBest).toBe(false);
 			expect(b?.lastRun?.isCritical).toBe(true);
+		});
+
+		it('scores versions on normalized quality metrics, excluding token/time metrics', async () => {
+			const versions: WorkflowHistory[] = [
+				mock<WorkflowHistory>({
+					versionId: 'wfv-a',
+					name: 'A',
+					autosaved: false,
+					createdAt: new Date('2026-04-01'),
+				}),
+				mock<WorkflowHistory>({
+					versionId: 'wfv-b',
+					name: 'B',
+					autosaved: false,
+					createdAt: new Date('2026-04-02'),
+				}),
+			];
+			workflowHistoryRepo.find.mockResolvedValueOnce(versions);
+			// correctness is a 1–5 metric → /5; tokens/executionTime are operational
+			// and excluded, so avgScore is the correctness score alone rather than a
+			// token-dominated mean in the thousands.
+			testRunRepo.find.mockResolvedValueOnce([
+				makeTestRun({
+					id: 'tr-a',
+					workflowVersionId: 'wfv-a',
+					metrics: { correctness: 5, completionTokens: 1719, executionTime: 21368 },
+				}),
+				makeTestRun({
+					id: 'tr-b',
+					workflowVersionId: 'wfv-b',
+					metrics: { correctness: 2, completionTokens: 540, executionTime: 11646 },
+				}),
+			]);
+
+			const result = await service.getEvalVersions('wf-1', 'cfg-1');
+
+			const a = result.versions.find((v) => v.workflowVersionId === 'wfv-a');
+			const b = result.versions.find((v) => v.workflowVersionId === 'wfv-b');
+			expect(a?.lastRun?.avgScore).toBe(1); // 5 / 5
+			expect(b?.lastRun?.avgScore).toBeCloseTo(0.4); // 2 / 5
+			expect(a?.lastRun?.isBest).toBe(true);
+			expect(b?.lastRun?.isCritical).toBe(true); // 0.4 < 0.6
 		});
 
 		it('includes a current-draft row with no last run', async () => {

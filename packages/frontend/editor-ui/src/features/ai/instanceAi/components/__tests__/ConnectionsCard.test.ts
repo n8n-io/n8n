@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { fireEvent } from '@testing-library/vue';
 import { ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -12,13 +13,20 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-const { mcpExperimentMock, computerUseExperimentMock } = vi.hoisted(() => ({
-	mcpExperimentMock: vi.fn(),
-	computerUseExperimentMock: vi.fn(),
-}));
+const { mcpExperimentMock, browserUseExperimentMock, computerUseExperimentMock } = vi.hoisted(
+	() => ({
+		mcpExperimentMock: vi.fn(),
+		browserUseExperimentMock: vi.fn(),
+		computerUseExperimentMock: vi.fn(),
+	}),
+);
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpExperimentMock,
+}));
+
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	useInstanceAiBrowserUseExperiment: browserUseExperimentMock,
 }));
 
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
@@ -30,28 +38,30 @@ vi.mock('../../instanceAiSettings.store', () => ({
 	useInstanceAiSettingsStore: () => settingsStoreMock(),
 }));
 
+const mcpStoreMock = vi.fn();
 vi.mock('../../instanceAiMcp.store', () => ({
-	useInstanceAiMcpStore: () => ({
-		connections: [],
-		fetchConnections: vi.fn(),
-		disconnect: vi.fn(),
-	}),
+	useInstanceAiMcpStore: () => mcpStoreMock(),
 }));
 
-vi.mock('../../instanceAiMcp.telemetry', () => ({
-	useInstanceAiMcpTelemetry: () => ({
+const { telemetryMock, uiStoreMock } = vi.hoisted(() => ({
+	telemetryMock: {
 		trackAddMenuMcpSelected: vi.fn(),
-		trackModalOpened: vi.fn(),
+		trackToolsListOpened: vi.fn(),
 		trackSettingsOpened: vi.fn(),
-	}),
-}));
-
-vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({
+	},
+	uiStoreMock: {
 		openModal: vi.fn(),
 		openModalWithData: vi.fn(),
 		appliedTheme: 'light',
-	}),
+	},
+}));
+
+vi.mock('../../instanceAiMcp.telemetry', () => ({
+	useInstanceAiMcpTelemetry: () => telemetryMock,
+}));
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => uiStoreMock,
 }));
 
 const COMPUTER_USE_CONNECTION = {
@@ -61,13 +71,20 @@ const COMPUTER_USE_CONNECTION = {
 	status: 'disconnected' as const,
 };
 
+const BROWSER_USE_CONNECTION = {
+	type: 'browser-use' as const,
+	name: 'browser-use-row',
+	subtitle: 'subtitle',
+	status: 'disconnected' as const,
+};
+
 function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	return {
-		connections: [COMPUTER_USE_CONNECTION],
+		connections: [COMPUTER_USE_CONNECTION, BROWSER_USE_CONNECTION],
 		settings: { mcpAccessEnabled: false },
 		isLocalGatewayDisabledByAdmin: false,
 		isLocalGatewayDisabled: false,
-		isBrowserUseEnabledByAdmin: false,
+		isBrowserUseEnabledByAdmin: true,
 		gatewayStatusLoaded: true,
 		browserStatusLoaded: true,
 		fetch: vi.fn(),
@@ -79,12 +96,32 @@ function makeSettingsStore(overrides: Record<string, unknown> = {}) {
 	};
 }
 
+function makeMcpStore(overrides: Record<string, unknown> = {}) {
+	return {
+		connections: [],
+		fetchConnections: vi.fn(),
+		disconnect: vi.fn(),
+		...overrides,
+	};
+}
+
 const renderComponent = createComponentRenderer(ConnectionsCard, {
 	global: {
 		stubs: {
 			ConnectionRow: {
-				props: ['name'],
-				template: '<div data-test-stub="connection-row">{{ name }}</div>',
+				props: ['name', 'actions'],
+				template: `
+					<div data-test-stub="connection-row">
+						<span>{{ name }}</span>
+						<button
+							v-if="actions?.includes('settings')"
+							:data-test-id="\`connection-row-settings-\${name}\`"
+							@click="$emit('open-settings')"
+						>
+							settings
+						</button>
+					</div>
+				`,
 			},
 		},
 	},
@@ -96,7 +133,14 @@ describe('ConnectionsCard', () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		settingsStoreMock.mockReturnValue(makeSettingsStore());
+		mcpStoreMock.mockReturnValue(makeMcpStore());
+	});
+
+	it('renders the browser use row when the experiment is enabled', () => {
+		const { getByText } = renderComponent();
+		expect(getByText('browser-use-row')).toBeVisible();
 	});
 
 	it('renders the computer use row when the experiment is enabled', () => {
@@ -104,7 +148,23 @@ describe('ConnectionsCard', () => {
 		expect(getByText('computer-use-row')).toBeVisible();
 	});
 
-	describe('when the experiment is disabled', () => {
+	describe('when browser use experiment is disabled', () => {
+		beforeEach(() => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+		});
+
+		it('hides the browser use row', () => {
+			const { queryByText } = renderComponent();
+			expect(queryByText('browser-use-row')).toBeNull();
+		});
+
+		it('keeps other connection rows visible', () => {
+			const { getByText } = renderComponent();
+			expect(getByText('computer-use-row')).toBeVisible();
+		});
+	});
+
+	describe('when computer use experiment is disabled', () => {
 		beforeEach(() => {
 			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
 		});
@@ -114,10 +174,13 @@ describe('ConnectionsCard', () => {
 			expect(queryByText('computer-use-row')).toBeNull();
 		});
 
-		it('hides the empty-state CTA and shows the simplified title', () => {
+		it('hides the empty-state CTA when no connection can be added', () => {
+			settingsStoreMock.mockReturnValue(
+				makeSettingsStore({ connections: [COMPUTER_USE_CONNECTION] }),
+			);
 			const { queryByTestId, getByText } = renderComponent();
 			expect(queryByTestId('instance-ai-connections-empty-cta')).toBeNull();
-			expect(getByText('instanceAi.connections.empty.titleNoComputerUse')).toBeVisible();
+			expect(getByText('instanceAi.connections.empty.title')).toBeVisible();
 		});
 
 		it('omits computer use from the add menu', () => {
@@ -130,5 +193,83 @@ describe('ConnectionsCard', () => {
 		settingsStoreMock.mockReturnValue(makeSettingsStore({ connections: [] }));
 		const { getByTestId } = renderComponent();
 		expect(getByTestId('instance-ai-connections-empty-cta')).toBeVisible();
+	});
+
+	it('tracks opening the tools list from the add button', async () => {
+		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		settingsStoreMock.mockReturnValue(makeSettingsStore({ settings: { mcpAccessEnabled: true } }));
+
+		const { getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('instance-ai-connections-add'));
+
+		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalledTimes(1);
+		expect(uiStoreMock.openModal).toHaveBeenCalledTimes(1);
+	});
+
+	it('tracks opening the tools list from the empty-state CTA', async () => {
+		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		settingsStoreMock.mockReturnValue(
+			makeSettingsStore({ connections: [], settings: { mcpAccessEnabled: true } }),
+		);
+
+		const { getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('instance-ai-connections-empty-cta'));
+
+		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalledTimes(1);
+		expect(uiStoreMock.openModal).toHaveBeenCalledTimes(1);
+	});
+
+	it('tracks opening connected MCP server settings separately from the tools list', async () => {
+		mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		settingsStoreMock.mockReturnValue(
+			makeSettingsStore({ connections: [], settings: { mcpAccessEnabled: true } }),
+		);
+		mcpStoreMock.mockReturnValue(
+			makeMcpStore({
+				connections: [
+					{
+						id: 'conn-1',
+						serverSlug: 'linear',
+						serverTitle: 'Linear',
+						serverIcons: [],
+						credentialName: 'Linear OAuth2',
+					},
+				],
+			}),
+		);
+
+		const { getByTestId } = renderComponent();
+		await fireEvent.click(getByTestId('connection-row-settings-Linear'));
+
+		expect(telemetryMock.trackSettingsOpened).toHaveBeenCalledWith('linear');
+		expect(telemetryMock.trackToolsListOpened).not.toHaveBeenCalled();
+		expect(uiStoreMock.openModalWithData).toHaveBeenCalledTimes(1);
+	});
+
+	describe('card visibility', () => {
+		it('hides the entire card when no channel is enabled', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			const { queryByText } = renderComponent();
+			expect(queryByText('instanceAi.connections.title')).toBeNull();
+		});
+
+		it('hides the card when computer use is the only enabled channel but the local gateway is disabled by admin', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			settingsStoreMock.mockReturnValue(makeSettingsStore({ isLocalGatewayDisabledByAdmin: true }));
+			const { queryByText } = renderComponent();
+			expect(queryByText('instanceAi.connections.title')).toBeNull();
+		});
+
+		it('shows the card via MCP even when both singleton experiments are disabled', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+			mcpExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+			settingsStoreMock.mockReturnValue(
+				makeSettingsStore({ settings: { mcpAccessEnabled: true } }),
+			);
+			const { getByText } = renderComponent();
+			expect(getByText('instanceAi.connections.title')).toBeVisible();
+		});
 	});
 });

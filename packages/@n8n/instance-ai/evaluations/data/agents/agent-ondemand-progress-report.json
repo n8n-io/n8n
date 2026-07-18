@@ -1,0 +1,25 @@
+{
+	"description": "Gold: {anchor: agent, embedsOther: false} — an on-demand judgment report over external systems the assistant cannot query directly. Pins the AGENT-370 misroute: offering only workflow-or-DIY and building a manual-trigger workflow whose only real step is an embedded AI Agent node with the same tools (degenerate shell).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Tell me how our platform team is progressing against their cycle goals. Their current progress is in our Linear workspace and the cycle goals live on an internal Notion page. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["intent-resolution", "on-demand-report", "degenerate-shell"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The proposed deliverable is an n8n Agent with Linear and Notion access that the user can ask for the progress report (again) anytime — not a workflow, and not a choice presented as only 'I build you a workflow' or 'you gather the data yourself'.",
+		"The proposal does NOT anchor on a workflow whose only real step is a single AI Agent node (e.g. a manual trigger feeding an AI Agent with Linear/Notion tools) — the judgment-driven report work owns the flow, so the agent is the artifact rather than a step."
+	]
+}

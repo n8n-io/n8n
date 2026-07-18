@@ -1,14 +1,25 @@
 # MCP workflow evaluations
 
 Use the Instance AI evaluation harness to score workflows built through the MCP
-module. The MCP step creates workflows in a running n8n instance and writes a
-manifest of workflow IDs. The evaluation step then runs the normal
-`eval:instance-ai` verifier against those prebuilt workflows.
+module: build each workflow by driving the instance MCP server with Claude, then
+run the normal `eval:instance-ai` verifier against it.
 
 For the full framework documentation, argument reference, outputs, and
 troubleshooting, use the [Instance AI workflow evaluation README](../../../../../@n8n/instance-ai/evaluations/README.md).
 
-The usual flow is:
+## Two ways to run
+
+- **Fused — recommended.** `eval:instance-ai --build-via-mcp` builds each
+  workflow through the MCP server and verifies it in the **same run**, across one
+  or more lanes. One command, one LangSmith experiment (`LANGSMITH_API_KEY`
+  required) — and it's what CI (`ci-mcp-evals.yml`) runs. See
+  [Building via MCP](../../../../../@n8n/instance-ai/evaluations/README.md#building-via-mcp---build-via-mcp).
+- **Two-phase — decoupled (documented below).** `eval:build-mcp-manifest` writes
+  a manifest of workflow IDs, then `eval:instance-ai --prebuilt-workflows` scores
+  them. Reach for this when you want to build once and evaluate many times, A/B
+  different builders or models, or keep the built cohort around.
+
+The rest of this guide covers the two-phase flow:
 
 1. Start a local n8n instance with Instance AI enabled.
 2. Generate an MCP-built workflow cohort with `eval:build-mcp-manifest`.
@@ -88,6 +99,7 @@ always pass a dedicated `--dataset` and `--baseline-prefix`:
 LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
   pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --dataset mcp-workflow-evals \
@@ -118,6 +130,7 @@ dataset and prefix (high `--iterations` for a low-noise reference point):
 LANGSMITH_API_KEY=ls__... dotenvx run -f .env.mcp-evals -- \
   pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --dataset mcp-workflow-evals \
@@ -193,6 +206,7 @@ and stay in lockstep:
 ```bash
 # 1. Build the cohort — only mcp-tier cases
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-mcp-manifest \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   -n 3 \
   -j 3 \
@@ -202,6 +216,7 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-m
 # 2. Evaluate the same cohort
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --tier mcp \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --iterations 3 \
@@ -220,12 +235,15 @@ them; narrow its build set with positional slugs instead (e.g. append
 
 ## Generate a cohort
 
-Without `--tier` or a positional slug, the build covers every test case in
-`data/workflows/`. From the repo root, build five workflows per test case with
-five concurrent Claude Code builds:
+Without `--tier` or a positional slug, the build covers every test case in the
+source. The commands below pull the real corpus from LangTracer
+(`--source langtracer --suite n8n-workflows`); disk mode (`data/workflows/`)
+only holds the seeded carve-out cases. From the repo root, build five
+workflows per test case with five concurrent Claude Code builds:
 
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-mcp-manifest \
+  --source langtracer --suite n8n-workflows \
   -n 5 \
   -j 5 \
   --output-dir /tmp/n8n-mcp-cohort \
@@ -246,6 +264,7 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-m
   -j 5 \
   --output-dir /tmp/n8n-mcp-cohort \
   --mcp-server n8n-local \
+  --source langtracer --suite n8n-workflows \
   --model claude-opus-4-5
 ```
 
@@ -261,7 +280,7 @@ dotenvx run -f /path/to/n8n/.env.mcp-evals -- pnpm --dir /path/to/n8n \
   -j 5 \
   --mcp-server n8n-local \
   --project-id <n8n-project-id> \
-  --workflow-dir /path/to/n8n/packages/@n8n/instance-ai/evaluations/data/workflows \
+  --source langtracer --suite n8n-workflows \
   --build-cwd /path/to/mcp-workspace \
   --output-dir /tmp/n8n-mcp-skills-cohort
 ```
@@ -272,16 +291,16 @@ Useful flags:
   project when the MCP server supports project-aware workflow creation, such as
   the official n8n MCP server. Other MCP servers may ignore it and create
   workflows in the user's personal project.
-- `--workflow-dir` points to the test-case JSON files when the process is not
-  running from the n8n repo root.
+- `--source langtracer --suite <slug>` pulls the test cases from LangTracer
+  (the corpus home). Alternatively `--workflow-dir` points at a directory of
+  case JSONs for disk mode.
 - `--build-cwd` controls the working directory for the Claude subprocess, which
   affects the Claude project config and skills that get loaded.
 
 ## Generate one test case
 
-Pass the test-case slug as a positional argument. The slug is the workflow JSON
-filename without `.json` from
-`packages/@n8n/instance-ai/evaluations/data/workflows/`.
+Pass the test-case slug as a positional argument. The slug is the case name in
+the LangTracer suite (for disk mode, the JSON filename without `.json`).
 
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-mcp-manifest \
@@ -289,6 +308,7 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:build-m
   -j 5 \
   --output-dir /tmp/n8n-mcp-contact-form \
   --mcp-server n8n-local \
+  --source langtracer --suite n8n-workflows \
   contact-form-automation
 ```
 
@@ -305,6 +325,7 @@ concurrent eval workers:
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --prebuilt-workflows /tmp/n8n-mcp-cohort/manifest.json \
   --iterations 5 \
   --concurrency 5 \
@@ -321,6 +342,7 @@ Use `--filter` with the same slug that was used during manifest generation:
 ```bash
 dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instance-ai \
   --base-url http://localhost:5678 \
+  --source langtracer --suite n8n-workflows \
   --prebuilt-workflows /tmp/n8n-mcp-contact-form/manifest.json \
   --filter contact-form-automation \
   --iterations 5 \
@@ -330,12 +352,12 @@ dotenvx run -f .env.mcp-evals -- pnpm --filter @n8n/instance-ai run eval:instanc
 
 ## Adding a case to the `mcp` tier
 
-Test cases live in
-`packages/@n8n/instance-ai/evaluations/data/workflows/*.json`, validated by
-`schema.ts` — see
+Test cases live in the LangTracer suite `n8n-workflows` — see
 [Adding test cases](../../../../../@n8n/instance-ai/evaluations/README.md#adding-test-cases)
-for the full schema. To include a case in the MCP cohort, add `"mcp"` to its
-`datasets` array; both `--tier mcp` steps then pick it up, no registration:
+for the full schema and authoring flow. To include a case in the MCP cohort,
+add `"mcp"` to its `datasets` array (in LangTracer for existing cases; in the
+local JSON before pushing for new ones); both `--tier mcp` steps then pick it
+up, no registration:
 
 ```json
 "datasets": ["mcp", "full"]

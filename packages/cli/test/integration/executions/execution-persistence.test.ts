@@ -1,5 +1,6 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -8,10 +9,12 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 describe('ExecutionPersistence', () => {
 	let executionPersistence: ExecutionPersistence;
+	let executionRepository: ExecutionRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionPersistence = Container.get(ExecutionPersistence);
+		executionRepository = Container.get(ExecutionRepository);
 	});
 
 	beforeEach(async () => {
@@ -26,12 +29,13 @@ describe('ExecutionPersistence', () => {
 		const buildPayload = (
 			workflow: WorkflowEntity,
 			deduplicationKey?: string,
+			status: CreateExecutionPayload['status'] = 'new',
 		): CreateExecutionPayload => ({
 			data: createEmptyRunExecutionData(),
 			workflowData: workflow,
 			mode: 'trigger',
 			finished: false,
-			status: 'new',
+			status,
 			workflowId: workflow.id,
 			deduplicationKey,
 		});
@@ -55,11 +59,12 @@ describe('ExecutionPersistence', () => {
 			expect(id1).not.toBe(id2);
 		});
 
-		it('throws DuplicateExecutionError when deduplicationKey is reused', async () => {
+		it('throws DuplicateExecutionError when a dispatched execution already holds the key', async () => {
 			const workflow = await createWorkflow();
 			const key = 'wf:node:t1';
 
-			await executionPersistence.create(buildPayload(workflow, key));
+			// A dispatched execution (status past `new`) is a real effect, not a tombstone.
+			await executionPersistence.create(buildPayload(workflow, key, 'running'));
 
 			await expect(executionPersistence.create(buildPayload(workflow, key))).rejects.toBeInstanceOf(
 				DuplicateExecutionError,
@@ -67,6 +72,21 @@ describe('ExecutionPersistence', () => {
 			await expect(executionPersistence.create(buildPayload(workflow, key))).rejects.toMatchObject({
 				deduplicationKey: key,
 			});
+		});
+
+		it('reclaims a tombstone (never-dispatched `new` row) when the key is reused', async () => {
+			const workflow = await createWorkflow();
+			const key = 'wf:node:t1';
+
+			// A prior attempt inserted the execution `new`, then died before dispatch.
+			const tombstoneId = await executionPersistence.create(buildPayload(workflow, key));
+
+			// The redelivery takes over the key instead of colliding, yielding a fresh row.
+			const reclaimedId = await executionPersistence.create(buildPayload(workflow, key));
+
+			expect(reclaimedId).not.toBe(tombstoneId);
+			expect(await executionRepository.findOneBy({ id: tombstoneId })).toBeNull();
+			expect(await executionRepository.findOneBy({ id: reclaimedId })).not.toBeNull();
 		});
 	});
 });

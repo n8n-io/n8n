@@ -7,6 +7,32 @@ import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 vi.mock('@n8n/design-system', () => ({
+	N8nAiActivityStep: {
+		props: ['label', 'hasContent', 'loading', 'error'],
+		data: () => ({ isOpen: false }),
+		computed: {
+			labelParts(this: { label: string }): string[] {
+				return this.label.split(' · ');
+			},
+		},
+		template: `
+			<div>
+				<button v-if="hasContent" type="button" @click="isOpen = !isOpen">
+					{{ labelParts[0] }}
+				</button>
+				<span v-else>{{ labelParts[0] }}</span>
+				<template v-for="part in labelParts.slice(1)" :key="part">
+					<span> · </span>
+					<span data-testid="tool-step-summary">{{ part }}</span>
+				</template>
+				<div v-if="isOpen"><slot /></div>
+			</div>
+		`,
+	},
+	N8nAiActivityStepGroup: {
+		props: ['label', 'size', 'loading'],
+		template: '<div><slot /></div>',
+	},
 	N8nIcon: {
 		template: '<i :data-icon="icon" />',
 		props: ['icon', 'size', 'spin'],

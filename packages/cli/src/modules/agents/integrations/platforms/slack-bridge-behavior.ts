@@ -1,5 +1,5 @@
-import { isRecord } from '@n8n/utils';
-import type { Thread } from 'chat';
+import { isRecord } from '@n8n/utils/is-record';
+import type { Message, Thread } from 'chat';
 
 import type {
 	BridgeExecutionContext,
@@ -12,6 +12,17 @@ import type { ChatInstance } from '../chat-integration.service';
 
 const SLACK_THINKING_STATUS = 'Thinking...';
 const SLACK_STATUS_RETRY_DELAY_MS = 750;
+
+const SLACK_HISTORY_MAX_MESSAGES = 30;
+const SLACK_HISTORY_MAX_CHARS = 8000;
+const SLACK_HISTORY_MAX_MESSAGE_CHARS = 1500;
+const SLACK_HISTORY_HEADER =
+	'Earlier messages in this Slack thread, for context (you were mentioned partway through the conversation):';
+const SLACK_HISTORY_OPEN_TAG = '<slack_thread_history>';
+const SLACK_HISTORY_CLOSE_TAG = '</slack_thread_history>';
+/** Fixed cost of header + tags + the two `\n` joins around the open tag (header→open, open→close). Each history line adds `line.length + 1` (its preceding newline). */
+const SLACK_HISTORY_FRAMING_CHARS =
+	SLACK_HISTORY_HEADER.length + SLACK_HISTORY_OPEN_TAG.length + SLACK_HISTORY_CLOSE_TAG.length + 2;
 
 interface SlackThreadContext {
 	channelId: string;
@@ -46,18 +57,32 @@ export async function createSlackBridgeExecutionContext(
 ): Promise<BridgeExecutionContext> {
 	const platformAgentContext = getSlackPlatformAgentContext(params.chat);
 	const slackThreadContext = getSlackThreadContext(params.message);
-	const statusHandle = await startSlackThinkingStatus(params.thread, {
-		chat: params.chat,
-		logger: params.logger,
-		agentId: params.agentId,
-		slackThreadContext,
-		statusRetry: params.statusRetry,
-	});
+	const shouldFetchHistory = params.isNewMention && slackThreadContext?.hasRealThreadTs === true;
+
+	const [statusHandle, historyContext] = await Promise.all([
+		startSlackThinkingStatus(params.thread, {
+			chat: params.chat,
+			logger: params.logger,
+			agentId: params.agentId,
+			slackThreadContext,
+			statusRetry: params.statusRetry,
+		}),
+		shouldFetchHistory
+			? fetchSlackThreadHistory(
+					params.thread,
+					params.message,
+					platformAgentContext,
+					params.logger,
+					params.agentId,
+				)
+			: Promise.resolve(undefined),
+	]);
 
 	return {
 		platformAgentContext,
 		forceBuffered: slackThreadContext?.hasRealThreadTs !== true,
 		statusHandle,
+		...(historyContext ? { historyContext } : {}),
 	};
 }
 
@@ -220,6 +245,90 @@ async function setSlackAssistantStatusWithRetry(
 		}
 		options.logger.warn('[AgentChatBridge] Failed to set Slack assistant status', logPayload);
 	}
+}
+
+/**
+ * Fetch prior messages in the Slack thread the agent was just mentioned into,
+ * and format them as a delimited context block to prepend to the agent input.
+ */
+async function fetchSlackThreadHistory(
+	thread: Thread<unknown, unknown>,
+	triggeringMessage: Message<unknown>,
+	context: PlatformAgentContext,
+	logger: BridgeMessageContextParams['logger'],
+	agentId: string,
+): Promise<string | undefined> {
+	try {
+		const triggeringMessageId = triggeringMessage.id;
+		const collected: string[] = [];
+		// Budget the final joined block (framing + newlines), not just line bodies.
+		let totalChars = SLACK_HISTORY_FRAMING_CHARS;
+
+		for await (const message of thread.messages) {
+			if (collected.length >= SLACK_HISTORY_MAX_MESSAGES) break;
+			if (message.id === triggeringMessageId) continue;
+
+			const text = typeof message.text === 'string' ? message.text.trim() : '';
+			if (!text) continue;
+
+			const line = formatSlackHistoryLine(message, text, context);
+			const lineCost = line.length + 1; // line + its preceding `\n` in the joined block
+			if (totalChars + lineCost > SLACK_HISTORY_MAX_CHARS) break;
+
+			collected.push(line);
+			totalChars += lineCost;
+		}
+
+		if (collected.length === 0) return undefined;
+
+		const chronological = collected.reverse();
+		return [
+			SLACK_HISTORY_HEADER,
+			SLACK_HISTORY_OPEN_TAG,
+			...chronological,
+			SLACK_HISTORY_CLOSE_TAG,
+		].join('\n');
+	} catch (error) {
+		logger.warn('[AgentChatBridge] Failed to fetch Slack thread history', {
+			agentId,
+			threadId: thread.id,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
+}
+
+function formatSlackHistoryLine(
+	message: Message<unknown>,
+	text: string,
+	context: PlatformAgentContext,
+): string {
+	const author = message.author;
+	const label =
+		author.userId && context.agentUserId && author.userId === context.agentUserId
+			? 'you (the agent)'
+			: (author.userName ?? author.userId ?? 'unknown');
+	const safeText = sanitizeSlackHistoryText(text);
+	const truncatedText =
+		safeText.length > SLACK_HISTORY_MAX_MESSAGE_CHARS
+			? `${safeText.slice(0, SLACK_HISTORY_MAX_MESSAGE_CHARS)}…`
+			: safeText;
+	return `[${label}]: ${truncatedText}`;
+}
+
+/**
+ * Neutralize the history-block framing tokens inside message text so a prior
+ * Slack message can't spoof the `<slack_thread_history>` delimiters and break
+ * out of the quoted-context block (e.g. an injected `</slack_thread_history>`
+ * followed by rogue instructions). Angle-bracket mentions like `<@U123>` are
+ * left untouched — only the framing tag itself is rewritten to a bracketed
+ * form that can't be mistaken for a delimiter.
+ */
+function sanitizeSlackHistoryText(text: string): string {
+	return text.replace(
+		/<(\/?)(slack_thread_history)\s*>/gi,
+		(_m, slash: string, name: string) => `[${slash}${name}]`,
+	);
 }
 
 function getSlackThreadContext(

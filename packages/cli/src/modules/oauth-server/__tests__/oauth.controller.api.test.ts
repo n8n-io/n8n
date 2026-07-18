@@ -128,13 +128,13 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 		expect(response.body.bearer_methods_supported).toEqual(['header']);
 	});
 
-	test('should omit scopes_supported when no scopes are advertised', async () => {
+	test('should advertise the grantable MCP scopes', async () => {
 		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).not.toHaveProperty('scopes_supported');
+		expect(response.body.scopes_supported).toEqual(SUPPORTED_SCOPES);
 	});
 
 	test('should be accessible without authentication', async () => {
@@ -298,14 +298,14 @@ describe('POST /mcp-oauth/register', () => {
 	});
 
 	test('should reject with descriptive server_error on the post-insert rollback (race path)', async () => {
-		const { OAuthServerService } = await import('../oauth-server.service');
+		const { OAuthServerService } = await import('../oauth-server.service.js');
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
 
 		// Stub the pre-check guard to always pass, simulating two concurrent
 		// registrations that both saw count < limit and made it past the guard.
-		const guardSpy = jest
+		const guardSpy = vi
 			.spyOn(OAuthServerService.prototype, 'isClientLimitReached')
 			.mockResolvedValue(false);
 
@@ -592,7 +592,9 @@ describe('Full authorization-code flow (PKCE)', () => {
 		// 3. Consent approval as an authenticated user
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
-		const consentResponse = await authAgent.post('/consent/approve').send({ approved: true });
+		const consentResponse = await authAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: SUPPORTED_SCOPES });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
@@ -616,6 +618,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+			scope: SUPPORTED_SCOPES.join(' '),
 		});
 		expect(tokenResponse.statusCode).toBe(200);
 
@@ -765,7 +768,9 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		// 3. Consent approval as an authenticated user
 		const authAgent = testServer.authAgentFor(owner);
 		authAgent.jar.setCookie(sessionCookie ?? '');
-		const consentResponse = await authAgent.post('/consent/approve').send({ approved: true });
+		const consentResponse = await authAgent
+			.post('/consent/approve')
+			.send({ approved: true, scopes: SUPPORTED_SCOPES });
 		expect(consentResponse.statusCode).toBe(200);
 
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
@@ -789,6 +794,7 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			token_type: 'Bearer',
 			expires_in: 3600,
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+			scope: SUPPORTED_SCOPES.join(' '),
 		});
 	});
 });
@@ -799,7 +805,7 @@ describe('IP rate limit configuration', () => {
 	let OAuthController: typeof OAuthControllerClass;
 
 	beforeAll(async () => {
-		({ OAuthController } = await import('../oauth.controller'));
+		({ OAuthController } = await import('../oauth.controller.js'));
 	});
 
 	test('applies the configured limits to the shared OAuth endpoints', () => {

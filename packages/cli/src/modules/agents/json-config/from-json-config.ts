@@ -10,9 +10,17 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 	RuntimeSkill,
+	RuntimeSkillLinkedFiles,
+	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import {
+	getNativeWebSearchProviderTools,
+	getProviderPrefix,
+	hasNativeWebSearchProvider,
+	isNativeWebSearchRequested,
+} from '@n8n/ai-utilities/agent-config';
 import type {
 	AgentSkill,
 	AgentJsonConfig,
@@ -22,17 +30,19 @@ import type {
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
-import { mapCredentialForProvider } from './credential-field-mapping';
-import { resolveCredentialAwareModelConfig } from './model-config';
-import { getProviderPrefix } from './model-id';
 import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-	isNativeWebSearchRequested,
-} from './native-web-search-provider-tools';
+	resolveEmbeddingProviderOptionsFromCredential,
+	type ManagedEmbeddingProviderOptions,
+	type ManagedEmbeddingProviderOptionsResolver,
+} from './embedding-credential';
+import { resolveCredentialAwareModelConfig } from './model-config';
 import { resolveProviderToolName } from './provider-tool-aliases';
+import { buildVectorStore } from './vector-store-factory';
+
+export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
 
 const WEB_SEARCH_TOOL_NAME = 'web_search';
 const WEB_SEARCH_INPUT_SCHEMA = z.object({
@@ -65,13 +75,6 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
-export interface ManagedEmbeddingProviderOptions {
-	apiKey?: string;
-	baseURL?: string;
-	fetch?: typeof globalThis.fetch;
-}
-export type ManagedEmbeddingProviderOptionsResolver =
-	() => Promise<ManagedEmbeddingProviderOptions | null>;
 
 type MemoryWorkerModelConfig = {
 	model: string;
@@ -114,7 +117,7 @@ export async function buildFromJson(
 	toolDescriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
 ): Promise<RuntimeAgent> {
-	const { Agent } = await import('@n8n/agents');
+	const { Agent, createRuntimeSkillRegistry } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
@@ -123,7 +126,11 @@ export async function buildFromJson(
 		agent.modelFetch(options.modelFetch);
 	}
 
-	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
+	const configuredSkillSource = getConfiguredSkillSource(
+		config.skills ?? [],
+		options.skills ?? {},
+		createRuntimeSkillRegistry,
+	);
 	agent.instructions(getInstructionsWithWebSearchPolicy(config));
 
 	// Tools
@@ -138,12 +145,30 @@ export async function buildFromJson(
 
 	if (config.mcpServers?.length && options.buildMcpClient) {
 		for (const server of config.mcpServers) {
+			// Draft MCP connections may not have an endpoint URL yet, or may
+			// require a credential that setup skipped. Attempting to connect
+			// anyway would mean an unauthenticated request to a server that
+			// requires auth, so treat either as an incomplete draft and skip
+			// attaching it rather than risk a connection attempt.
+			if (!server.url.trim()) continue;
+			if (server.authentication !== 'none' && !server.credential) continue;
+
 			const client = await options.buildMcpClient(server);
 			agent.mcp(client);
 		}
 	}
 
-	agent.skills(configuredSkills);
+	if (config.vectorStores?.length) {
+		for (const vectorStoreConfig of config.vectorStores) {
+			// Draft connections may not have a credential (or embedding credential)
+			// selected yet — skip them rather than failing the whole agent build.
+			if (!vectorStoreConfig.credential || !vectorStoreConfig.embedding.credential) continue;
+			const vectorStore = await buildVectorStore(vectorStoreConfig, options.credentialProvider);
+			agent.vectorStore(vectorStore, { description: vectorStoreConfig.useWhen });
+		}
+	}
+
+	agent.skills(configuredSkillSource);
 
 	// Provider tools
 	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
@@ -174,6 +199,9 @@ export async function buildFromJson(
 		if (config.config.thinking) {
 			const { provider, ...rest } = config.config.thinking;
 			agent.thinking(provider, rest);
+		}
+		if (config.config.promptCaching) {
+			agent.promptCaching(config.config.promptCaching);
 		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
@@ -291,27 +319,69 @@ function buildFallbackWebSearchTool(
 	};
 }
 
-function getConfiguredSkills(
+function getConfiguredSkillSource(
 	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
-): RuntimeSkill[] {
+	createRegistry: (skills: RuntimeSkill[]) => RuntimeSkillSource['registry'],
+): RuntimeSkillSource {
 	const seen = new Set<string>();
 	const configured: RuntimeSkill[] = [];
+	const referencesBySkillId = new Map<
+		string,
+		Map<string, NonNullable<AgentSkill['references']>[number]>
+	>();
 
 	for (const ref of refs) {
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
+		const linkedFiles = linkedFilesForSkill(skill);
+		referencesBySkillId.set(
+			ref.id,
+			new Map((skill.references ?? []).map((reference) => [reference.path, reference])),
+		);
 		configured.push({
 			id: ref.id,
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
+			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
+			linkedFiles,
 		});
 	}
 
-	return configured;
+	const skillsById = new Map(configured.map((skill) => [skill.id, skill]));
+	return {
+		registry: createRegistry(configured),
+		loadSkill: async (skillId) => (await Promise.resolve(skillsById.get(skillId))) ?? null,
+		loadFile: async (skillId, filePath) => {
+			const reference = referencesBySkillId.get(skillId)?.get(filePath);
+			if (!reference) return await Promise.resolve(null);
+			return await Promise.resolve({
+				skillId,
+				filePath: reference.path,
+				content: reference.content,
+				bytes: Buffer.byteLength(reference.content, 'utf8'),
+				sha256: createHash('sha256').update(reference.content).digest('hex'),
+			});
+		},
+	};
+}
+
+function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+	return {
+		references: (skill.references ?? []).map((reference) => ({
+			path: reference.path,
+			bytes: Buffer.byteLength(reference.content, 'utf8'),
+			sha256: createHash('sha256').update(reference.content).digest('hex'),
+		})),
+		templates: [],
+		scripts: [],
+		assets: [],
+		examples: [],
+		other: [],
+	};
 }
 
 async function resolveToolRef(
@@ -489,19 +559,6 @@ async function resolveEpisodicMemoryJsonConfig(
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		embeddingProviderOptions,
-	};
-}
-
-async function resolveEmbeddingProviderOptionsFromCredential(
-	credential: string,
-	embeddingModel: string,
-	credentialProvider: CredentialProvider,
-): Promise<ManagedEmbeddingProviderOptions> {
-	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	return {
-		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
-		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
 	};
 }
 

@@ -28,7 +28,7 @@ describe('isNonImpactful', () => {
 		'tsconfig.json',
 		'packages/cli/tsconfig.build.json',
 		'biome.jsonc',
-		'packages/testing/test-impact/jest.config.ts',
+		'packages/testing/test-impact/vitest.config.ts',
 		'.eslintrc.js',
 	])('treats %s as non-impactful', (file) => {
 		expect(isNonImpactful(file)).toBe(true);
@@ -82,6 +82,7 @@ describe('forcesBroad', () => {
 		'packages/cli/Dockerfile',
 		'Dockerfile.dev',
 		'packages/cli/worker.Dockerfile',
+		'packages/nodes-base/credentials/MicrosoftOAuth2Api.credentials.ts',
 	])('treats %s as runtime-defining (force broad)', (file) => {
 		expect(forcesBroad(file)).toBe(true);
 	});

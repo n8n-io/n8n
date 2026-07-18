@@ -23,6 +23,8 @@ export const userScopes = [
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
+	// Needed so /users.info returns the responder's email for the HITL capture-responder option.
+	'users:read.email',
 	'search:read',
 ];
 
