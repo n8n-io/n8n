@@ -29,9 +29,8 @@ show up inside that flow.
 If the user asked to build, route on the result: workflow-builder for
 workflow-anchored (a bounded LLM step is an AI node in the graph; an embedded
 agent is an AI Agent step inside it), an agent-oriented design for
-agent-anchored (a tool-use loop; build reusable actions as workflows the
-agent invokes), `ask-user` for needs-clarification, or answer directly for
-out-of-scope.
+agent-anchored (a tool-use loop), `ask-user` for needs-clarification, or answer
+directly for out-of-scope.
 
 ## Inputs
 
@@ -77,9 +76,8 @@ Two orthogonal decisions per request, or per part for compound requests:
 
 - workflow-anchored + `true`: an agent embedded as a workflow step (e.g. a
   scheduled pipeline whose middle step is open-ended investigation).
-- agent-anchored + `true`: workflows invoked as tools of the agent —
-  especially when the user wants reusable or manually-triggerable actions, or
-  an action is itself a deterministic multi-step procedure.
+- agent-anchored + `true`: workflows invoked as tools of the agent; see Adding
+  tools to an agent to distinguish them from direct tools.
 - `n/a` for needs-clarification and out-of-scope.
 
 **Migration from the old taxonomy**: old **hybrid** → workflow-anchored,
@@ -88,6 +86,27 @@ one-off request (do the task directly); workflow-anchored with one LLM step
 only when the user wants a persistent, triggerable automation. Old
 **ambiguous** → needs-clarification. Old **workflow** and **agent** map
 directly onto the matching anchor value.
+
+## Adding tools to an agent
+
+After choosing an agent-anchored design, decide whether each capability should
+be a direct agent tool or a workflow tool:
+
+- **Direct agent tools are the default.** Forward requests to add capabilities
+  to `build-agent` near-verbatim so the delegated builder can choose MCP,
+  node-backed, provider, or custom tools. One node-backed capability or
+  multiple independent node tools stay on the agent build path with
+  `embeds_other: false`.
+- Use a **workflow tool** only when one agent tool call must run an ordered
+  multi-node procedure, or when the user explicitly needs that workflow
+  reusable, manually callable, or usable outside the agent. Build the workflow
+  first, pass it to `build-agent` via `workflowContext`, and set
+  `embeds_other: true`.
+
+Count the nodes required inside one tool invocation, not the total number of
+tools on the agent. For example, looking up and inserting Data Table rows are
+two direct node tools; an atomic lookup-transform-write procedure is one
+workflow tool.
 
 ## Decision Steps
 
@@ -195,9 +214,7 @@ that agent, never a spawned workflow.
   that drafts a tailored renewal pitch for each account from its usage
   history embeds an agent; a nightly job that condenses each ticket into a
   two-sentence summary does not.
-- Agent with workflow tools: the user asks for actions that should also be
-  reusable, callable manually, or run outside the agent; or an action the
-  agent invokes is itself a deterministic multi-step procedure.
+- For an agent with workflow tools, apply Adding tools to an agent.
 
 **Context continuity** (step 0): inside a workflow build, a request to insert
 a scoring step stays a bounded LLM step, not a new agent. Inside an agent
@@ -352,7 +369,7 @@ Return a concise classification and reason:
 Anchor: workflow-anchored | agent-anchored | needs-clarification | out-of-scope
 Embeds other: true | false | n/a
 Reason: <one or two sentences citing the deciding signals>
-Next step: <build workflow / build workflow with embedded agent step / build n8n Agent artifact (agent build path; workflows as tools where actions should be reusable; recurring duties as scheduled tasks on the agent) / ask clarification / answer directly>
+Next step: <build workflow / build workflow with embedded agent step / build n8n Agent artifact (agent build path; recurring duties as scheduled tasks on the agent) / ask clarification / answer directly>
 ```
 
 For build requests, do not expose this format unless the user asks for

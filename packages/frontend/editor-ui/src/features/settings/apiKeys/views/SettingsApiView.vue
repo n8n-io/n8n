@@ -8,7 +8,7 @@ import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { DOCS_DOMAIN } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';

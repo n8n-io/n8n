@@ -7,6 +7,7 @@ import type {
 	EvaluationCollectionRunSummary,
 	UpdateEvaluationCollectionPayload,
 } from '@n8n/api-types';
+import { normalizeMetricScore } from '@n8n/api-types';
 import type { TestRun, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
@@ -179,6 +180,11 @@ export class EvaluationCollectionService {
 					workflowVersionId: versionId,
 					evaluationConfigId: input.evaluationConfigId,
 					evaluationConfigSnapshot: configSnapshot,
+					// Compile the eval config (dataset + trigger + metric nodes) onto
+					// each version's snapshot. Without this the run goes "direct" and
+					// the raw versioned workflow has no evaluation trigger → the run
+					// fails immediately with EVALUATION_TRIGGER_NOT_FOUND.
+					compileFromConfig: true,
 				},
 			);
 			runsStartedIds.push(testRun.id);
@@ -474,10 +480,16 @@ export class EvaluationCollectionService {
 	private computeAvgScore(run: TestRun): number | null {
 		const coerced = this.coerceMetrics(run.metrics);
 		if (!coerced) return null;
-		const values = Object.values(coerced);
-		if (values.length === 0) return null;
-		const sum = values.reduce((acc, v) => acc + v, 0);
-		return sum / values.length;
+		// A "score" is a user-defined metric normalized to [0, 1] by its scale
+		// (AI-judge metrics are 1–5 → /5). Operational metrics (token counts,
+		// execution time) normalize to null and are excluded. Mirrors the FE's
+		// score model so the versions table's %/best/critical annotations match
+		// the compare view; null when a run reports no score metric.
+		const scores = Object.entries(coerced)
+			.map(([key, value]) => normalizeMetricScore(key, value))
+			.filter((value): value is number => value !== null);
+		if (scores.length === 0) return null;
+		return scores.reduce((acc, value) => acc + value, 0) / scores.length;
 	}
 
 	private coerceMetrics(

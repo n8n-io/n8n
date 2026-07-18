@@ -1,6 +1,8 @@
-import { searchLibraries, searchSites } from './listSearch';
+import { getSheets, getTables, searchLibraries, searchSites } from './listSearch';
 
 export const listSearch = {
 	searchSites,
 	searchLibraries,
+	getSheets,
+	getTables,
 };

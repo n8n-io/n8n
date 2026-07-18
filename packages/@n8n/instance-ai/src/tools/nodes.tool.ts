@@ -34,7 +34,7 @@ const listAction = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'When true, return only nodes supported by n8n Connect (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support n8n Connect?".',
+			'When true, return only nodes supported by n8n credits (each carries an `aiGateway` field with minVersion/operations). Use to answer "which nodes support n8n credits?".',
 		),
 });
 

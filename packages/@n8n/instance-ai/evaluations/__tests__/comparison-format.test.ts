@@ -132,6 +132,11 @@ function evaluation(
 				})),
 				buildSuccessCount,
 				buildExpectations,
+				status:
+					scenarios.some((sa) => sa.evaluatedCount > 0) ||
+					buildExpectations.some((ea) => ea.evaluatedCount > 0)
+						? ('verified' as const)
+						: ('notVerified' as const),
 			};
 		}),
 	};

@@ -3730,6 +3730,30 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+
+		test('does not treat showOnDeployment as a parameter dependency', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Read', value: 'read' }],
+					default: 'read',
+				},
+				{
+					displayName: 'Cloud notice',
+					name: 'cloudNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: { operation: ['read'] },
+						showOnDeployment: 'cloud',
+					},
+				},
+			];
+
+			expect(() => getNodeParameters(properties, {}, true, false, null, null)).not.toThrow();
+		});
 	});
 
 	describe('isSubNodeType', () => {
