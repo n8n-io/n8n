@@ -5,8 +5,6 @@ import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
-import { Telemetry } from '@/telemetry';
-
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
 import { McpConfig } from './mcp.config';
 import {
@@ -19,6 +17,9 @@ import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
 import { getClientInfo } from './mcp.utils';
+
+import { mcpEnabledForDiscovery } from '@/modules/oauth-server/mcp-enabled-discovery.middleware';
+import { Telemetry } from '@/telemetry';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -76,7 +77,7 @@ export class McpController {
 	 */
 	@Get('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
-		middlewares: [getAuthMiddleware()],
+		middlewares: [mcpEnabledForDiscovery, getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
 	})
@@ -110,7 +111,7 @@ export class McpController {
 
 	@Post('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
-		middlewares: [getAuthMiddleware()],
+		middlewares: [mcpEnabledForDiscovery, getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
 	})

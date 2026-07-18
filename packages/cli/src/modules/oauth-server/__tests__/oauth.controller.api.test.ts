@@ -952,6 +952,38 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 	});
 });
 
+describe('POST /mcp-server/http - discovery middleware suppression', () => {
+	beforeEach(async () => {
+		// MCP access is disabled for these tests
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 404 for POST /mcp-server/http when MCP is disabled', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-server/http').send({
+			jsonrpc: '2.0',
+			method: 'initialize',
+			params: {},
+			id: 1,
+		});
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+		expect(response.headers['cache-control']).toBe('no-store');
+	});
+
+	test('should return 404 for GET /mcp-server/http when MCP is disabled', async () => {
+		const response = await testServer.restlessAgent.get('/mcp-server/http');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+		expect(response.headers['cache-control']).toBe('no-store');
+	});
+});
+
 describe('IP rate limit configuration', () => {
 	const windowMs = 5 * 60 * 1000;
 
