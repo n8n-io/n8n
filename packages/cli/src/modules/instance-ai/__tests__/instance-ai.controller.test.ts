@@ -983,6 +983,15 @@ describe('InstanceAiController', () => {
 				command: 'reload-instance-ai-settings',
 			});
 		});
+
+		it('should wait for the settings reload to be published', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
+			publisher.publishCommand.mockRejectedValue(new Error('publish failed'));
+
+			await expect(controller.updateAdminSettings(req, res, { enabled: true })).rejects.toThrow(
+				'publish failed',
+			);
+		});
 	});
 
 	describe('getUserPreferences', () => {

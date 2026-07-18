@@ -678,7 +678,7 @@ export class InstanceAiController {
 	) {
 		const result = await this.settingsService.updateAdminSettings(payload);
 		await this.applyAdminSettingsSideEffects(result);
-		void this.publisher.publishCommand({ command: 'reload-instance-ai-settings' });
+		await this.publisher.publishCommand({ command: 'reload-instance-ai-settings' });
 
 		return result;
 	}
