@@ -547,6 +547,39 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
 	});
 
+	test('should retry on 403 for Databricks with default credential-level expired status code', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData({ tokenExpiredStatusCode: 403 }));
+
+		// First call returns Databricks-style 403 expired-token response
+		mockThis.helpers.httpRequest.mockRejectedValueOnce(
+			Object.assign(new Error('403'), {
+				response: { status: 403, data: { error: 'token_expired' } },
+			}),
+		);
+
+		// Token re-fetch
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+
+		// Retry succeeds
+		mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			undefined,
+			true, // isN8nRequest
+		);
+
+		expect(result).toEqual({ success: true });
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+	});
+
 	test('should NOT retry on 401 when credential sets tokenExpiredStatusCode to 403 (isN8nRequest path)', async () => {
 		mockThis.getCredentials.mockResolvedValue(makeCredentialData({ tokenExpiredStatusCode: 403 }));
 

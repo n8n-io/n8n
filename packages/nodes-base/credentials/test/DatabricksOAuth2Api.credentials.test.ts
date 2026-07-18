@@ -17,18 +17,15 @@ describe('DatabricksOAuth2Api Credential', () => {
 	describe('tokenExpiredStatusCode', () => {
 		const field = databricksOAuth2Api.properties.find((p) => p.name === 'tokenExpiredStatusCode');
 
-		// The base `oAuth2Api` field is `doNotInherit`, so it must be re-declared
-		// here or `credentials.tokenExpiredStatusCode` is always undefined and token
-		// refresh stays hardcoded to 401.
 		it('should be declared so it reaches the decrypted credential', () => {
 			expect(field).toBeDefined();
 		});
 
-		it('should default to 401 to preserve existing behavior', () => {
-			expect(field?.default).toBe(401);
+		it('should default to 403 for Databricks', () => {
+			expect(field?.default).toBe(403);
 		});
 
-		it('should be a configurable number field (not hidden)', () => {
+		it('should be a configurable number field', () => {
 			expect(field?.type).toBe('number');
 			expect(field?.type).not.toBe('hidden');
 		});
