@@ -80,11 +80,10 @@ const handleCopy = async () => {
 
 /* Icon-only buttons are forced to a square (width = button height) with the icon
    centred, leaving dead space each side; shrink to the glyph so it sits flush.
-   The !importants beat the DS's `.button.iconOnly` width rules and `:hover`
-   background; the ghost variant already handles border/shadow/rest background. */
+   The !importants beat the DS's `.button.iconOnly` width rules; the ghost variant
+   already handles background (transparent at rest, hover feedback kept). */
 .copy-button {
 	width: auto !important;
-	background: transparent !important;
 
 	> * {
 		width: auto !important;
