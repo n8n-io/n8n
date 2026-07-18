@@ -338,12 +338,6 @@ export class InstanceAiSettingsService {
 		}));
 	}
 
-	private async readPersistedAdminSettings(): Promise<PersistedAdminSettings> {
-		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
-		if (!row) return {};
-		return jsonParse<PersistedAdminSettings>(row.value, { fallbackValue: {} });
-	}
-
 	async isModelCredentialInUse(credentialId: string): Promise<boolean> {
 		const settings = await this.readPersistedAdminSettings();
 		return settings.modelCredentialId === credentialId;
