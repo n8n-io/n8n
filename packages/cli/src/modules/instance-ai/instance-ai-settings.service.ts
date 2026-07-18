@@ -214,7 +214,8 @@ export class InstanceAiSettingsService {
 		}
 		this.validateAdminSettingsUpdate(update);
 		if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
-			await this.resolveModelCredential(update.modelCredentialId);
+			const resolved = await this.resolveModelCredential(update.modelCredentialId);
+			this.ensureCredentialMatchesConfiguredModel(resolved.type);
 		}
 		const c = this.config;
 		const previousMcpServers = c.mcpServers;
@@ -541,6 +542,18 @@ export class InstanceAiSettingsService {
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 			credentialId,
 		);
+	}
+
+	private ensureCredentialMatchesConfiguredModel(credentialType: string): void {
+		const slash = this.config.model.indexOf('/');
+		if (slash < 0) return;
+		const configuredProvider = this.config.model.slice(0, slash);
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (credentialProvider !== configuredProvider) {
+			throw new UnprocessableRequestError(
+				`This credential is for "${credentialProvider}" but the configured model "${this.config.model}" requires a "${configuredProvider}" credential. Select a matching credential or set N8N_INSTANCE_AI_MODEL to a "${credentialProvider}" model.`,
+			);
+		}
 	}
 
 	private async buildModelConfigFromCredential(

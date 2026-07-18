@@ -179,7 +179,9 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
-		const findManyOptions: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
+		const findManyOptions: FindManyOptions<CredentialsEntity> = {
+			where: { id: In(ids), availability: 'workflow' },
+		};
 
 		if (withSharings) {
 			findManyOptions.relations = {

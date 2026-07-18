@@ -263,6 +263,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const upsertCredential = (credential: ICredentialsResponse) => {
+		if (credential.availability === 'instance') return;
 		if (credential.id) {
 			state.value.credentials = {
 				...state.value.credentials,

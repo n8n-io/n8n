@@ -153,6 +153,8 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
+		credential.availability ??= 'workflow';
+
 		if (credential.availability === 'instance') {
 			if (
 				credential.isGlobal ||
