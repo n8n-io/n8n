@@ -749,7 +749,6 @@ overrides:
   picomatch@2: 2.3.2
   picomatch@4: 4.0.4
   avsc: 5.7.9
-  brace-expansion@<=2.1.0: 2.1.0
   '@xmldom/xmldom': 0.8.13
   yaml@<=2.8.3: 2.8.3
   axios: 1.18.0
@@ -761,7 +760,6 @@ overrides:
   cjs-module-lexer@<2.2.0: 2.2.0
   protobufjs: 7.6.3
   ip-address@10: 10.1.1
-  brace-expansion@5: 5.0.7
   '@tootallnate/once@2': 2.0.1
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
@@ -781,6 +779,7 @@ overrides:
   undici@7: ^7.28.0
   node-gyp>undici: ^7.28.0
   '@babel/traverse': ^7.23.2
+  brace-expansion@<=5.0.7: 5.0.7
 
 patchedDependencies:
   '@lezer/highlight':
@@ -7169,6 +7168,7 @@ packages:
   '@aws-sdk/middleware-websocket@3.936.0':
     resolution: {integrity: sha512-bPe3rqeugyj/MmjP0yBSZox2v1Wa8Dv39KN+RxVbQroLO8VUitBo6xyZ0oZebhZ5sASwSg58aDcMlX0uFLQnTA==}
     engines: {node: '>= 14.0.0'}
+    deprecated: Please update your @aws-sdk client to a more recent version, such as https://github.com/aws/aws-sdk-js-v3/releases/tag/v3.982.0, if using browser-based WebSocket bidirectional streaming.
 
   '@aws-sdk/nested-clients@3.808.0':
     resolution: {integrity: sha512-NparPojwoBul7XPCasy4psFMJbw7Ys4bz8lVB93ljEUD4VV7mM7zwK27Uhz20B8mBFGmFEoAprPsVymJcK9Vcw==}
@@ -8921,6 +8921,7 @@ packages:
   '@langchain/community@1.1.27':
     resolution: {integrity: sha512-s2U3w7QV7QpkFtY1eZMni4poz+nKLFclpDi3a7hUbZ67ttsGaU9WkZ2BiLuzLIs+IFaUvON/KcGkE8EqAl9aPA==}
     engines: {node: '>=20'}
+    deprecated: This package has been deprecated. See https://github.com/langchain-ai/langchainjs-community/issues/61 for more info
     peerDependencies:
       '@arcjet/redact': ^v1.2.0
       '@aws-crypto/sha256-js': ^5.0.0
@@ -13271,6 +13272,7 @@ packages:
 
   '@xata.io/client@0.28.4':
     resolution: {integrity: sha512-B02WHIA/ViHya84XvH6JCo13rd5h4S5vVyY2aYi6fIcjDIbCpsSLJ4oGWpdodovRYeAZy9Go4OhdyZwMIRC4BQ==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       typescript: '>=4.5'
 
@@ -13891,9 +13893,6 @@ packages:
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
 
-  balanced-match@1.0.2:
-    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
-
   balanced-match@2.0.0:
     resolution: {integrity: sha512-1ugUSr8BHXRnK23KfuYS+gVMC3LB8QGH9W1iGtDPsNWoQbgtXSExkBu2aDR4epiGWZOjZsj6lDl/N/AqqTC3UA==}
 
@@ -13986,9 +13985,6 @@ packages:
 
   bowser@2.11.0:
     resolution: {integrity: sha512-AlcaJBi/pqqJBIQ8U9Mcpc9i8Aqxn88Skv5d+xBX006BY5u8N3mGLHa5Lgppa7L/HfwgwLgZ6NYs+Ag6uUmJRA==}
-
-  brace-expansion@2.1.0:
-    resolution: {integrity: sha512-TN1kCZAgdgweJhWWpgKYrQaMNHcDULHkWwQIspdtjV4Y5aurRdZpjAqn6yX3FPqTA9ngHCc4hJxMAMgGfve85w==}
 
   brace-expansion@5.0.7:
     resolution: {integrity: sha512-7oFy703dxfY3/NLxC1fh2SUCQ0H9rmAY+5EpDVfXjUTTs+HEwR2nYaqLv+GWcTsumwxPfiz6CzCNkwXwBUwqCA==}
@@ -15954,8 +15950,8 @@ packages:
   fast-wrap-ansi@0.2.0:
     resolution: {integrity: sha512-rLV8JHxTyhVmFYhBJuMujcrHqOT2cnO5Zxj37qROj23CP39GXubJRBUFF0z8KFK77Uc0SukZUf7JZhsVEQ6n8w==}
 
-  fast-xml-builder@1.1.7:
-    resolution: {integrity: sha512-Yh7/7rQuMXICNr0oMYDR2yHP6oUvmQsTToFeOWj/kIDhAwQ+c4Ol/lbcwOmEM5OHYQmh6S6EQSQ1sljCKP36bQ==}
+  fast-xml-builder@1.2.1:
+    resolution: {integrity: sha512-tPb5TTWfgfVx5BNSi2xV0eLr89POeXXn0dXIsCJ9m1narrWxeIyx6je9d7Rce/3NyXLbvuQmLkxq+RuxMWejvw==}
 
   fast-xml-parser@5.7.2:
     resolution: {integrity: sha512-P7oW7tLbYnhOLQk/Gv7cZgzgMPP/XN03K02/Jy6Y/NHzyIAIpxuZIM/YqAkfiXFPxA2CTm7NtCijK9EDu09u2w==}
@@ -19600,6 +19596,7 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   precinct@12.2.0:
@@ -20631,8 +20628,8 @@ packages:
   shell-escape@0.2.0:
     resolution: {integrity: sha512-uRRBT2MfEOyxuECseCZd28jC1AJ8hmqqneWQ4VWUTgCAFvb3wKU1jLqj6egC4Exrr88ogg3dp+zroH4wJuaXzw==}
 
-  shell-quote@1.8.4:
-    resolution: {integrity: sha512-VsC6n6vz1ihYYyZZwX7YZSF5l5x36ca17OC+a69h94YqB7X6XLwf+5MOgynYir2SLFUbl8gIYvBo8K8RoNQ6bQ==}
+  shell-quote@1.9.0:
+    resolution: {integrity: sha512-Iov+JwFv/2HcTpcwNMKd8+IWNb8tboQJNQTkAY/LLVK7gGH9jy+LGkVqPxfekHl+yMmiqXszdGWXgkfml7hjqA==}
     engines: {node: '>= 0.4'}
 
   shelljs@0.8.5:
@@ -22482,6 +22479,10 @@ packages:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}
     engines: {node: '>=18'}
 
+  xml-naming@0.1.0:
+    resolution: {integrity: sha512-k8KO9hrMyNk6tUWqUfkTEZbezRRpONVOzUTnc97VnCvyj6Tf9lyUR9EDAIeiVLv56jsMcoXEwjW8Kv5yPY52lw==}
+    engines: {node: '>=16.0.0'}
+
   xml2js@0.5.0:
     resolution: {integrity: sha512-drPFnkQJik/O+uPKpqSgr22mpuFHqKdbS835iAQrUC73L2F5WkboIRd63ai/2Yg6I1jzifPFKH2NTK+cfglkIA==}
     engines: {node: '>=4.0.0'}
@@ -22843,7 +22844,7 @@ snapshots:
       '@pondwader/socks5-server': 1.0.10
       commander: 12.1.0
       node-forge: 1.4.0
-      shell-quote: 1.8.4
+      shell-quote: 1.9.0
       zod: 3.25.67
 
   '@anthropic-ai/sdk@0.91.1(zod@3.25.67)':
@@ -25369,7 +25370,7 @@ snapshots:
       form-data: 4.0.6
       isomorphic-ws: 5.0.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       pathe: 2.0.3
-      shell-quote: 1.8.4
+      shell-quote: 1.9.0
       tar: 7.5.17
     transitivePeerDependencies:
       - aws-crt
@@ -31703,8 +31704,6 @@ snapshots:
 
   bail@2.0.2: {}
 
-  balanced-match@1.0.2: {}
-
   balanced-match@2.0.0: {}
 
   balanced-match@4.0.3: {}
@@ -31789,10 +31788,6 @@ snapshots:
     optional: true
 
   bowser@2.11.0: {}
-
-  brace-expansion@2.1.0:
-    dependencies:
-      balanced-match: 1.0.2
 
   brace-expansion@5.0.7:
     dependencies:
@@ -32447,7 +32442,7 @@ snapshots:
       date-fns: 2.30.0
       lodash: 4.18.1
       rxjs: 7.8.1
-      shell-quote: 1.8.4
+      shell-quote: 1.9.0
       spawn-command: 0.0.2
       supports-color: 8.1.1
       tree-kill: 1.2.2
@@ -34286,14 +34281,15 @@ snapshots:
     dependencies:
       fast-string-width: 3.0.2
 
-  fast-xml-builder@1.1.7:
+  fast-xml-builder@1.2.1:
     dependencies:
       path-expression-matcher: 1.5.0
+      xml-naming: 0.1.0
 
   fast-xml-parser@5.7.2:
     dependencies:
       '@nodable/entities': 2.1.0
-      fast-xml-builder: 1.1.7
+      fast-xml-builder: 1.2.1
       path-expression-matcher: 1.5.0
       strnum: 2.2.3
 
@@ -36795,19 +36791,19 @@ snapshots:
 
   minimatch@5.1.8:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimatch@8.0.4:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimatch@9.0.1:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimist@1.2.8: {}
 
@@ -37713,7 +37709,7 @@ snapshots:
       minimatch: 9.0.9
       pidtree: 0.6.0
       read-package-json-fast: 4.0.0
-      shell-quote: 1.8.4
+      shell-quote: 1.9.0
       which: 5.0.0
 
   npm-run-path@2.0.2:
@@ -39816,7 +39812,7 @@ snapshots:
 
   shell-escape@0.2.0: {}
 
-  shell-quote@1.8.4: {}
+  shell-quote@1.9.0: {}
 
   shelljs@0.8.5:
     dependencies:
@@ -42132,6 +42128,8 @@ snapshots:
   xml-name-validator@4.0.0: {}
 
   xml-name-validator@5.0.0: {}
+
+  xml-naming@0.1.0: {}
 
   xml2js@0.5.0:
     dependencies:

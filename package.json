@@ -171,7 +171,6 @@
       "picomatch@2": "2.3.2",
       "picomatch@4": "4.0.4",
       "avsc": "5.7.9",
-      "brace-expansion@<=2.1.0": "2.1.0",
       "@xmldom/xmldom": "0.8.13",
       "yaml@<=2.8.3": "2.8.3",
       "axios": "catalog:",
@@ -183,7 +182,6 @@
       "cjs-module-lexer@<2.2.0": "2.2.0",
       "protobufjs": "7.6.3",
       "ip-address@10": "10.1.1",
-      "brace-expansion@5": "5.0.7",
       "@tootallnate/once@2": "2.0.1",
       "@opentelemetry/exporter-prometheus@<=0.217.0": "0.217.0",
       "@opentelemetry/sdk-node@<=0.217.0": "0.217.0",
@@ -202,7 +200,8 @@
       "undici@6": "catalog:undici-v6",
       "undici@7": "catalog:undici-v7",
       "node-gyp>undici": "catalog:undici-v7",
-      "@babel/traverse": "^7.23.2"
+      "@babel/traverse": "^7.23.2",
+      "brace-expansion@<=5.0.7": "5.0.7"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
