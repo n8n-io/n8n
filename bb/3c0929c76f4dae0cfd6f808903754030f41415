@@ -1,0 +1,36 @@
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.test.ts
+  s_b3f23ab76a494c::t_fe4db0fae50eb3 1-2,108-140
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.test.ts
+  s_b3f23ab76a494c::t_12d480d8764f49 179-206
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_b3f23ab76a494c::t_d1125db8eb6416 27-33
+  s_b3f23ab76a494c::t_1975825e8e11ab 3,37-38,100,102,334-369
+  s_b3f23ab76a494c::t_d90496a498c146 370
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_b3f23ab76a494c::t_1975825e8e11ab 45-46
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_b3f23ab76a494c::t_872ed66fdfb791 31,182-183
+  h_9c8f56e3400786 126
+  s_b3f23ab76a494c::t_302c71e43cde17 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bb3c0929c76f4dae0cfd6f808903754030f41415",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
