@@ -15,7 +15,6 @@ import { appendAttributionOption } from '../../../utils/descriptions';
 import { prepareBinariesDataList } from '../../../utils/binary';
 
 const properties: INodeProperties[] = [
-	// TODO: Add choice for text as text or html  (maybe also from name)
 	fromEmailProperty,
 	toEmailProperty,
 
@@ -169,6 +168,15 @@ const properties: INodeProperties[] = [
 				placeholder: 'info@example.com',
 				description: 'The email address to send the reply to',
 			},
+			{
+				displayName: 'From Name',
+				name: 'fromName',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. Nathan Doe',
+				description:
+					"Name of the sender. If not set, only the email address is shown in the recipient's inbox.",
+			},
 		],
 	},
 ];
@@ -204,7 +212,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const transporter = configureTransport(credentials, options);
 
 			const mailOptions: IDataObject = {
-				from: fromEmail,
+				from: options.fromName ? { name: options.fromName, address: fromEmail } : fromEmail,
 				to: toEmail,
 				cc: options.ccEmail,
 				bcc: options.bccEmail,

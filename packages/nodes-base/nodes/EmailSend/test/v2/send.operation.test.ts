@@ -571,6 +571,68 @@ describe('Test EmailSendV2, send operation', () => {
 		});
 	});
 
+	describe('fromName option', () => {
+		it('should use {name, address} format when fromName is set', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('nate@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({ fromName: 'Nathan Doe', appendAttribution: false })
+				.mockReturnValueOnce('<p>Test HTML</p>');
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					from: { name: 'Nathan Doe', address: 'nate@example.com' },
+				}),
+			);
+		});
+
+		it('should use plain email string when fromName is not set', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.1 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('nate@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({ appendAttribution: false })
+				.mockReturnValueOnce('<p>Test HTML</p>');
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					from: 'nate@example.com',
+				}),
+			);
+		});
+	});
+
 	describe('emails without attachments', () => {
 		it('should send email when no attachments specified', async () => {
 			const items = [{ json: { data: 'test' } }];

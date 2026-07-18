@@ -15,6 +15,7 @@ export type EmailSendOptions = {
 	ccEmail?: string;
 	bccEmail?: string;
 	replyTo?: string;
+	fromName?: string;
 };
 
 export function configureTransport(credentials: IDataObject, options: EmailSendOptions) {

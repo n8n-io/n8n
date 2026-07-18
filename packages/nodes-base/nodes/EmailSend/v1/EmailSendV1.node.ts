@@ -31,7 +31,6 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		// TODO: Add choice for text as text or html  (maybe also from name)
 		{
 			displayName: 'From Email',
 			name: 'fromEmail',
@@ -39,7 +38,7 @@ const versionDescription: INodeTypeDescription = {
 			default: '',
 			required: true,
 			placeholder: 'admin@example.com',
-			description: 'Email address of the sender optional with name',
+			description: 'Email address of the sender',
 		},
 		{
 			displayName: 'To Email',
@@ -124,6 +123,15 @@ const versionDescription: INodeTypeDescription = {
 					placeholder: 'info@example.com',
 					description: 'The email address to send the reply to',
 				},
+				{
+					displayName: 'From Name',
+					name: 'fromName',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. Nathan Doe',
+					description:
+						"Name of the sender. If not set, only the email address is shown in the recipient's inbox.",
+				},
 			],
 		},
 	],
@@ -185,7 +193,9 @@ export class EmailSendV1 implements INodeType {
 
 				// setup email data with unicode symbols
 				const mailOptions: IDataObject = {
-					from: fromEmail,
+					from: options.fromName
+						? { name: options.fromName as string, address: fromEmail }
+						: fromEmail,
 					to: toEmail,
 					cc: ccEmail,
 					bcc: bccEmail,

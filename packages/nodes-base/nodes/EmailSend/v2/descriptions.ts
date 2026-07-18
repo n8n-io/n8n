@@ -7,8 +7,7 @@ export const fromEmailProperty: INodeProperties = {
 	default: '',
 	required: true,
 	placeholder: 'admin@example.com',
-	description:
-		'Email address of the sender. You can also specify a name: Nathan Doe &lt;nate@n8n.io&gt;.',
+	description: 'Email address of the sender. Use the "From Name" option to set a display name.',
 };
 
 export const toEmailProperty: INodeProperties = {
