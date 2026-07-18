@@ -16,6 +16,7 @@ import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import type { EntityManager } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
@@ -367,7 +368,10 @@ export class InstanceAiSettingsService {
 				apiKey: daytonaApiKey || undefined,
 			};
 		}
-		const resolved = await this.resolveSandboxCredential(credentialId).catch(() => null);
+		const resolved = await this.resolveSandboxCredential(credentialId).catch((error: unknown) => {
+			this.warnCredentialFallback('Daytona sandbox', credentialId, error);
+			return null;
+		});
 		if (!resolved) {
 			return {};
 		}
@@ -388,7 +392,10 @@ export class InstanceAiSettingsService {
 			};
 		}
 
-		const resolved = await this.resolveSandboxCredential(credentialId).catch(() => null);
+		const resolved = await this.resolveSandboxCredential(credentialId).catch((error: unknown) => {
+			this.warnCredentialFallback('n8n Sandbox', credentialId, error);
+			return null;
+		});
 		if (!resolved) {
 			return {
 				serviceUrl: n8nSandboxServiceUrl || undefined,
@@ -414,7 +421,10 @@ export class InstanceAiSettingsService {
 		};
 		const credentialId = this.adminSearchCredentialId;
 		if (!credentialId) return envConfig;
-		const resolved = await this.resolveSearchCredential(credentialId).catch(() => null);
+		const resolved = await this.resolveSearchCredential(credentialId).catch((error: unknown) => {
+			this.warnCredentialFallback('search', credentialId, error);
+			return null;
+		});
 		if (!resolved) return envConfig;
 		const { type, data } = resolved;
 		if (type === 'braveSearchApi') {
@@ -438,6 +448,15 @@ export class InstanceAiSettingsService {
 			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
 			credentialId,
 		);
+	}
+
+	private warnCredentialFallback(service: string, credentialId: string, error: unknown): void {
+		Container.get(Logger)
+			.scoped('instance-ai')
+			.warn(`Could not resolve the configured ${service} credential; using environment fallback`, {
+				credentialId,
+				error: ensureError(error).message,
+			});
 	}
 
 	/** Return the current HITL permission map. */

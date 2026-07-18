@@ -360,6 +360,10 @@ describe('InstanceAiSettingsService', () => {
 				braveApiKey: 'env-key',
 				searxngUrl: 'https://search.example.com',
 			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not resolve the configured search credential; using environment fallback',
+				{ credentialId: 'missing-credential', error: 'not found' },
+			);
 		});
 	});
 
