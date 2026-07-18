@@ -119,8 +119,8 @@ describe('ImportService', () => {
 
 	describe('initRecords', () => {
 		it('loads only credentials available to workflows', async () => {
-			mockCredentialsRepository.find.mockResolvedValue([]);
-			mockTagRepository.find.mockResolvedValue([]);
+			vi.mocked(mockCredentialsRepository.find).mockResolvedValue([]);
+			vi.mocked(mockTagRepository.find).mockResolvedValue([]);
 
 			await importService.initRecords();
 

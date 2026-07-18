@@ -137,9 +137,11 @@ describe('SourceControlImportService', () => {
 		transactionManager.delete.mockImplementation(
 			async (_entity, criteria) => await sharedCredentialsRepository.delete(criteria as never),
 		);
-		credentialsRepositoryManager.transaction.mockImplementation(
-			async (callback) => await callback(transactionManager),
-		);
+		credentialsRepositoryManager.transaction.mockImplementation(async (...args) => {
+			const callback = args.find((arg) => typeof arg === 'function');
+			if (!callback) throw new Error('Transaction callback is required');
+			return await callback(transactionManager);
+		});
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 

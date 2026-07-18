@@ -1038,6 +1038,10 @@ export class SourceControlImportService {
 						await newCredentialObject.getData(),
 					);
 				}
+				const targetOwnerProject =
+					availability === 'workflow'
+						? await this.resolveTargetOwnerProject(credential.ownedBy, personalProject)
+						: undefined;
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await this.credentialsRepository.manager.transaction(async (transactionManager) => {
@@ -1072,6 +1076,7 @@ export class SourceControlImportService {
 						fallbackProject: personalProject,
 						repository: this.sharedCredentialsRepository,
 						transactionManager,
+						targetOwnerProject,
 					});
 				});
 
@@ -1866,6 +1871,7 @@ export class SourceControlImportService {
 		fallbackProject,
 		repository,
 		transactionManager,
+		targetOwnerProject,
 	}: {
 		resourceId: string;
 		remoteOwner: RemoteResourceOwner | null | undefined;
@@ -1873,16 +1879,9 @@ export class SourceControlImportService {
 		fallbackProject: Project;
 		repository: SharedWorkflowRepository | SharedCredentialsRepository;
 		transactionManager?: EntityManager;
+		targetOwnerProject?: Project;
 	}): Promise<void> {
-		let targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
-		if (!targetOwnerProject) {
-			const isSharedResource =
-				remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
-
-			targetOwnerProject = isSharedResource
-				? await this.createTeamProject(remoteOwner)
-				: fallbackProject;
-		}
+		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
 
 		const trx = transactionManager ?? this.workflowRepository.manager;
 
@@ -1894,6 +1893,18 @@ export class SourceControlImportService {
 
 		// Set new ownership
 		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
+	}
+
+	private async resolveTargetOwnerProject(
+		remoteOwner: RemoteResourceOwner | null | undefined,
+		fallbackProject: Project,
+	): Promise<Project> {
+		const targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
+		if (targetOwnerProject) return targetOwnerProject;
+
+		const isSharedResource =
+			remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
+		return isSharedResource ? await this.createTeamProject(remoteOwner) : fallbackProject;
 	}
 
 	private async findOwnerProjectInLocalDb(owner: RemoteResourceOwner | IWorkflowToImport['owner']) {

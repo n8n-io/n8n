@@ -122,9 +122,6 @@ describe('CredentialsService', () => {
 			undefined,
 		);
 		instanceCredentialConsumerRegistry.findConsumerUsingCredential.mockResolvedValue(null);
-		instanceCredentialTransactionManager.remove.mockImplementation(
-			async (credential) => await credentialsRepository.remove(credential as CredentialsEntity),
-		);
 		dbLockService.withLock.mockImplementation(
 			async (_lock, fn) => await fn(instanceCredentialTransactionManager),
 		);
@@ -970,7 +967,7 @@ describe('CredentialsService', () => {
 				['credential:delete'],
 				{ includeInstanceCredentials: true },
 			);
-			expect(credentialsRepository.remove).toHaveBeenCalledWith(credential);
+			expect(instanceCredentialTransactionManager.remove).toHaveBeenCalledWith(credential);
 			expect(dbLockService.withLock).toHaveBeenCalledOnce();
 		});
 

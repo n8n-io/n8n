@@ -224,11 +224,18 @@ describe('InstanceAiSettingsService', () => {
 
 			await service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } });
 
-			const persisted = JSON.parse(settingsRepository.upsert.mock.calls[0][0].value);
-			expect(persisted).toMatchObject({
-				mcpAccessEnabled: false,
-				permissions: { createWorkflow: 'always_allow' },
-			});
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"mcpAccessEnabled":false'),
+				}),
+				['key'],
+			);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					value: expect.stringContaining('"createWorkflow":"always_allow"'),
+				}),
+				['key'],
+			);
 		});
 
 		it('does not apply an update when persistence fails', async () => {
