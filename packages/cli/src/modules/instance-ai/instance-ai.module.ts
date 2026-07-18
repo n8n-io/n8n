@@ -19,14 +19,28 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceCredentialBroker } = await import(
 			'@/credentials/instance-credential-broker.js'
 		);
-		const { InstanceAiSettingsService, INSTANCE_AI_MODEL_CREDENTIAL_POLICY } = await import(
-			'./instance-ai-settings.service.js'
-		);
+		const {
+			InstanceAiSettingsService,
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+			INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY,
+			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+		} = await import('./instance-ai-settings.service.js');
 		const settingsService = Container.get(InstanceAiSettingsService);
-		Container.get(InstanceCredentialBroker).registerConsumer({
+		const credentialBroker = Container.get(InstanceCredentialBroker);
+		credentialBroker.registerConsumer({
 			...INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 			isCredentialInUse: async (credentialId) =>
 				await settingsService.isModelCredentialInUse(credentialId),
+		});
+		credentialBroker.registerConsumer({
+			...INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY,
+			isCredentialInUse: async (credentialId) =>
+				await settingsService.isSandboxCredentialInUse(credentialId),
+		});
+		credentialBroker.registerConsumer({
+			...INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+			isCredentialInUse: async (credentialId) =>
+				await settingsService.isSearchCredentialInUse(credentialId),
 		});
 		await settingsService.loadFromDb();
 		await import('./instance-ai.controller.js');

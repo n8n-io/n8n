@@ -62,6 +62,16 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_POLICY = {
 	credentialTypes: Object.keys(CREDENTIAL_TO_MODEL_PROVIDER),
 };
 
+export const INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY = {
+	id: 'instance-ai:sandbox',
+	credentialTypes: ['daytonaApi', 'httpHeaderAuth'],
+};
+
+export const INSTANCE_AI_SEARCH_CREDENTIAL_POLICY = {
+	id: 'instance-ai:search',
+	credentialTypes: ['braveSearchApi', 'searXngApi'],
+};
+
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
 	openAiApi: 'url',
@@ -73,11 +83,6 @@ const URL_FIELD_MAP: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // Persisted shapes (no secrets — those come from env/config only)
 // ---------------------------------------------------------------------------
-
-/** Credential types for sandbox and search services. */
-const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi', 'httpHeaderAuth'];
-const SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'];
-const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENTIAL_TYPES];
 
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
@@ -318,20 +323,25 @@ export class InstanceAiSettingsService {
 		}));
 	}
 
-	/** List credentials the user can access that are usable as sandbox/search services. */
-	async listServiceCredentials(user: User): Promise<InstanceAiModelCredential[]> {
-		if (this.aiService.isProxyEnabled()) return [];
-		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
+	/** List instance credentials usable as sandbox/search service credentials. */
+	async listInstanceServiceCredentials(): Promise<InstanceAiModelCredential[]> {
+		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
+		const credentials = await Promise.all([
+			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY.id),
+			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id),
 		]);
-		return allCredentials
-			.filter((c) => SERVICE_CREDENTIAL_TYPES.includes(c.type))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-				provider: c.type,
-			}));
+		return credentials.flat().map((c) => ({
+			id: c.id,
+			name: c.name,
+			type: c.type,
+			provider: c.type,
+		}));
+	}
+
+	private async readPersistedAdminSettings(): Promise<PersistedAdminSettings> {
+		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
+		if (!row) return {};
+		return jsonParse<PersistedAdminSettings>(row.value, { fallbackValue: {} });
 	}
 
 	async isModelCredentialInUse(credentialId: string): Promise<boolean> {
@@ -339,8 +349,21 @@ export class InstanceAiSettingsService {
 		return settings.modelCredentialId === credentialId;
 	}
 
-	/** Resolve sandbox (Daytona) config from the admin-selected credential. */
-	async resolveDaytonaConfig(user: User): Promise<{ apiUrl?: string; apiKey?: string }> {
+	async isSandboxCredentialInUse(credentialId: string): Promise<boolean> {
+		const settings = await this.readPersistedAdminSettings();
+		return (
+			settings.daytonaCredentialId === credentialId ||
+			settings.n8nSandboxCredentialId === credentialId
+		);
+	}
+
+	async isSearchCredentialInUse(credentialId: string): Promise<boolean> {
+		const settings = await this.readPersistedAdminSettings();
+		return settings.searchCredentialId === credentialId;
+	}
+
+	/** Resolve sandbox (Daytona) config from the admin-selected instance credential. */
+	async resolveDaytonaConfig(): Promise<{ apiUrl?: string; apiKey?: string }> {
 		const credentialId = this.adminDaytonaCredentialId;
 		if (!credentialId) {
 			// Fall back to env vars
@@ -350,22 +373,18 @@ export class InstanceAiSettingsService {
 				apiKey: daytonaApiKey || undefined,
 			};
 		}
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!credential) {
+		const resolved = await this.resolveSandboxCredential(credentialId).catch(() => null);
+		if (!resolved) {
 			return {};
 		}
-		const data = await this.credentialsService.decrypt(credential, true);
+		const { data } = resolved;
 		return {
 			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
 			apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
 		};
 	}
 
-	async resolveN8nSandboxConfig(user: User): Promise<{ serviceUrl?: string; apiKey?: string }> {
+	async resolveN8nSandboxConfig(): Promise<{ serviceUrl?: string; apiKey?: string }> {
 		const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = this.config;
 		const credentialId = this.adminN8nSandboxCredentialId;
 		if (!credentialId) {
@@ -375,19 +394,15 @@ export class InstanceAiSettingsService {
 			};
 		}
 
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!credential) {
+		const resolved = await this.resolveSandboxCredential(credentialId).catch(() => null);
+		if (!resolved) {
 			return {
 				serviceUrl: n8nSandboxServiceUrl || undefined,
 				apiKey: n8nSandboxServiceApiKey || undefined,
 			};
 		}
 
-		const data = await this.credentialsService.decrypt(credential, true);
+		const { data } = resolved;
 		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
 		const apiKey = typeof data.value === 'string' ? data.value : undefined;
 		return {
@@ -396,8 +411,8 @@ export class InstanceAiSettingsService {
 		};
 	}
 
-	/** Resolve search config from the admin-selected credential. */
-	async resolveSearchConfig(user: User): Promise<{ braveApiKey?: string; searxngUrl?: string }> {
+	/** Resolve search config from the admin-selected instance credential. */
+	async resolveSearchConfig(): Promise<{ braveApiKey?: string; searxngUrl?: string }> {
 		const credentialId = this.adminSearchCredentialId;
 		if (!credentialId) {
 			// Fall back to env vars
@@ -407,22 +422,32 @@ export class InstanceAiSettingsService {
 				searxngUrl: searxngUrl || undefined,
 			};
 		}
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!credential) {
+		const resolved = await this.resolveSearchCredential(credentialId).catch(() => null);
+		if (!resolved) {
 			return {};
 		}
-		const data = await this.credentialsService.decrypt(credential, true);
-		if (credential.type === 'braveSearchApi') {
+		const { type, data } = resolved;
+		if (type === 'braveSearchApi') {
 			return { braveApiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined };
 		}
-		if (credential.type === 'searXngApi') {
+		if (type === 'searXngApi') {
 			return { searxngUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined };
 		}
 		return {};
+	}
+
+	private async resolveSandboxCredential(credentialId: string) {
+		return await this.instanceCredentialBroker.resolveForConsumer(
+			INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY.id,
+			credentialId,
+		);
+	}
+
+	private async resolveSearchCredential(credentialId: string) {
+		return await this.instanceCredentialBroker.resolveForConsumer(
+			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
+			credentialId,
+		);
 	}
 
 	/** Return the current HITL permission map. */

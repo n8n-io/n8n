@@ -103,7 +103,7 @@ describe('InstanceAiSandboxService', () => {
 
 			const config = await service.resolveSandboxConfig(fakeUser);
 
-			expect(resolveDaytonaConfig).toHaveBeenCalledWith(fakeUser);
+			expect(resolveDaytonaConfig).toHaveBeenCalledWith();
 			expect(config).toMatchObject({
 				enabled: true,
 				provider: 'daytona',

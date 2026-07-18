@@ -122,6 +122,28 @@ avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
 and `address`, but those have no detection pattern yet — setting them has no
 effect (they were deferred as too false-positive-prone for free-form prose).
 
+## Instance credentials
+
+Admin-selected credentials for Instance AI (model, sandbox, search) are **instance
+credentials**: regular credential rows with `availability: 'instance'`, managed only
+by owners/admins (global scope `credential:manageInstance`) and never usable in the
+workflow canvas. Instance AI resolves them server-side through the
+`InstanceCredentialBroker` under these consumer IDs:
+
+| Consumer ID | Credential types | Admin setting |
+|-------------|------------------|---------------|
+| `instance-ai:model` | LLM provider credentials (`openAiApi`, `anthropicApi`, ...) | `modelCredentialId` |
+| `instance-ai:sandbox` | `daytonaApi`, `httpHeaderAuth` | `daytonaCredentialId`, `n8nSandboxCredentialId` |
+| `instance-ai:search` | `braveSearchApi`, `searXngApi` | `searchCredentialId` |
+
+The environment variables above remain the fallback when no credential is selected.
+A credential referenced by one of these settings cannot be deleted until the
+reference is cleared. On cloud and proxy-managed deployments these settings are
+managed externally and the API rejects them.
+
+To integrate another instance-level feature with the broker, see
+[instance credentials](../../../cli/src/credentials/instance-credentials.md).
+
 ## Enabling / Disabling
 
 The module is **enabled** when `N8N_INSTANCE_AI_MODEL` is set to a non-empty value.

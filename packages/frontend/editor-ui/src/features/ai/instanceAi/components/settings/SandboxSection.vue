@@ -69,7 +69,18 @@ function handleDaytonaCredentialChange(value: string | number | boolean | null) 
 	if (value === CREATE_NEW) {
 		creatingCredential = true;
 		creatingCredentialType = 'daytonaApi';
-		uiStore.openNewCredential('daytonaApi');
+		uiStore.openNewCredential(
+			'daytonaApi',
+			false,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{
+				availability: 'instance',
+			},
+		);
 		return;
 	}
 	store.setField('daytonaCredentialId', value ? String(value) : null);
@@ -79,7 +90,18 @@ function handleN8nSandboxCredentialChange(value: string | number | boolean | nul
 	if (value === CREATE_NEW) {
 		creatingCredential = true;
 		creatingCredentialType = 'httpHeaderAuth';
-		uiStore.openNewCredential('httpHeaderAuth');
+		uiStore.openNewCredential(
+			'httpHeaderAuth',
+			false,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{
+				availability: 'instance',
+			},
+		);
 		return;
 	}
 	store.setField('n8nSandboxCredentialId', value ? String(value) : null);
