@@ -11,10 +11,11 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository } from '@n8n/db';
+import { DbLock, DbLockService, Settings, SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
+import type { EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
@@ -130,6 +131,7 @@ export class InstanceAiSettingsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly eventService: EventService,
+		private readonly dbLockService: DbLockService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -153,13 +155,7 @@ export class InstanceAiSettingsService {
 			sandboxProvider: this.config.sandboxProvider,
 		};
 
-		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
-		if (row) {
-			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
-				fallbackValue: {},
-			});
-			this.applyAdminSettings(persisted);
-		}
+		await this.reloadFromDb();
 		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
 		// or a persisted DB setting are in effect — these can silently disagree.
 		const c = this.config;
@@ -212,43 +208,36 @@ export class InstanceAiSettingsService {
 		if (this.isCloud || this.aiService.isProxyEnabled()) {
 			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
 		}
-		this.validateAdminSettingsUpdate(update);
-		if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
-			const resolved = await this.resolveModelCredential(update.modelCredentialId);
-			this.ensureCredentialMatchesConfiguredModel(resolved.type);
-		}
-		const c = this.config;
-		const previousMcpServers = c.mcpServers;
-		const previousMcpAccessEnabled = this.mcpAccessEnabled;
-		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.permissions) {
-			this.permissions = { ...this.permissions, ...update.permissions };
-		}
-		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
-		if (update.mcpAccessEnabled !== undefined) this.mcpAccessEnabled = update.mcpAccessEnabled;
-		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
-		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
-		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
-		if (update.sandboxTimeout !== undefined) c.sandboxTimeout = update.sandboxTimeout;
-		if (update.daytonaCredentialId !== undefined)
-			this.adminDaytonaCredentialId = update.daytonaCredentialId;
-		if (update.n8nSandboxCredentialId !== undefined)
-			this.adminN8nSandboxCredentialId = update.n8nSandboxCredentialId;
-		if (update.searchCredentialId !== undefined)
-			this.adminSearchCredentialId = update.searchCredentialId;
-		if (update.modelCredentialId !== undefined)
-			this.adminModelCredentialId = update.modelCredentialId;
-		if (update.localGatewayDisabled !== undefined)
-			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.browserUseEnabled !== undefined) c.browserUseEnabled = update.browserUseEnabled;
-		await this.persistAdminSettings();
+		const { previous, next } = await this.dbLockService.withLock(
+			DbLock.INSTANCE_CREDENTIAL_SETTINGS,
+			async (transactionManager) => {
+				const current = this.mergeAdminSettings(
+					this.snapshotAdminSettings(),
+					await this.readPersistedAdminSettings(transactionManager),
+				);
+				this.validateAdminSettingsUpdate(update, current);
+				if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
+					const resolved = await this.resolveModelCredential(update.modelCredentialId);
+					this.ensureCredentialMatchesConfiguredModel(resolved.type);
+				}
 
-		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged:
-				c.mcpServers !== previousMcpServers || this.mcpAccessEnabled !== previousMcpAccessEnabled,
-		});
+				const previous = this.snapshotAdminSettings();
+				const next = this.mergeAdminSettings(current, update);
+				await this.persistAdminSettings(next, transactionManager);
+				return { previous, next };
+			},
+		);
+		this.applyAdminSettings(next);
+		this.emitSettingsUpdated(previous, next);
 
 		return this.getAdminSettings();
+	}
+
+	async reloadFromDb(): Promise<void> {
+		const previous = this.snapshotAdminSettings();
+		const persisted = await this.readPersistedAdminSettings();
+		this.applyAdminSettings(persisted);
+		this.emitSettingsUpdated(previous, this.snapshotAdminSettings());
 	}
 
 	// ── User preferences ──────────────────────────────────────────────────
@@ -346,10 +335,7 @@ export class InstanceAiSettingsService {
 	}
 
 	async isModelCredentialInUse(credentialId: string): Promise<boolean> {
-		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
-		if (!row) return false;
-
-		const settings = jsonParse<PersistedAdminSettings>(row.value, { fallbackValue: {} });
+		const settings = await this.readPersistedAdminSettings();
 		return settings.modelCredentialId === credentialId;
 	}
 
@@ -638,8 +624,10 @@ export class InstanceAiSettingsService {
 		}
 	}
 
-	private validateAdminSettingsUpdate(update: InstanceAiAdminSettingsUpdateRequest): void {
-		const c = this.config;
+	private validateAdminSettingsUpdate(
+		update: InstanceAiAdminSettingsUpdateRequest,
+		current: PersistedAdminSettings,
+	): void {
 		const touchesSandboxSettings =
 			update.sandboxEnabled !== undefined ||
 			update.sandboxProvider !== undefined ||
@@ -654,8 +642,10 @@ export class InstanceAiSettingsService {
 		// `update.sandboxProvider` is already enum-validated by the request DTO; we only
 		// need the resolved provider here to enforce the cross-field service-URL rule,
 		// which spans the request body and env-backed config and can't live in the schema.
-		const sandboxProvider = update.sandboxProvider ?? normalizeSandboxProvider(c.sandboxProvider);
-		const sandboxEnabled = update.sandboxEnabled ?? c.sandboxEnabled;
+		const sandboxProvider = normalizeSandboxProvider(
+			update.sandboxProvider ?? current.sandboxProvider,
+		);
+		const sandboxEnabled = update.sandboxEnabled ?? current.sandboxEnabled ?? false;
 		const unavailableReason = this.getSandboxUnavailableReason(sandboxEnabled, sandboxProvider);
 		if (unavailableReason) {
 			throw new UnprocessableRequestError(unavailableReason);
@@ -738,9 +728,9 @@ export class InstanceAiSettingsService {
 		return user.settings?.instanceAi ?? {};
 	}
 
-	private async persistAdminSettings(): Promise<void> {
+	private snapshotAdminSettings(): PersistedAdminSettings {
 		const c = this.config;
-		const value: PersistedAdminSettings = {
+		return {
 			enabled: this.enabled,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
@@ -756,8 +746,45 @@ export class InstanceAiSettingsService {
 			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};
+	}
 
-		await this.settingsRepository.upsert(
+	private mergeAdminSettings(
+		base: PersistedAdminSettings,
+		update: PersistedAdminSettings,
+	): PersistedAdminSettings {
+		return {
+			...base,
+			...update,
+			permissions: update.permissions
+				? { ...(base.permissions ?? DEFAULT_INSTANCE_AI_PERMISSIONS), ...update.permissions }
+				: base.permissions,
+		};
+	}
+
+	private async readPersistedAdminSettings(
+		transactionManager?: EntityManager,
+	): Promise<PersistedAdminSettings> {
+		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY, transactionManager);
+		return row ? jsonParse<PersistedAdminSettings>(row.value, { fallbackValue: {} }) : {};
+	}
+
+	private emitSettingsUpdated(
+		previous: PersistedAdminSettings,
+		current: PersistedAdminSettings,
+	): void {
+		this.eventService.emit('instance-ai-settings-updated', {
+			mcpSettingsChanged:
+				current.mcpServers !== previous.mcpServers ||
+				current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+		});
+	}
+
+	private async persistAdminSettings(
+		value: PersistedAdminSettings,
+		transactionManager: EntityManager,
+	): Promise<void> {
+		await transactionManager.upsert(
+			Settings,
 			{ key: ADMIN_SETTINGS_KEY, value: JSON.stringify(value), loadOnStartup: true },
 			['key'],
 		);

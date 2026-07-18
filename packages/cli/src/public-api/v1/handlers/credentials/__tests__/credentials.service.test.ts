@@ -565,6 +565,7 @@ describe('CredentialsService', () => {
 			mock(), // externalSecretsProviderAccessCheckService
 			mock(), // connectionStatusProxy
 			mock(), // instanceCredentialConsumerRegistry
+			mock(), // dbLockService
 		);
 
 		beforeEach(() => {

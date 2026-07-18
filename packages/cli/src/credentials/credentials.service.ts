@@ -5,6 +5,8 @@ import {
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
+	DbLock,
+	DbLockService,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
@@ -144,6 +146,7 @@ export class CredentialsService {
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly instanceCredentialConsumerRegistry: InstanceCredentialConsumerRegistry,
+		private readonly dbLockService: DbLockService,
 	) {}
 
 	/**
@@ -722,7 +725,7 @@ export class CredentialsService {
 			);
 		}
 		if (existingCredential.availability === 'instance') {
-			this.ensureInstanceCredentialDataIsSelfContained(mergedData.data ?? decryptedData);
+			this.validateInstanceCredentialData(mergedData.data ?? decryptedData);
 		} else {
 			const projectOwningCredential = existingCredential.shared?.find(
 				(shared) => shared.role === 'credential:owner',
@@ -956,7 +959,14 @@ export class CredentialsService {
 		}
 
 		if (credential.availability === 'instance') {
-			await this.ensureInstanceCredentialIsNotInUse(credential.id);
+			await this.dbLockService.withLock(
+				DbLock.INSTANCE_CREDENTIAL_SETTINGS,
+				async (transactionManager) => {
+					await this.ensureInstanceCredentialIsNotInUse(credential.id);
+					await transactionManager.remove(credential);
+				},
+			);
+			return;
 		}
 
 		await this.credentialsRepository.remove(credential);
@@ -1602,7 +1612,7 @@ export class CredentialsService {
 		if (opts.isResolvable === true || opts.isManaged) {
 			throw new BadRequestError('Instance credentials cannot be end-user or managed credentials');
 		}
-		this.ensureInstanceCredentialDataIsSelfContained(opts.data as ICredentialDataDecryptedObject);
+		this.validateInstanceCredentialData(opts.data as ICredentialDataDecryptedObject);
 
 		this.validateCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject);
 
@@ -1635,7 +1645,7 @@ export class CredentialsService {
 		return { ...credential, scopes };
 	}
 
-	private ensureInstanceCredentialDataIsSelfContained(data: ICredentialDataDecryptedObject): void {
+	validateInstanceCredentialData(data: ICredentialDataDecryptedObject): void {
 		if (getExternalSecretExpressionPaths(data).length > 0) {
 			throw new BadRequestError(
 				'Instance credentials cannot reference project-scoped external secrets',

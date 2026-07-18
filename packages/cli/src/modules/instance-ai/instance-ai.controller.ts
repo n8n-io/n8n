@@ -19,7 +19,11 @@ import {
 	InstanceAiEvalSeedDataTableRowsRequest,
 	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type {
+	InstanceAiAdminSettingsResponse,
+	InstanceAiAgentNode,
+	InstanceAiEvent,
+} from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -32,6 +36,7 @@ import {
 	Put,
 	Patch,
 	Delete,
+	OnPubSubEvent,
 	Param,
 	Body,
 	Query,
@@ -60,6 +65,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
 
@@ -124,6 +130,7 @@ export class InstanceAiController {
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly publisher: Publisher,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -670,31 +677,41 @@ export class InstanceAiController {
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
 		const result = await this.settingsService.updateAdminSettings(payload);
+		await this.applyAdminSettingsSideEffects(result);
+		void this.publisher.publishCommand({ command: 'reload-instance-ai-settings' });
+
+		return result;
+	}
+
+	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
+	async reloadAdminSettings() {
+		await this.settingsService.reloadFromDb();
+		await this.applyAdminSettingsSideEffects(this.settingsService.getAdminSettings());
+	}
+
+	private async applyAdminSettingsSideEffects(settings: InstanceAiAdminSettingsResponse) {
 		await this.moduleRegistry.refreshModuleSettings('instance-ai');
 
-		if (payload.enabled === false || payload.browserUseEnabled === false) {
+		if (!settings.enabled || !settings.browserUseEnabled) {
 			await this.browserSessionService.shutdown();
 		}
 
-		if (payload.enabled === false || payload.localGatewayDisabled === true) {
-			const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
-			if (disconnectedUserIds.length > 0) {
-				this.push.sendToUsers(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: {
-							connected: false,
-							directory: null,
-							hostIdentifier: null,
-							toolCategories: [],
-						},
-					},
-					disconnectedUserIds,
-				);
-			}
-		}
+		if (settings.enabled && !settings.localGatewayDisabled) return;
 
-		return result;
+		const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
+		if (disconnectedUserIds.length === 0) return;
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: {
+					connected: false,
+					directory: null,
+					hostIdentifier: null,
+					toolCategories: [],
+				},
+			},
+			disconnectedUserIds,
+		);
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────

@@ -117,6 +117,19 @@ describe('ImportService', () => {
 		);
 	});
 
+	describe('initRecords', () => {
+		it('loads only credentials available to workflows', async () => {
+			mockCredentialsRepository.find.mockResolvedValue([]);
+			mockTagRepository.find.mockResolvedValue([]);
+
+			await importService.initRecords();
+
+			expect(mockCredentialsRepository.find).toHaveBeenCalledWith({
+				where: { availability: 'workflow' },
+			});
+		});
+	});
+
 	describe('isTableEmpty', () => {
 		it('should return true for empty table', async () => {
 			const mockQueryBuilder = {

@@ -10,11 +10,13 @@ import type {
 	WorkflowEntity,
 } from '@n8n/db';
 import {
+	CredentialsEntity,
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
+	SharedCredentials,
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
@@ -25,7 +27,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
-import { In, type DataSourceOptions } from '@n8n/typeorm';
+import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
@@ -1031,23 +1033,34 @@ export class SourceControlImportService {
 					const sanitizedData = sanitizeCredentialData(data);
 					await newCredentialObject.setData(sanitizedData);
 				}
+				if (availability === 'instance') {
+					this.credentialsService.validateInstanceCredentialData(
+						await newCredentialObject.getData(),
+					);
+				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert(
-					{
-						...newCredentialObject,
-						isGlobal,
-						isResolvable,
-						resolvableAllowFallback,
-						availability,
-						...(availability === 'instance' ? { isManaged: false, resolverId: null } : {}),
-					},
-					['id'],
-				);
+				await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+					await transactionManager.upsert(
+						CredentialsEntity,
+						{
+							...newCredentialObject,
+							isGlobal,
+							isResolvable,
+							resolvableAllowFallback,
+							availability,
+							...(availability === 'instance' ? { isManaged: false, resolverId: null } : {}),
+						},
+						['id'],
+					);
 
-				if (availability === 'instance') {
-					await this.sharedCredentialsRepository.delete({ credentialsId: credential.id });
-				} else {
+					if (availability === 'instance') {
+						await transactionManager.delete(SharedCredentials, {
+							credentialsId: credential.id,
+						});
+						return;
+					}
+
 					const localOwner = existingSharedCredentials.find(
 						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
 					);
@@ -1058,8 +1071,9 @@ export class SourceControlImportService {
 						localOwner,
 						fallbackProject: personalProject,
 						repository: this.sharedCredentialsRepository,
+						transactionManager,
 					});
-				}
+				});
 
 				return {
 					id: newCredentialObject.id as string,
@@ -1851,12 +1865,14 @@ export class SourceControlImportService {
 		localOwner,
 		fallbackProject,
 		repository,
+		transactionManager,
 	}: {
 		resourceId: string;
 		remoteOwner: RemoteResourceOwner | null | undefined;
 		localOwner: { projectId: string } | undefined;
 		fallbackProject: Project;
 		repository: SharedWorkflowRepository | SharedCredentialsRepository;
+		transactionManager?: EntityManager;
 	}): Promise<void> {
 		let targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
 		if (!targetOwnerProject) {
@@ -1868,7 +1884,7 @@ export class SourceControlImportService {
 				: fallbackProject;
 		}
 
-		const trx = this.workflowRepository.manager;
+		const trx = transactionManager ?? this.workflowRepository.manager;
 
 		// remove old ownership if it changed
 		const shouldRemoveOldOwner = localOwner && localOwner.projectId !== targetOwnerProject.id;

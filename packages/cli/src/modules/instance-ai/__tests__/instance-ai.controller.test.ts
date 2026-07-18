@@ -59,6 +59,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UrlService } from '@/services/url.service';
 
@@ -101,6 +102,7 @@ describe('InstanceAiController', () => {
 	const durableLogMetrics = mock<DurableLogMetrics>();
 	const moduleRegistry = mock<ModuleRegistry>();
 	const push = mock<Push>();
+	const publisher = mock<Publisher>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
 		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
@@ -135,6 +137,7 @@ describe('InstanceAiController', () => {
 		credentialsService,
 		projectService,
 		instanceAiErrorReporter,
+		publisher,
 		globalConfig,
 	);
 
@@ -921,7 +924,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should disconnect all gateways when enabled is set to false', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			settingsService.updateAdminSettings.mockResolvedValue({ enabled: false } as never);
 			gatewayService.disconnectAllGateways.mockReturnValue(['user-a', 'user-b']);
 			const payload = { enabled: false } as InstanceAiAdminSettingsUpdateRequest;
 
@@ -938,7 +941,10 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should disconnect all gateways when localGatewayDisabled is set to true', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			settingsService.updateAdminSettings.mockResolvedValue({
+				enabled: true,
+				localGatewayDisabled: true,
+			} as never);
 			gatewayService.disconnectAllGateways.mockReturnValue(['user-c']);
 			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
 
@@ -954,7 +960,10 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should not disconnect gateways when enabling features', async () => {
-			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			settingsService.updateAdminSettings.mockResolvedValue({
+				enabled: true,
+				localGatewayDisabled: false,
+			} as never);
 			const payload = {
 				enabled: true,
 				localGatewayDisabled: false,
@@ -963,6 +972,16 @@ describe('InstanceAiController', () => {
 			await controller.updateAdminSettings(req, res, payload);
 
 			expect(gatewayService.disconnectAllGateways).not.toHaveBeenCalled();
+		});
+
+		it('should publish settings reloads to other mains', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({ enabled: true } as never);
+
+			await controller.updateAdminSettings(req, res, { enabled: true });
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-instance-ai-settings',
+			});
 		});
 	});
 
@@ -1701,6 +1720,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 		mock<CredentialsService>(),
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
+		mock<Publisher>(),
 		globalConfig,
 	);
 

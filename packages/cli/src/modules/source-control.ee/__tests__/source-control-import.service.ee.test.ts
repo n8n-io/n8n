@@ -22,6 +22,7 @@ import {
 	type WorkflowRepository,
 } from '@n8n/db';
 import { In } from '@n8n/typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
@@ -31,6 +32,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -59,7 +61,10 @@ describe('SourceControlImportService', () => {
 	const tagRepository = mock<TagRepository>();
 	const workflowTagMappingRepository = mock<WorkflowTagMappingRepository>();
 	const userRepository = mock<UserRepository>();
-	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialsRepositoryManager = mock<EntityManager>();
+	const credentialsRepository = mock<CredentialsRepository>({
+		manager: credentialsRepositoryManager,
+	});
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const mockLogger = mock<Logger>();
 	const sourceControlContextFactory = mock<SourceControlContextFactory>();
@@ -75,6 +80,8 @@ describe('SourceControlImportService', () => {
 	const dataTableSizeValidator = mock<DataTableSizeValidator>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const executionPersistence = mock<ExecutionPersistence>();
+	const credentialsService = mock<CredentialsService>();
+	const transactionManager = mock<EntityManager>();
 
 	const globalAdminContext = new SourceControlContext(
 		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
@@ -102,7 +109,7 @@ describe('SourceControlImportService', () => {
 		workflowRepository,
 		workflowTagMappingRepository,
 		workflowService,
-		mock(),
+		credentialsService,
 		mock(),
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
@@ -123,6 +130,16 @@ describe('SourceControlImportService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		transactionManager.upsert.mockImplementation(
+			async (_entity, value, conflictPaths) =>
+				await credentialsRepository.upsert(value as never, conflictPaths as never),
+		);
+		transactionManager.delete.mockImplementation(
+			async (_entity, criteria) => await sharedCredentialsRepository.delete(criteria as never),
+		);
+		credentialsRepositoryManager.transaction.mockImplementation(
+			async (callback) => await callback(transactionManager),
+		);
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 
@@ -1668,6 +1685,7 @@ describe('SourceControlImportService', () => {
 			expect(sharedCredentialsRepository.delete).toHaveBeenCalledWith({
 				credentialsId: 'cred1',
 			});
+			expect(credentialsRepositoryManager.transaction).toHaveBeenCalledOnce();
 		});
 
 		it('should reject contradictory instance credential flags', async () => {
@@ -1701,6 +1719,40 @@ describe('SourceControlImportService', () => {
 				'Instance credentials cannot be global or dynamically resolved',
 			);
 			expect(credentialsRepository.upsert).not.toHaveBeenCalled();
+		});
+
+		it('should reject external secret expressions in instance credentials', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'oauth2Api',
+					data: { apiKey: '={{ $secrets.vault.key }}' },
+					availability: 'instance',
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsService.validateInstanceCredentialData.mockImplementation(() => {
+				throw new Error('Instance credentials cannot reference project-scoped external secrets');
+			});
+
+			await expect(service.importCredentialsFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+				'Instance credentials cannot reference project-scoped external secrets',
+			);
+			expect(credentialsRepositoryManager.transaction).not.toHaveBeenCalled();
 		});
 
 		it('should default resolver fields to false when absent from the stub', async () => {

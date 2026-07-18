@@ -61,6 +61,7 @@ describe('CredentialsController', () => {
 		mock(), // externalSecretsProviderAccessCheckService
 		mock(), // connectionStatusProxy
 		mock(), // instanceCredentialConsumerRegistry
+		mock(), // dbLockService
 	);
 
 	// Spy on methods that need to be mocked in tests

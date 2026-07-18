@@ -20,7 +20,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	async findStartingWith(credentialName: string) {
 		return await this.find({
 			select: ['name'],
-			where: { name: Like(`${credentialName}%`) },
+			where: { name: Like(`${credentialName}%`), availability: 'workflow' },
 		});
 	}
 

@@ -2,6 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsEntity,
 	CredentialsRepository,
+	DbLockService,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
@@ -10,6 +11,7 @@ import type {
 	ListQueryDb,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import {
 	CREDENTIAL_BLANKING_VALUE,
@@ -82,6 +84,8 @@ describe('CredentialsService', () => {
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
 	const instanceCredentialConsumerRegistry = mock<InstanceCredentialConsumerRegistry>();
+	const dbLockService = mock<DbLockService>();
+	const instanceCredentialTransactionManager = mock<EntityManager>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -103,6 +107,7 @@ describe('CredentialsService', () => {
 		externalSecretsProviderAccessCheckService,
 		connectionStatusProxy,
 		instanceCredentialConsumerRegistry,
+		dbLockService,
 	);
 
 	beforeEach(() => {
@@ -117,6 +122,12 @@ describe('CredentialsService', () => {
 			undefined,
 		);
 		instanceCredentialConsumerRegistry.findConsumerUsingCredential.mockResolvedValue(null);
+		instanceCredentialTransactionManager.remove.mockImplementation(
+			async (credential) => await credentialsRepository.remove(credential as CredentialsEntity),
+		);
+		dbLockService.withLock.mockImplementation(
+			async (_lock, fn) => await fn(instanceCredentialTransactionManager),
+		);
 		ownershipService.addOwnedByAndSharedWith.mockImplementation((credential: any) => credential);
 		// Mock the subquery method used by member users and admin users with onlySharedWithMe
 		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
@@ -960,6 +971,7 @@ describe('CredentialsService', () => {
 				{ includeInstanceCredentials: true },
 			);
 			expect(credentialsRepository.remove).toHaveBeenCalledWith(credential);
+			expect(dbLockService.withLock).toHaveBeenCalledOnce();
 		});
 
 		it('does not delete an instance credential bound to a feature', async () => {

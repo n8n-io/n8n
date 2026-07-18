@@ -16,10 +16,11 @@ import fs from 'fs';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -174,6 +175,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				resolvableAllowFallback: false,
 				resolverId: null,
 			});
+			await this.validateInstanceCredentialData(credential);
 		}
 
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
@@ -200,6 +202,25 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				['credentialsId', 'projectId'],
 			);
 		}
+	}
+
+	private async validateInstanceCredentialData(credential: Partial<CredentialsEntity>) {
+		let data = credential.data;
+		if (!data && credential.id) {
+			data = (
+				await this.transactionManager.findOne(CredentialsEntity, {
+					where: { id: credential.id },
+					select: { data: true },
+				})
+			)?.data;
+		}
+		if (!data) return;
+
+		const decrypted =
+			typeof data === 'string'
+				? jsonParse<ICredentialDataDecryptedObject>(await Container.get(Cipher).decryptV2(data))
+				: data;
+		Container.get(CredentialsService).validateInstanceCredentialData(decrypted);
 	}
 
 	private async checkRelations(

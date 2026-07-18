@@ -1,7 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
-import type { CredentialsEntity, SettingsRepository, User, UserRepository } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	DbLockService,
+	SettingsRepository,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -44,6 +51,8 @@ describe('InstanceAiSettingsService', () => {
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
 	const eventService = mock<EventService>();
+	const dbLockService = mock<DbLockService>();
+	const transactionManager = mock<EntityManager>();
 
 	let service: InstanceAiSettingsService;
 
@@ -59,6 +68,11 @@ describe('InstanceAiSettingsService', () => {
 		});
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForConsumer.mockResolvedValue([]);
+		transactionManager.upsert.mockImplementation(
+			async (_entity, value, conflictPaths) =>
+				await settingsRepository.upsert(value as never, conflictPaths as never),
+		);
+		dbLockService.withLock.mockImplementation(async (_lock, fn) => await fn(transactionManager));
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
 			settingsRepository,
@@ -69,6 +83,7 @@ describe('InstanceAiSettingsService', () => {
 			credentialsFinderService,
 			instanceCredentialBroker,
 			eventService,
+			dbLockService,
 		);
 	});
 
@@ -198,6 +213,32 @@ describe('InstanceAiSettingsService', () => {
 				}),
 				['key'],
 			);
+		});
+
+		it('merges an update with the latest persisted settings', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				key: 'instanceAi.settings',
+				value: JSON.stringify({ mcpAccessEnabled: false }),
+				loadOnStartup: true,
+			} as never);
+
+			await service.updateAdminSettings({ permissions: { createWorkflow: 'always_allow' } });
+
+			const persisted = JSON.parse(settingsRepository.upsert.mock.calls[0][0].value);
+			expect(persisted).toMatchObject({
+				mcpAccessEnabled: false,
+				permissions: { createWorkflow: 'always_allow' },
+			});
+		});
+
+		it('does not apply an update when persistence fails', async () => {
+			settingsRepository.upsert.mockRejectedValue(new Error('write failed'));
+
+			await expect(service.updateAdminSettings({ mcpAccessEnabled: false })).rejects.toThrow(
+				'write failed',
+			);
+
+			expect(service.getAdminSettings().mcpAccessEnabled).toBe(true);
 		});
 	});
 

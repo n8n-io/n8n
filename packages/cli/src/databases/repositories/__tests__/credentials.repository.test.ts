@@ -64,6 +64,21 @@ describe('CredentialsRepository', () => {
 		});
 	});
 
+	describe('findStartingWith', () => {
+		it('only searches workflow credential names', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+
+			await repository.findStartingWith('API key');
+
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({ availability: 'workflow' }),
+				}),
+			);
+		});
+	});
+
 	describe('findAllGlobalCredentials', () => {
 		test('should find all global credentials without data by default', async () => {
 			// ARRANGE
