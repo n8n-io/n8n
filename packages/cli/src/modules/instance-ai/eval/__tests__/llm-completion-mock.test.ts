@@ -102,6 +102,20 @@ function chatRequest(body: unknown): IHttpRequestOptions {
 	} as unknown as IHttpRequestOptions;
 }
 
+function responsesRequest(body: unknown): IHttpRequestOptions {
+	return {
+		url: 'http://127.0.0.1/eval/My%20Agent/v1/responses',
+		method: 'POST',
+		body,
+	} as unknown as IHttpRequestOptions;
+}
+
+const strictSchema = {
+	type: 'object',
+	properties: { category: { type: 'string' } },
+	additionalProperties: false,
+};
+
 beforeEach(() => {
 	submitQueue.length = 0;
 	submitCapture.handler = undefined;
@@ -257,5 +271,55 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(promptCapture.prompt).toContain('fetch_data');
 		expect(promptCapture.prompt).toContain('analyze this');
 		expect(promptCapture.prompt).toContain('Tool results ARE present');
+	});
+
+	it('conforms final content to a declared structured-output schema (drops undeclared fields)', async () => {
+		submitQueue.push({ kind: 'final', content: '{"category":"bug","subject":"extra"}' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(
+			responsesRequest({
+				input: [{ role: 'user', content: 'classify this' }],
+				text: { format: { type: 'json_schema', name: 'c', schema: strictSchema } },
+			}),
+			node,
+		);
+
+		expect(res?.body).toEqual({ content: '{"category":"bug"}' });
+	});
+
+	it('injects the declared structured-output schema into the mock prompt', async () => {
+		submitQueue.push({ kind: 'final', content: '{}' });
+		const handler = createLlmCompletionMockHandler();
+
+		await handler(
+			responsesRequest({
+				input: [{ role: 'user', content: 'classify this' }],
+				text: {
+					format: {
+						type: 'json_schema',
+						name: 'c',
+						schema: {
+							type: 'object',
+							properties: { client_project: { type: 'boolean' }, ignore: { type: 'boolean' } },
+							additionalProperties: false,
+						},
+					},
+				},
+			}),
+			node,
+		);
+
+		expect(promptCapture.prompt).toContain('client_project');
+		expect(promptCapture.prompt?.toLowerCase()).toContain('schema');
+	});
+
+	it('leaves final content unchanged when the request declares no schema', async () => {
+		submitQueue.push({ kind: 'final', content: '{"category":"bug","subject":"kept"}' });
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(responsesRequest({ input: [{ role: 'user', content: 'hi' }] }), node);
+
+		expect(res?.body).toEqual({ content: '{"category":"bug","subject":"kept"}' });
 	});
 });

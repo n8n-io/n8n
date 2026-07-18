@@ -51,6 +51,14 @@ export class DurableLogMetrics {
 		treesDerived: 0,
 	};
 
+	/** Interrupted-run sweep (phase 3). */
+	sweep = {
+		runsExamined: 0,
+		runsMarkedInterrupted: 0,
+		runsCrashResumed: 0,
+		toolInterruptedFacts: 0,
+	};
+
 	constructor(private readonly eventService: EventService) {}
 
 	recordDrainBatch(rows: number, bytes: number): void {
@@ -102,5 +110,19 @@ export class DurableLogMetrics {
 	 */
 	notifyParserFallbacks(count: number): void {
 		if (count > 0) this.eventService.emit('instance-ai-parser-fallback', { count });
+	}
+
+	recordSweepRunExamined(): void {
+		this.sweep.runsExamined++;
+	}
+
+	recordSweepToolInterruptedFact(): void {
+		this.sweep.toolInterruptedFacts++;
+	}
+
+	recordSweepOutcome(outcome: 'interrupted' | 'crash-resumed', toolInterruptedFacts: number): void {
+		if (outcome === 'interrupted') this.sweep.runsMarkedInterrupted++;
+		else this.sweep.runsCrashResumed++;
+		this.eventService.emit('instance-ai-run-swept', { outcome, toolInterruptedFacts });
 	}
 }

@@ -201,6 +201,7 @@
       "undici@5": "catalog:undici-v6",
       "undici@6": "catalog:undici-v6",
       "undici@7": "catalog:undici-v7",
+      "node-gyp>undici": "catalog:undici-v7",
       "@babel/traverse": "^7.23.2"
     },
     "patchedDependencies": {

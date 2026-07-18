@@ -2,7 +2,7 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import { STICKY_NODE_TYPE } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
 	ExecutionError,
@@ -28,6 +28,7 @@ import {
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
+	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -673,6 +674,56 @@ describe('validateWorkflowNodeGroups', () => {
 				);
 			});
 		});
+	});
+});
+
+describe('sanitizeNodeGroupDescriptions', () => {
+	it('returns no warnings and leaves descriptions within the cap untouched', () => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: 'short' }],
+		};
+		expect(sanitizeNodeGroupDescriptions(workflow)).toEqual([]);
+		expect(workflow.nodeGroups[0].description).toBe('short');
+	});
+
+	it('truncates an over-cap description and returns a warning', () => {
+		const workflow = {
+			nodeGroups: [
+				{
+					id: 'g1',
+					name: 'Group 1',
+					nodeIds: [],
+					description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 10),
+				},
+			],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		expect(warnings).toEqual([
+			`Group "Group 1" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+		]);
+	});
+
+	it.each([
+		['a number', 123],
+		['an object', { a: 1 }],
+		['an array', Array.from({ length: GROUP_DESCRIPTION_MAX_LENGTH + 10 }, (_, i) => i)],
+	])('removes a non-string description (%s) and returns a warning', (_label, description) => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: description as never }],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toBeUndefined();
+		expect(warnings).toEqual(['Group "Group 1" description was not plain text and was removed.']);
+	});
+
+	it('handles missing nodeGroups and groups without a description', () => {
+		expect(sanitizeNodeGroupDescriptions({ nodeGroups: undefined })).toEqual([]);
+		expect(
+			sanitizeNodeGroupDescriptions({ nodeGroups: [{ id: 'g1', name: 'G', nodeIds: [] }] }),
+		).toEqual([]);
 	});
 });
 

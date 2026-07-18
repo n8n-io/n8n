@@ -91,7 +91,9 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * via the pubsub relay. Ephemeral events (deltas, status) carry NO id, so
 	 * their SSE frames have no `id:` line and the browser's replay cursor only
 	 * ever points at durable facts. The Redis sequence machinery below is never
-	 * touched; INS-844 composes the two drains into one.
+	 * touched: the flag picks exactly one drain (INS-844's composition was
+	 * cancelled), and the flag-off paths below survive only as the rollback
+	 * switch until they sunset at Gate B (INS-847).
 	 *
 	 * Flag OFF, single-main: assign the next local id and deliver in the same tick.
 	 *
@@ -102,6 +104,13 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * local SSE subscribers, and relayed to sibling mains with its id.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
+		// Stamp publish time once — replays (SSE reconnect, snapshot rebuilds)
+		// rely on it to reconstruct real timing instead of processing time.
+		// Before the durable-log branch on purpose: persisted events must carry
+		// it too.
+		if (event.ts === undefined) {
+			event = { ...event, ts: Date.now() };
+		}
 		if (this.durableLogEnabled) {
 			this.eventLog.publish(threadId, event, (drained) => this.onDrained(threadId, drained));
 			return;
