@@ -580,6 +580,36 @@ describe('requestOAuth2 - tokenExpiredStatusCode', () => {
 		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
 	});
 
+	test('should refresh Databricks access tokens with the default 401 expiry status code', async () => {
+		mockThis.getCredentials.mockResolvedValue(makeCredentialData());
+
+		mockThis.helpers.httpRequest.mockRejectedValueOnce(
+			Object.assign(new Error('401'), {
+				response: { status: 401 },
+			}),
+		);
+
+		nock(tokenUrl).post('/token').reply(200, {
+			access_token: 'new-token',
+			token_type: 'bearer',
+		});
+
+		mockThis.helpers.httpRequest.mockResolvedValueOnce({ success: true });
+
+		const result = await requestOAuth2.call(
+			mockThis,
+			'testOAuth2',
+			{ method: 'GET', url: `${baseUrl}/data` },
+			mockNode,
+			mockAdditionalData,
+			undefined,
+			true,
+		);
+
+		expect(result).toEqual({ success: true });
+		expect(mockThis.helpers.httpRequest).toHaveBeenCalledTimes(2);
+	});
+
 	test('should NOT retry on 401 when credential sets tokenExpiredStatusCode to 403 (isN8nRequest path)', async () => {
 		mockThis.getCredentials.mockResolvedValue(makeCredentialData({ tokenExpiredStatusCode: 403 }));
 
