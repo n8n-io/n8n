@@ -1,17 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
+import { ISSUE_LOCATOR } from '../../../shared/constants';
 import { linearApiRequestAllItems } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Issue ID',
-		name: 'issueId',
-		type: 'string',
-		required: true,
-		default: '',
-		description: 'The ID of the issue to get comments for',
-	},
+	ISSUE_LOCATOR,
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -47,7 +41,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const issueId = this.getNodeParameter('issueId', 0) as string;
+	const issueId = this.getNodeParameter('issueId', 0, '', { extractValue: true }) as string;
 	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 	const limit = returnAll ? undefined : (this.getNodeParameter('limit', 0) as number);
 

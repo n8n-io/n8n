@@ -5,18 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import { ISSUE_FIELDS, PRIORITY_OPTIONS } from '../../../shared/constants';
+import { ISSUE_FIELDS, ISSUE_LOCATOR, PRIORITY_OPTIONS } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Issue ID',
-		name: 'issueId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
+	ISSUE_LOCATOR,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -154,7 +148,7 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const issueId = this.getNodeParameter('issueId', i) as string;
+		const issueId = this.getNodeParameter('issueId', i, '', { extractValue: true }) as string;
 		const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 		try {

@@ -6,16 +6,11 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { PROJECT_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Project ID',
-		name: 'projectId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
+	PROJECT_LOCATOR,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
@@ -86,7 +81,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const projectId = this.getNodeParameter('projectId', i) as string;
+			const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
 			const updateFields = this.getNodeParameter('updateFields', i);
 
 			const body = {

@@ -210,6 +210,29 @@ export const CUSTOMER_LOCATOR: INodeProperties = {
 	],
 };
 
+export const ISSUE_LOCATOR: INodeProperties = {
+	displayName: 'Issue',
+	name: 'issueId',
+	type: 'resourceLocator',
+	required: true,
+	default: { mode: 'list', value: '' },
+	description: 'The issue to operate on',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: { searchListMethod: 'getIssues', searchable: true },
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			hint: 'Enter the issue ID',
+		},
+	],
+};
+
 export const PROJECT_LOCATOR: INodeProperties = {
 	displayName: 'Project',
 	name: 'projectId',

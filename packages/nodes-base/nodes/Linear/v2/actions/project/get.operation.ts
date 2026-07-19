@@ -5,18 +5,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { PROJECT_LOCATOR } from '../../../shared/constants';
 import { linearApiRequest } from '../../../shared/GenericFunctions';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 
-const properties: INodeProperties[] = [
-	{
-		displayName: 'Project ID',
-		name: 'projectId',
-		type: 'string',
-		required: true,
-		default: '',
-	},
-];
+const properties: INodeProperties[] = [PROJECT_LOCATOR];
 
 const displayOptions = {
 	show: {
@@ -35,7 +28,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const projectId = this.getNodeParameter('projectId', i) as string;
+			const projectId = this.getNodeParameter('projectId', i, '', { extractValue: true }) as string;
 
 			const body = {
 				query: `query Project($projectId: String!) {

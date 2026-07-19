@@ -89,3 +89,54 @@ export async function getCustomers(
 ): Promise<INodeListSearchResult> {
 	return await searchByName(this, 'customers', 'CustomerFilter', filter, paginationToken);
 }
+
+/**
+ * Issues use `title` (not `name`) and are surfaced with their identifier for context,
+ * so they need a dedicated search rather than the shared name-based helper.
+ */
+export async function getIssues(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const body = {
+		query: `query Issues($first: Int, $after: String, $filter: IssueFilter) {
+			issues(first: $first, after: $after, filter: $filter) {
+				nodes {
+					id
+					identifier
+					title
+				}
+				pageInfo {
+					hasNextPage
+					endCursor
+				}
+			}
+		}`,
+		variables: {
+			first: 50,
+			after: paginationToken ?? null,
+			filter: filter ? { title: { containsIgnoreCase: filter } } : undefined,
+		},
+	};
+
+	const response = (await linearApiRequest.call(this, body)) as unknown as {
+		data: {
+			issues: {
+				nodes: Array<{ id: string; identifier: string; title: string }>;
+				pageInfo: { hasNextPage: boolean; endCursor: string | null };
+			};
+		};
+	};
+	const { nodes, pageInfo } = response.data.issues;
+
+	const results: INodeListSearchItems[] = nodes.map((node) => ({
+		name: `${node.identifier} — ${node.title}`,
+		value: node.id,
+	}));
+
+	return {
+		results,
+		paginationToken: pageInfo.hasNextPage ? (pageInfo.endCursor ?? undefined) : undefined,
+	};
+}
