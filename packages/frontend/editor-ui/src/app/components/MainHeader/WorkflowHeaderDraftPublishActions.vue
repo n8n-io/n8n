@@ -244,11 +244,6 @@ const flushSaveForReview = async (): Promise<string | undefined> => {
 	return workflowDocumentStore.value.versionId || undefined;
 };
 
-const openSubmitForReviewDialog = () => {
-	showPublishChoiceDialog.value = false;
-	showSubmitForReviewDialog.value = true;
-};
-
 const onReviewSubmitted = () => {
 	toast.showMessage({
 		type: 'success',
@@ -264,7 +259,7 @@ const onPublishButtonClick = async () => {
 	if (!(await ensureWorkflowSaved())) return;
 
 	if (isWorkflowReviewsEnabled.value) {
-		if (reviewRequiredStore.isReviewRequired(workflowDocumentStore.value.workflowId)) {
+		if (reviewRequiredStore.isReviewRequired(props.id)) {
 			showSubmitForReviewDialog.value = true;
 			return;
 		}
@@ -769,11 +764,11 @@ defineExpose({
 			<WorkflowPublishChoiceDialog
 				v-model:open="showPublishChoiceDialog"
 				@publish="openPublishModal"
-				@submit-for-review="openSubmitForReviewDialog"
+				@submit-for-review="showSubmitForReviewDialog = true"
 			/>
 			<WorkflowSubmitForReviewDialog
 				v-model:open="showSubmitForReviewDialog"
-				:workflow-id="workflowDocumentStore.workflowId"
+				:workflow-id="props.id"
 				:flush-save="flushSaveForReview"
 				@submitted="onReviewSubmitted"
 			/>
