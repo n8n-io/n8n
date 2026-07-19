@@ -73,7 +73,7 @@ export async function execute(
 			const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 			const body = {
-				query: `mutation CustomerNeedCreate($customerId: String!, $body: String, $issueId: String, $projectId: String, $priority: Int) {
+				query: `mutation CustomerNeedCreate($customerId: String!, $body: String, $issueId: String, $projectId: String, $priority: Float) {
 					customerNeedCreate(input: {
 						customerId: $customerId
 						body: $body

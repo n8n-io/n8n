@@ -146,7 +146,10 @@ export const RELEASE_FIELDS = `
 	id
 	name
 	version
-	stage
+	stage {
+		id
+		name
+	}
 	startDate
 	targetDate
 	url

@@ -63,7 +63,7 @@ export async function execute(
 			const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
 			const body = {
-				query: `mutation CustomerNeedUpdate($customerNeedId: String!, $body: String, $priority: Int) {
+				query: `mutation CustomerNeedUpdate($customerNeedId: String!, $body: String, $priority: Float) {
 					customerNeedUpdate(id: $customerNeedId, input: {
 						body: $body
 						priority: $priority
