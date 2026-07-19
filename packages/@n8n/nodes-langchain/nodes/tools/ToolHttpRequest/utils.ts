@@ -145,6 +145,53 @@ const defaultOptimizer = <T>(response: T) => {
 	return String(response);
 };
 
+/** Error payloads are appended to the tool output, so they must not flood the model's context. */
+const MAX_ERROR_BODY_LENGTH = 2000;
+
+type FailedRequest = {
+	error?: unknown;
+	response?: { status?: number; data?: unknown };
+};
+
+/**
+ * Reads the status and payload a failed request came back with. The error is either the one the
+ * HTTP client rejected with, or a `NodeApiError` wrapping it, which keeps the original as its
+ * cause. The current client reports the payload as `response.data`, the legacy one as `error`.
+ */
+const getFailedRequest = (error: unknown): { status?: number; body?: unknown } => {
+	for (const candidate of [error, (error as { cause?: unknown })?.cause]) {
+		const failed = candidate as FailedRequest | undefined;
+		const body = failed?.response?.data ?? failed?.error;
+		const status = failed?.response?.status;
+
+		if (body !== undefined || status !== undefined) {
+			return { status, body };
+		}
+	}
+
+	return {};
+};
+
+/**
+ * Turns an error payload into something safe to hand to the model: skips empty and binary bodies,
+ * and never throws, since this runs while we are already handling a failed request.
+ */
+const serializeErrorBody = (body: unknown): string | undefined => {
+	if (body === undefined || body === null || body === '' || isBinary(body)) {
+		return undefined;
+	}
+
+	let serialized: string;
+
+	try {
+		serialized = defaultOptimizer(body);
+	} catch {
+		return undefined;
+	}
+
+	return serialized.trim() ? serialized : undefined;
+};
+
 function isBinary(data: unknown) {
 	// Check if data is a Buffer
 	if (Buffer.isBuffer(data)) {
@@ -755,8 +802,18 @@ export const configureToolFunction = (
 			try {
 				fullResponse = await httpRequest(options);
 			} catch (error) {
-				const httpCode = (error as NodeApiError).httpCode;
+				const { status, body } = getFailedRequest(error);
+				const httpCode = (error as NodeApiError).httpCode ?? status;
 				response = `${httpCode ? `HTTP ${httpCode} ` : ''}There was an error: "${error.message}"`;
+
+				// The API's own error payload is what tells the model why the call was rejected. Without
+				// it the model only sees a status code and tends to invent a reason for the failure.
+				const errorBody = serializeErrorBody(body);
+				if (errorBody !== undefined && !error.message.includes(errorBody)) {
+					response += `\nResponse body: ${errorBody.slice(0, MAX_ERROR_BODY_LENGTH)}${
+						errorBody.length > MAX_ERROR_BODY_LENGTH ? '... [truncated]' : ''
+					}`;
+				}
 			}
 
 			if (!response) {

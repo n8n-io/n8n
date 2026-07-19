@@ -359,4 +359,198 @@ describe('ToolHttpRequest', () => {
 			);
 		});
 	});
+
+	describe('Error responses', () => {
+		beforeEach(() => {
+			executeFunctions.getNodeParameter.mockImplementation(
+				(paramName: string, _: any, fallback: any) => {
+					switch (paramName) {
+						case 'method':
+							return 'GET';
+						case 'url':
+							return 'https://httpbin.org/status';
+						case 'options':
+							return {};
+						case 'placeholderDefinitions.values':
+							return [];
+						default:
+							return fallback;
+					}
+				},
+			);
+		});
+
+		const invokeTool = async () => {
+			const { response } = await httpTool.supplyData.call(executeFunctions, 0);
+			return await (response as N8nTool).invoke({});
+		};
+
+		it('should include the response body when the request fails with a 4xx', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Request failed with status code 403'), {
+					response: {
+						status: 403,
+						data: { error: 'insufficient_scope', required: 'read:users' },
+					},
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 403');
+			expect(res).toContain('insufficient_scope');
+			expect(res).toContain('read:users');
+		});
+
+		it('should include the response body when the request fails with a 5xx', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Request failed with status code 503'), {
+					response: { status: 503, data: 'Upstream database is unavailable' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 503');
+			expect(res).toContain('Upstream database is unavailable');
+		});
+
+		it('should read the response body from the cause when the error is wrapped', async () => {
+			const cause = Object.assign(new Error('Request failed with status code 422'), {
+				response: { status: 422, data: { message: 'The "email" field is required' } },
+			});
+
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Unprocessable Entity'), { httpCode: '422', cause }),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 422');
+			expect(res).toContain('email');
+			expect(res).toContain('field is required');
+		});
+
+		it('should report the error alone when the request failed without a response', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), { code: 'ECONNREFUSED' }),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('There was an error');
+			expect(res).toContain('ECONNREFUSED');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should not add a response body section when the error response is empty', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Request failed with status code 404'), {
+					response: { status: 404, data: '' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 404');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should read the response body reported by the legacy request helper', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Forbidden'), {
+					statusCode: 403,
+					error: { error: 'insufficient_scope' },
+					response: { status: 403, headers: {}, statusText: 'Forbidden' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 403');
+			expect(res).toContain('insufficient_scope');
+		});
+
+		it('should derive the status code from the wrapped error when the wrapper has none', async () => {
+			const cause = Object.assign(new Error('Request failed with status code 429'), {
+				response: { status: 429, data: 'Rate limit exceeded' },
+			});
+
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Too Many Requests'), { httpCode: null, cause }),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 429');
+			expect(res).toContain('Rate limit exceeded');
+		});
+
+		it('should truncate an oversized error body', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Internal Server Error'), {
+					response: { status: 500, data: 'x'.repeat(5000) },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('[truncated]');
+			expect(res.length).toBeLessThan(3000);
+		});
+
+		it('should skip a binary error body', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Internal Server Error'), {
+					response: { status: 500, data: Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 500');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should not throw when the error body cannot be serialized', async () => {
+			const circular: Record<string, unknown> = { message: 'Bad Request' };
+			circular.self = circular;
+
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Bad Request'), {
+					response: { status: 400, data: circular },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 400');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should not repeat the body when it is already part of the error message', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('403 - forbidden by policy'), {
+					response: { status: 403, data: 'forbidden by policy' },
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('forbidden by policy');
+			expect(res).not.toContain('Response body');
+		});
+
+		it('should leave successful responses untouched', async () => {
+			helpers.httpRequest.mockResolvedValue({
+				body: 'Hello World',
+				statusCode: 200,
+				headers: { 'content-type': 'text/plain' },
+			});
+
+			const res = await invokeTool();
+
+			expect(res).toEqual('Hello World');
+		});
+	});
 });
