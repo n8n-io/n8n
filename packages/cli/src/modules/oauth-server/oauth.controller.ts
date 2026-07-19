@@ -82,7 +82,7 @@ const rfc9207SafetyNetGuard: RequestHandler = (_req, res, next) => {
 				const baseUrl = Container.get(UrlService).getInstanceBaseUrl();
 				if (url.startsWith('http://') || url.startsWith('https://')) {
 					const parsedUrl = new URL(url);
-					if (!url.startsWith(baseUrl) && !parsedUrl.searchParams.has('iss')) {
+					if (parsedUrl.origin !== new URL(baseUrl).origin && !parsedUrl.searchParams.has('iss')) {
 						parsedUrl.searchParams.set('iss', baseUrl);
 						url = parsedUrl.toString();
 					}
