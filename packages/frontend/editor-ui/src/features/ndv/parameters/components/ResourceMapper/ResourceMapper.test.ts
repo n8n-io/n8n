@@ -508,6 +508,49 @@ describe('ResourceMapper.vue', () => {
 		expect(mappingContainer.textContent).not.toContain('First name');
 	});
 
+	it('reconciles a complete-but-drifted schema when refreshStaleSchemaOnOpen is set', async () => {
+		const completeDriftedSchema = [
+			{
+				id: 'user_added_field',
+				displayName: 'user_added_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				readOnly: false,
+				removed: false,
+			},
+		];
+
+		const { getByTestId } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: completeDriftedSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshStaleSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).not.toContain('user_added_field');
+		expect(mappingContainer.textContent).toContain('First name');
+	});
+
 	it('renders initially selected matching column properly', async () => {
 		const { getByTestId } = renderComponent(
 			{

@@ -130,13 +130,18 @@ onDocumentVisible(async () => {
 
 async function checkStaleFields(): Promise<void> {
 	const fetchedFields = await fetchFields();
-	if (fetchedFields) {
-		const isSchemaStale = isResourceMapperFieldListStale(
-			state.paramValue.schema,
-			fetchedFields.fields,
-		);
-		state.hasStaleFields = isSchemaStale;
+	if (!fetchedFields) {
+		return;
 	}
+	const isSchemaStale = isResourceMapperFieldListStale(
+		state.paramValue.schema,
+		fetchedFields.fields,
+	);
+	if (isSchemaStale && props.parameter.typeOptions?.resourceMapper?.refreshStaleSchemaOnOpen) {
+		await initFetching(true);
+		return;
+	}
+	state.hasStaleFields = isSchemaStale;
 }
 
 // Reload fields to map when node is executed
