@@ -288,7 +288,7 @@ export async function execute(
 				valuesLength = valuesLength + 1;
 				values.push(column);
 			});
-			const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})`;
+			const onConflict = ` ON CONFLICT (${conflictColumns.join(',')})` ;
 
 			const insertQuery = `INSERT INTO $1:name.$2:name($${valuesLength}:name) VALUES($${valuesLength}:csv)${onConflict}`;
 			valuesLength = valuesLength + 1;
