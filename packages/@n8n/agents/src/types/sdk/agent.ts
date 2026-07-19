@@ -176,10 +176,54 @@ export interface ExecutionOptions {
 	executionCounter?: AgentExecutionCounter;
 	onStepStart?: (event: OnStepStartEvent) => void | Promise<void>;
 	onStepFinish?: (event: OnStepFinishEvent) => void | Promise<void>;
+	/**
+	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
+	 * checkpoint at every step boundary (after a tool batch settles, before the
+	 * next model call) so a crash loses only the in-flight step. Requires a
+	 * persistence-backed CheckpointStore; recover via `crashResume()`.
+	 */
+	stepCheckpoints?: boolean;
 }
 
 export interface PersistedExecutionOptions {
 	maxIterations?: number;
+}
+
+export interface AnthropicPromptCachingConfig {
+	/**
+	 * Cache breakpoint residency. Default `'1h'`: agent workloads pause (HITL,
+	 * tool loops, eval waves) and a 1h breakpoint fails cheaper than 5m under
+	 * that pattern. Use `'5m'` for continuously warm chat loops to avoid the
+	 * 2x write premium.
+	 */
+	ttl?: '5m' | '1h';
+}
+
+export interface OpenAIPromptCachingConfig {
+	/**
+	 * Routing hint combined with OpenAI's prefix hash to improve cache-hit
+	 * stickiness. Auto-generated at agent-version granularity when omitted
+	 * (agent name + model id + a hash of the base instructions). Set
+	 * explicitly for per-tenant routing.
+	 */
+	promptCacheKey?: string;
+	/** Retention policy. Default `'24h'` (free on gpt-4.1/5/5.1; the only supported value on gpt-5.5+). */
+	promptCacheRetention?: 'in_memory' | '24h';
+}
+
+/**
+ * Opt-in prompt caching config set via `Agent.promptCaching()`. Generates
+ * provider-specific `providerOptions` (Anthropic cache breakpoints, OpenAI
+ * cache key + retention) on top of the model's provider. Caller-supplied
+ * `providerOptions` always take precedence on conflicts.
+ */
+export interface PromptCachingConfig {
+	/** Master switch. Defaults to `true` when this config is set. */
+	enabled?: boolean;
+	/** Anthropic-specific config, or `false` to disable for Anthropic models. */
+	anthropic?: false | AnthropicPromptCachingConfig;
+	/** OpenAI-specific config, or `false` to disable for OpenAI models. */
+	openai?: false | OpenAIPromptCachingConfig;
 }
 
 export interface ToolResultEntry {
@@ -342,4 +386,11 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	/**
+	 * The host application's own run id (distinct from the agent-SDK runId that
+	 * keys checkpoints). Persisted with checkpoints so host-side recovery (e.g.
+	 * Instance AI's interrupted-run sweep) can match a checkpoint to its run
+	 * exactly instead of guessing by recency.
+	 */
+	hostRunId?: string;
 };

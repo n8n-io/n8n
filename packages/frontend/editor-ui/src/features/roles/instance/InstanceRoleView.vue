@@ -36,10 +36,14 @@ const {
 	showCreateButton,
 	hasUnsavedChanges,
 	displayNameValidationRules,
+	submitted,
+	validateOnSubmit,
 	resetForm,
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
 	viewRoute: VIEWS.INSTANCE_ROLE_VIEW,
+	filterScopes: (scopes) =>
+		scopes.filter((s) => (ALL_INSTANCE_SCOPES as readonly string[]).includes(s)),
 	fetchError: i18n.baseText('roles.instance.action.fetch.error'),
 });
 
@@ -73,6 +77,10 @@ function setPreset(slug: string) {
 }
 
 async function createInstanceRole() {
+	if (!validateOnSubmit('roles.instance.action.create.error')) {
+		return;
+	}
+
 	try {
 		const role = await rolesStore.createRole({
 			displayName: form.value.displayName,
@@ -85,6 +93,7 @@ async function createInstanceRole() {
 		telemetry.track('User successfully created new role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'instance',
 			permissions: role.scopes,
 		});
 
@@ -114,6 +123,7 @@ async function updateInstanceRole(slug: string) {
 		telemetry.track('User updated role', {
 			role_id: role.slug,
 			role_name: role.displayName,
+			role_type: 'instance',
 			permissions_from: initialState.value?.scopes,
 			permissions_to: role.scopes,
 		});
@@ -192,6 +202,7 @@ async function deleteRole() {
 		:back-button-text="i18n.baseText('roles.instance.backToRoles')"
 		:labels="editorLabels"
 		:display-name-validation-rules="displayNameValidationRules"
+		:show-display-name-error="submitted"
 		@back="onBackClick"
 		@save="handleSubmit"
 		@discard="resetForm(initialState)"

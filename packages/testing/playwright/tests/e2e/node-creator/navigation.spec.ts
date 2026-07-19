@@ -30,24 +30,25 @@ test.describe(
 		test('should search for nodes with various queries', async ({ n8n }) => {
 			await n8n.canvas.nodeCreator.open();
 
+			// Assert by identity rather than exact count
 			await n8n.canvas.nodeCreator.searchFor('manual');
-			await expect(n8n.canvas.nodeCreator.getNodeItems()).toHaveCount(1);
+			await expect(n8n.canvas.nodeCreator.getItem('Manual Trigger')).toBeVisible();
 
 			await n8n.canvas.nodeCreator.clearSearch();
 			await n8n.canvas.nodeCreator.searchFor('manual123');
-			await expect(n8n.canvas.nodeCreator.getNodeItems()).toHaveCount(0);
 			await expect(n8n.canvas.nodeCreator.getNoResults()).toBeVisible();
 			await expect(n8n.canvas.nodeCreator.getNoResults()).toContainText(
 				"We didn't make that... yet",
 			);
+			await expect(n8n.canvas.nodeCreator.getItem('Manual Trigger')).toBeHidden();
 
 			await n8n.canvas.nodeCreator.clearSearch();
 			await n8n.canvas.nodeCreator.searchFor('edit image');
-			await expect(n8n.canvas.nodeCreator.getNodeItems()).toHaveCount(1);
+			await expect(n8n.canvas.nodeCreator.getItem('Edit Image')).toBeVisible();
 
 			await n8n.canvas.nodeCreator.clearSearch();
 			await n8n.canvas.nodeCreator.searchFor('this node totally does not exist');
-			await expect(n8n.canvas.nodeCreator.getNodeItems()).toHaveCount(0);
+			await expect(n8n.canvas.nodeCreator.getNoResults()).toBeVisible();
 
 			await n8n.canvas.nodeCreator.clearSearch();
 			await n8n.canvas.nodeCreator.navigateToSubcategory('On app event');
@@ -56,12 +57,12 @@ test.describe(
 			await expect(
 				n8n.canvas.nodeCreator.getCategoryItem('Results in other categories'),
 			).toBeVisible();
-			await expect(n8n.canvas.nodeCreator.getNodeItems()).toHaveCount(1);
 			await expect(n8n.canvas.nodeCreator.getItem('Edit Image')).toBeVisible();
 
 			await n8n.canvas.nodeCreator.clearSearch();
 			await n8n.canvas.nodeCreator.searchFor('edit image123123');
-			await expect(n8n.canvas.nodeCreator.getNodeItems()).toHaveCount(0);
+			await expect(n8n.canvas.nodeCreator.getNoResults()).toBeVisible();
+			await expect(n8n.canvas.nodeCreator.getItem('Edit Image')).toBeHidden();
 		});
 
 		test('should check correct view panels after adding manual trigger', async ({ n8n }) => {

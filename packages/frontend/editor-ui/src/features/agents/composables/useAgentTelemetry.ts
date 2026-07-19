@@ -3,7 +3,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
-export type AgentChatMode = 'build' | 'test';
 export type AgentCreateSource = 'button' | 'dropdown' | 'card';
 export type AgentConfigPart =
 	| 'instructions'
@@ -14,7 +13,8 @@ export type AgentConfigPart =
 	| 'triggers'
 	| 'subAgents'
 	| 'name'
-	| 'description';
+	| 'description'
+	| 'vectorStores';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
@@ -39,13 +39,12 @@ export function useAgentTelemetry() {
 
 	function trackSubmittedMessage(params: {
 		agentId: string;
-		mode: AgentChatMode;
 		status: AgentTelemetryStatus;
 		agentConfig: AgentConfigFingerprint;
 	}) {
 		safeTrack('User submitted message to agent', {
 			agent_id: params.agentId,
-			mode: params.mode,
+			mode: 'test', // Constant dimension kept for warehouse-schema stability.
 			status: params.status,
 			agent_config: params.agentConfig,
 			...common(),
@@ -192,6 +191,23 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackImportedSkill(params: {
+		agentId: string;
+		source: 'skill_file' | 'folder';
+		status: 'success' | 'error';
+		referenceCount?: number;
+		error?: string;
+	}) {
+		safeTrack('User imported agent skill', {
+			agent_id: params.agentId,
+			source: params.source,
+			status: params.status,
+			reference_count: params.referenceCount ?? 0,
+			...(params.error ? { error: params.error } : {}),
+			...common(),
+		});
+	}
+
 	return {
 		trackClickedNewAgent,
 		trackSubmittedMessage,
@@ -206,5 +222,6 @@ export function useAgentTelemetry() {
 		trackOpenedToolFromList,
 		trackOpenedSkillFromList,
 		trackOpenedAddSkillModal,
+		trackImportedSkill,
 	};
 }

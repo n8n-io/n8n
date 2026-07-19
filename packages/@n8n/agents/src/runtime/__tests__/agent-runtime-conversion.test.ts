@@ -123,6 +123,64 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		});
 	});
 
+	it('copies OpenAI reasoning replay metadata into providerOptions on replay', () => {
+		const providerMetadata = {
+			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
+		};
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Let me think about this...',
+						providerMetadata,
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const reasoningPart = (
+			aiMessages[0] as {
+				role: string;
+				content: Array<{ type: string; providerOptions?: unknown; providerMetadata?: unknown }>;
+			}
+		).content[0];
+
+		expect(reasoningPart.type).toBe('reasoning');
+		expect(reasoningPart.providerOptions).toEqual({
+			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
+		});
+	});
+
+	it.each([
+		{ name: 'no provider metadata', content: {} },
+		{
+			name: 'unsupported Anthropic metadata',
+			content: { providerMetadata: { anthropic: { unsupported: true } } },
+		},
+		{
+			name: 'unsupported OpenAI metadata',
+			content: { providerMetadata: { openai: { unsupported: true } } },
+		},
+	])('drops reasoning parts with $name', ({ content }) => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Reasoning text without replay metadata',
+						...content,
+					},
+				],
+			},
+		];
+
+		expect(toAiMessages(input)).toEqual([]);
+	});
+
 	it('sanitizes replayed non-object tool-call inputs for provider requests', () => {
 		const input: Message[] = [
 			{

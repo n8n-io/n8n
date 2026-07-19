@@ -11,6 +11,7 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -25,6 +26,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
+	ITaskMetadata,
 	ITriggerResponse,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
@@ -34,8 +36,7 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
-	createDeferredPromise,
+	UnexpectedError,
 	createRunExecutionData,
 	NodeApiError,
 	NodeConnectionTypes,
@@ -145,7 +146,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -218,7 +219,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -2007,6 +2008,7 @@ describe('WorkflowExecute', () => {
 
 		async function runResumedSubError(
 			nodeOverrides: Partial<INode> = {},
+			metadataExtras: ITaskMetadata = {},
 		): Promise<{ result: IRun; runNodeCalls: number }> {
 			const subNode: INode = {
 				...createNodeData({ name: SUB_NODE, type: 'sub' }),
@@ -2044,6 +2046,7 @@ describe('WorkflowExecute', () => {
 							metadata: {
 								resumeError: { name: 'NodeOperationError', message: SUB_ERROR },
 								subExecution: SUB_EXECUTION,
+								...metadataExtras,
 							},
 						} as unknown as IExecuteData,
 					],
@@ -2114,6 +2117,18 @@ describe('WorkflowExecute', () => {
 				expect(errorItem?.metadata).toEqual({ subExecution: SUB_EXECUTION });
 			},
 		);
+
+		it('should restore a dynamic-credential stash also when the resume carries a sub-workflow error', async () => {
+			const { result } = await runResumedSubError(
+				{ onError: 'continueRegularOutput' },
+				{ dynamicCredentialsUsage: { attemptedDynamicCredentials: true } },
+			);
+
+			expect(result.status).toBe('success');
+			const run = lastRun(result);
+			expect(run.attemptedDynamicCredentials).toBe(true);
+			expect(run.usedDynamicCredentials).toBeUndefined();
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {
@@ -3355,7 +3370,7 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			// Spy on convertBinaryData
-			const convertBinaryDataModule = await import('../../utils/convert-binary-data');
+			const convertBinaryDataModule = await import('../../utils/convert-binary-data.js');
 			const convertBinaryDataSpy = vi.spyOn(convertBinaryDataModule, 'convertBinaryData');
 
 			// ACT

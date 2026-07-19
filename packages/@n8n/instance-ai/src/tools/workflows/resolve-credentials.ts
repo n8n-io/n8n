@@ -9,7 +9,12 @@
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { AI_GATEWAY_CREDENTIAL, N8N_CONNECT_DISPLAY_NAME } from './credential-utils';
+import type { ResolvedCredential } from './resolved-credential.schema';
+import { getValidCredentialTypes } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
+
+export type { ResolvedCredential };
 
 /** Flat credential entry — preserves duplicates of the same type. */
 export interface CredentialEntry {
@@ -53,6 +58,51 @@ export interface CredentialResolutionResult {
 	mockedCredentialTypes: string[];
 	/** Map of node name → credential types that were mocked on that node. */
 	mockedCredentialsByNode: Record<string, string[]>;
+	/**
+	 * Map of node name → credentials the resolver attached automatically
+	 * (restored from the saved workflow or auto-bound to the sole existing
+	 * candidate). These nodes are already connected — the agent must not ask
+	 * the user to connect or create them.
+	 */
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>;
+}
+
+/**
+ * Human-readable summary of automatically attached credentials, meant to be
+ * relayed on the build result so the agent knows setup is not needed for them.
+ */
+export function buildCredentialResolutionNote(
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
+): string | undefined {
+	const storedParts: string[] = [];
+	const gatewayParts: string[] = [];
+	for (const [nodeName, resolved] of Object.entries(resolvedCredentialsByNode)) {
+		for (const credential of resolved) {
+			const label = `(${credential.type}) on node "${nodeName}"`;
+			if (credential.id === null) gatewayParts.push(label);
+			else storedParts.push(`"${credential.name}" ${label}`);
+		}
+	}
+	if (storedParts.length === 0 && gatewayParts.length === 0) return undefined;
+
+	const sentences: string[] = [];
+	if (storedParts.length > 0) {
+		sentences.push(`Connected existing credential(s) automatically: ${storedParts.join('; ')}.`);
+	}
+	if (gatewayParts.length > 0) {
+		sentences.push(
+			`Set up automatically with n8n credits (no API key required) for: ${gatewayParts.join('; ')}.`,
+		);
+	}
+	sentences.push(
+		'These are already set up — do not ask the user to connect or create them, and do not route them to credential setup.',
+	);
+	if (gatewayParts.length > 0) {
+		sentences.push(
+			'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
+		);
+	}
+	return sentences.join(' ');
 }
 
 /**
@@ -75,6 +125,20 @@ export async function resolveCredentials(
 	const mockedNodeNames: string[] = [];
 	const mockedCredentialTypesSet = new Set<string>();
 	const mockedCredentialsByNode: Record<string, string[]> = {};
+	const resolvedCredentialsByNode: Record<string, ResolvedCredential[]> = {};
+
+	// n8n credits support is process-global config; memoize per type for this call.
+	const gatewaySupportCache = new Map<string, boolean>();
+	const isGatewayCredentialType = async (credType: string): Promise<boolean> => {
+		if (!ctx.credentialService.isAiGatewayCredentialType) return false;
+		const cached = gatewaySupportCache.get(credType);
+		if (cached !== undefined) return cached;
+		const supported = await ctx.credentialService
+			.isAiGatewayCredentialType(credType)
+			.catch(() => false);
+		gatewaySupportCache.set(credType, supported);
+		return supported;
+	};
 
 	// Build a map of existing credentials by node name (for updates)
 	const existingCredsByNode = new Map<string, Record<string, unknown>>();
@@ -104,9 +168,21 @@ export async function resolveCredentials(
 			// when the LLM drops the id during an edit — e.g., emits newCredential('name')
 			// without the id, which serializes to undefined).
 			const existingCreds = node.name ? existingCredsByNode.get(node.name) : undefined;
+
+			const recordResolvedCredential = (id: string, name: string) => {
+				if (!node.name) return;
+				resolvedCredentialsByNode[node.name] ??= [];
+				resolvedCredentialsByNode[node.name].push({ type: key, id, name });
+			};
+
 			const restoreExistingCredential = () => {
-				if (!existingCreds?.[key]) return false;
-				creds[key] = existingCreds[key];
+				const restored = existingCreds?.[key];
+				if (!restored) return false;
+				creds[key] = restored;
+				const restoredId = getCredentialId(restored);
+				if (restoredId) {
+					recordResolvedCredential(restoredId, getCredentialName(restored) ?? restoredId);
+				}
 				cleanupMockPinData(json, node.name);
 				return true;
 			};
@@ -126,6 +202,37 @@ export async function resolveCredentials(
 				}
 			};
 
+			// Wire n8n Connect: attach the managed marker so the saved workflow runs
+			// zero-setup in production, and record it as resolved so the agent treats
+			// the node as connected (no credential-setup routing). The node stays in
+			// the simulation set (`nodeMocked`) so verification pins it instead of
+			// spending gateway quota, but it is NOT added to `mockedCredentialsByNode`
+			// — that channel means "needs a real credential", which this node doesn't.
+			const attachGatewayCredential = () => {
+				creds[key] = { ...AI_GATEWAY_CREDENTIAL, name: N8N_CONNECT_DISPLAY_NAME };
+				nodeMocked = true;
+				if (node.name) {
+					resolvedCredentialsByNode[node.name] ??= [];
+					resolvedCredentialsByNode[node.name].push({
+						type: key,
+						id: null,
+						name: N8N_CONNECT_DISPLAY_NAME,
+						__aiGatewayManaged: true,
+					});
+				}
+			};
+
+			// Prefer n8n credits over mocking when the type is gateway-supported and
+			// the user has no stored credential of their own for it.
+			const mockOrAttachGateway = async () => {
+				const hasStored = (availableCredentials?.get(key)?.length ?? 0) > 0;
+				if (!hasStored && (await isGatewayCredentialType(key))) {
+					attachGatewayCredential();
+					return;
+				}
+				mockCredential();
+			};
+
 			if (value !== undefined && value !== null) {
 				if (isKnownCredentialForType(value, key, availableCredentials)) {
 					cleanupMockPinData(json, node.name);
@@ -134,7 +241,7 @@ export async function resolveCredentials(
 				if (restoreExistingCredential()) {
 					continue;
 				}
-				mockCredential();
+				await mockOrAttachGateway();
 				continue;
 			}
 
@@ -146,15 +253,15 @@ export async function resolveCredentials(
 			if (credentialsForType?.length === 1) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
+				recordResolvedCredential(credential.id, credential.name);
 				cleanupMockPinData(json, node.name);
 				continue;
 			}
 
-			// Mock — remove the credential key and produce sidecar verification data.
-			// The credential key is deleted so the saved workflow doesn't reference a
-			// non-existent credential. Verification pin data is produced so the execution
-			// engine can skip this node during test runs.
-			mockCredential();
+			// No stored credential and not gateway-supported — mock: remove the
+			// credential key and produce sidecar verification data so the execution
+			// engine skips this node during test runs.
+			await mockOrAttachGateway();
 		}
 
 		if (nodeMocked && node.name) {
@@ -162,10 +269,48 @@ export async function resolveCredentials(
 		}
 	}
 
+	// Second pass — required-but-omitted credentials. The first pass only visits
+	// slots the LLM actually wrote in `node.credentials`; a node built with no
+	// slot for a type it requires is skipped there, then reaches post-build setup
+	// analysis credential-less and surfaces a setup card. Here the required types
+	// come from the node description (getValidCredentialTypes), and we silently
+	// attach n8n credits when, in guard order: (1) the node has no entry for the
+	// type, (2) the user has no stored credential for it, and (3) the type is
+	// supported by n8n credits. Any guard failing leaves the node untouched so the
+	// setup card can collect a real credential.
+	for (const node of json.nodes ?? []) {
+		if (!node.name) continue;
+		const requiredTypes = await getValidCredentialTypes(ctx, node);
+		for (const credType of requiredTypes) {
+			const creds = (node.credentials ?? {}) as Record<string, unknown>;
+			const existing = creds[credType];
+			if (existing !== undefined && existing !== null) continue;
+			const hasStored = (availableCredentials?.get(credType)?.length ?? 0) > 0;
+			if (hasStored) continue;
+			if (!(await isGatewayCredentialType(credType))) continue;
+
+			node.credentials ??= {};
+			(node.credentials as Record<string, unknown>)[credType] = {
+				...AI_GATEWAY_CREDENTIAL,
+				name: N8N_CONNECT_DISPLAY_NAME,
+			};
+			resolvedCredentialsByNode[node.name] ??= [];
+			resolvedCredentialsByNode[node.name].push({
+				type: credType,
+				id: null,
+				name: N8N_CONNECT_DISPLAY_NAME,
+				__aiGatewayManaged: true,
+			});
+			// Simulate during verification instead of spending gateway quota.
+			if (!mockedNodeNames.includes(node.name)) mockedNodeNames.push(node.name);
+		}
+	}
+
 	return {
 		mockedNodeNames,
 		mockedCredentialTypes: [...mockedCredentialTypesSet],
 		mockedCredentialsByNode,
+		resolvedCredentialsByNode,
 	};
 }
 
@@ -176,6 +321,15 @@ function getCredentialId(value: unknown): string | undefined {
 	if (typeof id !== 'string' || id.trim() === '') return undefined;
 
 	return id;
+}
+
+function getCredentialName(value: unknown): string | undefined {
+	if (typeof value !== 'object' || value === null || !('name' in value)) return undefined;
+
+	const { name } = value;
+	if (typeof name !== 'string' || name.trim() === '') return undefined;
+
+	return name;
 }
 
 function isKnownCredentialForType(

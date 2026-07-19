@@ -2,11 +2,11 @@
 // Workflow discovery: snapshot IDs, build agent outcome, extract IDs from messages
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import type { InstanceAiMessage } from '@n8n/api-types';
 
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
+import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
+import { collectArtifactRefIds } from './collect-refs';
 
 // ---------------------------------------------------------------------------
 // Tool names whose results contain workflow IDs
@@ -38,6 +38,8 @@ export interface BuildAgentOutcomeOptions {
 	 * run can create a workflow while the current thread produces no IDs.
 	 */
 	allowListDiffFallback?: boolean;
+	/** Logs discovery decisions (dropped phantom ids, deferred fetch-failure stubs). */
+	logger?: { warn(message: string): void };
 }
 
 export async function buildAgentOutcome(
@@ -83,7 +85,13 @@ export async function buildAgentOutcome(
 		}
 	}
 
-	// Fetch workflow details
+	// Fetch workflow details. Candidate ids come from tool results and agent
+	// trees, which echo agent-INVENTED ids too (e.g. a failed build-workflow
+	// bind to a made-up id) — a 404/403 means no workflow ever carried the id,
+	// so drop it instead of recording a stub: a stub at index 0 becomes
+	// build.workflowId and every scenario then executes a nonexistent workflow.
+	// Transport-level fetch failures keep a stub, ordered after real workflows.
+	const fetchFailedStubs: WorkflowSummary[] = [];
 	for (const wfId of knownWfIds) {
 		try {
 			const wf = await client.getWorkflow(wfId);
@@ -94,9 +102,14 @@ export async function buildAgentOutcome(
 				active: wf.active,
 			});
 			workflowJsons.push(wf);
-		} catch {
-			// Workflow may have been deleted or is inaccessible
-			workflowsCreated.push({
+		} catch (error) {
+			if (error instanceof N8nApiError && (error.status === 404 || error.status === 403)) {
+				options.logger?.warn(
+					`  Discovery: dropping phantom workflow id "${wfId}" (fetch returned ${String(error.status)})`,
+				);
+				continue;
+			}
+			fetchFailedStubs.push({
 				id: wfId,
 				name: '(fetch failed)',
 				nodeCount: 0,
@@ -104,12 +117,18 @@ export async function buildAgentOutcome(
 			});
 		}
 	}
+	workflowsCreated.push(...fetchFailedStubs);
 
-	// Fetch execution details
-	for (const execId of eventOutcome.executionIds) {
+	// Fetch execution details (one listing for all ids)
+	if (eventOutcome.executionIds.length > 0) {
+		let executions: Awaited<ReturnType<typeof client.listExecutions>> | undefined;
 		try {
-			const executions = await client.listExecutions();
-			const match = executions.find((e) => e.id === execId);
+			executions = await client.listExecutions();
+		} catch {
+			executions = undefined;
+		}
+		for (const execId of eventOutcome.executionIds) {
+			const match = executions?.find((e) => e.id === execId);
 			if (match) {
 				executionsRun.push({
 					id: match.id,
@@ -120,15 +139,9 @@ export async function buildAgentOutcome(
 				executionsRun.push({
 					id: execId,
 					workflowId: 'unknown',
-					status: 'not-found',
+					status: executions ? 'not-found' : 'fetch-failed',
 				});
 			}
-		} catch {
-			executionsRun.push({
-				id: execId,
-				workflowId: 'unknown',
-				status: 'fetch-failed',
-			});
 		}
 	}
 
@@ -150,67 +163,9 @@ export async function buildAgentOutcome(
 // ---------------------------------------------------------------------------
 
 export function extractWorkflowIdsFromMessages(messages: InstanceAiMessage[]): string[] {
-	const ids = new Set<string>();
-
-	for (const message of messages) {
-		if (message.role === 'assistant' && message.agentTree) {
-			collectWorkflowIds(message.agentTree, ids);
-		}
-	}
-
-	return [...ids];
-}
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
-	if (node.targetResource?.type === 'workflow' && node.targetResource.id) {
-		ids.add(node.targetResource.id);
-	}
-
-	// Extract workflow IDs from tool call results
-	for (const tc of node.toolCalls) {
-		if (WORKFLOW_TOOLS.has(tc.toolName)) {
-			const id = extractIdFromResult(tc.result);
-			if (id) ids.add(id);
-		}
-	}
-
-	for (const child of node.children) {
-		collectWorkflowIds(child, ids);
-	}
-}
-
-function extractIdFromResult(result: unknown): string | undefined {
-	const keys = ['workflowId', 'id'];
-
-	if (!isRecord(result)) {
-		if (typeof result === 'string') {
-			try {
-				const parsed: unknown = JSON.parse(result);
-				if (isRecord(parsed)) {
-					return extractIdFromRecord(parsed, keys);
-				}
-			} catch {
-				return undefined;
-			}
-		}
-		return undefined;
-	}
-	return extractIdFromRecord(result, keys);
-}
-
-function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): string | undefined {
-	for (const key of keys) {
-		const value = record[key];
-		if (typeof value === 'string' && value.length > 0) {
-			return value;
-		}
-		if (typeof value === 'number') {
-			return String(value);
-		}
-	}
-	return undefined;
+	return collectArtifactRefIds(messages, {
+		targetType: 'workflow',
+		toolNames: WORKFLOW_TOOLS,
+		resultKeys: ['workflowId', 'id'],
+	});
 }

@@ -4,10 +4,16 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
+import {
+	getExcelCredentialType,
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+} from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -68,6 +74,18 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
+			if (getExcelCredentialType.call(this) === 'microsoftEntraServicePrincipalApi') {
+				// App-only Graph can't search a drive, so this listing is unsupported under SP.
+				throw new NodeOperationError(
+					this.getNode(),
+					'Search is not supported with the Service Principal credential',
+					{
+						itemIndex: i,
+						description:
+							'App-only Microsoft Graph cannot search a drive. Reference the workbook By ID in the read/write operations, or use an OAuth2 credential to list workbooks.',
+					},
+				);
+			}
 			const returnAll = this.getNodeParameter('returnAll', i);
 			const filters = this.getNodeParameter('filters', i);
 			const qs: IDataObject = {};
@@ -83,6 +101,7 @@ export async function execute(
 					"/drive/root/search(q='.xlsx')",
 					{},
 					qs,
+					i,
 				);
 			} else {
 				qs.$top = this.getNodeParameter('limit', i);
@@ -92,6 +111,9 @@ export async function execute(
 					"/drive/root/search(q='.xlsx')",
 					{},
 					qs,
+					undefined,
+					undefined,
+					i,
 				);
 				responseData = responseData.value;
 			}
@@ -120,7 +142,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

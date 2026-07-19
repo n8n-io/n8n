@@ -32,7 +32,7 @@ class InMemoryByteStore implements ByteStore {
 const VERSION = 1;
 
 function makeStore(byteStores: Partial<Record<StorageLocation, ByteStore>>) {
-	const reportError = jest.fn();
+	const reportError = vi.fn();
 	const store = new JsonStore<TestRef, TestPayload>({
 		byteStores,
 		version: VERSION,
@@ -59,6 +59,17 @@ describe('JsonStore', () => {
 
 			const bundle = await store.read({ id: 'a' }, 'fs');
 			expect(bundle).toEqual({ value: 'hello', version: VERSION });
+		});
+
+		it('rejects a payload containing the reserved `version` key', async () => {
+			const fs = new InMemoryByteStore();
+			const { store } = makeStore({ fs });
+			const payload = { value: 'x', version: 99 } as TestPayload;
+
+			await expect(store.write({ id: 'a' }, payload, 'fs')).rejects.toThrow(
+				'reserved `version` key',
+			);
+			expect(fs.objects.size).toBe(0);
 		});
 
 		it('returns null when the bundle is missing', async () => {

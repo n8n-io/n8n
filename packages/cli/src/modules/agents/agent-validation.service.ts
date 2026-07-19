@@ -1,5 +1,7 @@
 import { type CredentialProvider } from '@n8n/agents';
+import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
+	AGENT_VECTOR_STORE_CREDENTIAL_TYPES,
 	AgentModelSchema,
 	MANAGED_CREDENTIAL_TOKEN,
 	SUB_AGENT_TASK_DIFFICULTIES,
@@ -7,17 +9,15 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { AgentSkillsService } from './agent-skills.service';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
-import { getProviderPrefix } from './json-config/model-id';
 import { AgentRepository } from './repositories/agent.repository';
 import { AiService } from '@/services/ai.service';
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 @Service()
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentSkillsService: AgentSkillsService,
 		private readonly aiService: AiService,
 	) {}
 
@@ -130,6 +130,25 @@ export class AgentValidationService {
 			}
 		}
 
+		for (const vectorStore of config.vectorStores ?? []) {
+			try {
+				const credentialId = vectorStore.credential?.trim();
+				const credential =
+					credentialId && credentialId !== MANAGED_CREDENTIAL_TOKEN
+						? await findCredential(credentialId)
+						: undefined;
+				if (credential?.type !== AGENT_VECTOR_STORE_CREDENTIAL_TYPES[vectorStore.provider]) {
+					missing.push(`vectorStores.${vectorStore.name}.credential`);
+				}
+				const embeddingCredentialId = vectorStore.embedding.credential?.trim();
+				if (!embeddingCredentialId || !(await credentialExists(embeddingCredentialId))) {
+					missing.push(`vectorStores.${vectorStore.name}.embedding.credential`);
+				}
+			} catch {
+				// Same behavior as other credential checks: runtime reconstruction surfaces the error.
+			}
+		}
+
 		try {
 			const modelsByDifficulty = config.subAgents?.modelsByDifficulty;
 			if (modelsByDifficulty) {
@@ -147,9 +166,7 @@ export class AgentValidationService {
 		}
 
 		missing.push(
-			...this.agentSkillsService
-				.getMissingSkillIds(config, agentEntity.skills ?? {})
-				.map((skillId) => `skill:${skillId}`),
+			...getMissingSkillIds(config, agentEntity.skills ?? {}).map((skillId) => `skill:${skillId}`),
 		);
 
 		return { missing };

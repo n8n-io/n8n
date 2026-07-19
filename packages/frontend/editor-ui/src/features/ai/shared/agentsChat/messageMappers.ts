@@ -1,22 +1,10 @@
 import {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
 	N8N_CHAT_ACTION_TOOL_NAME,
-	askCredentialInputSchema,
-	askCredentialResumeSchema,
-	askEmbeddingCredentialResumeSchema,
-	askLlmInputSchema,
-	askLlmResumeSchema,
-	askQuestionInputSchema,
-	askQuestionResumeSchema,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
-	type InteractiveToolName,
 } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
@@ -35,18 +23,7 @@ import type {
 	ToolCall,
 } from './types';
 
-const INTERACTIVE_TOOL_NAMES = [
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
-] as readonly InteractiveToolName[];
-
 type MessageWithInteractives = Pick<ChatMessage, 'interactive' | 'interactives'>;
-
-export function isInteractiveToolName(value: unknown): value is InteractiveToolName {
-	return typeof value === 'string' && (INTERACTIVE_TOOL_NAMES as readonly string[]).includes(value);
-}
 
 export { isRecord };
 
@@ -133,19 +110,12 @@ function isDeclinedToolOutput(value: unknown): boolean {
 	return isRecord(value) && value.declined === true;
 }
 
-function parseAskEmbeddingCredentialOutput(value: unknown) {
-	const result = askEmbeddingCredentialResumeSchema.safeParse(value);
-	return result.success ? result.data : null;
-}
-
 /**
- * Given a tool call belonging to one of the interactive builder tools,
- * reconstruct an `InteractivePayload` for it. The result is:
+ * Given a tool call belonging to one of the interactive tools still rendered
+ * in agents chat (`approval`, `chat_action`), reconstruct an
+ * `InteractivePayload` for it. The result is:
  *
- * - **resolved**: when `output` is present — `resolvedValue` is parsed from it
- *   via the matching zod schema. The output IS the user's resume payload (the
- *   tool handler returns `ctx.resumeData` after a resume), so no separate
- *   `resumedAt` signal is needed.
+ * - **resolved**: when `output` is present.
  * - **open**: when `output` is absent — the card renders as an active
  *   awaiting-user prompt. Used when a refresh during a suspension restored the
  *   suspended assistant turn from the open checkpoint.
@@ -181,61 +151,7 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 		};
 	}
 
-	if (!isInteractiveToolName(tc.tool)) return undefined;
-
-	const base = {
-		toolCallId: tc.toolCallId,
-		// `resolvedAt` is a boolean-ish flag for the UI's disabled state — the
-		// exact timestamp doesn't matter, only its presence.
-		...(tc.output !== undefined && { resolvedAt: 1 }),
-	};
-
-	if (tc.tool === ASK_CREDENTIAL_TOOL_NAME) {
-		const input = askCredentialInputSchema.safeParse(tc.input);
-		if (!input.success) return undefined;
-		const resolved =
-			tc.output !== undefined ? askCredentialResumeSchema.safeParse(tc.output) : null;
-		return {
-			...base,
-			toolName: ASK_CREDENTIAL_TOOL_NAME,
-			input: input.data,
-			...(resolved?.success && { resolvedValue: resolved.data }),
-		};
-	}
-
-	if (tc.tool === ASK_EMBEDDING_CREDENTIAL_TOOL_NAME) {
-		const input = askCredentialInputSchema.safeParse(tc.input);
-		if (!input.success) return undefined;
-		const resolved = tc.output !== undefined ? parseAskEmbeddingCredentialOutput(tc.output) : null;
-		return {
-			...base,
-			toolName: ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-			input: input.data,
-			...(resolved && { resolvedValue: resolved }),
-		};
-	}
-
-	if (tc.tool === ASK_LLM_TOOL_NAME) {
-		const input = askLlmInputSchema.safeParse(tc.input ?? {});
-		if (!input.success) return undefined;
-		const resolved = tc.output !== undefined ? askLlmResumeSchema.safeParse(tc.output) : null;
-		return {
-			...base,
-			toolName: ASK_LLM_TOOL_NAME,
-			input: input.data,
-			...(resolved?.success && { resolvedValue: resolved.data }),
-		};
-	}
-
-	const input = askQuestionInputSchema.safeParse(tc.input);
-	if (!input.success) return undefined;
-	const resolved = tc.output !== undefined ? askQuestionResumeSchema.safeParse(tc.output) : null;
-	return {
-		...base,
-		toolName: ASK_QUESTION_TOOL_NAME,
-		input: input.data,
-		...(resolved?.success && { resolvedValue: resolved.data }),
-	};
+	return undefined;
 }
 
 /**
@@ -330,7 +246,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 
 /**
  * Re-attach a `runId` to each interactive card whose underlying tool call is
- * still suspended on the backend. The sidecar comes from `GET /build/messages`
+ * still suspended on the backend. The sidecar comes from chat history
  * (`openSuspensions`) — `convertDbMessages` can't surface it on its own
  * because raw persisted messages don't carry runIds.
  *

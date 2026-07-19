@@ -2,10 +2,12 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
+import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
+	ArtifactRef,
 	CapturedEvent,
 	CapturedToolCall,
 	ConversationMetrics,
@@ -22,8 +24,9 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
 
-const EXECUTION_TOOL = 'run-workflow';
-const DATA_TABLE_TOOL = 'create-data-table';
+// Retired standalone tool names, kept so captures from older backends still parse.
+const EXECUTION_TOOL_LEGACY = 'run-workflow';
+const DATA_TABLE_TOOL_LEGACY = 'create-data-table';
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -33,6 +36,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 	const workflowIds: string[] = [];
 	const executionIds: string[] = [];
 	const dataTableIds: string[] = [];
+	const artifactRefsByKey = new Map<string, ArtifactRef>();
 	const textChunks: string[] = [];
 	const toolCalls: CapturedToolCall[] = [];
 	const agentActivities: AgentActivity[] = [];
@@ -95,7 +99,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				toolCalls.push(toolCall);
 
 				// Extract resource IDs from tool results
-				extractResourceIds(toolName, result, workflowIds, executionIds, dataTableIds);
+				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
+				// Config-eval rides the same tool-result signal (eval-config create).
+				captureConfigEvalRef(toolName, args, result, artifactRefsByKey);
 				break;
 			}
 
@@ -145,6 +151,9 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				if (tools.length > 0) {
 					activity.reasoning = `Tools: ${tools.join(', ')}`;
 				}
+
+				// The build-agent sub-agent announces the created agent via targetResource.
+				captureAgentRef(getRecord(payload, 'targetResource'), artifactRefsByKey);
 				break;
 			}
 
@@ -198,10 +207,47 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 		workflowIds: dedupe(workflowIds),
 		executionIds: dedupe(executionIds),
 		dataTableIds: dedupe(dataTableIds),
+		artifactRefs: [...artifactRefsByKey.values()],
 		finalText: textChunks.join(''),
 		toolCalls,
 		agentActivities,
 	};
+}
+
+/**
+ * Capture a config-eval ref from a tool result. The `eval-config` tool's `create` action
+ * returns `{ config }`; the ref id is the owning workflow id from the call args (config-evals
+ * are fetched per-workflow). Deduped by type+id.
+ *
+ * ('create' is the eval-config action literal — no exported constant.)
+ */
+function captureConfigEvalRef(
+	toolName: string,
+	args: Record<string, unknown>,
+	result: unknown,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (toolName !== EVAL_CONFIG_TOOL_ID || getString(args, 'action') !== 'create') return;
+	const record = toResultRecord(result);
+	const workflowId = getString(args, 'workflowId');
+	const created = record?.config !== undefined && record.config !== null;
+	if (workflowId && created) {
+		out.set(`config-eval:${workflowId}`, { type: 'config-eval', id: workflowId });
+	}
+}
+
+/**
+ * Capture an agent ref from an `agent-spawned` event's `targetResource`. The build-agent
+ * sub-agent announces itself with `targetResource: { type: 'agent', id }` — the only agent
+ * signal (its tool result carries no id). Deduped by type+id.
+ */
+function captureAgentRef(
+	targetResource: Record<string, unknown> | undefined,
+	out: Map<string, ArtifactRef>,
+): void {
+	if (!targetResource || getString(targetResource, 'type') !== 'agent') return;
+	const id = getString(targetResource, 'id');
+	if (id) out.set(`agent:${id}`, { type: 'agent', id });
 }
 
 // ---------------------------------------------------------------------------
@@ -509,6 +555,7 @@ function countEvents(events: CapturedEvent[], type: string): number {
 
 function extractResourceIds(
 	toolName: string,
+	args: Record<string, unknown>,
 	result: unknown,
 	workflowIds: string[],
 	executionIds: string[],
@@ -519,33 +566,48 @@ function extractResourceIds(
 		if (id) workflowIds.push(id);
 	}
 
-	if (toolName === EXECUTION_TOOL) {
+	const action = getString(args, 'action');
+
+	if (
+		toolName === EXECUTION_TOOL_LEGACY ||
+		(toolName === DOMAIN_TOOL_IDS.EXECUTIONS && action === 'run')
+	) {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}
 
-	if (toolName === DATA_TABLE_TOOL) {
+	if (toolName === DATA_TABLE_TOOL_LEGACY) {
 		const id = extractIdFromResult(result, 'dataTableId', 'id');
+		if (id) dataTableIds.push(id);
+	}
+
+	// create-only: other actions (e.g. schema) return ids of EXISTING tables,
+	// and tracking those would let cleanup delete tables the agent only inspected.
+	if (toolName === DATA_TABLES_TOOL_ID && action === 'create') {
+		const record = toResultRecord(result);
+		const table = record ? getRecord(record, 'table') : undefined;
+		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
 		if (id) dataTableIds.push(id);
 	}
 }
 
-function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {
-	if (!isRecord(result)) {
-		// Result might be a stringified JSON
-		if (typeof result === 'string') {
-			try {
-				const parsed: unknown = JSON.parse(result);
-				if (isRecord(parsed)) {
-					return extractIdFromRecord(parsed, keys);
-				}
-			} catch {
-				return undefined;
-			}
+/** Normalize a tool result (object or stringified JSON) to a record. */
+function toResultRecord(result: unknown): Record<string, unknown> | undefined {
+	if (isRecord(result)) return result;
+	if (typeof result === 'string') {
+		try {
+			const parsed: unknown = JSON.parse(result);
+			if (isRecord(parsed)) return parsed;
+		} catch {
+			return undefined;
 		}
-		return undefined;
 	}
-	return extractIdFromRecord(result, keys);
+	return undefined;
+}
+
+function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {
+	const record = toResultRecord(result);
+	return record ? extractIdFromRecord(record, keys) : undefined;
 }
 
 function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): string | undefined {

@@ -4,6 +4,7 @@ import CollectionParameterNew, { type Props } from './CollectionParameterNew.vue
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
@@ -17,6 +18,29 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 		useRouteWorkflowId: () => computed(() => ''),
 	};
 });
+
+// Controllable active node + gateway lookups so the AI Gateway hiding path can be
+// exercised. Defaults match the no-active-node behaviour the other tests rely on.
+let mockActiveNode: unknown = null;
+const mockIsNodePropertyHidden = vi.fn((_node: unknown, _param: string) => false);
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return {
+		...actual,
+		injectNDVStore: () => ({
+			value: {
+				get activeNode() {
+					return mockActiveNode;
+				},
+			},
+		}),
+	};
+});
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: () => ({ isNodePropertyHidden: mockIsNodePropertyHidden }),
+}));
 
 describe('CollectionParameterNew.vue', () => {
 	const pinia = createTestingPinia({
@@ -168,17 +192,20 @@ describe('CollectionParameterNew.vue', () => {
 			expect(dropdown).toBeInTheDocument();
 		});
 
-		it('renders add button in header', async () => {
-			const { getByTestId } = renderComponent();
+		it('opens the options menu when the header add button is clicked', async () => {
+			const { getByTestId, emitted } = renderComponent();
 
 			const addButton = getByTestId('collection-parameter-add-header');
 			await userEvent.click(addButton);
-
 			await nextTick();
 
-			// Verify the dropdown is present
-			const dropdown = getByTestId('collection-parameter-add-dropdown');
-			expect(dropdown).toBeInTheDocument();
+			// The menu should open and expose the available options
+			const option = await screen.findByText('Field 1');
+			expect(option).toBeVisible();
+
+			// Selecting an option adds the field
+			await userEvent.click(option);
+			expect(emitted('valueChanged')).toBeTruthy();
 		});
 	});
 
@@ -465,6 +492,81 @@ describe('CollectionParameterNew.vue', () => {
 			});
 
 			expect(getByText('Additional Fields')).toBeInTheDocument();
+		});
+	});
+
+	describe('AI Gateway hidden properties', () => {
+		// Single, unselected property option so that hiding it empties the add menu,
+		// which removes the bottom add dropdown (isAddDisabled).
+		const singleOptionProps: Props = {
+			...baseProps,
+			parameter: {
+				...baseProps.parameter,
+				options: [
+					{
+						displayName: 'Simple Field',
+						name: 'simpleField',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+			values: {},
+		};
+
+		afterEach(() => {
+			mockActiveNode = null;
+			mockIsNodePropertyHidden.mockReset();
+			mockIsNodePropertyHidden.mockReturnValue(false);
+		});
+
+		it('removes properties the store reports as hidden', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'simpleField');
+
+			const { queryByTestId } = renderComponent({ props: singleOptionProps });
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
+		});
+
+		it('keeps properties the store does not hide', async () => {
+			mockIsNodePropertyHidden.mockReturnValue(false);
+
+			const { getByTestId } = renderComponent({ props: singleOptionProps });
+			await flushPromises();
+
+			expect(getByTestId('collection-parameter-add-dropdown')).toBeInTheDocument();
+		});
+
+		it('removes hidden collection-type options', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'nestedCollection');
+
+			const singleCollectionProps: Props = {
+				...baseProps,
+				parameter: {
+					...baseProps.parameter,
+					options: [
+						{
+							name: 'nestedCollection',
+							displayName: 'Nested Collection',
+							values: [
+								{
+									displayName: 'Field 1',
+									name: 'field1',
+									type: 'string',
+									default: '',
+								},
+							],
+						},
+					],
+				},
+				values: {},
+			};
+
+			const { queryByTestId } = renderComponent({ props: singleCollectionProps });
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add-dropdown')).not.toBeInTheDocument();
 		});
 	});
 });

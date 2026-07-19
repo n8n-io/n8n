@@ -82,7 +82,10 @@ export const eventNamesAudit = [
 	'n8n.audit.package.installed',
 	'n8n.audit.package.updated',
 	'n8n.audit.package.deleted',
-	'n8n.audit.n8n-package.imported',
+	'n8n.audit.n8n-package.import.success',
+	'n8n.audit.n8n-package.export.success',
+	'n8n.audit.n8n-package.export.failed',
+	'n8n.audit.n8n-package.import.failed',
 	'n8n.audit.workflow.created',
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
@@ -134,6 +137,7 @@ export const eventNamesAudit = [
 	'n8n.audit.cluster.instance-joined',
 	'n8n.audit.cluster.instance-left',
 	'n8n.audit.oauth.callback.binding.rejected',
+	'n8n.audit.credentials.authorize.rejected',
 ] as const;
 
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];

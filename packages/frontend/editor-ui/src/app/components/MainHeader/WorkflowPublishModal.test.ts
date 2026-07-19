@@ -4,7 +4,6 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -87,19 +86,6 @@ const WEBHOOK_NODE_TYPE_DESCRIPTION: INodeTypeDescription = {
 	outputs: [NodeConnectionTypes.Main],
 	properties: [],
 	webhooks: [{ name: 'default', httpMethod: 'GET', path: '' }],
-};
-
-const AI_GATEWAY_NODE = {
-	id: 'ai-node-1',
-	name: 'Message a model',
-	type: '@n8n/n8n-nodes-langchain.lmOpenAi',
-	typeVersion: 1,
-	position: [100, 100] as [number, number],
-	parameters: {},
-	disabled: false,
-	credentials: {
-		openAiApi: { id: null, name: '', __aiGatewayManaged: true },
-	},
 };
 
 describe('WorkflowPublishModal', () => {
@@ -215,109 +201,6 @@ describe('WorkflowPublishModal', () => {
 		});
 	});
 
-	describe('AI gateway warning', () => {
-		let settingsStore: MockedStore<typeof useSettingsStore>;
-
-		beforeEach(() => {
-			settingsStore = mockedStore(useSettingsStore);
-			Object.assign(settingsStore.settings, { aiGateway: { enabled: true } });
-		});
-
-		afterEach(() => {
-			Object.assign(settingsStore.settings, { aiGateway: { enabled: false } });
-		});
-
-		it('should not show warning when AI gateway is disabled', () => {
-			Object.assign(settingsStore.settings, { aiGateway: { enabled: false } });
-			workflowDocumentStore.setNodes([AI_GATEWAY_NODE]);
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('workflow-publish-ai-gateway-warning')).not.toBeInTheDocument();
-		});
-
-		it('should not show warning when no nodes have AI gateway credentials', () => {
-			workflowDocumentStore.setNodes([
-				{
-					id: 'regular-node',
-					name: 'Regular Node',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					position: [100, 100],
-					parameters: {},
-					disabled: false,
-				},
-			]);
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('workflow-publish-ai-gateway-warning')).not.toBeInTheDocument();
-		});
-
-		it('should not show warning when the only AI gateway node is disabled', () => {
-			workflowDocumentStore.setNodes([{ ...AI_GATEWAY_NODE, disabled: true }]);
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('workflow-publish-ai-gateway-warning')).not.toBeInTheDocument();
-		});
-
-		it('should show warning with node name for a single active AI gateway node', () => {
-			workflowDocumentStore.setNodes([AI_GATEWAY_NODE]);
-
-			const { getByTestId } = renderComponent();
-
-			const warning = getByTestId('workflow-publish-ai-gateway-warning');
-			expect(warning).toBeInTheDocument();
-			expect(warning).toHaveTextContent('Message a model');
-		});
-
-		it('should show singular copy for a single active AI gateway node', () => {
-			workflowDocumentStore.setNodes([AI_GATEWAY_NODE]);
-
-			const { getByTestId } = renderComponent();
-
-			const warning = getByTestId('workflow-publish-ai-gateway-warning');
-			expect(warning).toHaveTextContent('The node');
-			expect(warning).toHaveTextContent('uses an n8n Connect credential');
-			expect(warning).toHaveTextContent(
-				'Once your n8n Connect balance is depleted, this workflow will stop working.',
-			);
-			expect(warning).not.toHaveTextContent('Top-up');
-		});
-
-		it('should show warning with all node names for multiple active AI gateway nodes', () => {
-			workflowDocumentStore.setNodes([
-				AI_GATEWAY_NODE,
-				{ ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' },
-			]);
-
-			const { getByTestId } = renderComponent();
-
-			const warning = getByTestId('workflow-publish-ai-gateway-warning');
-			expect(warning).toBeInTheDocument();
-			expect(warning).toHaveTextContent('Message a model');
-			expect(warning).toHaveTextContent('Generate Image');
-		});
-
-		it('should show plural copy for multiple active AI gateway nodes', () => {
-			workflowDocumentStore.setNodes([
-				AI_GATEWAY_NODE,
-				{ ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' },
-			]);
-
-			const { getByTestId } = renderComponent();
-
-			const warning = getByTestId('workflow-publish-ai-gateway-warning');
-			expect(warning).toHaveTextContent('The nodes');
-			expect(warning).toHaveTextContent('use n8n Connect credentials');
-			expect(warning).toHaveTextContent(
-				'Once your n8n Connect balance is depleted, this workflow will stop working.',
-			);
-			expect(warning).not.toHaveTextContent('Top-up');
-		});
-	});
-
 	describe('handlePublish without conflicts', () => {
 		it('should proceed to publish when there are no conflicting webhooks', async () => {
 			mockPublishWorkflow.mockReset().mockResolvedValue({
@@ -338,6 +221,81 @@ describe('WorkflowPublishModal', () => {
 					workflow_id: 'workflow-1',
 				});
 			});
+		});
+	});
+
+	describe('re-attempt (partial / failed publication)', () => {
+		// Set versionId === activeVersion.versionId so wfHasAnyChanges is false
+		beforeEach(() => {
+			workflowDocumentStore.setVersionData({
+				versionId: 'old-version',
+				name: null,
+				description: null,
+			});
+		});
+
+		it.each(['partial', 'failed'] as const)(
+			'enables the Publish button and shows reattempt callout when status is "%s" with no changes',
+			async (status) => {
+				workflowDocumentStore.setPublicationStatus({ status });
+
+				const { getByTestId, queryByTestId } = renderComponent();
+
+				// Publish button is enabled (onMounted sets versionName, so wait for reactivity)
+				await waitFor(() => {
+					expect(getByTestId('workflow-publish-button')).not.toBeDisabled();
+				});
+
+				// reattempt callout is shown
+				expect(getByTestId('workflow-publish-callout-reattempt')).toBeInTheDocument();
+
+				// noChanges callout is NOT shown
+				expect(queryByTestId('workflow-publish-callout-no-changes')).not.toBeInTheDocument();
+			},
+		);
+
+		it('still blocks re-attempt when containsTrigger is false', async () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'partial' });
+			workflowDocumentStore.setNodes([]);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-button')).toBeDisabled();
+			});
+		});
+
+		it('still blocks re-attempt when hasNodeIssues is true', async () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+			// Inject a node with a blocking issue
+			workflowDocumentStore.setNodes([
+				{
+					id: 'trigger-1',
+					name: 'Webhook Trigger',
+					type: WEBHOOK_NODE_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					disabled: false,
+					issues: { parameters: { param: ['Required parameter is missing'] } },
+				},
+			]);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-button')).toBeDisabled();
+			});
+		});
+
+		it('shows noChanges callout (not reattempt) in idle status with no changes', () => {
+			// Ensure status is idle (not residual from prior tests)
+			workflowDocumentStore.setPublicationStatus({ status: 'idle' });
+
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-publish-callout-no-changes')).toBeInTheDocument();
+			expect(queryByTestId('workflow-publish-callout-reattempt')).not.toBeInTheDocument();
 		});
 	});
 });

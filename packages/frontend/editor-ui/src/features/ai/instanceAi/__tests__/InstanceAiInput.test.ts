@@ -29,6 +29,7 @@ type InputTestProps = {
 	suggestionCatalogVersion?: string;
 	suggestionTelemetryPayload?: ITelemetryTrackProperties;
 	placeholderKey?: BaseTextKey;
+	contextChip?: { label: string; testId?: string } | null;
 };
 
 const defaultProps = (): InputTestProps => ({
@@ -40,6 +41,7 @@ const defaultProps = (): InputTestProps => ({
 	amendContext: null,
 	contextualSuggestion: null,
 	isWorkflowBuilderAvailable: true,
+	contextChip: null,
 });
 
 function inputProps(overrides: Partial<InputTestProps> = {}): InputTestProps {
@@ -712,6 +714,42 @@ describe('InstanceAiInput', () => {
 		expect(textbox).toHaveValue('');
 	});
 
+	it('renders a dismissible handoff context chip inside the input', async () => {
+		const { emitted, getByRole, getByTestId } = renderComponent({
+			props: {
+				contextChip: {
+					label: 'SEO Auditor session',
+				},
+			},
+		});
+
+		const textbox = getByRole('textbox');
+		const chip = getByTestId('instance-ai-handoff-context-chip');
+
+		expect(chip).toHaveTextContent('SEO Auditor session');
+		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
+		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
+		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
+
+		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+
+		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
+	});
+
+	it('keeps plan edit mode as the only visible chip when both plan edit and handoff context are present', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				isPlanEditMode: true,
+				contextChip: {
+					label: 'SEO Auditor session',
+				},
+			},
+		});
+
+		expect(queryByTestId('instance-ai-plan-edit-context')).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-handoff-context-chip')).not.toBeInTheDocument();
+	});
+
 	it('emits stop when the streaming stop button is clicked', async () => {
 		const { emitted, getByTestId } = renderComponent({
 			props: {
@@ -891,7 +929,7 @@ describe('InstanceAiInput', () => {
 					profile_role: 'sales',
 					metadata_load_state: 'loaded',
 					variant: 'variant-cards',
-					'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+					'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 				},
 			},
 		});
@@ -912,7 +950,7 @@ describe('InstanceAiInput', () => {
 			profile_role: 'sales',
 			metadata_load_state: 'loaded',
 			variant: 'variant-cards',
-			'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 			suggestion_id: 'custom-raw-prompt',
 			suggestion_kind: 'prompt',
 			position: 1,
@@ -1062,5 +1100,11 @@ describe('InstanceAiInput', () => {
 		});
 
 		expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
+	});
+
+	it('raises the character limit for long, externally-drafted prompts', () => {
+		const { getByRole } = renderComponent();
+
+		expect(getByRole('textbox')).toHaveAttribute('maxlength', '25000');
 	});
 });

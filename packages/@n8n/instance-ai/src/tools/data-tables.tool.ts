@@ -75,10 +75,10 @@ function isNameConflictError(error: unknown): boolean {
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const projectIdDescribe =
-	'Project ID. For list/create, scopes the operation to this project (defaults to personal). For id-based actions (schema, query, delete, add-column, delete-column, rename-column, insert/update/delete-rows), disambiguates when `dataTableId` is a name that exists in multiple accessible projects. Ignored when `dataTableId` is a UUID; rejected when the UUID belongs to a different project.';
+	'Project ID. Scopes list/create (defaults to personal); for id-based actions, disambiguates when `dataTableId` is a name found in multiple accessible projects. Ignored when `dataTableId` is a UUID.';
 
 const dataTableNameDescribe =
-	'Human-readable name of the data table, shown alongside the ID in the approval card. Pass this whenever you know it (e.g. from a prior `list` call) so users see a recognisable label instead of a bare UUID.';
+	'Data table name, shown next to the ID in the approval card. Pass whenever known so users see a recognisable label instead of a bare UUID.';
 
 /** Renders `"{name} (ID: {id})"` when the agent supplied a name, otherwise the bare id. */
 function buildDataTableLabel(input: { dataTableId: string; dataTableName?: string }): string {

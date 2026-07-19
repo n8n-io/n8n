@@ -1,6 +1,7 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { StorageConfig } from 'n8n-core';
 import promClient from 'prom-client';
 
@@ -9,38 +10,43 @@ import { PrometheusExecutionDataMetricsService } from '../execution-data-metrics
 
 import type { EventService } from '@/events/event.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusExecutionDataMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
 		prefix: 'n8n_',
 		includeExecutionDataMetrics: true,
+		includeWorkflowIdLabel: false,
 	});
 	const eventService = mock<EventService>();
 	const storageConfig = mock<StorageConfig>({ modeTag: 'db' });
 	let service: PrometheusExecutionDataMetricsService;
-	let mockCounterInc: jest.Mock;
-	let mockGaugeSet: jest.Mock;
-	let mockHistogramObserve: jest.Mock;
+	let mockCounterInc: Mock;
+	let mockGaugeSet: Mock;
+	let mockHistogramObserve: Mock;
 
 	function getEventHandler(eventName: string) {
 		return eventService.on.mock.calls.find((c) => c[0] === eventName)?.[1];
 	}
 
 	beforeEach(() => {
-		Object.assign(config, { prefix: 'n8n_', includeExecutionDataMetrics: true });
+		Object.assign(config, {
+			prefix: 'n8n_',
+			includeExecutionDataMetrics: true,
+			includeWorkflowIdLabel: false,
+		});
 		Object.assign(storageConfig, { modeTag: 'db' });
 		service = new PrometheusExecutionDataMetricsService(config, eventService, storageConfig);
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
-		mockHistogramObserve = jest.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -116,6 +122,27 @@ describe('PrometheusExecutionDataMetricsService', () => {
 				help: 'Logical byte size of the JSON execution data bundle written (excludes binary data).',
 				labelNames: ['mode'],
 				buckets: SIZE_BUCKETS_BYTES,
+			});
+		});
+
+		it('should create execution_data_write_bytes_total counter with only the mode label by default', () => {
+			service.init();
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_write_bytes_total',
+				help: 'Total execution data bytes written, by storage mode.',
+				labelNames: ['mode'],
+			});
+		});
+
+		it('should create execution_data_write_bytes_total counter with workflow_id label when includeWorkflowIdLabel is true', () => {
+			config.includeWorkflowIdLabel = true;
+			service.init();
+
+			expect(promClient.Counter).toHaveBeenCalledWith({
+				name: 'n8n_execution_data_write_bytes_total',
+				help: 'Total execution data bytes written, by storage mode.',
+				labelNames: ['mode', 'workflow_id'],
 			});
 		});
 
@@ -239,7 +266,7 @@ describe('PrometheusExecutionDataMetricsService', () => {
 			// Capture the handler before clearing mocks
 			const handler = getEventHandler('execution-data-read');
 			// Reset after seeding to isolate event handler behavior from seeding calls
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			expect(handler).toBeDefined();
 
@@ -268,7 +295,13 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
+			handler!({
+				mode: 'db',
+				workflowId: 'wf-1',
+				durationMs: 100,
+				success: true,
+				jsonSizeBytes: 2048,
+			});
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db', result: 'success' }, 1);
 		});
@@ -279,7 +312,13 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
+			handler!({
+				mode: 'db',
+				workflowId: 'wf-1',
+				durationMs: 100,
+				success: true,
+				jsonSizeBytes: 2048,
+			});
 
 			expect(mockHistogramObserve).toHaveBeenCalledWith({ mode: 'db' }, 0.1);
 		});
@@ -290,9 +329,54 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 100, success: true, jsonSizeBytes: 2048 });
+			handler!({
+				mode: 'db',
+				workflowId: 'wf-1',
+				durationMs: 100,
+				success: true,
+				jsonSizeBytes: 2048,
+			});
 
 			expect(mockHistogramObserve).toHaveBeenCalledWith({ mode: 'db' }, 2048);
+		});
+
+		it('should increment write bytes counter by jsonSizeBytes with only the mode label by default', () => {
+			service.init();
+			const handler = getEventHandler('execution-data-write');
+
+			expect(handler).toBeDefined();
+
+			handler!({
+				mode: 'db',
+				workflowId: 'wf-1',
+				durationMs: 100,
+				success: true,
+				jsonSizeBytes: 2048,
+			});
+
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'db' }, 2048);
+			expect(mockCounterInc).not.toHaveBeenCalledWith(
+				expect.objectContaining({ workflow_id: expect.anything() }),
+				expect.anything(),
+			);
+		});
+
+		it('should increment write bytes counter with workflow_id label when includeWorkflowIdLabel is true', () => {
+			config.includeWorkflowIdLabel = true;
+			service.init();
+			const handler = getEventHandler('execution-data-write');
+
+			expect(handler).toBeDefined();
+
+			handler!({
+				mode: 'fs',
+				workflowId: 'wf-1',
+				durationMs: 100,
+				success: true,
+				jsonSizeBytes: 4096,
+			});
+
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', workflow_id: 'wf-1' }, 4096);
 		});
 
 		it('should increment writes counter with result:failure on failure', () => {
@@ -301,7 +385,13 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'fs', durationMs: 10, success: false, jsonSizeBytes: 0 });
+			handler!({
+				mode: 'fs',
+				workflowId: 'wf-1',
+				durationMs: 10,
+				success: false,
+				jsonSizeBytes: 0,
+			});
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'failure' }, 1);
 		});
@@ -312,9 +402,37 @@ describe('PrometheusExecutionDataMetricsService', () => {
 
 			expect(handler).toBeDefined();
 
-			handler!({ mode: 'db', durationMs: 10, success: false, jsonSizeBytes: 0 });
+			handler!({
+				mode: 'db',
+				workflowId: 'wf-1',
+				durationMs: 10,
+				success: false,
+				jsonSizeBytes: 0,
+			});
 
 			expect(mockHistogramObserve).not.toHaveBeenCalled();
+		});
+
+		it('should NOT increment write bytes counter on failure', () => {
+			service.init();
+			// Capture the handler before clearing mocks
+			const handler = getEventHandler('execution-data-write');
+			// Reset after seeding to isolate event handler behavior from seeding calls
+			vi.clearAllMocks();
+
+			expect(handler).toBeDefined();
+
+			handler!({
+				mode: 'fs',
+				workflowId: 'wf-1',
+				durationMs: 10,
+				success: false,
+				jsonSizeBytes: 0,
+			});
+
+			// Only the writes counter (mode + result) increments; the bytes counter stays untouched.
+			expect(mockCounterInc).toHaveBeenCalledTimes(1);
+			expect(mockCounterInc).toHaveBeenCalledWith({ mode: 'fs', result: 'failure' }, 1);
 		});
 	});
 });

@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
+import { N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -82,13 +83,24 @@ const searchTypesAction = z.object({
 	action: z.literal('search-types').describe('Search available credential types by keyword'),
 	query: z
 		.string()
-		.describe('Search keyword — typically the service name (e.g. "linear", "notion", "slack")'),
+		.optional()
+		.describe(
+			'Search keyword — typically the service name (e.g. "linear", "notion", "slack"). Optional when `n8nConnectOnly` is set.',
+		),
+	n8nConnectOnly: z
+		.boolean()
+		.optional()
+		.describe(
+			'When true, ignore `query` and return every credential type supported by n8n credits. Use to answer "which credential types support n8n credits?".',
+		),
 });
 
 const setupAction = z.object({
 	action: z
 		.literal('setup')
-		.describe('Open the credential setup UI for the user to create or select credentials'),
+		.describe(
+			'Open the credential setup card for the user to create or select credentials. The card is only visible while this call is pending — any returned result means the interaction already finished. A `success` result with a `credentials` map means setup is complete (an existing credential may have been auto-selected with no user action): confirm the credentials are ready and do not tell the user a card is open or that they must authorize.',
+		),
 	credentials: z
 		.array(
 			z.object({
@@ -254,14 +266,51 @@ interface CredentialToolContext {
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
+interface StoredCredentialListItem {
+	id: string;
+	name: string;
+	type: string;
+}
+
+interface AiGatewayManagedListItem {
+	id: null;
+	name: string;
+	type: string;
+	__aiGatewayManaged: true;
+}
+
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const allCredentials = await context.credentialService.list({
+	const storedCredentials = await context.credentialService.list({
 		type: input.type,
 	});
 
+	// When the caller filters by type, prepend the synthetic n8n Connect
+	// managed entry if the AI Gateway covers that credential type. This is
+	// the LLM's primary awareness signal that a zero-config credential is
+	// available. Section D's setup service auto-applies the entry through a
+	// separate path (rule 3); this listing is informational.
+	const items: Array<StoredCredentialListItem | AiGatewayManagedListItem> = [];
+	if (input.type && context.credentialService.isAiGatewayCredentialType) {
+		try {
+			const supported = await context.credentialService.isAiGatewayCredentialType(input.type);
+			if (supported) {
+				items.push({
+					id: null,
+					name: N8N_CONNECT_DISPLAY_NAME,
+					type: input.type,
+					__aiGatewayManaged: true,
+				});
+			}
+		} catch {
+			// Gateway lookup failing is a soft signal — omit the managed entry
+			// and continue with stored credentials only.
+		}
+	}
+	for (const c of storedCredentials) items.push({ id: c.id, name: c.name, type: c.type });
+
 	const filtered = input.name
-		? allCredentials.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
-		: allCredentials;
+		? items.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
+		: items;
 
 	const total = filtered.length;
 	const offset = input.offset ?? 0;
@@ -272,7 +321,11 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
 	return {
-		credentials: page.map(({ id, name, type }) => ({ id, name, type })),
+		credentials: page.map((c) =>
+			c.id === null
+				? { id: c.id, name: c.name, type: c.type, __aiGatewayManaged: c.__aiGatewayManaged }
+				: { id: c.id, name: c.name, type: c.type },
+		),
 		total,
 		hasMore,
 		...(truncatedWithoutNarrowing
@@ -323,8 +376,21 @@ async function handleSearchTypes(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'search-types' }>,
 ) {
+	// Enumerate n8n Connect–supported types regardless of query.
+	if (input.n8nConnectOnly) {
+		const types = (await context.credentialService.listAiGatewayCredentialTypes?.()) ?? [];
+		return { results: types.map((type) => ({ type, n8nConnect: true })) };
+	}
+
 	if (!context.credentialService.searchCredentialTypes) {
 		return { results: [] };
+	}
+
+	if (!input.query) {
+		return {
+			results: [],
+			error: 'A `query` is required for search-types unless `n8nConnectOnly` is set.',
+		};
 	}
 
 	const allResults = await context.credentialService.searchCredentialTypes(input.query);
@@ -414,9 +480,14 @@ async function handleSetup(
 	}
 
 	// State 5: Approved with credential selections
+	const selectedCredentials = resumeData.credentials ?? {};
+	const hasSelections = Object.keys(selectedCredentials).length > 0;
 	return {
 		success: true,
-		credentials: resumeData.credentials,
+		credentials: selectedCredentials,
+		message: hasSelections
+			? 'Credential setup is complete — the credentials in the map above are selected and ready to use. The setup card is no longer open and no user action (such as OAuth authorization) is needed; confirm the outcome to the user.'
+			: 'The setup interaction finished without any credential selected. The setup card is no longer open — do not tell the user a card is open or waiting; report the outcome and ask how they want to proceed.',
 	};
 }
 

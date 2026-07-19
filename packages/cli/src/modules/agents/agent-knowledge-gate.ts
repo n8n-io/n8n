@@ -1,11 +1,8 @@
 import type { AgentsConfig } from '@n8n/config';
 
 export function isAgentKnowledgeBaseEnabled(
-	config: Pick<AgentsConfig, 'sandboxEnabled' | 'sandboxProvider' | 'daytonaVolumeId'>,
+	config: Pick<AgentsConfig, 'sandboxEnabled' | 'sandboxProvider'>,
+	aiAssistantAvailable: boolean,
 ): boolean {
-	return (
-		config.sandboxEnabled &&
-		config.sandboxProvider === 'daytona' &&
-		config.daytonaVolumeId.trim().length > 0
-	);
+	return aiAssistantAvailable || (config.sandboxEnabled && config.sandboxProvider === 'daytona');
 }

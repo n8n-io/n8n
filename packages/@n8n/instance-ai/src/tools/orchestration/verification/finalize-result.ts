@@ -88,24 +88,30 @@ export async function persistVerificationOutcome(args: {
 	workflowId: string;
 	result: ExecutionRunResult;
 	analysis: VerificationAnalysis;
+	/** Running count of verify runs for this build, used to enforce MAX_VERIFY_ATTEMPTS. */
+	verifyAttempts: number;
 }): Promise<void> {
-	const { input, context, workflowTaskService, workflowId, result, analysis } = args;
+	const { input, context, workflowTaskService, workflowId, result, analysis, verifyAttempts } =
+		args;
 	try {
 		const executedForEvidence = namesOrDataKeys(analysis.reachedNames, result.data);
 		await workflowTaskService.updateBuildOutcome(input.workItemId, {
+			verifyAttempts,
 			verification: {
 				attempted: true,
 				success: analysis.success,
 				executionId: result.executionId || undefined,
 				status: result.status,
-				failureSignature: analysis.success ? undefined : result.error,
+				failureSignature: analysis.success ? undefined : analysis.errorMessage,
 				evidence: {
 					nodesExecuted:
 						executedForEvidence && executedForEvidence.length > 0 ? executedForEvidence : undefined,
 					nodesNotReached:
 						analysis.nodesNotReached.length > 0 ? analysis.nodesNotReached : undefined,
 					producedOutputRows: countProducedOutputRows(result.data),
-					errorMessage: analysis.success ? undefined : result.error,
+					errorNodeName: analysis.success ? undefined : analysis.nodeErrors[0]?.nodeName,
+					errorMessage: analysis.success ? undefined : analysis.errorMessage,
+					nodeErrors: analysis.nodeErrors.length > 0 ? analysis.nodeErrors : undefined,
 				},
 				verifiedAt: new Date().toISOString(),
 			},

@@ -338,6 +338,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					};
 				}
 
+				// Dates have no enumerable own keys; pass through instead of
+				// marshaling as an empty object.
+				if (value instanceof Date) {
+					return value;
+				}
+
 				// Handle objects - return metadata with keys
 				if (value !== null && typeof value === 'object') {
 					return {
@@ -395,6 +401,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				}
 
 				const element = arr[index];
+
+				// Dates have no enumerable own keys; pass through instead of
+				// marshaling as an empty object.
+				if (element instanceof Date) {
+					return element;
+				}
 
 				// If element is object/array, return metadata
 				if (element !== null && typeof element === 'object') {

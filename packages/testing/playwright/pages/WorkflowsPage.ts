@@ -3,7 +3,9 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
+import { ProjectHeader } from './components/ProjectHeader';
 import { ResourceCards } from './components/ResourceCards';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 
 export class WorkflowsPage extends BasePage {
 	async goto() {
@@ -13,6 +15,8 @@ export class WorkflowsPage extends BasePage {
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
 	readonly actionToggle = new ActionToggle(this.page);
+	readonly resourceMoveModal = new ResourceMoveModal(this.page);
+	readonly projectHeader = new ProjectHeader(this.page);
 
 	private async openWorkflowCardActions(workflowItem: Locator) {
 		await workflowItem.getByTestId('workflow-card-actions').getByRole('button').click();
@@ -35,7 +39,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	getProjectName() {
-		return this.page.getByTestId('project-name');
+		return this.projectHeader.getProjectName();
 	}
 
 	getSearchBar() {
@@ -167,7 +171,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	transferFolderOption(folderName: string) {
-		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+		return this.resourceMoveModal.getFolderOption(folderName);
 	}
 
 	// Move folder modal methods
@@ -180,7 +184,7 @@ export class WorkflowsPage extends BasePage {
 	}
 
 	moveFolderOption(folderName: string) {
-		return this.page.getByTestId('move-to-folder-option').filter({ hasText: folderName });
+		return this.resourceMoveModal.getFolderOption(folderName);
 	}
 
 	moveFolderConfirmButton() {

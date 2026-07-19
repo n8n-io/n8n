@@ -1,5 +1,5 @@
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -17,7 +17,8 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { stringify } from 'flatted';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
@@ -37,7 +38,6 @@ import {
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
-	ensureError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -53,11 +53,14 @@ import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { RoleService } from '@/services/role.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import { ExecutionPersistence } from './execution-persistence';
 import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
 import type { ExecutionRequest, StopResult } from './execution.types';
@@ -124,30 +127,25 @@ export class ExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
-		private readonly licenseState: LicenseState,
 		private readonly roleService: RoleService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly eventService: EventService,
 		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly executionStopService: ExecutionStopService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
-	 * Build sharing options for execution queries based on whether sharing is licensed.
+	 * Build sharing options for execution queries. Visibility is resolved from
+	 * the user's role scopes — same as the workflow list — and is deliberately
+	 * not gated on the sharing license, which only gates sharing actions.
 	 */
 	async buildSharingOptions(
 		scope: Scope,
 	): Promise<ExecutionSummaries.RangeQuery['sharingOptions']> {
-		if (this.licenseState.isSharingLicensed()) {
-			const projectRoles = await this.roleService.rolesWithScope('project', [scope]);
-			const workflowRoles = await this.roleService.rolesWithScope('workflow', [scope]);
-			return { scopes: [scope], projectRoles, workflowRoles };
-		}
-
-		return {
-			workflowRoles: ['workflow:owner'],
-			projectRoles: [PROJECT_OWNER_ROLE_SLUG],
-		};
+		const projectRoles = await this.roleService.rolesWithScope('project', [scope]);
+		const workflowRoles = await this.roleService.rolesWithScope('workflow', [scope]);
+		return { scopes: [scope], projectRoles, workflowRoles };
 	}
 
 	async findOne(
@@ -157,11 +155,21 @@ export class ExecutionService {
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
-		const execution = await this.executionPersistence.findIfSharedUnflatten(
-			executionId,
-			sharedWorkflowIds,
-			this.globalConfig.executions.maxDisplaySize,
-		);
+		let execution: IExecutionResponse | undefined;
+		try {
+			execution = await this.executionPersistence.findIfSharedUnflatten(
+				executionId,
+				sharedWorkflowIds,
+				this.globalConfig.executions.maxDisplaySize,
+			);
+		} catch (error) {
+			if (error instanceof MissingExecutionDataError) {
+				throw new NotFoundError(
+					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
+				);
+			}
+			throw error;
+		}
 
 		if (!execution) {
 			this.logger.info('Attempt to read execution was blocked due to insufficient permissions', {
@@ -343,6 +351,11 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			execution.workflowId,
+		);
+
 		this.eventService.emit('workflow-executed', {
 			user: {
 				id: req.user.id,
@@ -354,6 +367,8 @@ export class ExecutionService {
 			workflowId: execution.workflowId,
 			workflowName: execution.workflowData.name,
 			executionId: retriedExecutionId,
+			projectId,
+			projectName,
 			source: 'user-retry',
 		});
 

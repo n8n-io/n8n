@@ -1,4 +1,4 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
@@ -14,6 +14,7 @@ import type {
 	TokenCounter,
 } from '../../types/sdk/observation-log';
 import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
@@ -45,6 +46,7 @@ export interface RunObservationLogReflectorOpts {
 	now?: Date;
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type RunObservationLogReflectorResult =
@@ -184,6 +186,7 @@ export async function runObservationLogReflector(
 		tokenCount,
 		tokenBudget: reflectorThresholdTokens,
 		executionCounter: opts.executionCounter,
+		telemetry: opts.telemetry,
 	});
 	const reflection = normalizeObservationLogReflection(
 		activeObservationLog,

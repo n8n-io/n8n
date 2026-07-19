@@ -8,7 +8,15 @@ export const RESOURCES = {
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
-	credential: ['share', 'unshare', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
+	credential: [
+		'share',
+		'unshare',
+		'shareGlobally',
+		'move',
+		'connect',
+		'createEndUser',
+		...DEFAULT_OPERATIONS,
+	] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
@@ -16,7 +24,7 @@ export const RESOURCES = {
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
 	orchestration: ['read', 'list'] as const,
-	project: [...DEFAULT_OPERATIONS] as const,
+	project: [...DEFAULT_OPERATIONS, 'export'] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
@@ -61,8 +69,9 @@ export const RESOURCES = {
 		'listProject',
 	] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get', 'reveal'] as const,
+	testRun: ['read', 'list'] as const,
 	workflowTags: ['update', 'list'] as const,
-	role: ['manage', 'read'] as const,
+	role: ['manage', 'read', 'manageProject'] as const,
 	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
@@ -81,10 +90,14 @@ export const API_KEY_RESOURCES = {
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
-	project: ['create', 'update', 'delete', 'list'] as const,
+	securitySettings: ['manage'] as const,
+	saml: ['manage'] as const,
+	project: ['create', 'update', 'delete', 'list', 'export'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
+	testRun: ['read', 'list', 'create', 'cancel'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
+	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
 	sourceControl: ['pull'] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
@@ -97,6 +110,7 @@ export const API_KEY_RESOURCES = {
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
+export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';

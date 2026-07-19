@@ -1,5 +1,29 @@
 import { getDateTimeSection, getSystemPrompt } from '../system-prompt';
 
+const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+
+async function getSystemPromptWithEnabledModules(
+	enabledModules: string | undefined,
+): Promise<string> {
+	vi.resetModules();
+	if (enabledModules === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = enabledModules;
+	}
+
+	const { getSystemPrompt: getSystemPromptFresh } = await import('../system-prompt.js');
+	return getSystemPromptFresh({});
+}
+
+afterEach(() => {
+	if (ORIGINAL_ENABLED_MODULES === undefined) {
+		delete process.env.N8N_ENABLED_MODULES;
+	} else {
+		process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
+	}
+});
+
 describe('getDateTimeSection', () => {
 	afterEach(() => vi.useRealTimers());
 
@@ -58,6 +82,53 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('use `ask-user` only for choices that change the workflow intent');
 			expect(prompt).toContain('Do not use `ask-user` before the first build');
 			expect(prompt).toContain('leave them for post-build workflow setup');
+		});
+	});
+
+	describe('tool discovery', () => {
+		it('includes generic Tool Discovery guidance when deferred tool search is enabled', () => {
+			const prompt = getSystemPrompt({ toolSearchEnabled: true });
+
+			expect(prompt).toContain('## Tool Discovery');
+			expect(prompt).toContain('additional tools available beyond the ones listed above');
+			expect(prompt).toContain('search "file" for filesystem tools');
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
+			expect(prompt).toContain('search "create tasks" for `create-tasks`');
+			expect(prompt).toContain('search "eval" for `evals`');
+			expect(prompt).not.toContain('connected service or MCP integration');
+			expect(prompt).not.toContain('connected MCP integrations');
+		});
+
+		it('prompts the agent to search connected MCP integrations before declaring them unavailable', () => {
+			const prompt = getSystemPrompt({
+				toolSearchEnabled: true,
+				mcpToolSearchEnabled: true,
+			});
+
+			expect(prompt).toContain('connected MCP integrations');
+			expect(prompt).toContain('connected service or MCP integration');
+			expect(prompt).toContain('call `search_tools` with the service name and task keywords');
+			expect(prompt).toContain('before saying the integration is unavailable');
+			expect(prompt).toContain('asking the user to connect it');
+		});
+
+		it('anchors examples to connected MCP tool searches', () => {
+			const prompt = getSystemPrompt({
+				toolSearchEnabled: true,
+				mcpToolSearchEnabled: true,
+			});
+
+			expect(prompt).toContain(
+				'search "notion page" or "linear issue" for the corresponding MCP tool',
+			);
+			expect(prompt).toContain('search "n8n docs" for `n8n-docs`');
+		});
+
+		it('omits Tool Discovery guidance when deferred tool search is disabled even if MCP tools exist', () => {
+			const prompt = getSystemPrompt({ mcpToolSearchEnabled: true });
+
+			expect(prompt).not.toContain('## Tool Discovery');
+			expect(prompt).not.toContain('connected service or MCP integration');
 		});
 	});
 
@@ -145,14 +216,65 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain("Match the user's request against skill descriptions");
 			expect(prompt).toContain('**Single workflow build or edit**');
 			expect(prompt).toContain('`workflow-builder`');
-			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
 			expect(prompt).toContain('`planning`');
+			expect(prompt).toContain('load `create-tasks` via `load_tool`');
 			expect(prompt).toContain('planningContext.source: "planning-skill"');
 			expect(prompt).toContain('multiple durable artifacts');
 			expect(prompt).toContain('shared data-table schema/migration');
 			expect(prompt).not.toContain('build-workflow-with-agent');
+		});
+
+		it('forbids the build-agent tool during workflow building when the agents module is enabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('do not call `build-agent` at all');
+			expect(prompt).toContain('do not route around that by delegating to `build-agent`');
+		});
+
+		it('routes agent-preview transcript handoffs through get-session, deferring build-agent to explicit edits', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('<agent-preview-context>');
+			expect(prompt).toContain('call `get-session` to read the transcript first');
+			expect(prompt).toContain('do NOT call `build-agent` or otherwise modify the agent');
+			expect(prompt).toContain(
+				'Only call `build-agent` when the user explicitly asks to update, improve, or fix the agent',
+			);
+			expect(prompt).toContain('pass the given `agentId`');
+		});
+
+		it('routes agent listing, switching, and publish guidance when agents are enabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain('Each distinct agent the user asks for is its own build target');
+			expect(prompt).toContain('calls without either continue the most recent target');
+			expect(prompt).toContain('call `agents(action="list")` directly');
+			expect(prompt).toContain('find its id via `agents(action="list")` and pass it as `agentId`');
+			expect(prompt).toContain('forward that intent to `build-agent`');
+			expect(prompt).toContain('never tell the user to open the agent editor and click Publish');
+			expect(prompt).toContain('`publish_agent` / `unpublish_agent`');
+		});
+
+		it('delegates direct agent tool additions instead of wrapping them in workflows', async () => {
+			const prompt = await getSystemPromptWithEnabledModules('agents,instance-ai');
+
+			expect(prompt).toContain(
+				'Pass requests to add tools or capabilities to an agent to `build-agent` near-verbatim',
+			);
+			expect(prompt).toContain('multiple independent tools do not become one workflow');
+			expect(prompt).toContain('one agent tool call must execute an ordered multi-node procedure');
+			expect(prompt).not.toContain(
+				'Actions the agent should invoke as reusable tools are built as workflows',
+			);
+		});
+
+		it('omits the build-agent fence and intent gate when the agents module is disabled', async () => {
+			const prompt = await getSystemPromptWithEnabledModules(undefined);
+
+			expect(prompt).not.toContain('build-agent');
+			expect(prompt).not.toContain('Intent gate');
 		});
 
 		it('routes standalone data-table work through the data-table-manager skill', () => {
@@ -162,9 +284,13 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('`data-table-manager`');
 			expect(prompt).toContain('what data tables do I have?');
 			expect(prompt).toContain(
-				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
+				'Never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
-			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
+			expect(prompt).toContain(
+				'never call `create-tasks` without loading it via `load_tool` first',
+			);
+			expect(prompt).toContain('never call `n8n-docs` without loading it via `load_tool` first');
+			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
 		it('loads data-table-manager before workflow-builder when tables are involved', () => {
@@ -190,10 +316,24 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('Do not create a plan just for verification');
 		});
 
+		it('describes error workflows as per-workflow and publish-before-assign', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('n8n has no global/instance-wide error workflow setting');
+			expect(prompt).toContain('settings.errorWorkflow');
+			expect(prompt).toContain('only after that referenced error workflow is published');
+			expect(prompt).toContain(
+				'mention the missing global/instance-wide setting to the user only when they explicitly ask',
+			);
+			expect(prompt).not.toContain('global error workflow for this instance');
+		});
+
 		it('points post-build and follow-up work at dedicated skills', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('`post-build-flow`');
+			expect(prompt).toContain('postBuildFlow.required: true');
+			expect(prompt).toContain('before verification, setup, error-workflow follow-up');
 			expect(prompt).toContain('`planned-task-runtime`');
 			expect(prompt).toContain('`debugging-executions`');
 		});
@@ -204,6 +344,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('**n8n docs/product guidance**');
 			expect(prompt).toContain('credential setup');
 			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('load `n8n-docs` via `load_tool`');
 			expect(prompt).toContain('`n8n-docs`');
 		});
 
@@ -220,7 +361,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly \(not `delegate`\)/);
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 
@@ -246,6 +387,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');
+			expect(prompt).not.toContain('workspace_list_files');
+			expect(prompt).toContain('mkdir -p');
 			expect(prompt).toContain('Consult the knowledge base before planning or building');
 			expect(prompt).not.toContain('knowledge-base/best-practices/*.md');
 		});
