@@ -33,7 +33,6 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 // eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
@@ -51,7 +50,6 @@ import type { Job, JobData, JobFinishedProps } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-import { EventService } from './events/event.service';
 /** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
 const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 
@@ -85,7 +83,6 @@ export class WorkflowRunner {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly failedRunFactory: FailedRunFactory,
-		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,

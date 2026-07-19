@@ -1,17 +1,16 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import {
-	type User,
-	type ExecutionEntity,
-	GLOBAL_OWNER_ROLE,
-	Project,
-	ExecutionRepository,
-} from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import type { Project, User, ExecutionEntity } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
+	type ExecutionError,
 	type IExecuteData,
 	type INode,
 	type IRun,
@@ -25,7 +24,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
 	Workflow,
-	ExecutionError,
 	TimeoutExecutionCancelledError,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -38,32 +36,17 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can
 // reference the class without a temporal-dead-zone error — a describe-scoped
 // class isn't initialised when the hoisted factory first resolves.
-const setupQueue = vi.fn();
-const addJob = vi.fn();
-
-@Service()
-class MockScalingService {
-	setupQueue = setupQueue;
-
-	addJob = addJob;
-}
-
-vi.mock('@/scaling/scaling.service', () => ({
-	ScalingService: MockScalingService,
-}));
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -76,7 +59,20 @@ mockInstance(OwnershipService, {
 	getWorkflowProjectCached: vi.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
 });
 
+// Mock ScalingService instance to be used in tests
+const mockScalingService = {
+	setupQueue: vi.fn().mockResolvedValue(undefined),
+	addJob: vi.fn().mockResolvedValue({ id: 'mock-job-id' }),
+	waitForJobResult: vi.fn().mockResolvedValue({}),
+	popJobResult: vi.fn().mockResolvedValue(undefined),
+	stopJob: vi.fn().mockResolvedValue(undefined),
+	isInitialized: false,
+};
+
 beforeAll(async () => {
+	// Register the mock ScalingService so the runner uses it
+	// Cast to unknown first to satisfy the ScalingService type in tests
+	Container.set(ScalingService, mockScalingService as unknown as ScalingService);
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 
 	runner = Container.get(WorkflowRunner);
@@ -361,55 +357,37 @@ describe('run', () => {
 });
 
 describe('enqueueExecution', () => {
-	const setupQueue = jest.fn();
-	const addJob = jest.fn();
-	const waitForJobResult = jest.fn();
-	const popJobResult = jest.fn();
-	const stopJob = jest.fn();
-
-	@Service()
-	class MockScalingService {
-		setupQueue = setupQueue;
-		addJob = addJob;
-		waitForJobResult = waitForJobResult;
-		popJobResult = popJobResult;
-		stopJob = stopJob;
-	}
-
-	beforeAll(() => {
-		jest.mock('@/scaling/scaling.service', () => ({
-			ScalingService: MockScalingService,
-		}));
+	afterEach(() => {
+		vi.restoreAllMocks();
+		// Optionally reset the mock's state (e.g., isInitialized)
+		mockScalingService.isInitialized = false;
 	});
-
-	afterAll(() => {
-		jest.unmock('@/scaling/scaling.service');
-	});
-
 	it('should setup queue when scalingService is not initialized', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
+
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 		});
 		const error = new Error('stop for test purposes');
 
-		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Vitest does not move on to tear down the suite until the PCancelable settles
-		addJob.mockRejectedValueOnce(error);
+		vi.spyOn(scalingService, 'addJob').mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
-		expect(setupQueue).toHaveBeenCalledTimes(1);
+		expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
 	});
 
 	it('should include restartExecutionId in job data when provided', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
+
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
@@ -418,9 +396,7 @@ describe('enqueueExecution', () => {
 		});
 		const error = new Error('stop for test purposes');
 
-		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Vitest does not move on to tear down the suite until the PCancelable settles
-		addJob.mockRejectedValueOnce(error);
+		vi.spyOn(scalingService, 'addJob').mockRejectedValueOnce(error);
 
 		const restartExecutionId = 'restart-execution-id';
 
@@ -429,7 +405,7 @@ describe('enqueueExecution', () => {
 			runner.enqueueExecution('1', 'workflow-xyz', data, false, false, restartExecutionId),
 		).rejects.toThrowError(error);
 
-		expect(addJob).toHaveBeenCalledWith(
+		expect(scalingService.addJob).toHaveBeenCalledWith(
 			expect.objectContaining({
 				workflowId: 'workflow-xyz',
 				executionId: '1',
@@ -439,32 +415,22 @@ describe('enqueueExecution', () => {
 		);
 	});
 
-	afterEach(() => {
-		jest.restoreAllMocks();
-		setupQueue.mockReset();
-		addJob.mockReset();
-		waitForJobResult.mockReset();
-		popJobResult.mockReset();
-		stopJob.mockReset();
-	});
-
 	it('should execute successfully via waitForJobResult', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const scalingService = Container.get(ScalingService);
+
+		vi.spyOn(runner, 'processError').mockResolvedValue();
 
 		let capturedExecution: PCancelable<IRun> | undefined;
-		jest
-			.spyOn(activeExecutions, 'attachWorkflowExecution')
-			.mockImplementation((_executionId, workflowExecution) => {
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
 				capturedExecution = workflowExecution;
-			});
-		jest.spyOn(activeExecutions, 'getResponseMode').mockImplementation((executionId) => {
-			expect(executionId).toBe('exec-id');
-			return undefined;
-		});
-		const finalizeSpy = jest.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+			},
+		);
+		vi.spyOn(activeExecutions, 'getResponseMode').mockReturnValue(undefined);
+		const finalizeSpy = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
 		// @ts-expect-error Private method
-		jest.spyOn(runner, 'needsFullExecutionData').mockReturnValue(false);
+		vi.spyOn(runner, 'needsFullExecutionData').mockReturnValue(false);
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [] },
@@ -472,7 +438,7 @@ describe('enqueueExecution', () => {
 		});
 
 		const mockJob = mock<Job>({ id: 'job-id' });
-		addJob.mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
 
 		const mockResult = {
 			success: true,
@@ -480,7 +446,8 @@ describe('enqueueExecution', () => {
 			stoppedAt: new Date(),
 			status: 'success',
 		};
-		waitForJobResult.mockResolvedValue(mockResult);
+		vi.spyOn(scalingService, 'waitForJobResult').mockResolvedValue(mockResult as any);
+		vi.spyOn(scalingService, 'popJobResult').mockResolvedValue(undefined);
 
 		// @ts-expect-error Private method
 		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
@@ -488,7 +455,7 @@ describe('enqueueExecution', () => {
 		expect(capturedExecution).toBeDefined();
 		await capturedExecution!;
 
-		expect(waitForJobResult).toHaveBeenCalledWith(
+		expect(scalingService.waitForJobResult).toHaveBeenCalledWith(
 			'exec-id',
 			undefined,
 			undefined,
@@ -502,20 +469,22 @@ describe('enqueueExecution', () => {
 				status: 'success',
 			}),
 		);
-		expect(popJobResult).not.toHaveBeenCalled();
+		expect(scalingService.popJobResult).not.toHaveBeenCalled();
 	});
 
 	it('should handle timeout error in waitForJobResult', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		const processErrorSpy = jest.spyOn(runner, 'processError').mockResolvedValue();
+		const scalingService = Container.get(ScalingService);
+
+		const processErrorSpy = vi.spyOn(runner, 'processError').mockResolvedValue();
 
 		let capturedExecution: PCancelable<IRun> | undefined;
-		jest
-			.spyOn(activeExecutions, 'attachWorkflowExecution')
-			.mockImplementation((_executionId, workflowExecution) => {
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
 				capturedExecution = workflowExecution;
-			});
-		const finalizeSpy = jest.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+			},
+		);
+		const finalizeSpy = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [] },
@@ -526,11 +495,11 @@ describe('enqueueExecution', () => {
 			id: 'job-id',
 			data: { executionId: 'exec-id', workflowId: 'wf-id' },
 		});
-		addJob.mockResolvedValue(mockJob);
-
-		waitForJobResult.mockRejectedValue(
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'waitForJobResult').mockRejectedValue(
 			new Error('Timeout waiting for job result for execution exec-id'),
 		);
+		vi.spyOn(scalingService, 'popJobResult').mockResolvedValue(undefined);
 
 		// @ts-expect-error Private method
 		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
@@ -541,19 +510,21 @@ describe('enqueueExecution', () => {
 
 		expect(processErrorSpy).toHaveBeenCalled();
 		expect(finalizeSpy).not.toHaveBeenCalled();
-		expect(popJobResult).toHaveBeenCalledWith('exec-id');
+		expect(scalingService.popJobResult).toHaveBeenCalledWith('exec-id');
 	});
 
 	it('should handle manual cancellation path', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		const processErrorSpy = jest.spyOn(runner, 'processError').mockResolvedValue();
+		const scalingService = Container.get(ScalingService);
+
+		const processErrorSpy = vi.spyOn(runner, 'processError').mockResolvedValue();
 
 		let capturedExecution: PCancelable<IRun> | undefined;
-		jest
-			.spyOn(activeExecutions, 'attachWorkflowExecution')
-			.mockImplementation((_executionId, workflowExecution) => {
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
 				capturedExecution = workflowExecution;
-			});
+			},
+		);
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [] },
@@ -564,17 +535,18 @@ describe('enqueueExecution', () => {
 			id: 'job-id',
 			data: { executionId: 'exec-id', workflowId: 'wf-id' },
 		});
-		addJob.mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'stopJob').mockResolvedValue(true);
 
-		waitForJobResult.mockImplementation(
+		vi.spyOn(scalingService, 'waitForJobResult').mockImplementation(
 			async (
-				_execId: string,
-				_jobId: string | undefined,
+				_executionId: string,
 				_timeout: number | undefined,
-				signal: AbortSignal,
+				_pollIntervalMs: number | undefined,
+				abortSignal?: AbortSignal,
 			) => {
-				return new Promise((_, reject) => {
-					signal.addEventListener('abort', () => reject(new Error('cancelled')));
+				return await new Promise((_, reject) => {
+					abortSignal?.addEventListener('abort', () => reject(new Error('aborted')));
 				});
 			},
 		);
@@ -586,20 +558,22 @@ describe('enqueueExecution', () => {
 
 		await expect(capturedExecution!).rejects.toThrow('The execution was cancelled manually');
 
-		expect(stopJob).toHaveBeenCalledWith(mockJob);
+		expect(scalingService.stopJob).toHaveBeenCalledWith(mockJob);
 		expect(processErrorSpy).toHaveBeenCalled();
 	});
 
 	it('should verify AbortController is aborted when execution is cancelled', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const scalingService = Container.get(ScalingService);
+
+		vi.spyOn(runner, 'processError').mockResolvedValue();
 
 		let capturedExecution: PCancelable<IRun> | undefined;
-		jest
-			.spyOn(activeExecutions, 'attachWorkflowExecution')
-			.mockImplementation((_executionId, workflowExecution) => {
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
 				capturedExecution = workflowExecution;
-			});
+			},
+		);
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [] },
@@ -607,19 +581,20 @@ describe('enqueueExecution', () => {
 		});
 
 		const mockJob = mock<Job>({ id: 'job-id' });
-		addJob.mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'stopJob').mockResolvedValue(true);
 
-		const abortSpy = jest.spyOn(AbortController.prototype, 'abort');
+		const abortSpy = vi.spyOn(AbortController.prototype, 'abort');
 
-		waitForJobResult.mockImplementation(
+		vi.spyOn(scalingService, 'waitForJobResult').mockImplementation(
 			async (
-				_execId: string,
-				_jobId: string | undefined,
+				_executionId: string,
 				_timeout: number | undefined,
-				signal: AbortSignal,
+				_pollIntervalMs: number | undefined,
+				abortSignal?: AbortSignal,
 			) => {
-				return new Promise((_, reject) => {
-					signal.addEventListener('abort', () => reject(new Error('aborted')));
+				return await new Promise((_, reject) => {
+					abortSignal?.addEventListener('abort', () => reject(new Error('aborted')));
 				});
 			},
 		);
@@ -634,10 +609,15 @@ describe('enqueueExecution', () => {
 		await expect(capturedExecution!).rejects.toThrow('The execution was cancelled manually');
 
 		abortSpy.mockRestore();
+	});
+
 	it('should carry the manual-execution identity into job data', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
+
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
+
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
@@ -645,14 +625,12 @@ describe('enqueueExecution', () => {
 		});
 		const error = new Error('stop for test purposes');
 
-		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Vitest does not move on to tear down the suite until the PCancelable settles
-		addJob.mockRejectedValueOnce(error);
+		vi.spyOn(scalingService, 'addJob').mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
-		expect(addJob).toHaveBeenCalledWith(
+		expect(scalingService.addJob).toHaveBeenCalledWith(
 			expect.objectContaining({
 				encryptedRunnerIdentity: 'encrypted-identity-blob',
 			}),
