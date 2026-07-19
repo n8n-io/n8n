@@ -10,6 +10,9 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
+import { PublicApiControllerRegistry } from './public-api-controller.registry';
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
+
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
@@ -17,7 +20,8 @@ import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
-import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
+// Side-effect: register @PublicApiController classes into ControllerRegistryMetadata.
+import './v1/controllers/tags.public.controller';
 
 // Renders `x-required-scope` as a badge on each operation. swagger-ui-express
 // serializes this function's source into the page, so it must be self-contained:
@@ -186,6 +190,12 @@ async function importOperationHandlerResolver(
 	return handler;
 }
 
+function createPublicControllerMiddleware(version: string): RequestHandler {
+	const router = express.Router({ mergeParams: true });
+	Container.get(PublicApiControllerRegistry).activate(router, version);
+	return router;
+}
+
 function createLazyValidatorMiddleware(
 	openApiSpecPath: string,
 	handlersDirectory: string,
@@ -322,6 +332,9 @@ function createApiRouter(
 		`/${publicApiEndpoint}/${version}`,
 		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
+		// Decorator-based public controllers (API-37+) mount before eov so they
+		// own matching routes; remaining OpenAPI paths stay on eov handlers.
+		createPublicControllerMiddleware(version),
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 
