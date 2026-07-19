@@ -3,6 +3,8 @@ import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 
 import * as attachment from './attachment';
 import * as comment from './comment';
+import * as customer from './customer';
+import * as customerNeed from './customerNeed';
 import * as cycle from './cycle';
 import * as document from './document';
 import * as initiative from './initiative';
@@ -82,6 +84,14 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'comment',
 				},
 				{
+					name: 'Customer',
+					value: 'customer',
+				},
+				{
+					name: 'Customer Need',
+					value: 'customerNeed',
+				},
+				{
 					name: 'Cycle',
 					value: 'cycle',
 				},
@@ -134,6 +144,8 @@ export const versionDescription: INodeTypeDescription = {
 		},
 		...attachment.description,
 		...comment.description,
+		...customer.description,
+		...customerNeed.description,
 		...cycle.description,
 		...document.description,
 		...initiative.description,

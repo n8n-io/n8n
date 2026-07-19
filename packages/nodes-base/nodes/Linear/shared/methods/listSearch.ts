@@ -81,3 +81,11 @@ export async function getProjects(
 ): Promise<INodeListSearchResult> {
 	return await searchByName(this, 'projects', 'ProjectFilter', filter, paginationToken);
 }
+
+export async function getCustomers(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName(this, 'customers', 'CustomerFilter', filter, paginationToken);
+}

@@ -108,6 +108,63 @@ export const PROJECT_UPDATE_FIELDS = `
 	}
 `;
 
+export const CUSTOMER_FIELDS = `
+	id
+	name
+	domains
+	revenue
+	createdAt
+	updatedAt
+	owner {
+		id
+		displayName
+	}
+`;
+
+export const CUSTOMER_NEED_FIELDS = `
+	id
+	body
+	priority
+	createdAt
+	updatedAt
+	customer {
+		id
+		name
+	}
+	issue {
+		id
+		identifier
+		title
+	}
+	project {
+		id
+		name
+	}
+`;
+
+export const CUSTOMER_LOCATOR: INodeProperties = {
+	displayName: 'Customer',
+	name: 'customerId',
+	type: 'resourceLocator',
+	required: true,
+	default: { mode: 'list', value: '' },
+	description: 'The customer the need belongs to',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: { searchListMethod: 'getCustomers', searchable: true },
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			hint: 'Enter the customer ID',
+		},
+	],
+};
+
 export const PROJECT_LOCATOR: INodeProperties = {
 	displayName: 'Project',
 	name: 'projectId',

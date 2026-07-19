@@ -3,6 +3,8 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as attachment from './attachment';
 import * as comment from './comment';
+import * as customer from './customer';
+import * as customerNeed from './customerNeed';
 import * as cycle from './cycle';
 import * as document from './document';
 import * as initiative from './initiative';
@@ -32,6 +34,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			break;
 		case 'comment':
 			returnData = await comment[linear.operation].execute.call(this, items);
+			break;
+		case 'customer':
+			returnData = await customer[linear.operation].execute.call(this, items);
+			break;
+		case 'customerNeed':
+			returnData = await customerNeed[linear.operation].execute.call(this, items);
 			break;
 		case 'project':
 			returnData = await project[linear.operation].execute.call(this, items);

@@ -20,7 +20,11 @@ import {
 	getProjects,
 	getCycles,
 } from '../shared/methods/loadOptions';
-import { getInitiatives, getProjects } from '../shared/methods/listSearch';
+import {
+	getInitiatives,
+	getProjects as searchProjects,
+	getCustomers,
+} from '../shared/methods/listSearch';
 import { validateCredentials } from '../shared/GenericFunctions';
 
 export class LinearV2 implements INodeType {
@@ -73,7 +77,8 @@ export class LinearV2 implements INodeType {
 		},
 		listSearch: {
 			getInitiatives,
-			getProjects,
+			getProjects: searchProjects,
+			getCustomers,
 		},
 	};
 
