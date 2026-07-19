@@ -541,6 +541,30 @@ describe('ToolHttpRequest', () => {
 			expect(res).not.toContain('Response body');
 		});
 
+		it('should redact credential values echoed back in the error body', async () => {
+			helpers.httpRequest.mockRejectedValue(
+				Object.assign(new Error('Unauthorized'), {
+					response: {
+						status: 401,
+						data: {
+							message: 'Rejected request',
+							api_key: 'sk-live-abcdef123456',
+							authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9',
+						},
+					},
+				}),
+			);
+
+			const res = await invokeTool();
+
+			expect(res).toContain('HTTP 401');
+			// The key stays so the model still learns which credential was rejected.
+			expect(res).toContain('api_key');
+			expect(res).toContain('Rejected request');
+			expect(res).not.toContain('sk-live-abcdef123456');
+			expect(res).not.toContain('eyJhbGciOiJIUzI1NiJ9');
+		});
+
 		it('should leave successful responses untouched', async () => {
 			helpers.httpRequest.mockResolvedValue({
 				body: 'Hello World',

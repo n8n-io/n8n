@@ -148,6 +148,24 @@ const defaultOptimizer = <T>(response: T) => {
 /** Error payloads are appended to the tool output, so they must not flood the model's context. */
 const MAX_ERROR_BODY_LENGTH = 2000;
 
+const SECRET_REDACTION = '[redacted]';
+
+/**
+ * Masks credential-shaped values that an API echoed back in its error payload, so they do not
+ * reach the model or the stored execution data. The key is kept, so `invalid api_key: <secret>`
+ * still tells the model which credential the API rejected.
+ */
+const redactSecrets = (content: string): string =>
+	content
+		.replace(
+			/\b(authorization)(["']?\s*[:=]\s*["']?\s*(?:bearer|basic)\s+)[^\s"',;]+/gi,
+			`$1$2${SECRET_REDACTION}`,
+		)
+		.replace(
+			/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential)(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
+			`$1$2$3${SECRET_REDACTION}$3`,
+		);
+
 type FailedRequest = {
 	error?: unknown;
 	response?: { status?: number; data?: unknown };
@@ -189,7 +207,7 @@ const serializeErrorBody = (body: unknown): string | undefined => {
 		return undefined;
 	}
 
-	return serialized.trim() ? serialized : undefined;
+	return serialized.trim() ? redactSecrets(serialized) : undefined;
 };
 
 function isBinary(data: unknown) {
