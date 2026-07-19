@@ -109,16 +109,13 @@ describe('N8nDropdownMenuItem', () => {
 		});
 
 		it('should render highlighted item', async () => {
-			renderMenuItem({
+			const wrapper = renderMenuItem({
 				id: 'test',
 				label: 'Highlighted Item',
 				highlighted: true,
 			});
 
-			await waitFor(() => {
-				const item = document.querySelector('[role="menuitem"]');
-				expect(item).toMatchSnapshot();
-			});
+			expect(await wrapper.findByRole('menuitem')).toHaveAttribute('aria-selected', 'true');
 		});
 
 		it('should show title attribute when label is 20+ characters', async () => {
