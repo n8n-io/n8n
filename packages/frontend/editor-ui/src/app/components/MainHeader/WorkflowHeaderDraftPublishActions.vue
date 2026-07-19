@@ -4,7 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	VIEWS,
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -52,6 +52,11 @@ import {
 import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
+import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
+import WorkflowSubmitForReviewDialog from '@/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue';
+import WorkflowReviewSubmittedDialog from '@/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue';
+import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -85,6 +90,8 @@ const saveStore = useWorkflowSaveStore();
 const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
 const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
+const reviewRequiredStore = useReviewRequiredStore();
+const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
@@ -96,6 +103,19 @@ const showWorkflowReviewRequiredToggle = computed(
 
 const autoSaveForPublish = ref(false);
 const isSaving = ref(false);
+const showPublishChoiceDialog = ref(false);
+const showSubmitForReviewDialog = ref(false);
+const showReviewSubmittedDialog = ref(false);
+
+watch(
+	() => props.id,
+	() => {
+		showPublishChoiceDialog.value = false;
+		showSubmitForReviewDialog.value = false;
+		showReviewSubmittedDialog.value = false;
+		uiStore.closeModal(WORKFLOW_PUBLISH_MODAL_KEY);
+	},
+);
 
 const showSaveButton = computed(() => !settingsStore.isAutosaveEnabled);
 
@@ -206,6 +226,42 @@ const saveBeforePublish = async () => {
 	return saved;
 };
 
+const openPublishModal = () => {
+	uiStore.openModalWithData({
+		name: WORKFLOW_PUBLISH_MODAL_KEY,
+		data: {},
+	});
+};
+
+const flushSaveForReview = async (): Promise<string | undefined> => {
+	const shouldSave =
+		uiStore.stateIsDirty ||
+		props.isNewWorkflow ||
+		saveStore.autoSaveState === AutoSaveState.InProgress ||
+		saveStore.autoSaveState === AutoSaveState.Scheduled ||
+		!workflowDocumentStore.value.versionId;
+
+	if (shouldSave && !(await saveBeforePublish())) return undefined;
+
+	return workflowDocumentStore.value.versionId ?? undefined;
+};
+
+const openSubmitForReviewDialog = () => {
+	showPublishChoiceDialog.value = false;
+	showSubmitForReviewDialog.value = true;
+};
+
+const onReviewSubmitted = () => {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('workflowReviews.submitted.toast'),
+	});
+
+	if (!submittedDialogDismissed.value) {
+		showReviewSubmittedDialog.value = true;
+	}
+};
+
 const onPublishButtonClick = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
@@ -216,10 +272,20 @@ const onPublishButtonClick = async () => {
 		}
 	}
 
-	uiStore.openModalWithData({
-		name: WORKFLOW_PUBLISH_MODAL_KEY,
-		data: {},
-	});
+	if (isWorkflowReviewsEnabled.value) {
+		if (reviewRequiredStore.isReviewRequired(workflowDocumentStore.value.workflowId)) {
+			showSubmitForReviewDialog.value = true;
+			return;
+		}
+
+		// TODO(LIGO-784): once the designed secondary affordance exists, revisit this gate
+		if (!publishChoiceDismissed.value) {
+			showPublishChoiceDialog.value = true;
+			return;
+		}
+	}
+
+	openPublishModal();
 };
 
 const publishButtonConfig = computed(() => {
@@ -714,6 +780,20 @@ defineExpose({
 			:tags="tags"
 			:current-folder="currentFolder"
 		/>
+		<template v-if="isWorkflowReviewsEnabled">
+			<WorkflowPublishChoiceDialog
+				v-model:open="showPublishChoiceDialog"
+				@publish="openPublishModal"
+				@submit-for-review="openSubmitForReviewDialog"
+			/>
+			<WorkflowSubmitForReviewDialog
+				v-model:open="showSubmitForReviewDialog"
+				:workflow-id="workflowDocumentStore.workflowId"
+				:flush-save="flushSaveForReview"
+				@submitted="onReviewSubmitted"
+			/>
+			<WorkflowReviewSubmittedDialog v-model:open="showReviewSubmittedDialog" />
+		</template>
 	</div>
 </template>
 
