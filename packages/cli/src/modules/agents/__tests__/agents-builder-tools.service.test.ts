@@ -242,6 +242,7 @@ describe('AgentsBuilderToolsService', () => {
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+			expect(toolNames).toContain(BUILDER_TOOLS.RESOLVE_INTEGRATION);
 		});
 
 		it('registers publish and unpublish tools in the builder toolset', () => {
