@@ -49,6 +49,46 @@ describe('Linear v2 → Issue & Comment', () => {
 		});
 	});
 
+	describe('issue.create parity inputs', () => {
+		it('forwards project, cycle, milestone, parent and estimate to issueCreate', async () => {
+			const spy = vi
+				.spyOn(GenericFunctions, 'linearApiRequest')
+				.mockResolvedValue({ data: { issueCreate: { issue: { id: 'issue-1' } } } });
+
+			vi.mocked(mockThis.getNodeParameter).mockImplementation((param: string) => {
+				if (param === 'teamId') return 'team-abc';
+				if (param === 'title') return 'Full issue';
+				if (param === 'additionalFields') {
+					return {
+						projectId: 'proj-1',
+						cycleId: 'cycle-1',
+						projectMilestoneId: 'ms-1',
+						parentId: 'iss-parent',
+						estimate: 3,
+						subscriberIds: ['user-1'],
+					};
+				}
+				return undefined;
+			});
+
+			await issueCreate.execute.call(mockThis, [{ json: {} }]);
+
+			expect(spy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					query: expect.stringContaining('projectMilestoneId'),
+					variables: expect.objectContaining({
+						projectId: 'proj-1',
+						cycleId: 'cycle-1',
+						projectMilestoneId: 'ms-1',
+						parentId: 'iss-parent',
+						estimate: 3,
+						subscriberIds: ['user-1'],
+					}),
+				}),
+			);
+		});
+	});
+
 	describe('issue.getAll', () => {
 		it('calls issues query and respects limit', async () => {
 			const allItemsSpy = vi

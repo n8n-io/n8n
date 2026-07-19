@@ -34,6 +34,15 @@ const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Cycle Name or ID',
+				name: 'cycleId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: { loadOptionsMethod: 'getCycles' },
+				default: '',
+			},
+			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
@@ -47,6 +56,13 @@ const properties: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Estimate',
+				name: 'estimate',
+				type: 'number',
+				default: 0,
+				description: 'The estimated complexity/points of the issue',
+			},
+			{
 				displayName: 'Label Names or IDs',
 				name: 'labelIds',
 				type: 'multiOptions',
@@ -56,11 +72,34 @@ const properties: INodeProperties[] = [
 				default: [],
 			},
 			{
+				displayName: 'Parent Issue ID',
+				name: 'parentId',
+				type: 'string',
+				default: '',
+				description: 'The ID of the parent issue to nest this issue under',
+			},
+			{
 				displayName: 'Priority',
 				name: 'priority',
 				type: 'options',
 				options: PRIORITY_OPTIONS,
 				default: 0,
+			},
+			{
+				displayName: 'Project Name or ID',
+				name: 'projectId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: { loadOptionsMethod: 'getProjects' },
+				default: '',
+			},
+			{
+				displayName: 'Project Milestone ID',
+				name: 'projectMilestoneId',
+				type: 'string',
+				default: '',
+				description: 'The ID of the project milestone to assign the issue to',
 			},
 			{
 				displayName: 'State Name or ID',
@@ -70,6 +109,15 @@ const properties: INodeProperties[] = [
 					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: { loadOptionsMethod: 'getStates' },
 				default: '',
+			},
+			{
+				displayName: 'Subscriber Names or IDs',
+				name: 'subscriberIds',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: { loadOptionsMethod: 'getUsers' },
+				default: [],
 			},
 			{
 				displayName: 'Team Name or ID',
@@ -120,7 +168,13 @@ export async function execute(
 					$priority: Int,
 					$stateId: String,
 					$dueDate: TimelessDate,
-					$labelIds: [String!]
+					$labelIds: [String!],
+					$projectId: String,
+					$projectMilestoneId: String,
+					$cycleId: String,
+					$parentId: String,
+					$estimate: Int,
+					$subscriberIds: [String!]
 				) {
 					issueUpdate(id: $issueId, input: {
 						title: $title
@@ -131,6 +185,12 @@ export async function execute(
 						stateId: $stateId
 						dueDate: $dueDate
 						labelIds: $labelIds
+						projectId: $projectId
+						projectMilestoneId: $projectMilestoneId
+						cycleId: $cycleId
+						parentId: $parentId
+						estimate: $estimate
+						subscriberIds: $subscriberIds
 					}) {
 						success
 						issue {
