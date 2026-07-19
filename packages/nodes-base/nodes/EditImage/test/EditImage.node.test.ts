@@ -1,6 +1,6 @@
 import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
-import { EditImage } from '../EditImage.node';
+import { EditImage, resolveGravity } from '../EditImage.node';
 
 const createTestBuffer = () =>
 	Buffer.from([
@@ -95,6 +95,26 @@ const mockGmInstance: any = {
 };
 
 vi.mock('gm', () => ({ default: vi.fn(() => mockGmInstance) }));
+
+describe('resolveGravity', () => {
+	it.each([
+		['west', 'north', 'northwest'],
+		['west', 'middle', 'west'],
+		['west', 'south', 'southwest'],
+		['center', 'north', 'north'],
+		['center', 'middle', 'center'],
+		['center', 'south', 'south'],
+		['east', 'north', 'northeast'],
+		['east', 'middle', 'east'],
+		['east', 'south', 'southeast'],
+	])('resolves %s + %s to %s', (horizontal, vertical, expected) => {
+		expect(resolveGravity(horizontal, vertical)).toBe(expected);
+	});
+
+	it('falls back to northwest for invalid input', () => {
+		expect(resolveGravity('invalid', 'invalid')).toBe('northwest');
+	});
+});
 
 describe('EditImage Node', () => {
 	let editImageNode: EditImage;
@@ -845,6 +865,52 @@ describe('EditImage Node', () => {
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].binary).toHaveProperty('data');
 			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, binaryData);
+		});
+
+		it('should pass resolved gravity to drawText for text operation', async () => {
+			const testBuffer = createTestBuffer();
+			const binaryData = {
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+				fileName: 'test.png',
+			};
+			const items: INodeExecutionData[] = [
+				{
+					json: {},
+					binary: {
+						data: binaryData,
+					},
+				},
+			];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'operation') return 'text';
+				if (paramName === 'dataPropertyName') return binaryData;
+				if (paramName === 'text') return 'Hello';
+				if (paramName === 'fontSize') return 18;
+				if (paramName === 'fontColor') return '#000000';
+				if (paramName === 'positionX') return 10;
+				if (paramName === 'positionY') return 10;
+				if (paramName === 'lineLength') return 80;
+				if (paramName === 'horizontalAlignment') return 'center';
+				if (paramName === 'verticalAlignment') return 'north';
+				if (paramName === 'options') return { font: 'Arial' };
+				return {};
+			});
+
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(testBuffer);
+			mockExecuteFunctions.helpers.prepareBinaryData.mockResolvedValue({
+				data: testBuffer.toString('base64'),
+				mimeType: 'image/png',
+				fileExtension: 'png',
+				fileName: 'test.png',
+			});
+
+			await editImageNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGmInstance.drawText).toHaveBeenCalledWith(10, 10, 'Hello', 'north');
 		});
 
 		it('should use destinationKey with IBinaryData', async () => {
