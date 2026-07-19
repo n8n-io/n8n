@@ -34,7 +34,7 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 		ctx.getNode.mockReturnValue(node);
 		ctx.getCredentials.mockResolvedValue({ environmentUrl: BASE_URL });
 		request = vi.fn();
-		ctx.helpers.requestWithAuthentication = request as never;
+		ctx.helpers.httpRequestWithAuthentication = request as never;
 	});
 
 	describe('dataverseApiRequest', () => {

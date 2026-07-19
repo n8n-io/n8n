@@ -1,11 +1,7 @@
-import type {
-	IHttpRequestOptions,
-	ILoadOptionsFunctions,
-	INodePropertyOptions,
-	JsonObject,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodePropertyOptions, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-import { DATAVERSE_API_PATH, buildUserAgent } from './constants';
+import { DATAVERSE_API_PATH } from './constants';
+import { dataverseApiRequestRaw, type DataverseQuery } from './GenericFunctions';
 
 /**
  * `loadOptions` handlers for the Dataverse node. These power the in-editor
@@ -22,14 +18,6 @@ import { DATAVERSE_API_PATH, buildUserAgent } from './constants';
  * silently rendering an empty list — which is indistinguishable from a
  * table with no entities.
  */
-
-const CREDENTIAL_TYPE = 'microsoftDataverseOAuth2Api';
-
-const ODATA_HEADERS = {
-	Accept: 'application/json',
-	'OData-MaxVersion': '4.0',
-	'OData-Version': '4.0',
-};
 
 interface EntityDefinition {
 	LogicalName: string;
@@ -63,44 +51,25 @@ function labelOf(def: { DisplayName?: { UserLocalizedLabel?: { Label?: string } 
 	return trimmed.length > 0 ? trimmed : null;
 }
 
-async function resolveBaseUrl(ctx: ILoadOptionsFunctions): Promise<string> {
-	const credentials = await ctx.getCredentials(CREDENTIAL_TYPE);
-	const url = String(credentials.environmentUrl ?? '')
-		.trim()
-		.replace(/\/$/, '');
-	if (!url) {
-		throw new NodeApiError(ctx.getNode(), {
-			message: 'Dataverse credential is missing "Environment URL"',
-			description:
-				'Open the Microsoft Dataverse credential and set Environment URL to e.g. https://yourorg.crm.dynamics.com, then reconnect.',
-		} as JsonObject);
-	}
-	return url;
-}
-
 async function dataverseGet<T>(
 	ctx: ILoadOptionsFunctions,
 	path: string,
-	qs: Record<string, string | number> = {},
+	qs: DataverseQuery = {},
 ): Promise<T> {
-	const baseUrl = await resolveBaseUrl(ctx);
-	const url = `${baseUrl}${DATAVERSE_API_PATH}${path}`;
-	// Pass OData system query options via `qs` so n8n's HTTP layer URL-encodes
-	// the values (e.g. spaces in `$filter=... eq ... and ...`). Concatenating
-	// them into the URL string instead leaves raw spaces in `req.url`, which
-	// some HTTP clients reject with `ERR_INVALID_URL` or send malformed.
-	const options: IHttpRequestOptions = {
-		method: 'GET',
-		url,
-		qs,
-		headers: {
-			...ODATA_HEADERS,
-			'User-Agent': buildUserAgent(ctx.getNode().typeVersion),
-		},
-		json: true,
-	};
 	try {
-		return (await ctx.helpers.requestWithAuthentication.call(ctx, CREDENTIAL_TYPE, options)) as T;
+		// Delegate base-URL resolution, OData headers, User-Agent, and
+		// transient-failure retries to the shared request helper. We use the
+		// `Raw` variant so the original upstream error reaches our own
+		// extraction below instead of being pre-wrapped in a NodeApiError.
+		return (await dataverseApiRequestRaw(
+			ctx,
+			'GET',
+			path,
+			{},
+			qs,
+			{},
+			'microsoftDataverseOAuth2Api',
+		)) as T;
 	} catch (error) {
 		// n8n's `requestWithAuthentication` wraps the upstream HTTP failure in
 		// its own envelope. The real Dataverse text can live in any of:
@@ -118,7 +87,7 @@ async function dataverseGet<T>(
 		const codePart = dvCode ? ` [${dvCode}]` : '';
 		throw new NodeApiError(ctx.getNode(), error as JsonObject, {
 			message: `${prefix}${codePart}: ${dvMessage}`,
-			description: `GET ${url}`,
+			description: `GET ${DATAVERSE_API_PATH}${path}`,
 		});
 	}
 }

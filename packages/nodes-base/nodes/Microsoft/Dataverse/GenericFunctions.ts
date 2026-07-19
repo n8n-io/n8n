@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, sleep } from 'n8n-workflow';
@@ -12,6 +13,16 @@ import { DATAVERSE_API_PATH, buildUserAgent } from './constants';
 export type DataverseHeaders = Record<string, string>;
 /** Query-string parameters Dataverse accepts. Numbers cover `$top`. */
 export type DataverseQuery = Record<string, string | number>;
+
+/**
+ * Contexts that can issue Dataverse requests. Node execution uses
+ * `IExecuteFunctions`; the in-editor `loadOptions` pickers use
+ * `ILoadOptionsFunctions`. Both expose the same subset we rely on here
+ * (`getCredentials`, `getNode`, `helpers.httpRequestWithAuthentication`), so
+ * the request helpers accept either and the pickers don't need their own copy
+ * of the base-URL / header / retry plumbing.
+ */
+export type DataverseContext = IExecuteFunctions | ILoadOptionsFunctions;
 
 /**
  * Static OData v4 headers attached to every Dataverse request unless the
@@ -137,21 +148,21 @@ function backoffDelay(attempt: number): number {
 }
 
 /**
- * Dispatch a request via `helpers.requestWithAuthentication`, retrying on
+ * Dispatch a request via `helpers.httpRequestWithAuthentication`, retrying on
  * transient failures — HTTP 429 / 503 / 504 and socket-level network errors
  * (`ECONNRESET`, `ETIMEDOUT`, DNS failures, socket hang-ups). Non-transient
  * failures are re-thrown immediately so the caller can wrap them in
  * `NodeApiError` without an extra delay.
  */
 async function dispatchWithRetry(
-	ctx: IExecuteFunctions,
+	ctx: DataverseContext,
 	credentialType: string,
 	options: IHttpRequestOptions,
 ): Promise<unknown> {
 	let lastError: unknown;
 	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 		try {
-			return await ctx.helpers.requestWithAuthentication.call(ctx, credentialType, options);
+			return await ctx.helpers.httpRequestWithAuthentication.call(ctx, credentialType, options);
 		} catch (error) {
 			lastError = error;
 			if (!isRetryable(error) || attempt === MAX_RETRIES) {
@@ -172,27 +183,35 @@ async function dispatchWithRetry(
 /**
  * Resolve the Dataverse environment base URL from the n8n-stored credential,
  * stripping a trailing slash so `${baseUrl}${DATAVERSE_API_PATH}…` always has
- * exactly one slash between segments.
+ * exactly one slash between segments. Throws early with an actionable message
+ * when the credential has no Environment URL, rather than letting a malformed
+ * request fail obscurely at the HTTP layer.
  */
-async function resolveBaseUrl(ctx: IExecuteFunctions, credentialType: string): Promise<string> {
+async function resolveBaseUrl(ctx: DataverseContext, credentialType: string): Promise<string> {
 	const credentials = await ctx.getCredentials(credentialType);
-	return String(credentials.environmentUrl).replace(/\/$/, '');
+	const url = String(credentials.environmentUrl ?? '')
+		.trim()
+		.replace(/\/$/, '');
+	if (!url) {
+		throw new NodeApiError(ctx.getNode(), {
+			message: 'Dataverse credential is missing "Environment URL"',
+			description:
+				'Open the Microsoft Dataverse credential and set Environment URL to e.g. https://yourorg.crm.dynamics.com, then reconnect.',
+		} as JsonObject);
+	}
+	return url;
 }
 
 /**
- * Make an authenticated request against the Dataverse Web API.
- *
- * Auth (OAuth2 token acquisition and the Bearer header) is handled by the
- * `microsoftDataverseOAuth2Api` credential, so this helper only builds the
- * request and delegates to `requestWithAuthentication` (via `dispatchWithRetry`,
- * which adds transient-failure retries with exponential back-off + jitter).
- *
- * The caller MUST pass the credential type explicitly so a future refactor
- * cannot accidentally fall back to a stale literal that does not match any
- * registered credential.
+ * Build and dispatch an authenticated Dataverse request, returning the raw
+ * response and letting the *original* upstream error propagate (no
+ * `NodeApiError` wrapping). This is the shared core behind
+ * {@link dataverseApiRequest}; callers that need to surface their own error
+ * shape — e.g. the `loadOptions` pickers, which extract the real Dataverse
+ * message for the dropdown — use this directly and wrap failures themselves.
  */
-export async function dataverseApiRequest(
-	ctx: IExecuteFunctions,
+export async function dataverseApiRequestRaw(
+	ctx: DataverseContext,
 	method: IHttpRequestMethods,
 	resource: string,
 	body: IDataObject = {},
@@ -221,8 +240,32 @@ export async function dataverseApiRequest(
 		delete options.body;
 	}
 
+	return (await dispatchWithRetry(ctx, credentialType, options)) as IDataObject;
+}
+
+/**
+ * Make an authenticated request against the Dataverse Web API.
+ *
+ * Auth (OAuth2 token acquisition and the Bearer header) is handled by the
+ * `microsoftDataverseOAuth2Api` credential, so this helper only builds the
+ * request and delegates to `requestWithAuthentication` (via `dispatchWithRetry`,
+ * which adds transient-failure retries with exponential back-off + jitter).
+ *
+ * The caller MUST pass the credential type explicitly so a future refactor
+ * cannot accidentally fall back to a stale literal that does not match any
+ * registered credential.
+ */
+export async function dataverseApiRequest(
+	ctx: IExecuteFunctions,
+	method: IHttpRequestMethods,
+	resource: string,
+	body: IDataObject = {},
+	qs: DataverseQuery = {},
+	headers: DataverseHeaders = {},
+	credentialType: string,
+): Promise<IDataObject> {
 	try {
-		return (await dispatchWithRetry(ctx, credentialType, options)) as IDataObject;
+		return await dataverseApiRequestRaw(ctx, method, resource, body, qs, headers, credentialType);
 	} catch (error) {
 		throw new NodeApiError(ctx.getNode(), error as JsonObject);
 	}

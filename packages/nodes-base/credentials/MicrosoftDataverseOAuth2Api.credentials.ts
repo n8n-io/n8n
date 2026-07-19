@@ -3,7 +3,7 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 export class MicrosoftDataverseOAuth2Api implements ICredentialType {
 	name = 'microsoftDataverseOAuth2Api';
 
-	extends = ['oAuth2Api'];
+	extends = ['microsoftOAuth2Api'];
 
 	displayName = 'Microsoft Dataverse OAuth2 API';
 

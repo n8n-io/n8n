@@ -15,8 +15,6 @@ import {
 	toDropdownOption,
 } from './operations';
 
-const CREDENTIAL_TYPE = 'microsoftDataverseOAuth2Api';
-
 export class MicrosoftDataverse implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Microsoft Dataverse',
@@ -32,7 +30,7 @@ export class MicrosoftDataverse implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
-				name: CREDENTIAL_TYPE,
+				name: 'microsoftDataverseOAuth2Api',
 				required: true,
 			},
 		],
@@ -76,7 +74,7 @@ export class MicrosoftDataverse implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const out: INodeExecutionData[] = [];
+		let out: INodeExecutionData[] = [];
 		const liveOps = RECORD_OPERATIONS.map((o) => o.value);
 		const aliases = Object.keys(OPERATION_ALIASES);
 
@@ -91,17 +89,17 @@ export class MicrosoftDataverse implements INodeType {
 						{ itemIndex: i },
 					);
 				}
-				const result = await op.execute(this, i, CREDENTIAL_TYPE);
+				const result = await op.execute(this, i, 'microsoftDataverseOAuth2Api');
 				const rows = Array.isArray(result) ? result : [result];
 				const wrapped = this.helpers.returnJsonArray(rows as IDataObject[]);
 				const meta = this.helpers.constructExecutionMetaData(wrapped, {
 					itemData: { item: i },
 				});
-				out.push(...meta);
+				out = out.concat(meta);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const err = error as Error;
-					out.push({
+					out = out.concat({
 						json: { error: err.message ?? String(err) },
 						pairedItem: { item: i },
 					});
