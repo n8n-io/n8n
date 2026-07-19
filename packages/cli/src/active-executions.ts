@@ -13,8 +13,6 @@ import type {
 	WebhookResponseMode,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
-	ensureError,
 	ExecutionCancelledError,
 	sleep,
 	SystemShutdownExecutionCancelledError,
@@ -23,6 +21,10 @@ import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
 
+import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
+import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
+import { EventService } from './events/event.service';
+
 import { AdmissionLimitError } from '@/errors/admission-limit.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
@@ -30,9 +32,21 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
-import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
-import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
-import { EventService } from './events/event.service';
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error && error.message !== undefined) {
+		return error.message;
+	}
+
+	if (typeof error === 'string') {
+		return error;
+	}
+
+	try {
+		return JSON.stringify(error);
+	} catch {
+		return String(error);
+	}
+}
 
 @Service()
 export class ActiveExecutions {
@@ -199,7 +213,7 @@ export class ActiveExecutions {
 				shouldReserveCapacity,
 			)
 				.catch((error: unknown) => {
-					const executionError = ensureError(error);
+					const executionError = error instanceof Error ? error : new Error(getErrorMessage(error));
 					this.logger.error('Failed to reserve capacity for onReceived execution', {
 						executionId,
 						error: executionError,
@@ -355,7 +369,7 @@ export class ActiveExecutions {
 			} catch (error) {
 				this.logger.error('Error closing streaming response', {
 					executionId,
-					error: (error as Error).message,
+					error: getErrorMessage(error),
 				});
 			}
 		}
