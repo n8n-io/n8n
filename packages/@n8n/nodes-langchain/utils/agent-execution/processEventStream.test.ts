@@ -108,7 +108,7 @@ describe('processEventStream', () => {
 		expect(result.output).toBe('Final answer');
 	});
 
-	it('flushes text if a stream ends without a model-end event', async () => {
+	it('discards text from a model run that does not complete', async () => {
 		const ctx = mock<IExecuteFunctions>();
 		const events = eventStream([streamEvent('unfinished-turn', 'Partial response')]);
 
@@ -116,9 +116,26 @@ describe('processEventStream', () => {
 
 		expect(ctx.sendChunk.mock.calls).toEqual([
 			['begin', 0],
-			['item', 0, 'Partial response'],
 			['end', 0],
 		]);
-		expect(result.output).toBe('Partial response');
+		expect(result.output).toBe('');
+	});
+
+	it('does not mix an incomplete primary response into a completed fallback response', async () => {
+		const ctx = mock<IExecuteFunctions>();
+		const events = eventStream([
+			streamEvent('primary-turn', 'Partial primary response'),
+			streamEvent('fallback-turn', 'Fallback response'),
+			endEvent('fallback-turn', { content: 'Fallback response', tool_calls: [] }),
+		]);
+
+		const result = await processEventStream(ctx, events, 0);
+
+		expect(ctx.sendChunk.mock.calls).toEqual([
+			['begin', 0],
+			['item', 0, 'Fallback response'],
+			['end', 0],
+		]);
+		expect(result.output).toBe('Fallback response');
 	});
 });

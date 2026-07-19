@@ -211,7 +211,6 @@ async function processEventStream(
 				break;
 		}
 	}
-	textStream.flushPending();
 	ctx.sendChunk('end', itemIndex);
 
 	return agentResult;

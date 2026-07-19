@@ -20,11 +20,4 @@ export class ModelTextStreamBuffer {
 			for (const chunk of chunks) this.emit(chunk);
 		}
 	}
-
-	flushPending(): void {
-		for (const chunks of this.chunksByRunId.values()) {
-			for (const chunk of chunks) this.emit(chunk);
-		}
-		this.chunksByRunId.clear();
-	}
 }

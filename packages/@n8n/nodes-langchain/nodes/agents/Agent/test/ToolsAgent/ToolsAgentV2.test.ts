@@ -606,6 +606,7 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: 'Hello ',
@@ -614,11 +615,17 @@ describe('toolsAgentExecute', () => {
 				};
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: 'world!',
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: 'Hello world!', tool_calls: [] } },
 				};
 			};
 
@@ -885,6 +892,7 @@ describe('toolsAgentExecute', () => {
 				// Message with array content including text and non-text types
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: [
@@ -895,6 +903,11 @@ describe('toolsAgentExecute', () => {
 							],
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: 'Hello world!', tool_calls: [] } },
 				};
 			};
 
@@ -924,11 +937,17 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: 'Direct string content',
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: 'Direct string content', tool_calls: [] } },
 				};
 			};
 
@@ -958,6 +977,7 @@ describe('toolsAgentExecute', () => {
 			const mockStreamEvents = async function* () {
 				yield {
 					event: 'on_chat_model_stream',
+					run_id: 'final-turn',
 					data: {
 						chunk: {
 							content: [
@@ -967,6 +987,11 @@ describe('toolsAgentExecute', () => {
 							],
 						},
 					},
+				};
+				yield {
+					event: 'on_chat_model_end',
+					run_id: 'final-turn',
+					data: { output: { content: [], tool_calls: [] } },
 				};
 			};
 

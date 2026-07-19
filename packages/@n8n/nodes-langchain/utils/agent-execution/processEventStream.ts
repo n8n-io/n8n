@@ -87,7 +87,6 @@ export async function processEventStream(
 				break;
 		}
 	}
-	textStream.flushPending();
 	ctx.sendChunk('end', itemIndex);
 
 	// Include collected tool calls in the result
