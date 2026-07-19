@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/chatHub/SettingsChatHubView.vue
+  s_7fd2ecc4a3637f::t_20fabd7fd298fa 9
+  s_7fd2ecc4a3637f::t_cb72c763cc8b5d 41
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_7fd2ecc4a3637f::t_217bdbcf1a2753 108-109
+  s_7fd2ecc4a3637f::t_c93b1a7d45471d 102
+  s_7fd2ecc4a3637f::t_6368a893f17ad6 107
+  s_7fd2ecc4a3637f::t_34da7b2b816224 101,103-104,106
+  s_7fd2ecc4a3637f::t_97e9882dafb928 105
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_7fd2ecc4a3637f::t_76f0d572d97132 9
+  s_7fd2ecc4a3637f::t_522ad43e0d779e 53-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4f353f575f295a9777ec2d1460f7fc919d77c2ec",
+  "prompts": {},
+  "sessions": {
+    "s_7fd2ecc4a3637f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f3ced4c7-c658-456d-a980-a8ffb6c9be9c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

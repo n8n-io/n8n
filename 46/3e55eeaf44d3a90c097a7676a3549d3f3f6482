@@ -1,0 +1,34 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-id.ts
+  s_af5d1a42132501::t_df4d5e9fde25d0 1-3,5,8,10-11,16,23-31,21
+  s_d5e93f8549b777::t_4068720f68d88b 9,15,17-18,22
+  h_9b272a633435fb 4,6-7,12-14,19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "463e55eeaf44d3a90c097a7676a3549d3f3f6482",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_af5d1a42132501": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a7029c4-a23a-4438-8e91-676ae3a000b5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_d5e93f8549b777": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d179412c-f564-418c-97c7-9bbdd2da813e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

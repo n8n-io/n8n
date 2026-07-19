@@ -1,0 +1,31 @@
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  s_456b1fff7bb2dc::t_f9bf611542e87a 5
+  s_456b1fff7bb2dc::t_956514036e2ccd 859-888
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.test.ts
+  s_456b1fff7bb2dc::t_a3be6d3c4fff5e 13
+  s_456b1fff7bb2dc::t_fbe7d3784791fe 169-189
+  s_456b1fff7bb2dc::t_aaae396410338e 39-41
+  s_456b1fff7bb2dc::t_94c767a290c1c5 2
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.integration.test.ts
+  s_456b1fff7bb2dc::t_eaf3cff99e1fb4 1
+  s_456b1fff7bb2dc::t_3c7863cf60f416 61,65-66,68
+packages/cli/src/modules/redaction/redaction-context-hook.ts
+  s_456b1fff7bb2dc::t_5bda55b8cc78e2 39-49
+  s_456b1fff7bb2dc::t_c81c432bd51021 1,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bb12f6a4948a3269cc6c76c890e08f66f5c2834e",
+  "prompts": {},
+  "sessions": {
+    "s_456b1fff7bb2dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffba89ca-6fe5-4fd6-9331-7e707027dc54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
