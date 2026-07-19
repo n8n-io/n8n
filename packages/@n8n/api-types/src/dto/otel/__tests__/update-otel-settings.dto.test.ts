@@ -1,4 +1,4 @@
-import { TestOtelConnectionDto } from '../test-otel-connection.dto';
+import { TestOtelTraceDto } from '../test-otel-trace.dto';
 import { UpdateOtelSettingsDto } from '../update-otel-settings.dto';
 
 const validSettings = {
@@ -47,7 +47,7 @@ describe('UpdateOtelSettingsDto', () => {
 	});
 });
 
-describe('TestOtelConnectionDto', () => {
+describe('TestOtelTraceDto', () => {
 	const validConnection = {
 		exporterEndpoint: 'http://localhost:4318',
 		exporterTracingPath: '/v1/traces',
@@ -57,7 +57,7 @@ describe('TestOtelConnectionDto', () => {
 	};
 
 	it('requires every connection field (stays strict)', () => {
-		const result = TestOtelConnectionDto.safeParse({});
+		const result = TestOtelTraceDto.safeParse({});
 		expect(result.success).toBe(false);
 
 		const missing = result.success
@@ -67,7 +67,7 @@ describe('TestOtelConnectionDto', () => {
 	});
 
 	it('accepts a full connection body', () => {
-		const result = TestOtelConnectionDto.safeParse(validConnection);
+		const result = TestOtelTraceDto.safeParse(validConnection);
 		expect(result.success).toBe(true);
 	});
 });

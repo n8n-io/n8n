@@ -1,4 +1,4 @@
-import { TestOtelConnectionDto, UpdateOtelSettingsDto } from '@n8n/api-types';
+import { TestOtelTraceDto, UpdateOtelSettingsDto } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 
@@ -17,7 +17,7 @@ import { apiKeyHasScopeWithGlobalScopeFallback } from '../../shared/middlewares/
 type OtelHandlers = {
 	getOtelSettings: PublicAPIEndpoint<OtelSettingsRequest.Get>;
 	updateOtelSettings: PublicAPIEndpoint<OtelSettingsRequest.Update>;
-	testOtelConnection: PublicAPIEndpoint<OtelSettingsRequest.Test>;
+	testOtelTrace: PublicAPIEndpoint<OtelSettingsRequest.Test>;
 };
 
 const otelHandlers: OtelHandlers = {
@@ -65,10 +65,10 @@ const otelHandlers: OtelHandlers = {
 		},
 	],
 
-	testOtelConnection: [
+	testOtelTrace: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'otel:manage' }),
 		async (req, res) => {
-			const payload = TestOtelConnectionDto.safeParse(req.body);
+			const payload = TestOtelTraceDto.safeParse(req.body);
 			if (!payload.success) {
 				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}

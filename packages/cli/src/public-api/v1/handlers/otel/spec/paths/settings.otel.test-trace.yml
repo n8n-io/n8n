@@ -1,5 +1,5 @@
 post:
-  x-eov-operation-id: testOtelConnection
+  x-eov-operation-id: testOtelTrace
   x-required-scope: otel:manage
   x-eov-operation-handler: v1/handlers/otel/otel.handler
   tags:
@@ -16,14 +16,14 @@ post:
     content:
       application/json:
         schema:
-          $ref: '../schemas/otel-test-connection.yml'
+          $ref: '../schemas/otel-test-trace.yml'
   responses:
     '200':
       description: Operation successful.
       content:
         application/json:
           schema:
-            $ref: '../schemas/otel-test-connection-result.yml'
+            $ref: '../schemas/otel-test-trace-result.yml'
     '400':
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':

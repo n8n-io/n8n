@@ -10,7 +10,7 @@ import type {
 	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
 	UpdateOtelSettingsDto,
-	TestOtelConnectionDto,
+	TestOtelTraceDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -429,5 +429,5 @@ export declare namespace SsoSamlRequest {
 export declare namespace OtelSettingsRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
-	type Test = AuthenticatedRequest<{}, {}, TestOtelConnectionDto>;
+	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
 }

@@ -53,7 +53,7 @@ properties:
     minimum: 0
     description: >
       How long, in milliseconds, to wait when checking the collector is reachable. Also used as
-      the timeout for the test connection endpoint.
+      the timeout for the test-trace endpoint.
     example: 2000
   includeNodeSpans:
     type: boolean

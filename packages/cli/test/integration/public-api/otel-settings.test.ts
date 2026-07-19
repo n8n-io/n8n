@@ -284,13 +284,13 @@ describe('OpenTelemetry settings in Public API', () => {
 		});
 	});
 
-	describe('POST /settings/otel/test-connection', () => {
+	describe('POST /settings/otel/test-trace', () => {
 		it('reports a successful connection', async () => {
 			vi.spyOn(Container.get(OtelService), 'sendTestTrace').mockResolvedValue({ success: true });
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/otel/test-connection')
+				.post('/settings/otel/test-trace')
 				.send(testConnection);
 
 			expect(response.status).toBe(200);
@@ -305,7 +305,7 @@ describe('OpenTelemetry settings in Public API', () => {
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/otel/test-connection')
+				.post('/settings/otel/test-trace')
 				.send(testConnection);
 
 			expect(response.status).toBe(200);
@@ -315,7 +315,7 @@ describe('OpenTelemetry settings in Public API', () => {
 		it('rejects a partial body with 400', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
-				.post('/settings/otel/test-connection')
+				.post('/settings/otel/test-trace')
 				.send({ exporterEndpoint: 'http://collector.example.com:4318' });
 
 			expect(response.status).toBe(400);
@@ -324,7 +324,7 @@ describe('OpenTelemetry settings in Public API', () => {
 		it('rejects with 401 without a valid API key', async () => {
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
-				.post('/settings/otel/test-connection')
+				.post('/settings/otel/test-trace')
 				.send(testConnection);
 
 			expect(response.status).toBe(401);
