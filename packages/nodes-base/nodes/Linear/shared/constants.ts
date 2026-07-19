@@ -142,6 +142,48 @@ export const CUSTOMER_NEED_FIELDS = `
 	}
 `;
 
+export const RELEASE_FIELDS = `
+	id
+	name
+	version
+	stage
+	startDate
+	targetDate
+	url
+	updatedAt
+`;
+
+export const CUSTOM_VIEW_FIELDS = `
+	id
+	name
+	description
+	icon
+	color
+	shared
+	createdAt
+	updatedAt
+`;
+
+export const ISSUE_RELATION_TYPE_OPTIONS = [
+	{ name: 'Blocks', value: 'blocks' },
+	{ name: 'Duplicate', value: 'duplicate' },
+	{ name: 'Related', value: 'related' },
+];
+
+export const ISSUE_RELATION_FIELDS = `
+	id
+	type
+	createdAt
+	issue {
+		id
+		identifier
+	}
+	relatedIssue {
+		id
+		identifier
+	}
+`;
+
 export const CUSTOMER_LOCATOR: INodeProperties = {
 	displayName: 'Customer',
 	name: 'customerId',

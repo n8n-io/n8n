@@ -9,13 +9,16 @@ import * as cycle from './cycle';
 import * as document from './document';
 import * as initiative from './initiative';
 import * as issue from './issue';
+import * as issueRelation from './issueRelation';
 import * as label from './label';
 import * as project from './project';
 import * as projectMilestone from './projectMilestone';
 import * as projectUpdate from './projectUpdate';
+import * as release from './release';
 import * as team from './team';
 import * as teamMembership from './teamMembership';
 import * as user from './user';
+import * as view from './view';
 import * as workflowState from './workflowState';
 
 export const versionDescription: INodeTypeDescription = {
@@ -108,6 +111,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'issue',
 				},
 				{
+					name: 'Issue Relation',
+					value: 'issueRelation',
+				},
+				{
 					name: 'Label',
 					value: 'label',
 				},
@@ -124,6 +131,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'projectUpdate',
 				},
 				{
+					name: 'Release',
+					value: 'release',
+				},
+				{
 					name: 'Team',
 					value: 'team',
 				},
@@ -134,6 +145,10 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'User',
 					value: 'user',
+				},
+				{
+					name: 'View',
+					value: 'view',
 				},
 				{
 					name: 'Workflow State',
@@ -150,13 +165,16 @@ export const versionDescription: INodeTypeDescription = {
 		...document.description,
 		...initiative.description,
 		...issue.description,
+		...issueRelation.description,
 		...label.description,
 		...project.description,
 		...projectMilestone.description,
 		...projectUpdate.description,
+		...release.description,
 		...team.description,
 		...teamMembership.description,
 		...user.description,
+		...view.description,
 		...workflowState.description,
 	],
 };

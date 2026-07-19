@@ -9,14 +9,17 @@ import * as cycle from './cycle';
 import * as document from './document';
 import * as initiative from './initiative';
 import * as issue from './issue';
+import * as issueRelation from './issueRelation';
 import * as label from './label';
 import type { Linear } from './node.type';
 import * as project from './project';
 import * as projectMilestone from './projectMilestone';
 import * as projectUpdate from './projectUpdate';
+import * as release from './release';
 import * as team from './team';
 import * as teamMembership from './teamMembership';
 import * as user from './user';
+import * as view from './view';
 import * as workflowState from './workflowState';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -76,6 +79,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			break;
 		case 'teamMembership':
 			returnData = await teamMembership[linear.operation].execute.call(this, items);
+			break;
+		case 'release':
+			returnData = await release[linear.operation].execute.call(this, items);
+			break;
+		case 'view':
+			returnData = await view[linear.operation].execute.call(this, items);
+			break;
+		case 'issueRelation':
+			returnData = await issueRelation[linear.operation].execute.call(this, items);
 			break;
 		default:
 			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);

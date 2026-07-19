@@ -16,6 +16,9 @@ type NodeMap = {
 	initiative: 'create' | 'get' | 'getAll' | 'update' | 'delete' | 'archive';
 	projectMilestone: 'create' | 'get' | 'getAll' | 'update' | 'delete';
 	projectUpdate: 'create' | 'get' | 'getAll' | 'update' | 'delete';
+	release: 'create' | 'get' | 'getAll' | 'update' | 'delete';
+	view: 'create' | 'get' | 'getAll' | 'update' | 'delete';
+	issueRelation: 'create' | 'getAll' | 'delete';
 	teamMembership: 'create' | 'getAll' | 'delete';
 };
 
