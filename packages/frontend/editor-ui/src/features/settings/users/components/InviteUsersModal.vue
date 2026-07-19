@@ -15,6 +15,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { copyLinkWithFallback } from '../clipboard.utils';
 import { I18nT } from 'vue-i18n';
 
 import {
@@ -173,7 +174,7 @@ async function onSubmit() {
 					const url = await usersStore.generateInviteLink({
 						id: successfulUrlInvites[0].user.id,
 					});
-					void clipboard.copy(url.link);
+					await copyLinkWithFallback(clipboard.copy, url.link);
 				} catch (error) {
 					showError(error, i18n.baseText('settings.users.inviteLinkError'));
 				}
@@ -256,7 +257,7 @@ async function onCopyInviteLink(user: IInviteResponse['user']) {
 
 	try {
 		const url = await usersStore.generateInviteLink({ id: user.id });
-		void clipboard.copy(url.link);
+		await copyLinkWithFallback(clipboard.copy, url.link);
 		showCopyInviteLinkToast([]);
 	} catch (error) {
 		showError(error, i18n.baseText('settings.users.inviteLinkError'));
@@ -391,6 +392,7 @@ onMounted(() => {
 				:disabled="!enabledButton"
 				:label="buttonLabel"
 				float="right"
+				data-test-id="invite-users-button"
 				@click="onSubmitClick"
 			/>
 		</template>

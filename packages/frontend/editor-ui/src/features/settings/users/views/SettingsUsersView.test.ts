@@ -569,6 +569,41 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
+		it('should fall back to ClipboardItem when copying a generated invite link fails', async () => {
+			class ClipboardItemStub {
+				constructor(readonly data: Record<string, Blob>) {}
+			}
+			vi.stubGlobal('ClipboardItem', ClipboardItemStub);
+			const write = vi.fn().mockResolvedValue(undefined);
+			Object.defineProperty(window.navigator, 'clipboard', {
+				value: { write },
+				configurable: true,
+			});
+			mockClipboard.copy.mockRejectedValueOnce(new DOMException('not allowed', 'NotAllowedError'));
+
+			const spy = vi
+				.spyOn(permissions, 'hasPermission')
+				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
+					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
+						return true;
+					}
+					return false;
+				});
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'generateInviteLink', userId: '3' });
+
+			await waitFor(() => expect(write).toHaveBeenCalledTimes(1));
+			const [items] = write.mock.calls[0] as [ClipboardItemStub[]];
+			expect(items[0]).toBeInstanceOf(ClipboardItemStub);
+			expect(mockToast.showError).not.toHaveBeenCalled();
+
+			spy.mockRestore();
+			vi.unstubAllGlobals();
+			Reflect.deleteProperty(window.navigator, 'clipboard');
+		});
+
 		it('should handle generate invite link error', async () => {
 			usersStore.generateInviteLink = vi
 				.fn()

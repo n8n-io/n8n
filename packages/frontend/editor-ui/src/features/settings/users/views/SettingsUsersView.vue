@@ -26,6 +26,7 @@ import { useUsersStore } from '../users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useClipboard } from '@/app/composables/useClipboard';
+import { copyLinkWithFallback } from '../clipboard.utils';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -255,7 +256,7 @@ async function onGenerateInviteLink(userId: string) {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
 			const url = await usersStore.generateInviteLink({ id: userId });
-			void clipboard.copy(url.link);
+			await copyLinkWithFallback(clipboard.copy, url.link);
 
 			showToast({
 				type: 'success',
@@ -272,7 +273,7 @@ async function onCopyPasswordResetLink(userId: string) {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user) {
 			const url = await usersStore.getUserPasswordResetLink(user);
-			void clipboard.copy(url.link);
+			await copyLinkWithFallback(clipboard.copy, url.link);
 
 			showToast({
 				type: 'success',
