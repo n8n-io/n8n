@@ -127,6 +127,23 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
+	describe('searchAgentToolNodes()', () => {
+		it('initializes and searches the catalog with the agent tool-node filter', async () => {
+			const { service, nodeCatalogService } = makeService();
+
+			const result = await service.searchAgentToolNodes(['gmail', 'slack']);
+
+			expect(nodeCatalogService.initialize).toHaveBeenCalled();
+			expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'slack'], {
+				nodeFilter: isAgentToolNodeType,
+			});
+			expect(result).toEqual({
+				results: 'search-result',
+				queriesWithNoResults: [],
+			});
+		});
+	});
+
 	describe('isExecutableNodeType', () => {
 		it('rejects trigger nodes only', () => {
 			expect(isExecutableNodeType('n8n-nodes-base.scheduleTrigger')).toBe(false);
