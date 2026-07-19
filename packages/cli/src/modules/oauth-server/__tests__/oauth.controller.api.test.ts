@@ -9,6 +9,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { UrlService } from '@/services/url.service';
 
 import { OAuthServerConfig } from '../oauth-server.config';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
@@ -601,6 +602,7 @@ describe('Full authorization-code flow (PKCE)', () => {
 		const code = redirectUrl.searchParams.get('code');
 		expect(code).toBeTruthy();
 		expect(redirectUrl.searchParams.get('state')).toBe('flow-state');
+		expect(redirectUrl.searchParams.get('iss')).toBe(Container.get(UrlService).getInstanceBaseUrl());
 
 		// 4. Token exchange
 		const tokenResponse = await testServer.restlessAgent
@@ -776,6 +778,7 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 		const redirectUrl = new URL(consentResponse.body.data.redirectUrl);
 		const code = redirectUrl.searchParams.get('code');
 		expect(code).toBeTruthy();
+		expect(redirectUrl.searchParams.get('iss')).toBe(Container.get(UrlService).getInstanceBaseUrl());
 
 		// 4. Token exchange — the token service functions with MCP access disabled
 		const tokenResponse = await testServer.restlessAgent

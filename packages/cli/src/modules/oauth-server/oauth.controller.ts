@@ -54,6 +54,49 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 	next();
 };
 
+/**
+ * Express middleware to ensure RFC 9207 compliance.
+ * Intercepts redirects and appends the 'iss' parameter to any external callback URL
+ * if it is not already present, ensuring both success and error paths return the issuer.
+ */
+const rfc9207SafetyNetGuard: RequestHandler = (_req, res, next) => {
+	const originalRedirect = res.redirect.bind(res);
+	res.redirect = function (this: Response, ...args: any[]) {
+		let status = 302;
+		let url = '';
+
+		if (args.length === 2) {
+			if (typeof args[0] === 'number') {
+				status = args[0];
+				url = args[1];
+			} else {
+				url = args[0];
+				status = args[1];
+			}
+		} else if (args.length === 1) {
+			url = args[0];
+		}
+
+		if (url) {
+			try {
+				const baseUrl = Container.get(UrlService).getInstanceBaseUrl();
+				if (url.startsWith('http://') || url.startsWith('https://')) {
+					const parsedUrl = new URL(url);
+					if (!url.startsWith(baseUrl) && !parsedUrl.searchParams.has('iss')) {
+						parsedUrl.searchParams.set('iss', baseUrl);
+						url = parsedUrl.toString();
+					}
+				}
+			} catch (err) {
+				// Ignore parsing errors
+			}
+		}
+
+		return originalRedirect(status, url);
+	} as any;
+	next();
+};
+
 // Built once and mounted under both the legacy `/mcp-oauth/*` paths (existing
 // DCR clients hold them in their stored discovery metadata) and the neutral
 // `/oauth/*` paths that future, non-MCP protected resources will advertise.
@@ -79,6 +122,7 @@ const sharedEndpointRouters = (basePath: '/mcp-oauth' | '/oauth'): StaticRouterM
 		path: `${basePath}/authorize`,
 		router: authorizeRouter,
 		skipAuth: true,
+		middlewares: [rfc9207SafetyNetGuard],
 		ipRateLimit: createIpRateLimit(
 			oauthServerConfig.rateLimitAuthorize,
 			5 * Time.minutes.toMilliseconds,
