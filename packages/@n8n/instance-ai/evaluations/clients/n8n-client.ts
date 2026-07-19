@@ -15,6 +15,9 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
+	AgentJsonConfig,
+	AgentSkill,
+	EvaluationConfigDto,
 } from '@n8n/api-types';
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
@@ -108,6 +111,35 @@ export interface ExecutionDetail {
 	status: string;
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
+}
+
+/** A data table column as returned by GET .../data-tables/:dataTableId/columns. */
+export interface DataTableColumnResponse {
+	id: string;
+	dataTableId: string;
+	name: string;
+	type: 'string' | 'number' | 'boolean' | 'date';
+	index: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export type DataTableColumnsResponse = DataTableColumnResponse[];
+
+/**
+ * A data table row as returned by GET .../data-tables/:dataTableId/rows —
+ * column values keyed by column name, plus the system `id`/`createdAt`/`updatedAt` fields.
+ */
+export interface DataTableRowResponse extends Record<string, string | number | boolean | null> {
+	id: number;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/** Paginated rows response; see `getDataTableRows` for why the harness only reads page one. */
+export interface DataTableRowsResponse {
+	count: number;
+	data: DataTableRowResponse[];
 }
 
 // -- Thread types ------------------------------------------------------------
@@ -233,9 +265,12 @@ export class N8nClient {
 	 * List captured LLM debug runs for a thread.
 	 * GET /rest/instance-ai/debug/threads/:threadId/runs
 	 */
-	async listThreadDebugRuns(threadId: string): Promise<InstanceAiThreadDebugRunsResponse> {
+	async listThreadDebugRuns(
+		threadId: string,
+		timeoutMs?: number,
+	): Promise<InstanceAiThreadDebugRunsResponse> {
 		return this.unwrapRestData<InstanceAiThreadDebugRunsResponse>(
-			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`),
+			await this.fetch(`/rest/instance-ai/debug/threads/${threadId}/runs`, { timeoutMs }),
 		);
 	}
 
@@ -243,9 +278,9 @@ export class N8nClient {
 	 * Fetch full LLM step debug for a single run.
 	 * GET /rest/instance-ai/debug/runs/:runId
 	 */
-	async getRunDebug(runId: string): Promise<InstanceAiRunDebugResponse> {
+	async getRunDebug(runId: string, timeoutMs?: number): Promise<InstanceAiRunDebugResponse> {
 		return this.unwrapRestData<InstanceAiRunDebugResponse>(
-			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`),
+			await this.fetch(`/rest/instance-ai/debug/runs/${runId}`, { timeoutMs }),
 		);
 	}
 
@@ -316,6 +351,41 @@ export class N8nClient {
 	async getWorkflow(id: string): Promise<WorkflowResponse> {
 		const result = (await this.fetch(`/rest/workflows/${id}`)) as {
 			data: WorkflowResponse;
+		};
+		return result.data;
+	}
+
+	/**
+	 * Get an agent's JSON config (system prompt, model, tools, skill refs).
+	 * GET /rest/projects/:projectId/agents/v2/:agentId/config
+	 */
+	async getAgentConfig(projectId: string, agentId: string): Promise<AgentJsonConfig> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
+		)) as { data: AgentJsonConfig };
+		return result.data;
+	}
+
+	/**
+	 * Get an agent's full skills map (skill content, not just the refs on its config).
+	 * GET /rest/projects/:projectId/agents/v2/:agentId/skills
+	 */
+	async getAgentSkills(projectId: string, agentId: string): Promise<Record<string, AgentSkill>> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/skills`,
+		)) as {
+			data: Record<string, AgentSkill>;
+		};
+		return result.data;
+	}
+
+	/**
+	 * List the evaluation configs defined on a workflow.
+	 * GET /rest/workflows/:workflowId/evaluation-configs
+	 */
+	async getWorkflowEvaluationConfigs(workflowId: string): Promise<EvaluationConfigDto[]> {
+		const result = (await this.fetch(`/rest/workflows/${workflowId}/evaluation-configs`)) as {
+			data: EvaluationConfigDto[];
 		};
 		return result.data;
 	}
@@ -565,6 +635,13 @@ export class N8nClient {
 	 * referenced workflows are recreated (node credentials stripped server-side)
 	 * and the native message log is written verbatim, so the thread continues
 	 * as if the conversation really happened.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each seed data
+	 * table's name to dodge the per-project unique-name constraint — safe when the
+	 * seed workflow references tables by id (id-remap). Pass false to keep the
+	 * EXACT declared names, so a freshly-built workflow's by-name references
+	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
+	 * seed only data tables.
 	 * POST /rest/instance-ai/eval/restore-thread
 	 */
 	async restoreThread(
@@ -572,12 +649,35 @@ export class N8nClient {
 		messages: Array<Record<string, unknown>>,
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
+		options: { uniquifyNames?: boolean } = {},
 	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
+		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables };
+		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
-			body: { threadId, messages, workflows, dataTables },
+			body,
 		});
 		return RestoreThreadEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
+	 * for the per-scenario row seeding of a case that pre-created its tables
+	 * before the build turn (TRUST-311). Unlike `restoreThread` (which CREATES
+	 * tables), this targets a table that already exists by id, so a scenario can
+	 * declare its own row state without disturbing the table the built workflow
+	 * bound. `threadId` scopes the table to the run's project server-side.
+	 * POST /rest/instance-ai/eval/seed-data-table-rows
+	 */
+	async seedDataTableRows(
+		threadId: string,
+		tableId: string,
+		rows: Array<Record<string, string | number | boolean | null>>,
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			method: 'POST',
+			body: { threadId, tableId, rows },
+		});
 	}
 
 	// -- Data tables ---------------------------------------------------------
@@ -621,6 +721,40 @@ export class N8nClient {
 		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}`, {
 			method: 'DELETE',
 		});
+	}
+
+	/**
+	 * Get a data table's column definitions.
+	 * GET /rest/projects/:projectId/data-tables/:dataTableId/columns
+	 */
+	async getDataTableColumns(
+		projectId: string,
+		dataTableId: string,
+	): Promise<DataTableColumnsResponse> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/data-tables/${dataTableId}/columns`,
+		)) as { data: DataTableColumnsResponse };
+		return result.data;
+	}
+
+	/**
+	 * Get a data table's rows.
+	 * GET /rest/projects/:projectId/data-tables/:dataTableId/rows
+	 *
+	 * Paginated via `ListDataTableContentQueryDto`; this fetches only the
+	 * default first page — a sample is sufficient for judging, so the harness
+	 * doesn't page through the whole table.
+	 *
+	 * `DataTableService.getManyRowsAndCount` returns `{ count, data }`
+	 * directly, and the REST layer wraps every controller return in
+	 * `{ data: <value> }` (see `response-helper.ts`'s `send()`), so the raw
+	 * payload is double-nested: `{ data: { count, data: rows } }`.
+	 */
+	async getDataTableRows(projectId: string, dataTableId: string): Promise<DataTableRowsResponse> {
+		const result = (await this.fetch(
+			`/rest/projects/${projectId}/data-tables/${dataTableId}/rows`,
+		)) as { data: DataTableRowsResponse };
+		return result.data;
 	}
 
 	// -- Eval mock execution -------------------------------------------------

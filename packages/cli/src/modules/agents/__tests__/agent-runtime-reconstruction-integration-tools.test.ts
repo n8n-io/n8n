@@ -21,6 +21,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -252,13 +253,10 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
-			agentRepository,
 			n8nCheckpointStorage,
 			agentExecutionService,
 			telemetry,
 			runtimeCacheService,
-			credentialsService,
-			agentRuntimeReconstructionService,
 			mock<IntegrationMessageContextService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
@@ -285,7 +283,9 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentKnowledgeService,
 			runtimeCacheService,
 			agentTestChatService,
+			agentTaskRepository,
 			mock<SubAgentCleanupService>(),
+			mock<EventService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

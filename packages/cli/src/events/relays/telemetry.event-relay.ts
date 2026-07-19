@@ -166,6 +166,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
 			'n8n-package-imported': (event) => this.packageImported(event),
 			'n8n-package-exported': (event) => this.packageExported(event),
+			'n8n-package-export-failed': (event) => this.packageExportFailed(event),
+			'n8n-package-import-failed': (event) => this.packageImportFailed(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'workflow-activated': async (event) => await this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
@@ -210,8 +212,25 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionCreated(event),
 			'instance-ai-mcp-registry-connection-deleted': (event) =>
 				this.instanceAiMcpRegistryConnectionDeleted(event),
+			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 		});
 	}
+
+	// #region HITL
+
+	private hitlResponseActioned({
+		nodeType,
+		approved,
+		authorized,
+	}: RelayEventMap['hitl-response-actioned']) {
+		this.telemetry.track('Advanced HITL response actioned', {
+			node_type: nodeType,
+			is_approved: approved,
+			is_authorized: authorized,
+		});
+	}
+
+	// #endregion
 
 	// #region Instance AI MCP
 
@@ -721,7 +740,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectId,
 		projectType,
 	}: RelayEventMap['private-credential-created']) {
-		this.telemetry.track('User created private credential', {
+		this.telemetry.track('User created end-user credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -736,7 +755,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-toggled-to-private']) {
-		this.telemetry.track('User made credential private', {
+		this.telemetry.track('User made credential end-user', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -749,7 +768,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-toggled-to-static']) {
-		this.telemetry.track('User made credential static', {
+		this.telemetry.track('User made credential fixed', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -762,7 +781,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-connections-cleared']) {
-		this.telemetry.track('User cleared private credential connections', {
+		this.telemetry.track('User cleared end-user credential connections', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -775,7 +794,7 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 	}: RelayEventMap['private-credential-deleted']) {
-		this.telemetry.track('User deleted private credential', {
+		this.telemetry.track('User deleted end-user credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -790,7 +809,7 @@ export class TelemetryEventRelay extends EventRelay {
 		supportsManagedAuth,
 		usesManagedAuth,
 	}: RelayEventMap['private-credential-user-connected']) {
-		this.telemetry.track('User connected to private credential', {
+		this.telemetry.track('User connected to end-user credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
@@ -1038,12 +1057,18 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
+			data_table_matching_mode: options.dataTableMatchingMode,
+			data_table_missing_mode: options.dataTableMissingMode,
+			data_table_schema_conflict_policy: options.dataTableSchemaConflictPolicy,
 			workflows_created: counts.workflows.created,
 			workflows_updated: counts.workflows.updated,
 			workflows_skipped: counts.workflows.skipped,
 			credentials_matched: counts.credentials.matched,
 			credentials_created: counts.credentials.created,
 			credentials_required: counts.credentials.requirements,
+			data_tables_matched: counts.dataTables.matched,
+			data_tables_created: counts.dataTables.created,
+			data_tables_required: counts.dataTables.requirements,
 		});
 	}
 
@@ -1053,6 +1078,31 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
+			data_table_count: counts.dataTables,
+			variable_count: counts.variables,
+		});
+	}
+
+	private packageExportFailed({
+		user,
+		reason,
+		workflowIds,
+		folderIds,
+		projectIds,
+	}: RelayEventMap['n8n-package-export-failed']) {
+		this.telemetry.track('User package export failed', {
+			user_id: user.id,
+			reason,
+			workflow_count: workflowIds?.length ?? 0,
+			folder_count: folderIds?.length ?? 0,
+			project_count: projectIds?.length ?? 0,
+		});
+	}
+
+	private packageImportFailed({ user, reason }: RelayEventMap['n8n-package-import-failed']) {
+		this.telemetry.track('User package import failed', {
+			user_id: user.id,
+			reason,
 		});
 	}
 
@@ -1194,9 +1244,9 @@ export class TelemetryEventRelay extends EventRelay {
 			version_cli: N8N_VERSION,
 			success: false,
 			...executionTelemetryProperties,
-			used_private_credentials: privateCredentialsAttemptedCount > 0,
-			private_credentials_attempted_count: privateCredentialsAttemptedCount,
-			private_credentials_resolved_count: privateCredentialsResolvedCount,
+			used_end_user_credentials: privateCredentialsAttemptedCount > 0,
+			end_user_credentials_attempted_count: privateCredentialsAttemptedCount,
+			end_user_credentials_resolved_count: privateCredentialsResolvedCount,
 		};
 
 		if (privateCredentialsAttemptedCount > 0) {
@@ -1300,11 +1350,11 @@ export class TelemetryEventRelay extends EventRelay {
 					is_managed: false,
 					eval_rows_left: null,
 					meta: JSON.stringify(workflow.meta),
-					used_private_credentials: telemetryProperties.used_private_credentials,
-					private_credentials_attempted_count:
-						telemetryProperties.private_credentials_attempted_count,
-					private_credentials_resolved_count:
-						telemetryProperties.private_credentials_resolved_count,
+					used_end_user_credentials: telemetryProperties.used_end_user_credentials,
+					end_user_credentials_attempted_count:
+						telemetryProperties.end_user_credentials_attempted_count,
+					end_user_credentials_resolved_count:
+						telemetryProperties.end_user_credentials_resolved_count,
 					credential_resolver_id: telemetryProperties.credential_resolver_id,
 					...executionTelemetryProperties,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
@@ -1440,6 +1490,13 @@ export class TelemetryEventRelay extends EventRelay {
 			license_tenant_id: this.globalConfig.license.tenantId,
 			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			multi_main_setup_enabled: this.globalConfig.multiMainSetup.enabled,
+			instance_ai: {
+				// Which sandbox and AIA search providers are configured (booleans/names only, never key values)
+				sandbox_enabled: this.globalConfig.instanceAi.sandboxEnabled,
+				sandbox_provider: this.globalConfig.instanceAi.sandboxProvider,
+				search_brave_set: this.globalConfig.instanceAi.braveSearchApiKey !== '',
+				search_searxng_set: this.globalConfig.instanceAi.searxngUrl !== '',
+			},
 			metrics: {
 				metrics_enabled: this.globalConfig.endpoints.metrics.enable,
 				metrics_category_default: this.globalConfig.endpoints.metrics.includeDefaultMetrics,
@@ -1522,7 +1579,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async getOtelTelemetryInfo() {
-		const { OtelConfig } = await import('@/modules/otel/otel.config');
+		const { OtelConfig } = await import('@/modules/otel/otel.config.js');
 		const otelConfig = Container.get(OtelConfig);
 
 		return {

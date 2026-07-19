@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.16.0
+        default: 24.18.0
       collectCoverage:
         required: false
         default: false
@@ -29,8 +29,7 @@ on:
         description: |
           Newline-separated list of CHANGED_FILES from ci-filter. Passed to
           per-package `janitor scope` invocations so test runners can filter
-          to actually-changed source files via jest --findRelatedTests or
-          vitest related.
+          to actually-changed source files via vitest related.
         required: false
         default: ''
         type: string

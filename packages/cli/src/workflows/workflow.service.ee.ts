@@ -554,6 +554,19 @@ export class EnterpriseWorkflowService {
 
 			return;
 		} catch (error) {
+			// Reactivation may have failed partway with triggers already registered,
+			// in memory and as durable schedule jobs. Tear them down before the
+			// rollback below so the active version is still resolvable, or they
+			// keep firing a workflow marked inactive.
+			try {
+				await this.activeWorkflowManager.remove(workflowId);
+			} catch (cleanupError) {
+				this.logger.error(`Failed to roll back partial reactivation of workflow "${workflowId}"`, {
+					workflowId,
+					error: cleanupError,
+				});
+			}
+
 			await this.workflowRepository.updateActiveState(workflowId, false);
 
 			// If reactivation failed we track deactivation of the workflow

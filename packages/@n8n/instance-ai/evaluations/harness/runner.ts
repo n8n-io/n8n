@@ -6,12 +6,18 @@
 // LLM-mocked HTTP, checklist verification, and result aggregation.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedDataTable,
+} from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import crypto from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { resolveArtifactContext } from './artifacts/artifact-context';
 import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
@@ -32,6 +38,7 @@ import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed'
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import {
+	classifyScenarioExecutionError,
 	extractErrorMessage,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -54,7 +61,9 @@ import {
 } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
+import { requiresWorkflowOutput } from '../summary';
 import type {
+	ArtifactRef,
 	BuildTrace,
 	ChecklistItem,
 	ChecklistResult,
@@ -70,6 +79,7 @@ import type {
 	WorkflowTestCaseResult,
 } from '../types';
 import {
+	agentTurnsAsText,
 	conversationUserTurnsAsText,
 	failedBuildsPerTurn,
 	lastAgentText,
@@ -91,6 +101,23 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 // very contention that starved them (observed: run 28779266673).
 const DEFAULT_TIMEOUT_MS = 900_000;
 const EVAL_DATA_DIR = path.join(__dirname, '..', '..', '.data');
+
+/**
+ * Per-case budget: `complex` cases get 1.5× the base timeout. The heaviest
+ * builds (multi-agent fan-outs, 5-integration pipelines) legitimately run at
+ * the shared default's cap — observed 777–900s with 4/10 builds timing out on
+ * weekly-social-content-scheduler in run 29012884140 — while the default must
+ * NOT rise globally (see the comment above: a generous default lets starved
+ * scenarios amplify the contention that starved them). Keyed off the authored
+ * `complexity` field so the budget travels with the case (incl. through the
+ * lang-tracer mirror) instead of a bespoke per-case knob.
+ */
+export function effectiveTimeoutMs(
+	complexity: WorkflowTestCase['complexity'] | undefined,
+	baseMs: number,
+): number {
+	return complexity === 'complex' ? Math.round(baseMs * 1.5) : baseMs;
+}
 
 function getMaxConcurrentScenarios(): number {
 	const raw = process.env.N8N_EVAL_MAX_CONCURRENT_SCENARIOS;
@@ -123,6 +150,51 @@ function slugifyArtifactSegment(value: string, fallback: string): string {
 
 function deriveTestCaseArtifactName(testCase: WorkflowTestCase): string {
 	return slugifyArtifactSegment(testCase.conversation?.[0]?.text ?? '', 'workflow');
+}
+
+function eventPayload(event: CapturedEvent): Record<string, unknown> {
+	return typeof event.data.payload === 'object' && event.data.payload !== null
+		? (event.data.payload as Record<string, unknown>)
+		: event.data;
+}
+
+/**
+ * Best-effort explanation for a run that produced no workflow, drawn from the
+ * captured event stream. Tool errors are most specific; run-level `error`
+ * events (e.g. the terminal-fallback emitted when the run throws before doing
+ * any work — a crashed sandbox, a failed model call) carry the actual failure
+ * reason and must be surfaced, otherwise a crashed run reports nothing at all.
+ */
+export function summarizeMissingWorkflowError(events: CapturedEvent[]): string {
+	const toolErrors = events
+		.filter((e) => e.type === 'tool-error')
+		.map((e) => {
+			const payload = eventPayload(e);
+			const toolError = payload.error ?? payload.message;
+			return typeof toolError === 'string' ? toolError : 'unknown tool error';
+		});
+	if (toolErrors.length > 0) return `Tool errors: ${toolErrors.join('; ')}`;
+
+	const runErrors = events
+		.filter((e) => e.type === 'error')
+		.map((e) => {
+			const payload = eventPayload(e);
+			const runError = payload.content ?? payload.error ?? payload.message;
+			return typeof runError === 'string' ? runError : 'unknown agent error';
+		});
+	if (runErrors.length > 0) return `Agent error: ${runErrors.join('; ')}`;
+
+	const agentText = events
+		.filter((e) => e.type === 'text-delta')
+		.map((e) => {
+			const payload = eventPayload(e);
+			if (typeof e.data.text === 'string') return e.data.text;
+			return typeof payload.text === 'string' ? payload.text : '';
+		})
+		.join('');
+	if (agentText.length > 0) return `Agent response: ${agentText.slice(0, 500)}`;
+
+	return 'No workflow produced — no error details captured';
 }
 
 async function writeScenarioVerificationSnapshot(input: {
@@ -198,6 +270,35 @@ interface WorkflowTestCaseConfig {
 }
 
 /**
+ * Synthetic result for a test case whose run threw before it could produce one
+ * (a budget/timeout abort, a lane meltdown, an OOM). Recording it — instead of
+ * letting the throw reject the batch — keeps every OTHER case's already-completed
+ * results, and keeps this case index-aligned so the aggregator counts it rather
+ * than losing the whole run. One `framework_issue` row per declared scenario
+ * carries the pinned cross-repo contract (timeout-flavoured rootCause for budget
+ * aborts) so the lang-tracer side buckets it as infra, not product quality.
+ */
+export function abortedWorkflowTestCaseResult(
+	testCase: WorkflowTestCase,
+	baseUrl: string,
+	errorMessage: string,
+): WorkflowTestCaseResult {
+	const classified = classifyScenarioExecutionError(errorMessage);
+	return {
+		testCase,
+		workflowBuildSuccess: false,
+		buildError: errorMessage,
+		n8nBaseUrl: baseUrl,
+		executionScenarioResults: (testCase.executionScenarios ?? []).map((scenario) => ({
+			scenario,
+			success: false,
+			score: 0,
+			...classified,
+		})),
+	};
+}
+
+/**
  * All-in-one test case runner: build workflow + run all scenarios + cleanup.
  * Used by the CLI. The split API (buildWorkflow + executeScenario + cleanupBuild)
  * is available for custom orchestration (e.g. LangSmith evaluate).
@@ -206,7 +307,11 @@ export async function runWorkflowTestCase(
 	config: WorkflowTestCaseConfig,
 ): Promise<WorkflowTestCaseResult> {
 	const { client, testCase, logger } = config;
-	const timeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
+	const baseTimeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
+	const timeoutMs = effectiveTimeoutMs(testCase.complexity, baseTimeoutMs);
+	if (timeoutMs !== baseTimeoutMs) {
+		logger.info(`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s`);
+	}
 
 	const result: WorkflowTestCaseResult = {
 		testCase,
@@ -226,12 +331,14 @@ export async function runWorkflowTestCase(
 				seedFile: testCase.seedFile,
 				priorConversation: testCase.priorConversation,
 				seedThread: testCase.seedThread,
+				executionScenarios: testCase.executionScenarios,
 				createdCredentialIds: config.createdCredentialIds,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
 				claimedWorkflowIds: config.claimedWorkflowIds,
 				logger,
 				laneTag: config.laneTag,
+				workflowExpected: workflowExpectedForCase(testCase),
 			});
 
 	if (isPrebuilt && build.success && !build.workflowChecks) {
@@ -271,26 +378,68 @@ export async function runWorkflowTestCase(
 			isPrebuilt,
 			logger,
 		});
-	const expectationsPromise: Promise<BuildExpectationResult[]> =
+	// Render non-workflow artifacts (agent, config-eval) into judge context, so outcome
+	// expectations can assert their existence/absence/content. Independent of whether a
+	// workflow was built — those artifacts save outside the workflow path. Discovery uses the
+	// refs captured from the SSE stream during the build (no thread-message re-fetch); only
+	// needed when there are expectations to judge.
+	const artifactContextPromise: Promise<string | undefined> =
 		expectationsToJudge.length > 0
-			? verifyBuildExpectations(expectationsToJudge, {
-					transcript: expectationsTranscript,
-					workflowJson: build.workflowJsons[0],
-					metrics: build.conversationMetrics,
+			? resolveArtifactContext({
+					artifactRefs: build.artifactRefs ?? [],
+					client,
+					logger,
 				}).catch((error: unknown) => {
 					logger.warn(
-						`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+						`  Artifact context resolution failed: ${error instanceof Error ? error.message : String(error)}`,
 					);
-					return allFailVerdicts(expectationsToJudge, 'judge error');
+					return undefined;
 				})
+			: Promise.resolve<string | undefined>(undefined);
+
+	const expectationsPromise: Promise<BuildExpectationResult[]> =
+		expectationsToJudge.length > 0
+			? artifactContextPromise
+					.then(
+						async (artifactContext) =>
+							await verifyBuildExpectations(expectationsToJudge, {
+								transcript: expectationsTranscript,
+								workflowJson: build.workflowJsons[0],
+								metrics: build.conversationMetrics,
+								artifactContext,
+							}),
+					)
+					.catch((error: unknown) => {
+						logger.warn(
+							`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+						);
+						return allFailVerdicts(expectationsToJudge, 'judge error');
+					})
 			: Promise.resolve<BuildExpectationResult[]>([]);
 
-	if (!build.success || !build.workflowId) {
-		result.buildError = build.error;
+	// Answer-only cases (workflowExpectedForCase === false) legitimately end
+	// without a saved workflow — buildWorkflow reports them as a successful
+	// no-workflow build. This also covers agent/config-eval builds: they produce
+	// no workflow by design and are graded on the rendered artifact context via
+	// the author expectations below (there are no scenarios to execute).
+	if (build.success && !build.workflowId) {
+		result.workflowBuildSuccess = true;
+		result.buildTrace = build.buildTrace;
 		const expectationResults = await expectationsPromise;
-		const buildExpectationResults = expectationResults;
-		if (buildExpectationResults.length > 0)
-			result.buildExpectationResults = buildExpectationResults;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		return result;
+	}
+
+	// Build failed. A missing workflow is only a build failure when the case actually
+	// expects one (i.e. it has execution scenarios) and the conversation didn't finish;
+	// an artifact/answer case that completed is graded on its expectations instead.
+	if (!build.success || !build.workflowId) {
+		const expectationResults = await expectationsPromise;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+
+		const artifactOnlyCompleted =
+			!requiresWorkflowOutput(testCase) && build.transcript !== undefined;
+		if (!artifactOnlyCompleted) result.buildError = build.error;
 		return result;
 	}
 
@@ -300,9 +449,21 @@ export async function runWorkflowTestCase(
 	result.buildTrace = build.buildTrace;
 	const testCaseArtifactName = deriveTestCaseArtifactName(testCase);
 
+	const scenarios = testCase.executionScenarios ?? [];
+	// Rows for a case's pre-seeded scenario tables are swapped in per scenario
+	// (TRUST-311). All scenarios of a case share one table per name, so seeding
+	// must run serially — concurrent scenarios would race on the shared rows.
+	const seedContext =
+		build.seededScenarioTableIdsByName && build.threadId
+			? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
+			: undefined;
+	const scenarioConcurrency = scenariosRequireSerialSeeding(scenarios)
+		? 1
+		: MAX_CONCURRENT_SCENARIOS;
+
 	const scenarioStart = Date.now();
 	const scenariosPromise = runWithConcurrency(
-		testCase.executionScenarios ?? [],
+		scenarios,
 		async (scenario) => {
 			for (let attempt = 1; ; attempt++) {
 				try {
@@ -316,6 +477,7 @@ export async function runWorkflowTestCase(
 						testCaseArtifactName,
 						build.buildTrace,
 						config.pinAiRoots,
+						seedContext,
 					);
 				} catch (error: unknown) {
 					const errorMessage = extractErrorMessage(error);
@@ -328,29 +490,31 @@ export async function runWorkflowTestCase(
 					}
 					// executeScenario categorizes builder/mock/verification failures
 					// internally; an error escaping it is an infra/framework problem
-					// (network drop, n8n API error, verifier timeout). Tag it
-					// framework_issue so the report and baseline keep it out of builder
-					// regressions instead of scoring it as an uncategorized failure.
+					// (network drop, n8n API error, verifier timeout, per-iteration
+					// budget abort). Tag it framework_issue — with a timeout-flavoured
+					// rootCause when it's a budget abort — so the report and baseline
+					// keep it out of builder regressions instead of scoring it as an
+					// uncategorized failure, and this one timed-out scenario doesn't
+					// take the whole case's already-completed scenarios down with it.
 					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
 					return {
 						scenario,
 						success: false,
 						score: 0,
-						reasoning: `Scenario execution error: ${errorMessage}`,
-						failureCategory: 'framework_issue',
+						...classifyScenarioExecutionError(errorMessage),
 					} satisfies ExecutionScenarioResult;
 				}
 			}
 		},
-		MAX_CONCURRENT_SCENARIOS,
+		scenarioConcurrency,
 	);
+
 	const [scenarioResults, expectationResults] = await Promise.all([
 		scenariosPromise,
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	const buildExpectationResults = expectationResults;
-	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
+	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -380,6 +544,9 @@ interface MultiTurnDriverConfig {
 	logger: EvalLogger;
 	proxyResponses?: Map<string, InstanceAiConfirmRequest>;
 	followUpMessagesOut?: string[];
+	/** Appended to the FIRST sent message only (pre-seeded-table hint); the
+	 *  recorded turn and the proxy's conversation keep the clean prompt. */
+	openingMessageSuffix?: string;
 }
 
 async function driveMultiTurnConversation(
@@ -405,7 +572,10 @@ async function driveMultiTurnConversation(
 	};
 
 	recordUserTurn(config.events, openingMessage);
-	await config.client.sendMessage(config.threadId, openingMessage);
+	await config.client.sendMessage(
+		config.threadId,
+		openingMessage + (config.openingMessageSuffix ?? ''),
+	);
 
 	await runMultiTurnConversation({
 		client: config.client,
@@ -436,6 +606,14 @@ export interface BuildResult {
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
+	/** Maps each scenario seed table's declared NAME to the real id it was created
+	 *  under (empty) before the build turn, so each scenario can reset+seed its
+	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
+	 *  Absent when the case declares no scenario seed tables. */
+	seededScenarioTableIdsByName?: Record<string, string>;
+	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
+	 *  fed to the build-expectations judge context. Empty/undefined for prebuilt runs. */
+	artifactRefs?: ArtifactRef[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
 	/** Captured SSE events from the build run. */
@@ -453,6 +631,9 @@ export interface BuildResult {
 	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
 	 *  not an agent build failure. Routed to `framework_issue`. */
 	seedingFailed?: boolean;
+	/** Transport-level failure (network error, or the lane unreachable right
+	 *  after failing — e.g. timed out against a dead lane). Routed to `framework_issue`. */
+	transportFailure?: boolean;
 }
 
 export interface BuildWorkflowConfig {
@@ -473,6 +654,9 @@ export interface BuildWorkflowConfig {
 	/** Reproduce a real conversation from its LangSmith trace (seed = before the
 	 *  last user message, live = that message). */
 	seedThread?: SeedThreadRef;
+	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
+	 *  after a successful build, before any scenario runs (TRUST-311). */
+	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
@@ -487,6 +671,20 @@ export interface BuildWorkflowConfig {
 	allowWorkflowListDiffFallback?: boolean;
 	/** Let callers that own their own scoring avoid duplicate binary checks. */
 	skipWorkflowChecks?: boolean;
+	/** False for answer-only cases: ending the conversation without a saved
+	 *  workflow is then a valid outcome, not a failed build. Defaults to true. */
+	workflowExpected?: boolean;
+}
+
+/** A case needs a workflow iff something judges one: execution scenarios or
+ *  outcome expectations. Cases with neither are graded on the conversation. */
+export function workflowExpectedForCase(
+	testCase: Pick<WorkflowTestCase, 'executionScenarios' | 'outcomeExpectations'>,
+): boolean {
+	return (
+		(testCase.executionScenarios?.length ?? 0) > 0 ||
+		(testCase.outcomeExpectations?.length ?? 0) > 0
+	);
 }
 
 /** A conversation is multi-turn if it has more than one turn, or if the only
@@ -515,6 +713,17 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let credentialViewPinned = true;
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
+	// TRUST-311 follow-up: scenario seed tables are created empty before the build
+	// turn (so the agent binds their real id); this maps declared name → real id
+	// for the per-scenario row seeding, and the note tells the agent they exist.
+	const scenarioTableIdsByName: Record<string, string> = {};
+	let scenarioSeedTablesNote = '';
+	// Ids the build itself produced (the agent's workflow + any data tables it
+	// made). Tracked here so a throw AFTER the build lands — scenario-table
+	// seeding, workflow checks — still hands them to the caller's cleanup rather
+	// than leaking them into the shared eval project.
+	let builtWorkflowIds: string[] = [];
+	let builtDataTableIds: string[] = [];
 	let seededTranscript: TranscriptTurn[] = [];
 	let seedingFailed = false;
 
@@ -621,6 +830,43 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			}
 		}
 
+		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
+		// under their EXACT declared names BEFORE the build turn, so the agent
+		// discovers the real table (Data Table list/schema) and binds its real id —
+		// the production-faithful flow where the user's table pre-exists. Rows are
+		// reset+seeded per scenario (reseedScenarioTables) because a build-time
+		// self-verification execution can mutate them. The created ids fold into
+		// restoredDataTableIds so the outer catch and cleanupBuild already cover them
+		// (a build failure still cleans them up); a create failure is a harness
+		// problem, so flag seedingFailed → the CLI attributes framework_issue.
+		try {
+			const scenarioSeedTables = dedupeScenarioSeedTables(config.executionScenarios ?? [], logger);
+			if (scenarioSeedTables.length > 0) {
+				const schemasOnly = scenarioSeedTables.map((table) => ({ ...table, rows: undefined }));
+				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, {
+					uniquifyNames: false,
+				});
+				// restoreThread returns ids in input order; a length mismatch means we
+				// can't safely map names to ids, so fail rather than mis-seed.
+				if (dataTableIds.length !== scenarioSeedTables.length) {
+					throw new Error(
+						`Pre-seeding created ${String(dataTableIds.length)} data table(s) but the case declares ${String(scenarioSeedTables.length)}; cannot map names to ids.`,
+					);
+				}
+				scenarioSeedTables.forEach((table, index) => {
+					scenarioTableIdsByName[table.name] = dataTableIds[index];
+				});
+				restoredDataTableIds = [...restoredDataTableIds, ...dataTableIds];
+				scenarioSeedTablesNote = buildSeededTablesNote(scenarioSeedTables);
+				logger.info(
+					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${config.laneTag ?? ''}`,
+				);
+			}
+		} catch (error: unknown) {
+			seedingFailed = true;
+			throw error;
+		}
+
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
 		);
@@ -641,10 +887,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				logger,
 				proxyResponses,
 				followUpMessagesOut: followUpMessages,
+				// The pre-seeded-table note goes to the agent, but the recorded turn
+				// (and the graded transcript) keeps the clean user prompt.
+				openingMessageSuffix: scenarioSeedTablesNote,
 			});
 		} else {
 			recordUserTurn(events, openingMessage);
-			await client.sendMessage(threadId, openingMessage);
+			await client.sendMessage(threadId, openingMessage + scenarioSeedTablesNote);
 			await waitForAllActivity({
 				client,
 				threadId,
@@ -699,50 +948,42 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			{ ...eventOutcome, workflowIds: threadWorkflowIds },
 			config.preRunWorkflowIds,
 			config.claimedWorkflowIds,
-			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true },
+			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true, logger },
 		);
+		builtWorkflowIds = outcome.workflowsCreated.map((wf) => wf.id);
+		builtDataTableIds = outcome.dataTablesCreated;
 
 		if (outcome.workflowsCreated.length === 0) {
-			const toolErrors = events
-				.filter((e) => e.type === 'tool-error')
-				.map((e) => {
-					const payload =
-						typeof e.data.payload === 'object' && e.data.payload !== null
-							? (e.data.payload as Record<string, unknown>)
-							: e.data;
-					const toolError = payload.error ?? payload.message;
-					return typeof toolError === 'string' ? toolError : 'unknown tool error';
-				});
-
-			const agentText = events
-				.filter((e) => e.type === 'text-delta')
-				.map((e) => {
-					const text =
-						typeof e.data.text === 'string'
-							? e.data.text
-							: typeof e.data.payload === 'object' &&
-									e.data.payload !== null &&
-									'text' in (e.data.payload as Record<string, unknown>)
-								? String((e.data.payload as Record<string, unknown>).text)
-								: '';
-					return text;
-				})
-				.join('');
-
-			const buildError =
-				toolErrors.length > 0
-					? `Tool errors: ${toolErrors.join('; ')}`
-					: agentText.length > 0
-						? `Agent response: ${agentText.slice(0, 500)}`
-						: 'No workflow produced — no error details captured';
-
+			// Answer-only cases (no execution scenarios, no outcome expectations)
+			// are graded on the conversation — ending without a workflow is a
+			// valid outcome for them, not a failed build.
+			if (config.workflowExpected === false) {
+				logger.info(
+					`  Conversation completed without a workflow (none expected) [${String(Math.round((Date.now() - buildStart) / 1000))}s] [thread ${threadId}]`,
+				);
+				return {
+					success: true,
+					workflowJsons: [],
+					buildTrace,
+					createdWorkflowIds: restoredWorkflowIds,
+					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+					conversationMetrics,
+					events,
+					threadId,
+					proxyDecisionStats,
+					transcript,
+					credentialViewPinned,
+					seedingFailed,
+				};
+			}
 			return {
 				success: false,
-				error: buildError,
+				error: summarizeMissingWorkflowError(events),
 				workflowJsons: [],
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+				artifactRefs: eventOutcome.artifactRefs,
 				conversationMetrics,
 				events,
 				threadId,
@@ -764,11 +1005,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			: await runWorkflowChecks({
 					workflow: outcome.workflowJsons[0],
 					prompt: userTurnsAsText(transcript),
-					agentText: outcome.finalText,
+					agentText: agentTurnsAsText(transcript),
 					failedBuildsPerTurn: failedBuildsPerTurn(transcript),
 					logger,
 				});
 
+		// The case's scenario data tables were created empty before the build turn
+		// (see the pre-build block above), so the agent bound their real ids; their
+		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
 			workflowId: outcome.workflowsCreated[0].id,
@@ -776,6 +1020,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
+			seededScenarioTableIdsByName: scenarioTableIdsByName,
+			artifactRefs: eventOutcome.artifactRefs,
 			conversationMetrics,
 			events,
 			threadId,
@@ -792,8 +1038,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 			workflowJsons: [],
-			createdWorkflowIds: restoredWorkflowIds,
-			createdDataTableIds: restoredDataTableIds,
+			createdWorkflowIds: [...restoredWorkflowIds, ...builtWorkflowIds],
+			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			conversationMetrics,
 			events,
 			threadId,
@@ -823,6 +1069,7 @@ export async function executeScenario(
 	testCaseName?: string,
 	buildTrace?: BuildTrace,
 	pinAiRoots?: string[],
+	seedContext?: ScenarioSeedContext,
 ): Promise<ExecutionScenarioResult> {
 	return await runScenario(
 		client,
@@ -834,22 +1081,149 @@ export async function executeScenario(
 		testCaseName,
 		buildTrace,
 		pinAiRoots,
+		seedContext,
+	);
+}
+
+/** Per-scenario row-seeding context: the run's thread and the name→real-id map
+ *  of the tables created empty before the build turn (TRUST-311 follow-up). */
+export interface ScenarioSeedContext {
+	threadId: string;
+	tableIdsByName: Record<string, string>;
+}
+
+/** Max distinct scenario seed tables per case — mirrors the restore-thread
+ *  DTO's `dataTables` cap, since the whole union is sent in one call. */
+const MAX_SEED_DATA_TABLES = 20;
+
+/**
+ * Deduplicate the data tables an execution-scenario case declares
+ * (`seedDataTables`) into the union a case shares across its scenarios
+ * (TRUST-311). A table name is unique per project and the built workflow binds
+ * it by name, so a case shares ONE table per name across its scenarios; the
+ * first declaration wins. A later same-name declaration with a different shape
+ * (columns/rows) is dropped with a warning — the by-name binding can only
+ * resolve to one table, so keeping the first silently would be data loss for the
+ * author. Throws if the distinct-name union exceeds the restore-thread DTO's cap
+ * (the whole union is created in one call). The returned tables carry their
+ * declared `rows`, but the pre-build creation seeds only the schema — rows are
+ * reset+seeded per scenario (`reseedScenarioTables`).
+ */
+export function dedupeScenarioSeedTables(
+	scenarios: ExecutionScenario[],
+	logger: EvalLogger,
+): InstanceAiEvalSeedDataTable[] {
+	const byName = new Map<string, InstanceAiEvalSeedDataTable>();
+	for (const scenario of scenarios) {
+		for (const table of scenario.seedDataTables ?? []) {
+			const existing = byName.get(table.name);
+			if (existing) {
+				if (!sameSeedTableShape(existing, table)) {
+					logger.warn(
+						`  Scenario seed table "${table.name}" is declared more than once with different columns/rows; keeping the first declaration and ignoring the rest.`,
+					);
+				}
+				continue;
+			}
+			byName.set(table.name, table);
+		}
+	}
+	if (byName.size > MAX_SEED_DATA_TABLES) {
+		throw new Error(
+			`A case declares ${String(byName.size)} distinct scenario seed data tables, exceeding the ${String(MAX_SEED_DATA_TABLES)}-table restore limit; reduce the number of distinct table names.`,
+		);
+	}
+	return [...byName.values()];
+}
+
+/**
+ * A note appended to the build's opening message naming the data tables that
+ * already exist in the workspace (created empty before the build turn) so the
+ * agent discovers and binds the REAL table (via the Data Table node's
+ * list/schema) instead of creating a duplicate — the production-faithful flow
+ * where the user's table pre-exists (TRUST-311 follow-up). Empty when the case
+ * declares no scenario seed tables.
+ */
+export function buildSeededTablesNote(tables: InstanceAiEvalSeedDataTable[]): string {
+	if (tables.length === 0) return '';
+	const lines = tables.map((table) => {
+		const columns = table.columns.map((column) => `${column.name}: ${column.type}`).join(', ');
+		return `- "${table.name}" (columns: ${columns})`;
+	});
+	return `\n\nThe following data table(s) already exist in this workspace — reuse them (look them up with the Data Table node's list/schema) instead of creating new ones:\n${lines.join('\n')}`;
+}
+
+/**
+ * True when any scenario declares seed tables. All of a case's scenarios share
+ * one table per name, so their per-scenario row reset+seed
+ * (`reseedScenarioTables`) must run serially — concurrent scenarios would race
+ * on the shared table's rows. Callers gate scenario concurrency to 1 for such
+ * cases.
+ */
+export function scenariosRequireSerialSeeding(scenarios: ExecutionScenario[]): boolean {
+	return scenarios.some((scenario) => (scenario.seedDataTables?.length ?? 0) > 0);
+}
+
+/**
+ * Reset + row-seed a scenario's declared data tables into their pre-seeded real
+ * ids, just before that scenario executes (TRUST-311). Clears whatever rows a
+ * prior scenario — or a build-time self-verification execution — left, then
+ * inserts this scenario's declared rows, so each scenario runs against exactly
+ * the state it declared (and scenarios may carry different rows for the same
+ * table). `tableIdsByName` maps the declared table name to the real id created
+ * before the build turn; a name missing from it means the table was never
+ * pre-seeded, which is a harness bug, so throw rather than silently skip.
+ */
+export async function reseedScenarioTables(
+	client: N8nClient,
+	scenario: ExecutionScenario,
+	threadId: string,
+	tableIdsByName: Record<string, string>,
+	logger: EvalLogger,
+): Promise<void> {
+	for (const table of scenario.seedDataTables ?? []) {
+		const tableId = tableIdsByName[table.name];
+		if (!tableId) {
+			throw new Error(
+				`Scenario "${scenario.name}" declares seed table "${table.name}" that was not pre-seeded before the build; cannot bind its rows.`,
+			);
+		}
+		await client.seedDataTableRows(threadId, tableId, table.rows ?? []);
+		logger.verbose(
+			`    [${scenario.name}] reseeded data table "${table.name}" (${String((table.rows ?? []).length)} row(s))`,
+		);
+	}
+}
+
+/** Two seed tables bind the same way iff their columns + rows match (the id
+ *  differs per declaration and is cosmetic under by-name seeding). */
+function sameSeedTableShape(
+	a: InstanceAiEvalSeedDataTable,
+	b: InstanceAiEvalSeedDataTable,
+): boolean {
+	return (
+		JSON.stringify({ columns: a.columns, rows: a.rows }) ===
+		JSON.stringify({ columns: b.columns, rows: b.rows })
 	);
 }
 
 /**
  * Clean up workflows and data tables created during a build.
+ *
+ * Returns false when any deletion failed so callers can retry later.
  */
 export async function cleanupBuild(
 	client: N8nClient,
 	build: BuildResult,
 	logger: EvalLogger,
-): Promise<void> {
+): Promise<boolean> {
+	let clean = true;
+
 	for (const id of build.createdWorkflowIds) {
 		try {
 			await client.deleteWorkflow(id);
 		} catch {
-			// Best-effort cleanup
+			clean = false; // Best-effort cleanup
 		}
 	}
 
@@ -860,14 +1234,26 @@ export async function cleanupBuild(
 				try {
 					await client.deleteDataTable(projectId, dtId);
 				} catch {
-					// Best-effort cleanup
+					clean = false; // Best-effort cleanup
 				}
 			}
 			logger.verbose(`  Cleaned up ${String(build.createdDataTableIds.length)} data table(s)`);
 		} catch {
-			// Non-fatal — project ID lookup may fail
+			clean = false; // Non-fatal — project ID lookup may fail
 		}
 	}
+
+	// Clears backend thread state (run-state registries, memory) that otherwise
+	// grows one entry per build for the container's lifetime.
+	if (build.threadId) {
+		try {
+			await client.deleteThread(build.threadId);
+		} catch {
+			clean = false; // Best-effort cleanup
+		}
+	}
+
+	return clean;
 }
 
 // ---------------------------------------------------------------------------
@@ -902,6 +1288,21 @@ function scenarioMatchTokens(text: string): Set<string> {
 	);
 }
 
+/** Workflow ids referenced by enabled Execute Workflow nodes (database source,
+ *  plain string or resource-locator value) — those targets are dependencies of
+ *  this workflow, not entry points. */
+function executeWorkflowReferences(wf: WorkflowResponse): string[] {
+	const ids: string[] = [];
+	for (const node of wf.nodes) {
+		if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+		const params = node.parameters ?? {};
+		if (typeof params.source === 'string' && params.source !== 'database') continue;
+		const raw = isRecord(params.workflowId) ? params.workflowId.value : params.workflowId;
+		if (typeof raw === 'string' && raw.trim() !== '' && !raw.startsWith('=')) ids.push(raw.trim());
+	}
+	return ids;
+}
+
 /**
  * Compositional builds split the system across multiple workflows (SKILL.md
  * endorses this), but execution historically always ran `build.workflowId` —
@@ -909,7 +1310,11 @@ function scenarioMatchTokens(text: string): Set<string> {
  * while the expectations judge (which sees every workflowJson) passed the
  * same build. Mirror reality instead: a caller hits the specific endpoint, so
  * route the scenario to the workflow whose trigger-bearing content best
- * matches it. Single-workflow builds and ties keep the original id.
+ * matches it. Sub-workflows referenced by another candidate's Execute Workflow
+ * node are dependencies, not entry points — executing one directly starts it
+ * once with an empty payload, so they're demoted whenever an entry point
+ * remains. A single-candidate pool routes to that candidate: `workflowId`
+ * itself may be a sub-workflow (whichever the agent happened to save first).
  */
 export function selectScenarioWorkflowId(
 	scenario: ExecutionScenario,
@@ -921,15 +1326,26 @@ export function selectScenarioWorkflowId(
 		(wf) =>
 			wf?.id && Array.isArray(wf.nodes) && wf.nodes.some((n) => isMockableTriggerNodeType(n.type)),
 	);
-	if (candidates.length <= 1) return workflowId;
+	if (candidates.length === 0) return workflowId;
 
+	const referencedIds = new Set(candidates.flatMap(executeWorkflowReferences));
+	const entryPoints = candidates.filter((wf) => !referencedIds.has(wf.id));
+	const pool = entryPoints.length > 0 ? entryPoints : candidates;
+	const fallbackId = pool.some((wf) => wf.id === workflowId) ? workflowId : pool[0].id;
 	const scenarioTokens = scenarioMatchTokens(`${scenario.name} ${scenario.dataSetup}`);
-	if (scenarioTokens.size === 0) return workflowId;
+	if (pool.length === 1 || scenarioTokens.size === 0) {
+		if (fallbackId !== workflowId) {
+			logger.info(
+				`    [${scenario.name}] multi-workflow build: routing to entry point ${fallbackId}`,
+			);
+		}
+		return fallbackId;
+	}
 
-	let bestId = workflowId;
+	let bestId = fallbackId;
 	let bestScore = -1;
 	let tied = false;
-	for (const wf of candidates) {
+	for (const wf of pool) {
 		const haystackParts: string[] = [wf.name ?? ''];
 		for (const node of wf.nodes) {
 			haystackParts.push(String(node.name ?? ''));
@@ -951,7 +1367,7 @@ export function selectScenarioWorkflowId(
 		}
 	}
 
-	if (tied || bestScore <= 0) return workflowId;
+	if (tied || bestScore <= 0) bestId = fallbackId;
 	if (bestId !== workflowId) {
 		logger.info(
 			`    [${scenario.name}] multi-workflow build: routing to workflow ${bestId} (score ${String(bestScore)})`,
@@ -970,9 +1386,25 @@ async function runScenario(
 	testCaseName?: string,
 	buildTrace?: BuildTrace,
 	pinAiRoots?: string[],
+	seedContext?: ScenarioSeedContext,
 ): Promise<ExecutionScenarioResult> {
 	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
 	const targetWorkflowId = selectScenarioWorkflowId(scenario, workflowId, workflowJsons, logger);
+
+	// Reset + seed this scenario's declared rows into the tables the build bound,
+	// just before it runs — clears any prior scenario's (or build-time) rows so
+	// each scenario runs against exactly the state it declared (TRUST-311). Runs
+	// serially per case (see scenariosRequireSerialSeeding) to avoid racing on the
+	// shared table.
+	if (seedContext) {
+		await reseedScenarioTables(
+			client,
+			scenario,
+			seedContext.threadId,
+			seedContext.tableIdsByName,
+			logger,
+		);
+	}
 
 	const execStart = Date.now();
 	let evalResult = await client.executeWithLlmMock(

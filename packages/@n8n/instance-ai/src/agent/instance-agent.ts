@@ -1,4 +1,9 @@
-import { Agent, Memory } from '@n8n/agents';
+import {
+	Agent,
+	createObservationLogObserveFn,
+	createObservationLogReflectFn,
+	Memory,
+} from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
@@ -11,7 +16,6 @@ import { getSystemPrompt } from './system-prompt';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
-import { createAgentBuilderTools } from '../tools/agent-builder';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
@@ -61,9 +65,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const domainContext: InstanceAiContext = { ...context, tracing: orchestrationContext?.tracing };
 	const domainTools = createAllTools(domainContext);
 	const orchestratorDomainTools = createOrchestratorDomainTools(domainContext);
-	// Agent-builder tools (empty unless the host provides agentBuilderService).
-	// Deferred — loaded on demand by the agent-builder skill.
-	const agentBuilderTools = createAgentBuilderTools(domainContext);
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change).
@@ -94,12 +95,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain, orchestration, or agent-builder tools.
-	const reservedToolNames = new Set([
-		...domainTools.keys(),
-		...orchestrationTools.keys(),
-		...agentBuilderTools.keys(),
-	]);
+	// Keep MCP tools from shadowing domain or orchestration tools.
+	const reservedToolNames = new Set([...domainTools.keys(), ...orchestrationTools.keys()]);
 
 	// Store all MCP tools on orchestrationContext for sub-agents.
 	const allMcpTools = createToolRegistry();
@@ -135,7 +132,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const allOrchestratorTools = mergeToolRegistries(
 		orchestratorDomainTools,
 		orchestrationTools,
-		agentBuilderTools,
 		safeLocalMcpTools,
 		safeMcpTools,
 	);
@@ -202,11 +198,17 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens } =
+			const { observerThresholdTokens, reflectorThresholdTokens, onTaskUsage } =
 				memoryConfig.observationalMemory;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
+				...(onTaskUsage
+					? {
+							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),
+							reflect: createObservationLogReflectFn(modelId, { onUsage: onTaskUsage }),
+						}
+					: {}),
 			});
 		}
 

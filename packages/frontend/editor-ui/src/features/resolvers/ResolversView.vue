@@ -15,6 +15,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 import { computed, onMounted } from 'vue';
+import { END_USER_CREDENTIALS_DOCS_URL } from '@/app/constants';
 import { useCredentialResolvers } from './composables/useCredentialResolvers';
 
 const i18n = useI18n();
@@ -29,9 +30,6 @@ const {
 	openCreateModal,
 	openEditModal,
 } = useCredentialResolvers();
-
-// TODO: use actual docs link when available
-const docsUrl = 'https://docs.n8n.io/';
 
 const RESOLVER_LIST_ITEM_ACTIONS = {
 	EDIT: 'edit',
@@ -98,7 +96,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 				<N8nText v-if="resolvers.length" color="text-base" size="medium">
 					{{ i18n.baseText('credentialResolver.view.description') }}
 					{{ i18n.baseText('credentialResolver.view.learnMore') }}
-					<N8nLink theme="text" :href="docsUrl" size="medium" new-window>
+					<N8nLink theme="text" :href="END_USER_CREDENTIALS_DOCS_URL" size="medium" new-window>
 						<span :class="$style.link">
 							{{ i18n.baseText('generic.documentation') }}
 							<N8nIcon icon="arrow-up-right" />
@@ -117,7 +115,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 						<div :class="$style.iconCard"><N8nIcon icon="user" /></div>
 					</div>
 					<N8nHeading tag="h2" size="medium" align="center" class="mb-2xs">
-						Resolve private credentials from user identity
+						Resolve end-user credentials from user identity
 					</N8nHeading>
 					<div>
 						{{ i18n.baseText('credentialResolver.view.description') }}
@@ -127,7 +125,7 @@ async function onAction(action: string, resolver: CredentialResolver) {
 					<N8nButton
 						variant="ghost"
 						class="mr-2xs n8n-button--highlight"
-						:href="docsUrl"
+						:href="END_USER_CREDENTIALS_DOCS_URL"
 						target="_blank"
 					>
 						Learn more <N8nIcon icon="arrow-up-right" />

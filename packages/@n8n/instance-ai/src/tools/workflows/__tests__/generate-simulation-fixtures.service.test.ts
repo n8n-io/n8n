@@ -171,4 +171,156 @@ describe('generateSimulationFixtures', () => {
 		expect(result).toEqual({});
 		expect(mockCreateEvalAgent).not.toHaveBeenCalled();
 	});
+
+	it('accepts unwrapped items without zeroing the whole batch', async () => {
+		// One node wrapped, one flat — the old strict schema rejected the batch.
+		setupAgentMock(
+			JSON.stringify({
+				A: [{ json: { ok: true } }],
+				B: [{ id: 'row-1' }],
+			}),
+		);
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+		});
+		expect(result.A).toEqual([{ ok: true }]);
+		expect(result.B).toEqual([{ id: 'row-1' }]);
+	});
+
+	it('keeps other fixtures when the LLM returns an empty array for one node', async () => {
+		// The old .min(1) schema rejected the WHOLE batch on one empty array.
+		setupAgentMock(JSON.stringify({ A: [], B: [{ json: { id: 1 } }] }));
+		const result = await generateSimulationFixtures({
+			workflow: wf([
+				{ name: 'A', type: 'n8n-nodes-base.slack' },
+				{ name: 'B', type: 'n8n-nodes-base.gmail' },
+			]),
+			plan: [simulateVerdict('A'), simulateVerdict('B')],
+		});
+		expect(result.A).toEqual([{}]);
+		expect(result.B).toEqual([{ id: 1 }]);
+	});
+
+	it('repairs the output envelope for simulated Agent roots with a structured parser', async () => {
+		setupAgentMock(
+			// Failure mode: parsed fields spread flat with no `output` envelope.
+			JSON.stringify({ 'AI Root': [{ json: { summary: 'hi' } }] }),
+		);
+
+		const workflow = wf([
+			{ name: 'AI Root', type: '@n8n/n8n-nodes-langchain.agent' },
+			{ name: 'Parser', type: '@n8n/n8n-nodes-langchain.outputParserStructured' },
+		]);
+		(workflow.connections as Record<string, unknown>).Parser = {
+			ai_outputParser: [[{ node: 'AI Root', type: 'ai_outputParser', index: 0 }]],
+		};
+
+		const result = await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('AI Root')],
+			// The envelope is derived from the with-parser `__schema__` variant —
+			// in the product the adapter always injects this lookup.
+			outputSchemaLookup: ({ hasOutputParser }) =>
+				hasOutputParser
+					? { type: 'object', required: ['output'], properties: { output: { type: 'object' } } }
+					: undefined,
+		});
+
+		expect(result['AI Root']).toEqual([{ output: { summary: 'hi' } }]);
+	});
+
+	it('embeds the node output schema in the prompt when the lookup resolves one', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ 'Send Slack': [{ json: { ok: true } }] }));
+
+		const workflow = wf([{ name: 'Send Slack', type: 'n8n-nodes-base.slack' }]);
+		const node = workflow.nodes[0];
+		node.parameters = { resource: 'message', operation: 'post' };
+		node.typeVersion = 2.3;
+
+		const outputSchemaLookup = vi
+			.fn()
+			.mockReturnValue({ type: 'object', properties: { ok: { type: 'boolean' } } });
+
+		await generateSimulationFixtures({
+			workflow,
+			plan: [simulateVerdict('Send Slack')],
+			outputSchemaLookup,
+		});
+
+		expect(outputSchemaLookup).toHaveBeenCalledWith({
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 2.3,
+			resource: 'message',
+			operation: 'post',
+			hasOutputParser: false,
+		});
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('Output JSON Schema:');
+		// Shared buildNodeSchemaSection embeds the schema pretty-printed.
+		expect(promptText).toContain('"type": "boolean"');
+	});
+
+	it('always appends a date-anchors block to the prompt', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
+
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('## Date anchors');
+		expect(promptText).toContain('- today:');
+	});
+
+	it('marks simulated trigger nodes as the event source in their prompt block', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(
+			JSON.stringify({ 'On New Email': [{ json: { id: 'msg-1' } }] }),
+		);
+
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'On New Email', type: 'n8n-nodes-base.gmailTrigger' }]),
+			plan: [simulateVerdict('On New Email')],
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).toContain('simulated event source — emit the event payload it delivers');
+	});
+
+	it('omits the schema block when the lookup finds nothing or is absent', async () => {
+		const generate = vi.fn().mockResolvedValue({ messages: [] });
+		mockCreateEvalAgent.mockReturnValue({ generate } as unknown as ReturnType<
+			typeof createEvalAgent
+		>);
+		mockExtractText.mockReturnValue(JSON.stringify({ A: [{ json: { ok: true } }] }));
+
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			outputSchemaLookup: vi.fn().mockReturnValue(undefined),
+		});
+
+		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
+			.content[0].text;
+		expect(promptText).not.toContain('Output JSON Schema:');
+	});
 });

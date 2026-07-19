@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -8,6 +8,7 @@
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
+      "node": "./dist/cjs/index.js",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
     },
@@ -54,7 +55,7 @@
     "@types/luxon": "catalog:",
     "@types/md5": "^2.3.5",
     "esbuild": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
   "files": [

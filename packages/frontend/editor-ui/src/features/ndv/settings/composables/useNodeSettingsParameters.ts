@@ -6,6 +6,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type NodeParameterValue,
+	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
@@ -32,6 +33,7 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { reconcileNodeFromAIKeys } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
 	parameter.displayOptions?.show?.public?.includes(value) ?? false;
@@ -120,6 +122,10 @@ export function useNodeSettingsParameters() {
 
 			if (updatedDescription && nodeParameters) {
 				nodeParameters.toolDescription = updatedDescription;
+			}
+
+			if (nodeParameters) {
+				reconcileNodeFromAIKeys(nodeTypeDescription.properties, nodeParameters);
 			}
 		}
 
@@ -216,6 +222,16 @@ export function useNodeSettingsParameters() {
 			if (hasPublicDisplayCondition(effectiveParameter, false)) {
 				effectiveParameter = stripPublicDisplayCondition(effectiveParameter);
 			}
+		}
+
+		const deployment: DeploymentCondition = settingsStore.isCloudDeployment ? 'cloud' : 'hosted';
+
+		if (
+			displayKey === 'displayOptions' &&
+			effectiveParameter.displayOptions?.showOnDeployment &&
+			effectiveParameter.displayOptions.showOnDeployment !== deployment
+		) {
+			return false;
 		}
 
 		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments

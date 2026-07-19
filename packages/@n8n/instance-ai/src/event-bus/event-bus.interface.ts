@@ -1,8 +1,13 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 
-/** Stored event with a per-thread monotonic ID for SSE replay. */
+/**
+ * Stored event with a per-thread monotonic ID for SSE replay.
+ * `id` is absent on ephemeral events (text/reasoning deltas, status): they are
+ * live-delivered but never persisted, and their SSE frames carry no `id:` line
+ * so the browser replay cursor only advances on durable facts.
+ */
 export interface StoredEvent {
-	id: number; // monotonically increasing per thread, 1-based
+	id?: number; // monotonically increasing per thread, 1-based, durable facts only
 	event: InstanceAiEvent;
 }
 
@@ -45,7 +50,8 @@ export interface InstanceAiEventBus {
 
 	/**
 	 * Get the next event ID that will be assigned for a thread.
-	 * Useful for the SSE endpoint to know whether there are events to replay.
+	 * Used to seed the frontend's SSE replay cursor after message hydration.
+	 * Async because multi-main implementations read a shared sequence.
 	 */
-	getNextEventId(threadId: string): number;
+	getNextEventId(threadId: string): Promise<number>;
 }

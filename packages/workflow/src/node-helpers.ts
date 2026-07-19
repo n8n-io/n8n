@@ -565,6 +565,10 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
 		}
 
 		for (const displayRule of Object.values(displayOptions)) {
+			if (typeof displayRule !== 'object' || displayRule === null) {
+				continue;
+			}
+
 			for (const parameterName of Object.keys(displayRule)) {
 				if (!dependencies[name].includes(parameterName)) {
 					if (parameterName.charAt(0) === '@') {
@@ -1411,7 +1415,9 @@ function addToIssuesIfMissing(
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
-		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		((nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
@@ -1542,7 +1548,9 @@ export function getParameterIssues(
 	}
 
 	if (
-		(nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		(nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 		isDisplayed
 	) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);

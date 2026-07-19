@@ -98,10 +98,12 @@ const WorkerView = async () =>
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
-const EvaluationsView = async () =>
-	await import('@/features/ai/evaluation.ee/views/EvaluationsView.vue');
+const EvaluationsListSwitcher = async () =>
+	await import('@/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue');
 const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
+const CompareCollectionView = async () =>
+	await import('@/features/ai/evaluation.ee/views/CompareCollectionView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
@@ -389,13 +391,19 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: '',
 				name: VIEWS.EVALUATION_EDIT,
-				component: EvaluationsView,
+				component: EvaluationsListSwitcher,
 				props: true,
 			},
 			{
 				path: 'test-runs/:runId',
 				name: VIEWS.EVALUATION_RUNS_DETAIL,
 				component: TestRunDetailView,
+				props: true,
+			},
+			{
+				path: 'collections/:collectionId/compare',
+				name: VIEWS.EVALUATION_COLLECTION_COMPARE,
+				component: CompareCollectionView,
 				props: true,
 			},
 		],

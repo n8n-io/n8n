@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildRunWorkflowSessionGrantKey,
+	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -75,6 +76,8 @@ export interface PendingConfirmationItem {
 export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
+const MAX_SEEN_EVENT_IDS = 1000;
 
 /** Silence window after which an active run with no stream traffic counts as stalled. */
 const GENERATION_STALL_TIMEOUT_MS = 60_000;
@@ -91,6 +94,24 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** Thread-list metadata, used to enrich historical artifacts. */
+	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+}
+
+const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
+
+export function getAgentBuilderTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
+	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	if (!raw || typeof raw !== 'object') return undefined;
+	const target = raw as Record<string, unknown>;
+	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
+	return {
+		agentId: target.agentId,
+		projectId: target.projectId,
+		...(typeof target.name === 'string' ? { name: target.name } : {}),
+	};
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -148,6 +169,21 @@ function hasUnresolvedConfirmation(
 		}
 	}
 	return node.children.some((child) => hasUnresolvedConfirmation(child, resolved));
+}
+
+/** Settle persisted activity only after thread status confirms there is no live work. */
+function settleStaleAgentTree(node: InstanceAiAgentNode): void {
+	if (node.status === 'active') {
+		node.status = 'cancelled';
+	}
+	for (const tc of node.toolCalls) {
+		if (tc.isLoading) {
+			tc.isLoading = false;
+		}
+	}
+	for (const child of node.children) {
+		settleStaleAgentTree(child);
+	}
 }
 
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
@@ -297,6 +333,10 @@ export function createThreadRuntime(
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
+	// Event ids already applied on this thread — guards against replay overlap,
+	// e.g. an auto-reconnect replaying an id that already arrived just before
+	// the disconnect. Not reactive: only consulted inside onSSEMessage.
+	const seenEventIds = new Set<number>();
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
 	const activePlanEdit = ref<PlanEditContext | null>(null);
 	const updatingPlanRequestIds = reactive(new Set<string>());
@@ -361,6 +401,7 @@ export function createThreadRuntime(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
+		() => getAgentBuilderTargetFromThreadMetadata(hooks.getThreadMetadata?.(threadId)),
 	);
 
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
@@ -553,6 +594,7 @@ export function createThreadRuntime(
 		if (conf.setupRequests?.length) return false;
 		if (conf.credentialRequests?.length) return false;
 		if (conf.questions?.length) return false;
+		if (conf.channelConfig) return false;
 		return true;
 	}
 
@@ -605,15 +647,49 @@ export function createThreadRuntime(
 	// --- SSE lifecycle ---
 
 	function onSSEMessage(sseEvent: MessageEvent): void {
-		// Track last event ID for this thread (for reconnection)
-		if (sseEvent.lastEventId) {
-			lastEventId.value = Number(sseEvent.lastEventId);
-		}
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
 			if (!parsed.success) {
 				console.warn('[InstanceAI] Invalid SSE event, skipping:', parsed.error.message);
 				return;
+			}
+			// Event ids come from a shared per-thread sequence, so they are valid
+			// across mains — but concurrent producers on different mains can arrive
+			// interleaved out of order, so the reconnect cursor keeps the max seen
+			// rather than the latest, and duplicates are dropped by id.
+			//
+			// The dedup is gated on durable event types: under the durable log,
+			// ephemeral frames (deltas/status) ship without an `id:` line, so
+			// `sseEvent.lastEventId` on them ECHOES the previous id-bearing value
+			// and the duplicate-drop would swallow every delta after a durable
+			// fact. Ephemeral frames still advance the max-cursor, a no-op for an
+			// echo (always ≤ the cursor), while with the flag off deltas carry real
+			// ids, keeping today's reconnect replay granularity.
+			const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
+			if (eventId !== undefined && Number.isFinite(eventId)) {
+				if (INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has(parsed.data.type)) {
+					lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
+				} else {
+					// A backend sequence reset (single-main restart, or seq-key TTL expiry)
+					// re-issues ids from 1. Seeing id 1 again while it's still in the dedup
+					// set means the sequence restarted, so drop the stale cursor + dedup
+					// state and render the fresh sequence instead of dropping it as
+					// duplicates. Precise, not a heuristic: id 1 is issued once per sequence
+					// lifetime, and a legit replay from cursor 0 can't reach here because
+					// the cursor and seenEventIds only ever reset together (in resetState).
+					if (eventId === 1 && seenEventIds.has(1)) {
+						seenEventIds.clear();
+						lastEventId.value = undefined;
+					}
+					if (seenEventIds.has(eventId)) return;
+					seenEventIds.add(eventId);
+					if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
+						// Sets iterate in insertion order — evict the oldest (≈ lowest) id.
+						const oldest: number | undefined = seenEventIds.values().next().value;
+						if (oldest !== undefined) seenEventIds.delete(oldest);
+					}
+					lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
+				}
 			}
 			// Push to debug event buffer (capped)
 			debugEvents.value.push({
@@ -826,6 +902,7 @@ export function createThreadRuntime(
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
+		seenEventIds.clear();
 		disarmGenerationStallWatchdog();
 	}
 
@@ -865,8 +942,10 @@ export function createThreadRuntime(
 				}
 				// Set SSE cursor to skip past events already covered by historical messages.
 				// This prevents duplicate messages when SSE replays in-memory events.
+				// Never move the cursor backwards: SSE may have advanced it while this
+				// request was in flight.
 				if (result.nextEventId !== null && result.nextEventId !== undefined) {
-					lastEventId.value = result.nextEventId - 1;
+					lastEventId.value = Math.max(lastEventId.value ?? 0, result.nextEventId - 1);
 				}
 				if (result.projectId) projectId.value = result.projectId;
 				return 'applied';
@@ -886,20 +965,37 @@ export function createThreadRuntime(
 	}
 
 	async function loadThreadStatus(): Promise<void> {
+		const runIdAtRequest = activeRunId.value;
 		try {
 			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
 
-			const hasActivity = isOrchestratorLive(status) || status.backgroundTasks.length > 0;
-			if (!hasActivity) return;
-
-			const runId = syncLiveRunFromStatus(status, messages.value);
-			if (runId) {
-				activeRunId.value = runId;
-				triggerRef(messages);
+			// A newer local run started while this request was in flight — this
+			// response is stale and must not clobber it.
+			if (activeRunId.value !== runIdAtRequest && activeRunId.value !== (status.runId ?? null)) {
+				return;
 			}
 
-			// Background task visibility is handled by the run-sync control frame
-			// that is sent on SSE connect. No need to inject children directly here.
+			if (isOrchestratorLive(status)) {
+				const runId = syncLiveRunFromStatus(status, messages.value);
+				if (runId) {
+					activeRunId.value = runId;
+					triggerRef(messages);
+				}
+				return;
+			}
+
+			activeRunId.value = null;
+
+			// Background work is still visible via SSE run-sync on reconnect —
+			// settling trees here would race with that authoritative snapshot.
+			if (status.backgroundTasks.length > 0) return;
+
+			for (const message of messages.value) {
+				if (message.role !== 'assistant') continue;
+				message.isStreaming = false;
+				if (message.agentTree) settleStaleAgentTree(message.agentTree);
+			}
+			triggerRef(messages);
 		} catch {
 			// Silently ignore
 		}
@@ -921,6 +1017,7 @@ export function createThreadRuntime(
 	function pushOptimisticUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 	): InstanceAiMessage {
 		const userMessage: InstanceAiMessage = {
 			id: uuidv4(),
@@ -930,6 +1027,7 @@ export function createThreadRuntime(
 			reasoning: '',
 			isStreaming: false,
 			attachments: attachments && attachments.length > 0 ? attachments : undefined,
+			context: handoffContext,
 		};
 		messages.value.push(userMessage);
 		return userMessage;
@@ -996,31 +1094,35 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
 		handoffContext?: InstanceAiHandoffContext,
-	): Promise<void> {
+	): Promise<boolean> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
-			const optimistic = pushOptimisticUserMessage(message, attachments);
+			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			trackUserMessageSent(isFirstMessage);
 
 			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
+				return false;
 			}
+			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
 		}
 	}
 
 	async function cancelRun(): Promise<void> {
-		if (!activeRunId.value) return;
 		try {
 			await postCancel(rootStore.restApiContext, threadId);
-			// Don't clear activeRunId here — wait for the run-finish event via SSE
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
+			return;
 		}
+		// Cancel is idempotent, so an already-dead run emits no run-finish SSE —
+		// re-check authoritative status to settle stale local state either way.
+		await loadThreadStatus();
 	}
 
 	/** Cancel a specific background task. */

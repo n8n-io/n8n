@@ -31,10 +31,10 @@ function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
 
 export function useAgentBuilderMainTabs({
 	executionsCount,
-	knowledgeBaseEnabled,
+	routeBacked = computed(() => true),
 }: {
 	executionsCount: ComputedRef<number>;
-	knowledgeBaseEnabled: ComputedRef<boolean>;
+	routeBacked?: ComputedRef<boolean>;
 }) {
 	const route = useRoute();
 	const router = useRouter();
@@ -43,6 +43,7 @@ export function useAgentBuilderMainTabs({
 
 	async function setSelectedSection(section: AgentBuilderSection) {
 		selectedSection.value = section;
+		if (!routeBacked.value) return;
 		await router.replace({
 			query: { ...route.query, [SECTION_QUERY_PARAM]: section ?? undefined },
 		});
@@ -50,7 +51,7 @@ export function useAgentBuilderMainTabs({
 
 	const activeMainTab = computed<AgentBuilderMainTab>({
 		get() {
-			if (selectedSection.value === 'knowledge' && knowledgeBaseEnabled.value) return 'knowledge';
+			if (selectedSection.value === 'knowledge') return 'knowledge';
 			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'sessions';
 			if (selectedSection.value === 'settings') return 'settings';
 			return 'agent';
@@ -60,31 +61,18 @@ export function useAgentBuilderMainTabs({
 		},
 	});
 
-	const mainTabOptions = computed(() => {
-		const options: Array<{ label: string; value: AgentBuilderMainTab }> = [
-			{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' },
-		];
-
-		if (knowledgeBaseEnabled.value) {
-			options.push({
-				label: i18n.baseText('agents.builder.header.tab.knowledge' as BaseTextKey),
-				value: 'knowledge',
-			});
-		}
-
-		options.push(
-			{
-				label: i18n.baseText('agents.builder.header.tab.executions'),
-				value: 'sessions',
-			},
-			{
-				label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
-				value: 'settings',
-			},
-		);
-
-		return options;
-	});
+	const mainTabOptions = computed<Array<{ label: string; value: AgentBuilderMainTab }>>(() => [
+		{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' },
+		{
+			label: i18n.baseText('agents.builder.header.tab.knowledge' as BaseTextKey),
+			value: 'knowledge',
+		},
+		{ label: i18n.baseText('agents.builder.header.tab.executions'), value: 'sessions' },
+		{
+			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
+			value: 'settings',
+		},
+	]);
 
 	const executionsDescription = computed(() =>
 		i18n.baseText('agents.builder.executions.count', {
@@ -94,8 +82,9 @@ export function useAgentBuilderMainTabs({
 	);
 
 	watch(
-		() => route.query[SECTION_QUERY_PARAM],
-		(section) => {
+		() => [routeBacked.value, route.query[SECTION_QUERY_PARAM]] as const,
+		([isRouteBacked, section]) => {
+			if (!isRouteBacked) return;
 			selectedSection.value = getSectionFromQuery(section);
 		},
 		{ immediate: true },
