@@ -226,6 +226,11 @@ const saveBeforePublish = async () => {
 	return saved;
 };
 
+const ensureWorkflowSaved = async (): Promise<boolean> => {
+	if (!uiStore.stateIsDirty && !props.isNewWorkflow) return true;
+	return await saveBeforePublish();
+};
+
 const openPublishModal = () => {
 	uiStore.openModalWithData({
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
@@ -234,16 +239,9 @@ const openPublishModal = () => {
 };
 
 const flushSaveForReview = async (): Promise<string | undefined> => {
-	const shouldSave =
-		uiStore.stateIsDirty ||
-		props.isNewWorkflow ||
-		saveStore.autoSaveState === AutoSaveState.InProgress ||
-		saveStore.autoSaveState === AutoSaveState.Scheduled ||
-		!workflowDocumentStore.value.versionId;
+	if (!(await ensureWorkflowSaved())) return undefined;
 
-	if (shouldSave && !(await saveBeforePublish())) return undefined;
-
-	return workflowDocumentStore.value.versionId ?? undefined;
+	return workflowDocumentStore.value.versionId || undefined;
 };
 
 const openSubmitForReviewDialog = () => {
@@ -263,14 +261,7 @@ const onReviewSubmitted = () => {
 };
 
 const onPublishButtonClick = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		const saved = await saveBeforePublish();
-		if (!saved) {
-			// If save failed, don't open the modal
-			return;
-		}
-	}
+	if (!(await ensureWorkflowSaved())) return;
 
 	if (isWorkflowReviewsEnabled.value) {
 		if (reviewRequiredStore.isReviewRequired(workflowDocumentStore.value.workflowId)) {
@@ -514,13 +505,7 @@ const shouldDisableActionDropdown = computed(() => {
 });
 
 const onNameVersion = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		const saved = await saveBeforePublish();
-		if (!saved) {
-			return;
-		}
-	}
+	if (!(await ensureWorkflowSaved())) return;
 
 	const currentVersionId = workflowDocumentStore.value.versionId ?? '';
 	const currentVersionData = workflowDocumentStore.value.versionData;
