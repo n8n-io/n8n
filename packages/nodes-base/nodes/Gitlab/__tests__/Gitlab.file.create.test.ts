@@ -1,9 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { Gitlab } from '../Gitlab.node';
-import * as GenericFunctions from '../GenericFunctions';
 import type { Mock, Mocked } from 'vitest';
+
+import * as GenericFunctions from '../GenericFunctions';
 import type * as _importType0 from '../GenericFunctions';
+import { Gitlab } from '../Gitlab.node';
 
 vi.mock('../GenericFunctions', async () => ({
 	...(await vi.importActual<typeof _importType0>('../GenericFunctions')),
