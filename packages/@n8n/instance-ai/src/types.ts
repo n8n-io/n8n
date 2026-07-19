@@ -917,6 +917,8 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Current display name of the agent, or undefined when not found. */
+	resolveAgentName(agentId: string): Promise<string | undefined>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
@@ -952,6 +954,18 @@ export interface InstanceAiContext {
 	agentBuilderTarget?: { agentId: string; projectId: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
+	/**
+	 * The agent-preview session referenced by this thread, bound when a user sends
+	 * a preview session to Instance AI (and rehydrated from thread metadata on
+	 * follow-up turns). Presence gates the `get-session` tool.
+	 */
+	agentPreviewSession?: { agentId: string; threadId: string; executionId?: string };
+
+	resolvePreviewSession?: (ref: {
+		agentId: string;
+		threadId: string;
+		executionId?: string;
+	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
 	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;

@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-15T03:17:41.383Z",
-	"totalViolations": 65,
+	"generated": "2026-07-17T15:21:33.743Z",
+	"totalViolations": 63,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -365,22 +365,6 @@
 				"line": 35,
 				"message": "Raw API call detected: fetch(",
 				"hash": "974d7953dd83"
-			}
-		],
-		"pages/WorkflowsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 40,
-				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
-				"hash": "206b89bd1594"
-			}
-		],
-		"pages/WorkerViewPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 13,
-				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
-				"hash": "5a1818f5f511"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
