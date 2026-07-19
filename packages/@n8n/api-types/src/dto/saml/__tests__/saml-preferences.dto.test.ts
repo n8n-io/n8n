@@ -196,6 +196,19 @@ describe('SAML preference DTOs', () => {
 			relayState: '',
 		};
 
+		// Guards against .optional() / .default() on PUT fields — key sync alone would still pass.
+		it('rejects an empty body with an error for every top-level field', () => {
+			const result = UpdateSamlConfigurationDto.safeParse({});
+			expect(result.success).toBe(false);
+
+			const erroredFields = new Set(
+				result.error?.issues.map((issue) => String(issue.path[0])) ?? [],
+			);
+			const requiredFields = Object.keys(UpdateSamlConfigurationDto.schema.shape).sort();
+
+			expect([...erroredFields].sort()).toEqual(requiredFields);
+		});
+
 		it('accepts a complete signatureConfig', () => {
 			const result = UpdateSamlConfigurationDto.safeParse(fullBody);
 			expect(result.success).toBe(true);
