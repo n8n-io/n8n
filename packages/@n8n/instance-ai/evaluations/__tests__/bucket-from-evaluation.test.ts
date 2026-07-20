@@ -75,6 +75,7 @@ function fixture(): { evaluation: MultiRunEvaluation; withFiles: WorkflowTestCas
 					expectationAggregation('asks before building', 2, 3),
 					expectationAggregation('never judged', 0, 0),
 				],
+				status: 'verified',
 			},
 		],
 	};

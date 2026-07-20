@@ -97,6 +97,11 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 			buildSuccessCount: totalRuns,
 			executionScenarios: scenarioAggs,
 			buildExpectations,
+			status:
+				scenarioAggs.some((sa) => sa.evaluatedCount > 0) ||
+				buildExpectations.some((ea) => ea.evaluatedCount > 0)
+					? ('verified' as const)
+					: ('notVerified' as const),
 		};
 	});
 	const evaluation: MultiRunEvaluation = { totalRuns, testCases };

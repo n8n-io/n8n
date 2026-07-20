@@ -258,6 +258,14 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
 	});
 
+	it('renders the Knowledge tab with vector stores but without the files table when the knowledge base is disabled', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge', knowledgeBaseEnabled: false });
+
+		expect(wrapper.find('[data-testid="agent-knowledge-tab-content"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
+	});
+
 	it('renders tabs inside the constrained rule container that aligns with content cards', async () => {
 		const wrapper = await mountColumn();
 
