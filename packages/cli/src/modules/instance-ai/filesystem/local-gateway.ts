@@ -216,7 +216,6 @@ export class LocalGateway {
 
 		return await new Promise<McpToolCallResult>((resolve, reject) => {
 			let settled = false;
-			let timer!: NodeJS.Timeout;
 
 			const settle = (action: () => void) => {
 				if (settled) return;
@@ -239,7 +238,7 @@ export class LocalGateway {
 				});
 			};
 
-			timer = setTimeout(() => {
+			const timer = setTimeout(() => {
 				settle(() => {
 					reject(new Error(`Local gateway request timed out after ${REQUEST_TIMEOUT_MS}ms`));
 				});
