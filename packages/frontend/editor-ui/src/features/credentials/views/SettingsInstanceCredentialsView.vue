@@ -2,10 +2,10 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import dateformat from 'dateformat';
 import {
-	N8nActionBox,
 	N8nActionToggle,
 	N8nButton,
 	N8nCard,
+	N8nEmptyState,
 	N8nHeading,
 	N8nLoading2,
 	N8nText,
@@ -142,7 +142,7 @@ async function onAction(action: string, credential: ICredentialsResponse) {
 		<N8nLoading2 v-if="isLoading" :rows="5" :shrink-last="false" />
 
 		<div v-else-if="credentials.length === 0">
-			<N8nActionBox
+			<N8nEmptyState
 				class="mt-2xl mb-l"
 				:heading="i18n.baseText('settings.instanceCredentials.empty.heading')"
 				:description="i18n.baseText('settings.instanceCredentials.empty.description')"
