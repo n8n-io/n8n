@@ -170,6 +170,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 					updatedAt: agent.updatedAt.toISOString(),
 				}));
 			},
+
+			resolveAgentName: async (agentId) => {
+				await assertProjectScope('agent:read');
+				return (await this.agentsService.findById(agentId, projectId))?.name;
+			},
 		};
 	}
 

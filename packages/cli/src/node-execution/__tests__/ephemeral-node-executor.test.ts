@@ -10,6 +10,7 @@ import {
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
+	type IExecuteFunctions,
 	type INodeCredentialsDetails,
 	type INodeType,
 	type INodeTypeDescription,
@@ -512,6 +513,55 @@ describe('EphemeralNodeExecutor', () => {
 		// Use plain objects so `typeof nodeType.supplyData === 'function'`
 		// reliably returns false — vitest-mock-extended auto-proxies every
 		// property as callable, which would route us to the supplyData path.
+
+		it('passes the project ID to data table helpers', async () => {
+			const getDataTableProxy = vi.fn().mockResolvedValue({});
+			mockGetBase.mockResolvedValue({
+				'data-table': { dataTableProxyProvider: { getDataTableProxy } },
+			});
+			const execute = vi.fn(async function (this: IExecuteFunctions) {
+				await this.helpers.getDataTableProxy?.('table-id');
+				return [[{ json: { ok: true } }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dataTableTool',
+				nodeTypeVersion: 1.1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(getDataTableProxy).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'table-id',
+				'p-1',
+			);
+		});
+
+		it('does not add data table project context for other node types', async () => {
+			const additionalData = {};
+			mockGetBase.mockResolvedValue(additionalData);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: { ok: true } }]]),
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(additionalData).not.toHaveProperty('dataTableProjectId');
+		});
 
 		it('runs nodeType.execute and returns its first output batch on success', async () => {
 			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true, count: 3 } }]]);

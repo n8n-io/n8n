@@ -1,3 +1,4 @@
+import { STICKY_NODE_TYPE } from './constants';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -101,10 +102,27 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
 	}
 
-	const extractableResult = validateNodeSelectionSubgraph(input);
-	if (!extractableResult.valid) return extractableResult;
+	// Sticky notes have no connections, so the subgraph/connectivity rules
+	// below are checked against connectable nodes only — stickies ride along
+	// as plain members. A sticky-only group is valid *data* (a group can
+	// degenerate to one when its last connectable node is deleted); stricter
+	// rules live with the callers: creation surfaces require at least one
+	// connectable node (see `resolveGroupableNodeIds` in the editor) and
+	// persistence rejects memberless groups (see `validateWorkflowNodeGroups`
+	// in the CLI), which also keeps empty selections out of this fast path.
+	const connectableNodes = input.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+	if (connectableNodes.length === 0) {
+		return {
+			valid: true,
+			subGraph: input.nodes,
+			subGraphData: { start: undefined, end: undefined },
+		};
+	}
 
-	const nodeNames = new Set(extractableResult.subGraph.map((node) => node.name));
+	const subgraphResult = validateNodeSelectionSubgraph({ ...input, nodes: connectableNodes });
+	if (!subgraphResult.valid) return subgraphResult;
+
+	const nodeNames = new Set(subgraphResult.subGraph.map((node) => node.name));
 	const boundaryConnection = findNonMainBoundaryConnection(
 		nodeNames,
 		input.connectionsBySourceNode,
@@ -114,7 +132,8 @@ export function validateNodeSelectionForGrouping<TNode extends INode>(
 		return { valid: false, reason: 'non-main-boundary', connection: boundaryConnection };
 	}
 
-	return extractableResult;
+	// Report the full selection (stickies included) as the resulting subgraph.
+	return { ...subgraphResult, subGraph: input.nodes };
 }
 
 function validateNodeSelectionSubgraph<TNode extends INode>({

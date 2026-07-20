@@ -106,13 +106,19 @@ describe('Security policy in Public API', () => {
 	});
 
 	describe('PUT /settings/security-policy', () => {
+		const fullPolicy = {
+			personalSpacePublishing: false,
+			personalSpaceSharing: true,
+			redactionEnforcement: { floor: 'production' as const },
+		};
+
 		it('updates the policy and returns the new values', async () => {
 			testServer.license.enable('feat:personalSpacePolicy');
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.put('/settings/security-policy')
-				.send({ personalSpacePublishing: false, redactionEnforcement: { floor: 'production' } });
+				.send(fullPolicy);
 
 			expect(response.status).toBe(200);
 			expect(response.body).toMatchObject({
@@ -127,8 +133,41 @@ describe('Security policy in Public API', () => {
 				.get('/settings/security-policy');
 			expect(readResponse.body).toMatchObject({
 				personalSpacePublishing: false,
+				personalSpaceSharing: true,
 				redactionEnforcement: { floor: 'production' },
 			});
+		});
+
+		it('accepts a GET response body as a PUT body', async () => {
+			testServer.license.enable('feat:personalSpacePolicy');
+
+			const getResponse = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/security-policy');
+			expect(getResponse.status).toBe(200);
+
+			const putResponse = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/security-policy')
+				.send({
+					...getResponse.body,
+					personalSpacePublishing: false,
+				});
+
+			expect(putResponse.status).toBe(200);
+			expect(putResponse.body.personalSpacePublishing).toBe(false);
+			expect(putResponse.body.publishedPersonalWorkflowsCount).toBe(0);
+		});
+
+		it('rejects a partial request body with 400', async () => {
+			testServer.license.enable('feat:personalSpacePolicy');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put('/settings/security-policy')
+				.send({ personalSpacePublishing: false });
+
+			expect(response.status).toBe(400);
 		});
 
 		it('rejects a malformed request body with 400', async () => {
@@ -137,7 +176,11 @@ describe('Security policy in Public API', () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.put('/settings/security-policy')
-				.send({ personalSpacePublishing: 'not-a-boolean', redactionEnforcement: 'nope' });
+				.send({
+					personalSpacePublishing: 'not-a-boolean',
+					personalSpaceSharing: true,
+					redactionEnforcement: 'nope',
+				});
 
 			expect(response.status).toBe(400);
 		});
@@ -148,7 +191,11 @@ describe('Security policy in Public API', () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.put('/settings/security-policy')
-				.send({ redactionEnforcement: { floor: 'bogus' } });
+				.send({
+					personalSpacePublishing: false,
+					personalSpaceSharing: true,
+					redactionEnforcement: { floor: 'bogus' },
+				});
 
 			expect(response.status).toBe(400);
 			expect(response.body).toHaveProperty('message');
@@ -160,7 +207,7 @@ describe('Security policy in Public API', () => {
 			const response = await testServer
 				.publicApiAgentWithoutApiKey()
 				.put('/settings/security-policy')
-				.send({ personalSpacePublishing: false });
+				.send(fullPolicy);
 
 			expect(response.status).toBe(401);
 		});
@@ -169,7 +216,7 @@ describe('Security policy in Public API', () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.put('/settings/security-policy')
-				.send({ personalSpacePublishing: false });
+				.send(fullPolicy);
 
 			expect(response.status).toBe(403);
 			expect(response.body).toHaveProperty('message', licenseErrorMessage);
@@ -182,7 +229,7 @@ describe('Security policy in Public API', () => {
 			const response = await testServer
 				.publicApiAgentFor(scopedOwner)
 				.put('/settings/security-policy')
-				.send({ personalSpacePublishing: false });
+				.send(fullPolicy);
 
 			expect(response.status).toBe(403);
 		});
@@ -194,7 +241,7 @@ describe('Security policy in Public API', () => {
 			const writeResponse = await testServer
 				.publicApiAgentFor(owner)
 				.put('/settings/security-policy')
-				.send({ personalSpacePublishing: false });
+				.send(fullPolicy);
 
 			expect(writeResponse.status).toBe(409);
 
