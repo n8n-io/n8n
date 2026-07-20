@@ -110,6 +110,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
@@ -1251,8 +1252,9 @@ export class InstanceAiAdapterService {
 						}
 					};
 
-					// Wait for completion with timeout protection
+					// Wait for completion with timeout / abort protection
 					const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+					const abortSignal = options?.abortSignal;
 
 					if (activeExecutions.has(executionId)) {
 						let timeoutId: NodeJS.Timeout | undefined;
@@ -1262,28 +1264,60 @@ export class InstanceAiAdapterService {
 							}, timeoutMs);
 						});
 
+						let onAbort: (() => void) | undefined;
+						const abortPromise =
+							abortSignal === undefined
+								? undefined
+								: new Promise<never>((_, reject) => {
+										onAbort = () => {
+											const error = new Error(
+												typeof abortSignal.reason === 'string'
+													? abortSignal.reason
+													: 'This operation was aborted',
+											);
+											error.name = 'AbortError';
+											reject(error);
+										};
+										if (abortSignal.aborted) {
+											onAbort();
+											return;
+										}
+										abortSignal.addEventListener('abort', onAbort, { once: true });
+									});
+
 						try {
 							await Promise.race([
 								activeExecutions.getPostExecutePromise(executionId),
 								timeoutPromise,
+								...(abortPromise ? [abortPromise] : []),
 							]);
 							clearTimeout(timeoutId);
+							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
 						} catch (error) {
 							clearTimeout(timeoutId);
-							// On timeout, cancel the execution
-							if (error instanceof Error && error.message.includes('timed out')) {
+							if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
+							const isTimeout = error instanceof Error && error.message.includes('timed out');
+							const isAbort =
+								error instanceof Error &&
+								(error.name === 'AbortError' || abortSignal?.aborted === true);
+							// On timeout or abort, cancel the execution with the matching reason
+							if (isTimeout || isAbort) {
 								try {
 									activeExecutions.stopExecution(
 										executionId,
-										new TimeoutExecutionCancelledError(executionId),
+										isAbort
+											? new ManualExecutionCancelledError(executionId)
+											: new TimeoutExecutionCancelledError(executionId),
 									);
 								} catch {
-									// Execution may have completed between timeout and cancel
+									// Execution may have completed between timeout/abort and cancel
 								}
 								const result = {
 									executionId,
 									status: 'error',
-									error: `Execution timed out after ${timeoutMs}ms and was cancelled`,
+									error: isAbort
+										? 'Execution was cancelled'
+										: `Execution timed out after ${timeoutMs}ms and was cancelled`,
 								} satisfies ExecutionResult;
 								await pruneVerificationPins();
 								trackBuilderExecutedWorkflow(result.status, result.error);
