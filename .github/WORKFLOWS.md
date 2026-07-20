@@ -748,7 +748,7 @@ Adding a new channel requires inviting the bot first; the first run otherwise fa
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |
 | GitHub Automation   | `N8N_ASSISTANT_APP_ID`, `N8N_ASSISTANT_PRIVATE_KEY`         |
 | Benchmarking        | `BENCHMARK_ARM_*`, `N8N_BENCHMARK_LICENSE_CERT`             |
-| AI/Evals            | `ANTHROPIC_API_KEY`, `EVALS_LANGSMITH_*`                    |
+| AI/Evals            | `EVALS_ANTHROPIC_KEY`, `EVALS_OPENROUTER_KEY`, `EVALS_LANGSMITH_*` |
 
 ### Scoping
 
