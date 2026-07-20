@@ -74,7 +74,7 @@ export function createMaterializeNodeTypeTool(
 				),
 			}),
 		)
-		.handler(async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>) => {
+		.handler(async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>, ctx) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
 					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
@@ -133,7 +133,9 @@ export function createMaterializeNodeTypeTool(
 
 				const script = lines.join('\n');
 				const scriptB64 = Buffer.from(script, 'utf-8').toString('base64');
-				const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`);
+				const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`, {
+					abortSignal: ctx.abortSignal,
+				});
 
 				if (result.exitCode !== 0) {
 					// Mark all as failed but still return content (useful for the agent)
