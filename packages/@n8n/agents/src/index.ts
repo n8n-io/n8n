@@ -25,6 +25,7 @@ export type {
 	Provider,
 	ThinkingConfig,
 	ThinkingConfigFor,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,
