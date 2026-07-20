@@ -110,6 +110,78 @@ export const libraryRLC: INodeProperties = {
 	],
 };
 
+/** Return All / Limit pair shared by the list-shaped operations. */
+export const returnAllAndLimit: INodeProperties[] = [
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 500,
+		},
+		default: 100,
+		description: 'Max number of results to return',
+	},
+];
+
+/** RAW passthrough switches shared by the table read operations. */
+export const rawDataOutput: INodeProperties[] = [
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether the data should be returned RAW instead of parsed into keys according to their header',
+	},
+	{
+		displayName: 'Data Property',
+		name: 'dataProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				rawData: [true],
+			},
+		},
+		description: 'The name of the property into which to write the RAW data',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'Fields to include in the response. Separate multiple fields with a comma.',
+				displayOptions: {
+					show: {
+						'/rawData': [true],
+					},
+				},
+			},
+		],
+	},
+];
+
 export const worksheetRLC: INodeProperties = {
 	displayName: 'Sheet',
 	name: 'worksheet',

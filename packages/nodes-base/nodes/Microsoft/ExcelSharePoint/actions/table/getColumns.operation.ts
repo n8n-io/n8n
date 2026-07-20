@@ -9,41 +9,29 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import {
 	libraryRLC,
+	rawDataOutput,
 	returnAllAndLimit,
 	siteRLC,
+	tableRLC,
 	workbookRLC,
+	worksheetRLC,
 } from '../../descriptions/common.descriptions';
-import type { GraphListResponse, GraphTable } from '../../helpers/interfaces';
-import { resolveWorkbookRoot } from '../../helpers/utils';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { fetchTableCollection, resolveTableEndpoint } from '../../helpers/tableRead';
 
 const properties: INodeProperties[] = [
 	siteRLC,
 	libraryRLC,
 	workbookRLC,
+	worksheetRLC,
+	tableRLC,
 	...returnAllAndLimit,
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add option',
-		default: {},
-		options: [
-			{
-				displayName: 'Fields',
-				name: 'fields',
-				type: 'string',
-				default: '',
-				description: 'Fields to include in the response. Separate multiple fields with a comma.',
-			},
-		],
-	},
+	...rawDataOutput,
 ];
 
 const displayOptions = {
 	show: {
 		resource: ['table'],
-		operation: ['getAll'],
+		operation: ['getColumns'],
 	},
 };
 
@@ -53,44 +41,36 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	// https://learn.microsoft.com/en-us/graph/api/workbook-list-tables
+	// https://learn.microsoft.com/en-us/graph/api/table-list-columns
 	const returnData: INodeExecutionData[] = [];
 
-	// Hoisted once for the whole run and passed into resolveWorkbookRoot below,
-	// so a pasted Workbook/Site address is resolved once, not once per item.
 	const workbookRootCache = new Map<string, string>();
 	const siteIdCache = new Map<string, string>();
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const returnAll = this.getNodeParameter('returnAll', i);
+			const rawData = this.getNodeParameter('rawData', i);
 			const options = this.getNodeParameter('options', i, {}) as { fields?: string };
 
 			const qs: IDataObject = {};
-			if (options.fields) {
+			if (rawData && options.fields) {
 				qs.$select = options.fields;
 			}
 
-			const workbookRoot = await resolveWorkbookRoot.call(this, i, workbookRootCache, siteIdCache);
-			const endpoint = `${workbookRoot}/workbook/tables`;
+			const tableEndpoint = await resolveTableEndpoint.call(
+				this,
+				i,
+				workbookRootCache,
+				siteIdCache,
+			);
+			const columns = await fetchTableCollection.call(this, i, `${tableEndpoint}/columns`, qs);
 
-			let responseData: GraphTable[];
-			if (returnAll) {
-				responseData = await (microsoftApiRequestAllItems<GraphTable>).call(this, endpoint, qs);
-			} else {
-				qs.$top = this.getNodeParameter('limit', i);
-				const response = await (microsoftApiRequest<GraphListResponse<GraphTable>>).call(
-					this,
-					'GET',
-					endpoint,
-					{},
-					qs,
-				);
-				responseData = response.value ?? [];
-			}
+			const output: IDataObject | IDataObject[] = rawData
+				? { [this.getNodeParameter('dataProperty', i) as string]: columns }
+				: columns.map((column) => ({ name: column.name }));
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(output),
 				{ itemData: { item: i } },
 			);
 			returnData.push.apply(returnData, executionData);

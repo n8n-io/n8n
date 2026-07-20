@@ -7,6 +7,9 @@ import type {
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import * as getAllTables from './actions/table/getAll.operation';
+import * as getTableColumns from './actions/table/getColumns.operation';
+import * as getTableRows from './actions/table/getRows.operation';
+import * as lookupTable from './actions/table/lookup.operation';
 import * as append from './actions/worksheet/append.operation';
 import * as clear from './actions/worksheet/clear.operation';
 import * as deleteWorksheet from './actions/worksheet/deleteWorksheet.operation';
@@ -148,10 +151,28 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				},
 				options: [
 					{
+						name: 'Get Columns',
+						value: 'getColumns',
+						description: "Retrieve a list of the table's columns",
+						action: 'Get columns in table',
+					},
+					{
 						name: 'Get Many',
 						value: 'getAll',
 						description: "Retrieve a list of the workbook's tables",
 						action: 'Get many tables',
+					},
+					{
+						name: 'Get Rows',
+						value: 'getRows',
+						description: "Retrieve a list of the table's rows",
+						action: 'Get rows in table',
+					},
+					{
+						name: 'Lookup',
+						value: 'lookup',
+						description: 'Look for a specific column value and then return the matching row',
+						action: 'Look up column value in table',
 					},
 				],
 				default: 'getAll',
@@ -163,6 +184,9 @@ export class MicrosoftExcelSharePoint implements INodeType {
 			...readRows.description,
 			...getAllWorksheets.description,
 			...getAllTables.description,
+			...getTableColumns.description,
+			...getTableRows.description,
+			...lookupTable.description,
 		],
 	};
 
@@ -185,6 +209,15 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		}
 		if (resource === 'table' && operation === 'getAll') {
 			return [await getAllTables.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'getColumns') {
+			return [await getTableColumns.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'getRows') {
+			return [await getTableRows.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'lookup') {
+			return [await lookupTable.execute.call(this, items)];
 		}
 
 		if (resource === 'worksheet' && operation === 'clear') {

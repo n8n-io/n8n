@@ -30,6 +30,18 @@ export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; applicati
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
+	'table:getColumns': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'table:getRows': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'table:lookup': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
 };
 
 // A 404 can come from any of the location segments, so the message must not
