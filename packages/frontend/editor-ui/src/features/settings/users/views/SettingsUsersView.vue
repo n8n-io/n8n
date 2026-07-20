@@ -90,6 +90,11 @@ onMounted(async () => {
 		await updateUsersTableData(usersTableState.value);
 	}
 
+	// Needed for the projects dialog to map project role slugs to display names.
+	if (!rolesStore.roles.project.length) {
+		void rolesStore.fetchRoles();
+	}
+
 	await userRoleProvisioningStore.getProvisioningConfig();
 });
 
