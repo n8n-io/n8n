@@ -65,9 +65,31 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('skips OpenRouter models that are not Kimi K3', () => {
+	it('enables low reasoning effort for Grok 4.5 via OpenRouter', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openrouter/x-ai/grok-4.5');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+			reasoningEffort: 'low',
+		});
+	});
+
+	it('enables low reasoning effort for Grok 4.5 via xAI', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'xai/grok-4.5');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('xai', {
+			reasoningEffort: 'low',
+		});
+	});
+
+	it('skips OpenRouter models without a low-effort default', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'openrouter/openai/gpt-4o');
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('skips xAI models that are not Grok 4.5', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'xai/grok-3');
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 });
