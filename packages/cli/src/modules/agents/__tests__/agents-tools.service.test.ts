@@ -127,6 +127,23 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
+	describe('searchAgentToolNodes()', () => {
+		it('initializes and searches the catalog with the agent tool-node filter', async () => {
+			const { service, nodeCatalogService } = makeService();
+
+			const result = await service.searchAgentToolNodes(['gmail', 'slack']);
+
+			expect(nodeCatalogService.initialize).toHaveBeenCalled();
+			expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'slack'], {
+				nodeFilter: isAgentToolNodeType,
+			});
+			expect(result).toEqual({
+				results: 'search-result',
+				queriesWithNoResults: [],
+			});
+		});
+	});
+
 	describe('isExecutableNodeType', () => {
 		it('rejects trigger nodes only', () => {
 			expect(isExecutableNodeType('n8n-nodes-base.scheduleTrigger')).toBe(false);
@@ -155,6 +172,10 @@ describe('AgentsToolsService', () => {
 			for (const nodeType of AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES) {
 				expect(isAgentToolNodeType(nodeType)).toBe(false);
 			}
+		});
+
+		it('rejects the sub-workflow tool node', () => {
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.toolWorkflow')).toBe(false);
 		});
 
 		it('allows shared AI utility tool node IDs', () => {

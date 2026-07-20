@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
+import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
 import {
 	N8nAssistantIcon,
 	N8nButton,
@@ -55,6 +55,7 @@ import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import { useInstanceAiAgentPreviewHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
@@ -96,14 +97,18 @@ const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const { startThread: startInstanceAiThread } = useInstanceAiHandoff();
 const instanceAiAvailable = useInstanceAiAvailable();
+const { canSendPreviewToInstanceAi, sendPreviewSessionToInstanceAi } =
+	useInstanceAiAgentPreviewHandoff();
 const sessionsStore = useAgentSessionsStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const favoritesStore = useFavoritesStore();
 
-// Gates the entire knowledge base feature (files panel + fetching) behind the
-// Daytona sandbox env vars on the backend (N8N_AGENTS_AI_SANDBOX_ENABLED + PROVIDER=daytona).
+// Gates the Knowledge Base files table (upload, list, sandbox fetch/warmup) on
+// the backend: Daytona sandbox env vars (N8N_AGENTS_AI_SANDBOX_ENABLED +
+// PROVIDER=daytona) OR AI Assistant proxy availability. The Knowledge tab and
+// vector store management are always available regardless of this flag.
 const isKnowledgeBaseEnabled = computed(() => settingsStore.isAgentsKnowledgeBaseFeatureEnabled);
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
@@ -130,6 +135,28 @@ const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agen
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
 
 const isVersionHistoryOpen = ref(false);
+
+async function onSendPreviewToAssistant() {
+	const threadId = effectiveSessionId.value;
+	if (!threadId || !agentId.value || !projectId.value) return;
+
+	await sendPreviewSessionToInstanceAi({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		threadId,
+		agentName: agentName.value || undefined,
+		agentIcon: localConfig.value?.personalisation?.icon,
+		sessionTitle: currentSessionTitle.value || undefined,
+	});
+}
+
+/**
+ * Gate for the main body render. Stays false while `initialize()` is running so
+ * we don't:
+ *   - flash the home screen for users who arrive with a `?prompt=…` query that
+ *     will immediately transition them to the build chat, and
+ *   - render the preview chat before the route/config/session state has settled.
+ */
 const initialized = ref(false);
 const pendingArtifactRefreshKey = ref<number>();
 const agentName = ref('');
@@ -175,7 +202,6 @@ const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('ve
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
-	knowledgeBaseEnabled: isKnowledgeBaseEnabled,
 	routeBacked: computed(() => !isArtifactMode.value),
 });
 
@@ -411,22 +437,28 @@ async function refreshAgentAfterIntegrationChange(
 	]);
 }
 
-function sessionIdForPreview(): string {
-	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
+function sessionIdForPreview(): string | undefined {
+	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
 }
 
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
-	activeChatSessionId.value = sessionId;
+	activeChatSessionId.value = sessionId ?? null;
+
+	const {
+		[CONTINUE_SESSION_ID_PARAM]: _dropped,
+		prompt: _prompt,
+		...rest
+	} = route.query as LocationQueryRaw;
+	const query: LocationQueryRaw = { ...rest };
+	if (sessionId) {
+		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
+	}
 
 	await router.push({
 		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: {
-			...route.query,
-			prompt: undefined,
-			[CONTINUE_SESSION_ID_PARAM]: sessionId,
-		},
+		query,
 	});
 }
 
@@ -438,27 +470,30 @@ async function onOpenPreview() {
 	} catch {
 		return;
 	}
-	if (isArtifactMode.value) {
-		window.open(
-			router.resolve({
-				name: AGENT_PREVIEW_VIEW,
-				params: { projectId: projectId.value, agentId: agentId.value },
-			}).href,
-			'_blank',
-		);
-		telemetry.track('User opened agent preview', { agent_id: agentId.value });
-		return;
-	}
 	await openPreview();
 	telemetry.track('User opened agent preview', { agent_id: agentId.value });
 }
 
+function getBuilderQuery() {
+	const query = { ...route.query };
+	delete query[CONTINUE_SESSION_ID_PARAM];
+	delete query.prompt;
+	return query;
+}
+
 function closePreview() {
-	const { [CONTINUE_SESSION_ID_PARAM]: _sessionId, prompt: _prompt, ...rest } = route.query;
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: rest,
+		query: getBuilderQuery(),
+	});
+}
+
+function openMemorySettings() {
+	void router.push({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value },
+		query: { ...getBuilderQuery(), section: 'settings' },
 	});
 }
 
@@ -1113,14 +1148,18 @@ function onContinueLoaded(count: number) {
 		: false;
 
 	if (count === 0 && requestedSessionId && !knownThread) {
-		exitContinueMode();
-		// `exitContinueMode` only drops the query param; the chat panel would
-		// otherwise sit blank waiting for a session to bind. Once the route
-		// update lands, latch onto an existing thread (or mint a fresh
-		// ephemeral one) so the test pane has something to render.
-		void nextTick(() => {
-			if (isPreviewMode.value) bindPreviewSession();
-		});
+		// Same-tab "New chat" already owns this ephemeral id via
+		// `activeChatSessionId` — drop the shareable URL param only.
+		if (activeChatSessionId.value === requestedSessionId) {
+			exitContinueMode();
+			return;
+		}
+		// Stale deep-link (or a cross-page navigation that left an unknown id
+		// in the URL): bind immediately so we never wait on a raced
+		// `router.replace` + `nextTick` that can leave the chat blank.
+		if (!isPreviewMode.value) return;
+		const latest = sessionsStore.threads?.[0];
+		setSessionInUrl(latest?.id ?? crypto.randomUUID());
 	}
 }
 
@@ -1216,7 +1255,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
+					:can-send-to-assistant="canSendPreviewToInstanceAi"
 					@continue-loaded="onContinueLoaded"
+					@send-to-assistant="onSendPreviewToAssistant"
+					@open-memory-settings="openMemorySettings"
 				/>
 
 				<AgentBuilderEditorColumn

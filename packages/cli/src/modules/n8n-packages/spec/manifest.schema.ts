@@ -39,6 +39,8 @@ export const packageManifestSchema = z
 		folders: z.array(manifestEntrySchema).optional(),
 		projects: z.array(manifestEntrySchema).optional(),
 		credentials: z.array(manifestEntrySchema).optional(),
+		dataTables: z.array(manifestEntrySchema).optional(),
+		variables: z.array(manifestEntrySchema).optional(),
 		requirements: packageRequirementsSchema.optional(),
 	})
 	.superRefine((manifest, ctx) => {
@@ -46,6 +48,8 @@ export const packageManifestSchema = z
 		assertNoDuplicateIds(manifest.folders, 'folder', ctx);
 		assertNoDuplicateIds(manifest.projects, 'project', ctx);
 		assertNoDuplicateIds(manifest.credentials, 'credential', ctx);
+		assertNoDuplicateIds(manifest.dataTables, 'data table', ctx);
+		assertNoDuplicateIds(manifest.variables, 'variable', ctx);
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;

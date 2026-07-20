@@ -130,11 +130,9 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import EvaluationsCanvasInfoCard from '@/features/ai/evaluation.ee/components/EvaluationsCanvasInfoCard/EvaluationsCanvasInfoCard.vue';
-import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
@@ -215,8 +213,6 @@ const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
-const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
-const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const workflowHelpers = useWorkflowHelpers();
 
@@ -381,6 +377,18 @@ function initializeRoute() {
 			source: 'empty_state',
 		});
 		evaluationsWizardSidepanelStore.open(0);
+	}
+
+	// A test case seeded from the executions page hands off a pending execution
+	// via the wizard store, then navigates here. Open the Tests panel from the
+	// editor route — the only route that renders the focus panel — so the handoff
+	// doesn't depend on focus-panel state set before navigation.
+	if (
+		evaluationsWizardSidepanelStore.pendingSeedExecution &&
+		isEvaluationsWizardSidepanelEnabled.value
+	) {
+		focusPanelStore.setSelectedTab('evaluations');
+		focusPanelStore.openFocusPanel();
 	}
 
 	// Handle debug mode event binding (data loading is handled by WorkflowLayout)
@@ -1039,9 +1047,9 @@ function onCreateSticky() {
 
 function onClickConnectionAdd(connection: Connection) {
 	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
-	const isAddBetwenTool =
+	const isAddBetweenTool =
 		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
-	if (isAddBetwenTool) {
+	if (isAddBetweenTool) {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
 			workflowId: workflowId.value,
 			connection,
@@ -1697,18 +1705,6 @@ function showAddFirstStepIfEnabled() {
 	}
 }
 
-async function handlePendingBuilderPrompt() {
-	const pendingPrompt = emptyStateBuilderPromptStore.consumePendingPrompt();
-	if (pendingPrompt) {
-		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
-		await builderStore.sendChatMessage({
-			text: pendingPrompt,
-			initialGeneration: true,
-			source: 'empty-state',
-		});
-	}
-}
-
 /**
  * Routing
  */
@@ -1963,9 +1959,6 @@ onMounted(async () => {
 				updateNodeRoute(routeNodeId.value);
 			}
 		}, 500);
-
-		// Check for pending builder prompt from empty state experiment
-		void handlePendingBuilderPrompt();
 	}
 
 	void usersStore.showPersonalizationSurvey();
