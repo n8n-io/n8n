@@ -1,4 +1,4 @@
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { rbacMiddleware } from '@/app/utils/rbac/middleware/rbac';
 import { VIEWS } from '@/app/constants';
 import {
@@ -9,7 +9,7 @@ import {
 import type { RouteLocationNormalized } from 'vue-router';
 import type { Scope } from '@n8n/permissions';
 
-vi.mock('@/app/stores/rbac.store', () => ({
+vi.mock('@n8n/stores/rbac.store', () => ({
 	useRBACStore: vi.fn(),
 }));
 

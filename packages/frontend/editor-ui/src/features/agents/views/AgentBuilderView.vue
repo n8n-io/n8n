@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
+import { useRoute, useRouter, type LocationQueryRaw, type RouteLocationRaw } from 'vue-router';
 import {
 	N8nAssistantIcon,
 	N8nButton,
@@ -65,7 +65,7 @@ import {
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
-import { agentsEventBus } from '../agents.eventBus';
+import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
@@ -159,6 +159,8 @@ async function onSendPreviewToAssistant() {
  */
 const initialized = ref(false);
 const pendingArtifactRefreshKey = ref<number>();
+/** Queues `agentUpdated` bus events that land mid-initialize for replay (see `onExternalAgentUpdated`). */
+const pendingExternalRefresh = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const agentFiles = ref<AgentFileDto[]>([]);
@@ -437,22 +439,28 @@ async function refreshAgentAfterIntegrationChange(
 	]);
 }
 
-function sessionIdForPreview(): string {
-	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id ?? crypto.randomUUID();
+function sessionIdForPreview(): string | undefined {
+	return effectiveSessionId.value ?? sessionsStore.threads?.[0]?.id;
 }
 
 async function openPreview(preferredSessionId?: string) {
 	const sessionId = preferredSessionId ?? sessionIdForPreview();
-	activeChatSessionId.value = sessionId;
+	activeChatSessionId.value = sessionId ?? null;
+
+	const {
+		[CONTINUE_SESSION_ID_PARAM]: _dropped,
+		prompt: _prompt,
+		...rest
+	} = route.query as LocationQueryRaw;
+	const query: LocationQueryRaw = { ...rest };
+	if (sessionId) {
+		query[CONTINUE_SESSION_ID_PARAM] = sessionId;
+	}
 
 	await router.push({
 		name: AGENT_PREVIEW_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: {
-			...route.query,
-			prompt: undefined,
-			[CONTINUE_SESSION_ID_PARAM]: sessionId,
-		},
+		query,
 	});
 }
 
@@ -462,17 +470,6 @@ async function onOpenPreview() {
 	try {
 		await flushAutosave();
 	} catch {
-		return;
-	}
-	if (isArtifactMode.value) {
-		window.open(
-			router.resolve({
-				name: AGENT_PREVIEW_VIEW,
-				params: { projectId: projectId.value, agentId: agentId.value },
-			}).href,
-			'_blank',
-		);
-		telemetry.track('User opened agent preview', { agent_id: agentId.value });
 		return;
 	}
 	await openPreview();
@@ -824,6 +821,28 @@ watch(
 	},
 );
 
+function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
+	if (event?.source === 'agent-builder') return;
+	if (!event?.agentId || event.agentId !== agentId.value) return;
+	// Mid-initialize the write may have landed after initialize()'s own config
+	// fetch already resolved, so queue a replay instead of dropping the event.
+	// Unlike `replayPendingArtifactRefresh` this isn't gated on artifact mode.
+	if (!initialized.value) {
+		pendingExternalRefresh.value = true;
+		return;
+	}
+	void refreshArtifactShell().catch(handleArtifactRefreshError);
+}
+
+async function replayPendingExternalRefresh() {
+	if (!pendingExternalRefresh.value) return;
+	pendingExternalRefresh.value = false;
+	await refreshArtifactShell();
+}
+
+agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
+onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onExternalAgentUpdated));
+
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
 		{
@@ -975,6 +994,10 @@ async function onHeaderAction(action: string) {
 
 async function initialize() {
 	initialized.value = false;
+	// A refresh queued before this (re)initialize is obsolete: it targeted the
+	// agent that was current when the event fired, and the fetches below return
+	// fresh data anyway. Only events arriving during this init need replaying.
+	pendingExternalRefresh.value = false;
 	try {
 		// Flush any pending/in-flight save for the previous agent before we tear
 		// down its state — without this, an autosave scheduled by edits in the
@@ -1041,6 +1064,7 @@ async function initialize() {
 	} finally {
 		initialized.value = true;
 		void replayPendingArtifactRefresh().catch(handleArtifactRefreshError);
+		void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 		warmAgentKnowledgeSandboxForPage();
 	}
 }
@@ -1153,14 +1177,18 @@ function onContinueLoaded(count: number) {
 		: false;
 
 	if (count === 0 && requestedSessionId && !knownThread) {
-		exitContinueMode();
-		// `exitContinueMode` only drops the query param; the chat panel would
-		// otherwise sit blank waiting for a session to bind. Once the route
-		// update lands, latch onto an existing thread (or mint a fresh
-		// ephemeral one) so the test pane has something to render.
-		void nextTick(() => {
-			if (isPreviewMode.value) bindPreviewSession();
-		});
+		// Same-tab "New chat" already owns this ephemeral id via
+		// `activeChatSessionId` — drop the shareable URL param only.
+		if (activeChatSessionId.value === requestedSessionId) {
+			exitContinueMode();
+			return;
+		}
+		// Stale deep-link (or a cross-page navigation that left an unknown id
+		// in the URL): bind immediately so we never wait on a raced
+		// `router.replace` + `nextTick` that can leave the chat blank.
+		if (!isPreviewMode.value) return;
+		const latest = sessionsStore.threads?.[0];
+		setSessionInUrl(latest?.id ?? crypto.randomUUID());
 	}
 }
 

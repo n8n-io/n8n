@@ -2,7 +2,11 @@
 // Shared types for the instance-ai workflow test case evaluator
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSeedDataTable,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
@@ -182,6 +186,10 @@ export interface ExecutionScenario {
 	dataSetup: string;
 	/** Criteria the LLM verifier checks against the execution result */
 	successCriteria: string;
+	/** Typed data tables to create + row-seed before the scenario executes
+	 *  (TRUST-311). Seeded under their exact declared names so the built
+	 *  workflow's by-name data-table references resolve. */
+	seedDataTables?: InstanceAiEvalSeedDataTable[];
 }
 
 export interface ConversationTurn {
@@ -426,6 +434,15 @@ export interface BuildExpectationAggregation {
 	passHatK: number[];
 }
 
+/**
+ * Whether a case produced any scoreable verdict across its runs.
+ * - `verified`  — at least one scenario or build expectation was evaluated.
+ * - `notVerified` — every measured unit came back incomplete / was skipped (no
+ *   transcript for process expectations, verifier gaps for scenarios), so nothing
+ *   could actually be checked. Such a case MUST NOT roll up as a silent pass.
+ */
+export type CaseVerificationStatus = 'verified' | 'notVerified';
+
 export interface TestCaseAggregation {
 	testCase: WorkflowTestCase;
 	runs: WorkflowTestCaseResult[];
@@ -433,6 +450,9 @@ export interface TestCaseAggregation {
 	executionScenarios: ExecutionScenarioAggregation[];
 	/** Build expectations aggregated as measured units (counted in the pass rate). */
 	buildExpectations: BuildExpectationAggregation[];
+	/** `notVerified` when no unit (scenario or expectation) was evaluated across
+	 *  all runs — nothing could be checked, so the case is not a pass. */
+	status: CaseVerificationStatus;
 }
 
 export interface MultiRunEvaluation {
