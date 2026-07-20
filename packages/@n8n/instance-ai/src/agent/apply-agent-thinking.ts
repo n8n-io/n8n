@@ -51,6 +51,12 @@ function isKimiK3Model(modelId: ModelConfig): boolean {
 	return id.includes('kimi-k3');
 }
 
+/** Grok 4.5 via xAI (`xai/grok-4.5`) or OpenRouter (`openrouter/x-ai/grok-4.5`). */
+function isGrok45Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	return id.includes('grok-4.5');
+}
+
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	const provider = resolveModelProvider(modelId);
 
@@ -67,8 +73,16 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'openrouter') {
-		if (isKimiK3Model(modelId)) {
+		// Pin low effort for models that default to heavy/max thinking.
+		if (isKimiK3Model(modelId) || isGrok45Model(modelId)) {
 			agent.thinking('openrouter', { reasoningEffort: 'low' });
+		}
+		return;
+	}
+
+	if (provider === 'xai') {
+		if (isGrok45Model(modelId)) {
+			agent.thinking('xai', { reasoningEffort: 'low' });
 		}
 	}
 }
