@@ -674,6 +674,27 @@ describe('AgentBuilderView — preview routing', () => {
 		});
 	});
 
+	it('forwards executionId from preview Fix with Assistant to instance AI handoff', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+
+		preview.vm.$emit('send-to-assistant', 'exec-turn-1');
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			agentName: 'Agent One',
+			agentIcon: 'bot',
+			sessionTitle: 'agents.builder.chat.newChat.label',
+			executionId: 'exec-turn-1',
+		});
+	});
+
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([

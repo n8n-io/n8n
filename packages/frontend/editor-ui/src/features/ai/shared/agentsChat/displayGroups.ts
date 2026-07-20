@@ -29,6 +29,8 @@ export type DisplayGroup =
 			 * (thinking → tools → interactives → final text).
 			 */
 			finalMessage?: AgentsChatMessage;
+			/** Turn execution id from the first folded message that has one. */
+			executionId?: string;
 	  };
 
 export function isGroupable(message: AgentsChatMessage): boolean {
@@ -113,6 +115,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 					last.interactives,
 					getMessageInteractives(message),
 				);
+				last.executionId ??= message.executionId;
 				continue;
 			}
 			groups.push({
@@ -121,6 +124,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 				thinking: message.thinking ?? '',
 				toolCalls: [...(message.toolCalls ?? [])],
 				interactives: getMessageInteractives(message),
+				...(message.executionId ? { executionId: message.executionId } : {}),
 			});
 			continue;
 		}
@@ -129,6 +133,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 			const last = groups[groups.length - 1];
 			if (last && last.kind === 'toolRun' && !last.finalMessage) {
 				last.finalMessage = message;
+				last.executionId ??= message.executionId;
 				if (message.thinking) {
 					last.thinking = last.thinking
 						? `${last.thinking}\n\n${message.thinking}`

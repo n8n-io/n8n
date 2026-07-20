@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { N8nAiActivityStep, N8nAiActivityStepGroup, N8nMarkdownEditor } from '@n8n/design-system';
+import {
+	N8nAiActivityStep,
+	N8nAiActivityStepGroup,
+	N8nButton,
+	N8nCallout,
+	N8nMarkdownEditor,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
@@ -23,9 +29,17 @@ import { TOOL_CALL_STATE } from '../constants';
 const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
+	canFixWithAssistant?: boolean;
+	executionId?: string;
+}>();
+
+const emit = defineEmits<{
+	fixWithAssistant: [];
 }>();
 
 const i18n = useI18n();
+
+const showFix = computed(() => Boolean(props.canFixWithAssistant && props.executionId));
 
 function toolCallsNeedSubAgentNames(toolCalls: ToolCall[]): boolean {
 	return toolCalls.some((tc) => {
@@ -135,6 +149,7 @@ function hasLoadingToolCall(): boolean {
 					:label="view.label"
 					:loading="isToolStepLoading(tc)"
 					:error="toolStepError(tc)"
+					:hide-error-callout="showFix"
 					:has-content="view.expandable"
 				>
 					<N8nMarkdownEditor
@@ -161,44 +176,81 @@ function hasLoadingToolCall(): boolean {
 						</div>
 					</div>
 				</N8nAiActivityStep>
+				<N8nCallout
+					v-if="showFix && tc.state === 'error'"
+					theme="danger"
+					data-test-id="agent-chat-tool-fix-with-assistant-callout"
+				>
+					{{ toolStepError(tc) }}
+					<template #trailingContent>
+						<N8nButton
+							size="small"
+							type="secondary"
+							icon="sparkles"
+							data-test-id="agent-chat-tool-fix-with-assistant"
+							@click="emit('fixWithAssistant')"
+						>
+							{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
+						</N8nButton>
+					</template>
+				</N8nCallout>
 			</template>
 		</N8nAiActivityStepGroup>
 
 		<template v-else>
-			<N8nAiActivityStep
-				v-for="tc in toolCalls"
-				:key="tc.toolCallId"
-				:label="toolStepView(tc).label"
-				:loading="isToolStepLoading(tc)"
-				:error="toolStepError(tc)"
-				:has-content="toolStepView(tc).expandable"
-			>
-				<template v-for="view in [toolStepView(tc)]" :key="view.label">
-					<N8nMarkdownEditor
-						v-if="view.details"
-						:model-value="view.details"
-						readonly
-						variant="ghost"
-						show-toolbar="never"
-						max-height="240px"
-						:class="$style.answer"
-					/>
-					<div v-else-if="view.hasRawData" :class="$style.toolDataList">
-						<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
-							<span :class="$style.toolDataLabel">
-								{{ i18n.baseText('agentSessions.timeline.input') }}
-							</span>
-							<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+			<template v-for="tc in toolCalls" :key="tc.toolCallId">
+				<N8nAiActivityStep
+					:label="toolStepView(tc).label"
+					:loading="isToolStepLoading(tc)"
+					:error="toolStepError(tc)"
+					:hide-error-callout="showFix"
+					:has-content="toolStepView(tc).expandable"
+				>
+					<template v-for="view in [toolStepView(tc)]" :key="view.label">
+						<N8nMarkdownEditor
+							v-if="view.details"
+							:model-value="view.details"
+							readonly
+							variant="ghost"
+							show-toolbar="never"
+							max-height="240px"
+							:class="$style.answer"
+						/>
+						<div v-else-if="view.hasRawData" :class="$style.toolDataList">
+							<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
+								<span :class="$style.toolDataLabel">
+									{{ i18n.baseText('agentSessions.timeline.input') }}
+								</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+							</div>
+							<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+								<span :class="$style.toolDataLabel">
+									{{ i18n.baseText('agentSessions.timeline.output') }}
+								</span>
+								<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+							</div>
 						</div>
-						<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
-							<span :class="$style.toolDataLabel">
-								{{ i18n.baseText('agentSessions.timeline.output') }}
-							</span>
-							<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
-						</div>
-					</div>
-				</template>
-			</N8nAiActivityStep>
+					</template>
+				</N8nAiActivityStep>
+				<N8nCallout
+					v-if="showFix && tc.state === 'error'"
+					theme="danger"
+					data-test-id="agent-chat-tool-fix-with-assistant-callout"
+				>
+					{{ toolStepError(tc) }}
+					<template #trailingContent>
+						<N8nButton
+							size="small"
+							type="secondary"
+							icon="sparkles"
+							data-test-id="agent-chat-tool-fix-with-assistant"
+							@click="emit('fixWithAssistant')"
+						>
+							{{ i18n.baseText('agents.builder.preview.fixWithAssistant') }}
+						</N8nButton>
+					</template>
+				</N8nCallout>
+			</template>
 		</template>
 	</div>
 </template>

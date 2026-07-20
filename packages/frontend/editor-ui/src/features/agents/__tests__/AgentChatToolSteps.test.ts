@@ -8,7 +8,7 @@ import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
 vi.mock('@n8n/design-system', () => ({
 	N8nAiActivityStep: {
-		props: ['label', 'hasContent', 'loading', 'error'],
+		props: ['label', 'hasContent', 'loading', 'error', 'hideErrorCallout'],
 		data: () => ({ isOpen: false }),
 		computed: {
 			labelParts(this: { label: string }): string[] {
@@ -32,6 +32,15 @@ vi.mock('@n8n/design-system', () => ({
 	N8nAiActivityStepGroup: {
 		props: ['label', 'size', 'loading'],
 		template: '<div><slot /></div>',
+	},
+	N8nButton: {
+		props: ['size', 'type', 'icon'],
+		emits: ['click'],
+		template: '<button type="button" @click.stop="$emit(\'click\')"><slot /></button>',
+	},
+	N8nCallout: {
+		props: ['theme'],
+		template: '<div><slot /><slot name="trailingContent" /></div>',
 	},
 	N8nIcon: {
 		template: '<i :data-icon="icon" />',
@@ -81,9 +90,12 @@ vi.mock('../composables/useSubAgentNames', () => ({
 	useSubAgentNames: () => ({ subAgentNameById: { value: new Map() } }),
 }));
 
-function mountSteps(toolCalls: ToolCall[]) {
+function mountSteps(
+	toolCalls: ToolCall[],
+	extra: { canFixWithAssistant?: boolean; executionId?: string } = {},
+) {
 	return mount(AgentChatToolSteps, {
-		props: { toolCalls, projectId: 'project-1' },
+		props: { toolCalls, projectId: 'project-1', ...extra },
 	});
 }
 
@@ -117,6 +129,43 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('button').exists()).toBe(false);
+	});
+
+	it('shows Fix with Assistant only for errored tools when handoff is enabled', async () => {
+		const errored: ToolCall = {
+			tool: 'search_nodes',
+			toolCallId: 'tc-err',
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Tool failed',
+		};
+
+		const withoutFix = mountSteps([errored]);
+		expect(withoutFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+
+		const withoutExecutionId = mountSteps([errored], { canFixWithAssistant: true });
+		expect(
+			withoutExecutionId.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists(),
+		).toBe(false);
+
+		const doneTool = mountSteps(
+			[{ ...errored, state: TOOL_CALL_STATE.DONE, toolCallId: 'tc-ok' }],
+			{ canFixWithAssistant: true, executionId: 'exec-1' },
+		);
+		expect(doneTool.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+
+		const withFix = mountSteps([errored], {
+			canFixWithAssistant: true,
+			executionId: 'exec-1',
+		});
+		expect(
+			withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(true);
+		await withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(withFix.emitted('fixWithAssistant')?.length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('shows incomplete task count in write_todos summary', async () => {

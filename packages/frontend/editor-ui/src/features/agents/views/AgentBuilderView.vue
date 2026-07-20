@@ -137,7 +137,7 @@ const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissio
 
 const isVersionHistoryOpen = ref(false);
 
-async function onSendPreviewToAssistant() {
+async function onSendPreviewToAssistant(executionId?: string) {
 	const threadId = effectiveSessionId.value;
 	if (!threadId || !agentId.value || !projectId.value) return;
 
@@ -148,6 +148,7 @@ async function onSendPreviewToAssistant() {
 		agentName: agentName.value || undefined,
 		agentIcon: localConfig.value?.personalisation?.icon,
 		sessionTitle: currentSessionTitle.value || undefined,
+		executionId,
 	});
 }
 

@@ -32,6 +32,33 @@ describe('shared agents chat display groups', () => {
 		}
 	});
 
+	it('keeps executionId on folded toolRun groups', () => {
+		const messages: AgentsChatMessage[] = [
+			{ id: 'u1', role: 'user', content: 'start', executionId: 'exec-1' },
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				executionId: 'exec-1',
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'done' }],
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: '',
+				executionId: 'exec-1',
+				toolCalls: [{ tool: 'write', toolCallId: 'tc2', state: 'error' }],
+			},
+			{ id: 'a3', role: 'assistant', content: 'finished', executionId: 'exec-1' },
+		];
+
+		const groups = buildDisplayGroups(messages);
+		expect(groups[1].kind).toBe('toolRun');
+		if (groups[1].kind === 'toolRun') {
+			expect(groups[1].executionId).toBe('exec-1');
+		}
+	});
+
 	it('does not group assistant messages with visible text as tool-only messages', () => {
 		expect(
 			isGroupable({

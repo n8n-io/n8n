@@ -164,6 +164,28 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('awaits recordMessage and notifies onExecutionRecorded with the returned id', async () => {
+		const { service, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		const onExecutionRecorded = vi.fn();
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+				onExecutionRecorded,
+			}),
+		);
+
+		expect(executionService.recordMessage).toHaveBeenCalled();
+		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
+	});
+
 	it('executes in-app chat against the draft runtime', async () => {
 		const { service, runtimeCacheService, executionService, integrationMessageContextService } =
 			makeService();

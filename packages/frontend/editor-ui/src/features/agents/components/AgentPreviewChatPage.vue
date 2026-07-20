@@ -25,7 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'continue-loaded': [count: number];
 	'open-build': [];
-	'send-to-assistant': [];
+	'send-to-assistant': [executionId?: string];
 	'open-memory-settings': [];
 }>();
 
@@ -60,7 +60,7 @@ const showEpisodicMemoryCallout = computed(
 				:can-send-to-assistant="canSendToAssistant"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
-				@send-to-assistant="emit('send-to-assistant')"
+				@send-to-assistant="emit('send-to-assistant', $event)"
 			>
 				<template #above-input>
 					<N8nCallout

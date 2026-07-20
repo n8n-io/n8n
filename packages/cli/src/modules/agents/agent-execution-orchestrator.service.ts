@@ -37,6 +37,8 @@ export interface ExecuteForChatConfig {
 	user: User;
 	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
 	memory: AgentMemoryScope;
+	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
 }
 
 export interface ExecuteForChatPublishedConfig {
@@ -76,6 +78,8 @@ export interface ResumeForChatConfig {
 	 * persisted tool call references a tool the rebuilt runtime doesn't know.
 	 */
 	integrationType?: string;
+	/** Fired after the resumed turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
 }
 
 export interface ExecuteForTaskPublishedConfig {
@@ -127,6 +131,8 @@ export interface StreamChatResponseConfig {
 		runType: AgentRunTelemetryType;
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
+	/** Fired after the turn is persisted; used to attach `executionId` to SSE `done`. */
+	onExecutionRecorded?: (executionId: string) => void;
 }
 
 function getMaxIterationsChunks(): StreamChunk[] {
@@ -193,6 +199,7 @@ export class AgentExecutionOrchestratorService {
 			integrationType,
 			user,
 			usePublishedVersion = true,
+			onExecutionRecorded,
 		} = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
@@ -253,8 +260,8 @@ export class AgentExecutionOrchestratorService {
 			// or fail while streaming. Don't repeat the original user message — the
 			// pre-suspension execution already has it.
 			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
+			try {
+				const executionId = await this.agentExecutionService.recordMessage({
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -266,14 +273,15 @@ export class AgentExecutionOrchestratorService {
 						runType,
 						configuration: runtime.telemetryConfiguration,
 					},
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record resumed agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
 				});
+				onExecutionRecorded?.(executionId);
+			} catch (error) {
+				this.logger.warn('Failed to record resumed agent execution', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 	}
 
@@ -281,7 +289,7 @@ export class AgentExecutionOrchestratorService {
 	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 */
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, message, user, memory } = config;
+		const { agentId, projectId, message, user, memory, onExecutionRecorded } = config;
 
 		// `user` is always set (see ExecuteForChatConfig) — this builds/reuses a
 		// runtime scoped to this specific user's tool access.
@@ -312,6 +320,7 @@ export class AgentExecutionOrchestratorService {
 				runType: 'test',
 				configuration: runtime.telemetryConfiguration,
 			},
+			onExecutionRecorded,
 		});
 	}
 
@@ -435,6 +444,7 @@ export class AgentExecutionOrchestratorService {
 			taskId,
 			taskVersionId,
 			telemetry,
+			onExecutionRecorded,
 		} = config;
 		const { threadId, resourceId } = memory;
 
@@ -471,8 +481,8 @@ export class AgentExecutionOrchestratorService {
 			// Always record — even if suspended or failed, the pre-suspension/error
 			// response text and tool calls are valuable.
 			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
+			try {
+				const executionId = await this.agentExecutionService.recordMessage({
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -484,14 +494,15 @@ export class AgentExecutionOrchestratorService {
 					taskId,
 					taskVersionId,
 					telemetry,
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
 				});
+				onExecutionRecorded?.(executionId);
+			} catch (error) {
+				this.logger.warn('Failed to record agent execution', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
 		}
 	}
 }

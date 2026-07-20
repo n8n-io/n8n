@@ -410,6 +410,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				break;
 			}
 			case 'done':
+				if (event.executionId) {
+					for (const msg of session.minted) {
+						msg.executionId = event.executionId;
+					}
+				}
 				return { done: true };
 			default:
 				break;

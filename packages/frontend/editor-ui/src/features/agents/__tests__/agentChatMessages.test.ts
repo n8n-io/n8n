@@ -70,6 +70,18 @@ describe('rebuildInteractiveFromHistory', () => {
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
+	it('parses executionId from persisted message ids', () => {
+		const chat = convertDbMessages([
+			{
+				id: 'exec-1:assistant',
+				role: 'assistant',
+				content: [{ type: 'text', text: 'Hi' }],
+			},
+		]);
+
+		expect(chat[0].executionId).toBe('exec-1');
+	});
+
 	it('preserves multiple resolved n8n chat cards from one persisted assistant message', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{

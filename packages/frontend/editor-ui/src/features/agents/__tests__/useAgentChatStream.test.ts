@@ -920,3 +920,22 @@ describe('useAgentChatStream — loadHistory', () => {
 		expect(msg.status).toBe('awaitingUser');
 	});
 });
+
+describe('useAgentChatStream — done executionId', () => {
+	it('stamps executionId from done onto minted messages', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'text-start', id: 't1' },
+			{ type: 'text-delta', id: 't1', delta: 'Hello' },
+			{ type: 'text-end', id: 't1' },
+			{ type: 'done', sessionId: 'thread-1', executionId: 'exec-live-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('hi');
+
+		const assistant = hook.messages.value.find((m) => m.role === 'assistant');
+		expect(assistant?.content).toBe('Hello');
+		expect(assistant?.executionId).toBe('exec-live-1');
+	});
+});

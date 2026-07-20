@@ -105,4 +105,4 @@ export type AgentSseEvent =
 			/** Backend-emitted ids of the missing config slots; only set when `errorCode` is `agent_misconfigured`. */
 			missing?: string[];
 	  }
-	| { type: 'done'; sessionId?: string };
+	| { type: 'done'; sessionId?: string; executionId?: string };
