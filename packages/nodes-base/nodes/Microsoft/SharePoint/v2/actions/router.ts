@@ -1,4 +1,9 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import * as file from './file';
 import * as list from './list';
