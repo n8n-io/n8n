@@ -51,18 +51,6 @@ describe('@ApiKeyScope Decorator', () => {
 		).toEqual({ allOf: ['tag:list', 'tag:create'] });
 	});
 
-	it('should reject bare arrays', () => {
-		expect(() => {
-			class TestController {
-				@Get('/')
-				// @ts-expect-error — bare arrays are intentionally unsupported
-				@ApiKeyScope(['tag:list', 'tag:read'])
-				async handler() {}
-			}
-			void TestController;
-		}).toThrow(/bare array/);
-	});
-
 	it('should reject objects that declare both anyOf and allOf', () => {
 		const ambiguous = {
 			anyOf: ['tag:list' as const],

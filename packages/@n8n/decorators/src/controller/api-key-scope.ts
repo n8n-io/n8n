@@ -3,15 +3,10 @@ import { Container } from '@n8n/di';
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
 import type { ApiKeyScopeRequirement, Controller } from './types';
 
-function isBareArray(value: unknown): value is unknown[] {
-	return Array.isArray(value);
-}
-
 /**
  * Declares the API-key scope(s) required for a public API route.
  *
- * Accepts a single scope string, or `{ anyOf }` / `{ allOf }` for multiples.
- * Bare arrays are rejected (ambiguous between any-of and all-of).
+ * Accepts a single scope string, or `{ anyOf }` / `{ allOf }` for multiples
  *
  * The PublicApiControllerRegistry enforces the check against
  * `req.tokenGrant.apiKeyScopes`.
@@ -26,12 +21,6 @@ function isBareArray(value: unknown): value is unknown[] {
 export const ApiKeyScope =
 	(requirement: ApiKeyScopeRequirement): MethodDecorator =>
 	(target, handlerName) => {
-		if (isBareArray(requirement)) {
-			throw new Error(
-				'@ApiKeyScope does not accept a bare array — use { anyOf: [...] } or { allOf: [...] }',
-			);
-		}
-
 		if (typeof requirement === 'object') {
 			const hasAnyOf = 'anyOf' in requirement;
 			const hasAllOf = 'allOf' in requirement;
