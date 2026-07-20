@@ -56,4 +56,18 @@ describe('applyAgentThinking', () => {
 		applyAgentThinking(agent, 'google/gemini-2.5-pro');
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
+
+	it('enables low reasoning effort for Kimi K3 via OpenRouter', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openrouter/moonshotai/kimi-k3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+			reasoningEffort: 'low',
+		});
+	});
+
+	it('skips OpenRouter models that are not Kimi K3', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openrouter/openai/gpt-4o');
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
 });

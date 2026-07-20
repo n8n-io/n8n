@@ -66,4 +66,20 @@ describe('thinkingToProviderOptions', () => {
 			xai: { reasoningEffort: 'high' },
 		});
 	});
+
+	it('openrouter: maps reasoningEffort to reasoning.effort', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.({
+				reasoningEffort: 'low',
+			}),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'low' } },
+		});
+	});
+
+	it('openrouter: defaults reasoning effort to medium', () => {
+		expect(getProviderQuirks('openrouter').thinkingToProviderOptions?.({})).toEqual({
+			openrouter: { reasoning: { effort: 'medium' } },
+		});
+	});
 });

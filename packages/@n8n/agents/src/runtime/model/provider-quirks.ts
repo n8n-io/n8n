@@ -98,6 +98,18 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
 		},
 	},
+	openrouter: {
+		// OpenRouter's AI SDK provider reads `providerOptions.openrouter.reasoning`
+		// and forwards it as the chat-completions `reasoning` body field.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return {
+				openrouter: {
+					reasoning: { effort: cfg.reasoningEffort ?? 'medium' },
+				},
+			};
+		},
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {

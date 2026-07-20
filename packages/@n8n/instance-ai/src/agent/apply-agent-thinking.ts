@@ -33,6 +33,24 @@ function resolveModelProvider(modelId: ModelConfig): string | undefined {
 	return provider && model ? normalizeProvider(provider) : undefined;
 }
 
+function resolveModelIdString(modelId: ModelConfig): string | undefined {
+	if (typeof modelId === 'string') return modelId;
+	if (!isRecord(modelId)) return undefined;
+
+	const id = getStringProperty(modelId, 'id');
+	if (id) return id;
+
+	const provider = getStringProperty(modelId, 'provider') ?? getProviderFromConfig(modelId);
+	const model = getStringProperty(modelId, 'modelId');
+	return provider && model ? `${provider}/${model}` : undefined;
+}
+
+/** Moonshot Kimi K3 via OpenRouter (`openrouter/moonshotai/kimi-k3`, dated slugs, etc.). */
+function isKimiK3Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	return id.includes('kimi-k3');
+}
+
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	const provider = resolveModelProvider(modelId);
 
@@ -46,5 +64,11 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	if (provider === 'anthropic') {
 		agent.thinking('anthropic', { mode: 'adaptive' });
 		return;
+	}
+
+	if (provider === 'openrouter') {
+		if (isKimiK3Model(modelId)) {
+			agent.thinking('openrouter', { reasoningEffort: 'low' });
+		}
 	}
 }
