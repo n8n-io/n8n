@@ -5,7 +5,6 @@ import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import {
-	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
 } from '../entities/workflow-publication-outbox';
@@ -61,12 +60,10 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const tableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
-		// `createdAt`/`updatedAt` carry DB-level defaults, so the insert omits
-		// them. COALESCE only satisfies the NOT NULL column until it is dropped —
-		// the value is never read.
+		// `createdAt`/`updatedAt` carry DB-level defaults, so the insert omits them.
 		await trx.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+			`INSERT INTO ${tableName} ("workflowId", "status")
+			 SELECT w."id", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = $1
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
@@ -80,8 +77,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const workflowTableName = this.getTableName('workflow_entity');
 
 		await trx.query(
-			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+			`INSERT INTO ${tableName} ("workflowId", "status")
+			 SELECT w."id", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ?
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
@@ -117,8 +114,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
 		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			`INSERT INTO ${outboxTableName} ("workflowId", "status")
+			 SELECT w."id", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = false
 			 AND (
@@ -141,8 +138,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const triggerStatusTableName = this.getTableName('workflow_publication_trigger_status');
 
 		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			`INSERT INTO ${outboxTableName} ("workflowId", "status")
+			 SELECT w."id", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
 			 AND (
@@ -163,10 +160,10 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * Enqueue a pending publication record for each given workflow that still
 	 * exists, in a single statement. Used by reconciliation, which must be able to
 	 * enqueue whatever its detection returns — refusing a workflow here would
-	 * re-detect it on every pass forever. Published workflows are enqueued at
-	 * their canonical `activeVersionId`; unpublished (including archived) ones get
-	 * an unpublish record that clears their stale trigger-status rows. Idempotent
-	 * via the same partial-unique-index upsert as {@link enqueue}.
+	 * re-detect it on every pass forever — the applier resolves what to do (publish
+	 * the current `activeVersionId`, or unpublish and clear stale trigger-status
+	 * rows) at claim time. Idempotent via the same partial-unique-index upsert as
+	 * {@link enqueue}.
 	 */
 	async enqueueByWorkflowIds(workflowIds: string[]): Promise<void> {
 		if (workflowIds.length === 0) return;
@@ -183,20 +180,14 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
 		const workflowTableName = this.getTableName('workflow_entity');
 
-		// COALESCE: an unpublished workflow has no `activeVersionId`, but the column
-		// is NOT NULL, so those records carry the unpublish sentinel. It is inert —
-		// the applier dispatches an unpublish on the workflow's null
-		// `activeVersionId` and never reads the record's version. (Mirrored in the
-		// sqlite variant below.)
-		//
-		// DO NOTHING, unlike `enqueue`: reconciliation's detection and this enqueue
+		// DO NOTHING, like `enqueue`: reconciliation's detection and this enqueue
 		// are two separate statements, so a publish/unpublish can commit a pending
 		// record in the gap between them (detection's in-flight exclusion saw an
 		// earlier snapshot). Such a record is at least as fresh as this statement's
 		// snapshot — overwriting it could roll the workflow back to a stale version.
 		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+			`INSERT INTO ${outboxTableName} ("workflowId", "status")
+			 SELECT w."id", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ANY($1)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
@@ -211,8 +202,8 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const placeholders = workflowIds.map(() => '?').join(', ');
 
 		await this.query(
-			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+			`INSERT INTO ${outboxTableName} ("workflowId", "status")
+			 SELECT w."id", '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" IN (${placeholders})
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')

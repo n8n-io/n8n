@@ -37,7 +37,6 @@ describe('WorkflowPublicationApplier', () => {
 		return {
 			id: 1,
 			workflowId: 'wf-1',
-			publishedVersionId: 'v-2',
 			status: 'in_progress',
 			errorMessage: null,
 			createdAt: new Date(),
@@ -222,11 +221,11 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 	});
 
-	test("publishes the workflow's current active version, ignoring the version the record was enqueued with", async () => {
-		// The record only marks the workflow as needing reconciliation; the target
-		// is always the workflow's `activeVersionId` at apply time, so a record
-		// enqueued for a since-superseded version still applies the current one.
-		const result = await applier.apply(makeRecord({ publishedVersionId: 'v-stale' }));
+	test("derives the publish target from the workflow's activeVersionId at apply time", async () => {
+		// The record carries no target — it only marks the workflow as needing
+		// reconciliation. Whatever was current at enqueue time, the version that
+		// gets published is the one the workflow points at now.
+		const result = await applier.apply(makeRecord());
 
 		expect(result).toEqual({ type: 'completed', appliedVersionId: 'v-2', triggerStatuses: [] });
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(

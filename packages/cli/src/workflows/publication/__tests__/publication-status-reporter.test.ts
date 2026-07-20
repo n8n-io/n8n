@@ -44,7 +44,6 @@ describe('PublicationStatusReporter', () => {
 		return {
 			id: 1,
 			workflowId: 'wf-1',
-			publishedVersionId: 'v-2',
 			status: 'in_progress',
 			errorMessage: null,
 			createdAt: new Date(),

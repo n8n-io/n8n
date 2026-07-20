@@ -26,7 +26,6 @@ describe('WorkflowPublicationStatusService', () => {
 		return {
 			id: 1,
 			workflowId: WORKFLOW_ID,
-			publishedVersionId: 'v-2',
 			status: 'completed',
 			errorMessage: null,
 			createdAt: new Date(),
@@ -66,7 +65,7 @@ describe('WorkflowPublicationStatusService', () => {
 	describe('first publish in flight (no rows; in-flight in_progress)', () => {
 		it('returns in_progress with a null live version', async () => {
 			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
-				makeOutbox({ status: 'in_progress', publishedVersionId: 'v-2' }),
+				makeOutbox({ status: 'in_progress' }),
 			);
 			triggerStatusRepository.findByWorkflowId.mockResolvedValue([]);
 
@@ -81,7 +80,7 @@ describe('WorkflowPublicationStatusService', () => {
 	describe('first publish pending (no rows; in-flight pending)', () => {
 		it('returns in_progress with a null live version', async () => {
 			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
-				makeOutbox({ status: 'pending', publishedVersionId: 'v-2' }),
+				makeOutbox({ status: 'pending' }),
 			);
 			triggerStatusRepository.findByWorkflowId.mockResolvedValue([]);
 
@@ -96,7 +95,7 @@ describe('WorkflowPublicationStatusService', () => {
 	describe('republish over live v1 (rows v1 all activated; in-flight in_progress record)', () => {
 		it('returns in_progress with live v1 and pending v2', async () => {
 			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
-				makeOutbox({ status: 'in_progress', publishedVersionId: 'v-2' }),
+				makeOutbox({ status: 'in_progress' }),
 			);
 			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
 				makeRow({ versionId: 'v-1', status: 'activated' }),

@@ -110,7 +110,7 @@ export class WorkflowPublicationApplier {
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
 			{
 				workflowId: record.workflowId,
-				publishedVersionId: newVersion.versionId,
+				appliedVersionId: newVersion.versionId,
 				toAdd: Array.from(toAdd),
 				toRemove: Array.from(toRemove),
 			},
