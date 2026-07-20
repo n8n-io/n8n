@@ -16,6 +16,46 @@ packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
   s_770a4f5233186c::t_8ad2b3903b74bc 98
 packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
   s_770a4f5233186c::t_a7cff99b8f3cd2 143
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 10,66
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 79
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 78
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,822,1136
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,809,1123
+packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
+  ai_agent 1-31
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+packages/@n8n/db/src/migrations/common/1784000000049-AddScheduledTaskDispatchedAt.ts
+  ai_agent 1-35
+docs/generated/sqlite-schema/scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 93
+docs/generated/sqlite-schema/scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 9,21,65
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-218,217-218
+  s_44a98ba2784a12::t_daa8f45a138448 436-437,436-437
+  s_44a98ba2784a12::t_d446b22a984aa3 216,216
+  s_44a98ba2784a12::t_29c7d74109de94 435,435
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 92
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,20,57
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_51812c9029fdb3 454-455,454-455
+  s_44a98ba2784a12::t_d25d8416783ebe 225-226,225-226
+  s_44a98ba2784a12::t_50f198fd2246d1 224,224
+  s_44a98ba2784a12::t_6a70a4b32b68f9 453,453
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,49
+packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
+  ai_agent 1-39
 ---
 {
   "schema_version": "authorship/3.0.0",
