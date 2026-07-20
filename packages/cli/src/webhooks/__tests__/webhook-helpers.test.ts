@@ -396,23 +396,23 @@ describe('setupResponseNodePromise', () => {
 
 describe('executeWebhook', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('maps pending onReceived admission limit errors to HTTP 429', async () => {
 		mockInstance(AuthService);
 		mockInstance(WebhookService, {
-			runWebhook: jest.fn().mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] }),
+			runWebhook: vi.fn().mockResolvedValue({ workflowData: [[{ json: { ok: true } }]] }),
 		});
 		mockInstance(WorkflowStatisticsService, {
-			emit: jest.fn(),
+			emit: vi.fn(),
 		});
 		mockInstance(OwnershipService, {
-			getWorkflowProjectCached: jest.fn().mockResolvedValue(undefined),
+			getWorkflowProjectCached: vi.fn().mockResolvedValue(undefined),
 		});
-		jest
-			.spyOn(WorkflowExecuteAdditionalData, 'getBase')
-			.mockResolvedValue({} as IWorkflowExecuteAdditionalData);
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+			{} as IWorkflowExecuteAdditionalData,
+		);
 
 		// Mock WorkflowRunner.run via Container
 		const mockWorkflowRunner = mockInstance(WorkflowRunner);
@@ -429,17 +429,17 @@ describe('executeWebhook', () => {
 			name: 'Webhook workflow',
 			nodes: { [workflowStartNode.name]: workflowStartNode },
 			nodeTypes: {
-				getByNameAndVersion: jest.fn().mockReturnValue({
+				getByNameAndVersion: vi.fn().mockReturnValue({
 					description: { name: 'webhook' },
 				}),
 			},
 			expression: {
-				getSimpleParameterValue: jest
+				getSimpleParameterValue: vi
 					.fn()
 					.mockReturnValueOnce('onReceived')
 					.mockReturnValueOnce(200)
 					.mockReturnValue(undefined),
-				getComplexParameterValue: jest.fn().mockReturnValue('firstEntryJson'),
+				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
 			},
 		});
 		const workflowData = mock<IWorkflowBase>({
@@ -475,7 +475,7 @@ describe('executeWebhook', () => {
 		const res = mock<express.Response>({
 			headersSent: false,
 		});
-		const responseCallback = jest.fn();
+		const responseCallback = vi.fn();
 
 		await executeWebhook(
 			workflow,

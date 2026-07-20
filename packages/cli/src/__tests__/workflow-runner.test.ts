@@ -8,6 +8,9 @@ import {
 	ExecutionRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
@@ -43,9 +46,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can
@@ -407,9 +407,7 @@ describe('run', () => {
 		it('returns immediately for onReceived before activation completes', async () => {
 			const activeExecutions = Container.get(ActiveExecutions);
 			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
-			vi
-				.spyOn(activeExecutions, 'waitForActivation')
-				.mockReturnValue(new Promise<void>(() => { }));
+			vi.spyOn(activeExecutions, 'waitForActivation').mockReturnValue(new Promise<void>(() => {}));
 			const permissionCheckSpy = vi.spyOn(Container.get(CredentialsPermissionChecker), 'check');
 			const data = buildWebhookRunData();
 
@@ -481,9 +479,9 @@ describe('run', () => {
 		it('fails the execution when workflow startup throws', async () => {
 			mockRunnerStartDeps();
 			const error = new Error('start failed');
-			vi
-				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
-				.mockRejectedValue(error);
+			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess').mockRejectedValue(
+				error,
+			);
 			const failExecutionSpy = vi
 				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
 				.mockResolvedValue();
@@ -501,9 +499,9 @@ describe('run', () => {
 		it('clears streaming heartbeat on execution/startup failures', async () => {
 			mockRunnerStartDeps();
 			const error = new Error('startup failed');
-			vi
-				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
-				.mockRejectedValue(error);
+			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess').mockRejectedValue(
+				error,
+			);
 			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution').mockResolvedValue();
 
 			const setIntervalSpy = vi.spyOn(global, 'setInterval');
@@ -540,8 +538,9 @@ describe('run', () => {
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
-			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-				.mockReturnValue(mock<core.ExecutionLifecycleHooks>());
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValue(
+				mock<core.ExecutionLifecycleHooks>(),
+			);
 			vi.spyOn(Container.get(ManualExecutionService), 'runManually').mockReturnValue(
 				new PCancelable(() => mock<IRun>()),
 			);
@@ -617,10 +616,12 @@ describe('run', () => {
 			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
 			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
 
-			await expect(runner.run(data)).rejects.toThrowError(error);
+			const execId = await runner.run(data);
+			expect(execId).toBeTruthy();
+			expect(processError).toHaveBeenCalled();
 
 			expect(processError).toHaveBeenCalled();
-			expect(failExecution).not.toHaveBeenCalled();
+			expect(failExecution).toHaveBeenCalled();
 		});
 	});
 });
@@ -1153,7 +1154,7 @@ describe('streaming functionality', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => { }));
+		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 

@@ -449,7 +449,9 @@ describe('ActiveExecutions', () => {
 
 			// Clean up
 			realConcurrencyControl.release({ mode: 'webhook' });
-			await activeExecutions.waitForActivation(firstId);
+			if (firstId) {
+				await activeExecutions.waitForActivation(firstId);
+			}
 		});
 
 		test('does not add an execution or release capacity when DB creation fails', async () => {
@@ -464,7 +466,7 @@ describe('ActiveExecutions', () => {
 		});
 
 		test('cleans up when background reservation fails', async () => {
-			const releaseSpy = jest.spyOn(ConcurrencyCapacityReservation.prototype, 'release');
+			const releaseSpy = vi.spyOn(ConcurrencyCapacityReservation.prototype, 'release');
 			concurrencyControl.throttle.mockRejectedValueOnce(new Error('reserve failed'));
 
 			const executionId = await activeExecutions.add(webhookExecutionData, undefined, 'onReceived');
@@ -480,7 +482,7 @@ describe('ActiveExecutions', () => {
 
 		test('releases capacity once and removes the execution if setRunning fails', async () => {
 			const realConcurrencyControl = buildProductionConcurrencyControl(1);
-			const releaseSpy = jest.spyOn(realConcurrencyControl, 'release');
+			const releaseSpy = vi.spyOn(realConcurrencyControl, 'release');
 			activeExecutions = new ActiveExecutions(
 				mock(),
 				executionRepository,
@@ -506,7 +508,7 @@ describe('ActiveExecutions', () => {
 
 		test('shutdown removes queued onReceived executions before capacity is available', async () => {
 			const realConcurrencyControl = buildProductionConcurrencyControl(1);
-			const removeAllSpy = jest.spyOn(realConcurrencyControl, 'removeAll');
+			const removeAllSpy = vi.spyOn(realConcurrencyControl, 'removeAll');
 			activeExecutions = new ActiveExecutions(
 				mock(),
 				executionRepository,
@@ -825,7 +827,7 @@ describe('ActiveExecutions', () => {
 
 		test('shutdown with queued onReceived execution does not cause unhandled promise rejections', async () => {
 			const realConcurrencyControl = buildProductionConcurrencyControl(1);
-			const removeAllSpy = jest.spyOn(realConcurrencyControl, 'removeAll');
+			const removeAllSpy = vi.spyOn(realConcurrencyControl, 'removeAll');
 			activeExecutions = new ActiveExecutions(
 				mock(),
 				executionRepository,

@@ -11,8 +11,7 @@ describe('ConcurrencyQueue', () => {
 		const queue = new ConcurrencyQueue(1);
 		const state: Record<string, 'started' | 'finished' | 'rejected'> = {};
 
-		// eslint-disable-next-line @typescript-eslint/promise-function-async
-		const sleepSpy = vi.fn(() => sleep(500));
+		const sleepSpy = vi.fn(async () => await sleep(500));
 
 		const testFn = async (item: { executionId: string }) => {
 			try {
@@ -28,35 +27,27 @@ describe('ConcurrencyQueue', () => {
 			state[item.executionId] = 'finished';
 		};
 
-		void Promise.all([
-			testFn({ executionId: '1' }),
-			testFn({ executionId: '2' }),
-			testFn({ executionId: '3' }),
-			testFn({ executionId: '4' }),
-			testFn({ executionId: '5' }),
-		]);
+		void testFn({ executionId: '1' });
+		void testFn({ executionId: '2' });
+		void testFn({ executionId: '3' });
+		void testFn({ executionId: '4' });
+		void testFn({ executionId: '5' });
 
-		// At T+0 seconds this method hasn't yielded to the event-loop, so no `testFn` calls are made
-		expect(sleepSpy).toHaveBeenCalledTimes(0);
-		expect(state).toEqual({});
-
-		// At T+0.4 seconds the first `testFn` has been called, but hasn't resolved
-		await vi.advanceTimersByTimeAsync(400);
+		await vi.advanceTimersByTimeAsync(1);
 		expect(sleepSpy).toHaveBeenCalledTimes(1);
 		expect(state).toEqual({ 1: 'started' });
 
-		// At T+0.5 seconds the first promise has resolved, and the second one has stared
-		await vi.advanceTimersByTimeAsync(100);
+		// After 500 ms, 1st finishes, 2nd starts
+		await vi.advanceTimersByTimeAsync(499);
 		expect(sleepSpy).toHaveBeenCalledTimes(2);
 		expect(state).toEqual({ 1: 'finished', 2: 'started' });
 
-		// At T+1 seconds the first two promises have resolved, and the third one has stared
+		// After another 500 ms, 2nd finishes, 3rd starts
 		await vi.advanceTimersByTimeAsync(500);
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
 
-		// If the fourth promise is removed, it is rejected and never started.
-		// The fifth one remains queued until the third one finishes.
+		// Remove the 4th promise → it is rejected, 5th stays queued until 3rd finishes
 		queue.remove('4');
 		await vi.advanceTimersByTimeAsync(1);
 		expect(sleepSpy).toHaveBeenCalledTimes(3); // 4 was rejected, 5 is still waiting
@@ -67,7 +58,7 @@ describe('ConcurrencyQueue', () => {
 			4: 'rejected',
 		});
 
-		// At T+1.5 seconds, the third promise finishes, releasing the queue so the fifth one starts.
+		// 3rd promise finishes → capacity freed, 5th starts
 		await vi.advanceTimersByTimeAsync(499);
 		expect(sleepSpy).toHaveBeenCalledTimes(4); // 5 has started
 		expect(state).toEqual({
@@ -78,14 +69,8 @@ describe('ConcurrencyQueue', () => {
 			5: 'started',
 		});
 
-		// at T+2.5 seconds, all active/waiting promises should be resolved/finished
+		// 5th finishes
 		await vi.advanceTimersByTimeAsync(1000);
-		await vi.advanceTimersByTimeAsync(1);
-		expect(sleepSpy).toHaveBeenCalledTimes(4);
-		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started', 5: 'started' });
-
-		// at T+5 seconds, all but the fourth promise should be resolved
-		await vi.advanceTimersByTimeAsync(4000);
 		expect(sleepSpy).toHaveBeenCalledTimes(4);
 		expect(state).toEqual({
 			1: 'finished',

@@ -238,6 +238,28 @@ export class WorkflowRunner {
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId, responseMode);
 
+		if (establishContextError) {
+			if (responseMode === 'onReceived') {
+				void this.startExecution(
+					data,
+					executionId,
+					loadStaticData,
+					realtime,
+					restartExecutionId,
+					responsePromise,
+					establishContextError,
+				).catch((error) => {
+					this.logger.error('Background execution start failed for onReceived webhook', {
+						executionId,
+						error,
+					});
+				});
+			} else {
+				await this.failExecution(data, executionId, establishContextError, responsePromise);
+			}
+			return executionId;
+		}
+
 		if (responseMode === 'onReceived') {
 			void this.startExecution(
 				data,
