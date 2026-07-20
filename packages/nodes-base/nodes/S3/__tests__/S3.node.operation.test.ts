@@ -250,4 +250,56 @@ describe('S3 Node - Get Presigned URL', () => {
 		executeFunctionsMock.getCredentials.mockRejectedValue(new Error('Credentials missing'));
 		await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow('Credentials missing');
 	});
+
+	it('should encode file key with special characters', async () => {
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return 'my-bucket';
+				case 'fileKey':
+					return 'folder/my file?.txt';
+				case 'additionalFields':
+					return { expires: 3600 };
+				default:
+					return undefined;
+			}
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+		// encoded 'my file?.txt' -> 'my%20file%3F.txt'
+		expect(result[0][0].json.url).toContain('folder/my%20file%3F.txt');
+	});
+
+	it('should include path prefix from endpoint', async () => {
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			endpoint: 'https://minio.local/custom/prefix',
+			accessKeyId: 'test-access-key',
+			secretAccessKey: 'test-secret-key',
+			region: 'us-east-1',
+			forcePathStyle: true,
+		});
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'getPresignedUrl';
+				case 'bucketName':
+					return 'my-bucket';
+				case 'fileKey':
+					return 'file.txt';
+				case 'additionalFields':
+					return { expires: 3600 };
+				default:
+					return undefined;
+			}
+		});
+
+		const result = await node.execute.call(executeFunctionsMock);
+		expect(result[0][0].json.url).toContain('minio.local/custom/prefix/my-bucket/file.txt');
+	});
 });
