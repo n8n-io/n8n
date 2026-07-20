@@ -38,8 +38,10 @@
   "dependencies": {
     "@n8n/api-types": "workspace:*",
     "@n8n/permissions": "workspace:*",
+    "@n8n/rest-api-client": "workspace:*",
     "n8n-workflow": "workspace:*",
     "@vueuse/core": "catalog:frontend",
+    "bowser": "2.11.0",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
   },
@@ -58,6 +60,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
