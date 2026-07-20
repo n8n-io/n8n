@@ -1,33 +1,17 @@
-.agents/skills/create-instance-ai-eval/SKILL.md
-  s_2a235a6e9347be::t_ff8a72195e0dec 213-219,323-330,357-368,376-379,387-392,401-408,556-561,565-569
-.agents/skills/create-instance-ai-eval/case-shapes.md
-  s_2a235a6e9347be::t_c12ab2031b25a0 51-55
-.agents/skills/create-instance-ai-eval/running-evals.md
-  s_2a235a6e9347be::t_cf10b770993fb0 128-136
-.agents/skills/create-instance-ai-eval/sourcing-cases.md
-  s_2a235a6e9347be::t_0f3ba074d89567 58-79
 .boundaries-baseline.json
-  s_2a235a6e9347be::t_5484ffa5836343 1-3
+  s_b3f23ab76a494c::t_54e5447b41f4f2 1-3
 package.json
-  s_2a235a6e9347be::t_724df60aac729f 42-45
+  s_b3f23ab76a494c::t_a502251fbf2fde 42-45
 packages/@n8n/api-types/src/dto/index.ts
-  s_2a235a6e9347be::t_de6b26902f5fc7 79
-packages/@n8n/permissions/src/constants.ee.ts
-  s_2a235a6e9347be::t_0ece1b3f0a0047 94
-packages/@n8n/permissions/src/public-api-permissions.ee.ts
-  s_2a235a6e9347be::t_a3288c8325ab2b 18
-packages/cli/src/public-api/types.ts
-  s_2a235a6e9347be::t_f8a09b2a944c66 393-400
-packages/cli/src/public-api/v1/openapi.yml
-  s_2a235a6e9347be::t_dca04508d54561 3,19-24,50-51,68-69
+  s_b3f23ab76a494c::t_a55dfebc3d62e1 79
+packages/cli/src/modules/instance-ai/eval/__tests__/llm-completion-mock.test.ts
+  s_b3f23ab76a494c::t_ddab35b5aab505 173-236
+packages/cli/src/modules/instance-ai/eval/llm-completion-mock.ts
+  s_b3f23ab76a494c::t_8a41ba727e69c2 29,76-79,185-227,282,289-291
 packages/nodes-base/nodes/N8n/n8n-api-coverage.json
-  s_2a235a6e9347be::t_bfcb71e71f80fe 190-192
-packages/nodes-base/package.json
-  s_2a235a6e9347be::t_8386d380b7104a 922
+  s_b3f23ab76a494c::t_7f4fc3338d0586 190-192
 pnpm-lock.yaml
-  s_2a235a6e9347be::t_a00a2da466d09d 6281-6283,6716-6718
-scripts/check-boundaries.mjs
-  s_2a235a6e9347be::t_8e0b5e65dcc3c9 1-64
+  s_b3f23ab76a494c::t_1ef652f0673ec7 6281-6283,6716-6718
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -38,15 +22,18 @@ scripts/check-boundaries.mjs
     "h_0d09e42b2cccb8": {
       "author": "kgrhartlage <kai.grosse.hartlage@gmail.com>"
     },
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
     "h_9c8f56e3400786": {
       "author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   },
   "sessions": {
-    "s_2a235a6e9347be": {
+    "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
-        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
         "model": "gpt-5.6-sol"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
