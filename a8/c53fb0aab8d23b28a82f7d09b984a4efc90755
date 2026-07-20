@@ -4,6 +4,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   h_9c8f56e3400786 113-114
   s_b6381fbb8ddc64::t_626896e5a21e72 110-112,115,117-118
   s_b6381fbb8ddc64::t_809d0a0041ae07 7
+  s_c2503c0608a3df::t_289e0c5b2872c4 109
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
   s_70e4a16a672757::t_498ce41e0925d7 6,583-586,588-606
   s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-221,487-497,499-503,536-537,560-571,573-580
@@ -12,6 +13,7 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   s_70e4a16a672757::t_40de41d139ecad 524,572
   s_70e4a16a672757::t_a10c87b65e1123 538-559,581,607
   s_70e4a16a672757::t_1ef57baf512bc4 79-80,582,608
+  s_c2503c0608a3df::t_0468c3d32e408a 193-194
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -39,6 +41,14 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
         "model": "claude-fable-5"
       },
       "human_author": null
+    },
+    "s_c2503c0608a3df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ea4-b00f-7082-ab26-2894ae42cef2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
