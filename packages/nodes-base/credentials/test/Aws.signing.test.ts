@@ -67,6 +67,25 @@ describe('AWS signing helpers (unit)', () => {
 			expect(req.headers.host).toBe('sqs.eu-central-1.amazonaws.com');
 		});
 
+		it('stringifies numeric header values (S3 multipart upload passes a numeric Content-Length)', () => {
+			const req = buildSmithyHttpRequest({
+				...base,
+				headers: { 'Content-Length': 1024 },
+			} as SignOpts);
+
+			expect(req.headers['content-length']).toBe('1024');
+		});
+
+		it('joins array header values with commas and drops undefined values', () => {
+			const req = buildSmithyHttpRequest({
+				...base,
+				headers: { 'x-multi': ['a', 'b'], 'x-missing': undefined },
+			} as SignOpts);
+
+			expect(req.headers['x-multi']).toBe('a,b');
+			expect(req.headers['x-missing']).toBeUndefined();
+		});
+
 		it('injects aws4-style content-type and content-length for a string body', () => {
 			const req = buildSmithyHttpRequest({ ...base, headers: {}, body: 'a=1&b=2' } as SignOpts);
 
@@ -209,6 +228,28 @@ describe('AWS signing (integration, real signer)', () => {
 		expect(headers['x-amz-content-sha256']).toBeDefined();
 		expect(signedHeadersFrom(authorization)).toContain('x-amz-content-sha256');
 		expect(result.body).toBe(buf);
+	});
+
+	it('signs an S3 multipart part upload with a numeric Content-Length header', async () => {
+		const chunk = Buffer.from('multipart chunk payload');
+		const result = await aws.authenticate(credentials, {
+			...baseRequest,
+			method: 'PUT',
+			body: chunk,
+			headers: {
+				'Content-Length': chunk.length,
+				'Content-MD5': 'q0jVSkkeFyhBBcqugSHUEg==',
+			} as unknown as IHttpRequestOptions['headers'],
+			qs: { service: 's3', path: '/my-bucket/big-file.bin?partNumber=1&uploadId=abc123' },
+		});
+
+		const headers = result.headers as Record<string, string>;
+		const authorization = headers.authorization ?? headers.Authorization;
+
+		expect(authorization).toContain('AWS4-HMAC-SHA256');
+		expect(headers['content-length']).toBe(String(chunk.length));
+		expect(signedHeadersFrom(authorization)).toContain('content-length');
+		expect(signedHeadersFrom(authorization)).toContain('content-md5');
 	});
 
 	describe('SES email endpoints', () => {
