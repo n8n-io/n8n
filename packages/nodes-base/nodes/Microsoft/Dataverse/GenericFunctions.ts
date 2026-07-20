@@ -72,6 +72,40 @@ const RETRYABLE_NETWORK_CODES: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * HTTP methods whose effect is unchanged by repetition. Retrying one of these
+ * after an *ambiguous* failure — where Dataverse may already have processed the
+ * request but the response was lost (504 gateway timeout, `ECONNRESET`, socket
+ * hang-up, etc.) — cannot create a second record, so the full transient set is
+ * safe. POST is deliberately excluded: retrying a Create Row after a lost
+ * response would insert a duplicate row. Dataverse's PATCH is a keyed
+ * update/upsert against a specific record, so it is idempotent in practice.
+ */
+const IDEMPOTENT_METHODS: ReadonlySet<string> = new Set([
+	'GET',
+	'HEAD',
+	'OPTIONS',
+	'PUT',
+	'DELETE',
+	'PATCH',
+]);
+
+/**
+ * Failures that guarantee the request never reached Dataverse, making a retry
+ * safe even for a non-idempotent POST. HTTP 429 is a throttle rejection issued
+ * before any processing; the network codes are connection-establishment
+ * failures (DNS / refused / no route) where the request body was never sent.
+ */
+const PRE_DELIVERY_STATUS_CODES: ReadonlySet<number> = new Set([429]);
+const PRE_DELIVERY_NETWORK_CODES: ReadonlySet<string> = new Set([
+	'ECONNREFUSED',
+	'EAI_AGAIN',
+	'ENOTFOUND',
+	'ENETUNREACH',
+	'EHOSTUNREACH',
+	'EHOSTDOWN',
+]);
+
+/**
  * Retry policy: up to `MAX_RETRIES` extra attempts (so 1 + 3 = 4 total
  * dispatches in the worst case). Back-off is exponential starting from
  * `BASE_DELAY_MS` with full jitter, capped at `MAX_DELAY_MS`. The upstream
@@ -116,15 +150,27 @@ function getNetworkErrorCode(error: unknown): string | undefined {
 }
 
 /**
- * Whether a failed request should be retried. True when the HTTP status is a
- * known-transient code (429 / 503 / 504) OR the error is a transient socket /
- * DNS failure with no HTTP response at all.
+ * Whether a failed request should be retried. For idempotent methods, retries
+ * fire on any known-transient failure — a throttling / gateway status
+ * (429 / 503 / 504) or a transient socket / DNS error with no HTTP response.
+ * For non-idempotent methods (POST), retries are restricted to failures that
+ * prove the request never reached Dataverse (429 or a connection-establishment
+ * error), so a Create Row whose response was lost is never silently duplicated.
  */
-function isRetryable(error: unknown): boolean {
+function isRetryable(error: unknown, method: IHttpRequestMethods): boolean {
+	const idempotent = IDEMPOTENT_METHODS.has(method.toUpperCase());
 	const status = getStatusCode(error);
-	if (status !== undefined && RETRYABLE_STATUS_CODES.has(status)) return true;
+	if (status !== undefined) {
+		// An HTTP status means the request reached the server. Ambiguous
+		// gateway/service failures (503 / 504) are only safe to retry when the
+		// method is idempotent; 429 is always safe (rejected before processing).
+		if (idempotent && RETRYABLE_STATUS_CODES.has(status)) return true;
+		return PRE_DELIVERY_STATUS_CODES.has(status);
+	}
 	const networkCode = getNetworkErrorCode(error);
-	return networkCode !== undefined && RETRYABLE_NETWORK_CODES.has(networkCode);
+	if (networkCode === undefined) return false;
+	if (idempotent) return RETRYABLE_NETWORK_CODES.has(networkCode);
+	return PRE_DELIVERY_NETWORK_CODES.has(networkCode);
 }
 
 function parseRetryAfter(error: unknown): number | undefined {
@@ -150,22 +196,25 @@ function backoffDelay(attempt: number): number {
 /**
  * Dispatch a request via `helpers.httpRequestWithAuthentication`, retrying on
  * transient failures — HTTP 429 / 503 / 504 and socket-level network errors
- * (`ECONNRESET`, `ETIMEDOUT`, DNS failures, socket hang-ups). Non-transient
- * failures are re-thrown immediately so the caller can wrap them in
- * `NodeApiError` without an extra delay.
+ * (`ECONNRESET`, `ETIMEDOUT`, DNS failures, socket hang-ups). Retries are
+ * gated by {@link isRetryable}, which narrows the eligible failures for
+ * non-idempotent writes (POST) so a Create Row whose response was lost is never
+ * silently duplicated. Non-transient failures are re-thrown immediately so the
+ * caller can wrap them in `NodeApiError` without an extra delay.
  */
 async function dispatchWithRetry(
 	ctx: DataverseContext,
 	credentialType: string,
 	options: IHttpRequestOptions,
 ): Promise<unknown> {
+	const method = options.method ?? 'GET';
 	let lastError: unknown;
 	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 		try {
 			return await ctx.helpers.httpRequestWithAuthentication.call(ctx, credentialType, options);
 		} catch (error) {
 			lastError = error;
-			if (!isRetryable(error) || attempt === MAX_RETRIES) {
+			if (!isRetryable(error, method) || attempt === MAX_RETRIES) {
 				// Caller (`dataverseApiRequest` / `dataverseApiRequestAllItems`)
 				// wraps the upstream failure in `NodeApiError`. Wrapping here
 				// would double-wrap and lose the original Dataverse metadata.

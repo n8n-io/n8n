@@ -29,7 +29,7 @@ import {
  *     (e.g. `accountnumber='ACC-001'`) — both are valid Dataverse PATCH targets.
  *   - **Behavior**:
  *     - `upsert` (default)   — no precondition headers
- *     - `updateOnly`         — adds `If-Match: *` (server returns 412 if row missing)
+ *     - `updateOnly`         — adds `If-Match: *` (server returns 404 if row missing)
  *     - `createOnly`         — adds `If-None-Match: *` (server returns 412 if row exists)
  */
 export const upsertRow: OperationDefinition = {

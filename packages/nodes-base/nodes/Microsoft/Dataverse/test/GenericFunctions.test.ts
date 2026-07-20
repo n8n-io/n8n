@@ -268,6 +268,96 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			expect(sleep).toHaveBeenCalledTimes(3);
 		});
 
+		it('does not retry a POST after an ambiguous 504 (avoids duplicate rows)', async () => {
+			request.mockRejectedValue({ statusCode: 504 });
+
+			await expect(
+				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('does not retry a POST after an ambiguous 503', async () => {
+			request.mockRejectedValue({ statusCode: 503 });
+
+			await expect(
+				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('does not retry a POST after an ambiguous socket error (ECONNRESET)', async () => {
+			request.mockRejectedValue({ code: 'ECONNRESET' });
+
+			await expect(
+				dataverseApiRequest(ctx, 'POST', '/accounts', { name: 'Acme' }, {}, {}, CREDENTIAL_TYPE),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('retries a POST after a 429 (rejected before processing)', async () => {
+			request
+				.mockRejectedValueOnce({ statusCode: 429 })
+				.mockResolvedValueOnce({ value: 'created' });
+
+			const result = await dataverseApiRequest(
+				ctx,
+				'POST',
+				'/accounts',
+				{ name: 'Acme' },
+				{},
+				{},
+				CREDENTIAL_TYPE,
+			);
+
+			expect(result).toEqual({ value: 'created' });
+			expect(request).toHaveBeenCalledTimes(2);
+			expect(sleep).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries a POST after a connection-establishment error (ECONNREFUSED)', async () => {
+			request
+				.mockRejectedValueOnce({ code: 'ECONNREFUSED' })
+				.mockResolvedValueOnce({ value: 'created' });
+
+			const result = await dataverseApiRequest(
+				ctx,
+				'POST',
+				'/accounts',
+				{ name: 'Acme' },
+				{},
+				{},
+				CREDENTIAL_TYPE,
+			);
+
+			expect(result).toEqual({ value: 'created' });
+			expect(request).toHaveBeenCalledTimes(2);
+			expect(sleep).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries an idempotent PATCH after an ambiguous 504', async () => {
+			request.mockRejectedValueOnce({ statusCode: 504 }).mockResolvedValueOnce({ value: 'ok' });
+
+			const result = await dataverseApiRequest(
+				ctx,
+				'PATCH',
+				'/accounts(1)',
+				{ name: 'Acme' },
+				{},
+				{},
+				CREDENTIAL_TYPE,
+			);
+
+			expect(result).toEqual({ value: 'ok' });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
 		it('sets a request timeout and a version-derived User-Agent', async () => {
 			ctx.getNode.mockReturnValue({ ...node, typeVersion: 2 });
 			request.mockResolvedValue({});
