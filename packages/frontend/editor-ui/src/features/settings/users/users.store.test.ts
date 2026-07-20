@@ -43,6 +43,10 @@ const mockUser: CurrentUserResponse = {
 describe('users.store', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		// `restoreMocks`/`vi.restoreAllMocks()` only restore spies created via
+		// `vi.spyOn()`; the plain `vi.fn()` mocks created via `vi.hoisted` keep
+		// their call history. Clear it explicitly so counts don't leak between tests.
+		vi.clearAllMocks();
 		setActivePinia(createPinia());
 	});
 
