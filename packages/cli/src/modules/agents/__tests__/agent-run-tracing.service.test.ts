@@ -84,6 +84,61 @@ describe('AgentRunTracingService', () => {
 		});
 	});
 
+	it('omits execution_id/workflow_id/node_id individually when not provided, even for a workflow source', async () => {
+		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
+		const service = new AgentRunTracingService(agentsConfig);
+
+		const noneProvided = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+		});
+		expect(noneProvided?.metadata).toEqual({
+			agent_id: 'agent-1',
+			project_id: 'project-1',
+			thread_id: 'thread-1',
+			source: 'workflow',
+		});
+
+		const onlyExecutionId = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			executionId: 'exec-1',
+		});
+		expect(onlyExecutionId?.metadata).toEqual({
+			agent_id: 'agent-1',
+			project_id: 'project-1',
+			thread_id: 'thread-1',
+			source: 'workflow',
+			execution_id: 'exec-1',
+		});
+
+		const onlyWorkflowId = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			workflowId: 'wf-1',
+		});
+		expect(onlyWorkflowId?.metadata).toEqual({
+			agent_id: 'agent-1',
+			project_id: 'project-1',
+			thread_id: 'thread-1',
+			source: 'workflow',
+			workflow_id: 'wf-1',
+		});
+
+		const onlyNodeId = await service.build({
+			...baseMetadata,
+			source: 'workflow',
+			nodeId: 'My Agent Node',
+		});
+		expect(onlyNodeId?.metadata).toEqual({
+			agent_id: 'agent-1',
+			project_id: 'project-1',
+			thread_id: 'thread-1',
+			source: 'workflow',
+			node_id: 'My Agent Node',
+		});
+	});
+
 	it('rejects workflow-only fields at compile time for a non-workflow source', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
 		const service = new AgentRunTracingService(agentsConfig);

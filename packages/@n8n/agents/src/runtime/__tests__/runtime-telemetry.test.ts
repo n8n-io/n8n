@@ -257,4 +257,91 @@ describe('RuntimeTelemetry.withToolSpan()', () => {
 		expect(attributes).not.toHaveProperty('ai.toolCall.args');
 		expect(span.setAttributes).not.toHaveBeenCalled();
 	});
+
+	it('records outputs but not inputs when only recordInputs is false', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer, recordInputs: false, recordOutputs: true });
+		const config = { name: 'my-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withToolSpan(
+			'tc1',
+			'my-tool',
+			{ x: 1 },
+			telemetry,
+			async () => await Promise.resolve({ ok: true }),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).not.toHaveProperty('gen_ai.tool.call.arguments');
+		expect(attributes).not.toHaveProperty('ai.toolCall.args');
+		expect(span.setAttributes).toHaveBeenCalledWith({
+			'ai.toolCall.result': '{"ok":true}',
+			'gen_ai.tool.call.result': '{"ok":true}',
+		});
+	});
+
+	it('records inputs but not outputs when only recordOutputs is false', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer, recordInputs: true, recordOutputs: false });
+		const config = { name: 'my-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withToolSpan(
+			'tc1',
+			'my-tool',
+			{ x: 1 },
+			telemetry,
+			async () => await Promise.resolve({ ok: true }),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).toMatchObject({
+			'gen_ai.tool.call.arguments': '{"x":1}',
+			'ai.toolCall.args': '{"x":1}',
+		});
+		expect(span.setAttributes).not.toHaveBeenCalled();
+	});
+
+	it('defaults to recording inputs and outputs when recordInputs/recordOutputs are absent from the telemetry object', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		// BuiltTelemetry declares these as non-optional booleans, but the
+		// `?? true` fallback in withToolSpan guards against a telemetry object
+		// that doesn't actually carry them at runtime — construct one directly
+		// to exercise that fallback rather than the declared type.
+		const {
+			recordInputs: _recordInputs,
+			recordOutputs: _recordOutputs,
+			...rest
+		} = builtTelemetry({
+			tracer,
+		});
+		const telemetry = rest as unknown as BuiltTelemetry;
+		const config = { name: 'my-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withToolSpan(
+			'tc1',
+			'my-tool',
+			{ x: 1 },
+			telemetry,
+			async () => await Promise.resolve({ ok: true }),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).toMatchObject({
+			'gen_ai.tool.call.arguments': '{"x":1}',
+			'ai.toolCall.args': '{"x":1}',
+		});
+		expect(span.setAttributes).toHaveBeenCalledWith({
+			'ai.toolCall.result': '{"ok":true}',
+			'gen_ai.tool.call.result': '{"ok":true}',
+		});
+	});
 });

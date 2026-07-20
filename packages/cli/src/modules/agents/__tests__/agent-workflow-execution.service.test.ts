@@ -209,6 +209,44 @@ describe('AgentWorkflowExecutionService', () => {
 		);
 	});
 
+	it('omits the telemetry option from stream() when AgentRunTracingService.build resolves undefined', async () => {
+		const { service, agentRepository, reconstructionService, agentRunTracingService } =
+			makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		agentRunTracingService.build.mockResolvedValue(undefined);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		const [, options] = runtime.agent.stream.mock.calls[0] as [string, Record<string, unknown>];
+		expect(options).not.toHaveProperty('telemetry');
+	});
+
+	it('passes the telemetry option to stream() when AgentRunTracingService.build resolves a value', async () => {
+		const { service, agentRepository, reconstructionService, agentRunTracingService } =
+			makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		const fakeTelemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+		};
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+		agentRunTracingService.build.mockResolvedValue(fakeTelemetry as never);
+
+		await service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId);
+
+		expect(runtime.agent.stream).toHaveBeenCalledWith(
+			'hello',
+			expect.objectContaining({ telemetry: fakeTelemetry }),
+		);
+	});
+
 	it('applies per-call structured output schema and improves empty-output errors', async () => {
 		const { service, agentRepository, reconstructionService } = makeService();
 		const outputSchema: JSONSchema7 = {
