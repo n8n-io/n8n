@@ -37,8 +37,10 @@ type FolderSearchReply = {
 	value?: Array<{ id?: string; name?: string; folder?: unknown }>;
 };
 
-// The editor stops auto-paging while a filter is typed, so getFolders pages itself, capped here
-const FILTERED_SEARCH_PAGE_LIMIT = 10;
+// A drive page can yield nothing to show (files-only, or no filter match); those pages are
+// walked here in one call — the editor would otherwise re-request per empty page — capped
+// so a single dropdown request can't crawl an arbitrarily large drive
+const SEARCH_PAGE_LIMIT = 10;
 
 export async function getFolders(
 	this: ILoadOptionsFunctions,
@@ -50,7 +52,7 @@ export async function getFolders(
 	const filterLower = filter?.toLowerCase();
 	const results: INodeListSearchResult['results'] = [];
 	let nextToken = paginationToken;
-	let pagesLeft = filterLower ? FILTERED_SEARCH_PAGE_LIMIT : 1;
+	let pagesLeft = SEARCH_PAGE_LIMIT;
 
 	do {
 		const response = nextToken
@@ -79,7 +81,11 @@ export async function getFolders(
 
 		nextToken = response['@odata.nextLink'];
 		pagesLeft -= 1;
-	} while (nextToken !== undefined && pagesLeft > 0);
+	} while (
+		nextToken !== undefined &&
+		pagesLeft > 0 &&
+		(filterLower !== undefined || results.length === 0)
+	);
 
 	return { results, paginationToken: nextToken };
 }
