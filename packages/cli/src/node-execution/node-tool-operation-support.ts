@@ -1,6 +1,6 @@
-import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS } from '@n8n/api-types';
 
-const UNSUPPORTED_EPHEMERAL_NODE_OPERATIONS = new Set([SEND_AND_WAIT_OPERATION, 'dispatchAndWait']);
+const UNSUPPORTED_EPHEMERAL_NODE_OPERATIONS = new Set(UNSUPPORTED_AGENT_NODE_TOOL_OPERATIONS);
 
 export const isUnsupportedEphemeralNodeOperation = (operation: unknown): operation is string =>
 	typeof operation === 'string' && UNSUPPORTED_EPHEMERAL_NODE_OPERATIONS.has(operation);
