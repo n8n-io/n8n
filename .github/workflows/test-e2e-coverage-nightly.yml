@@ -277,6 +277,11 @@ jobs:
     needs: [e2e, aggregate]
     if: needs.e2e.result == 'success' && needs.aggregate.result == 'success'
     runs-on: ubuntu-latest
+    # Least-privilege GITHUB_TOKEN: checkout + download-artifact only need read;
+    # the branch push + PR are done with the scoped app token below, not this token.
+    permissions:
+      contents: read
+      actions: read
     outputs:
       pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
     steps:
@@ -286,11 +291,17 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to only what the branch push + PR need.
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           token: ${{ steps.generate-token.outputs.token }}
+          # Don't persist the token in .git/config (avoids leaking it via artifacts);
+          # create-pull-request pushes with its own token input, not the git remote creds.
+          persist-credentials: false
 
       - name: Download coverage report artifact
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
