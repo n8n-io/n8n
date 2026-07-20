@@ -12,6 +12,7 @@ import type {
 	ListQueryDb,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { QueryFailedError } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import {
 	CREDENTIAL_BLANKING_VALUE,
@@ -981,6 +982,30 @@ describe('CredentialsService', () => {
 				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
 			).rejects.toThrow('instance-ai:model');
 			expect(credentialsRepository.remove).not.toHaveBeenCalled();
+		});
+
+		it('reports an assignment created while deleting an instance credential', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'instance-credential',
+				availability: 'instance',
+				isResolvable: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			instanceCredentialAssignmentRepository.findOne
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce(
+					mock<InstanceCredentialAssignment>({
+						consumerId: 'instance-ai:model',
+						credentialId: credential.id,
+					}),
+				);
+			credentialsRepository.remove.mockRejectedValue(
+				new QueryFailedError('DELETE', [], new Error('foreign key constraint')),
+			);
+
+			await expect(
+				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
+			).rejects.toThrow('instance-ai:model');
 		});
 	});
 

@@ -27,34 +27,12 @@ let creatingCredential = false;
 function handleSearchCredentialChange(value: string | number | boolean | null) {
 	if (value === CREATE_BRAVE) {
 		creatingCredential = true;
-		uiStore.openNewCredential(
-			'braveSearchApi',
-			false,
-			false,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				availability: 'instance',
-			},
-		);
+		uiStore.openNewCredential('braveSearchApi');
 		return;
 	}
 	if (value === CREATE_SEARXNG) {
 		creatingCredential = true;
-		uiStore.openNewCredential(
-			'searXngApi',
-			false,
-			false,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				availability: 'instance',
-			},
-		);
+		uiStore.openNewCredential('searXngApi');
 		return;
 	}
 	store.setField('searchCredentialId', value ? String(value) : null);

@@ -16,6 +16,7 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permis
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import {
 	In,
+	QueryFailedError,
 	type EntityManager,
 	type FindOptionsRelations,
 	type FindOptionsWhere,
@@ -957,7 +958,14 @@ export class CredentialsService {
 
 		if (credential.availability === 'instance') {
 			await this.ensureInstanceCredentialIsNotInUse(credential.id);
-			await this.credentialsRepository.remove(credential);
+			try {
+				await this.credentialsRepository.remove(credential);
+			} catch (error) {
+				if (error instanceof QueryFailedError) {
+					await this.ensureInstanceCredentialIsNotInUse(credential.id);
+				}
+				throw error;
+			}
 			return;
 		}
 

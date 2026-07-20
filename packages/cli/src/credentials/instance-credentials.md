@@ -11,7 +11,7 @@ credentials, and disallowed credential types fail closed.
 
 ## Integrating a feature
 
-1. **Register one consumer for each credential slot** during module init:
+1. **Register one consumer for each credential use** during module init:
 
    ```typescript
 	Container.get(InstanceCredentialBroker).registerConsumer({
