@@ -185,7 +185,7 @@ describe('GET /data-tables', () => {
 		const response = await authOwnerAgent.get('/data-tables').query({ sortBy: 'sizeBytes:asc' });
 
 		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toContain('sortBy must be one of');
+		expect(response.body.message).toContain('sortBy must be equal to one of the allowed values');
 	});
 
 	test('should use default limit of 100', async () => {

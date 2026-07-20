@@ -3939,6 +3939,9 @@ importers:
       '@apidevtools/json-schema-ref-parser':
         specifier: 12.0.2
         version: 12.0.2
+      '@asteasolutions/zod-to-openapi':
+        specifier: 'catalog:'
+        version: 7.3.4(zod@3.25.67)
       '@aws-sdk/client-secrets-manager':
         specifier: 3.808.0
         version: 3.808.0
@@ -4393,9 +4396,6 @@ importers:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
     devDependencies:
-      '@asteasolutions/zod-to-openapi':
-        specifier: 'catalog:'
-        version: 7.3.4(zod@3.25.67)
       '@faker-js/faker':
         specifier: ^8.0.2
         version: 8.4.1
