@@ -1,32 +1,40 @@
 <script lang="ts" setup>
-import { onMounted, computed, watch } from 'vue';
+import { computed, onMounted } from 'vue';
 import {
-	N8nActionDropdown,
 	N8nButton,
-	N8nHeading,
+	N8nDropdownMenu,
+	N8nEmptyState,
 	N8nIcon,
 	N8nOption,
 	N8nSelect,
-	N8nText,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowConfigure,
+	N8nSettingsRowGroup,
+	N8nSettingsSection,
+	N8nSwitch,
+	type DropdownMenuItemProps,
+	type EmptyStateIconCards,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
-import { ElSwitch } from 'element-plus';
-import { useI18n } from '@n8n/i18n';
+import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { useMessage } from '@/app/composables/useMessage';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
-import type { BaseTextKey } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { INSTANCE_AI_CREDENTIALS_SETTINGS_VIEW } from '../constants';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
+const message = useMessage();
+const router = useRouter();
 const settingsStore = useSettingsStore();
-const uiStore = useUIStore();
 const store = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
@@ -35,6 +43,33 @@ const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperim
 const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
 
 const isAdmin = computed(() => store.canManage);
+const isEnabled = computed(
+	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
+);
+const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
+const showCredentialsRow = computed(
+	() => isAdmin.value && !store.isProxyEnabled && !store.isCloudManaged,
+);
+const showCapabilitiesSection = computed(
+	() =>
+		isComputerUseExperimentEnabled.value ||
+		isBrowserUseEnabled.value ||
+		isMcpConnectionsExperimentEnabled.value,
+);
+
+const emptyStateIcon: EmptyStateIconCards = {
+	type: 'cards',
+	center: 'sparkles',
+	sides: ['workflow', 'message-square', 'search', 'bot'],
+};
+
+const disableMenuItems: Array<DropdownMenuItemProps<string>> = [
+	{
+		id: 'disable',
+		label: i18n.baseText('settings.n8nAgent.status.disable'),
+		icon: { type: 'icon', value: 'power' },
+	},
+];
 
 const PERMISSION_OPTIONS: InstanceAiPermissionMode[] = [
 	'require_approval',
@@ -83,98 +118,45 @@ const permissionKeys: Array<{
 	},
 ];
 
-const isMcpAccessEnabled = computed(() => store.settings?.mcpAccessEnabled ?? true);
-
-const INSTANCE_MODEL_CREDENTIAL_TYPES: Array<{ type: string; label: string }> = [
-	{ type: 'openAiApi', label: 'OpenAI' },
-	{ type: 'anthropicApi', label: 'Anthropic' },
-	{ type: 'googlePalmApi', label: 'Google Gemini' },
-	{ type: 'ollamaApi', label: 'Ollama' },
-	{ type: 'groqApi', label: 'Groq' },
-	{ type: 'deepSeekApi', label: 'DeepSeek' },
-	{ type: 'mistralCloudApi', label: 'Mistral' },
-	{ type: 'xAiApi', label: 'xAI' },
-	{ type: 'openRouterApi', label: 'OpenRouter' },
-	{ type: 'cohereApi', label: 'Cohere' },
-];
-
-const showModelCredentialSection = computed(
-	() => isAdmin.value && !store.isProxyEnabled && !store.isCloudManaged,
-);
-
-const selectedModelCredentialId = computed(() => {
-	if (store.draft.modelCredentialId !== undefined) return store.draft.modelCredentialId ?? '';
-	return store.settings?.modelCredentialId ?? '';
-});
-
-const createModelCredentialItems = computed<Array<ActionDropdownItem<string>>>(() =>
-	INSTANCE_MODEL_CREDENTIAL_TYPES.map(({ type, label }) => ({ id: type, label })),
-);
-
-let creatingModelCredential = false;
-
-function handleModelCredentialChange(value: string | number | boolean | null) {
-	store.setField('modelCredentialId', value ? String(value) : null);
-	void store.save();
-}
-
-function handleCreateModelCredential(credentialType: string) {
-	creatingModelCredential = true;
-	uiStore.openNewCredential(
-		credentialType,
-		false,
-		false,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		{ availability: 'instance' },
-	);
-}
-
-watch(
-	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY],
-	async (isOpen, wasOpen) => {
-		if (!wasOpen || isOpen || !showModelCredentialSection.value) return;
-		const previousIds = new Set(store.instanceModelCredentials.map((c) => c.id));
-		await store.refreshInstanceModelCredentials();
-		if (creatingModelCredential) {
-			creatingModelCredential = false;
-			const newCred = store.instanceModelCredentials.find((c) => !previousIds.has(c.id));
-			if (newCred) {
-				store.setField('modelCredentialId', newCred.id);
-				void store.save();
-			}
-		}
-	},
-);
-
-const isEnabled = computed(
-	() => store.settings?.enabled ?? settingsStore.moduleSettings?.['instance-ai']?.enabled ?? false,
-);
-
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
 	void store.fetch();
 });
 
-function handleEnabledToggle(value: string | number | boolean) {
-	store.setField('enabled', Boolean(value));
+async function handleEnable() {
+	await store.persistEnabled(true);
+}
+
+async function handleStatusAction(action: string) {
+	if (action !== 'disable') return;
+
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.n8nAgent.status.disable.description'),
+		{
+			title: i18n.baseText('settings.n8nAgent.status.disable.title'),
+			confirmButtonText: i18n.baseText('settings.n8nAgent.status.disable'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (confirmed === MODAL_CONFIRM) await store.persistEnabled(false);
+}
+
+function openCredentialsSettings() {
+	void router.push({ name: INSTANCE_AI_CREDENTIALS_SETTINGS_VIEW });
+}
+
+function handleComputerUseToggle(value: boolean) {
+	store.setField('localGatewayDisabled', !value);
 	void store.save();
 }
 
-function handleComputerUseToggle(value: string | number | boolean) {
-	store.setField('localGatewayDisabled', !Boolean(value));
+function handleBrowserUseToggle(value: boolean) {
+	store.setField('browserUseEnabled', value);
 	void store.save();
 }
 
-function handleBrowserUseToggle(value: string | number | boolean) {
-	store.setField('browserUseEnabled', Boolean(value));
-	void store.save();
-}
-
-function handleMcpAccessToggle(value: string | number | boolean) {
-	store.setField('mcpAccessEnabled', Boolean(value));
+function handleMcpAccessToggle(value: boolean) {
+	store.setField('mcpAccessEnabled', value);
 	void store.save();
 }
 
@@ -185,211 +167,186 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="n8n-agent-settings">
-		<header :class="$style.header">
-			<N8nHeading :class="$style.pageTitle" size="xlarge" class="mb-2xs">
-				{{ i18n.baseText('settings.n8nAgent') }}
-			</N8nHeading>
-			<N8nText size="medium" color="text-light">
-				{{ i18n.baseText('settings.n8nAgent.description') }}
-			</N8nText>
-		</header>
+	<N8nSettingsLayout data-test-id="n8n-agent-settings">
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.n8nAgent')"
+			:description="i18n.baseText('settings.n8nAgent.description')"
+			:show-docs-link="false"
+		/>
 
 		<div v-if="store.isLoading" :class="$style.loading">
 			<N8nIcon icon="spinner" spin />
 		</div>
 
-		<template v-else>
-			<template v-if="isAdmin">
-				<div :class="$style.card">
-					<div :class="$style.sectionBlock">
-						<div :class="$style.enableSection">
-							<N8nHeading tag="h2" size="small">
-								{{ i18n.baseText('settings.n8nAgent.enable.label') }}
-							</N8nHeading>
-							<div :class="$style.switchRow">
-								<span :class="$style.switchDescription">
-									{{ i18n.baseText('settings.n8nAgent.enable.description') }}
-								</span>
-								<ElSwitch
-									:model-value="isEnabled"
-									:disabled="store.isSaving"
-									data-test-id="n8n-agent-enable-toggle"
-									@update:model-value="handleEnabledToggle"
-								/>
-							</div>
-						</div>
-					</div>
-				</div>
-			</template>
+		<N8nEmptyState
+			v-else-if="!isEnabled"
+			:icon="emptyStateIcon"
+			:heading="i18n.baseText('settings.n8nAgent.empty.title')"
+			:description="i18n.baseText('settings.n8nAgent.empty.description')"
+			:button-text="isAdmin ? i18n.baseText('settings.n8nAgent.empty.enable') : undefined"
+			button-variant="solid"
+			@click:button="handleEnable"
+		/>
 
-			<template v-if="isEnabled">
-				<div v-if="showModelCredentialSection" :class="$style.card">
-					<div :class="$style.settingsRow">
-						<div :class="$style.settingsRowLeft">
-							<span :class="$style.settingsRowLabel">
-								{{ i18n.baseText('settings.n8nAgent.modelCredential.label') }}
-							</span>
-							<span :class="$style.settingsRowDescription">
-								{{ i18n.baseText('settings.n8nAgent.modelCredential.description') }}
-							</span>
-						</div>
-						<div :class="$style.modelCredentialControls">
-							<N8nSelect
-								:class="$style.modelCredentialSelect"
-								:model-value="selectedModelCredentialId"
-								size="small"
-								:disabled="store.isSaving"
-								:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
-								data-test-id="n8n-agent-model-credential-select"
-								@update:model-value="handleModelCredentialChange"
-							>
-								<N8nOption
-									value=""
-									:label="i18n.baseText('settings.n8nAgent.modelCredential.none')"
-								/>
-								<N8nOption
-									v-for="cred in store.instanceModelCredentials"
-									:key="cred.id"
-									:value="cred.id"
-									:label="`${cred.name} (${cred.provider})`"
-								/>
-							</N8nSelect>
-							<N8nActionDropdown
-								:items="createModelCredentialItems"
+		<template v-else>
+			<N8nSettingsSection v-if="isAdmin">
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.n8nAgent.status.label')"
+						:description="i18n.baseText('settings.n8nAgent.status.description')"
+					>
+						<template #action>
+							<N8nDropdownMenu
+								:items="disableMenuItems"
 								placement="bottom-end"
-								data-test-id="n8n-agent-model-credential-create"
-								@select="handleCreateModelCredential"
+								data-test-id="n8n-agent-status-menu"
+								@select="handleStatusAction"
 							>
-								<template #activator>
+								<template #trigger>
 									<N8nButton
-										variant="subtle"
-										size="small"
+										variant="outline"
+										size="medium"
 										:disabled="store.isSaving"
-										data-test-id="n8n-agent-model-credential-create-button"
+										:aria-label="i18n.baseText('settings.n8nAgent.status.manage')"
 									>
-										{{ i18n.baseText('settings.n8nAgent.modelCredential.createNew') }}
-										<N8nIcon icon="chevron-down" size="xsmall" />
+										<span :class="$style.statusLabel">
+											<span :class="$style.statusDot" aria-hidden="true" />
+											{{ i18n.baseText('settings.n8nAgent.status.enabled') }}
+											<N8nIcon icon="chevron-down" size="small" />
+										</span>
 									</N8nButton>
 								</template>
-							</N8nActionDropdown>
-						</div>
-					</div>
-				</div>
+								<template #item-leading="{ item }">
+									<N8nIcon
+										v-if="item.icon?.type === 'icon'"
+										:class="$style.danger"
+										:icon="item.icon.value"
+										size="small"
+									/>
+								</template>
+								<template #item-label="{ item }">
+									<span :class="$style.danger">{{ item.label }}</span>
+								</template>
+							</N8nDropdownMenu>
+						</template>
+					</N8nSettingsRow>
 
-				<div v-if="isAdmin && isComputerUseExperimentEnabled" :class="$style.card">
-					<div :class="$style.settingsRow">
-						<div :class="$style.settingsRowLeft">
-							<span :class="$style.settingsRowLabel">
-								{{ i18n.baseText('settings.n8nAgent.computerUse.label') }}
-							</span>
-							<span :class="$style.settingsRowDescription">
-								{{ i18n.baseText('settings.n8nAgent.computerUse.description') }}
-							</span>
-						</div>
-						<ElSwitch
-							:model-value="!(store.settings?.localGatewayDisabled ?? false)"
-							:disabled="store.isSaving"
-							data-test-id="n8n-agent-computer-use-toggle"
-							@update:model-value="handleComputerUseToggle"
-						/>
-					</div>
-				</div>
+					<N8nSettingsRow
+						v-if="showCredentialsRow"
+						:title="i18n.baseText('settings.n8nAgent.credentials.label')"
+						:description="i18n.baseText('settings.n8nAgent.credentials.description')"
+						clickable
+						data-test-id="n8n-agent-credentials-row"
+						@click="openCredentialsSettings"
+					>
+						<template #action>
+							<N8nSettingsRowConfigure />
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
 
-				<div v-if="isAdmin && isBrowserUseEnabled" :class="$style.card">
-					<div :class="$style.settingsRow">
-						<div :class="$style.settingsRowLeft">
-							<span :class="$style.settingsRowLabel">
-								{{ i18n.baseText('settings.n8nAgent.browserUse.label') }}
-							</span>
-							<span :class="$style.settingsRowDescription">
-								{{ i18n.baseText('settings.n8nAgent.browserUse.description') }}
-							</span>
-						</div>
-						<ElSwitch
-							:model-value="store.settings?.browserUseEnabled ?? true"
-							:disabled="store.isSaving"
-							data-test-id="n8n-agent-browser-use-toggle"
-							@update:model-value="handleBrowserUseToggle"
-						/>
-					</div>
-				</div>
-
-				<div v-if="isAdmin && isMcpConnectionsExperimentEnabled" :class="$style.card">
-					<div :class="[$style.settingsRow, { [$style.settingsRowBorder]: isMcpAccessEnabled }]">
-						<div :class="$style.settingsRowLeft">
-							<span :class="$style.settingsRowLabel">
-								{{ i18n.baseText('settings.n8nAgent.mcpAccess.label') }}
-							</span>
-							<span :class="$style.settingsRowDescription">
-								{{ i18n.baseText('settings.n8nAgent.mcpAccess.description') }}
-							</span>
-						</div>
-						<ElSwitch
-							:model-value="isMcpAccessEnabled"
-							:disabled="store.isSaving"
-							data-test-id="n8n-agent-mcp-access-toggle"
-							@update:model-value="handleMcpAccessToggle"
-						/>
-					</div>
-					<div v-if="isMcpAccessEnabled" :class="$style.settingsRow">
-						<div :class="$style.settingsRowLeft">
-							<span :class="$style.settingsRowLabel">
-								{{ i18n.baseText('settings.n8nAgent.permissions.executeMcpTool') }}
-							</span>
-						</div>
-						<N8nSelect
-							:class="$style.permissionSelect"
-							:model-value="store.getPermission('executeMcpTool')"
-							size="small"
-							:disabled="store.isSaving"
-							data-test-id="n8n-agent-permission-executeMcpTool"
-							@update:model-value="
-								handlePermissionChange('executeMcpTool', $event as InstanceAiPermissionMode)
-							"
-						>
-							<N8nOption
-								v-for="option in MCP_TOOL_PERMISSION_OPTIONS"
-								:key="option"
-								:value="option"
-								:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
+			<N8nSettingsSection
+				v-if="isAdmin && showCapabilitiesSection"
+				:title="i18n.baseText('settings.n8nAgent.capabilities.title')"
+				:description="i18n.baseText('settings.n8nAgent.capabilities.description')"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						v-if="isComputerUseExperimentEnabled"
+						:title="i18n.baseText('settings.n8nAgent.computerUse.label')"
+						:description="i18n.baseText('settings.n8nAgent.computerUse.description')"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="!(store.settings?.localGatewayDisabled ?? false)"
+								:disabled="store.isSaving"
+								:aria-label="i18n.baseText('settings.n8nAgent.computerUse.label')"
+								data-test-id="n8n-agent-computer-use-toggle"
+								@update:model-value="handleComputerUseToggle"
 							/>
-						</N8nSelect>
-					</div>
-				</div>
+						</template>
+					</N8nSettingsRow>
 
-				<template v-if="isAdmin">
-					<div :class="$style.permissionsHeader">
-						<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
-							{{ i18n.baseText('settings.n8nAgent.permissions.title') }}
-						</N8nHeading>
-						<N8nText size="medium" color="text-light">
-							{{ i18n.baseText('settings.n8nAgent.permissions.description') }}
-						</N8nText>
-					</div>
+					<N8nSettingsRow
+						v-if="isBrowserUseEnabled"
+						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
+						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="store.settings?.browserUseEnabled ?? true"
+								:disabled="store.isSaving"
+								:aria-label="i18n.baseText('settings.n8nAgent.browserUse.label')"
+								data-test-id="n8n-agent-browser-use-toggle"
+								@update:model-value="handleBrowserUseToggle"
+							/>
+						</template>
+					</N8nSettingsRow>
 
-					<div :class="$style.card">
-						<div
-							v-for="(perm, index) in permissionKeys"
-							:key="perm.key"
-							:class="[
-								$style.settingsRow,
-								{ [$style.settingsRowBorder]: index < permissionKeys.length - 1 },
-							]"
-						>
-							<div :class="$style.settingsRowLeft">
-								<span :class="$style.settingsRowLabel">
-									{{ i18n.baseText(perm.labelKey) }}
-								</span>
-							</div>
+					<N8nSettingsRow
+						v-if="isMcpConnectionsExperimentEnabled"
+						:title="i18n.baseText('settings.n8nAgent.mcpAccess.label')"
+						:description="i18n.baseText('settings.n8nAgent.mcpAccess.description')"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="isMcpAccessEnabled"
+								:disabled="store.isSaving"
+								:aria-label="i18n.baseText('settings.n8nAgent.mcpAccess.label')"
+								data-test-id="n8n-agent-mcp-access-toggle"
+								@update:model-value="handleMcpAccessToggle"
+							/>
+						</template>
+					</N8nSettingsRow>
+
+					<N8nSettingsRow
+						v-if="isMcpConnectionsExperimentEnabled && isMcpAccessEnabled"
+						:title="i18n.baseText('settings.n8nAgent.permissions.executeMcpTool')"
+					>
+						<template #action>
 							<N8nSelect
 								:class="$style.permissionSelect"
-								:model-value="store.getPermission(perm.key)"
+								:model-value="store.getPermission('executeMcpTool')"
 								size="small"
 								:disabled="store.isSaving"
-								:data-test-id="`n8n-agent-permission-${perm.key}`"
+								data-test-id="n8n-agent-permission-executeMcpTool"
 								@update:model-value="
-									handlePermissionChange(perm.key, $event as InstanceAiPermissionMode)
+									handlePermissionChange('executeMcpTool', $event as InstanceAiPermissionMode)
+								"
+							>
+								<N8nOption
+									v-for="option in MCP_TOOL_PERMISSION_OPTIONS"
+									:key="option"
+									:value="option"
+									:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
+								/>
+							</N8nSelect>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+
+			<N8nSettingsSection
+				v-if="isAdmin"
+				:title="i18n.baseText('settings.n8nAgent.permissions.title')"
+				:description="i18n.baseText('settings.n8nAgent.permissions.description')"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						v-for="permission in permissionKeys"
+						:key="permission.key"
+						:title="i18n.baseText(permission.labelKey)"
+					>
+						<template #action>
+							<N8nSelect
+								:class="$style.permissionSelect"
+								:model-value="store.getPermission(permission.key)"
+								size="small"
+								:disabled="store.isSaving"
+								:data-test-id="`n8n-agent-permission-${permission.key}`"
+								@update:model-value="
+									handlePermissionChange(permission.key, $event as InstanceAiPermissionMode)
 								"
 							>
 								<N8nOption
@@ -399,167 +356,41 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 									:label="i18n.baseText(PERMISSION_OPTION_LABEL[option])"
 								/>
 							</N8nSelect>
-						</div>
-					</div>
-				</template>
-			</template>
-
-			<div v-if="store.isDirty" :class="$style.footer">
-				<N8nButton
-					type="secondary"
-					:label="i18n.baseText('generic.cancel')"
-					@click="store.reset()"
-				/>
-				<N8nButton
-					:label="i18n.baseText('settings.personal.save')"
-					:loading="store.isSaving"
-					@click="store.save()"
-				/>
-			</div>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
 		</template>
-	</div>
+	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	max-width: 720px;
-	margin: 0 auto;
-	padding-bottom: var(--spacing--2xl);
-}
-
-.pageTitle {
-	font-weight: var(--font-weight--medium);
-	line-height: 26px;
-	color: var(--color--text--shade-1);
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	margin-bottom: var(--spacing--xs);
-}
-
 .loading {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--2xl);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
-.card {
-	border: var(--border);
-	border-radius: var(--radius);
-	overflow: hidden;
-}
-
-.sectionBlock {
-	padding: var(--spacing--sm);
-	background: var(--color--background--light-3);
-}
-
-.settingsRow {
-	display: flex;
+.statusLabel {
+	display: inline-flex;
 	align-items: center;
-	justify-content: space-between;
-	flex-wrap: wrap;
-	gap: var(--spacing--md);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	min-height: 64px;
-	background: var(--color--background--light-3);
+	gap: var(--spacing--3xs);
 }
 
-.settingsRowBorder {
-	position: relative;
-
-	&::after {
-		content: '';
-		position: absolute;
-		bottom: 0;
-		left: var(--spacing--sm);
-		right: var(--spacing--sm);
-		height: 1px;
-		background: var(--color--foreground);
-	}
+.statusDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--full);
+	background: var(--text-color--success);
 }
 
-.settingsRowLeft {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-	min-width: 0;
-}
-
-.settingsRowLabel {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	line-height: 20px;
-	color: var(--color--text--shade-1);
-}
-
-.settingsRowDescription {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-}
-
-.sectionTitle {
-	font-weight: var(--font-weight--medium);
-	line-height: 24px;
-	color: var(--color--text--shade-1);
-}
-
-.permissionsHeader {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--xs);
+.danger {
+	color: var(--text-color--danger);
 }
 
 .permissionSelect {
-	width: 178px;
-	flex-shrink: 0;
-}
-
-.modelCredentialControls {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex-shrink: 0;
-	flex-wrap: wrap;
-	max-width: 100%;
-}
-
-.modelCredentialSelect {
-	width: 240px;
-	max-width: 100%;
-}
-
-.enableSection {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-}
-
-.switchRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--4xs) 0;
-}
-
-.switchDescription {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-}
-
-.footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-	padding-top: var(--spacing--sm);
+	width: 11rem;
 }
 </style>
