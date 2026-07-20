@@ -7,7 +7,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, type EntityManager, type FindOneOptions } from '@n8n/typeorm';
+import { In, QueryFailedError, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -56,22 +56,19 @@ export class InstanceCredentialBroker {
 		transactionManager?: EntityManager,
 	): Promise<InstanceCredentialSummary> {
 		const credentialUse = this.useRegistry.get(credentialUseId);
-		const credential = await this.findCredential(credentialUse, credentialId, transactionManager);
-		if (!credential) {
-			throw new UnprocessableRequestError(
-				`Credential "${credentialId}" is not valid for instance credential use "${credentialUseId}"`,
-			);
-		}
-		if (transactionManager) {
-			await transactionManager.upsert(
-				InstanceCredentialAssignment,
-				{ credentialUseId, credentialId },
-				['credentialUseId'],
-			);
-		} else {
-			await this.assignmentRepository.upsert({ credentialUseId, credentialId }, [
+		const em = transactionManager ?? this.assignmentRepository.manager;
+		const credential = await this.findCredential(credentialUse, credentialId, em);
+		if (!credential) throw this.invalidCredentialError(credentialUseId, credentialId);
+		try {
+			await em.upsert(InstanceCredentialAssignment, { credentialUseId, credentialId }, [
 				'credentialUseId',
 			]);
+		} catch (error) {
+			// The credential can be deleted between the check above and the upsert; the FK rejects that
+			if (error instanceof QueryFailedError) {
+				throw this.invalidCredentialError(credentialUseId, credentialId);
+			}
+			throw error;
 		}
 		this.logger.debug('Assigned instance credential', { credentialUseId, credentialId });
 		return { id: credential.id, name: credential.name, type: credential.type };
@@ -79,11 +76,8 @@ export class InstanceCredentialBroker {
 
 	async clearForUse(credentialUseId: string, transactionManager?: EntityManager): Promise<void> {
 		this.useRegistry.get(credentialUseId);
-		if (transactionManager) {
-			await transactionManager.delete(InstanceCredentialAssignment, { credentialUseId });
-		} else {
-			await this.assignmentRepository.delete({ credentialUseId });
-		}
+		const em = transactionManager ?? this.assignmentRepository.manager;
+		await em.delete(InstanceCredentialAssignment, { credentialUseId });
 	}
 
 	async getAssignedCredentialId(
@@ -91,9 +85,8 @@ export class InstanceCredentialBroker {
 		transactionManager?: EntityManager,
 	): Promise<string | null> {
 		this.useRegistry.get(credentialUseId);
-		const assignment = transactionManager
-			? await transactionManager.findOneBy(InstanceCredentialAssignment, { credentialUseId })
-			: await this.assignmentRepository.findOneBy({ credentialUseId });
+		const em = transactionManager ?? this.assignmentRepository.manager;
+		const assignment = await em.findOneBy(InstanceCredentialAssignment, { credentialUseId });
 		return assignment?.credentialId ?? null;
 	}
 
@@ -101,16 +94,13 @@ export class InstanceCredentialBroker {
 		credentialUseId: string,
 		transactionManager?: EntityManager,
 	): Promise<ResolvedInstanceCredential | null> {
-		const credentialId = await this.getAssignedCredentialId(credentialUseId, transactionManager);
-		if (!credentialId) return null;
-
 		const credentialUse = this.useRegistry.get(credentialUseId);
-		const credential = await this.findCredential(credentialUse, credentialId, transactionManager);
-		if (!credential) {
-			throw new UnprocessableRequestError(
-				`Credential "${credentialId}" is not valid for instance credential use "${credentialUseId}"`,
-			);
-		}
+		const em = transactionManager ?? this.assignmentRepository.manager;
+		const assignment = await em.findOneBy(InstanceCredentialAssignment, { credentialUseId });
+		if (!assignment) return null;
+
+		const credential = await this.findCredential(credentialUse, assignment.credentialId, em);
+		if (!credential) throw this.invalidCredentialError(credentialUseId, assignment.credentialId);
 
 		const resolved = {
 			id: credential.id,
@@ -118,24 +108,30 @@ export class InstanceCredentialBroker {
 			type: credential.type,
 			data: await this.credentialsService.decrypt(credential, true),
 		};
-		this.logger.debug('Resolved instance credential', { credentialUseId, credentialId });
+		this.logger.debug('Resolved instance credential', {
+			credentialUseId,
+			credentialId: credential.id,
+		});
 		return resolved;
 	}
 
 	private async findCredential(
 		credentialUse: InstanceCredentialUse,
 		credentialId: string,
-		transactionManager?: EntityManager,
+		em: EntityManager,
 	): Promise<CredentialsEntity | null> {
-		const options: FindOneOptions<CredentialsEntity> = {
+		return await em.findOne(CredentialsEntity, {
 			where: {
 				id: credentialId,
 				availability: 'instance',
 				type: In([...credentialUse.credentialTypes]),
 			},
-		};
-		return transactionManager
-			? await transactionManager.findOne(CredentialsEntity, options)
-			: await this.credentialsRepository.findOne(options);
+		});
+	}
+
+	private invalidCredentialError(credentialUseId: string, credentialId: string) {
+		return new UnprocessableRequestError(
+			`Credential "${credentialId}" is not valid for instance credential use "${credentialUseId}"`,
+		);
 	}
 }

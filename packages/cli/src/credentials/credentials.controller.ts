@@ -105,8 +105,7 @@ export class CredentialsController {
 	@Get('/instance')
 	@GlobalScope('credential:manageInstance')
 	async getInstanceCredentials() {
-		const instanceCredentials = await this.credentialsFinderService.findInstanceCredentials();
-		return instanceCredentials.map(({ data, shared, ...rest }) => rest);
+		return await this.credentialsFinderService.findInstanceCredentials();
 	}
 
 	@Get('/new')

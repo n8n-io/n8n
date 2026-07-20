@@ -991,6 +991,7 @@ export class CredentialsService {
 	async testById(userId: User['id'], credentialId: string) {
 		const storedCredential = await this.credentialsFinderService.findCredentialById(credentialId);
 
+		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
 		if (!storedCredential || (storedCredential.availability ?? 'workflow') !== 'workflow') {
 			throw new CredentialNotFoundError(credentialId);
 		}
@@ -1614,15 +1615,16 @@ export class CredentialsService {
 		if (opts.isResolvable === true || opts.isManaged) {
 			throw new BadRequestError('Instance credentials cannot be end-user or managed credentials');
 		}
-		this.validateInstanceCredentialData(opts.data as ICredentialDataDecryptedObject);
+		const data = opts.data as ICredentialDataDecryptedObject;
+		this.validateInstanceCredentialData(data);
 
-		this.validateCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject);
+		this.validateCredentialData(opts.type, data);
 
 		const encryptedCredential = await this.createEncryptedData({
 			id: null,
 			name: opts.name,
 			type: opts.type,
-			data: opts.data as ICredentialDataDecryptedObject,
+			data,
 		});
 
 		const credentialEntity = this.credentialsRepository.create({

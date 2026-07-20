@@ -270,7 +270,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * Find all credentials that are owned by a personal project.
 	 */
 	async findAllPersonalCredentials(): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { project: { type: 'personal' } } });
+		return await this.findBy({
+			availability: 'workflow',
+			shared: { project: { type: 'personal' } },
+		});
 	}
 
 	/**

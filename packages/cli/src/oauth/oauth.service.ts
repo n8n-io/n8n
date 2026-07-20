@@ -433,8 +433,12 @@ export class OauthService {
 	/** Get a credential without user check */
 	protected async getCredentialWithoutUser(
 		credentialId: string,
+		options: { onlyWorkflowCredentials?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
-		return await this.credentialsRepository.findOneBy({ id: credentialId });
+		return await this.credentialsRepository.findOneBy({
+			id: credentialId,
+			...(options.onlyWorkflowCredentials ? { availability: 'workflow' as const } : {}),
+		});
 	}
 
 	/**
@@ -555,7 +559,8 @@ export class OauthService {
 			}
 			return [
 				{ ...decoded, ...decryptedState },
-				await this.getCredentialWithoutUser(decryptedState.cid),
+				// Dynamic credentials are always workflow credentials; never hand back an instance one
+				await this.getCredentialWithoutUser(decryptedState.cid, { onlyWorkflowCredentials: true }),
 			];
 		}
 
