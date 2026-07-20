@@ -444,6 +444,60 @@ describe('project shell import', () => {
 		expect(await findProject('P2')).toBeNull();
 	});
 
+	it('reports missing node types per project scope and writes nothing', async () => {
+		const unknownNode = {
+			id: 'unknown-node',
+			name: 'Unknown Node',
+			type: 'n8n-nodes-community.chatBot',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', nodes: [unknownNode] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', nodes: [unknownNode] }),
+				},
+			],
+		});
+
+		// Every project scope is planned before anything is written; the same missing
+		// pair yields one issue per scope, each with that scope's workflows.
+		const importPromise = importProjects(owner, packageBuffer);
+		await expect(importPromise).rejects.toBeInstanceOf(UnprocessableRequestError);
+		await expect(importPromise).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'missing-node-type',
+						nodeType: 'n8n-nodes-community.chatBot',
+						typeVersion: 1,
+						usedByWorkflows: ['WFA'],
+					},
+					{
+						type: 'missing-node-type',
+						nodeType: 'n8n-nodes-community.chatBot',
+						typeVersion: 1,
+						usedByWorkflows: ['WFB'],
+					},
+				],
+			},
+		});
+
+		expect(await findProject('P1')).toBeNull();
+		expect(await findProject('P2')).toBeNull();
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
+	});
+
 	it('creates a new project under publish-all, planned before the project exists', async () => {
 		const packageBuffer = await buildEntityPackageBuffer({
 			projects: [
