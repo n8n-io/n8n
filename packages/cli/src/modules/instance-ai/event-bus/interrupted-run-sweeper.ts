@@ -158,7 +158,7 @@ export class InterruptedRunSweeper {
 
 		let unfinished;
 		try {
-			unfinished = await this.eventLogRepo.findUnfinishedRuns();
+			unfinished = await this.eventLogRepo.findUnfinishedRuns(threadId);
 		} catch (error) {
 			this.logger.error('Cancel-time zombie resolution failed to query the event log', { error });
 			return 0;
@@ -166,7 +166,6 @@ export class InterruptedRunSweeper {
 
 		let resolved = 0;
 		for (const run of unfinished) {
-			if (run.threadId !== threadId) continue;
 			try {
 				const inFlightToolCalls = await this.resolveZombieRun(threadId, run.runId, {
 					status: 'cancelled',

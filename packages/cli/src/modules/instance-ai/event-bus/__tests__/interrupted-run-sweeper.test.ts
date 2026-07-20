@@ -101,15 +101,20 @@ function buildSweeper(setup: Setup) {
 	const log: InstanceAiEvent[] = [...(setup.events ?? [])];
 
 	const eventLogRepo = mock<InstanceAiEventLogRepository>();
-	// Mirrors the repository contract: DISTINCT (threadId, runId) pairs.
-	eventLogRepo.findUnfinishedRuns.mockImplementation(async () => [
-		...new Map(
-			log
-				.filter((e) => e.type === 'run-start')
-				.filter((s) => !log.some((f) => f.type === 'run-finish' && f.runId === s.runId))
-				.map((s) => [s.runId, { threadId: THREAD, runId: s.runId }]),
-		).values(),
-	]);
+	// Mirrors the repository contract: DISTINCT (threadId, runId) pairs,
+	// optionally scoped to one thread (the in-memory log is all THREAD).
+	eventLogRepo.findUnfinishedRuns.mockImplementation(async (threadId) =>
+		threadId !== undefined && threadId !== THREAD
+			? []
+			: [
+					...new Map(
+						log
+							.filter((e) => e.type === 'run-start')
+							.filter((s) => !log.some((f) => f.type === 'run-finish' && f.runId === s.runId))
+							.map((s) => [s.runId, { threadId: THREAD, runId: s.runId }]),
+					).values(),
+				],
+	);
 	eventLogRepo.getForRuns.mockImplementation(async (_threadId, runIds) =>
 		log.filter((e) => runIds.includes(e.runId)),
 	);
@@ -364,18 +369,14 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 
 	it('is idempotent and scoped to the requested thread', async () => {
 		const { sweeper, published, eventLogRepo } = buildSweeper({ events: [runStart()] });
-		const base = eventLogRepo.findUnfinishedRuns.getMockImplementation()!;
-		eventLogRepo.findUnfinishedRuns.mockImplementation(async () => [
-			...(await base()),
-			{ threadId: 'other-thread', runId: 'run-foreign' },
-		]);
 
 		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(1);
 		// The appended run-finish makes the second pass a no-op.
 		expect(await sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(published.filter((e) => e.type === 'run-finish')).toHaveLength(1);
-		// The foreign thread's zombie is someone else's cancel to resolve.
-		expect(published.some((e) => e.runId === 'run-foreign')).toBe(false);
+		// Scoping happens in the query — foreign threads' zombies are never
+		// fetched, so an ordinary cancel doesn't scan global history.
+		expect(eventLogRepo.findUnfinishedRuns).toHaveBeenCalledWith(THREAD);
 	});
 
 	it('leaves live, suspended, and recently-active runs alone', async () => {
