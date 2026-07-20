@@ -52,3 +52,20 @@ const zodObjectKeyTree = (schema: ZodTypeAny): ZodObjectKeyTree | true => {
 export const zodObjectKeysMatch = (a: ZodTypeAny, b: ZodTypeAny): boolean => {
 	return isDeepStrictEqual(zodObjectKeyTree(a), zodObjectKeyTree(b));
 };
+
+/** Whether a Zod object (and nested objects) has no `.optional()` / `.default()` fields. */
+export const zodObjectFieldsAreAllRequired = (schema: ZodTypeAny): boolean => {
+	if (isZodOptional(schema) || isZodDefault(schema)) {
+		return false;
+	}
+	if (!isZodObject(schema)) {
+		return true;
+	}
+
+	for (const fieldSchema of Object.values(schema.shape)) {
+		if (fieldSchema !== undefined && !zodObjectFieldsAreAllRequired(fieldSchema)) {
+			return false;
+		}
+	}
+	return true;
+};

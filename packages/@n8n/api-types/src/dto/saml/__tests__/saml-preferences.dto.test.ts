@@ -1,4 +1,7 @@
-import { zodObjectKeysMatch } from '../../../__tests__/helpers/zod-object-keys-match';
+import {
+	zodObjectFieldsAreAllRequired,
+	zodObjectKeysMatch,
+} from '../../../__tests__/helpers/zod-object-keys-match';
 import { SamlPreferences, UpdateSamlConfigurationDto } from '../saml-preferences.dto';
 
 describe('SAML preference DTOs', () => {
@@ -196,8 +199,7 @@ describe('SAML preference DTOs', () => {
 			relayState: '',
 		};
 
-		// Guards against .optional() / .default() on PUT fields — key sync alone would still pass.
-		it('rejects an empty body with an error for every top-level field', () => {
+		it('rejects an empty body with an error for every top-level field - Guards against .optional() / .default() on PUT fields', () => {
 			const result = UpdateSamlConfigurationDto.safeParse({});
 			expect(result.success).toBe(false);
 
@@ -207,6 +209,10 @@ describe('SAML preference DTOs', () => {
 			const requiredFields = Object.keys(UpdateSamlConfigurationDto.schema.shape).sort();
 
 			expect([...erroredFields].sort()).toEqual(requiredFields);
+		});
+
+		it('requires every nested field with no optional or default', () => {
+			expect(zodObjectFieldsAreAllRequired(UpdateSamlConfigurationDto.schema)).toBe(true);
 		});
 
 		it('accepts a complete signatureConfig', () => {
