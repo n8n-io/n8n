@@ -11,7 +11,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { Settings, SettingsRepository, UserRepository } from '@n8n/db';
+import { DbLock, DbLockService, Settings, SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
@@ -120,6 +120,7 @@ export class InstanceAiSettingsService {
 
 	constructor(
 		globalConfig: GlobalConfig,
+		private readonly dbLockService: DbLockService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly userRepository: UserRepository,
 		private readonly userService: UserService,
@@ -211,7 +212,8 @@ export class InstanceAiSettingsService {
 			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
 		}
 		const { modelCredentialId, ...settingsUpdate } = update;
-		const { previous, next } = await this.settingsRepository.manager.transaction(
+		const { previous, next } = await this.dbLockService.withLock(
+			DbLock.INSTANCE_AI_SETTINGS,
 			async (transactionManager) => {
 				const current = this.mergeAdminSettings(
 					this.snapshotAdminSettings(),

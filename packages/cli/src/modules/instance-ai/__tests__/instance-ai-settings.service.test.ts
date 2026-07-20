@@ -1,6 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
-import type { CredentialsEntity, SettingsRepository, User, UserRepository } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	DbLockService,
+	SettingsRepository,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -38,8 +44,8 @@ describe('InstanceAiSettingsService', () => {
 		deployment: { type: 'default' },
 	});
 	const transactionManager = mock<EntityManager>();
-	const settingsManager = mock<EntityManager>();
-	const settingsRepository = mock<SettingsRepository>({ manager: settingsManager });
+	const dbLockService = mock<DbLockService>();
+	const settingsRepository = mock<SettingsRepository>();
 	const userRepository = mock<UserRepository>();
 	const userService = mock<UserService>();
 	const aiService = mock<AiService>();
@@ -67,11 +73,12 @@ describe('InstanceAiSettingsService', () => {
 			async (_entity, value, conflictPaths) =>
 				await settingsRepository.upsert(value as never, conflictPaths as never),
 		);
-		settingsManager.transaction.mockImplementation(async (fn: unknown) => {
+		dbLockService.withLock.mockImplementation(async (_lockId, fn) => {
 			return await (fn as (manager: EntityManager) => Promise<unknown>)(transactionManager);
 		});
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
+			dbLockService,
 			settingsRepository,
 			userRepository,
 			userService,
