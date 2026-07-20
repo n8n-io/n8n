@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/src/workspace/workspace-files.ts
+  s_bb2d9678583e35::t_d2cb764e612b84 139
+  s_bb2d9678583e35::t_12317187fdbf69 123-125,128
+packages/@n8n/instance-ai/src/workspace/__tests__/workspace-files.test.ts
+  s_bb2d9678583e35::t_b239c548f83da9 239-275
+  s_bb2d9678583e35::t_4aab545e37ab80 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "77007eb266e39dbdc4227fe4359e954c20986f82",
+  "prompts": {},
+  "sessions": {
+    "s_bb2d9678583e35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea697da9-9dc5-419b-a454-3f627e99d22f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

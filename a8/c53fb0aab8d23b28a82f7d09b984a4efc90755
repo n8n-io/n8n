@@ -1,0 +1,54 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,93-94,106-108,229-264,275-288,783-796
+  s_b6381fbb8ddc64::t_ee482984b97cbd 116
+  h_9c8f56e3400786 113-114
+  s_b6381fbb8ddc64::t_626896e5a21e72 110-112,115,117-118
+  s_b6381fbb8ddc64::t_809d0a0041ae07 7
+  s_c2503c0608a3df::t_289e0c5b2872c4 109
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_70e4a16a672757::t_498ce41e0925d7 6,583-586,588-606
+  s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-221,487-497,499-503,536-537,560-571,573-580
+  s_70e4a16a672757::t_99465de0d4547d 25-30,156-177,195-196,458-486,498,504-523,525-535
+  s_70e4a16a672757::t_548f55dcfa8be1 587
+  s_70e4a16a672757::t_40de41d139ecad 524,572
+  s_70e4a16a672757::t_a10c87b65e1123 538-559,581,607
+  s_70e4a16a672757::t_1ef57baf512bc4 79-80,582,608
+  s_c2503c0608a3df::t_0468c3d32e408a 193-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "a8c53fb0aab8d23b28a82f7d09b984a4efc90755",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_c2503c0608a3df": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ea4-b00f-7082-ab26-2894ae42cef2",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
