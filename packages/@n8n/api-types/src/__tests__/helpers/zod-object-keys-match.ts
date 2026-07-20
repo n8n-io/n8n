@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import type { ZodDefault, ZodObject, ZodOptional, ZodRawShape, ZodTypeAny } from 'zod';
+import type { ZodArray, ZodDefault, ZodObject, ZodOptional, ZodRawShape, ZodTypeAny } from 'zod';
 import { z } from 'zod';
 
 type ZodObjectKeyTree = {
@@ -16,6 +16,10 @@ const isZodDefault = (schema: ZodTypeAny): schema is ZodDefault<ZodTypeAny> => {
 
 const isZodObject = (schema: ZodTypeAny): schema is ZodObject<ZodRawShape> => {
 	return schema instanceof z.ZodObject;
+};
+
+const isZodArray = (schema: ZodTypeAny): schema is ZodArray<ZodTypeAny> => {
+	return schema instanceof z.ZodArray;
 };
 
 const unwrapOptionalOrDefault = (schema: ZodTypeAny): ZodTypeAny => {
@@ -53,10 +57,13 @@ export const zodObjectKeysMatch = (a: ZodTypeAny, b: ZodTypeAny): boolean => {
 	return isDeepStrictEqual(zodObjectKeyTree(a), zodObjectKeyTree(b));
 };
 
-/** Whether a Zod object (and nested objects) has no `.optional()` / `.default()` fields. */
+/** Whether a Zod object (and nested objects/array items) has no `.optional()` / `.default()` fields. */
 export const zodObjectFieldsAreAllRequired = (schema: ZodTypeAny): boolean => {
 	if (isZodOptional(schema) || isZodDefault(schema)) {
 		return false;
+	}
+	if (isZodArray(schema)) {
+		return zodObjectFieldsAreAllRequired(schema.element);
 	}
 	if (!isZodObject(schema)) {
 		return true;
