@@ -1,6 +1,6 @@
 # Community PR Readiness Check — checks
 
-The full ruleset for the auto-rejection screen and the five readiness checks. Loaded when the skill is mid-review.
+The full ruleset for the auto-rejection screen and the readiness checks. Loaded when the skill is mid-review.
 
 ## Contents
 
@@ -172,9 +172,9 @@ A ❌ here is a **return**, not a close: it sets `readyForReview` false and driv
 
 ### G. Size (single logical change)
 
-CONTRIBUTING.md §6: a PR should add no more than **1000 lines** and cover one logical change. Using `additions` from `gh pr view`:
+CONTRIBUTING.md §6: a PR should add no more than **1000 lines** and cover one logical change. Compute the line count from the per-file `additions` in the `files` list fetched in step 2 (each entry has `path` and `additions`) — not the aggregate `additions` from `gh pr view`, which can't be filtered:
 
-- Set `Oversized` true when `additions > 1000`. Exclude obvious lockfiles and generated/vendored files from the judgement (e.g. `pnpm-lock.yaml`, generated API clients) — a large lockfile diff alone is not "oversized".
+- Sum `additions` across the `files` list, **skipping** obvious lockfiles and generated/vendored files (e.g. `pnpm-lock.yaml`, generated API clients). Set `Oversized` true when that filtered sum is `> 1000` — a large lockfile diff alone is not "oversized".
 - `Oversized` true is a **return**, not a close: `readyForReview` becomes false and path C asks the contributor to split the PR into focused pieces.
 
 This is advisory-strength: a single cohesive change that genuinely needs >1000 lines (e.g. one sanctioned node) can be waved through by the human reviewer, so phrase the comment as a request to split *if the work is separable*.

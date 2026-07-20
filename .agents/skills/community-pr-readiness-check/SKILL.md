@@ -39,7 +39,7 @@ gh pr view <branch> --repo n8n-io/n8n --json number --jq .number
 
 ```bash
 gh pr view <number> --repo n8n-io/n8n \
-  --json number,title,body,author,headRefName,headRefOid,files,isDraft,state,labels,additions,deletions
+  --json number,title,body,author,headRefName,headRefOid,files,isDraft,state,labels
 ```
 
 ### Internal automation PRs (bot authors)
@@ -109,7 +109,7 @@ Run when `AutoReject` is `null`. Full rules for each in `reference/checks.md`:
 - **D. Tests** — source logic changes have matching test files (a `fix` needs a regression test covering the bug). Skip for `docs/ci/chore/build` PRs.
 - **E. cubic-dev-ai** — no unresolved comments (resolved = "Addressed in commit" marker).
 - **F. Linked issue or forum discussion** — `fix` PRs link a GitHub issue; `feat`/`refactor`/`perf` PRs link an issue or `community.n8n.io` topic. Skip for `docs/ci/chore/build/test`.
-- **G. Size** — `additions` ≤ 1000 and one logical change; sets `Oversized`.
+- **G. Size** — sum of per-file `additions` in `files` (skipping lockfiles/generated) ≤ 1000 and one logical change; sets `Oversized`.
 
 ## Step 4 — Identify the responsible team
 
@@ -169,7 +169,7 @@ Also inspect the matched Linear issue ticket (from the search above) for an alre
     "TestsIncluded": <bool>,
     "CubicIssues": <true if unresolved cubic issues exist, false otherwise>,
     "LinkedIssueOrDiscussion": <true if the §1 issue/forum link is present or the type is skipped>,
-    "Oversized": <true if additions > 1000 and the work is separable>
+    "Oversized": <true if the filtered per-file additions sum > 1000 and the work is separable>
   }
 }
 ```
