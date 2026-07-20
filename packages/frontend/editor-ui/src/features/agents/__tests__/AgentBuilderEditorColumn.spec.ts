@@ -22,7 +22,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 vi.mock('@n8n/design-system', () => ({
-	N8nActionBox: { template: '<div />', props: ['icon', 'description'] },
+	N8nEmptyState: { template: '<div />', props: ['icon', 'description'] },
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCard: {
 		name: 'N8nCard',
@@ -255,6 +255,14 @@ describe('AgentBuilderEditorColumn', () => {
 
 		expect(agentWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
 		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
+	});
+
+	it('renders the Knowledge tab with vector stores but without the files table when the knowledge base is disabled', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'knowledge', knowledgeBaseEnabled: false });
+
+		expect(wrapper.find('[data-testid="agent-knowledge-tab-content"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-vector-stores-card"]').exists()).toBe(true);
 	});
 
 	it('renders tabs inside the constrained rule container that aligns with content cards', async () => {

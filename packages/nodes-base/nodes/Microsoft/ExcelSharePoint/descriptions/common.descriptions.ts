@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-// The searchable dropdowns arrive in later tickets, on these same fields.
+// The Workbook/Site/Library searchable dropdowns arrive with the site/library
+// ticket, on these same fields. The Sheet and Table dropdowns are below.
 
 export const workbookRLC: INodeProperties = {
 	displayName: 'Workbook',
@@ -8,13 +9,16 @@ export const workbookRLC: INodeProperties = {
 	type: 'resourceLocator',
 	required: true,
 	default: { mode: 'url', value: '' },
-	description: 'The workbook to operate on. Choosing it by URL needs no site or library.',
+	description: 'Pick the workbook by URL (no site or library needed) or by ID',
 	modes: [
 		{
 			displayName: 'By URL',
 			name: 'url',
 			type: 'string',
-			placeholder: 'e.g. https://contoso.sharepoint.com/sites/mysite/Shared Documents/book.xlsx',
+			// A real "Copy link" URL is this messy sourcedoc/Doc.aspx shape, not a
+			// clean human-readable path — a tidy example would look wrong to paste over.
+			placeholder:
+				'e.g. https://contoso.sharepoint.com/:x:/r/sites/mysite/_layouts/15/Doc.aspx?sourcedoc=%7B5A58BB09-…%7D&file=book.xlsx',
 			validation: [
 				{
 					type: 'regex',
@@ -111,14 +115,47 @@ export const worksheetRLC: INodeProperties = {
 	name: 'worksheet',
 	type: 'resourceLocator',
 	required: true,
-	default: { mode: 'id', value: '' },
-	description: 'The sheet to operate on',
+	default: { mode: 'list', value: '' },
 	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getSheets',
+				searchable: true,
+			},
+		},
 		{
 			displayName: 'By Name or ID',
 			name: 'id',
 			type: 'string',
 			placeholder: 'e.g. Sheet1',
+		},
+	],
+};
+
+export const tableRLC: INodeProperties = {
+	displayName: 'Table',
+	name: 'table',
+	type: 'resourceLocator',
+	required: true,
+	default: { mode: 'list', value: '' },
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getTables',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By Name or ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. Table1',
 		},
 	],
 };

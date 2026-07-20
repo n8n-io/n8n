@@ -35,7 +35,7 @@ vi.mock('@/features/ai/mcpAccess/mcp.store', () => ({
 	useMCPStore: () => mockMcpStore,
 }));
 
-vi.mock('@/app/stores/rbac.store', () => ({
+vi.mock('@n8n/stores/rbac.store', () => ({
 	useRBACStore: () => ({
 		hasScope: mockHasScope,
 	}),

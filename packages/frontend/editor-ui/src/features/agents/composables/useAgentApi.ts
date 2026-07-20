@@ -1,6 +1,7 @@
 import type {
 	AgentCapabilitySummary,
 	AgentChatMessagesResponse,
+	AgentConfigValidationResponse,
 	AgentFileDto,
 	AgentIntegrationStatusResponse,
 	AgentJsonVectorStoreConfig,
@@ -438,6 +439,24 @@ export const getAgentConfig = async (
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
+	);
+};
+
+/**
+ * Static, authoritative readiness check for the current draft. Never
+ * performs live/network validation — safe to call frequently. The publish
+ * endpoint re-checks this independently, so this is purely for UI feedback
+ * (disabled Publish tooltip, invalid capability chips).
+ */
+export const getAgentConfigValidation = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentConfigValidationResponse> => {
+	return await makeRestApiRequest<AgentConfigValidationResponse>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/validation`,
 	);
 };
 

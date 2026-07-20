@@ -34,7 +34,7 @@ import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -449,7 +449,7 @@ const onSearch = (value: string) => {
 			}}</N8nText>
 		</N8nHeading>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
 				"
