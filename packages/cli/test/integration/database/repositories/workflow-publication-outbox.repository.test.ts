@@ -444,6 +444,23 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(pending[0].publishedVersionId).toBe(workflow.activeVersionId);
 		});
 
+		it('does not overwrite an existing pending record', async () => {
+			// Reconciliation only enqueues workflows that had no in-flight record at
+			// detection time, so a conflicting pending record can only have been
+			// enqueued concurrently (e.g. a publish committing mid-statement) — it is
+			// at least as fresh as reconciliation's snapshot and must win.
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id, 'v-concurrent');
+
+			await repository.enqueueByWorkflowIds([workflow.id]);
+
+			const pending = await repository.find({
+				where: { workflowId: workflow.id, status: 'pending' },
+			});
+			expect(pending).toHaveLength(1);
+			expect(pending[0].publishedVersionId).toBe('v-concurrent');
+		});
+
 		it('is a no-op for an empty list', async () => {
 			await createActiveWorkflow();
 

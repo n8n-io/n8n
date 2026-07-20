@@ -188,13 +188,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// is NOT NULL. The fallback is inert — the applier dispatches an unpublish
 		// on the workflow's null `activeVersionId` and never reads the record's
 		// version. (Mirrored in the sqlite variant below.)
+		//
+		// DO NOTHING, unlike `enqueue`: reconciliation only targets workflows with
+		// no in-flight record at detection time, so a conflicting pending record
+		// can only come from a concurrent publish/unpublish — it is at least as
+		// fresh as this statement's snapshot and must not be overwritten.
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", COALESCE(w."activeVersionId", w."versionId"), '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ANY($1)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			 DO NOTHING`,
 			[workflowIds],
 		);
 	}
@@ -210,7 +215,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 			 FROM ${workflowTableName} w
 			 WHERE w."id" IN (${placeholders})
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			 DO NOTHING`,
 			workflowIds,
 		);
 	}
