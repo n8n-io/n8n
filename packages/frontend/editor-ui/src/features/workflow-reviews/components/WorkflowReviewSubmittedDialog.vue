@@ -45,6 +45,7 @@ const description = computed(() => {
 			<N8nCheckbox
 				v-model="submittedDialogDismissed"
 				data-test-id="workflow-review-submitted-dont-show-again"
+				:class="$style.dontShowAgain"
 			>
 				<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
 			</N8nCheckbox>
@@ -67,5 +68,11 @@ const description = computed(() => {
 .footer {
 	align-items: center;
 	justify-content: space-between;
+}
+
+.dontShowAgain {
+	:deep(label) {
+		color: var(--color--text--tint-1);
+	}
 }
 </style>

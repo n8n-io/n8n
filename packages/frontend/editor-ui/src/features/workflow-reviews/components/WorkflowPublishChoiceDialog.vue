@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { N8nButton, N8nCheckbox, N8nDialog, N8nDialogFooter } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogDescription,
+	N8nDialogFooter,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
@@ -33,13 +39,16 @@ const chooseReview = () => {
 		:open="open"
 		size="medium"
 		:header="i18n.baseText('workflowReviews.publishChoice.title')"
-		:description="i18n.baseText('workflowReviews.publishChoice.description')"
 		@update:open="emit('update:open', $event)"
 	>
+		<N8nDialogDescription :class="$style.description">
+			{{ i18n.baseText('workflowReviews.publishChoice.description') }}
+		</N8nDialogDescription>
 		<N8nDialogFooter data-test-id="workflow-publish-choice-dialog" :class="$style.footer">
 			<N8nCheckbox
 				v-model="publishChoiceDismissed"
 				data-test-id="workflow-publish-choice-dont-show-again"
+				:class="$style.dontShowAgain"
 			>
 				<template #label>{{ i18n.baseText('generic.dontShowAgain') }}</template>
 			</N8nCheckbox>
@@ -60,6 +69,11 @@ const chooseReview = () => {
 </template>
 
 <style lang="scss" module>
+.description {
+	display: block;
+	margin-top: var(--spacing--xs);
+}
+
 .footer {
 	align-items: center;
 	justify-content: space-between;
@@ -68,5 +82,11 @@ const chooseReview = () => {
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
+}
+
+.dontShowAgain {
+	:deep(label) {
+		color: var(--color--text--tint-1);
+	}
 }
 </style>
