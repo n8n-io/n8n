@@ -76,14 +76,15 @@ describe('AWS signing helpers (unit)', () => {
 			expect(req.headers['content-length']).toBe('1024');
 		});
 
-		it('joins array header values with commas and drops undefined values', () => {
+		it('joins array header values with commas and drops undefined and null values', () => {
 			const req = buildSmithyHttpRequest({
 				...base,
-				headers: { 'x-multi': ['a', 'b'], 'x-missing': undefined },
-			} as SignOpts);
+				headers: { 'x-multi': ['a', 'b'], 'x-missing': undefined, 'x-null': null },
+			} as unknown as SignOpts);
 
 			expect(req.headers['x-multi']).toBe('a,b');
 			expect(req.headers['x-missing']).toBeUndefined();
+			expect(req.headers['x-null']).toBeUndefined();
 		});
 
 		it('injects aws4-style content-type and content-length for a string body', () => {

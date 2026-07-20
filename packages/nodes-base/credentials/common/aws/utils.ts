@@ -697,7 +697,7 @@ export function buildSmithyHttpRequest(
 	const headers: Record<string, string> = { host: signOpts.host ?? hostname };
 	for (const [k, v] of Object.entries(signOpts.headers ?? {})) {
 		const lower = k.toLowerCase();
-		if (lower === 'host' || v === undefined) continue;
+		if (lower === 'host' || v === undefined || v === null) continue;
 		headers[lower] = Array.isArray(v) ? v.join(',') : String(v);
 	}
 
