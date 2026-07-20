@@ -1,0 +1,19 @@
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_b1ae3677d6bc36::t_331d66c4c4992b 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "3dba7093013f51cd81827d4b25d470b2da2611c8",
+  "prompts": {},
+  "sessions": {
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
