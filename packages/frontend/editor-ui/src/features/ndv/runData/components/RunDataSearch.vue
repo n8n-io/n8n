@@ -6,7 +6,7 @@ import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useEventListener } from '@vueuse/core';
-import { PopOutWindowKey } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
 import { N8nIcon, N8nInput } from '@n8n/design-system';
