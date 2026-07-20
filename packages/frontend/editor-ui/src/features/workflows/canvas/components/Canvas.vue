@@ -8,7 +8,15 @@ import { useCanvasNodeHover } from '../composables/useCanvasNodeHover';
 import { useCanvasTraversal } from '../composables/useCanvasTraversal';
 import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { CanvasKey } from '@/app/constants';
+import {
+	CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION,
+	CanvasKey,
+	MODAL_CONFIRM,
+} from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { useSelectionValidation } from '@/app/composables/useSelectionValidation';
+import { useToast } from '@/app/composables/useToast';
+import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
@@ -53,7 +61,7 @@ import { getRectOfNodes, MarkerType, PanelPosition, useVueFlow, VueFlow } from '
 import { MiniMap } from '@vue-flow/minimap';
 import { onKeyDown, onKeyUp, useThrottleFn } from '@vueuse/core';
 import { NodeConnectionTypes, type IConnections, type IWorkflowGroup } from 'n8n-workflow';
-import type { CanvasRenderData } from '../canvas.utils';
+import { shouldIgnoreCanvasShortcut, type CanvasRenderData } from '../canvas.utils';
 import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 import {
 	computed,
@@ -199,6 +207,9 @@ const props = withDefaults(
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const message = useMessage();
+const toast = useToast();
+const i18n = useI18n();
 
 const renderData = toRef(props, 'renderData');
 provide(CanvasRenderDataKey, renderData);
@@ -318,6 +329,9 @@ const renameKeyCode = ' ';
 useShortKeyPress(
 	renameKeyCode,
 	() => {
+		// A selection that unambiguously targets a group renames the group;
+		// anything else falls through to node rename.
+		if (renameSelectedGroup()) return;
 		if (lastSelectedNode.value) {
 			emit('update:node:name', lastSelectedNode.value.id);
 		}
@@ -417,6 +431,32 @@ const {
 	selectedGroupIds,
 } = useCanvasNodeGroupActions(selectedNodesAndGroups, {
 	readOnly: () => props.readOnly || props.suppressInteraction,
+});
+
+const { isSelectionExtractable } = useSelectionValidation();
+
+// Groups that can be extracted to sub-workflows
+const extractableGroupIds = computed(() => {
+	const ids = new Set<string>();
+	for (const group of workflowDocumentStore.value.allGroups) {
+		if (isSelectionExtractable(group.nodeIds).valid) {
+			ids.add(group.id);
+		}
+	}
+	return ids;
+});
+
+const soleSelectedGroupId = computed<string | null>(() => {
+	const selectedGroups = selectedNodesAndGroups.value.filter(isCanvasGroupNode);
+	if (selectedGroups.length !== 1) return null;
+
+	const groupId = parseCanvasGroupNodeId(selectedGroups[0].id);
+	if (!groupId) return null;
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return null;
+
+	const memberIds = new Set(group.nodeIds);
+	return selectedNodes.value.every((node) => memberIds.has(node.id)) ? groupId : null;
 });
 
 const groupTelemetry = useCanvasNodeGroupTelemetry();
@@ -730,8 +770,110 @@ function onCanvasGroupToggle(
 	}
 }
 
+function isGroupNameTaken(groupId: string, name: string): boolean {
+	return workflowDocumentStore.value.allGroups.some(
+		(other) => other.id !== groupId && other.name === name,
+	);
+}
+
 function onCanvasGroupNameUpdate(groupId: string, name: string) {
+	if (isGroupNameTaken(groupId, name)) {
+		toast.showToast({
+			title: i18n.baseText('canvas.nodeGroup.renameBlocked.title'),
+			message: i18n.baseText('canvas.nodeGroup.duplicateName'),
+			type: 'error',
+			duration: 5000,
+		});
+		autofocusGroupTitleId.value = groupId;
+		return;
+	}
 	renameGroup(groupId, name);
+}
+
+// Collapsed groups have no inline title editor, so they rename through a
+// prompt (mirroring node rename); expanded groups focus the inline editor.
+function openGroupRename(groupId: string) {
+	if (injectedNodeGroupView?.isGroupCollapsed(groupId)) {
+		void onOpenGroupRenameModal(groupId);
+	} else {
+		autofocusGroupTitleId.value = groupId;
+	}
+}
+
+// Space renames a selected group the same way it renames a selected node.
+// Only an unambiguous target acts (see soleSelectedGroupId). Loose nodes or
+// multiple groups fall through to node rename. Returns whether the rename
+// was handled.
+function renameSelectedGroup(): boolean {
+	if (disableKeyBindings.value) return false;
+
+	const activeElement = document.activeElement;
+	if (activeElement && shouldIgnoreCanvasShortcut(activeElement)) return false;
+
+	const groupId = soleSelectedGroupId.value;
+	if (!groupId) return false;
+
+	openGroupRename(groupId);
+	return true;
+}
+
+async function onOpenGroupRenameModal(groupId: string) {
+	if (props.readOnly || props.suppressInteraction) return;
+
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+
+	if (disableKeyBindings.value || document.querySelector('.rename-prompt')) return;
+
+	try {
+		const promptResponsePromise = message.prompt(
+			i18n.baseText('nodeView.prompt.newName') + ':',
+			i18n.baseText('canvas.nodeGroup.prompt.renameGroup') + `: ${group.name}`,
+			{
+				customClass: 'rename-prompt',
+				confirmButtonText: i18n.baseText('nodeView.prompt.rename'),
+				cancelButtonText: i18n.baseText('nodeView.prompt.cancel'),
+				inputErrorMessage: i18n.baseText('nodeView.prompt.invalidName'),
+				inputValue: group.name,
+				inputValidator: (value: string) => {
+					const trimmed = value.trim();
+					if (!trimmed) {
+						return i18n.baseText('nodeView.prompt.invalidName');
+					}
+					if (isGroupNameTaken(groupId, trimmed)) {
+						return i18n.baseText('canvas.nodeGroup.duplicateName');
+					}
+					return true;
+				},
+			},
+		);
+
+		// Wait till input is displayed
+		await nextTick();
+
+		// Focus and select input content
+		const nameInput = document.querySelector<HTMLInputElement>('.rename-prompt .el-input__inner');
+		nameInput?.focus();
+		nameInput?.select();
+
+		// Stop propagation for space key to prevent VueFlow from intercepting it
+		// when modifier keys (like Shift) are pressed.
+		// See: https://github.com/bcakmakoglu/vue-flow/issues/1999
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === ' ') {
+				e.stopPropagation();
+			}
+		};
+		nameInput?.addEventListener('keydown', handleKeyDown);
+
+		const promptResponse = await promptResponsePromise;
+
+		nameInput?.removeEventListener('keydown', handleKeyDown);
+
+		if (promptResponse.action === MODAL_CONFIRM) {
+			renameGroup(groupId, promptResponse.value.trim());
+		}
+	} catch (e) {}
 }
 
 function onCanvasGroupDescriptionUpdate(groupId: string, description: string) {
@@ -759,6 +901,14 @@ function onCanvasGroupUngroup(
 	if (group) {
 		groupTelemetry.trackUngrouped(group, source);
 	}
+}
+
+// Same downstream path as extracting the members through Alt+X or the
+// context menu, so collapsed and expanded groups behave identically.
+function onCanvasGroupExtract(groupId: string) {
+	const group = workflowDocumentStore.value.getGroupById(groupId);
+	if (!group) return;
+	emit('extract-workflow', [...group.nodeIds]);
 }
 
 // Expand or collapse groups through the same path as the single toggle so
@@ -851,9 +1001,29 @@ function onDeleteSelection() {
 	if (ids.length > 0) emit('delete:nodes', ids);
 }
 
+// Last header-click toggle, for double-click suppression in onNodeClick.
+let lastHeaderToggle: { groupId: string; at: number } | undefined;
+
 function onNodeClick({ event, node }: NodeMouseEvent) {
-	// Title bars have their own click handlers
-	if (isCanvasGroupNode(node)) return;
+	if (isCanvasGroupNode(node)) {
+		// Modifier clicks keep VueFlow's multi-select behavior (cmd/ctrl+click).
+		if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+
+		// A plain click both selects the title bar (VueFlow selected it before
+		// emitting this event) and toggles collapse. Staying selected pairs the
+		// click with Space-to-rename, like nodes.
+		const groupId = parseCanvasGroupNodeId(node.id);
+		if (groupId) {
+			const isRepeatClick =
+				lastHeaderToggle?.groupId === groupId &&
+				event.timeStamp - lastHeaderToggle.at < CANVAS_GROUP_HEADER_TOGGLE_SUPPRESS_DURATION;
+			if (!isRepeatClick) {
+				lastHeaderToggle = { groupId, at: event.timeStamp };
+				onCanvasGroupToggle(groupId, 'group-header');
+			}
+		}
+		return;
+	}
 
 	if (chatPanelStore.isOpen && focusedNodesStore.isFeatureEnabled) {
 		focusedNodesStore.setUnconfirmedFromCanvasSelection([node.id]);
@@ -1321,7 +1491,7 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[],
 		}
 		case 'rename_group': {
 			if (groupId && workflowDocumentStore.value.getGroupById(groupId)) {
-				autofocusGroupTitleId.value = groupId;
+				openGroupRename(groupId);
 			}
 			return;
 		}
@@ -1637,11 +1807,13 @@ defineExpose({
 				:data="nodeProps.data ?? groupNodeFallbackDataById[nodeProps.id]"
 				:autofocus-group-id="autofocusGroupTitleId"
 				:read-only="readOnly || suppressInteraction"
+				:can-extract="extractableGroupIds.has(parseCanvasGroupNodeId(nodeProps.id) ?? '')"
 				@toggle="onCanvasGroupToggle"
 				@update:name="onCanvasGroupNameUpdate"
 				@update:description="onCanvasGroupDescriptionUpdate"
 				@title:focused="onNodeGroupTitleFocused"
 				@ungroup="onCanvasGroupUngroup"
+				@extract="onCanvasGroupExtract"
 				@open:contextmenu="onOpenGroupContextMenu"
 			/>
 		</template>
@@ -1706,8 +1878,10 @@ defineExpose({
 			<CanvasBackground :viewport="viewport" :striped="readOnly && stripedBackground" />
 		</slot>
 
+		<!-- A selection that is exactly one group acts through the group's own
+		toolbar; the selection toolbar would only duplicate it and cover it. -->
 		<CanvasSelectionToolbar
-			v-if="showNodeGroups"
+			v-if="showNodeGroups && soleSelectedGroupId === null"
 			:selected-nodes="selectedNodes"
 			:selection-bounds="selectionBoxBounds"
 			:read-only="readOnly || suppressInteraction"

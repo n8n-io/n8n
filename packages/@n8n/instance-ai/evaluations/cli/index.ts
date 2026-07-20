@@ -95,6 +95,7 @@ import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
+import { rollupCaseVerification } from '../summary';
 import type {
 	BuildExpectationResult,
 	MultiRunEvaluation,
@@ -651,6 +652,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						seedFile: buildArgs.seedFile,
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
+						executionScenarios: buildArgs.executionScenarios,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
@@ -1880,6 +1882,7 @@ export function writeEvalResults(
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
+	const verification = rollupCaseVerification(testCases);
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
@@ -1901,6 +1904,9 @@ export function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			// Cases where nothing could be scored (all units incomplete / skipped) —
+			// reported apart from the pass rate, never as a silent pass.
+			notVerified: verification.notVerified,
 			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 			...(buildSpendSummary ? { mcpBuild: buildSpendSummary } : {}),
 		},
@@ -1922,6 +1928,9 @@ export function writeEvalResults(
 		testCases: testCases.map((tc) => ({
 			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
+			// `notVerified` when no scenario or expectation was scored across runs —
+			// consumers must not treat a zero pass rate here as a pass.
+			status: tc.status,
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>

@@ -200,7 +200,7 @@ test.describe(
 			);
 			const n8nCallbackUrl = await keycloak.completeAuthorizationCodeFlow(keycloakAuthUrl);
 			// GET the n8n callback with the owner session: n8n exchanges the code and stores tokens
-			await api.request.get(n8nCallbackUrl);
+			await api.dynamicCredentials.completeAuthorizationCallback(n8nCallbackUrl);
 
 			// Credential is now configured for this user → readyToExecute should be true
 			const status = await api.dynamicCredentials.getExecutionStatus(workflow.id, {

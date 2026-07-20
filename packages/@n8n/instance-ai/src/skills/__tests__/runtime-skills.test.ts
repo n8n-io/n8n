@@ -160,6 +160,20 @@ describe('Instance AI runtime skills', () => {
 		);
 	});
 
+	it('keeps agent tool routing in one dedicated section', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'intent-recognition', 'SKILL.md'),
+			'utf-8',
+		);
+
+		expect(skill).toContain('## Adding tools to an agent');
+		expect(skill).toContain('Direct agent tools are the default');
+		expect(skill.match(/multiple independent node tools/g)).toHaveLength(1);
+		expect(
+			skill.match(/one agent tool call must run an ordered\s+multi-node procedure/g),
+		).toHaveLength(1);
+	});
+
 	it('loads the bundled Computer Use credential setup skill', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find(
