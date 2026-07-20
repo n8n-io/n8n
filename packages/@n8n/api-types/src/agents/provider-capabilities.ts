@@ -113,7 +113,12 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
-	xai: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	xai: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+	},
 	groq: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 	deepseek: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 	mistral: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
