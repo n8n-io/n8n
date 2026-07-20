@@ -161,7 +161,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 			options: { appendAfterSelectedRange: true },
 		});
 		ctx.getInputData.mockReturnValue([{ json: { Name: 'New Person', Email: 'new@example.com' } }]);
-		apiRequest.mockImplementation(async (method: string, resource: string) => {
+		apiRequest.mockImplementation(async (method: string) => {
 			if (method === 'GET') {
 				return {
 					address: 'Sheet1!A1:B2',
