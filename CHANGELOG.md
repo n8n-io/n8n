@@ -1,3 +1,12 @@
+## [2.30.8](https://github.com/n8n-io/n8n/compare/n8n@2.30.7...n8n@2.30.8) (2026-07-20)
+
+
+### Bug Fixes
+
+* **core:** Fix AI Agent not seeing tools connected through HITL tools ([#34435](https://github.com/n8n-io/n8n/issues/34435)) ([c9bee5e](https://github.com/n8n-io/n8n/commit/c9bee5e6e82650a6cb8f88b1376a8fbd1fabe9fc))
+* **editor:** Auto-ungroup invalid groups on workflow save ([#34514](https://github.com/n8n-io/n8n/issues/34514)) ([bbd15de](https://github.com/n8n-io/n8n/commit/bbd15de01f09484c237bc7bae784f1fc0c4f660d))
+
+
 ## [2.30.7](https://github.com/n8n-io/n8n/compare/n8n@2.30.6...n8n@2.30.7) (2026-07-17)
 
 
