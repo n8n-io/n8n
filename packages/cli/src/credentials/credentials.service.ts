@@ -5,8 +5,7 @@ import {
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
-	DbLock,
-	DbLockService,
+	InstanceCredentialAssignmentRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
@@ -68,7 +67,6 @@ import {
 } from './credential-dependency.service';
 import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
-import { InstanceCredentialConsumerRegistry } from './instance-credential-consumer.registry';
 import {
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
@@ -145,8 +143,7 @@ export class CredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
-		private readonly instanceCredentialConsumerRegistry: InstanceCredentialConsumerRegistry,
-		private readonly dbLockService: DbLockService,
+		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
 	) {}
 
 	/**
@@ -959,13 +956,8 @@ export class CredentialsService {
 		}
 
 		if (credential.availability === 'instance') {
-			await this.dbLockService.withLock(
-				DbLock.INSTANCE_CREDENTIAL_SETTINGS,
-				async (transactionManager) => {
-					await this.ensureInstanceCredentialIsNotInUse(credential.id);
-					await transactionManager.remove(credential);
-				},
-			);
+			await this.ensureInstanceCredentialIsNotInUse(credential.id);
+			await this.credentialsRepository.remove(credential);
 			return;
 		}
 
@@ -973,11 +965,13 @@ export class CredentialsService {
 	}
 
 	private async ensureInstanceCredentialIsNotInUse(credentialId: string): Promise<void> {
-		const consumer =
-			await this.instanceCredentialConsumerRegistry.findConsumerUsingCredential(credentialId);
-		if (consumer) {
+		const assignment = await this.instanceCredentialAssignmentRepository.findOne({
+			select: ['consumerId'],
+			where: { credentialId },
+		});
+		if (assignment) {
 			throw new BadRequestError(
-				`This credential is in use by instance feature "${consumer.id}" and cannot be deleted`,
+				`This credential is in use by instance feature "${assignment.consumerId}" and cannot be deleted`,
 			);
 		}
 	}

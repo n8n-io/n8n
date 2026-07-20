@@ -130,16 +130,17 @@ by owners/admins (global scope `credential:manageInstance`) and never usable in 
 workflow canvas. Instance AI resolves them server-side through the
 `InstanceCredentialBroker` under these consumer IDs:
 
-| Consumer ID | Credential types | Admin setting |
-|-------------|------------------|---------------|
-| `instance-ai:model` | LLM provider credentials (`openAiApi`, `anthropicApi`, ...) | `modelCredentialId` |
-| `instance-ai:sandbox` | `daytonaApi`, `httpHeaderAuth` | `daytonaCredentialId`, `n8nSandboxCredentialId` |
-| `instance-ai:search` | `braveSearchApi`, `searXngApi` | `searchCredentialId` |
+| Consumer ID | Credential types |
+|-------------|------------------|
+| `instance-ai:model` | LLM provider credentials (`openAiApi`, `anthropicApi`, ...) |
+| `instance-ai:sandbox:daytona` | `daytonaApi` |
+| `instance-ai:sandbox:n8n` | `httpHeaderAuth` |
+| `instance-ai:search` | `braveSearchApi`, `searXngApi` |
 
 The environment variables above remain the fallback when no credential is selected.
-A credential referenced by one of these settings cannot be deleted until the
-reference is cleared. On cloud and proxy-managed deployments these settings are
-managed externally and the API rejects them.
+The broker stores each selection in `instance_credential_assignment`. Its foreign key
+prevents deletion until the assignment is cleared. On cloud and proxy-managed
+deployments these assignments are managed externally and the API rejects them.
 
 To integrate another instance-level feature with the broker, see
 [instance credentials](../../../cli/src/credentials/instance-credentials.md).

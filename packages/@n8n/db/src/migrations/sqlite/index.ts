@@ -218,6 +218,7 @@ import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/17840000000
 import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
 import { AddAvailabilityColumnToCredentialsTable1784000000052 } from '../common/1784000000052-AddAvailabilityColumnToCredentialsTable';
+import { CreateInstanceCredentialAssignmentTable1784541296678 } from '../common/1784541296678-CreateInstanceCredentialAssignmentTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -439,6 +440,7 @@ const sqliteMigrations: Migration[] = [
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
 	BackfillInstanceAiEventLog1784000000051,
 	AddAvailabilityColumnToCredentialsTable1784000000052,
+	CreateInstanceCredentialAssignmentTable1784541296678,
 ];
 
 export { sqliteMigrations };

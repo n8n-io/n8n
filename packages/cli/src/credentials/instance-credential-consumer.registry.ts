@@ -4,7 +4,6 @@ import { UnexpectedError } from 'n8n-workflow';
 export interface InstanceCredentialConsumer {
 	readonly id: string;
 	readonly credentialTypes: readonly string[];
-	readonly isCredentialInUse: (credentialId: string) => boolean | Promise<boolean>;
 }
 
 @Service()
@@ -35,14 +34,5 @@ export class InstanceCredentialConsumerRegistry {
 			throw new UnexpectedError(`Unknown instance credential consumer "${consumerId}"`);
 		}
 		return consumer;
-	}
-
-	async findConsumerUsingCredential(
-		credentialId: string,
-	): Promise<InstanceCredentialConsumer | null> {
-		for (const consumer of this.consumers.values()) {
-			if (await consumer.isCredentialInUse(credentialId)) return consumer;
-		}
-		return null;
 	}
 }

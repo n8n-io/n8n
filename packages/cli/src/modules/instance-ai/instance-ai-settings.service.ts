@@ -11,7 +11,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { DbLock, DbLockService, Settings, SettingsRepository, UserRepository } from '@n8n/db';
+import { Settings, SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
@@ -63,9 +63,14 @@ export const INSTANCE_AI_MODEL_CREDENTIAL_POLICY = {
 	credentialTypes: Object.keys(CREDENTIAL_TO_MODEL_PROVIDER),
 };
 
-export const INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY = {
-	id: 'instance-ai:sandbox',
-	credentialTypes: ['daytonaApi', 'httpHeaderAuth'],
+export const INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY = {
+	id: 'instance-ai:sandbox:daytona',
+	credentialTypes: ['daytonaApi'],
+};
+
+export const INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY = {
+	id: 'instance-ai:sandbox:n8n',
+	credentialTypes: ['httpHeaderAuth'],
 };
 
 export const INSTANCE_AI_SEARCH_CREDENTIAL_POLICY = {
@@ -95,10 +100,6 @@ interface PersistedAdminSettings {
 	sandboxProvider?: string;
 	sandboxImage?: string;
 	sandboxTimeout?: number;
-	daytonaCredentialId?: string | null;
-	n8nSandboxCredentialId?: string | null;
-	searchCredentialId?: string | null;
-	modelCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
 	browserUseEnabled?: boolean;
 }
@@ -118,15 +119,6 @@ export class InstanceAiSettingsService {
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 
-	/** Admin-level credential IDs for sandbox and search services. */
-	private adminDaytonaCredentialId: string | null = null;
-
-	private adminN8nSandboxCredentialId: string | null = null;
-
-	private adminSearchCredentialId: string | null = null;
-
-	private adminModelCredentialId: string | null = null;
-
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
@@ -137,7 +129,6 @@ export class InstanceAiSettingsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly eventService: EventService,
-		private readonly dbLockService: DbLockService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -183,8 +174,27 @@ export class InstanceAiSettingsService {
 
 	// ── Admin settings ────────────────────────────────────────────────────
 
-	getAdminSettings(): InstanceAiAdminSettingsResponse {
+	async getAdminSettings(): Promise<InstanceAiAdminSettingsResponse> {
 		const c = this.config;
+		const credentialIds: [string | null, string | null, string | null, string | null] =
+			this.isCloud || this.aiService.isProxyEnabled()
+				? [null, null, null, null]
+				: await Promise.all([
+						this.instanceCredentialBroker.getAssignedCredentialId(
+							INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						),
+						this.instanceCredentialBroker.getAssignedCredentialId(
+							INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
+						),
+						this.instanceCredentialBroker.getAssignedCredentialId(
+							INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
+						),
+						this.instanceCredentialBroker.getAssignedCredentialId(
+							INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
+						),
+					]);
+		const [modelCredentialId, daytonaCredentialId, n8nSandboxCredentialId, searchCredentialId] =
+			credentialIds;
 		return {
 			enabled: this.enabled,
 			permissions: { ...this.permissions },
@@ -194,10 +204,10 @@ export class InstanceAiSettingsService {
 			sandboxProvider: normalizeSandboxProvider(c.sandboxProvider),
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
-			daytonaCredentialId: this.adminDaytonaCredentialId,
-			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
-			searchCredentialId: this.adminSearchCredentialId,
-			modelCredentialId: this.adminModelCredentialId,
+			daytonaCredentialId,
+			n8nSandboxCredentialId,
+			searchCredentialId,
+			modelCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
@@ -212,23 +222,57 @@ export class InstanceAiSettingsService {
 			this.deploymentLabel(),
 		);
 		if (this.isCloud || this.aiService.isProxyEnabled()) {
-			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
+			this.rejectManagedFields(
+				update,
+				InstanceAiSettingsService.INSTANCE_CREDENTIAL_FIELDS,
+				this.deploymentLabel(),
+			);
 		}
-		const { previous, next } = await this.dbLockService.withLock(
-			DbLock.INSTANCE_CREDENTIAL_SETTINGS,
+		const {
+			modelCredentialId,
+			daytonaCredentialId,
+			n8nSandboxCredentialId,
+			searchCredentialId,
+			...settingsUpdate
+		} = update;
+		const { previous, next } = await this.settingsRepository.manager.transaction(
 			async (transactionManager) => {
 				const current = this.mergeAdminSettings(
 					this.snapshotAdminSettings(),
 					await this.readPersistedAdminSettings(transactionManager),
 				);
-				this.validateAdminSettingsUpdate(update, current);
-				if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
-					const resolved = await this.resolveModelCredential(update.modelCredentialId);
-					this.ensureCredentialMatchesConfiguredModel(resolved.type);
+				this.validateAdminSettingsUpdate(settingsUpdate, current);
+				if (modelCredentialId === null) {
+					await this.instanceCredentialBroker.clearForConsumer(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						transactionManager,
+					);
+				} else if (modelCredentialId !== undefined) {
+					const credential = await this.instanceCredentialBroker.assignForConsumer(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						modelCredentialId,
+						transactionManager,
+					);
+					this.ensureCredentialMatchesConfiguredModel(credential.type);
 				}
+				await this.updateCredentialAssignment(
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
+					daytonaCredentialId,
+					transactionManager,
+				);
+				await this.updateCredentialAssignment(
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
+					n8nSandboxCredentialId,
+					transactionManager,
+				);
+				await this.updateCredentialAssignment(
+					INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
+					searchCredentialId,
+					transactionManager,
+				);
 
 				const previous = this.snapshotAdminSettings();
-				const next = this.mergeAdminSettings(current, update);
+				const next = this.mergeAdminSettings(current, settingsUpdate);
 				await this.persistAdminSettings(next, transactionManager);
 				return { previous, next };
 			},
@@ -236,7 +280,7 @@ export class InstanceAiSettingsService {
 		this.applyAdminSettings(next);
 		this.emitSettingsUpdated(previous, next);
 
-		return this.getAdminSettings();
+		return await this.getAdminSettings();
 	}
 
 	async reloadFromDb(): Promise<void> {
@@ -328,7 +372,8 @@ export class InstanceAiSettingsService {
 	async listInstanceServiceCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const credentials = await Promise.all([
-			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY.id),
+			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id),
+			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id),
 			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id),
 		]);
 		return credentials.flat().map((c) => ({
@@ -339,42 +384,24 @@ export class InstanceAiSettingsService {
 		}));
 	}
 
-	async isModelCredentialInUse(credentialId: string): Promise<boolean> {
-		const settings = await this.readPersistedAdminSettings();
-		return settings.modelCredentialId === credentialId;
-	}
-
-	async isSandboxCredentialInUse(credentialId: string): Promise<boolean> {
-		const settings = await this.readPersistedAdminSettings();
-		return (
-			settings.daytonaCredentialId === credentialId ||
-			settings.n8nSandboxCredentialId === credentialId
-		);
-	}
-
-	async isSearchCredentialInUse(credentialId: string): Promise<boolean> {
-		const settings = await this.readPersistedAdminSettings();
-		return settings.searchCredentialId === credentialId;
-	}
-
 	/** Resolve sandbox (Daytona) config from the admin-selected instance credential. */
 	async resolveDaytonaConfig(): Promise<{ apiUrl?: string; apiKey?: string }> {
-		const credentialId = this.adminDaytonaCredentialId;
-		if (!credentialId) {
-			// Fall back to env vars
-			const { daytonaApiUrl, daytonaApiKey } = this.config;
-			return {
-				apiUrl: daytonaApiUrl || undefined,
-				apiKey: daytonaApiKey || undefined,
-			};
-		}
-		const resolved = await this.resolveSandboxCredential(credentialId).catch((error: unknown) => {
-			this.warnCredentialFallback('Daytona sandbox', credentialId, error);
-			return null;
-		});
-		if (!resolved) {
-			return {};
-		}
+		const { daytonaApiUrl, daytonaApiKey } = this.config;
+		const envConfig = {
+			apiUrl: daytonaApiUrl || undefined,
+			apiKey: daytonaApiKey || undefined,
+		};
+		const resolved = await this.instanceCredentialBroker
+			.resolveForConsumer(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id)
+			.catch((error: unknown) => {
+				this.warnCredentialFallback(
+					'Daytona sandbox',
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
+					error,
+				);
+				return null;
+			});
+		if (!resolved) return envConfig;
 		const { data } = resolved;
 		return {
 			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
@@ -384,24 +411,21 @@ export class InstanceAiSettingsService {
 
 	async resolveN8nSandboxConfig(): Promise<{ serviceUrl?: string; apiKey?: string }> {
 		const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = this.config;
-		const credentialId = this.adminN8nSandboxCredentialId;
-		if (!credentialId) {
-			return {
-				serviceUrl: n8nSandboxServiceUrl || undefined,
-				apiKey: n8nSandboxServiceApiKey || undefined,
-			};
-		}
-
-		const resolved = await this.resolveSandboxCredential(credentialId).catch((error: unknown) => {
-			this.warnCredentialFallback('n8n Sandbox', credentialId, error);
-			return null;
-		});
-		if (!resolved) {
-			return {
-				serviceUrl: n8nSandboxServiceUrl || undefined,
-				apiKey: n8nSandboxServiceApiKey || undefined,
-			};
-		}
+		const envConfig = {
+			serviceUrl: n8nSandboxServiceUrl || undefined,
+			apiKey: n8nSandboxServiceApiKey || undefined,
+		};
+		const resolved = await this.instanceCredentialBroker
+			.resolveForConsumer(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id)
+			.catch((error: unknown) => {
+				this.warnCredentialFallback(
+					'n8n Sandbox',
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
+					error,
+				);
+				return null;
+			});
+		if (!resolved) return envConfig;
 
 		const { data } = resolved;
 		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
@@ -419,12 +443,12 @@ export class InstanceAiSettingsService {
 			braveApiKey: braveSearchApiKey || undefined,
 			searxngUrl: searxngUrl || undefined,
 		};
-		const credentialId = this.adminSearchCredentialId;
-		if (!credentialId) return envConfig;
-		const resolved = await this.resolveSearchCredential(credentialId).catch((error: unknown) => {
-			this.warnCredentialFallback('search', credentialId, error);
-			return null;
-		});
+		const resolved = await this.instanceCredentialBroker
+			.resolveForConsumer(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id)
+			.catch((error: unknown) => {
+				this.warnCredentialFallback('search', INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id, error);
+				return null;
+			});
 		if (!resolved) return envConfig;
 		const { type, data } = resolved;
 		if (type === 'braveSearchApi') {
@@ -436,25 +460,11 @@ export class InstanceAiSettingsService {
 		return {};
 	}
 
-	private async resolveSandboxCredential(credentialId: string) {
-		return await this.instanceCredentialBroker.resolveForConsumer(
-			INSTANCE_AI_SANDBOX_CREDENTIAL_POLICY.id,
-			credentialId,
-		);
-	}
-
-	private async resolveSearchCredential(credentialId: string) {
-		return await this.instanceCredentialBroker.resolveForConsumer(
-			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
-			credentialId,
-		);
-	}
-
-	private warnCredentialFallback(service: string, credentialId: string, error: unknown): void {
+	private warnCredentialFallback(service: string, consumerId: string, error: unknown): void {
 		Container.get(Logger)
 			.scoped('instance-ai')
 			.warn(`Could not resolve the configured ${service} credential; using environment fallback`, {
-				credentialId,
+				consumerId,
 				error: ensureError(error).message,
 			});
 	}
@@ -551,16 +561,15 @@ export class InstanceAiSettingsService {
 
 	private async resolveAdminModelConfig(modelName: string): Promise<ModelConfig | null> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
-		if (!this.adminModelCredentialId) return null;
-		const resolved = await this.resolveModelCredential(this.adminModelCredentialId);
+		const resolved = await this.resolveModelCredential();
+		if (!resolved) return null;
 
 		return this.buildModelConfig(resolved.type, resolved.data, modelName);
 	}
 
-	private async resolveModelCredential(credentialId: string) {
+	private async resolveModelCredential() {
 		return await this.instanceCredentialBroker.resolveForConsumer(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
-			credentialId,
 		);
 	}
 
@@ -613,23 +622,38 @@ export class InstanceAiSettingsService {
 
 	// ── Private helpers ───────────────────────────────────────────────────
 
-	/**
-	 * Admin fields sourced from environment variables only — never settable via
-	 * the API on any deployment. The settings UI exposes only the enable toggle
-	 * and permissions; model, search, sandbox and advanced options come from env.
-	 * Cloud and the AI service proxy already managed these externally; self-hosted
-	 * now follows suit for the initial launch.
-	 */
+	/** Admin fields sourced from environment variables only. */
 	private static readonly MANAGED_ADMIN_FIELDS: readonly string[] = [
 		'mcpServers',
 		'sandboxEnabled',
 		'sandboxProvider',
 		'sandboxImage',
 		'sandboxTimeout',
+	];
+
+	private static readonly INSTANCE_CREDENTIAL_FIELDS: readonly string[] = [
+		'modelCredentialId',
 		'daytonaCredentialId',
 		'n8nSandboxCredentialId',
 		'searchCredentialId',
 	];
+
+	private async updateCredentialAssignment(
+		consumerId: string,
+		credentialId: string | null | undefined,
+		transactionManager: EntityManager,
+	): Promise<void> {
+		if (credentialId === undefined) return;
+		if (credentialId === null) {
+			await this.instanceCredentialBroker.clearForConsumer(consumerId, transactionManager);
+		} else {
+			await this.instanceCredentialBroker.assignForConsumer(
+				consumerId,
+				credentialId,
+				transactionManager,
+			);
+		}
+	}
 
 	/** User preference fields sourced from environment variables only. */
 	private static readonly MANAGED_PREFERENCE_FIELDS: readonly string[] = [
@@ -666,9 +690,7 @@ export class InstanceAiSettingsService {
 			update.sandboxEnabled !== undefined ||
 			update.sandboxProvider !== undefined ||
 			update.sandboxImage !== undefined ||
-			update.sandboxTimeout !== undefined ||
-			update.daytonaCredentialId !== undefined ||
-			update.n8nSandboxCredentialId !== undefined;
+			update.sandboxTimeout !== undefined;
 		if (!touchesSandboxSettings) {
 			return;
 		}
@@ -744,14 +766,6 @@ export class InstanceAiSettingsService {
 			c.sandboxProvider = normalizeSandboxProvider(persisted.sandboxProvider);
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
-		if (persisted.daytonaCredentialId !== undefined)
-			this.adminDaytonaCredentialId = persisted.daytonaCredentialId;
-		if (persisted.n8nSandboxCredentialId !== undefined)
-			this.adminN8nSandboxCredentialId = persisted.n8nSandboxCredentialId;
-		if (persisted.searchCredentialId !== undefined)
-			this.adminSearchCredentialId = persisted.searchCredentialId;
-		if (persisted.modelCredentialId !== undefined)
-			this.adminModelCredentialId = persisted.modelCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.browserUseEnabled !== undefined)
@@ -773,10 +787,6 @@ export class InstanceAiSettingsService {
 			sandboxProvider: c.sandboxProvider,
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
-			daytonaCredentialId: this.adminDaytonaCredentialId,
-			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
-			searchCredentialId: this.adminSearchCredentialId,
-			modelCredentialId: this.adminModelCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};
@@ -799,7 +809,20 @@ export class InstanceAiSettingsService {
 		transactionManager?: EntityManager,
 	): Promise<PersistedAdminSettings> {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY, transactionManager);
-		return row ? jsonParse<PersistedAdminSettings>(row.value, { fallbackValue: {} }) : {};
+		if (!row) return {};
+		const settings = jsonParse<
+			PersistedAdminSettings & {
+				modelCredentialId?: string | null;
+				daytonaCredentialId?: string | null;
+				n8nSandboxCredentialId?: string | null;
+				searchCredentialId?: string | null;
+			}
+		>(row.value, { fallbackValue: {} });
+		delete settings.modelCredentialId;
+		delete settings.daytonaCredentialId;
+		delete settings.n8nSandboxCredentialId;
+		delete settings.searchCredentialId;
+		return settings;
 	}
 
 	private emitSettingsUpdated(

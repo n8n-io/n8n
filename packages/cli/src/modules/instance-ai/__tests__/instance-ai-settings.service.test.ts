@@ -1,12 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
-import type {
-	CredentialsEntity,
-	DbLockService,
-	SettingsRepository,
-	User,
-	UserRepository,
-} from '@n8n/db';
+import type { CredentialsEntity, SettingsRepository, User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -43,7 +37,9 @@ describe('InstanceAiSettingsService', () => {
 		} as unknown as InstanceAiConfig,
 		deployment: { type: 'default' },
 	});
-	const settingsRepository = mock<SettingsRepository>();
+	const transactionManager = mock<EntityManager>();
+	const settingsManager = mock<EntityManager>();
+	const settingsRepository = mock<SettingsRepository>({ manager: settingsManager });
 	const userRepository = mock<UserRepository>();
 	const userService = mock<UserService>();
 	const aiService = mock<AiService>();
@@ -51,8 +47,6 @@ describe('InstanceAiSettingsService', () => {
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const instanceCredentialBroker = mock<InstanceCredentialBroker>();
 	const eventService = mock<EventService>();
-	const dbLockService = mock<DbLockService>();
-	const transactionManager = mock<EntityManager>();
 
 	let service: InstanceAiSettingsService;
 
@@ -70,11 +64,12 @@ describe('InstanceAiSettingsService', () => {
 		});
 		globalConfig.deployment.type = 'default';
 		instanceCredentialBroker.listForConsumer.mockResolvedValue([]);
+		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
 		transactionManager.upsert.mockImplementation(
 			async (_entity, value, conflictPaths) =>
 				await settingsRepository.upsert(value as never, conflictPaths as never),
 		);
-		dbLockService.withLock.mockImplementation(async (_lock, fn) => await fn(transactionManager));
+		settingsManager.transaction.mockImplementation(async (fn) => await fn(transactionManager));
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
 			settingsRepository,
@@ -85,7 +80,6 @@ describe('InstanceAiSettingsService', () => {
 			credentialsFinderService,
 			instanceCredentialBroker,
 			eventService,
-			dbLockService,
 		);
 	});
 
@@ -106,22 +100,60 @@ describe('InstanceAiSettingsService', () => {
 			await expect(
 				service.updateAdminSettings({
 					sandboxEnabled: true,
-					daytonaCredentialId: 'cred-1',
+					mcpServers: '[]',
 				}),
-			).rejects.toThrow(/sandboxEnabled.*daytonaCredentialId|daytonaCredentialId.*sandboxEnabled/);
+			).rejects.toThrow(/sandboxEnabled.*mcpServers|mcpServers.*sandboxEnabled/);
 		});
 
-		it('should reject sandbox, search and advanced fields on self-hosted', async () => {
+		it('should reject environment-managed fields on self-hosted', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
 				UnprocessableRequestError,
 			);
-			await expect(service.updateAdminSettings({ searchCredentialId: 'cred-1' })).rejects.toThrow(
-				UnprocessableRequestError,
-			);
 			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 				UnprocessableRequestError,
+			);
+		});
+
+		it('should store service credential selections as broker assignments', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			await service.updateAdminSettings({
+				daytonaCredentialId: 'daytona-cred',
+				n8nSandboxCredentialId: 'sandbox-cred',
+				searchCredentialId: 'search-cred',
+			});
+
+			expect(instanceCredentialBroker.assignForConsumer).toHaveBeenCalledWith(
+				'instance-ai:sandbox:daytona',
+				'daytona-cred',
+				transactionManager,
+			);
+			expect(instanceCredentialBroker.assignForConsumer).toHaveBeenCalledWith(
+				'instance-ai:sandbox:n8n',
+				'sandbox-cred',
+				transactionManager,
+			);
+			expect(instanceCredentialBroker.assignForConsumer).toHaveBeenCalledWith(
+				'instance-ai:search',
+				'search-cred',
+				transactionManager,
+			);
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ value: expect.not.stringContaining('CredentialId') }),
+				['key'],
+			);
+		});
+
+		it('should clear a service credential assignment', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+
+			await service.updateAdminSettings({ searchCredentialId: null });
+
+			expect(instanceCredentialBroker.clearForConsumer).toHaveBeenCalledWith(
+				'instance-ai:search',
+				transactionManager,
 			);
 		});
 
@@ -178,8 +210,8 @@ describe('InstanceAiSettingsService', () => {
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 		});
 
-		it('defaults to true', () => {
-			expect(service.getAdminSettings().mcpAccessEnabled).toBe(true);
+		it('defaults to true', async () => {
+			expect((await service.getAdminSettings()).mcpAccessEnabled).toBe(true);
 			expect(service.isMcpAccessEnabled()).toBe(true);
 		});
 
@@ -208,7 +240,7 @@ describe('InstanceAiSettingsService', () => {
 			const result = await service.updateAdminSettings({ mcpAccessEnabled: false });
 
 			expect(result.mcpAccessEnabled).toBe(false);
-			expect(service.getAdminSettings().mcpAccessEnabled).toBe(false);
+			expect((await service.getAdminSettings()).mcpAccessEnabled).toBe(false);
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					value: expect.stringContaining('"mcpAccessEnabled":false'),
@@ -247,7 +279,7 @@ describe('InstanceAiSettingsService', () => {
 				'write failed',
 			);
 
-			expect(service.getAdminSettings().mcpAccessEnabled).toBe(true);
+			expect((await service.getAdminSettings()).mcpAccessEnabled).toBe(true);
 		});
 	});
 
@@ -258,16 +290,17 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('delegates model credential validation to the broker', async () => {
-			instanceCredentialBroker.resolveForConsumer.mockRejectedValue(
+			instanceCredentialBroker.assignForConsumer.mockRejectedValue(
 				new UnprocessableRequestError('Invalid instance credential'),
 			);
 
 			await expect(service.updateAdminSettings({ modelCredentialId: 'cred-1' })).rejects.toThrow(
 				'Invalid instance credential',
 			);
-			expect(instanceCredentialBroker.resolveForConsumer).toHaveBeenCalledWith(
+			expect(instanceCredentialBroker.assignForConsumer).toHaveBeenCalledWith(
 				'instance-ai:model',
 				'cred-1',
+				transactionManager,
 			);
 		});
 
@@ -284,6 +317,11 @@ describe('InstanceAiSettingsService', () => {
 				type: credential.type,
 				data: { apiKey: 'admin-key' },
 			});
+			instanceCredentialBroker.assignForConsumer.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+			});
 
 			await service.updateAdminSettings({ modelCredentialId: credential.id });
 			const result = await service.resolveModelConfig(
@@ -295,26 +333,20 @@ describe('InstanceAiSettingsService', () => {
 			);
 
 			expect(result).toEqual({ id: 'openai/gpt-4.1', url: '', apiKey: 'admin-key' });
-			expect(instanceCredentialBroker.resolveForConsumer).toHaveBeenCalledWith(
-				'instance-ai:model',
-				'cred-1',
-			);
+			expect(instanceCredentialBroker.resolveForConsumer).toHaveBeenCalledWith('instance-ai:model');
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({ value: expect.stringContaining('"modelCredentialId":"cred-1"') }),
+				expect.objectContaining({ value: expect.not.stringContaining('modelCredentialId') }),
 				['key'],
 			);
 		});
 
-		it('checks persisted settings when protecting a configured credential', async () => {
-			settingsRepository.findByKey.mockResolvedValue({
-				key: 'instanceAi.settings',
-				value: JSON.stringify({ modelCredentialId: 'cred-1' }),
-				loadOnStartup: true,
-			} as never);
+		it('reads the configured model credential from the broker', async () => {
+			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('cred-1');
 
-			await expect(service.isModelCredentialInUse('cred-1')).resolves.toBe(true);
-			await expect(service.isModelCredentialInUse('other-credential')).resolves.toBe(false);
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				modelCredentialId: 'cred-1',
+			});
 		});
 
 		it('ignores a configured admin credential on cloud', async () => {
@@ -329,6 +361,11 @@ describe('InstanceAiSettingsService', () => {
 				name: credential.name,
 				type: credential.type,
 				data: { apiKey: 'admin-key' },
+			});
+			instanceCredentialBroker.assignForConsumer.mockResolvedValue({
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
 			});
 			await service.updateAdminSettings({ modelCredentialId: credential.id });
 			vi.clearAllMocks();
@@ -347,14 +384,7 @@ describe('InstanceAiSettingsService', () => {
 			Container.set(Logger, logger);
 			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
 			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
-			settingsRepository.findByKey.mockResolvedValue({
-				key: 'instanceAi.settings',
-				value: JSON.stringify({ searchCredentialId: 'missing-credential' }),
-				loadOnStartup: true,
-			} as never);
 			instanceCredentialBroker.resolveForConsumer.mockRejectedValue(new Error('not found'));
-
-			await service.loadFromDb();
 
 			await expect(service.resolveSearchConfig()).resolves.toEqual({
 				braveApiKey: 'env-key',
@@ -362,8 +392,25 @@ describe('InstanceAiSettingsService', () => {
 			});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Could not resolve the configured search credential; using environment fallback',
-				{ credentialId: 'missing-credential', error: 'not found' },
+				{ consumerId: 'instance-ai:search', error: 'not found' },
 			);
+		});
+
+		it('reads service credential selections from broker assignments', async () => {
+			const assignments: Record<string, string> = {
+				'instance-ai:sandbox:daytona': 'daytona-cred',
+				'instance-ai:sandbox:n8n': 'sandbox-cred',
+				'instance-ai:search': 'search-cred',
+			};
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (consumerId) => {
+				return assignments[consumerId] ?? null;
+			});
+
+			await expect(service.getAdminSettings()).resolves.toMatchObject({
+				daytonaCredentialId: 'daytona-cred',
+				n8nSandboxCredentialId: 'sandbox-cred',
+				searchCredentialId: 'search-cred',
+			});
 		});
 	});
 
@@ -373,8 +420,10 @@ describe('InstanceAiSettingsService', () => {
 			settingsRepository.upsert.mockResolvedValue(undefined as never);
 		});
 
-		it('defaults to require_approval', () => {
-			expect(service.getAdminSettings().permissions.executeMcpTool).toBe('require_approval');
+		it('defaults to require_approval', async () => {
+			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe(
+				'require_approval',
+			);
 		});
 
 		it('persists and reflects an update', async () => {
@@ -383,7 +432,7 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			expect(result.permissions.executeMcpTool).toBe('always_allow');
-			expect(service.getAdminSettings().permissions.executeMcpTool).toBe('always_allow');
+			expect((await service.getAdminSettings()).permissions.executeMcpTool).toBe('always_allow');
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({
 					value: expect.stringContaining('"executeMcpTool":"always_allow"'),
@@ -497,6 +546,12 @@ describe('InstanceAiSettingsService', () => {
 		describe('updateAdminSettings', () => {
 			it('should reject model credentials on cloud', async () => {
 				await expect(service.updateAdminSettings({ modelCredentialId: 'cred-1' })).rejects.toThrow(
+					UnprocessableRequestError,
+				);
+			});
+
+			it('should reject service credential assignments on cloud', async () => {
+				await expect(service.updateAdminSettings({ searchCredentialId: 'cred-1' })).rejects.toThrow(
 					UnprocessableRequestError,
 				);
 			});

@@ -18,7 +18,7 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | availability | VARCHAR(16) | 'workflow' | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | data | TEXT |  | false |  |  |  |
-| id | varchar(36) |  | false | [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [shared_credentials](shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [chat_hub_agents](chat_hub_agents.md) [chat_hub_sessions](chat_hub_sessions.md) [credential_dependency](credential_dependency.md) [dynamic_credential_entry](dynamic_credential_entry.md) [dynamic_credential_user_entry](dynamic_credential_user_entry.md) [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) [instance_credential_assignment](instance_credential_assignment.md) [shared_credentials](shared_credentials.md) |  |  |
 | isGlobal | boolean | 0 | false |  |  |  |
 | isManaged | boolean | 0 | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -56,6 +56,7 @@ erDiagram
 "dynamic_credential_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "dynamic_credential_user_entry" |o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "credentials_entity" }o--o| "dynamic_credential_resolver" : "FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
@@ -134,6 +135,10 @@ erDiagram
   TEXT toolFilter
   datetime_3_ updatedAt
   varchar userId FK
+}
+"instance_credential_assignment" {
+  varchar_128_ consumerId PK
+  varchar_36_ credentialId FK
 }
 "shared_credentials" {
   datetime_3_ createdAt
