@@ -136,45 +136,37 @@ describe('ai-tools', () => {
 			expect(result.description.properties[2]).toEqual(operationProp);
 		});
 
-		it('should remove operations unsupported by ephemeral tool execution', () => {
+		it('should keep waiting operations available for workflow tool nodes', () => {
+			// sendAndWait/dispatchAndWait work in persistent workflow executions, so
+			// tool variants must keep them. They are blocked for the agents product
+			// at execution time instead (see EphemeralNodeExecutor).
 			fullNodeWrapper.description.properties = [
 				{
-					displayName: 'Message Operation',
+					displayName: 'Operation',
 					name: 'operation',
 					type: 'options',
 					options: [
 						{ name: 'Send', value: 'post' },
 						{ name: 'Send and Wait', value: SEND_AND_WAIT_OPERATION },
-					],
-					default: SEND_AND_WAIT_OPERATION,
-				},
-				{
-					displayName: 'Workflow Operation',
-					name: 'operation',
-					type: 'options',
-					options: [
-						{ name: 'Dispatch', value: 'dispatch' },
 						{ name: 'Dispatch and Wait', value: 'dispatchAndWait' },
 					],
-					default: 'dispatchAndWait',
+					default: SEND_AND_WAIT_OPERATION,
 				},
 			];
 
 			const result = convertNodeToAiTool(fullNodeWrapper);
-			const operationProperties = result.description.properties.filter(
+			const operationProperty = result.description.properties.find(
 				(property) => property.name === 'operation',
 			);
 
-			expect(operationProperties).toMatchObject([
-				{
-					options: [{ name: 'Send', value: 'post' }],
-					default: 'post',
-				},
-				{
-					options: [{ name: 'Dispatch', value: 'dispatch' }],
-					default: 'dispatch',
-				},
-			]);
+			expect(operationProperty).toMatchObject({
+				options: [
+					{ name: 'Send', value: 'post' },
+					{ name: 'Send and Wait', value: SEND_AND_WAIT_OPERATION },
+					{ name: 'Dispatch and Wait', value: 'dispatchAndWait' },
+				],
+				default: SEND_AND_WAIT_OPERATION,
+			});
 		});
 
 		it('should handle nodes with both resource and operation properties', () => {
