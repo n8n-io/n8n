@@ -50,7 +50,7 @@ describe('NodeItem', () => {
 			props: {
 				nodeType: mockSimplifiedNodeType({
 					name: MESSAGE_AN_AGENT_NODE_TYPE,
-					displayName: 'Message an n8n Agent',
+					displayName: 'AI Agent',
 					group: ['transform'],
 				}),
 			},
