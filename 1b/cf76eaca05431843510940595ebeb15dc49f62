@@ -1,8 +1,9 @@
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
   s_70e4a16a672757::t_bdf6c7bea8e71a 264
   s_278cbb65f99049::t_a9f09c4d7ee747 242,244
-  s_278cbb65f99049::t_7c31e0b4aac9eb 231-233
-  s_278cbb65f99049::t_01a8a07f6a1040 229-230
+  s_278cbb65f99049::t_7c31e0b4aac9eb 230-232,231-233,244
+  s_278cbb65f99049::t_01a8a07f6a1040 229-230,229
+  s_278cbb65f99049::t_6fac996217a8d2 233
 ---
 {
   "schema_version": "authorship/3.0.0",
