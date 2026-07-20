@@ -134,27 +134,28 @@ export class SnapshotManager {
 
 		try {
 			await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
-			this.logger.info('Created versioned Daytona snapshot', { name });
-			return name;
+			this.logger.info('Created versioned Daytona snapshot; verifying it is usable', { name });
 		} catch (error) {
 			if (isAlreadyExistsError(error)) {
 				this.logger.info('Versioned Daytona snapshot already exists; verifying it is usable', {
 					name,
 				});
-				await this.verifyExistingSnapshot(daytona, name, options?.timeout);
-				return name;
+			} else {
+				throw error;
 			}
-			throw error;
 		}
+
+		await this.verifySnapshot(daytona, name, options?.timeout);
+		return name;
 	}
 
 	/**
-	 * Verify that an existing snapshot is actually usable. A prior pipeline run
-	 * can leave a snapshot behind in `error`/`build_failed` state; treating its
-	 * "already exists" as success would let a release ship without a working
-	 * snapshot. Waits out in-progress builds, throws on any unusable state.
+	 * Verify that the snapshot is actually usable. A snapshot build can finish in
+	 * `error`/`build_failed` state; returning before it is active would let a release
+	 * ship without a working snapshot. Waits out in-progress builds, throws on any
+	 * unusable state.
 	 */
-	private async verifyExistingSnapshot(
+	private async verifySnapshot(
 		daytona: Daytona,
 		name: string,
 		timeoutS = DEFAULT_SNAPSHOT_VERIFY_TIMEOUT_S,
@@ -163,7 +164,7 @@ export class SnapshotManager {
 		for (;;) {
 			const snapshot = await daytona.snapshot.get(name);
 			if (snapshot.state === 'active') {
-				this.logger.info('Existing versioned Daytona snapshot is active', { name });
+				this.logger.info('Versioned Daytona snapshot is active', { name });
 				return;
 			}
 			if (!SNAPSHOT_BUILDING_STATES.has(snapshot.state)) {

@@ -262,6 +262,7 @@ describe('SnapshotManager.createSnapshot', () => {
 
 		expect(result).toBe(SNAPSHOT_NAME);
 		expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
+		expect(daytona.snapshot.get).toHaveBeenCalledWith(SNAPSHOT_NAME);
 		const callArgs = daytona.snapshot.create.mock.calls[0][0];
 		expect(callArgs.name).toBe(SNAPSHOT_NAME);
 		expect(callArgs.image).toBeDefined();
@@ -289,10 +290,10 @@ describe('SnapshotManager.createSnapshot', () => {
 		expect(result).toBe(SNAPSHOT_NAME);
 	});
 
-	it('throws when the existing snapshot is in a failed state', async () => {
+	it('throws when the created snapshot is in a failed state', async () => {
 		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 		const daytona = makeFakeDaytona();
-		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
+		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
 		daytona.snapshot.get.mockResolvedValue({
 			name: SNAPSHOT_NAME,
 			state: 'build_failed',
