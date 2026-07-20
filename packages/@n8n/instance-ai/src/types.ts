@@ -386,6 +386,7 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
@@ -790,7 +791,10 @@ export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
 	/** Return tools that belong to the given category (based on annotations.category). */
 	getToolsByCategory(category: string): McpTool[];
-	callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
+	callTool(
+		req: McpToolCallRequest,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpToolCallResult>;
 }
 
 // ── Workspace shapes ────────────────────────────────────────────────────────

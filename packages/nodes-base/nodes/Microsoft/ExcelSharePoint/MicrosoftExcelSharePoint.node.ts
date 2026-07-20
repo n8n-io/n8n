@@ -13,7 +13,7 @@ import * as getAllTables from './actions/table/getAll.operation';
 import * as getTableColumns from './actions/table/getColumns.operation';
 import * as getTableRows from './actions/table/getRows.operation';
 import * as lookupTable from './actions/table/lookup.operation';
-import * as getAllWorkbooks from './actions/workbook/getAll.operation';
+import * as workbook from './actions/workbook/Workbook.resource';
 import * as append from './actions/worksheet/append.operation';
 import * as clear from './actions/worksheet/clear.operation';
 import * as deleteWorksheet from './actions/worksheet/deleteWorksheet.operation';
@@ -203,27 +203,6 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				],
 				default: 'getAll',
 			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						resource: ['workbook'],
-					},
-				},
-				options: [
-					{
-						name: 'Get Many',
-						value: 'getAll',
-						description: "Retrieve a list of the document library's workbooks",
-						action: 'Get many workbooks',
-					},
-				],
-				default: 'getAll',
-			},
-
 			...append.description,
 			...clear.description,
 			...deleteWorksheet.description,
@@ -236,7 +215,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 			...createTable.description,
 			...convertTableToRange.description,
 			...deleteTable.description,
-			...getAllWorkbooks.description,
+			...workbook.description,
 		],
 	};
 
@@ -279,7 +258,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 			return [await deleteTable.execute.call(this, items)];
 		}
 		if (resource === 'workbook' && operation === 'getAll') {
-			return [await getAllWorkbooks.execute.call(this, items)];
+			return [await workbook.getAll.execute.call(this, items)];
 		}
 
 		if (resource === 'worksheet' && operation === 'clear') {
@@ -288,6 +267,14 @@ export class MicrosoftExcelSharePoint implements INodeType {
 
 		if (resource === 'worksheet' && operation === 'deleteWorksheet') {
 			return [await deleteWorksheet.execute.call(this, items)];
+		}
+
+		if (resource === 'workbook' && operation === 'addWorksheet') {
+			return [await workbook.addWorksheet.execute.call(this, items)];
+		}
+
+		if (resource === 'workbook' && operation === 'deleteWorkbook') {
+			return [await workbook.deleteWorkbook.execute.call(this, items)];
 		}
 
 		throw new NodeOperationError(
