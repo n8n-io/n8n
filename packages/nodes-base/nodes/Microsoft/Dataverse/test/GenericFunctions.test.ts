@@ -341,8 +341,27 @@ describe('Microsoft Dataverse GenericFunctions', () => {
 			expect(sleep).toHaveBeenCalledTimes(1);
 		});
 
-		it('retries an idempotent PATCH after an ambiguous 504', async () => {
-			request.mockRejectedValueOnce({ statusCode: 504 }).mockResolvedValueOnce({ value: 'ok' });
+		it('does not retry a PATCH after an ambiguous 504 (avoids re-running plugins)', async () => {
+			request.mockRejectedValue({ statusCode: 504 });
+
+			await expect(
+				dataverseApiRequest(
+					ctx,
+					'PATCH',
+					'/accounts(1)',
+					{ name: 'Acme' },
+					{},
+					{},
+					CREDENTIAL_TYPE,
+				),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('retries a PATCH after a 429 (rejected before processing)', async () => {
+			request.mockRejectedValueOnce({ statusCode: 429 }).mockResolvedValueOnce({ value: 'ok' });
 
 			const result = await dataverseApiRequest(
 				ctx,

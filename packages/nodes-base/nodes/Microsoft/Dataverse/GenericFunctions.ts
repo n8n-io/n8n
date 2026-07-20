@@ -72,13 +72,14 @@ const RETRYABLE_NETWORK_CODES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * HTTP methods whose effect is unchanged by repetition. Retrying one of these
- * after an *ambiguous* failure — where Dataverse may already have processed the
- * request but the response was lost (504 gateway timeout, `ECONNRESET`, socket
- * hang-up, etc.) — cannot create a second record, so the full transient set is
- * safe. POST is deliberately excluded: retrying a Create Row after a lost
- * response would insert a duplicate row. Dataverse's PATCH is a keyed
- * update/upsert against a specific record, so it is idempotent in practice.
+ * HTTP methods whose repetition has no additional server-side effect, so
+ * retrying one after an *ambiguous* failure — where Dataverse may already have
+ * processed the request but the response was lost (504 gateway timeout,
+ * `ECONNRESET`, socket hang-up, etc.) — is safe. Both write verbs are excluded:
+ * `POST` (Create Row) would insert a duplicate record, and `PATCH` (Update /
+ * Upsert Row) can re-trigger Dataverse plugins and business logic even though
+ * the record-level result is idempotent. Writes only retry on failures proven
+ * to have never reached Dataverse (see {@link isRetryable}).
  */
 const IDEMPOTENT_METHODS: ReadonlySet<string> = new Set([
 	'GET',
@@ -86,14 +87,14 @@ const IDEMPOTENT_METHODS: ReadonlySet<string> = new Set([
 	'OPTIONS',
 	'PUT',
 	'DELETE',
-	'PATCH',
 ]);
 
 /**
  * Failures that guarantee the request never reached Dataverse, making a retry
- * safe even for a non-idempotent POST. HTTP 429 is a throttle rejection issued
- * before any processing; the network codes are connection-establishment
- * failures (DNS / refused / no route) where the request body was never sent.
+ * safe even for a non-idempotent write (`POST` / `PATCH`). HTTP 429 is a
+ * throttle rejection issued before any processing; the network codes are
+ * connection-establishment failures (DNS / refused / no route) where the
+ * request body was never sent.
  */
 const PRE_DELIVERY_STATUS_CODES: ReadonlySet<number> = new Set([429]);
 const PRE_DELIVERY_NETWORK_CODES: ReadonlySet<string> = new Set([
@@ -153,9 +154,10 @@ function getNetworkErrorCode(error: unknown): string | undefined {
  * Whether a failed request should be retried. For idempotent methods, retries
  * fire on any known-transient failure — a throttling / gateway status
  * (429 / 503 / 504) or a transient socket / DNS error with no HTTP response.
- * For non-idempotent methods (POST), retries are restricted to failures that
- * prove the request never reached Dataverse (429 or a connection-establishment
- * error), so a Create Row whose response was lost is never silently duplicated.
+ * For non-idempotent writes (`POST` / `PATCH`), retries are restricted to
+ * failures that prove the request never reached Dataverse (429 or a
+ * connection-establishment error), so a lost response can never silently
+ * duplicate a created row or re-run Dataverse plugins / business logic.
  */
 function isRetryable(error: unknown, method: IHttpRequestMethods): boolean {
 	const idempotent = IDEMPOTENT_METHODS.has(method.toUpperCase());
