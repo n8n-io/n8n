@@ -72,7 +72,7 @@ const description = computed(() => {
 
 .dontShowAgain {
 	:deep(label) {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtler);
 	}
 }
 </style>
