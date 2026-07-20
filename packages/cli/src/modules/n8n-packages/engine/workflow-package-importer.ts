@@ -12,20 +12,19 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import type {
-	PreparedWorkflow,
-	WorkflowImportOutcome,
-} from '../entities/workflow/workflow-import.types';
-import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
 import type { PackageReader } from '../io/package-reader';
-import type { PackageManifest } from '../spec/manifest.schema';
-import { ImportOrchestrator, type ImportOrchestrationResult } from './import-orchestrator';
+import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
+import { ImportOrchestrator } from './import-orchestrator';
 import {
 	assertPackageImportApiKeyScopes,
 	buildImportResult,
+	identifyRequirements,
+	toImportedWorkflowSummaries,
 	toPackageSummary,
 } from './import-result';
+import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
+import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
  * Imports loose top-level workflows, their folder shells, and credential & data table deps into a target project.
@@ -92,19 +91,15 @@ export class WorkflowPackageImporter {
 			options: request,
 		});
 
-		this.emitImportedEvent(
+		emitPackageImportedEvent(this.eventService, {
 			request,
-			context,
 			manifest,
-			imported,
-			credentialRequest,
-			dataTableRequest,
-		);
+			scopes: [{ context, imported, credentialRequest, dataTableRequest }],
+		});
 
 		return buildImportResult({
 			package: toPackageSummary(manifest),
-			projectId: context.projectId,
-			workflows: imported.workflowOutcomes,
+			workflows: toImportedWorkflowSummaries(imported.workflowOutcomes, context.projectId),
 			folders: imported.folderSummaries,
 			projects: [],
 			bindings: imported.bindings,
@@ -121,65 +116,6 @@ export class WorkflowPackageImporter {
 				'Your license does not allow folders. Importing a package with folders requires a license that supports folders.',
 			);
 		}
-	}
-
-	private emitImportedEvent(
-		request: ImportPackageRequest,
-		context: ImportContext,
-		manifest: PackageManifest,
-		imported: ImportOrchestrationResult,
-		credentialRequest: CredentialBindingRequest,
-		dataTableRequest: DataTableImportRequest,
-	): void {
-		const { workflowOutcomes, credentialResult, dataTablePlan } = imported;
-		const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
-		const countByStatus = (status: WorkflowImportOutcome['status']) =>
-			workflowOutcomes.filter((outcome) => outcome.status === status).length;
-
-		this.eventService.emit('n8n-package-imported', {
-			user: context.user,
-			projectId: context.projectId,
-			folderId: context.folderId,
-			workflowIds: importedWorkflows.map(({ workflow }) => workflow.id),
-			options: {
-				workflowConflictPolicy: request.workflowConflictPolicy,
-				workflowIdPolicy: request.workflowIdPolicy,
-				credentialMatchingMode: request.credentialMatchingMode,
-				credentialMissingMode: request.credentialMissingMode,
-				workflowPublishingPolicy: request.workflowPublishingPolicy,
-				dataTableMatchingMode: request.dataTableMatchingMode,
-				dataTableMissingMode: request.dataTableMissingMode,
-				dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
-			},
-			packageSourceId: manifest.sourceId,
-			packageVersion: manifest.packageFormatVersion,
-			credentialIds: {
-				matched: credentialResult.matched.map(
-					(sourceId) => credentialResult.bindings.get(sourceId)!,
-				),
-				created: credentialResult.stubbed.map(
-					(sourceId) => credentialResult.bindings.get(sourceId)!,
-				),
-				updated: [],
-			},
-			counts: {
-				workflows: {
-					created: countByStatus('created'),
-					updated: countByStatus('updated'),
-					skipped: countByStatus('skipped'),
-				},
-				credentials: {
-					matched: credentialResult.matched.length,
-					created: credentialResult.stubbed.length,
-					requirements: credentialRequest.requirements?.length ?? 0,
-				},
-				dataTables: {
-					matched: dataTablePlan.matchedCount,
-					created: dataTablePlan.creations.length,
-					requirements: dataTableRequest.requirements?.length ?? 0,
-				},
-			},
-		});
 	}
 
 	private async findImportLocation(
@@ -235,20 +171,4 @@ export class WorkflowPackageImporter {
 			throw new UserError(`Folder not found in target project: ${folderId}`, { cause });
 		}
 	}
-}
-
-/** Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
-function identifyRequirements<T extends { usedByWorkflows: string[] }>(
-	requirements: T[] | undefined,
-	workflows: PreparedWorkflow[],
-): T[] | undefined {
-	if (!requirements) return undefined;
-
-	const importedIds = new Set(workflows.map((workflow) => workflow.sourceWorkflowId));
-	return requirements
-		.map((requirement) => ({
-			...requirement,
-			usedByWorkflows: requirement.usedByWorkflows.filter((id) => importedIds.has(id)),
-		}))
-		.filter((requirement) => requirement.usedByWorkflows.length > 0);
 }

@@ -238,11 +238,24 @@ function emitChild(
 		...(target ? { targetResource: target } : {}),
 	});
 	emitNode(child, child.agentId);
-	if (child.status === 'completed' || child.status === 'error') {
+	// Close every terminal child. `result` is schema-required (empty string is
+	// the live paths' convention). `agent-completed` carries no cancelled state,
+	// so a cancelled child closes as an error with a "Cancelled" marker — the
+	// same shape the live cancel path publishes. Children stored `active`
+	// (crashed mid-child, pre-sweep era) stay active: that is exactly what the
+	// flag-off snapshot rendered, so reproducing it is parity, not a regression.
+	if (child.status === 'completed' || child.status === 'error' || child.status === 'cancelled') {
+		const error = isNonEmptyString(child.error)
+			? child.error
+			: child.status === 'error'
+				? 'Failed'
+				: child.status === 'cancelled'
+					? 'Cancelled'
+					: undefined;
 		synth.push('agent-completed', child.agentId, {
 			role: isNonEmptyString(child.role) ? child.role : 'agent',
-			...(isNonEmptyString(child.result) ? { result: child.result } : {}),
-			...(isNonEmptyString(child.error) ? { error: child.error } : {}),
+			result: isNonEmptyString(child.result) ? child.result : '',
+			...(error ? { error } : {}),
 		});
 	}
 }
@@ -316,21 +329,24 @@ function emitNodeContent(synth: RunSynthesizer, node: TreeNode, agentId: string)
 	}
 }
 
+function parseTree(tree: string | null): TreeNode | null {
+	if (!isNonEmptyString(tree)) return null;
+	try {
+		const parsed: unknown = JSON.parse(tree);
+		if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			return parsed as TreeNode;
+		}
+	} catch {
+		// fall through
+	}
+	return null;
+}
+
 function synthesizeSnapshotRun(snapshot: BackfillSnapshotRow): {
 	rows: SynthesizedRow[];
 	status: string;
 } {
-	let tree: TreeNode | null = null;
-	if (isNonEmptyString(snapshot.tree)) {
-		try {
-			const parsed: unknown = JSON.parse(snapshot.tree);
-			if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-				tree = parsed as TreeNode;
-			}
-		} catch {
-			tree = null;
-		}
-	}
+	const tree = parseTree(snapshot.tree);
 
 	const synth = new RunSynthesizer(snapshot.runId, snapshot.createdAt);
 	const rootAgentId = isNonEmptyString(tree?.agentId)
@@ -394,10 +410,22 @@ export function synthesizeThreadEvents(input: {
 		(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
 	);
 	for (const snapshot of snapshots) {
-		if (!isNonEmptyString(snapshot.runId) || covered.has(snapshot.runId)) continue;
-		covered.add(snapshot.runId);
-		const { rows: runRows, status } = synthesizeSnapshotRun(snapshot);
-		rows.push(...runRows);
+		if (!isNonEmptyString(snapshot.runId)) continue;
+		let status: string;
+		if (covered.has(snapshot.runId)) {
+			// Primary run already log-covered (e.g. a flag-on run merged into a
+			// group with pre-log siblings): skip the tree synthesis but still
+			// derive the terminal status so uncovered siblings get their
+			// lifecycle rows below instead of counting as runs-without-events
+			// forever.
+			const tree = parseTree(snapshot.tree);
+			status = tree ? mapRunFinish(tree).status : 'completed';
+		} else {
+			covered.add(snapshot.runId);
+			const run = synthesizeSnapshotRun(snapshot);
+			rows.push(...run.rows);
+			status = run.status;
+		}
 		// Merged message groups: the tree already covers the whole group, but the
 		// sibling runIds must stop counting as runs-without-events. Lifecycle-only
 		// rows join the group (same messageGroupId) without duplicating content.
@@ -485,7 +513,7 @@ export class BackfillInstanceAiEventLog1784000000051 implements IrreversibleMigr
 				messageGroupId: r.messageGroupId,
 				runIds: parseSimpleJsonArray(r.runIds),
 				tree: r.tree,
-				createdAt: new Date(r.createdAt),
+				createdAt: parseDbDate(r.createdAt),
 			}));
 
 			let assistantMessages: BackfillMessageRow[] = [];
@@ -505,7 +533,7 @@ export class BackfillInstanceAiEventLog1784000000051 implements IrreversibleMigr
 					id: r.id,
 					role: r.role,
 					content: r.content,
-					createdAt: new Date(r.createdAt),
+					createdAt: parseDbDate(r.createdAt),
 				}));
 			}
 
@@ -540,8 +568,26 @@ export class BackfillInstanceAiEventLog1784000000051 implements IrreversibleMigr
 	}
 }
 
-function parseSimpleJsonArray(value: string | null): string[] | null {
+/**
+ * Raw-query date handling. node-pg returns Date objects; sqlite returns the
+ * stored UTC string WITHOUT a zone marker ('YYYY-MM-DD HH:MM:SS.mmm'), which
+ * `new Date()` would parse as LOCAL time and shift every backfilled row by
+ * the host's UTC offset — enough to break the parser's chronological pairing
+ * against message timestamps. Normalize the string to explicit UTC.
+ */
+function parseDbDate(value: Date | string): Date {
+	if (value instanceof Date) return value;
+	const utcIso = /^\d{4}-\d{2}-\d{2} /.test(value) ? `${value.replace(' ', 'T')}Z` : value;
+	return new Date(utcIso);
+}
+
+function parseSimpleJsonArray(value: string | string[] | null): string[] | null {
 	if (!value) return null;
+	// simple-json is a text column on both engines, but stay total in case a
+	// driver ever hands back an already-parsed array.
+	if (Array.isArray(value)) {
+		return value.filter((v): v is string => typeof v === 'string');
+	}
 	try {
 		const parsed: unknown = JSON.parse(value);
 		return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : null;

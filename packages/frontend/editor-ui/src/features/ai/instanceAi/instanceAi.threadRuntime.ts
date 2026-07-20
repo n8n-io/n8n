@@ -100,12 +100,18 @@ export interface ThreadRuntimeHooks {
 
 const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
 
-function getAgentBuilderTargetFromThreadMetadata(metadata: Record<string, unknown> | undefined) {
+export function getAgentBuilderTargetFromThreadMetadata(
+	metadata: Record<string, unknown> | undefined,
+) {
 	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
 	if (!raw || typeof raw !== 'object') return undefined;
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;
-	return { agentId: target.agentId, projectId: target.projectId };
+	return {
+		agentId: target.agentId,
+		projectId: target.projectId,
+		...(typeof target.name === 'string' ? { name: target.name } : {}),
+	};
 }
 
 /** Walk an agent tree, collecting tool calls that have an active (pending) confirmation. */
@@ -944,20 +950,29 @@ export function createThreadRuntime(
 	}
 
 	async function loadThreadStatus(): Promise<void> {
+		const runIdAtRequest = activeRunId.value;
 		try {
 			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
 
-			const hasActivity = isOrchestratorLive(status) || status.backgroundTasks.length > 0;
-			if (!hasActivity) return;
+			// A newer local run started while this request was in flight — this
+			// response is stale and must not clobber it.
+			if (activeRunId.value !== runIdAtRequest && activeRunId.value !== (status.runId ?? null)) {
+				return;
+			}
+
+			// Restore-only, never settle: the status endpoint reads THIS main's
+			// in-memory run state, so in multi-main an "idle" answer can simply
+			// mean the run is driven by a sibling — acting on it would settle a
+			// live run mid-stream. Terminal state always arrives as durable
+			// run-finish facts over SSE/replay instead (the backend appends them
+			// even for dead runs on cancel and at the startup sweep).
+			if (!isOrchestratorLive(status)) return;
 
 			const runId = syncLiveRunFromStatus(status, messages.value);
 			if (runId) {
 				activeRunId.value = runId;
 				triggerRef(messages);
 			}
-
-			// Background task visibility is handled by the run-sync control frame
-			// that is sent on SSE connect. No need to inject children directly here.
 		} catch {
 			// Silently ignore
 		}
@@ -979,6 +994,7 @@ export function createThreadRuntime(
 	function pushOptimisticUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 	): InstanceAiMessage {
 		const userMessage: InstanceAiMessage = {
 			id: uuidv4(),
@@ -988,6 +1004,7 @@ export function createThreadRuntime(
 			reasoning: '',
 			isStreaming: false,
 			attachments: attachments && attachments.length > 0 ? attachments : undefined,
+			context: handoffContext,
 		};
 		messages.value.push(userMessage);
 		return userMessage;
@@ -1054,18 +1071,20 @@ export function createThreadRuntime(
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
 		handoffContext?: InstanceAiHandoffContext,
-	): Promise<void> {
+	): Promise<boolean> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
 		try {
 			ensureSSEConnected();
 			const isFirstMessage = !messages.value.some((m) => m.role === 'user');
-			const optimistic = pushOptimisticUserMessage(message, attachments);
+			const optimistic = pushOptimisticUserMessage(message, attachments, handoffContext);
 			trackUserMessageSent(isFirstMessage);
 
 			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
+				return false;
 			}
+			return true;
 		} finally {
 			pendingMessageCount.value = Math.max(0, pendingMessageCount.value - 1);
 		}
@@ -1073,10 +1092,11 @@ export function createThreadRuntime(
 
 	async function cancelRun(): Promise<void> {
 		// Thread-scoped and idempotent server-side, so it works after a reload
-		// that lost the local run id. Don't clear activeRunId or settle any
-		// state here: the terminal state arrives as a run-finish fact over SSE
-		// — the backend appends one even for a crashed run with no live
-		// process left to emit it, so every client converges through replay.
+		// that lost the local run id. Don't clear activeRunId, settle any state,
+		// or re-poll status here: the terminal state arrives as a run-finish
+		// fact over SSE — the backend appends one even for a crashed run with
+		// no live process left to emit it, so every client and every main
+		// converges through replay.
 		try {
 			await postCancel(rootStore.restApiContext, threadId);
 		} catch {

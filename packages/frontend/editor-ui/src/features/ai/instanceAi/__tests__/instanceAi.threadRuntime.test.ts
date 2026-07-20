@@ -6,8 +6,12 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage, postConfirmation, postCancel } from '../instanceAi.api';
-import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRuntime';
+import { ensureThread, postMessage, postCancel, postConfirmation } from '../instanceAi.api';
+import {
+	createThreadRuntime,
+	getAgentBuilderTargetFromThreadMetadata,
+	type ThreadRuntime,
+} from '../instanceAi.threadRuntime';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -239,6 +243,7 @@ const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockPostMessage = vi.mocked(postMessage);
+const mockPostCancel = vi.mocked(postCancel);
 const mockPostConfirmation = vi.mocked(postConfirmation);
 
 beforeAll(() => {
@@ -1046,6 +1051,12 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
 
+		expect(activeRuntime(registry).messages[0]).toMatchObject({
+			role: 'user',
+			content: 'hello',
+			context,
+		});
+
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.anything(),
 			activeThreadId,
@@ -1320,6 +1331,180 @@ describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
 		await runtime.confirmAction('req-deny', { kind: 'approval', approved: false });
 
 		expect(runtime.activeRunId).toBeNull();
+	});
+
+	test('cancelRun posts thread cancellation without an activeRunId', async () => {
+		const runtime = activeRuntime(registry);
+		expect(runtime.activeRunId).toBeNull();
+		mockPostCancel.mockResolvedValueOnce(undefined);
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		});
+
+		await runtime.cancelRun();
+
+		expect(mockPostCancel).toHaveBeenCalledWith(
+			expect.objectContaining({ baseUrl: 'http://localhost:5678/api' }),
+			activeThreadId,
+		);
+		// No status re-poll: the terminal state arrives as a run-finish fact over
+		// SSE (the backend appends one even for dead runs).
+		expect(mockFetchThreadStatus).not.toHaveBeenCalled();
+	});
+
+	test('loadThreadStatus never mutates local state on an idle response (idle from a sibling main is indistinguishable from truly idle)', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-stale',
+				content: '',
+				reasoning: '',
+				isStreaming: true,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					children: [
+						{
+							agentId: 'agent-child',
+							role: 'agent-builder',
+							status: 'active',
+							textContent: '',
+							reasoning: '',
+							toolCalls: [
+								{ toolCallId: 'tc-child', toolName: 'build-workflow', args: {}, isLoading: true },
+							],
+							children: [],
+							timeline: [],
+						},
+					],
+					timeline: [],
+				},
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		// Restore-only contract: an idle answer from the per-process status
+		// endpoint must not settle anything — durable run-finish facts own
+		// terminal state (INS-931).
+		const [message] = runtime.messages;
+		expect(message.isStreaming).toBe(true);
+		expect(message.agentTree?.status).toBe('active');
+		expect(message.agentTree?.toolCalls[0].isLoading).toBe(true);
+		const [child] = message.agentTree?.children ?? [];
+		expect(child.status).toBe('active');
+		expect(child.toolCalls[0].isLoading).toBe(true);
+	});
+
+	test('loadThreadStatus preserves active trees and restores activeRunId for a live run', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-live',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			runId: 'run-live',
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		expect(runtime.activeRunId).toBe('run-live');
+		const [message] = runtime.messages;
+		expect(message.isStreaming).toBe(true);
+		expect(message.agentTree?.status).toBe('active');
+		expect(message.agentTree?.toolCalls[0].isLoading).toBe(true);
+	});
+
+	test('loadThreadStatus ignores an idle response after a newer run starts', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-old',
+				content: '',
+				reasoning: '',
+				isStreaming: true,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [{ toolCallId: 'tc-root', toolName: 'workflows', args: {}, isLoading: true }],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		let resolveStatus: ((value: Awaited<ReturnType<typeof fetchThreadStatus>>) => void) | undefined;
+		mockFetchThreadStatus.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveStatus = resolve;
+			}),
+		);
+
+		const statusPromise = runtime.loadThreadStatus();
+
+		mockPostMessage.mockResolvedValueOnce({ runId: 'run-new' });
+		await runtime.sendMessage('new request');
+		expect(runtime.activeRunId).toBe('run-new');
+
+		resolveStatus?.({ hasActiveRun: false, isSuspended: false, backgroundTasks: [] });
+		await statusPromise;
+
+		expect(runtime.activeRunId).toBe('run-new');
+		const [message] = runtime.messages;
+		expect(message.agentTree?.status).toBe('active');
+		expect(message.agentTree?.toolCalls[0].isLoading).toBe(true);
+	});
+
+	test('cancelRun shows an actionable error when cancellation fails', async () => {
+		const runtime = activeRuntime(registry);
+		mockPostCancel.mockRejectedValueOnce(new Error('network'));
+
+		await runtime.cancelRun();
+
+		expect(mockShowError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Failed to cancel. Try again.' }),
+			'Cancel failed',
+		);
+		expect(mockFetchThreadStatus).not.toHaveBeenCalled();
 	});
 });
 
@@ -1907,5 +2092,35 @@ describe('createThreadRuntime - "Builder generation stalled" telemetry', () => {
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(stalledCalls()).toHaveLength(1);
 		expect(stalledCalls()[0][1]).toEqual({ thread_id: 'thread-active' });
+	});
+});
+
+describe('getAgentBuilderTargetFromThreadMetadata', () => {
+	test('passes the persisted name through', () => {
+		expect(
+			getAgentBuilderTargetFromThreadMetadata({
+				instanceAiAgentBuilderTarget: {
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				},
+			}),
+		).toEqual({ agentId: 'agent-1', projectId: 'proj-1', name: 'Support Bot' });
+	});
+
+	test('drops a non-string name but still returns the target', () => {
+		expect(
+			getAgentBuilderTargetFromThreadMetadata({
+				instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'proj-1', name: 42 },
+			}),
+		).toEqual({ agentId: 'agent-1', projectId: 'proj-1' });
+	});
+
+	test('returns undefined when agentId or projectId is missing', () => {
+		expect(
+			getAgentBuilderTargetFromThreadMetadata({
+				instanceAiAgentBuilderTarget: { projectId: 'proj-1', name: 'Support Bot' },
+			}),
+		).toBeUndefined();
 	});
 });
