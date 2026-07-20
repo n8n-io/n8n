@@ -58,9 +58,7 @@ EmptyStateWithIcon.args = {
 	buttonText: 'Create Workflow',
 };
 
-// A sample custom brand-style mark, demonstrating that the side cards accept arbitrary Vue
-// components (e.g. inlined client logos) alongside icon names. Custom marks should render a
-// 1em-sized SVG so they track the card's font-size.
+// Demonstrates that the side cards accept custom Vue components alongside icon names.
 const DemoBrandMark: Component = markRaw({
 	name: 'DemoBrandMark',
 	template: `

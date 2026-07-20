@@ -112,8 +112,6 @@ withDefaults(defineProps<EmptyStateProps>(), {
 	font-size: 40px;
 }
 
-// Heading + description are grouped so they sit closer to each other than to the
-// surrounding icon/actions, and the measure stays readable on wide containers.
 .text {
 	display: flex;
 	flex-direction: column;

@@ -3,7 +3,6 @@ import { defineComponent, h, nextTick } from 'vue';
 
 import N8nEmptyState from './EmptyState.vue';
 
-// A minimal custom side mark, standing in for the inlined brand SVGs consumers can pass.
 const StubMark = defineComponent({
 	name: 'StubMark',
 	render: () => h('svg', { 'data-test-id': 'stub-mark' }),
@@ -58,7 +57,6 @@ describe('N8nEmptyState', () => {
 					icon: {
 						type: 'cards',
 						center: 'tree-pine',
-						// Left card: the custom mark; right card starts halfway around (index 1).
 						sides: [StubMark, 'code', 'terminal'],
 					},
 					heading: 'Connect assistants',
@@ -68,7 +66,7 @@ describe('N8nEmptyState', () => {
 				},
 			});
 
-			// The card positions are (re-)initialised in onMounted, so flush the resulting patch.
+			// Card positions are (re-)initialised in onMounted, so flush the resulting patch.
 			await nextTick();
 			expect(wrapper.container.querySelector('[data-icon="tree-pine"]')).toBeInTheDocument();
 			expect(wrapper.getByTestId('stub-mark')).toBeInTheDocument();
@@ -112,8 +110,6 @@ describe('N8nEmptyState', () => {
 				},
 			});
 
-			// Statically shows the first two side icons, and stays put across cycle boundaries.
-			// The card positions are (re-)initialised in onMounted, so flush the resulting patch.
 			await nextTick();
 			expect(wrapper.container.querySelector('[data-icon="code"]')).toBeInTheDocument();
 			expect(wrapper.container.querySelector('[data-icon="terminal"]')).toBeInTheDocument();

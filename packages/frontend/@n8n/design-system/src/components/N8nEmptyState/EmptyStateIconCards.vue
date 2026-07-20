@@ -6,19 +6,15 @@ import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 
 interface EmptyStateIconCardsProps {
-	/** Static centre icon naming the feature/page the empty state belongs to. */
 	centerIcon: IconName | (string & {});
-	/** Icons shown in the two side cards (and cycled through when animated). */
 	sideIcons: EmptyStateCardIcon[];
-	/** Whether the side cards cycle through the icons; when false the trio renders statically. */
 	animated?: boolean;
 }
 
 defineOptions({ name: 'N8nEmptyStateIconCards' });
 const props = withDefaults(defineProps<EmptyStateIconCardsProps>(), { animated: true });
 
-// The side cards swap with a fade+blur: fade out, replace the icon mid-fade, fade back in.
-// The right card runs the same swap half a cycle later, and starts halfway around the icon
+// The right card swaps half a cycle after the left one and starts halfway around the icon
 // list, so the two sides never show the same icon at once.
 const FADE_MS = 300;
 const STAGGER_MS = 1500;
@@ -40,8 +36,8 @@ const rightIcon = computed(() =>
 const isIconName = (icon: EmptyStateCardIcon): icon is IconName | (string & {}) =>
 	typeof icon === 'string';
 
-// Deliberately a one-shot check (not reactive): each cycle reads it when it starts, matching
-// how the CSS media query gates the declarative transitions.
+// Deliberately a one-shot check (not reactive), matching how the CSS media query gates
+// the declarative transitions.
 const prefersReducedMotion = () =>
 	typeof window !== 'undefined' &&
 	typeof window.matchMedia === 'function' &&
@@ -74,15 +70,13 @@ const stopCycling = () => {
 	window.clearTimeout(rightSwapTimer);
 };
 
-// Cycling also stops with one or two side icons: there is nothing meaningful to cycle
-// through (the sides would momentarily duplicate each other), so the cards render statically.
+// With fewer than three side icons there is nothing meaningful to cycle through, so the
+// cards render statically.
 const shouldCycle = computed(() => props.animated && count.value >= 3);
 
 const startCycling = () => {
 	stopCycling();
 	leftIndex.value = 0;
-	// While cycling, the right card starts halfway around the list so the sides never show the
-	// same icon at once; statically it simply shows the second icon.
 	rightIndex.value = shouldCycle.value ? Math.floor(count.value / 2) : count.value > 1 ? 1 : 0;
 	leftFading.value = false;
 	rightFading.value = false;
@@ -99,8 +93,7 @@ onBeforeUnmount(stopCycling);
 </script>
 
 <template>
-	<!-- Purely decorative: the heading/description of the surrounding empty state carry the
-	     meaning, so the whole cluster is hidden from assistive technology. -->
+	<!-- Purely decorative: the surrounding empty state carries the meaning. -->
 	<div
 		:class="$style.cards"
 		:style="{ '--empty-state-icon-cards--fade-duration': `${FADE_MS}ms` }"
