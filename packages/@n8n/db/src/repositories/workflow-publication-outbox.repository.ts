@@ -189,10 +189,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// on the workflow's null `activeVersionId` and never reads the record's
 		// version. (Mirrored in the sqlite variant below.)
 		//
-		// DO NOTHING, unlike `enqueue`: reconciliation only targets workflows with
-		// no in-flight record at detection time, so a conflicting pending record
-		// can only come from a concurrent publish/unpublish — it is at least as
-		// fresh as this statement's snapshot and must not be overwritten.
+		// DO NOTHING, unlike `enqueue`: reconciliation's detection and this enqueue
+		// are two separate statements, so a publish/unpublish can commit a pending
+		// record in the gap between them (detection's in-flight exclusion saw an
+		// earlier snapshot). Such a record is at least as fresh as this statement's
+		// snapshot — overwriting it could roll the workflow back to a stale version.
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
 			 SELECT w."id", COALESCE(w."activeVersionId", w."versionId"), '${Status.Pending}'
