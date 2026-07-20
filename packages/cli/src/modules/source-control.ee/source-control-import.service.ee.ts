@@ -325,12 +325,27 @@ export class SourceControlImportService {
 			},
 		);
 
+		const remoteIds = remoteCredentialFilesRead.flatMap((remote) =>
+			remote?.id ? [remote.id] : [],
+		);
+		const localAvailability = new Map(
+			remoteIds.length === 0
+				? []
+				: (
+						await this.credentialsRepository.find({
+							where: { id: In(remoteIds) },
+							select: ['id', 'availability'],
+						})
+					).map((local) => [local.id, local.availability]),
+		);
+
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
 			.filter((remote) => {
 				if (!remote?.id) {
 					return false;
 				}
-				if (remote.availability === 'instance') {
+				// Touching an instance credential (local or as declared remotely) is admin-only
+				if (remote.availability === 'instance' || localAvailability.get(remote.id) === 'instance') {
 					return hasGlobalScope(context.user, 'credential:manageInstance');
 				}
 				const owner = remote.ownedBy;
@@ -976,7 +991,7 @@ export class SourceControlImportService {
 			where: {
 				id: In(candidateIds),
 			},
-			select: ['id', 'name', 'type', 'data'],
+			select: ['id', 'name', 'type', 'data', 'availability'],
 		});
 		const existingSharedCredentials = await this.sharedCredentialsRepository.find({
 			select: ['credentialsId', 'projectId', 'role'],
@@ -1007,8 +1022,12 @@ export class SourceControlImportService {
 					isGlobal = false,
 					isResolvable = false,
 					resolvableAllowFallback = false,
-					availability = 'workflow',
+					availability: remoteAvailability = 'workflow',
 				} = credential;
+				// Availability is instance-local state; imports never change it for existing credentials
+				const availability =
+					existingCredentials.find((e) => e.id === credential.id)?.availability ??
+					remoteAvailability;
 				const newCredentialObject = new Credentials({ id, name }, type);
 				if (availability === 'instance' && (isGlobal || isResolvable || resolvableAllowFallback)) {
 					throw new UserError('Instance credentials cannot be global or dynamically resolved');

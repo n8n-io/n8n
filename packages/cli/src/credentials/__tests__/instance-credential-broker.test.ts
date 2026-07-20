@@ -1,10 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-import type {
+import {
 	CredentialsEntity,
-	CredentialsRepository,
 	InstanceCredentialAssignment,
-	InstanceCredentialAssignmentRepository,
+	type CredentialsRepository,
+	type InstanceCredentialAssignmentRepository,
 } from '@n8n/db';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { QueryFailedError, type EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '../credentials.service';
@@ -15,8 +17,11 @@ describe('InstanceCredentialBroker', () => {
 	const credentialUseId = 'example:primary';
 	const useRegistry = new InstanceCredentialUseRegistry();
 	const logger = mock<Logger>();
-	const credentialsRepository = mock<CredentialsRepository>();
-	const assignmentRepository = mock<InstanceCredentialAssignmentRepository>();
+	const entityManager = mock<EntityManager>();
+	const credentialsRepository = mock<CredentialsRepository>({ manager: entityManager });
+	const assignmentRepository = mock<InstanceCredentialAssignmentRepository>({
+		manager: entityManager,
+	});
 	const credentialsService = mock<CredentialsService>();
 	const broker = new InstanceCredentialBroker(
 		logger,
@@ -61,7 +66,7 @@ describe('InstanceCredentialBroker', () => {
 	});
 
 	it('rejects assignments outside the credential use policy', async () => {
-		credentialsRepository.findOne.mockResolvedValue(null);
+		entityManager.findOne.mockResolvedValue(null);
 
 		await expect(broker.assignForUse(credentialUseId, 'workflow-credential')).rejects.toThrow(
 			'not valid for instance credential use',
@@ -76,24 +81,44 @@ describe('InstanceCredentialBroker', () => {
 			type: 'openAiApi',
 			availability: 'instance',
 		});
-		credentialsRepository.findOne.mockResolvedValue(credential);
+		entityManager.findOne.mockResolvedValue(credential);
 
 		await expect(broker.assignForUse(credentialUseId, credential.id)).resolves.toEqual({
 			id: credential.id,
 			name: credential.name,
 			type: credential.type,
 		});
-		expect(assignmentRepository.upsert).toHaveBeenCalledWith(
+		expect(entityManager.upsert).toHaveBeenCalledWith(
+			InstanceCredentialAssignment,
 			{ credentialUseId, credentialId: credential.id },
 			['credentialUseId'],
 		);
 
 		await broker.clearForUse(credentialUseId);
-		expect(assignmentRepository.delete).toHaveBeenCalledWith({ credentialUseId });
+		expect(entityManager.delete).toHaveBeenCalledWith(InstanceCredentialAssignment, {
+			credentialUseId,
+		});
+	});
+
+	it('rejects the assignment when the credential is deleted concurrently', async () => {
+		const credential = mock<CredentialsEntity>({
+			id: 'credential-id',
+			name: 'Primary model',
+			type: 'openAiApi',
+			availability: 'instance',
+		});
+		entityManager.findOne.mockResolvedValue(credential);
+		entityManager.upsert.mockRejectedValue(
+			new QueryFailedError('INSERT', [], new Error('FOREIGN KEY constraint failed')),
+		);
+
+		await expect(broker.assignForUse(credentialUseId, credential.id)).rejects.toThrow(
+			'not valid for instance credential use',
+		);
 	});
 
 	it('returns no credential when the credential use has no assignment', async () => {
-		assignmentRepository.findOneBy.mockResolvedValue(null);
+		entityManager.findOneBy.mockResolvedValue(null);
 
 		await expect(broker.resolveForUse(credentialUseId)).resolves.toBeNull();
 		expect(credentialsService.decrypt).not.toHaveBeenCalled();
@@ -106,10 +131,10 @@ describe('InstanceCredentialBroker', () => {
 			type: 'openAiApi',
 			availability: 'instance',
 		});
-		assignmentRepository.findOneBy.mockResolvedValue(
+		entityManager.findOneBy.mockResolvedValue(
 			mock<InstanceCredentialAssignment>({ credentialUseId, credentialId: credential.id }),
 		);
-		credentialsRepository.findOne.mockResolvedValue(credential);
+		entityManager.findOne.mockResolvedValue(credential);
 		credentialsService.decrypt.mockResolvedValue({ apiKey: 'secret' });
 
 		await expect(broker.resolveForUse(credentialUseId)).resolves.toEqual({
@@ -123,7 +148,8 @@ describe('InstanceCredentialBroker', () => {
 			credentialUseId,
 			credentialId: credential.id,
 		});
-		expect(credentialsRepository.findOne).toHaveBeenCalledWith(
+		expect(entityManager.findOne).toHaveBeenCalledWith(
+			CredentialsEntity,
 			expect.objectContaining({
 				where: expect.objectContaining({ id: credential.id, availability: 'instance' }),
 			}),

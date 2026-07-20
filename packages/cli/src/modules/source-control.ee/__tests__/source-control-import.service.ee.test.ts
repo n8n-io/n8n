@@ -130,6 +130,7 @@ describe('SourceControlImportService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		credentialsRepository.find.mockResolvedValue([]);
 		transactionManager.upsert.mockImplementation(
 			async (_entity, value, conflictPaths) =>
 				await credentialsRepository.upsert(value as never, conflictPaths as never),
@@ -1395,6 +1396,27 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should require the instance credential scope when the credential is an instance credential locally', async () => {
+			globMock.mockResolvedValue(['/mock/credential1.json']);
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Disguised Credential',
+					type: 'oauth2Api',
+					data: {},
+					ownedBy: null,
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([
+				{ id: 'cred1', availability: 'instance' } as any,
+			]);
+
+			await expect(service.getRemoteCredentialsFromFiles(globalMemberContext)).resolves.toEqual([]);
+			await expect(service.getRemoteCredentialsFromFiles(globalAdminContext)).resolves.toHaveLength(
+				1,
+			);
+		});
+
 		it('should filter out files without valid credential data', async () => {
 			globMock.mockResolvedValue(['/mock/invalid.json']);
 			fsReadFile.mockResolvedValue('{}');
@@ -1688,6 +1710,105 @@ describe('SourceControlImportService', () => {
 				credentialsId: 'cred1',
 			});
 			expect(credentialsRepositoryManager.transaction).toHaveBeenCalledOnce();
+		});
+
+		it('should keep an existing instance credential out of workflows when a remote file omits availability', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'oauth2Api',
+					data: {},
+					ownedBy: null,
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([
+				{
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'oauth2Api',
+					data: undefined,
+					availability: 'instance',
+				} as any,
+			]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'cred1', availability: 'instance' }),
+				['id'],
+			);
+			expect(sharedCredentialsRepository.delete).toHaveBeenCalledWith({ credentialsId: 'cred1' });
+		});
+
+		it('should keep an existing workflow credential in workflows when a remote file declares instance', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Workflow Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Workflow Credential',
+					type: 'oauth2Api',
+					data: {},
+					ownedBy: null,
+					availability: 'instance',
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([
+				{
+					id: 'cred1',
+					name: 'Workflow Credential',
+					type: 'oauth2Api',
+					data: undefined,
+					availability: 'workflow',
+				} as any,
+			]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'cred1', availability: 'workflow' }),
+				['id'],
+			);
+			expect(sharedCredentialsRepository.delete).not.toHaveBeenCalledWith({
+				credentialsId: 'cred1',
+			});
 		});
 
 		it('should reject contradictory instance credential flags', async () => {

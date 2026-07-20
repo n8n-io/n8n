@@ -132,9 +132,13 @@ export class CredentialsFinderService {
 		return credentials;
 	}
 
-	async findInstanceCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
-		const em = trx ?? this.credentialsRepository.manager;
-		return await em.find(CredentialsEntity, { where: { availability: 'instance' } });
+	async findInstanceCredentials(): Promise<
+		Array<Pick<CredentialsEntity, 'id' | 'name' | 'type' | 'createdAt' | 'updatedAt'>>
+	> {
+		return await this.credentialsRepository.find({
+			select: ['id', 'name', 'type', 'createdAt', 'updatedAt'],
+			where: { availability: 'instance' },
+		});
 	}
 
 	/** Get a credential if it has been shared with a user */
