@@ -666,7 +666,7 @@ export class InstanceAiController {
 	@Get('/settings')
 	@GlobalScope('instanceAi:manage')
 	async getAdminSettings(_req: AuthenticatedRequest) {
-		return this.settingsService.getAdminSettings();
+		return await this.settingsService.getAdminSettings();
 	}
 
 	@Put('/settings')
@@ -686,7 +686,7 @@ export class InstanceAiController {
 	@OnPubSubEvent('reload-instance-ai-settings', { instanceType: 'main' })
 	async reloadAdminSettings() {
 		await this.settingsService.reloadFromDb();
-		await this.applyAdminSettingsSideEffects(this.settingsService.getAdminSettings());
+		await this.applyAdminSettingsSideEffects(await this.settingsService.getAdminSettings());
 	}
 
 	private async applyAdminSettingsSideEffects(settings: InstanceAiAdminSettingsResponse) {
@@ -1277,7 +1277,7 @@ export class InstanceAiController {
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	private assertBrowserChannelEnabled(): void {
-		if (!this.settingsService.getAdminSettings().browserUseEnabled) {
+		if (!this.settingsService.isBrowserUseEnabled()) {
 			throw new ForbiddenError('Browser Use is disabled');
 		}
 	}

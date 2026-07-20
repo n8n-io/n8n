@@ -20,6 +20,7 @@ import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
+import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -66,6 +67,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	InvalidAuthToken,
+	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
@@ -131,6 +133,7 @@ export {
 
 export const entities = {
 	InvalidAuthToken,
+	InstanceCredentialAssignment,
 	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,

@@ -11,7 +11,7 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { DbLock, DbLockService, Settings, SettingsRepository, UserRepository } from '@n8n/db';
+import { Settings, SettingsRepository, UserRepository } from '@n8n/db';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
@@ -92,7 +92,6 @@ interface PersistedAdminSettings {
 	daytonaCredentialId?: string | null;
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
-	modelCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
 	browserUseEnabled?: boolean;
 }
@@ -119,8 +118,6 @@ export class InstanceAiSettingsService {
 
 	private adminSearchCredentialId: string | null = null;
 
-	private adminModelCredentialId: string | null = null;
-
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
@@ -131,7 +128,6 @@ export class InstanceAiSettingsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly eventService: EventService,
-		private readonly dbLockService: DbLockService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
@@ -177,8 +173,14 @@ export class InstanceAiSettingsService {
 
 	// ── Admin settings ────────────────────────────────────────────────────
 
-	getAdminSettings(): InstanceAiAdminSettingsResponse {
+	async getAdminSettings(): Promise<InstanceAiAdminSettingsResponse> {
 		const c = this.config;
+		const modelCredentialId =
+			this.isCloud || this.aiService.isProxyEnabled()
+				? null
+				: await this.instanceCredentialBroker.getAssignedCredentialId(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+					);
 		return {
 			enabled: this.enabled,
 			permissions: { ...this.permissions },
@@ -191,7 +193,7 @@ export class InstanceAiSettingsService {
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
-			modelCredentialId: this.adminModelCredentialId,
+			modelCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
@@ -208,21 +210,30 @@ export class InstanceAiSettingsService {
 		if (this.isCloud || this.aiService.isProxyEnabled()) {
 			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
 		}
-		const { previous, next } = await this.dbLockService.withLock(
-			DbLock.INSTANCE_CREDENTIAL_SETTINGS,
+		const { modelCredentialId, ...settingsUpdate } = update;
+		const { previous, next } = await this.settingsRepository.manager.transaction(
 			async (transactionManager) => {
 				const current = this.mergeAdminSettings(
 					this.snapshotAdminSettings(),
 					await this.readPersistedAdminSettings(transactionManager),
 				);
-				this.validateAdminSettingsUpdate(update, current);
-				if (update.modelCredentialId !== undefined && update.modelCredentialId !== null) {
-					const resolved = await this.resolveModelCredential(update.modelCredentialId);
-					this.ensureCredentialMatchesConfiguredModel(resolved.type);
+				this.validateAdminSettingsUpdate(settingsUpdate, current);
+				if (modelCredentialId === null) {
+					await this.instanceCredentialBroker.clearForConsumer(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						transactionManager,
+					);
+				} else if (modelCredentialId !== undefined) {
+					const credential = await this.instanceCredentialBroker.assignForConsumer(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						modelCredentialId,
+						transactionManager,
+					);
+					this.ensureCredentialMatchesConfiguredModel(credential.type);
 				}
 
 				const previous = this.snapshotAdminSettings();
-				const next = this.mergeAdminSettings(current, update);
+				const next = this.mergeAdminSettings(current, settingsUpdate);
 				await this.persistAdminSettings(next, transactionManager);
 				return { previous, next };
 			},
@@ -230,7 +241,7 @@ export class InstanceAiSettingsService {
 		this.applyAdminSettings(next);
 		this.emitSettingsUpdated(previous, next);
 
-		return this.getAdminSettings();
+		return await this.getAdminSettings();
 	}
 
 	async reloadFromDb(): Promise<void> {
@@ -332,11 +343,6 @@ export class InstanceAiSettingsService {
 				type: c.type,
 				provider: c.type,
 			}));
-	}
-
-	async isModelCredentialInUse(credentialId: string): Promise<boolean> {
-		const settings = await this.readPersistedAdminSettings();
-		return settings.modelCredentialId === credentialId;
 	}
 
 	/** Resolve sandbox (Daytona) config from the admin-selected credential. */
@@ -517,16 +523,15 @@ export class InstanceAiSettingsService {
 
 	private async resolveAdminModelConfig(modelName: string): Promise<ModelConfig | null> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
-		if (!this.adminModelCredentialId) return null;
-		const resolved = await this.resolveModelCredential(this.adminModelCredentialId);
+		const resolved = await this.resolveModelCredential();
+		if (!resolved) return null;
 
 		return this.buildModelConfig(resolved.type, resolved.data, modelName);
 	}
 
-	private async resolveModelCredential(credentialId: string) {
+	private async resolveModelCredential() {
 		return await this.instanceCredentialBroker.resolveForConsumer(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
-			credentialId,
 		);
 	}
 
@@ -716,8 +721,6 @@ export class InstanceAiSettingsService {
 			this.adminN8nSandboxCredentialId = persisted.n8nSandboxCredentialId;
 		if (persisted.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = persisted.searchCredentialId;
-		if (persisted.modelCredentialId !== undefined)
-			this.adminModelCredentialId = persisted.modelCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 		if (persisted.browserUseEnabled !== undefined)
@@ -742,7 +745,6 @@ export class InstanceAiSettingsService {
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
-			modelCredentialId: this.adminModelCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};
@@ -765,7 +767,13 @@ export class InstanceAiSettingsService {
 		transactionManager?: EntityManager,
 	): Promise<PersistedAdminSettings> {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY, transactionManager);
-		return row ? jsonParse<PersistedAdminSettings>(row.value, { fallbackValue: {} }) : {};
+		if (!row) return {};
+		const settings = jsonParse<PersistedAdminSettings & { modelCredentialId?: string | null }>(
+			row.value,
+			{ fallbackValue: {} },
+		);
+		delete settings.modelCredentialId;
+		return settings;
 	}
 
 	private emitSettingsUpdated(

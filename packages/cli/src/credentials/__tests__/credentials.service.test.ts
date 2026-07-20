@@ -2,7 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsEntity,
 	CredentialsRepository,
-	DbLockService,
+	InstanceCredentialAssignment,
+	InstanceCredentialAssignmentRepository,
 	SharedCredentialsRepository,
 	ProjectRepository,
 	UserRepository,
@@ -11,7 +12,6 @@ import type {
 	ListQueryDb,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import {
 	CREDENTIAL_BLANKING_VALUE,
@@ -28,7 +28,6 @@ import type { CredentialConnectionStatusProxy } from '@/credentials/credential-c
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import type { InstanceCredentialConsumerRegistry } from '@/credentials/instance-credential-consumer.registry';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
@@ -83,9 +82,7 @@ describe('CredentialsService', () => {
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
-	const instanceCredentialConsumerRegistry = mock<InstanceCredentialConsumerRegistry>();
-	const dbLockService = mock<DbLockService>();
-	const instanceCredentialTransactionManager = mock<EntityManager>();
+	const instanceCredentialAssignmentRepository = mock<InstanceCredentialAssignmentRepository>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -106,8 +103,7 @@ describe('CredentialsService', () => {
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
 		connectionStatusProxy,
-		instanceCredentialConsumerRegistry,
-		dbLockService,
+		instanceCredentialAssignmentRepository,
 	);
 
 	beforeEach(() => {
@@ -121,10 +117,7 @@ describe('CredentialsService', () => {
 		credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential.mockResolvedValue(
 			undefined,
 		);
-		instanceCredentialConsumerRegistry.findConsumerUsingCredential.mockResolvedValue(null);
-		dbLockService.withLock.mockImplementation(
-			async (_lock, fn) => await fn(instanceCredentialTransactionManager),
-		);
+		instanceCredentialAssignmentRepository.findOne.mockResolvedValue(null);
 		ownershipService.addOwnedByAndSharedWith.mockImplementation((credential: any) => credential);
 		// Mock the subquery method used by member users and admin users with onlySharedWithMe
 		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
@@ -967,8 +960,7 @@ describe('CredentialsService', () => {
 				['credential:delete'],
 				{ includeInstanceCredentials: true },
 			);
-			expect(instanceCredentialTransactionManager.remove).toHaveBeenCalledWith(credential);
-			expect(dbLockService.withLock).toHaveBeenCalledOnce();
+			expect(credentialsRepository.remove).toHaveBeenCalledWith(credential);
 		});
 
 		it('does not delete an instance credential bound to a feature', async () => {
@@ -978,8 +970,11 @@ describe('CredentialsService', () => {
 				isResolvable: false,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
-			instanceCredentialConsumerRegistry.findConsumerUsingCredential.mockResolvedValue(
-				mock({ id: 'instance-ai:model' }),
+			instanceCredentialAssignmentRepository.findOne.mockResolvedValue(
+				mock<InstanceCredentialAssignment>({
+					consumerId: 'instance-ai:model',
+					credentialId: credential.id,
+				}),
 			);
 
 			await expect(

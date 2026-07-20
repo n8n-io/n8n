@@ -1,5 +1,10 @@
 import type { Logger } from '@n8n/backend-common';
-import type { CredentialsEntity, CredentialsRepository } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	CredentialsRepository,
+	InstanceCredentialAssignment,
+	InstanceCredentialAssignmentRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '../credentials.service';
@@ -11,11 +16,13 @@ describe('InstanceCredentialBroker', () => {
 	const consumerRegistry = new InstanceCredentialConsumerRegistry();
 	const logger = mock<Logger>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const assignmentRepository = mock<InstanceCredentialAssignmentRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const broker = new InstanceCredentialBroker(
 		logger,
 		consumerRegistry,
 		credentialsRepository,
+		assignmentRepository,
 		credentialsService,
 	);
 
@@ -23,7 +30,6 @@ describe('InstanceCredentialBroker', () => {
 		broker.registerConsumer({
 			id: consumerId,
 			credentialTypes: ['openAiApi'],
-			isCredentialInUse: () => false,
 		});
 	});
 
@@ -54,27 +60,43 @@ describe('InstanceCredentialBroker', () => {
 		);
 	});
 
-	it('rejects credentials outside the consumer policy', async () => {
+	it('rejects assignments outside the consumer policy', async () => {
 		credentialsRepository.findOne.mockResolvedValue(null);
 
-		await expect(broker.resolveForConsumer(consumerId, 'workflow-credential')).rejects.toThrow(
+		await expect(broker.assignForConsumer(consumerId, 'workflow-credential')).rejects.toThrow(
 			'not valid for instance credential consumer',
 		);
 		expect(credentialsService.decrypt).not.toHaveBeenCalled();
 	});
 
-	it('finds the consumer currently using a credential', async () => {
-		const registry = new InstanceCredentialConsumerRegistry();
-		registry.register({
-			id: 'example:usage',
-			credentialTypes: ['openAiApi'],
-			isCredentialInUse: (credentialId) => credentialId === 'credential-id',
+	it('assigns and clears a credential for a consumer', async () => {
+		const credential = mock<CredentialsEntity>({
+			id: 'credential-id',
+			name: 'Primary model',
+			type: 'openAiApi',
+			availability: 'instance',
 		});
+		credentialsRepository.findOne.mockResolvedValue(credential);
 
-		await expect(registry.findConsumerUsingCredential('credential-id')).resolves.toMatchObject({
-			id: 'example:usage',
+		await expect(broker.assignForConsumer(consumerId, credential.id)).resolves.toEqual({
+			id: credential.id,
+			name: credential.name,
+			type: credential.type,
 		});
-		await expect(registry.findConsumerUsingCredential('other-id')).resolves.toBeNull();
+		expect(assignmentRepository.upsert).toHaveBeenCalledWith(
+			{ consumerId, credentialId: credential.id },
+			['consumerId'],
+		);
+
+		await broker.clearForConsumer(consumerId);
+		expect(assignmentRepository.delete).toHaveBeenCalledWith({ consumerId });
+	});
+
+	it('returns no credential when the consumer has no assignment', async () => {
+		assignmentRepository.findOneBy.mockResolvedValue(null);
+
+		await expect(broker.resolveForConsumer(consumerId)).resolves.toBeNull();
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
 	});
 
 	it('resolves a credential through the shared decrypt path', async () => {
@@ -84,10 +106,13 @@ describe('InstanceCredentialBroker', () => {
 			type: 'openAiApi',
 			availability: 'instance',
 		});
+		assignmentRepository.findOneBy.mockResolvedValue(
+			mock<InstanceCredentialAssignment>({ consumerId, credentialId: credential.id }),
+		);
 		credentialsRepository.findOne.mockResolvedValue(credential);
 		credentialsService.decrypt.mockResolvedValue({ apiKey: 'secret' });
 
-		await expect(broker.resolveForConsumer(consumerId, credential.id)).resolves.toEqual({
+		await expect(broker.resolveForConsumer(consumerId)).resolves.toEqual({
 			id: credential.id,
 			name: credential.name,
 			type: credential.type,
