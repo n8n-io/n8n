@@ -576,3 +576,4 @@ export {
 	type N8nProxyFeature,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
+export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';

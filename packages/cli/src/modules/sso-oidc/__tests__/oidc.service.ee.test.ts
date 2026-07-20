@@ -78,6 +78,11 @@ describe('OidcService', () => {
 		logger = mockLogger();
 		jwtService = mock<JwtService>();
 		provisioningService = mock<ProvisioningService>();
+		// loginUser reads the provisioning config to extract the instance role claim
+		provisioningService.getConfig = vi.fn().mockResolvedValue({
+			scopesInstanceRoleClaimName: 'n8n_instance_role',
+			scopesProjectsRolesClaimName: 'n8n_projects',
+		});
 		userRepository = mock<UserRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
 		customFetch = vi.fn();
@@ -633,6 +638,83 @@ describe('OidcService', () => {
 			const user = await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 			expect(user).toBeDefined();
 			expect(user.email).toEqual('john.doe@test.com');
+		});
+
+		it('should deny the login without creating an account when role mapping blocks access', async () => {
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			provisioningService.assertSsoLoginAllowed = vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue(null);
+			userRepository.findOne = vi.fn().mockResolvedValue(null);
+			userRepository.manager.transaction = vi.fn();
+
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject', n8n_instance_role: 'global:unknown' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(provisioningService.assertSsoLoginAllowed).toHaveBeenCalledWith(
+				expect.objectContaining({ $provider: 'oidc' }),
+				'global:unknown',
+			);
+			// No account creation, no provisioning
+			expect(userRepository.manager.transaction).not.toHaveBeenCalled();
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+		});
+
+		it('should deny an existing user without touching their account when role mapping blocks access', async () => {
+			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
+			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
+			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
+			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
+			provisioningService.assertSsoLoginAllowed = vi
+				.fn()
+				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			authIdentityRepository.findOne = vi
+				.fn()
+				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+
+			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
+				access_token: 'valid-access-token',
+				token_type: 'bearer',
+				claims: () => {
+					return { sub: 'valid-subject' };
+				},
+			} as unknown as client.TokenEndpointResponse & client.TokenEndpointResponseHelpers);
+			vi.spyOn(client, 'fetchUserInfo').mockResolvedValue({
+				email_verified: true,
+				email: 'john.doe@test.com',
+			} as any);
+			const callbackUrl = new URL('https://example.com/callback');
+			const storedState = oidcService.generateState().signed;
+			const storedNonce = oidcService.generateNonce().signed;
+
+			await expect(oidcService.loginUser(callbackUrl, storedState, storedNonce)).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			// The account is left untouched — no role changes, no deactivation
+			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
+			expect(userRepository.save).not.toHaveBeenCalled();
 		});
 	});
 

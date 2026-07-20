@@ -1,3 +1,4 @@
+import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import { RoleMappingRuleRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
@@ -120,8 +121,45 @@ describe('POST /role-mapping-rule', () => {
 		});
 		expect(stored).not.toBeNull();
 		expect(stored!.expression).toBe(validInstancePayload.expression);
-		expect(stored!.role.slug).toBe('global:member');
+		expect(stored!.role?.slug).toBe('global:member');
 		expect(stored!.projects).toHaveLength(0);
+	});
+
+	it('should create an instance rule assigning block access and persist it without a role', async () => {
+		const response = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, role: BLOCK_ACCESS_ASSIGNMENT })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			role: BLOCK_ACCESS_ASSIGNMENT,
+			type: 'instance',
+		});
+
+		const repo = Container.get(RoleMappingRuleRepository);
+		const stored = await repo.findOne({
+			where: { id: response.body.data.id },
+			relations: ['projects', 'role'],
+		});
+		expect(stored).not.toBeNull();
+		expect(stored!.role).toBeNull();
+	});
+
+	it('should reject block access on a project rule', async () => {
+		const project = await createTeamProject();
+
+		const response = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'true',
+				role: BLOCK_ACCESS_ASSIGNMENT,
+				type: 'project',
+				order: 0,
+				projectIds: [project.id],
+			})
+			.expect(400);
+
+		expect(response.body.message).toContain('Block access');
 	});
 
 	it('should shift existing rules down when a new rule is created at an occupied order', async () => {

@@ -8,7 +8,7 @@
 | expression | text |  | false |  |  |  |
 | id | varchar(16) |  | false | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) |  |  |
 | order | integer |  | false |  |  |  |
-| role | varchar(128) |  | false |  | [public.role](public.role.md) |  |
+| role | varchar(128) |  | true |  | [public.role](public.role.md) |  |
 | type | varchar(64) |  | false |  |  | Expected values: 'instance' (maps to a global role) or 'project' (maps to a project role; projects linked via role_mapping_rule_project). |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -23,7 +23,6 @@
 | role_mapping_rule_expression_not_null | n | NOT NULL expression |
 | role_mapping_rule_id_not_null | n | NOT NULL id |
 | role_mapping_rule_order_not_null | n | NOT NULL "order" |
-| role_mapping_rule_role_not_null | n | NOT NULL role |
 | role_mapping_rule_type_not_null | n | NOT NULL type |
 | role_mapping_rule_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -41,7 +40,7 @@
 erDiagram
 
 "public.role_mapping_rule_project" }o--|| "public.role_mapping_rule" : "FOREIGN KEY (#quot;roleMappingRuleId#quot;) REFERENCES role_mapping_rule(id) ON DELETE CASCADE"
-"public.role_mapping_rule" }o--|| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
+"public.role_mapping_rule" }o--o| "public.role" : "FOREIGN KEY (role) REFERENCES role(slug) ON UPDATE CASCADE ON DELETE CASCADE"
 
 "public.role_mapping_rule" {
   timestamp_3__with_time_zone createdAt
