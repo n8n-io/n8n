@@ -75,11 +75,6 @@ describe('AgentRunTracingService', () => {
 		const slackBuilt = await service.build({
 			...baseMetadata,
 			source: 'slack',
-			// Even if a caller mistakenly passes these for a non-workflow source,
-			// they must not leak onto the span.
-			executionId: 'exec-1',
-			workflowId: 'wf-1',
-			nodeId: 'My Agent Node',
 		});
 		expect(slackBuilt?.metadata).toEqual({
 			agent_id: 'agent-1',
@@ -87,6 +82,16 @@ describe('AgentRunTracingService', () => {
 			thread_id: 'thread-1',
 			source: 'slack',
 		});
+	});
+
+	it('rejects workflow-only fields at compile time for a non-workflow source', async () => {
+		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
+		const service = new AgentRunTracingService(agentsConfig);
+
+		// @ts-expect-error executionId only exists on the 'workflow' branch of
+		// the AgentRunTracingMetadata union — a non-workflow source can't carry
+		// it, enforced at compile time rather than filtered at runtime.
+		await service.build({ ...baseMetadata, source: 'slack', executionId: 'exec-1' });
 	});
 
 	it('includes user_id and model_id only when provided', async () => {
