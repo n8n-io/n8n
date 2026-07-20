@@ -20,6 +20,7 @@ export type {
 
 export type {
 	Provider,
+	AnthropicThinkingEffort,
 	AnthropicThinkingConfig,
 	OpenAIThinkingConfig,
 	GoogleThinkingConfig,

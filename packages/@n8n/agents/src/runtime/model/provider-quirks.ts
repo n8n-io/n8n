@@ -44,6 +44,8 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 				return {
 					anthropic: {
 						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
+						// AI SDK maps `effort` onto Anthropic's `output_config.effort`.
+						...(cfg.effort !== undefined ? { effort: cfg.effort } : {}),
 					},
 				};
 			}

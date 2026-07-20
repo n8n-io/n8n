@@ -334,7 +334,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		expect(agentsSdkMocks.thinkingCalls).toEqual([
-			{ provider: 'anthropic', config: { mode: 'adaptive' } },
+			{ provider: 'anthropic', config: { mode: 'adaptive', effort: 'low' } },
 		]);
 	});
 

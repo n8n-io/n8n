@@ -26,6 +26,8 @@ export type Provider =
  * - `'adaptive'`: the model decides how much to think per request.
  * - `'enabled'` (default): a fixed token budget controlled by `budgetTokens`.
  */
+export type AnthropicThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
 export type AnthropicThinkingConfig =
 	| {
 			mode: 'adaptive';
@@ -35,6 +37,11 @@ export type AnthropicThinkingConfig =
 			 * reasoning streams and replay metadata are available.
 			 */
 			display?: 'omitted' | 'summarized';
+			/**
+			 * Adaptive-thinking effort (`output_config.effort` on the Anthropic API).
+			 * When omitted, Anthropic/SDK defaults apply.
+			 */
+			effort?: AnthropicThinkingEffort;
 	  }
 	| {
 			mode?: 'enabled';

@@ -44,6 +44,20 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
+	it('anthropic: adaptive mode forwards effort when set', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.({
+				mode: 'adaptive',
+				effort: 'low',
+			}),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'adaptive', display: 'summarized' },
+				effort: 'low',
+			},
+		});
+	});
+
 	it('openai: defaults reasoningEffort to medium', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({})).toEqual({
 			openai: { reasoningEffort: 'medium' },

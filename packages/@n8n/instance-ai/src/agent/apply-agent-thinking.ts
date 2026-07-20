@@ -68,7 +68,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	}
 
 	if (provider === 'anthropic') {
-		agent.thinking('anthropic', { mode: 'adaptive' });
+		agent.thinking('anthropic', { mode: 'adaptive', effort: 'low' });
 		return;
 	}
 
