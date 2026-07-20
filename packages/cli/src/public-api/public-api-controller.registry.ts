@@ -117,8 +117,6 @@ export class PublicApiControllerRegistry {
 
 			const middlewares: RequestHandler[] = [this.createAuthMiddleware(apiVersion)];
 
-			// Authorize immediately after auth so controller/route middleware
-			// cannot run side effects for an under-scoped key.
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
 			}

@@ -113,6 +113,7 @@ export class TagService {
 			skip: offset,
 			take: limit,
 			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			order: { createdAt: 'ASC', id: 'ASC' },
 		});
 		return { data, count };
 	}

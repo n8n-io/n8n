@@ -20,7 +20,11 @@ export class TagsPublicController {
 	@Get('/')
 	@ApiKeyScope('tag:list')
 	@ApiResponse(TagListPublicDto)
-	async getTags(_req: AuthenticatedRequest, _res: Response, @Query query: ListTagsQueryDto) {
+	async getTags(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListTagsQueryDto,
+	): Promise<TagListPublicDto> {
 		let offset = 0;
 		let { limit } = query;
 
