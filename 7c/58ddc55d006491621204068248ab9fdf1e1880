@@ -23,8 +23,8 @@ docs/generated/sqlite-schema/scheduled_job.md
 docs/generated/sqlite-schema/scheduled_task.md
   s_44a98ba2784a12::t_16f911908620c5 9,21,65
 packages/@n8n/db/src/migrations/sqlite/index.ts
-  s_44a98ba2784a12::t_893c5ef8fdc256 217-219
-  s_44a98ba2784a12::t_daa8f45a138448 437-439
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-219,217-218
+  s_44a98ba2784a12::t_daa8f45a138448 437-439,437-438
 docs/generated/postgres-schema/public.scheduled_job.md
   s_44a98ba2784a12::t_16f911908620c5 92
 docs/generated/postgres-schema/public.instance_ai_threads.md
@@ -32,8 +32,8 @@ docs/generated/postgres-schema/public.instance_ai_threads.md
 docs/generated/sqlite-schema/instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,20,57
 packages/@n8n/db/src/migrations/postgresdb/index.ts
-  s_44a98ba2784a12::t_51812c9029fdb3 455-457
-  s_44a98ba2784a12::t_d25d8416783ebe 225-227
+  s_44a98ba2784a12::t_51812c9029fdb3 455-457,455-456
+  s_44a98ba2784a12::t_d25d8416783ebe 225-227,225-226
 docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
 ---
