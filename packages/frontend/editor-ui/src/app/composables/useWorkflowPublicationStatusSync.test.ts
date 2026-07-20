@@ -36,7 +36,6 @@ function makeStatus(
 	return {
 		status,
 		liveVersionId: null,
-		pendingVersionId: null,
 		triggers,
 	};
 }

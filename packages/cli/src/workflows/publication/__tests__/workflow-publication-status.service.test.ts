@@ -59,13 +59,12 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('not_published');
 			expect(result.liveVersionId).toBeNull();
-			expect(result.pendingVersionId).toBeNull();
 			expect(result.triggers).toEqual([]);
 		});
 	});
 
 	describe('first publish in flight (no rows; in-flight in_progress)', () => {
-		it('returns in_progress with pending version and null live version', async () => {
+		it('returns in_progress with a null live version', async () => {
 			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
 				makeOutbox({ status: 'in_progress', publishedVersionId: 'v-2' }),
 			);
@@ -75,13 +74,12 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('in_progress');
 			expect(result.liveVersionId).toBeNull();
-			expect(result.pendingVersionId).toBe('v-2');
 			expect(result.triggers).toEqual([]);
 		});
 	});
 
 	describe('first publish pending (no rows; in-flight pending)', () => {
-		it('returns in_progress with pending version and null live version', async () => {
+		it('returns in_progress with a null live version', async () => {
 			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
 				makeOutbox({ status: 'pending', publishedVersionId: 'v-2' }),
 			);
@@ -91,12 +89,11 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('in_progress');
 			expect(result.liveVersionId).toBeNull();
-			expect(result.pendingVersionId).toBe('v-2');
 			expect(result.triggers).toEqual([]);
 		});
 	});
 
-	describe('republish over live v1 (rows v1 all activated; in-flight in_progress pubVer v2)', () => {
+	describe('republish over live v1 (rows v1 all activated; in-flight in_progress record)', () => {
 		it('returns in_progress with live v1 and pending v2', async () => {
 			outboxRepository.findInFlightByWorkflowId.mockResolvedValue(
 				makeOutbox({ status: 'in_progress', publishedVersionId: 'v-2' }),
@@ -109,7 +106,6 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('in_progress');
 			expect(result.liveVersionId).toBe('v-1');
-			expect(result.pendingVersionId).toBe('v-2');
 		});
 	});
 
@@ -125,7 +121,6 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('published');
 			expect(result.liveVersionId).toBe('v-2');
-			expect(result.pendingVersionId).toBeNull();
 		});
 	});
 
@@ -141,7 +136,6 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('partial');
 			expect(result.liveVersionId).toBe('v-2');
-			expect(result.pendingVersionId).toBeNull();
 		});
 	});
 
@@ -157,7 +151,6 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('failed');
 			expect(result.liveVersionId).toBeNull();
-			expect(result.pendingVersionId).toBeNull();
 		});
 	});
 
@@ -170,7 +163,6 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('not_published');
 			expect(result.liveVersionId).toBeNull();
-			expect(result.pendingVersionId).toBeNull();
 		});
 	});
 
@@ -183,7 +175,6 @@ describe('WorkflowPublicationStatusService', () => {
 
 			expect(result.status).toBe('not_published');
 			expect(result.liveVersionId).toBeNull();
-			expect(result.pendingVersionId).toBeNull();
 		});
 	});
 
