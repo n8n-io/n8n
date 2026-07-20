@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_770a4f5233186c::t_fc31ac9d4d8bab 148-152,154
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_770a4f5233186c::t_6af8bc67131ce0 1327-1397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8879b879804fe0a187ea88777c37b9be5779a523",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

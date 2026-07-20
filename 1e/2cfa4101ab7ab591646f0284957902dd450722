@@ -1,0 +1,35 @@
+packages/@n8n/instance-ai/src/skills/skill-gates.ts
+  s_e3f94b9fd16cbd::t_2d8f47d60c9cd7 1-3,5,13
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_e3f94b9fd16cbd::t_78c75022a303af 1429-1430
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_e3f94b9fd16cbd::t_fad53523e53972 102-103,135-136
+packages/@n8n/config/src/configs/evaluation.config.ts
+  s_e3f94b9fd16cbd::t_4f38606a187ffe 26-28
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_e3f94b9fd16cbd::t_2b3375e080ce2d 1981-1983
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_e3f94b9fd16cbd::t_23445e8542e97b 343-344
+  s_e3f94b9fd16cbd::t_34b922de91878d 280-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1e2cfa4101ab7ab591646f0284957902dd450722",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_e3f94b9fd16cbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dd59d7d-fa76-4956-a49d-751dbc6cde33",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

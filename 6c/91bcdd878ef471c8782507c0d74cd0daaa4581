@@ -95,6 +95,11 @@ packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
   "git_ai_version": "1.5.2",
   "base_commit_sha": "6c91bcdd878ef471c8782507c0d74cd0daaa4581",
   "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
   "sessions": {
     "s_146af3b34ae01d": {
       "agent_id": {
@@ -103,6 +108,14 @@ packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
         "model": "claude-sonnet-5"
       },
       "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    },
+    "s_de7c4c81db18ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82b018ac-f927-4720-b8f9-8aeaeef1b296",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
     }
   }
 }
