@@ -9,6 +9,7 @@ import InstanceRoleView from './InstanceRoleView.vue';
 
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
+const mockConfirm = vi.fn();
 const mockPush = vi.fn();
 const mockReplace = vi.fn();
 
@@ -17,7 +18,7 @@ vi.mock('@/app/composables/useToast', () => ({
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
-	useMessage: () => ({ confirm: vi.fn() }),
+	useMessage: () => ({ confirm: mockConfirm }),
 }));
 
 const mockRoute = {
@@ -195,6 +196,106 @@ describe('InstanceRoleView', () => {
 				type: 'success',
 				message: 'Role updated successfully',
 			});
+			expect(mockConfirm).not.toHaveBeenCalled();
+		});
+
+		it('asks for confirmation before updating a role with assigned users', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce({ ...mockCustomRole, usedByUsers: 8 });
+			rolesStore.updateRole.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 2' });
+			mockConfirm.mockResolvedValueOnce('confirm');
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('<b>8 users</b>'),
+					'Update permissions for this role?',
+					expect.objectContaining({ type: 'warning' }),
+				);
+			});
+			await waitFor(() => {
+				expect(rolesStore.updateRole).toHaveBeenCalledWith('support', {
+					displayName: 'Support 2',
+					description: 'A custom instance role',
+					scopes: ['user:read', 'user:list'],
+				});
+			});
+		});
+
+		it('does not save changes when the confirmation is cancelled', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce({ ...mockCustomRole, usedByUsers: 1 });
+			mockConfirm.mockResolvedValueOnce('cancel');
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('<b>1 user</b>'),
+					'Update permissions for this role?',
+					expect.objectContaining({ type: 'warning' }),
+				);
+			});
+			expect(rolesStore.updateRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('skips the confirmation when the role has no assigned users', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce({ ...mockCustomRole, usedByUsers: 0 });
+			rolesStore.updateRole.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 2' });
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => expect(rolesStore.updateRole).toHaveBeenCalled());
+			expect(mockConfirm).not.toHaveBeenCalled();
+		});
+
+		it('asks for confirmation again on a second save, even though the update response has no usage count', async () => {
+			rolesStore.fetchRoleBySlug.mockResolvedValueOnce({ ...mockCustomRole, usedByUsers: 8 });
+			rolesStore.updateRole
+				.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 2' })
+				.mockResolvedValueOnce({ ...mockCustomRole, displayName: 'Support 3' });
+			mockConfirm.mockResolvedValueOnce('confirm').mockResolvedValueOnce('confirm');
+
+			const { container, getByRole } = renderComponent({ props: { roleSlug: 'support' } });
+
+			await waitFor(() => {
+				const { nameInput } = getFormElements(container);
+				expect(nameInput?.value).toBe('Support');
+			});
+
+			await fillName(container, 'Support 2');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+			await waitFor(() => expect(rolesStore.updateRole).toHaveBeenCalledTimes(1));
+
+			await fillName(container, 'Support 3');
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+			await waitFor(() => expect(rolesStore.updateRole).toHaveBeenCalledTimes(2));
+
+			expect(mockConfirm).toHaveBeenCalledTimes(2);
 		});
 	});
 
