@@ -818,7 +818,10 @@ function handleSelectAction(params: INodeParameters) {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
-				<AgentNdvReferencedSummary v-if="showAgentNdvControls && agentNdvMode === 'referenced'" />
+				<AgentNdvReferencedSummary
+					v-if="showAgentNdvControls && agentNdvMode === 'referenced'"
+					:is-read-only="isReadOnly"
+				/>
 				<AgentNdvInlineControls
 					v-if="showAgentNdvControls && agentNdvMode === 'inline'"
 					:is-read-only="isReadOnly"

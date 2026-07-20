@@ -12,8 +12,9 @@ const props = withDefaults(
 	defineProps<{
 		chips: AgentCardChip[];
 		maxInline?: number;
+		isReadOnly?: boolean;
 	}>(),
-	{ maxInline: MAX_INLINE_AGENT_CHIPS },
+	{ maxInline: MAX_INLINE_AGENT_CHIPS, isReadOnly: false },
 );
 
 const i18n = useI18n();
@@ -49,8 +50,19 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 			</template>
 			{{ chip.label }}
 		</AgentChipButton>
+		<AgentChipButton
+			v-if="overflowChips.length && isReadOnly"
+			:clickable="false"
+			data-test-id="canvas-node-agent-chips-overflow"
+		>
+			{{
+				i18n.baseText('agentNode.card.moreChips', {
+					interpolate: { count: overflowChips.length },
+				})
+			}}
+		</AgentChipButton>
 		<N8nActionDropdown
-			v-if="overflowChips.length"
+			v-else-if="overflowChips.length"
 			:items="overflowItems"
 			placement="bottom-start"
 			:class="['nodrag', 'nowheel']"

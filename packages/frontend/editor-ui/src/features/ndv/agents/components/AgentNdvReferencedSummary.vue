@@ -27,6 +27,8 @@ import { buildAgentCardChips } from '@/features/workflows/canvas/components/elem
 
 import { NdvAgentConfigKey } from '../composables/useNdvAgentConfig';
 
+const props = defineProps<{ isReadOnly?: boolean }>();
+
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
@@ -133,7 +135,7 @@ async function onEditInBuilder() {
 			<div :class="$style.config">
 				<div :class="$style.configContent">
 					<N8nButton
-						v-if="!isUnavailable"
+						v-if="!isUnavailable && !props.isReadOnly"
 						size="small"
 						icon="external-link"
 						variant="subtle"
@@ -169,7 +171,11 @@ async function onEditInBuilder() {
 						data-test-id="agent-ndv-summary-instructions"
 					/>
 
-					<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
+					<CanvasNodeAgentChips
+						v-if="chips.length"
+						:chips="chips"
+						:is-read-only="props.isReadOnly"
+					/>
 				</div>
 			</div>
 		</template>
@@ -205,7 +211,6 @@ async function onEditInBuilder() {
 	border-radius: var(--radius);
 	background-color: var(--background--surface);
 	box-shadow: var(--shadow--xs);
-	aspect-ratio: 16/9;
 	overflow: hidden;
 }
 
