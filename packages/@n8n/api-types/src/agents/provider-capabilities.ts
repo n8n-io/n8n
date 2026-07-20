@@ -78,7 +78,12 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	groq: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 	deepseek: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 	mistral: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
-	openrouter: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	openrouter: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+	},
 	cohere: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 	ollama: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 };

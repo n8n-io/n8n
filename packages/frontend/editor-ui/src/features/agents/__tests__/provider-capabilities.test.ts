@@ -13,9 +13,10 @@ describe('provider-capabilities', () => {
 		expect([...REASONING_EFFORT_OPTIONS]).toEqual(['low', 'medium', 'high']);
 	});
 
-	it('uses budget-tokens for Anthropic and reasoning-effort for OpenAI', () => {
+	it('uses budget-tokens for Anthropic and reasoning-effort for OpenAI/OpenRouter', () => {
 		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('budgetTokens');
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.openrouter.thinking).toBe('reasoningEffort');
 	});
 
 	it('keeps the canonical Anthropic cache-ttl order', () => {
@@ -45,16 +46,7 @@ describe('provider-capabilities', () => {
 	});
 
 	it('marks providers without thinking support as `false`', () => {
-		const noThinking = [
-			'google',
-			'xai',
-			'groq',
-			'deepseek',
-			'mistral',
-			'openrouter',
-			'cohere',
-			'ollama',
-		];
+		const noThinking = ['google', 'xai', 'groq', 'deepseek', 'mistral', 'cohere', 'ollama'];
 		for (const provider of noThinking) {
 			expect(PROVIDER_CAPABILITIES[provider]?.thinking).toBe(false);
 		}
