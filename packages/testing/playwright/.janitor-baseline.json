@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-15T03:17:41.383Z",
-	"totalViolations": 65,
+	"generated": "2026-07-17T15:21:33.743Z",
+	"totalViolations": 61,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -337,22 +337,6 @@
 				"hash": "34b1d021857e"
 			}
 		],
-		"tests/e2e/dynamic-credentials/execution-status.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 203,
-				"message": "Raw API call detected: request.get(",
-				"hash": "c6217f17d2d7"
-			}
-		],
-		"tests/e2e/dynamic-credentials/external-user-trigger.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 173,
-				"message": "Raw API call detected: request.get(",
-				"hash": "cc21f9656cd4"
-			}
-		],
 		"tests/e2e/nodes/community-nodes.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -365,22 +349,6 @@
 				"line": 35,
 				"message": "Raw API call detected: fetch(",
 				"hash": "974d7953dd83"
-			}
-		],
-		"pages/WorkflowsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 40,
-				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
-				"hash": "206b89bd1594"
-			}
-		],
-		"pages/WorkerViewPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 13,
-				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
-				"hash": "5a1818f5f511"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [

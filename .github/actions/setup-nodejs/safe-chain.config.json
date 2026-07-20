@@ -9,9 +9,7 @@
 			"n8n-editor-ui",
 			"n8n-nodes-base",
 			"n8n-playwright",
-			"n8n-workflow",
-			"typescript",
-			"@typescript/*"
+			"n8n-workflow"
 		]
 	}
 }

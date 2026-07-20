@@ -350,7 +350,7 @@ describe('workflowToMermaid', () => {
 
 describe('ai-root shapes', () => {
 	it('classifies the extractor/classifier/sentiment chains as AI roots', async () => {
-		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes');
+		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes.js');
 
 		for (const type of [
 			'@n8n/n8n-nodes-langchain.informationExtractor',
@@ -369,7 +369,7 @@ describe('ai-root shapes', () => {
 	});
 
 	it('derives the structured envelope key from a with-parser schema', async () => {
-		const { findEnvelopeKey } = await import('./ai-root-shapes');
+		const { findEnvelopeKey } = await import('./ai-root-shapes.js');
 
 		const agentVariant = {
 			type: 'object',
@@ -454,8 +454,8 @@ describe('ai-root shapes', () => {
 		expect(buildNodeSchemaSection(agentCtx).join('\n')).toContain('The `output` object');
 	});
 
-	it('classifies vendor LLM nodes as AI roots', async () => {
-		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes');
+	it('classifies the assistant and vendor LLM nodes as AI roots', async () => {
+		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes.js');
 
 		// Mirrors the editor's canonical VENDOR_AI_ROOT_NODE_TYPES list
 		// (evaluation.ee/evaluation.constants.ts).

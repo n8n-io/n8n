@@ -64,6 +64,19 @@ Use \`patch_config\` with:
 - If \`skills\` is missing, add \`/skills\` with an array.
 - Ref shape: \`{ "type": "skill", "id": "<returned-id>" }\`.
 
+#### Remove An Existing Chat Integration
+
+- Chat-channel removal is a config edit, not a \`configure_channel\` action.
+- Call \`read_config\` first and inspect \`config.integrations\`.
+- If you know the exact array index to remove, prefer:
+\`\`\`json
+[{ "op": "remove", "path": "/integrations/1" }]
+\`\`\`
+- If replacing the whole list is clearer, replace \`/integrations\` with the
+  filtered array of surviving entries.
+- Omitting \`integrations\` preserves existing channels. To remove one, send an
+  explicit \`remove\` op or an explicit filtered \`integrations\` array.
+
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
@@ -123,6 +136,8 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`write_config\` replaces the full config; include every field that should survive.
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
+- Removing an integration means deleting its entry from \`integrations[]\`; do
+  not call \`configure_channel\` for removal.
 - Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
 - Empty, placeholder, or guessed \`instructions\` values are rejected; ask for details instead.
 

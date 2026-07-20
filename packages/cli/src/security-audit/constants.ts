@@ -36,8 +36,6 @@ export const WEBHOOK_VALIDATOR_NODE_TYPES = new Set([
 	'n8n-nodes-base.if',
 	'n8n-nodes-base.switch',
 	'n8n-nodes-base.code',
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.functionItem',
 ]);
 
 export const FILESYSTEM_INTERACTION_NODE_TYPES = new Set(['n8n-nodes-base.spreadsheetFile']);
@@ -45,8 +43,6 @@ export const FILESYSTEM_INTERACTION_NODE_TYPES = new Set(['n8n-nodes-base.spread
 export const OFFICIAL_RISKY_NODE_TYPES = new Set([
 	'n8n-nodes-base.executeCommand',
 	'n8n-nodes-base.code',
-	'n8n-nodes-base.function',
-	'n8n-nodes-base.functionItem',
 	'n8n-nodes-base.httpRequest',
 	'n8n-nodes-base.ssh',
 	'n8n-nodes-base.ftp',

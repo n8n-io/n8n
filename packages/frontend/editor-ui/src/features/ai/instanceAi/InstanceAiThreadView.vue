@@ -23,7 +23,7 @@ import {
 } from '@n8n/design-system';
 import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiHandoffContext } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -34,9 +34,18 @@ import { isPendingItemFloating } from './confirmationKinds';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
-import { consumePendingFirstMessage } from './composables/useInstanceAiHandoff';
+import {
+	consumePendingFirstMessage,
+	consumePendingHandoffContext,
+} from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from './instanceAi.handoffContext';
 import { useSidebarState } from './instanceAiLayout';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -76,6 +85,7 @@ const sidebar = useSidebarState();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
+const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -154,6 +164,7 @@ const preview = useCanvasPreview({
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('pendingComposerContext', pendingComposerContext);
 
 // Focus the composer when plan-edit mode is entered. The thread runtime
 // owns the activePlanEdit state; this watcher just reacts to the transition.
@@ -485,7 +496,46 @@ function isCurrentThreadRuntime(): boolean {
 	return store.getRuntime(props.threadId) === thread;
 }
 
+const composerContextChip = computed(() => {
+	if (pendingComposerContext.value?.source === 'agent-preview') {
+		return {
+			key: handoffContextKey(pendingComposerContext.value),
+			label: formatAgentPreviewContextLabel(
+				pendingComposerContext.value,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(pendingComposerContext.value.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(pendingComposerContext.value.agentIcon),
+			isPending: true,
+		};
+	}
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	for (const message of [...thread.messages].reverse()) {
+		if (message.role !== 'user' || message.context?.source !== 'agent-preview') continue;
+
+		const key = handoffContextKey(message.context);
+		if (dismissedKeys.has(key)) continue;
+
+		return {
+			key,
+			label: formatAgentPreviewContextLabel(
+				message.context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(message.context.agentId)?.name,
+			),
+			icon: agentPreviewContextIcon(message.context.agentIcon),
+			isPending: false,
+		};
+	}
+
+	return null;
+});
+
 function reconnectThreadAfterHydration(): void {
+	// Apply preview/credential composer context before hydration so a quick first
+	// submit cannot race past attachment while the composer is already enabled.
+	pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -595,7 +645,13 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 		return;
 	}
 
-	void thread.sendMessage(message, attachments, rootStore.pushRef);
+	const handoffContext = pendingComposerContext.value ?? undefined;
+
+	void thread.sendMessage(message, attachments, rootStore.pushRef, handoffContext).then((sent) => {
+		if (sent && handoffContext && pendingComposerContext.value === handoffContext) {
+			pendingComposerContext.value = null;
+		}
+	});
 }
 
 function handleStop() {
@@ -623,6 +679,21 @@ function dismissFixWithAiOffer() {
 
 function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	failedRun.value = report;
+}
+
+async function dismissComposerContextChip() {
+	if (!composerContextChip.value) return;
+
+	if (composerContextChip.value.isPending) {
+		pendingComposerContext.value = null;
+		return;
+	}
+
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(composerContextChip.value.key);
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
 }
 </script>
 
@@ -819,10 +890,12 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 													:current-thread-id="thread.id"
 													:amend-context="thread.amendContext"
+													:context-chip="composerContextChip"
 													:contextual-suggestion="thread.contextualSuggestion"
 													@submit="handleSubmit"
 													@stop="handleStop"
 													@cancel-plan-edit="thread.cancelPlanEdit"
+													@dismiss-context-chip="dismissComposerContextChip"
 												/>
 											</Transition>
 										</div>

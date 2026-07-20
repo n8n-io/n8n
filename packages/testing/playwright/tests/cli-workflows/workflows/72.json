@@ -217,11 +217,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "\nreturn [items[0]];"
+				"mode": "runOnceForAllItems",
+				"jsCode": "\nreturn [$input.all()[0]];"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [750, 620],
 			"notesInFlow": true,
 			"notes": "Convert multiple result into one",

@@ -6,14 +6,19 @@ import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePostHog } from '@/app/stores/posthog.store';
 
 import CompareHeader from '../components/Compare/CompareHeader.vue';
 import ScoreChart from '../components/Compare/ScoreChart.vue';
 import AiInsightsCard from '../components/Compare/AiInsightsCard.vue';
+import CompareTabs from '../components/Compare/CompareTabs.vue';
+import DatasetMismatchBanner from '../components/Compare/DatasetMismatchBanner.vue';
 import { useCompareData } from '../composables/useCompareData';
+import { useCompareCases } from '../composables/useCompareCases';
 import { useEvalCollectionsFlag } from '../composables/useEvalCollectionsFlag';
 import { useEvalCollectionsStore } from '../evalCollections.store';
+import { useEvaluationStore } from '../evaluation.store';
 
 const props = defineProps<{
 	workflowId: string;
@@ -23,12 +28,60 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
+const telemetry = useTelemetry();
 const store = useEvalCollectionsStore();
+const evaluationStore = useEvaluationStore();
 const postHog = usePostHog();
 const isEvalCollectionsEnabled = useEvalCollectionsFlag();
 
 const detail = computed(() => store.getDetail(props.collectionId));
+
+// metric name → its custom LLM-judge prompt (the specific criteria the user
+// configured), sourced from the collection's evaluation config. Run metrics are
+// keyed by the metric's `name` (see the workflow compiler), so the map keys line
+// up with the compare view's metric keys. Empty until the config resolves.
+const metricPrompts = computed<Record<string, string>>(() => {
+	const configId = detail.value?.evaluationConfigId;
+	if (!configId) return {};
+	const config = (evaluationStore.evaluationConfigsByWorkflowId[props.workflowId] ?? []).find(
+		(candidate) => candidate.id === configId,
+	);
+	if (!config) return {};
+	const prompts: Record<string, string> = {};
+	for (const metric of config.metrics) {
+		if (metric.type === 'llm_judge' && metric.config.prompt) {
+			prompts[metric.name] = metric.config.prompt;
+		}
+	}
+	return prompts;
+});
 const { compareData } = useCompareData(detail);
+const workflowIdRef = computed(() => props.workflowId);
+const {
+	caseRows,
+	mismatch,
+	loading: casesLoading,
+	casesLoaded,
+	casesError,
+} = useCompareCases(detail, workflowIdRef);
+
+// Fire the compare-opened event once per collection, after both the versions
+// and the per-case data have resolved so `case_count` is accurate.
+const tracked = ref(false);
+watch(
+	() => compareData.value !== null && casesLoaded.value,
+	(ready) => {
+		if (!ready || tracked.value) return;
+		tracked.value = true;
+		telemetry.track('Eval collection compared opened', {
+			workflow_id: props.workflowId,
+			collection_id: props.collectionId,
+			version_count: compareData.value?.versions.length ?? 0,
+			case_count: mismatch.value.maxCount,
+		});
+	},
+	{ immediate: true },
+);
 
 const loading = computed(() => store.loadingDetail[props.collectionId] ?? false);
 // Set only when the collection is genuinely gone (404), so a deleted collection
@@ -49,13 +102,31 @@ function isNotFoundError(error: unknown): boolean {
 	);
 }
 
+// Tracks unmount so a fetch that resolves after the user leaves can tear down
+// the poll it armed instead of letting it outlive the view.
+let unmounted = false;
+
 async function load(workflowId: string, collectionId: string) {
 	notFound.value = false;
 	try {
 		await store.fetchCollectionDetail(workflowId, collectionId);
+		// Best-effort: metric criteria come from the eval config. A failure here
+		// just means the compare view shows metric names without their criteria.
+		await evaluationStore.fetchEvaluationConfigs(workflowId).catch(() => null);
+		// If we left or switched collections mid-fetch, `fetchCollectionDetail`
+		// may have just (re)armed polling for a collection we're no longer
+		// showing — stop it so the timer doesn't outlive the view.
+		if (unmounted || collectionId !== props.collectionId) {
+			store.stopPolling(collectionId);
+		}
 	} catch (error) {
-		toast.showError(error, i18n.baseText('evaluation.compare.errors.loadFailed'));
-		notFound.value = isNotFoundError(error);
+		// A 404 already shows the not-found state; a toast on top would be a
+		// second, contradictory signal. Only toast transient (non-404) failures.
+		if (isNotFoundError(error)) {
+			notFound.value = true;
+		} else {
+			toast.showError(error, i18n.baseText('evaluation.compare.errors.loadFailed'));
+		}
 	}
 }
 
@@ -84,11 +155,13 @@ watch(
 	[() => props.workflowId, () => props.collectionId],
 	([, collectionId], [, prevCollectionId]) => {
 		store.stopPolling(prevCollectionId);
+		tracked.value = false;
 		void load(props.workflowId, collectionId);
 	},
 );
 
 onBeforeUnmount(() => {
+	unmounted = true;
 	store.stopPolling(props.collectionId);
 });
 </script>
@@ -120,16 +193,33 @@ onBeforeUnmount(() => {
 		</div>
 
 		<template v-else-if="compareData">
+			<DatasetMismatchBanner
+				v-if="casesLoaded && !casesError && mismatch.hasMismatch"
+				:mismatch="mismatch"
+			/>
 			<CompareHeader
 				:collection-name="detail?.name ?? ''"
 				:versions="compareData.versions"
 				:best-version-index="compareData.bestVersionIndex"
 			/>
-			<ScoreChart :metric-groups="compareData.metricGroups" :versions="compareData.versions" />
+			<ScoreChart
+				:metric-groups="compareData.metricGroups"
+				:versions="compareData.versions"
+				:metric-prompts="metricPrompts"
+			/>
 			<!-- Key by collection so navigating between compare views remounts the
 			     card and re-runs its fetch-on-mount, rather than relying on the
 			     surrounding v-if to cycle through null. -->
 			<AiInsightsCard :key="collectionId" :workflow-id="workflowId" :collection-id="collectionId" />
+			<CompareTabs
+				:versions="compareData.versions"
+				:metric-groups="compareData.metricGroups"
+				:case-rows="caseRows"
+				:cases-loading="casesLoading"
+				:cases-error="casesError"
+				:workflow-id="workflowId"
+				:metric-prompts="metricPrompts"
+			/>
 		</template>
 	</div>
 </template>
