@@ -39,7 +39,7 @@ vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
-		props: ['payload', 'projectId', 'agentId'],
+		props: ['payload'],
 	},
 }));
 
@@ -97,6 +97,33 @@ describe('AgentChatMessageList', () => {
 		await wrapper.find('[data-test-id="agent-chat-message-read-aloud"]').trigger('click');
 		expect(cancelSpy).toHaveBeenCalled();
 		expect(speakSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('shows send-to-assistant for preview assistant messages and re-emits clicks', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: 'Agent reply',
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+				agentId: 'agent-1',
+				sessionId: 'thread-1',
+				canSendToAssistant: true,
+			},
+		});
+
+		expect(wrapper.find('[data-test-id="agent-chat-message-send-to-assistant"]').exists()).toBe(
+			true,
+		);
+
+		await wrapper.find('[data-test-id="agent-chat-message-send-to-assistant"]').trigger('click');
+
+		expect(wrapper.emitted('sendToAssistant')).toHaveLength(1);
 	});
 
 	it('does not render actions for user text messages', () => {
@@ -359,31 +386,6 @@ describe('AgentChatMessageList', () => {
 		expect(cards).toHaveLength(1);
 		expect(cards[0].attributes('data-tool-call-id')).toBe('tc-active');
 		expect(cards[0].attributes('data-run-id')).toBe('run-active');
-	});
-
-	it('collapses resolved builder cards into the tool-step summary (no card)', () => {
-		const wrapper = mount(AgentChatMessageList, {
-			props: {
-				messages: [
-					{
-						id: 'assistant-resolved-question',
-						role: 'assistant',
-						content: 'Thanks!',
-						interactive: {
-							toolName: 'ask_question',
-							toolCallId: 'tc-q',
-							resolvedAt: 1,
-							input: { question: 'Pick one', options: [{ label: 'A', value: 'a' }] },
-							resolvedValue: { values: ['a'] },
-						},
-						status: 'success',
-					} satisfies ChatMessage,
-				],
-				messagingState: 'idle',
-			},
-		});
-
-		expect(wrapper.find('[data-testid="interactive-card-stub"]').exists()).toBe(false);
 	});
 
 	it('does not render external-wait notice for suspended chat_action tool (toolRun path)', () => {

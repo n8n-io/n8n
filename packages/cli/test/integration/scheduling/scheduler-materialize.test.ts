@@ -75,7 +75,7 @@ describe('scheduler materialization', () => {
 
 		const summary = await runMaterialization(0);
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 
 		const [task] = await taskRepo.find();
 		expect(task.jobId).toBe(job.id);
@@ -107,16 +107,19 @@ describe('scheduler materialization', () => {
 		expect(first.occurrences).toBe(5);
 		expect(await taskRepo.count()).toBe(5);
 
-		// Successive passes continue draining, each recording at most maxPerJob, until nothing is due.
+		// Successive passes continue draining, each recording at most maxPerJob, until the
+		// backlog is exhausted. The claim reaches a poll interval ahead of due, so with
+		// windowSeconds: 0 the job keeps being claimed for its near-future fire even once
+		// drained; exhaustion shows as a pass that records nothing new, not an unclaimed job.
 		for (let i = 0; i < 10; i++) {
 			const summary = await drainScheduler.materialize();
 			expect(summary.occurrences).toBeLessThanOrEqual(5);
-			if (summary.claimedJobs === 0) break;
+			if (summary.occurrences === 0) break;
 		}
 
 		// Drained: the backlog is fully recorded, every occurrence distinct (no duplicate from batching).
 		const drained = await drainScheduler.materialize();
-		expect(drained.claimedJobs).toBe(0);
+		expect(drained.occurrences).toBe(0);
 		const tasks = await taskRepo.find();
 		const distinctInstants = new Set(tasks.map((t) => t.scheduledFor.getTime()));
 		expect(distinctInstants.size).toBe(tasks.length);
@@ -186,7 +189,7 @@ describe('scheduler materialization', () => {
 
 		const summary = await runMaterialization(0);
 
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
+		expect(summary).toMatchObject({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 
 		// The good job materialized normally.
 		const [task] = await taskRepo.find();
@@ -220,7 +223,7 @@ describe('scheduler materialization', () => {
 		const summary = await runMaterialization(0);
 
 		// The repaired job materializes again with no other intervention.
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		expect(summary).toMatchObject({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 		const resumed = await jobRepo.findOneByOrFail({ id: job.id });
 		expect(resumed.nextRunAt).not.toBeNull();
 	});

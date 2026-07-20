@@ -69,6 +69,8 @@ describe('FolderExporter', () => {
 						credentialType: 'httpHeaderAuth',
 					},
 				],
+				dataTables: [],
+				variables: [],
 			},
 		});
 

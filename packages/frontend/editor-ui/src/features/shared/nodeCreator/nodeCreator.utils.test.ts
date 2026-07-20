@@ -36,8 +36,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import type { ViewStack } from './composables/useViewStacks';
 import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import type { NodeCreatorTag } from '@n8n/design-system';
 import {
+	AGENT_NODE_TYPE,
+	AGENT_TOOL_NODE_TYPE,
 	DISCORD_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	AI_CATEGORY_OTHER_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
@@ -787,7 +791,7 @@ describe('NodeCreator - utils', () => {
 
 		it('should show Free credits badge when latest version meets the minimum', () => {
 			const [result] = finalizeItems([makeGatewayNode()]) as NodeCreateElement[];
-			expect(result.properties.tag).toEqual({ text: expect.any(String), pill: true });
+			expect(result.properties.tag).toEqual({ text: 'Free credits', pill: true });
 		});
 
 		it('should suppress Free credits badge when latest version is below the minimum', () => {
@@ -893,6 +897,52 @@ describe('NodeCreator - utils', () => {
 		});
 	});
 
+	describe('finalizeItems - agent transition badges', () => {
+		const makeAgentNode = (name: string, tag?: NodeCreatorTag) =>
+			mockNodeCreateElement(undefined, { name, ...(tag ? { tag } : {}) });
+
+		const mockSettingsStore = (agentsModuleActive: boolean) => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isModuleActive: vi.fn((name: string) => agentsModuleActive && name === 'agents'),
+			} as unknown as ReturnType<typeof useSettingsStore>);
+		};
+
+		it.each([AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE])(
+			'should show Deprecating soon badge on %s when the agents module is active',
+			(nodeType) => {
+				mockSettingsStore(true);
+				const [result] = finalizeItems([makeAgentNode(nodeType)]) as NodeCreateElement[];
+				expect(result.properties.tag).toEqual({ type: 'info', text: 'Deprecating soon' });
+			},
+		);
+
+		it.each([AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE])(
+			'should not show Deprecating soon badge on %s when the agents module is inactive',
+			(nodeType) => {
+				mockSettingsStore(false);
+				const [result] = finalizeItems([makeAgentNode(nodeType)]) as NodeCreateElement[];
+				expect(result.properties.tag).toBeUndefined();
+			},
+		);
+
+		it('should show Early preview badge on the Message an Agent node', () => {
+			mockSettingsStore(true);
+			const [result] = finalizeItems([
+				makeAgentNode(MESSAGE_AN_AGENT_NODE_TYPE),
+			]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ preview: true, text: 'Early preview' });
+		});
+
+		it('should keep a pre-set tag', () => {
+			mockSettingsStore(true);
+			const presetTag = { text: 'Custom' };
+			const [result] = finalizeItems([
+				makeAgentNode(AGENT_NODE_TYPE, presetTag),
+			]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual(presetTag);
+		});
+	});
+
 	describe('showsAiGatewaySection', () => {
 		it.each<[string, ViewStack, boolean]>([
 			['Language Models list', { connectionType: NodeConnectionTypes.AiLanguageModel }, true],
@@ -938,7 +988,7 @@ describe('NodeCreator - utils', () => {
 			} as unknown as ReturnType<typeof useNodeTypesStore>);
 		});
 
-		it('should split gateway-supported nodes into an n8n Connect section', () => {
+		it('should split gateway-supported nodes into an Included in n8n section', () => {
 			const supported = makeNode('supportedNode');
 			const other = makeNode('otherNode');
 
@@ -946,6 +996,7 @@ describe('NodeCreator - utils', () => {
 
 			expect(result).not.toBeNull();
 			expect(result?.section.key).toBe('n8nConnect');
+			expect(result?.section.title).toBe('Included in n8n');
 			expect(result?.section.trailing).toBe('creditsBalance');
 			expect(result?.section.showSeparator).toBe(true);
 			expect(result?.section.children.map((child) => child.key)).toEqual(['supportedNode']);
@@ -955,7 +1006,7 @@ describe('NodeCreator - utils', () => {
 		it('should tag section children with the Free credits pill', () => {
 			const result = extractAiGatewaySection([makeNode('supportedNode')]);
 			const [child] = result?.section.children as NodeCreateElement[];
-			expect(child.properties.tag).toEqual({ text: expect.any(String), pill: true });
+			expect(child.properties.tag).toEqual({ text: 'Free credits', pill: true });
 		});
 
 		it('should return null when no node is gateway-supported', () => {
@@ -1154,6 +1205,48 @@ describe('NodeCreator - utils', () => {
 
 			const keys = searchNodes('serp', [plain, action]).map((item) => item.key);
 			expect(keys[0]).toBe('plainNode');
+		});
+	});
+
+	describe('searchNodes - Message an Agent boost', () => {
+		const makeNode = (name: string, displayName: string, alias: string[] = []) =>
+			mockNodeCreateElement(
+				{ key: name },
+				{ name, displayName, codex: { categories: [], subcategories: {}, alias } },
+			);
+
+		beforeEach(() => {
+			vi.mocked(useSettingsStore).mockReturnValue({
+				isAskAiEnabled: true,
+				isAiGatewayEnabled: false,
+			} as unknown as ReturnType<typeof useSettingsStore>);
+		});
+
+		// Both nodes display as "AI Agent"; the legacy agent carries the popularity
+		// factor, so the successor ranking first proves the boost outweighs it.
+		const legacyAgent = makeNode(AGENT_NODE_TYPE, 'AI Agent', ['agent']);
+		const messageAnAgent = makeNode(MESSAGE_AN_AGENT_NODE_TYPE, 'AI Agent', [
+			'agent',
+			'ai',
+			'sdk',
+			'Message an Agent',
+		]);
+		const popularity = { [AGENT_NODE_TYPE]: 98.2 };
+
+		it('should rank the Message an Agent node above the legacy agent despite its popularity', () => {
+			const result = searchNodes('AI Agent', [legacyAgent, messageAnAgent], { popularity });
+			expect(result.map((item) => item.key)).toEqual([MESSAGE_AN_AGENT_NODE_TYPE, AGENT_NODE_TYPE]);
+		});
+
+		it('should keep the legacy agent first without the boosted node in the result set', () => {
+			const result = searchNodes('AI Agent', [legacyAgent], { popularity });
+			expect(result.map((item) => item.key)).toEqual([AGENT_NODE_TYPE]);
+		});
+
+		it('should not hijack an exact match on another node', () => {
+			const sheets = makeNode('googleSheets', 'Google Sheets');
+			const result = searchNodes('Google Sheets', [messageAnAgent, sheets], { popularity });
+			expect(result[0].key).toBe('googleSheets');
 		});
 	});
 

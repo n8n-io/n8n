@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentFileDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type {
@@ -37,13 +37,14 @@ const props = defineProps<{
 	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
-	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
 	tasksReloadKey?: number;
+	artifactMode?: boolean;
+	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
-const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
+const childrenDisabled = computed(() => !props.canEditAgent);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -109,6 +110,7 @@ const i18n = useI18n();
 						:is-published="Boolean(agent?.activeVersionId)"
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
+						:validation-issues="configValidationIssues ?? []"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"
@@ -143,10 +145,11 @@ const i18n = useI18n();
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'knowledge' && knowledgeBaseEnabled"
+					v-else-if="activeMainTab === 'knowledge'"
 					data-testid="agent-knowledge-tab-content"
 				>
 					<AgentFilesPanel
+						v-if="knowledgeBaseEnabled"
 						:files="agentFiles"
 						:disabled="childrenDisabled"
 						:loading="agentFilesLoading"
@@ -172,7 +175,13 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'sessions'"
 					data-testid="agent-sessions-tab-content"
 				>
-					<AgentSessionsListView :embedded="true" data-testid="agent-executions-panel" />
+					<AgentSessionsListView
+						:embedded="true"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:open-session-in-new-tab="artifactMode"
+						data-testid="agent-executions-panel"
+					/>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel

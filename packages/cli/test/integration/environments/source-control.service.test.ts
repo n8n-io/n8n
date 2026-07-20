@@ -543,7 +543,6 @@ describe('SourceControlService', () => {
 		service.sanityCheck = async () => {};
 		statusService['resetWorkfolder'] = async () => undefined;
 		(statusService as any).gitService = gitService;
-		(gitService.getHistoricallyTrackedFiles as Mock).mockResolvedValue(new Set<string>());
 
 		// Git mocking
 		gitFiles = {
@@ -962,10 +961,21 @@ describe('SourceControlService', () => {
 
 					const dataTables = result.filter((r) => r.type === 'datatable');
 
+					// Local in-scope tables are offered as creations, the in-scope
+					// remote-only table as a deletion (git holds it, the instance doesn't)
 					expect(new Set(dataTables.map((dataTable) => dataTable.id))).toEqual(
-						new Set(projectAScope.dataTables.map((dataTable) => dataTable.id)),
+						new Set([
+							...projectAScope.dataTables.map((dataTable) => dataTable.id),
+							remoteInScopeDataTable.id,
+						]),
 					);
-					expect(dataTables.every((dataTable) => dataTable.status === 'created')).toBe(true);
+					expect(
+						dataTables.every((dataTable) =>
+							dataTable.id === remoteInScopeDataTable.id
+								? dataTable.status === 'deleted'
+								: dataTable.status === 'created',
+						),
+					).toBe(true);
 					expect(
 						dataTables.some((dataTable) =>
 							projectBScope.dataTables.some((outOfScope) => outOfScope.id === dataTable.id),
@@ -977,14 +987,7 @@ describe('SourceControlService', () => {
 
 		describe('remote data tables', () => {
 			describe('project:Admin user', () => {
-				it('should see only tracked remote data tables in correct scope', async () => {
-					(gitService.getHistoricallyTrackedFiles as Mock).mockResolvedValueOnce(
-						new Set([
-							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteInScopeDataTable.id}.json`,
-							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteOutOfScopeDataTable.id}.json`,
-						]),
-					);
-
+				it('should see only remote data tables in correct scope', async () => {
 					const result = await service.getStatus(projectAdmin, {
 						direction: 'push',
 						preferLocalVersion: true,

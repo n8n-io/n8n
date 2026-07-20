@@ -74,8 +74,14 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
-export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
+/**
+ * `inline` runs an agent defined in a workflow node's parameters: no entity
+ * row exists, so anything keyed on a real agent id (checkpoints, knowledge
+ * files) and top-level extras (integrations, delegation) must stay off.
+ */
+export type AgentRuntimeProfile = 'top-level' | 'sub-agent' | 'inline';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
@@ -108,14 +114,14 @@ export interface ReconstructAgentRuntimeParams {
 
 async function getChatIntegrationToolServices() {
 	const { IntegrationMessageContextService } = await import(
-		'./integrations/integration-message-context.service'
+		'./integrations/integration-message-context.service.js'
 	);
 	// eslint-disable-next-line import-x/no-cycle
 	const { ChatIntegrationActionExecutor } = await import(
-		'./integrations/integration-action-executor'
+		'./integrations/integration-action-executor.js'
 	);
 	const { ChatIntegrationContextQueryExecutor } = await import(
-		'./integrations/integration-context-query-executor'
+		'./integrations/integration-context-query-executor.js'
 	);
 
 	return {
@@ -126,7 +132,7 @@ async function getChatIntegrationToolServices() {
 }
 
 async function getWorkflowRunner(): Promise<WorkflowRunner> {
-	const { WorkflowRunner } = await import('@/workflow-runner');
+	const { WorkflowRunner } = await import('@/workflow-runner.js');
 	return Container.get(WorkflowRunner);
 }
 
@@ -251,10 +257,11 @@ export class AgentRuntimeReconstructionService {
 			}
 
 			// ref.type === 'workflow'
-			const workflow = await this.workflowRepository.findOne({
-				where: { name: ref.workflow, shared: { projectId } },
-				relations: ['shared'],
-			});
+			const workflow = await findWorkflowToolWorkflow(
+				this.workflowRepository,
+				ref.workflow,
+				projectId,
+			);
 			if (!workflow) continue;
 
 			const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
@@ -462,7 +469,7 @@ export class AgentRuntimeReconstructionService {
 	private makeToolResolver(projectId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
-				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
+				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory.js');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: await getWorkflowRunner(),
@@ -473,7 +480,7 @@ export class AgentRuntimeReconstructionService {
 			}
 
 			if (ref.type === 'node') {
-				const { resolveNodeTool } = await import('./tools/node-tool-factory');
+				const { resolveNodeTool } = await import('./tools/node-tool-factory.js');
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId,
@@ -514,11 +521,12 @@ export class AgentRuntimeReconstructionService {
 		agent.tool(createGetEnvironmentTool());
 
 		if (
-			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
+			runtimeProfile !== 'inline' &&
+			isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled()) &&
 			(await this.agentFileRepository.hasFilesForAgent(agentId))
 		) {
 			const { createKnowledgeRetrievalTools } = await import(
-				'./tools/knowledge/search-knowledge.tool'
+				'./tools/knowledge/search-knowledge.tool.js'
 			);
 			agent.tool(
 				createKnowledgeRetrievalTools({
@@ -600,7 +608,9 @@ export class AgentRuntimeReconstructionService {
 			this.attachWriteTodosTool(agent, agentId);
 		}
 
-		if (!agent.hasCheckpointStorage()) {
+		// Inline agents get no checkpoint storage: `agent_checkpoints.agentId`
+		// is an FK to `agents`, and a synthetic inline id has no entity row.
+		if (runtimeProfile !== 'inline' && !agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
 	}

@@ -24,7 +24,17 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'disableRedaction',
 	],
 	agent: ['read', 'execute', 'list', 'create', 'update', 'delete', 'publish', 'unpublish'],
-	credential: ['read', 'connect', 'update', 'create', 'share', 'unshare', 'move', 'delete'],
+	credential: [
+		'read',
+		'connect',
+		'createEndUser',
+		'update',
+		'create',
+		'share',
+		'unshare',
+		'move',
+		'delete',
+	],
 	execution: ['reveal'],
 	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],
@@ -88,6 +98,15 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'variable:list',
 			'variable:read',
 			'dataTable:list',
+			'chatHub:manage', // Chat
+			'chatHub:message', // needed for model listing on the Chat settings page
+			'aiAssistant:manage', // AI Assistant
+			'instanceAi:manage',
+			'instanceAi:message',
+			'mcp:manage', // Instance-level MCP
+			'mcp:oauth', // MCP OAuth clients
+			'mcpApiKey:create', // MCP personal API key
+			'mcpApiKey:rotate',
 		],
 	},
 	user: {

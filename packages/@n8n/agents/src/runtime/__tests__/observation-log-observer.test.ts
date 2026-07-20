@@ -1,6 +1,8 @@
 import type * as AiImport from 'ai';
 
 import type { AgentDbMessage } from '../../types/sdk/message';
+import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
 import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogObserverPrompt,
@@ -16,7 +18,20 @@ import {
 } from '../memory/observation-log-observer';
 
 type GenerateTextCall = Record<string, unknown>;
-type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+type GenerateTextResult = {
+	text: string;
+	usage?: {
+		totalTokens?: number;
+		inputTokens?: number;
+		outputTokens?: number;
+		inputTokenDetails?: {
+			noCacheTokens?: number;
+			cacheReadTokens?: number;
+			cacheWriteTokens?: number;
+		};
+	};
+	providerMetadata?: Record<string, unknown>;
+};
 
 const { mockGenerateText } = vi.hoisted(() => ({
 	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
@@ -51,7 +66,7 @@ describe('observation-log observer defaults', () => {
 	});
 
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(500);
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(8_000);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('Output the new observations only');
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain(
@@ -106,6 +121,100 @@ describe('observation-log observer defaults', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(17);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
+	it('threads input.telemetry into generateText as a memory-observer-suffixed call, omitting it when disabled or absent', async () => {
+		mockGenerateText.mockResolvedValue({ text: '' });
+		const observe = createObservationLogObserveFn('openai/gpt-4o-mini');
+		const baseInput = {
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '',
+			transcriptTokenCount: 0,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+		};
+		const telemetry: BuiltTelemetry = {
+			enabled: true,
+			functionId: 'my-agent',
+			metadata: { thread_id: 't1' },
+			recordInputs: true,
+			recordOutputs: false,
+			integrations: [],
+		};
+
+		await observe({ ...baseInput, telemetry });
+		await observe(baseInput);
+		await observe({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
+
+		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
+			experimental_telemetry: {
+				isEnabled: true,
+				functionId: 'my-agent.memory-observer',
+				metadata: { thread_id: 't1' },
+				recordInputs: true,
+				recordOutputs: false,
+			},
+		});
+		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+	});
+
+	it('reports normalized, cache-aware usage through an async onUsage before the observer promise settles', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '* CRITICAL (14:30) Durable fact.',
+			usage: {
+				inputTokens: 100,
+				outputTokens: 10,
+				totalTokens: 110,
+				inputTokenDetails: { noCacheTokens: 20, cacheReadTokens: 80 },
+			},
+		});
+		let resolveUsage!: () => void;
+		const usageGate = new Promise<void>((resolve) => {
+			resolveUsage = resolve;
+		});
+		const onUsage = vi.fn(async (report: MemoryTaskUsageReport) => {
+			expect(report).toMatchObject({
+				task: 'observer',
+				model: 'anthropic/claude-haiku-4-5-20251001',
+				usage: expect.objectContaining({
+					promptTokens: 100,
+					completionTokens: 10,
+					totalTokens: 110,
+					inputTokenDetails: { noCache: 20, cacheRead: 80 },
+				}),
+				reportId: expect.any(String),
+			});
+			await usageGate;
+		});
+
+		const observePromise = createObservationLogObserveFn('anthropic/claude-haiku-4-5-20251001', {
+			onUsage,
+		})({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '',
+			transcriptTokenCount: 0,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+		});
+		let observeSettled = false;
+		void observePromise.then(() => {
+			observeSettled = true;
+		});
+
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(observeSettled).toBe(false);
+
+		resolveUsage();
+		await observePromise;
+
+		expect(observeSettled).toBe(true);
+		expect(onUsage).toHaveBeenCalledTimes(1);
 	});
 });
 

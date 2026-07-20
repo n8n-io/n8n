@@ -1,6 +1,6 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/backend-network": "workspace:*",
     "@n8n/utils": "workspace:*",
     "axios": "catalog:"
   },
@@ -30,7 +31,8 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
-    "typescript": "catalog:",
+    "https-proxy-agent": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

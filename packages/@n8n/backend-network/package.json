@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-network",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -83,7 +83,7 @@
     "@types/qs": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "nock": "catalog:",
-    "typescript": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

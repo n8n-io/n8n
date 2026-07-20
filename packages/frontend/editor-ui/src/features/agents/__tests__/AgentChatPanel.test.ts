@@ -1,12 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { computed, h, ref } from 'vue';
-import {
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
-	type InteractiveToolName,
-} from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
 
@@ -17,8 +12,20 @@ const cancelAndSteerMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
 const isStreamingMock = ref(false);
 
+const fatalErrorMock = ref<{ missing: string[] } | null>(null);
+
 vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string) => {
+			const translations: Record<string, string> = {
+				'agents.chat.misconfigured.issuesPrefix': 'Check:',
+				'agents.chat.misconfigured.missing.tools': 'Tool configuration',
+				'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
+				'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+			};
+			return translations[key] ?? key;
+		},
+	}),
 }));
 
 vi.mock('@n8n/design-system', () => ({
@@ -32,13 +39,13 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 		name: 'ChatInputBase',
 		template:
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
-		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled'],
+		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
 		emits: ['submit', 'stop', 'update:modelValue'],
 	},
 }));
 
 vi.mock('../components/AgentChatEmptyState.vue', () => ({
-	default: { template: '<div data-testid="empty-state-stub" />', props: ['endpoint'] },
+	default: { template: '<div data-testid="empty-state-stub" />' },
 }));
 
 vi.mock('../components/AgentChatMessageList.vue', () => ({
@@ -50,7 +57,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		messages: messagesMock,
 		isStreaming: isStreamingMock,
 		messagingState: computed(() => (isStreamingMock.value ? 'receiving' : 'idle')),
-		fatalError: ref(null),
+		fatalError: fatalErrorMock,
 		loadHistory: loadHistoryMock,
 		sendMessage: sendMessageMock,
 		stopGenerating: stopGeneratingMock,
@@ -81,6 +88,7 @@ describe('AgentChatPanel', () => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
 		isStreamingMock.value = false;
+		fatalErrorMock.value = null;
 	});
 
 	function mountPanel() {
@@ -88,7 +96,6 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -100,45 +107,45 @@ describe('AgentChatPanel', () => {
 		});
 	}
 
-	function openInteractiveMessage(
-		toolName: InteractiveToolName = ASK_QUESTION_TOOL_NAME,
-	): ChatMessage {
+	/**
+	 * A non-approval interactive card (`chat_action`) — these put the chat
+	 * input into cancel-and-steer mode rather than blocking it outright,
+	 * unlike an open approval card.
+	 */
+	function openInteractiveMessage(): ChatMessage {
 		return {
 			id: 'assistant-1',
 			role: 'assistant',
 			content: '',
 			status: 'awaitingUser',
-			interactive:
-				toolName === ASK_QUESTION_TOOL_NAME
-					? {
-							toolName: ASK_QUESTION_TOOL_NAME,
-							toolCallId: 'tc-1',
-							runId: 'run-1',
-							input: {
-								question: 'Pick one',
-								options: [{ label: 'Slack', value: 'slack' }],
-							},
-						}
-					: toolName === ASK_LLM_TOOL_NAME
-						? {
-								toolName: ASK_LLM_TOOL_NAME,
-								toolCallId: 'tc-1',
-								runId: 'run-1',
-								input: { purpose: 'Choose a model' },
-							}
-						: {
-								toolName: ASK_CREDENTIAL_TOOL_NAME,
-								toolCallId: 'tc-1',
-								runId: 'run-1',
-								input: {
-									purpose: 'Choose Slack credentials',
-									credentialType: 'slackApi',
-								},
-							},
+			interactive: {
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				toolCallId: 'tc-1',
+				runId: 'run-1',
+				input: {
+					card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+				},
+			},
 		};
 	}
 
-	it('awaits beforeSend before sending a build message', async () => {
+	function resolvedInteractiveMessage(): ChatMessage {
+		return {
+			...openInteractiveMessage(),
+			status: 'success',
+			interactive: {
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				toolCallId: 'tc-1',
+				resolvedAt: 1,
+				input: {
+					card: { components: [{ type: 'button', label: 'Pick Slack', value: 'slack' }] },
+				},
+				resolvedValue: { type: 'button', value: 'slack' },
+			},
+		};
+	}
+
+	it('awaits beforeSend before sending a chat message', async () => {
 		const events: string[] = [];
 		let resolveBeforeSend: () => void = () => {};
 		const beforeSend = vi.fn(
@@ -158,7 +165,6 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -185,64 +191,6 @@ describe('AgentChatPanel', () => {
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
 
-	it('does not consume an initial message when beforeSend fails', async () => {
-		const beforeSend = vi.fn().mockRejectedValue(new Error('flush failed'));
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				endpoint: 'build',
-				initialMessage: 'seed build prompt',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-				beforeSend,
-			},
-		});
-
-		await flushPromises();
-
-		expect(beforeSend).toHaveBeenCalledTimes(1);
-		expect(sendMessageMock).not.toHaveBeenCalled();
-		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
-	});
-
-	it('does not consume a seeded initial message in a read-only build chat', async () => {
-		const beforeSend = vi.fn();
-
-		const wrapper = mount(AgentChatPanel, {
-			props: {
-				projectId: 'p1',
-				agentId: 'a1',
-				endpoint: 'build',
-				canEditAgent: false,
-				initialMessage: 'seed build prompt',
-				agentConfig: {
-					name: 'Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Help.',
-				},
-				agentStatus: 'draft',
-				connectedTriggers: [],
-				beforeSend,
-			},
-		});
-
-		await flushPromises();
-
-		expect(beforeSend).not.toHaveBeenCalled();
-		expect(sendMessageMock).not.toHaveBeenCalled();
-		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
-		// History is loaded instead so any existing thread renders, rather than
-		// the misleading "describe your agent" empty state.
-		expect(loadHistoryMock).toHaveBeenCalledTimes(1);
-	});
-
 	it('enables chat input and shows answer-question placeholder while an interactive question is unresolved', () => {
 		messagesMock.value = [openInteractiveMessage()];
 
@@ -261,7 +209,6 @@ describe('AgentChatPanel', () => {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -285,28 +232,12 @@ describe('AgentChatPanel', () => {
 	});
 
 	it('keeps above-input actions enabled when the interactive card is resolved', () => {
-		messagesMock.value = [
-			{
-				...openInteractiveMessage(),
-				status: 'success',
-				interactive: {
-					toolName: ASK_QUESTION_TOOL_NAME,
-					toolCallId: 'tc-1',
-					resolvedAt: 1,
-					input: {
-						question: 'Pick one',
-						options: [{ label: 'Slack', value: 'slack' }],
-					},
-					resolvedValue: { values: ['slack'] },
-				},
-			},
-		];
+		messagesMock.value = [resolvedInteractiveMessage()];
 
 		const wrapper = mount(AgentChatPanel, {
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
-				endpoint: 'build',
 				agentConfig: {
 					name: 'Agent',
 					model: 'anthropic/claude-sonnet-4-5',
@@ -349,14 +280,11 @@ describe('AgentChatPanel', () => {
 				...openInteractiveMessage(),
 				status: 'success',
 				interactive: {
-					toolName: ASK_QUESTION_TOOL_NAME,
+					toolName: APPROVAL_TOOL_NAME,
 					toolCallId: 'tc-1',
 					resolvedAt: 1,
-					input: {
-						question: 'Pick one',
-						options: [{ label: 'Slack', value: 'slack' }],
-					},
-					resolvedValue: { values: ['slack'] },
+					input: { type: 'approval', toolName: 'send_message', args: {} },
+					resolvedValue: { approved: true },
 				},
 			},
 		];
@@ -368,16 +296,39 @@ describe('AgentChatPanel', () => {
 		expect(chatInput.props('placeholder')).toBe('agents.chat.input.placeholder');
 	});
 
-	it.each([ASK_LLM_TOOL_NAME, ASK_CREDENTIAL_TOOL_NAME])(
-		'enables chat input while %s is unresolved (cancel-and-steer mode)',
-		(toolName) => {
-			messagesMock.value = [openInteractiveMessage(toolName)];
+	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
+		messagesMock.value = [openInteractiveMessage()];
 
-			const wrapper = mountPanel();
-			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
-			// Input should be enabled — the user can cancel and steer
-			expect(chatInput.props('disabled')).toBe(false);
-		},
-	);
+		// Input should be enabled — the user can cancel and steer
+		expect(chatInput.props('disabled')).toBe(false);
+	});
+
+	it('does not apply a build-specific character limit', () => {
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(chatInput.props('maxLength')).toBe(undefined);
+	});
+
+	it('humanises runtime issue paths with generic localized labels', () => {
+		fatalErrorMock.value = {
+			missing: [
+				'tools.0.workflow',
+				'mcpServers.0.url',
+				'subAgents.agents.0.agentId',
+				'integrations.0.credentialId',
+			],
+		};
+
+		const wrapper = mountPanel();
+
+		expect(wrapper.text()).toContain('Check:');
+		expect(wrapper.text()).toContain('Tool configuration');
+		expect(wrapper.text()).toContain('MCP server');
+		expect(wrapper.text()).toContain('Sub-agent');
+		expect(wrapper.text()).toContain('integrations.0.credentialId');
+	});
 });

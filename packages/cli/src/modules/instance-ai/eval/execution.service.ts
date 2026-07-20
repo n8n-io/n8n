@@ -40,6 +40,7 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -51,6 +52,11 @@ import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { EvalTimings } from './eval-timings';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
+import {
+	extractResponsesRequestModel,
+	isOpenAiResponsesUrl,
+	normalizeOpenAiResponsesMockResponse,
+} from './openai-responses-envelope';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -90,6 +96,7 @@ export class EvalExecutionService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
 
 	async executeWithLlmMock(
@@ -290,6 +297,7 @@ export class EvalExecutionService {
 							globalContext || scenarioHints
 								? { dataDescription: globalContext, testScenario: scenarioHints }
 								: undefined,
+						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
 					}),
 			);
 
@@ -343,6 +351,20 @@ export class EvalExecutionService {
 		for (const node of workflowEntity.nodes) {
 			if (node.disabled || !node.parameters) continue;
 			fillSetupPendingResourceLocators(node.parameters);
+		}
+
+		// Time-based Wait nodes park the execution until a future timestamp
+		// (specificTime) or sleep away the scenario budget (timeInterval), so
+		// downstream nodes never run inside the eval window even when the built
+		// workflow is correct. Zero them — execution order and branch structure
+		// stay observable, and the verifier still sees the builder's original
+		// wait config in the workflow JSON. Webhook/form-resume waits are left
+		// untouched (they model an external event, not the passage of time).
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
+			const resume = node.parameters?.resume;
+			if (resume === 'webhook' || resume === 'form') continue;
+			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };
 		}
 
 		const workflow = this.buildWorkflow(workflowEntity);
@@ -758,11 +780,29 @@ export class EvalExecutionService {
 				executionMode: 'mocked',
 			});
 			entry.executionMode = 'mocked';
-			const response = await timings.time(
+			let response = await timings.time(
 				'http-mock',
 				node.name,
 				async () => await mockHandler(requestOptions, node),
 			);
+
+			// Responses-API calls from the openAi node bypass the wire-server
+			// protocol adapters — coerce the generated body to the canonical
+			// envelope so the node's real parser accepts it.
+			if (response && response.statusCode < 400 && isOpenAiResponsesUrl(requestOptions.url)) {
+				const normalized = normalizeOpenAiResponsesMockResponse(
+					response,
+					extractResponsesRequestModel(requestOptions.body),
+				);
+				if (normalized !== response) {
+					// Triage breadcrumb: the recorded mockResponse below is the coerced
+					// body, not the generator's raw output.
+					this.logger.debug(
+						`[EvalMock] Applied Responses-envelope normalization for "${node.name}"`,
+					);
+				}
+				response = normalized;
+			}
 
 			entry.interceptedRequests.push({
 				// Broken routing (resource/operation missing on the node type) emits a

@@ -15,7 +15,10 @@ export function toImportBlockedError(
 			(issue) =>
 				issue.type === 'workflow-conflict' ||
 				issue.type === 'workflow-id-conflict' ||
-				issue.type === 'workflow-folder-conflict',
+				issue.type === 'workflow-folder-conflict' ||
+				issue.type === 'folder-conflict' ||
+				(issue.type === 'data-table-unresolved' &&
+					(issue.kind === 'id-conflict' || issue.kind === 'name-conflict')),
 		)
 	) {
 		return new ConflictError(message, undefined, { issues });

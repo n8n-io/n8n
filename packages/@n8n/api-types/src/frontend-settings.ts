@@ -257,6 +257,13 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;
+		/**
+		 * Operator override (`N8N_EVAL_COLLECTIONS_ENABLED`) that force-enables the
+		 * eval-collections surface. Surfaced here so the frontend gate works even
+		 * when the in-browser PostHog client is disabled (telemetry off), where the
+		 * `084_eval_collections` flag would otherwise never resolve.
+		 */
+		collectionsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -288,6 +295,8 @@ export type FrontendModuleSettings = {
 		mcpAccessEnabled: boolean;
 		/** Whether MCP settings are managed via environment variables. */
 		mcpManagedByEnv: boolean;
+		/** Public URL of the instance MCP server endpoint. */
+		serverUrl?: string;
 	};
 
 	/**
@@ -357,9 +366,10 @@ export type FrontendModuleSettings = {
 		 */
 		modules: string[];
 		/**
-		 * Whether the agent knowledge base is enabled. Requires
-		 * `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
-		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+		 * Whether the agent knowledge base is enabled. True when the backend's
+		 * Daytona sandbox env vars (`N8N_AGENTS_AI_SANDBOX_ENABLED=true` +
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona`) are set, OR the AI Assistant
+		 * proxy is available.
 		 */
 		knowledgeBaseEnabled: boolean;
 	};

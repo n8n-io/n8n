@@ -1,5 +1,4 @@
 import { reconcileNativeWebSearch } from '@n8n/ai-utilities/agent-config';
-import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import {
 	AgentJsonConfigSchema,
 	findVectorStoreToolNameCollisions,
@@ -8,12 +7,12 @@ import {
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError, type INodeParameters } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { resolveBuiltinNodeDefinitionDirs } from '@/modules/instance-ai/node-definition-resolver';
 
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSkillsService } from './agent-skills.service';
@@ -23,8 +22,10 @@ import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-conf
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
@@ -36,6 +37,7 @@ export class AgentConfigService {
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	/**
@@ -78,7 +80,7 @@ export class AgentConfigService {
 		}
 
 		try {
-			this.validateNodeToolExpressions(config);
+			validateNodeToolExpressions(config.tools);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return {
@@ -87,20 +89,12 @@ export class AgentConfigService {
 			};
 		}
 
-		const nodeError = await this.validateNodeToolConfigs(config);
+		const nodeError = await validateNodeToolConfigs(config.tools);
 		if (nodeError) {
 			return { valid: false, error: nodeError };
 		}
 
 		return { valid: true, config };
-	}
-
-	private validateNodeToolExpressions(config: AgentJsonConfig): void {
-		for (const tool of config.tools ?? []) {
-			if (tool.type !== 'node') continue;
-
-			extractFromAIParameters((tool.node.nodeParameters ?? {}) as INodeParameters);
-		}
 	}
 
 	/**
@@ -133,6 +127,10 @@ export class AgentConfigService {
 		// `webSearch` state. This is the single write path, so persisted config
 		// always agrees with read/compose paths.
 		const validatedConfig = reconcileNativeWebSearch(result.config);
+
+		if (validatedConfig.tools !== undefined) {
+			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
+		}
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
@@ -238,45 +236,6 @@ export class AgentConfigService {
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
-	}
-
-	private async validateNodeToolConfigs(config: AgentJsonConfig): Promise<string | null> {
-		const nodeTools = (config.tools ?? []).filter(
-			(t): t is Extract<AgentJsonToolConfig, { type: 'node' }> => t.type === 'node',
-		);
-
-		if (nodeTools.length === 0) return null;
-
-		const { setSchemaBaseDirs, validateNodeConfig } = await import('@n8n/workflow-sdk');
-
-		const dirs = resolveBuiltinNodeDefinitionDirs();
-		if (dirs.length > 0) {
-			setSchemaBaseDirs(dirs);
-		}
-
-		const errors: string[] = [];
-
-		for (const tool of nodeTools) {
-			const nodeType: string = tool.node.nodeType;
-			const nodeTypeVersion: number = tool.node.nodeTypeVersion;
-			const nodeParameters = tool.node.nodeParameters ?? {};
-
-			const result = validateNodeConfig(
-				nodeType,
-				nodeTypeVersion,
-				{ parameters: nodeParameters },
-				{ isToolNode: true },
-			);
-
-			if (!result.valid) {
-				const messages = result.errors
-					.map((e: { path: string; message: string }) => e.message)
-					.join('; ');
-				errors.push(`Node tool "${tool.name}" (${nodeType}@${nodeTypeVersion}): ${messages}`);
-			}
-		}
-
-		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
 	private async removeMissingConfigRefs(

@@ -36,16 +36,9 @@ interface Props {
 	view: ChannelView;
 	connectedChannels: string[];
 	isPublished: boolean;
-	/**
-	 * Force creating a new credential in the setup flow (hides the existing-credential
-	 * picker). Used by the AIA channel-setup HITL so a new agent gets its own credential.
-	 */
-	forceNewCredential?: boolean;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-	forceNewCredential: false,
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
@@ -318,7 +311,6 @@ watch(
 						:loading="isLoading('slack')"
 						:error-message="hasError('slack') ? errorMessages.slack : ''"
 						:error-is-conflict="errorIsConflict.slack"
-						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -344,7 +336,6 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"
@@ -370,7 +361,6 @@ watch(
 						:agent-name="agentId"
 						:project-id="projectId"
 						:agent-id="agentId"
-						:force-new-credential="forceNewCredential"
 						@create="createCredential"
 						@edit="editCredential"
 						@connect="saveChannelConfig"

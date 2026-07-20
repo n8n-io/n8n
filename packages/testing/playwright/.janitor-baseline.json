@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-09T01:18:33.533Z",
-	"totalViolations": 69,
+	"generated": "2026-07-17T15:21:33.743Z",
+	"totalViolations": 61,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -68,19 +68,19 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 161,
+				"line": 170,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 351,
+				"line": 360,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 351,
+				"line": 360,
 				"message": "InstanceAiPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "713916b2be0f"
 			}
@@ -96,61 +96,55 @@
 		"pages/SidebarPage.ts": [
 			{
 				"rule": "scope-lockdown",
-				"line": 24,
+				"line": 20,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 28,
+				"line": 46,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 48,
+				"line": 51,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 52,
+				"line": 102,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 103,
+				"line": 106,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 107,
+				"line": 119,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 120,
+				"line": 127,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 128,
+				"line": 135,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 136,
-				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
-				"hash": "b15fa9cfe2ac"
-			},
-			{
-				"rule": "scope-lockdown",
-				"line": 144,
+				"line": 143,
 				"message": "SidebarPage: Unscoped locator - use this.container instead of this.page",
 				"hash": "b15fa9cfe2ac"
 			}
@@ -164,13 +158,13 @@
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 88,
+				"line": 92,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			},
 			{
 				"rule": "scope-lockdown",
-				"line": 88,
+				"line": 92,
 				"message": "WorkflowSettingsModal: Unscoped locator - use this.container instead of this.page",
 				"hash": "d38a3afc984b"
 			}
@@ -235,26 +229,6 @@
 				"line": 148,
 				"message": "Direct page access in composable: this.n8n.page.url",
 				"hash": "c978979c3eac"
-			}
-		],
-		"composables/DataTablesComposer.ts": [
-			{
-				"rule": "no-page-in-flow",
-				"line": 29,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 31,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 40,
-				"message": "Direct page access in composable: this.n8n.page.goto",
-				"hash": "5f9ae75f5f12"
 			}
 		],
 		"composables/ExecutionsComposer.ts": [
@@ -363,22 +337,6 @@
 				"hash": "34b1d021857e"
 			}
 		],
-		"tests/e2e/dynamic-credentials/execution-status.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 203,
-				"message": "Raw API call detected: request.get(",
-				"hash": "c6217f17d2d7"
-			}
-		],
-		"tests/e2e/dynamic-credentials/external-user-trigger.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 173,
-				"message": "Raw API call detected: request.get(",
-				"hash": "cc21f9656cd4"
-			}
-		],
 		"tests/e2e/nodes/community-nodes.spec.ts": [
 			{
 				"rule": "api-purity",
@@ -391,22 +349,6 @@
 				"line": 35,
 				"message": "Raw API call detected: fetch(",
 				"hash": "974d7953dd83"
-			}
-		],
-		"pages/WorkflowsPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 40,
-				"message": "Duplicate locator: this.page.getByTestId(\"project-name\") in pages scope",
-				"hash": "206b89bd1594"
-			}
-		],
-		"pages/WorkerViewPage.ts": [
-			{
-				"rule": "deduplication",
-				"line": 13,
-				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
-				"hash": "5a1818f5f511"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [

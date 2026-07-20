@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nPreviewTag, N8nText, N8nTooltip } from '@n8n/design-system';
+import { END_USER_CREDENTIALS_DOCS_URL } from '@/app/constants';
 
 const props = defineProps<{
 	// `true` = end-user (private) credential, `false` = fixed (static) credential.
@@ -30,9 +31,15 @@ function select(value: boolean): void {
 			<N8nText size="medium" :bold="true">
 				{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.title') }}
 			</N8nText>
+			<N8nPreviewTag size="small" />
 			<N8nTooltip v-if="infoTip" placement="top">
 				<template #content>
-					<div>{{ infoTip }}</div>
+					<div>
+						{{ infoTip }}
+						<N8nLink bold :to="END_USER_CREDENTIALS_DOCS_URL" size="small">
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
+					</div>
 				</template>
 				<N8nIcon icon="circle-help" size="small" color="text-light" />
 			</N8nTooltip>
@@ -62,7 +69,7 @@ function select(value: boolean): void {
 						aria-hidden="true"
 					/>
 				</span>
-				<N8nText size="xsmall" color="text-light" :class="$style.subtitle">
+				<N8nText size="small" color="text-light" :class="$style.subtitle">
 					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.fixed.subtitle') }}
 				</N8nText>
 			</button>
@@ -87,7 +94,7 @@ function select(value: boolean): void {
 						aria-hidden="true"
 					/>
 				</span>
-				<N8nText size="xsmall" color="text-light" :class="$style.subtitle">
+				<N8nText size="small" color="text-light" :class="$style.subtitle">
 					{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.endUser.subtitle') }}
 				</N8nText>
 			</button>

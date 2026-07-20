@@ -13,13 +13,13 @@ export class RuntimeCredentialsModule implements ModuleInterface {
 	async init() {
 		if (!isFeatureFlagEnabled()) return;
 
-		const { RuntimeCredentialsService } = await import('./runtime-credentials.service');
+		const { RuntimeCredentialsService } = await import('./runtime-credentials.service.js');
 		Container.get(RuntimeCredentialsService).init();
 
-		await import('./runtime-credentials-context-hook');
-		await import('./runtime-credentials.config');
+		await import('./runtime-credentials-context-hook.js');
+		await import('./runtime-credentials.config.js');
 		const { RuntimeCredentialsAccessService } = await import(
-			'./runtime-credentials-access.service'
+			'./runtime-credentials-access.service.js'
 		);
 		Container.get(RuntimeCredentialProxyService).registerProvider(
 			Container.get(RuntimeCredentialsAccessService),

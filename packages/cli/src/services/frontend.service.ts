@@ -146,7 +146,7 @@ export class FrontendService {
 		void this.generateTypes();
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service').then(
+			void import('@/modules/community-packages/community-packages.service.js').then(
 				({ CommunityPackagesService }) => {
 					this.communityPackagesService = Container.get(CommunityPackagesService);
 				},
@@ -419,6 +419,7 @@ export class FrontendService {
 			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
+				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,

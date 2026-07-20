@@ -19,7 +19,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 			'get_node_types',
 			'ask_credential',
 			'get_resource_locator_options',
-			'ask_question',
+			'ask_questions',
 			'read_config',
 			'patch_config',
 			'write_config',
@@ -62,7 +62,7 @@ locator values that the target agent cannot reliably guess at runtime.
    - current \`nodeParameters\`
    - returned \`credentials\`, when available
    - \`filter\` when the user named a specific team, channel, project, or object
-6. If results are ambiguous, use \`ask_question\` with the returned option names.
+6. If results are ambiguous, use \`ask_questions\` with the returned option names.
    If there are many pages, retry with \`paginationToken\` or a narrower
    \`filter\`.
 7. Write the selected result's \`parameterValue\` exactly into

@@ -25,6 +25,11 @@ on:
         required: false
         type: string
         default: 'mcp'
+      suite:
+        description: 'LangTracer suite slug or id to pull test cases from.'
+        required: false
+        type: string
+        default: 'n8n-workflows'
       filter:
         description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
         required: false
@@ -71,6 +76,11 @@ on:
         required: false
       EVALS_LANGSMITH_API_KEY:
         required: false
+      # The eval CLI pulls the test-case suite from LangTracer.
+      EVALS_LANGTRACER_URL:
+        required: false
+      LANGTRACER_API_KEY:
+        required: false
   workflow_dispatch:
     inputs:
       branch:
@@ -81,6 +91,10 @@ on:
         description: 'Test-case dataset to build + eval (e.g. "mcp")'
         required: false
         default: 'mcp'
+      suite:
+        description: 'LangTracer suite slug or id to pull test cases from.'
+        required: false
+        default: 'n8n-workflows'
       filter:
         description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
         required: false
@@ -254,6 +268,9 @@ jobs:
           BASE_URLS: ${{ steps.lanes.outputs.base_urls }}
           LANES: ${{ inputs.lanes || '6' }}
           TIER: ${{ inputs.tier }}
+          SUITE: ${{ inputs.suite }}
+          LANGTRACER_URL: ${{ secrets.EVALS_LANGTRACER_URL }}
+          LANGTRACER_API_KEY: ${{ secrets.LANGTRACER_API_KEY }}
           FILTER: ${{ inputs.filter }}
           ITERATIONS: ${{ inputs.iterations }}
           EVAL_CONCURRENCY: ${{ inputs.eval-concurrency }}
@@ -284,6 +301,8 @@ jobs:
             --baseline-prefix mcp-baseline-
             --verbose
           )
+          # LangTracer is the only CI case source (no disk fallback by design).
+          ARGS+=(--source langtracer --suite "${SUITE:-n8n-workflows}")
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
           pnpm eval:instance-ai "${ARGS[@]}"

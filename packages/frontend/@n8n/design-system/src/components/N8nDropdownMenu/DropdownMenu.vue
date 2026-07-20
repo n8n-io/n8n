@@ -35,6 +35,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	searchPlaceholder: 'Search...',
 	searchDebounce: 0,
 	emptyText: 'No items',
+	width: '24rem',
 });
 
 const emit = defineEmits<{
@@ -72,12 +73,17 @@ const placementParts = computed(() => {
 });
 
 const contentContainerStyle = computed(() => {
-	if (props.maxHeight) {
-		const maxHeightValue =
-			typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight;
-		return { maxHeight: maxHeightValue, overflowY: 'auto' };
-	}
-	return {};
+	const maxHeightStyle = props.maxHeight
+		? {
+				maxHeight: typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight,
+				overflowY: 'auto',
+			}
+		: {};
+
+	return {
+		'--n8n--dropdown-menu-width': props.width,
+		...maxHeightStyle,
+	};
 });
 
 const handleOpenChange = (open: boolean) => {
@@ -355,6 +361,7 @@ defineExpose({ open, close });
 </template>
 
 <style module lang="scss">
+@use '../../css/common/var';
 @use '../../css/mixins/motion';
 
 .content {
@@ -364,7 +371,6 @@ defineExpose({ open, close });
 	--n8n--dropdown--offset--origin-y: center;
 	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
 	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
-	--n8n--dropdown-menu-width: var(--reka-dropdown-menu-trigger-width);
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
@@ -378,7 +384,7 @@ defineExpose({ open, close });
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
-	z-index: 9999;
+	z-index: var.$index-popper;
 	scrollbar-width: none;
 
 	&.searchable {

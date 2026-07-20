@@ -137,10 +137,18 @@ interface ProcessToolCallParams {
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
+	/** Checkpointed suspend payload of the tool call being resumed. */
+	suspendPayload?: unknown;
 }
 
 function isDeniedApprovalResumeData(value: unknown): boolean {
 	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
+}
+
+function isAbortError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	if (error.name === 'AbortError') return true;
+	return error.message === 'Aborted' || error.message === 'This operation was aborted';
 }
 
 function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {
@@ -299,7 +307,25 @@ export class ToolCallExecutor {
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
 			if (ctx.isAborted()) {
 				this.deps.onCancelled();
-				throw new Error('Agent run was aborted');
+				for (const id of unexecutedIds) {
+					const tc = executableCallsById.get(id)!;
+					const modelOutput = '[Skipped: run was aborted]';
+					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+					results.push({
+						toolCallId: tc.toolCallId,
+						toolName: tc.toolName,
+						input: tc.input,
+						toolEntry: {
+							tool: tc.toolName,
+							input: tc.input,
+							output: modelOutput,
+							transformed: false,
+							canceled: true,
+						},
+						modelOutput,
+					});
+				}
+				return { results, suspensions, errors, pending };
 			}
 
 			const batch = this.takeNextToolCallBatch(executableCalls, batchStart, toolMap);
@@ -370,6 +396,14 @@ export class ToolCallExecutor {
 						modelOutput: result.value.modelOutput,
 						customMessage: result.value.customMessage,
 					});
+				} else if (result.value.outcome === 'cancelled') {
+					results.push({
+						toolCallId: tc.toolCallId,
+						toolName: tc.toolName,
+						input: toolInput,
+						toolEntry: result.value.toolEntry,
+						modelOutput: result.value.modelOutput,
+					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
 						toolCallId: tc.toolCallId,
@@ -380,6 +414,29 @@ export class ToolCallExecutor {
 				} else if (result.value.outcome === 'noop') {
 					// noop
 				}
+			}
+
+			if (ctx.isAborted()) {
+				this.deps.onCancelled();
+				for (const id of unexecutedIds) {
+					const tc = executableCallsById.get(id)!;
+					const modelOutput = '[Skipped: run was aborted]';
+					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+					results.push({
+						toolCallId: tc.toolCallId,
+						toolName: tc.toolName,
+						input: tc.input,
+						toolEntry: {
+							tool: tc.toolName,
+							input: tc.input,
+							output: modelOutput,
+							transformed: false,
+							canceled: true,
+						},
+						modelOutput,
+					});
+				}
+				break;
 			}
 
 			if (hasSuspension) {
@@ -448,6 +505,7 @@ export class ToolCallExecutor {
 			executionCounter,
 			abortSignal,
 			countToolCall: false,
+			suspendPayload: resumedEntry.suspended ? resumedEntry.suspendPayload : undefined,
 		});
 
 		if (processResult.outcome === 'suspended') {
@@ -621,6 +679,10 @@ export class ToolCallExecutor {
 		try {
 			toolResult = await this.runToolHandler(params, builtTool, input);
 		} catch (error) {
+			if (isAbortError(error) || params.abortSignal?.aborted) {
+				this.deps.onCancelled();
+				return this.buildCancelledOutcome(params, 'Run aborted');
+			}
 			return this.toolError(params, error as Error);
 		}
 
@@ -730,6 +792,7 @@ export class ToolCallExecutor {
 			resolvedTelemetry,
 			executionCounter,
 			abortSignal,
+			suspendPayload,
 		} = params;
 		return await this.telemetry.withToolSpan(
 			toolCallId,
@@ -743,6 +806,7 @@ export class ToolCallExecutor {
 					emitEvent: (event) => this.eventBus.emit(event),
 					abortSignal,
 					executionCounter,
+					suspendPayload,
 				}),
 		);
 	}

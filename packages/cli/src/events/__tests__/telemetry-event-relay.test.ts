@@ -117,6 +117,12 @@ describe('TelemetryEventRelay', () => {
 		database: {
 			type: 'sqlite',
 		},
+		instanceAi: {
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			braveSearchApiKey: '',
+			searxngUrl: '',
+		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
@@ -2217,7 +2223,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-imported` event with params and counts', () => {
 			const event: RelayEventMap['n8n-package-imported'] = {
 				user: { id: 'user123' },
-				projectId: 'project123',
+				projectIds: ['project123'],
 				folderId: 'folder123',
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				options: {
@@ -2226,6 +2232,9 @@ describe('TelemetryEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2245,6 +2254,11 @@ describe('TelemetryEventRelay', () => {
 						created: 1,
 						requirements: 3,
 					},
+					dataTables: {
+						matched: 1,
+						created: 1,
+						requirements: 2,
+					},
 				},
 			};
 
@@ -2257,12 +2271,18 @@ describe('TelemetryEventRelay', () => {
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
+				data_table_matching_mode: 'by-id',
+				data_table_missing_mode: 'create',
+				data_table_schema_conflict_policy: 'keep-existing',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,
+				data_tables_matched: 1,
+				data_tables_created: 1,
+				data_tables_required: 2,
 			});
 		});
 
@@ -2275,6 +2295,8 @@ describe('TelemetryEventRelay', () => {
 					workflows: 3,
 					folders: 1,
 					credentials: 2,
+					dataTables: 1,
+					variables: 4,
 				},
 			};
 
@@ -2285,6 +2307,41 @@ describe('TelemetryEventRelay', () => {
 				workflow_count: 3,
 				folder_count: 1,
 				credential_count: 2,
+				data_table_count: 1,
+				variable_count: 4,
+			});
+		});
+
+		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: { id: 'user123' },
+				reason: 'access-denied',
+				workflowIds: ['wf1', 'wf2'],
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
+				user_id: 'user123',
+				reason: 'access-denied',
+				workflow_count: 2,
+				folder_count: 0,
+				project_count: 0,
+			});
+		});
+
+		it('should track on `n8n-package-import-failed` event with reason only, no project/folder ids', () => {
+			const event: RelayEventMap['n8n-package-import-failed'] = {
+				user: { id: 'user123' },
+				reason: 'blocked',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('n8n-package-import-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package import failed', {
+				user_id: 'user123',
+				reason: 'blocked',
 			});
 		});
 	});
@@ -2697,6 +2754,44 @@ describe('TelemetryEventRelay', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should track instance AI sandbox and search configuration on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				braveSearchApiKey: 'some-api-key',
+				searxngUrl: '',
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Instance started',
+			);
+			expect(startupEvent).toBeDefined();
+			expect(startupEvent?.[1]).toEqual(
+				expect.objectContaining({
+					instance_ai: {
+						sandbox_enabled: true,
+						sandbox_provider: 'daytona',
+						search_brave_set: true,
+						search_searxng_set: false,
+					},
+				}),
+			);
+			// Key values must never leave the instance — only set/unset booleans
+			expect(JSON.stringify(startupEvent?.[1])).not.toContain('some-api-key');
+
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: false,
+				sandboxProvider: 'n8n-sandbox',
+				braveSearchApiKey: '',
+				searxngUrl: '',
+			});
 		});
 
 		it('should track on `session-started` event', () => {
@@ -3602,6 +3697,26 @@ describe('TelemetryEventRelay', () => {
 			expect(typeof result.major).toBe('number');
 			expect(typeof result.minor).toBe('number');
 			expect(typeof result.patch).toBe('number');
+		});
+	});
+
+	describe('HITL events', () => {
+		it('should track on `hitl-response-actioned` event', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: false,
+			});
 		});
 	});
 });

@@ -316,6 +316,7 @@ export const IDisplayOptionsSchema: z.ZodType<IDisplayOptions> = z.object({
 		z.string(),
 		z.union([z.array(z.union([NodeParameterValueSchema, DisplayConditionSchema])), z.undefined()]),
 	),
+	showOnDeployment: z.enum(['cloud', 'hosted']).optional(),
 	hideOnCloud: z.boolean().optional(),
 });
 

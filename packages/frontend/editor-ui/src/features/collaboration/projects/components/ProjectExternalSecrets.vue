@@ -15,14 +15,14 @@ import {
 	N8nIconButton,
 	N8nIcon,
 	N8nInput,
-	N8nActionBox,
+	N8nEmptyState,
 	N8nHeading,
 	N8nText,
 	N8nDataTableServer,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { useSecretsProviderConnection } from '@/features/integrations/secretsProviders.ee/composables/useSecretsProviderConnection.ee';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -299,7 +299,11 @@ defineExpose({
 		</h3>
 
 		<!-- Empty State: Consolidated view based on user role and current state -->
-		<N8nActionBox v-if="emptyStateConfig" :data-test-id="emptyStateConfig.testId" description="yes">
+		<N8nEmptyState
+			v-if="emptyStateConfig"
+			:data-test-id="emptyStateConfig.testId"
+			description="yes"
+		>
 			<template #description>
 				<N8nHeading tag="h3" size="small" class="mb-2xs">
 					{{ emptyStateConfig.heading }}
@@ -329,7 +333,7 @@ defineExpose({
 					{{ emptyStateConfig.buttonText }}
 				</N8nButton>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 
 		<!-- Table View: Show when there are providers -->
 		<div v-else-if="projectSecretConnections.length > 0" :class="$style.secretProvidersContainer">

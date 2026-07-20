@@ -11,9 +11,9 @@ export function targetSkillsSkill(): RuntimeSkill {
 		id: 'agent-builder-target-skills',
 		name: 'Agent Builder Target Skills',
 		description:
-			'Use when creating reusable target-agent skills, playbooks, policies, style guides, or domain instructions with create_skill that should load only for relevant future requests; not for builder guidance or one-off instructions.',
-		recommendedTools: ['create_skill', 'ask_question', 'read_config', 'patch_config'],
-		allowedTools: ['create_skill', 'ask_question', 'read_config', 'patch_config', 'write_config'],
+			'Use when creating reusable target-agent skills, playbooks, policies, style guides, or domain instructions with create_skills that should load only for relevant future requests; not for builder guidance or one-off instructions.',
+		recommendedTools: ['create_skills', 'ask_questions', 'read_config', 'patch_config'],
+		allowedTools: ['create_skills', 'ask_questions', 'read_config', 'patch_config', 'write_config'],
 		instructions: `\
 ## Purpose
 
@@ -45,25 +45,32 @@ ${SKILL_BODY_TEMPLATE}
 
 ## Ask first (required)
 
-Do NOT call \`create_skill\` until you have enough concrete domain detail to write
+Do NOT call \`create_skills\` until you have enough concrete domain detail to write
 a genuinely useful skill: a specific routing description and a body whose
 applicable sections are filled with real content (the actual steps, rules,
 examples, and edge cases). If any of that is missing, ask the user clarifying
-questions (use \`ask_question\` — discrete options for choices, or empty options
-for open-ended) until you can write it. Never create a placeholder or vague skill.
+questions (use \`ask_questions\`, batching multiple questions into one call —
+discrete options for choices, or \`type: "text"\` for open-ended) until you can
+write it. Never create a placeholder or vague skill.
 
 ## Workflow
 
 - Gather the domain detail you need, asking clarifying questions until the
   description and every applicable body section can be written with concrete
-  content.
-- Write the \`description\` as the routing contract and \`instructions\` using the
-  template above. Put all "when to use" / "when not to use" guidance in the
-  description, never in the body (the body is invisible until the skill loads).
-- Call \`create_skill\` with \`name\`, \`description\`, and \`instructions\`.
-- \`create_skill\` stores the skill only; it does not attach the skill.
-- After it returns an id, call \`read_config\`.
-- Use \`patch_config\` or \`write_config\` to add \`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.
+  content, for every skill you plan to create.
+- Write each skill's \`description\` as the routing contract and \`instructions\`
+  using the template above. Put all "when to use" / "when not to use" guidance
+  in the description, never in the body (the body is invisible until the skill
+  loads).
+- Call \`create_skills\` once with a \`skills\` array containing every skill you
+  currently know how to write — do not spread multiple fully-specified skills
+  across separate calls. A single skill is still a one-item array.
+- \`create_skills\` stores the skill bodies only; it does not attach them. The
+  batch is all-or-nothing: an invalid or duplicate-named skill rejects the
+  whole call.
+- After it returns an id per skill, call \`read_config\`.
+- Use \`patch_config\` or \`write_config\` to add a \`{ "type": "skill", "id": "<returned id>" }\`
+  entry per skill to \`skills\`.
 
 ## Extended fields
 
@@ -80,7 +87,7 @@ for open-ended) until you can write it. Never create a placeholder or vague skil
   \`references/intake-checklist.md\`".
 - Omit fields you cannot fill confidently. Do not invent tool names or file paths.
 - Scripts are not supported in this phase. Do not pass scripts or non-markdown
-  linked files to \`create_skill\`.
+  linked files to \`create_skills\`.
 
 ## Rules
 
@@ -90,20 +97,23 @@ for open-ended) until you can write it. Never create a placeholder or vague skil
 - Do not rely on a body "Use when" section to trigger the skill; the body is
   not visible until after the skill is selected.
 - Include concrete gotchas that prevent predictable target-agent mistakes.
-- Do not use \`create_skill\` for builder instructions. These skills belong to the target agent.
+- Do not use \`create_skills\` for builder instructions. These skills belong to the target agent.
 
 ## Gotchas
 
-- \`create_skill\` does not attach the skill to the target agent config.
+- \`create_skills\` does not attach any skill to the target agent config.
 - A skill that is useful for every request probably belongs in instructions, not in \`skills\`.
 - A vague description creates a vague skill, even if the body is excellent.
 - Do not create placeholder or vague skills; ask for missing domain details first.
+- Do not call \`create_skills\` once per skill when several are ready — batch them
+  into one call so the whole set is stored in a single round trip.
 
 ## Verify
 
-- The returned skill id is attached in config as \`{ "type": "skill", "id": "<returned id>" }\`.
-- The skill description clearly states when it should load.
-- The body follows the template, with each applicable section filled with
+- Every returned skill id is attached in config as a \`{ "type": "skill", "id": "<returned id>" }\`
+  entry.
+- Each skill description clearly states when it should load.
+- Each body follows the template, with each applicable section filled with
   concrete content (no placeholders), and tells the target agent what to do when
   the skill is loaded.`,
 	};

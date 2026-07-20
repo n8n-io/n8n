@@ -12,6 +12,8 @@ import type {
 	SubcategoryCreateElement,
 } from '@/Interface';
 import {
+	AGENT_NODE_TYPE,
+	AGENT_TOOL_NODE_TYPE,
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
 	AI_CATEGORY_MCP_NODES,
@@ -26,6 +28,7 @@ import {
 	DISCORD_NODE_TYPE,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -42,6 +45,7 @@ import type { NodeViewItemSection } from './views/viewsData';
 import { stripToolSuffix, useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -133,6 +137,10 @@ export function removeTrailingTrigger(searchFilter: string) {
 // Modest on purpose: high-confidence matches on other nodes should still win.
 const AI_GATEWAY_SEARCH_BOOST = 75;
 const AI_GATEWAY_BOOST_MIN_QUERY_LENGTH = 3;
+
+// Must exceed the legacy AI Agent's popularity boost (~98, see node-popularity.json)
+// so the successor node ranks first when both match a query equally.
+const MESSAGE_AN_AGENT_SEARCH_BOOST = 150;
 
 /**
  * 1. exact alias match (any query length): `scrape` → `scrape`
@@ -241,6 +249,7 @@ export function searchNodes(
 	const reRankedResults = reRankSearchResults(searchResults, {
 		...additionalFactors,
 		aiGatewayBoost,
+		messageAnAgentBoost: { [MESSAGE_AN_AGENT_NODE_TYPE]: MESSAGE_AN_AGENT_SEARCH_BOOST },
 	});
 
 	return reRankedResults.map(({ item }) => item);
@@ -422,7 +431,7 @@ export function extractAiGatewaySection(
 		section: {
 			type: 'section',
 			key: 'n8nConnect',
-			title: i18n.baseText('nodeCreator.sectionNames.n8nConnect'),
+			title: i18n.baseText('nodeCreator.sectionNames.includedInN8n'),
 			children: finalizeItems(sortNodeCreateElements(supported)),
 			showSeparator: true,
 			trailing: 'creditsBalance',
@@ -444,7 +453,20 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 
 	if (element.properties.tag) return element;
 
-	if (RECOMMENDED_NODES.includes(element.properties.name)) {
+	if (
+		[AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE].includes(element.properties.name) &&
+		useSettingsStore().isModuleActive(AGENTS_MODULE_NAME)
+	) {
+		element.properties.tag = {
+			type: 'info',
+			text: i18n.baseText('nodeCreator.nodeItem.deprecatingSoon'),
+		};
+	} else if (element.properties.name === MESSAGE_AN_AGENT_NODE_TYPE) {
+		element.properties.tag = {
+			preview: true,
+			text: i18n.baseText('nodeCreator.nodeItem.earlyPreview'),
+		};
+	} else if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.recommended'),

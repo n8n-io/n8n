@@ -1,7 +1,7 @@
 # Pinned to a multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # The tag is the human-readable version; Docker resolves by the digest. Bump the tag and
 # digest together when updating the base image.
-FROM dhi.io/node:24.16.0-alpine3.24-dev@sha256:0fda302d7d6f2436b27edc9392bd6a4f8ae9ce86e9837c2b8676abdf26a4a7fb
+FROM dhi.io/node:24.18.0-alpine3.24-dev@sha256:d508453231109fbe96a39045ecc794ac18f8b99ca218a0806833d65bb2750e03
 
 # Install all dependencies in a single layer to minimize image size
 RUN apk add --no-cache busybox-binsh && \
