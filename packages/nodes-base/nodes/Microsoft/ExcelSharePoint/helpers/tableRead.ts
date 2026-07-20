@@ -52,7 +52,7 @@ export async function resolveTableEndpoint(
 	return `${workbookRoot}/workbook/tables/${encodeURIComponent(tableId)}`;
 }
 
-export async function fetchTableCollection<T extends IDataObject = IDataObject>(
+export async function fetchCollection<T extends IDataObject = IDataObject>(
 	this: IExecuteFunctions,
 	itemIndex: number,
 	endpoint: string,

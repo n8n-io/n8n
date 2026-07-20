@@ -18,7 +18,7 @@ import {
 } from '../../descriptions/common.descriptions';
 import type { GraphTableRow } from '../../helpers/tableRead';
 import {
-	fetchTableCollection,
+	fetchCollection,
 	fetchTableColumnNames,
 	resolveTableEndpoint,
 	runPerItem,
@@ -61,12 +61,7 @@ export async function execute(
 		}
 
 		const tableEndpoint = await resolveTableEndpoint.call(this, i, workbookRootCache, siteIdCache);
-		const rows = await (fetchTableCollection<GraphTableRow>).call(
-			this,
-			i,
-			`${tableEndpoint}/rows`,
-			qs,
-		);
+		const rows = await (fetchCollection<GraphTableRow>).call(this, i, `${tableEndpoint}/rows`, qs);
 
 		if (rawData) {
 			return { [this.getNodeParameter('dataProperty', i) as string]: rows };
