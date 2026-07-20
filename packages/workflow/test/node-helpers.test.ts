@@ -3730,6 +3730,30 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+
+		test('does not treat showOnDeployment as a parameter dependency', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Read', value: 'read' }],
+					default: 'read',
+				},
+				{
+					displayName: 'Cloud notice',
+					name: 'cloudNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: { operation: ['read'] },
+						showOnDeployment: 'cloud',
+					},
+				},
+			];
+
+			expect(() => getNodeParameters(properties, {}, true, false, null, null)).not.toThrow();
+		});
 	});
 
 	describe('isSubNodeType', () => {
@@ -4395,6 +4419,52 @@ describe('NodeHelpers', () => {
 					testDateTime: ['Parameter "Date Time" is required.'],
 				},
 			});
+		});
+
+		it('Should treat agentSelector like a resource locator when required and empty', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: '' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({
+				parameters: {
+					agentId: ['Parameter "Agent" is required.'],
+				},
+			});
+		});
+
+		it('Should not report an issue for a populated agentSelector', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: 'agent-1' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({});
 		});
 	});
 

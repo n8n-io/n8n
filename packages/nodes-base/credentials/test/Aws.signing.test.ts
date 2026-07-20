@@ -211,6 +211,89 @@ describe('AWS signing (integration, real signer)', () => {
 		expect(result.body).toBe(buf);
 	});
 
+	describe('SES email endpoints', () => {
+		// SES endpoints are `email.<region>.amazonaws.com` but sign under `ses`
+		// (botocore: endpointPrefix 'email', signingName 'ses'). aws4 remapped this
+		// internally; smithy signs the name it is given. SES v2 rejects an
+		// email-scoped credential outright, v1 happens to tolerate it.
+
+		it('signs an SES v2 REST call (HTTP Request node shape) with the ses service name', async () => {
+			const result = await aws.authenticate(credentials, {
+				...baseRequest,
+				method: 'POST',
+				url: 'https://email.eu-central-1.amazonaws.com/v2/email/outbound-emails',
+				body: { FromEmailAddress: 'sender@example.com' },
+			});
+
+			const headers = result.headers as Record<string, string>;
+			expect(headers.authorization).toContain('/eu-central-1/ses/aws4_request');
+		});
+
+		it('signs an SES v1 query call (SES node shape, service param) with the ses service name', async () => {
+			// The AwsSes node passes service 'email', taking the default-endpoint branch.
+			const result = await aws.authenticate(credentials, {
+				...baseRequest,
+				method: 'POST',
+				qs: { service: 'email', path: '/?Action=GetSendQuota&Version=2010-12-01' },
+			});
+
+			const headers = result.headers as Record<string, string>;
+			expect(headers.authorization).toContain('/eu-central-1/ses/aws4_request');
+		});
+
+		describe('parity with the legacy aws4 signer', () => {
+			beforeEach(() => {
+				// Freeze time so both signers embed the same X-Amz-Date
+				vi.useFakeTimers();
+				vi.setSystemTime(new Date('2026-07-15T12:00:00.000Z'));
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+				delete process.env.N8N_AWS_LEGACY_SIGNER;
+			});
+
+			function signatureFrom(headers: Record<string, string>): string {
+				const authorization = headers.authorization ?? headers.Authorization;
+				return /Signature=([0-9a-f]{64})/.exec(authorization)?.[1] ?? '<unsigned>';
+			}
+
+			it('produces the aws4 signature byte-for-byte for an SES v2 send', async () => {
+				const request: IHttpRequestOptions = {
+					...baseRequest,
+					method: 'POST',
+					url: 'https://email.eu-central-1.amazonaws.com/v2/email/outbound-emails',
+					body: { FromEmailAddress: 'sender@example.com' },
+				};
+
+				const smithy = await aws.authenticate(credentials, { ...request });
+				process.env.N8N_AWS_LEGACY_SIGNER = 'true';
+				const legacy = await aws.authenticate(credentials, { ...request });
+
+				const smithySignature = signatureFrom(smithy.headers as Record<string, string>);
+				expect(smithySignature).toMatch(/^[0-9a-f]{64}$/);
+				expect(smithySignature).toBe(signatureFrom(legacy.headers as Record<string, string>));
+			});
+
+			it("canonicalizes '+' and '@' in SES paths identically to aws4", async () => {
+				// Suppression-list addresses put raw emails in the path
+				const request: IHttpRequestOptions = {
+					...baseRequest,
+					url: 'https://email.eu-central-1.amazonaws.com/v2/email/suppression/addresses/bounce+test@example.com',
+				};
+
+				const smithy = await aws.authenticate(credentials, { ...request });
+				process.env.N8N_AWS_LEGACY_SIGNER = 'true';
+				const legacy = await aws.authenticate(credentials, { ...request });
+
+				const smithySignature = signatureFrom(smithy.headers as Record<string, string>);
+				expect(smithySignature).toMatch(/^[0-9a-f]{64}$/);
+				expect(smithySignature).toBe(signatureFrom(legacy.headers as Record<string, string>));
+				expect(smithy.url).toBe(legacy.url);
+			});
+		});
+	});
+
 	describe('legacy fallback', () => {
 		afterEach(() => {
 			delete process.env.N8N_AWS_LEGACY_SIGNER;
@@ -230,6 +313,18 @@ describe('AWS signing (integration, real signer)', () => {
 			expect(headers.Authorization).toBeDefined();
 			expect(headers.Authorization).toContain('AWS4-HMAC-SHA256');
 			expect(headers.authorization).toBeUndefined();
+		});
+
+		it('signs a vpce Bedrock request with the bedrock service namespace via aws4', async () => {
+			process.env.N8N_AWS_LEGACY_SIGNER = 'true';
+
+			const result = await aws.authenticate(credentials, {
+				...baseRequest,
+				url: 'https://vpce-0abc123.bedrock-runtime.us-east-1.vpce.amazonaws.com/model/anthropic.claude-v2/invoke',
+			});
+
+			const headers = result.headers as Record<string, string>;
+			expect(headers.Authorization).toContain('/us-east-1/bedrock/aws4_request');
 		});
 	});
 });

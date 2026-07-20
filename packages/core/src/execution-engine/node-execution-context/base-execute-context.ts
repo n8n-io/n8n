@@ -16,6 +16,7 @@ import type {
 	ExecuteWorkflowData,
 	ExecuteAgentInfo,
 	ExecuteAgentData,
+	ExecuteAgentSource,
 	ITaskMetadata,
 	ContextType,
 	IContextObject,
@@ -34,6 +35,8 @@ import {
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
 	createEnvProviderState,
+	applyDynamicCredentialsUsage,
+	takeAttachedDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
@@ -142,14 +145,29 @@ export class BaseExecuteContext extends NodeExecutionContext {
 				options.parentExecution.executionContext = this.getExecutionContext();
 			}
 		}
-		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
-			...options,
-			parentWorkflowId: this.workflow.id,
-			inputData,
-			parentWorkflowSettings: this.workflow.settings,
-			node: this.node,
-			parentCallbackManager,
-		});
+		let result: ExecuteWorkflowData;
+		try {
+			result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
+				...options,
+				parentWorkflowId: this.workflow.id,
+				inputData,
+				parentWorkflowSettings: this.workflow.settings,
+				node: this.node,
+				parentCallbackManager,
+			});
+		} catch (error) {
+			// A failed sub-workflow may still have attempted or resolved private credentials
+			// before failing; the usage rides on the error so a continue-on-fail parent task
+			// still inherits the flags.
+			const usage = takeAttachedDynamicCredentialsUsage(error);
+			if (usage) applyDynamicCredentialsUsage(this.additionalData, usage);
+			throw error;
+		}
+
+		// The sub-workflow resolved its credentials under its own context; forward the reported
+		// usage onto this parent node so its task inherits the flag and redaction covers the
+		// embedded output.
+		applyDynamicCredentialsUsage(this.additionalData, result);
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
@@ -171,7 +189,17 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			throw new OperationalError('Agent execution is not available in this context');
 		}
 
-		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
+		let source: ExecuteAgentSource;
+		if (agentInfo.inlineAgent) {
+			source = { inlineAgent: agentInfo.inlineAgent };
+		} else if (agentInfo.agentId) {
+			source = { agentId: agentInfo.agentId };
+		} else {
+			throw new OperationalError('Either an agent id or an inline agent definition is required');
+		}
+
+		const callerSessionId = agentInfo.sessionId?.trim();
+		const threadId = callerSessionId || `${executionId}-${itemIndex}`;
 
 		const inputDataScope = agentInfo.inputDataScope ?? 'item';
 		const mainBranches = this.inputData?.main ?? [];
@@ -193,12 +221,13 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			inputData: scopedInput,
 			inputDataScope,
 			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
+			hasCallerSessionId: Boolean(callerSessionId),
 			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
 			runExecutionData: this.runExecutionData,
 		};
 
 		return await this.additionalData.executeAgent(
-			agentInfo.agentId,
+			source,
 			message,
 			executionId,
 			threadId,

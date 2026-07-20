@@ -3,9 +3,37 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { InstanceAiContext } from '../../../types';
 import {
 	ensureWebhookIds,
+	isMockableTriggerNodeType,
+	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
 } from '../workflow-json-utils';
+
+describe('trigger detection', () => {
+	it('classifies suffix-less trigger types via the canonical n8n-workflow detection', () => {
+		// These have no "Trigger" suffix — the old local heuristic missed them.
+		expect(isTriggerNodeType('n8n-nodes-base.webhook')).toBe(true);
+		expect(isTriggerNodeType('n8n-nodes-base.cron')).toBe(true);
+		expect(isTriggerNodeType('n8n-nodes-base.emailReadImap')).toBe(true);
+	});
+
+	it('classifies suffixed triggers and rejects non-triggers', () => {
+		expect(isTriggerNodeType('n8n-nodes-base.gmailTrigger')).toBe(true);
+		expect(isTriggerNodeType('@n8n/n8n-nodes-langchain.chatTrigger')).toBe(true);
+		expect(isTriggerNodeType('n8n-nodes-base.slack')).toBe(false);
+		expect(isTriggerNodeType(undefined)).toBe(false);
+	});
+
+	it('marks only the deterministic-input trigger types as mockable', () => {
+		expect(isMockableTriggerNodeType('n8n-nodes-base.manualTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.webhook')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.formTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.scheduleTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('@n8n/n8n-nodes-langchain.chatTrigger')).toBe(true);
+		expect(isMockableTriggerNodeType('n8n-nodes-base.gmailTrigger')).toBe(false);
+		expect(isMockableTriggerNodeType(undefined)).toBe(false);
+	});
+});
 
 describe('ensureWebhookIds', () => {
 	it('fails updates when existing webhook IDs cannot be loaded', async () => {

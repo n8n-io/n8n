@@ -1,21 +1,13 @@
-import type {
-	BedrockRuntimeClientConfig,
-	GuardrailTrace,
-	PerformanceConfigLatency,
-} from '@aws-sdk/client-bedrock-runtime';
-import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
+import type { GuardrailTrace, PerformanceConfigLatency } from '@aws-sdk/client-bedrock-runtime';
 import { ChatBedrockConverse, type ChatBedrockConverseInput } from '@langchain/aws';
 import {
-	getNodeProxyAgent,
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { NodeHttpHandler } from '@smithy/node-http-handler';
 import type { DocumentType } from '@smithy/types';
-import { assertSupportedAwsRegion, getAwsDomain } from 'n8n-nodes-base/aws-credentials';
+import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
-
 import {
 	jsonParse,
 	NodeConnectionTypes,
@@ -26,6 +18,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
 
 export class LmChatAwsBedrock implements INodeType {
@@ -252,6 +245,14 @@ export class LmChatAwsBedrock implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						default: 60000,
+						description:
+							'Maximum amount of time a request is allowed to take in milliseconds. Increase this for long generations; set to 0 to disable.',
+						type: 'number',
+					},
+					{
 						displayName: 'Additional Model Request Fields',
 						name: 'additionalModelRequestFields',
 						default: '{}',
@@ -294,8 +295,9 @@ export class LmChatAwsBedrock implements INodeType {
 										displayName: 'Guardrail Version',
 										name: 'guardrailVersion',
 										type: 'string',
-										default: '',
-										description: 'The version of the guardrail to apply',
+										default: 'DRAFT',
+										description:
+											'The version of the guardrail to apply, e.g. "1". Defaults to the working draft ("DRAFT").',
 									},
 									{
 										displayName: 'Trace',
@@ -319,13 +321,18 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const { region: credentialRegion, credentials } = await resolveAwsCredentials(this, itemIndex);
+		const {
+			region: credentialRegion,
+			credentials,
+			bedrockRuntimeEndpoint,
+		} = await resolveAwsCredentials(this, itemIndex);
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature?: number;
 			maxTokensToSample?: number;
 			topP?: number;
 			maxRetries?: number;
+			timeout?: number;
 			additionalModelRequestFields?: string;
 			latency?: PerformanceConfigLatency;
 			guardrail?: {
@@ -349,24 +356,13 @@ export class LmChatAwsBedrock implements INodeType {
 			region = arnRegion;
 		}
 
-		// We set-up client manually to pass httpAgent and httpsAgent.
-		// getAwsDomain keeps China (amazonaws.com.cn) / GovCloud endpoints correct.
-		const bedrockEndpoint = `https://bedrock-runtime.${region}.${getAwsDomain(region)}`;
-		const proxyAgent = getNodeProxyAgent(bedrockEndpoint);
-		const clientConfig: BedrockRuntimeClientConfig = {
+		const client = createBedrockRuntimeClient({
 			region,
 			credentials,
-		};
-
-		if (proxyAgent) {
-			clientConfig.requestHandler = new NodeHttpHandler({
-				httpAgent: proxyAgent,
-				httpsAgent: proxyAgent,
-			});
-		}
-
-		// Pass the pre-configured client to avoid credential resolution proxy issues
-		const client = new BedrockRuntimeClient(clientConfig);
+			bedrockRuntimeEndpoint,
+			maxRetries: options.maxRetries,
+			timeout: options.timeout,
+		});
 
 		// Forward only user-set options; unset ones are omitted so model defaults are preserved.
 		const modelConfig: ChatBedrockConverseInput = {
@@ -380,14 +376,16 @@ export class LmChatAwsBedrock implements INodeType {
 		if (options.temperature !== undefined) modelConfig.temperature = options.temperature;
 		if (options.maxTokensToSample !== undefined) modelConfig.maxTokens = options.maxTokensToSample;
 		if (options.topP !== undefined) modelConfig.topP = options.topP;
-		if (options.maxRetries !== undefined) modelConfig.maxRetries = options.maxRetries;
 		if (options.latency !== undefined) modelConfig.performanceConfig = { latency: options.latency };
 
 		const guardrail = options.guardrail?.values;
 		if (guardrail?.guardrailIdentifier) {
 			modelConfig.guardrailConfig = {
 				guardrailIdentifier: guardrail.guardrailIdentifier,
-				...(guardrail.guardrailVersion ? { guardrailVersion: guardrail.guardrailVersion } : {}),
+				// AWS requires a version whenever guardrailConfig is sent. The field may be blank,
+				// whitespace (e.g. from an expression), or absent (collection defaults only
+				// materialize on add); fall back to the working draft.
+				guardrailVersion: guardrail.guardrailVersion?.trim() || 'DRAFT',
 				...(guardrail.trace ? { trace: guardrail.trace } : {}),
 			};
 		}

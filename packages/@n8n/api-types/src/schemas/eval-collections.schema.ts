@@ -14,6 +14,45 @@ export type EvalCollectionRunStatus = 'new' | 'running' | 'completed' | 'error' 
 // available after `083_canvas_nodes_grouping`).
 export const EVAL_COLLECTIONS_FLAG = '084_eval_collections';
 
+// Metric keys every run emits automatically (token counts + execution time).
+// They're absolute operational values, not quality scores, so the "avg score"
+// derivation and the score-shaped charts exclude them and count only
+// user-defined metrics. Single-sourced so FE and BE agree on what a "score"
+// is (the FE builds its `PREDEFINED_METRIC_KEYS` set from this).
+export const RESERVED_METRIC_KEYS = [
+	'promptTokens',
+	'completionTokens',
+	'totalTokens',
+	'executionTime',
+] as const;
+
+// User-defined metrics whose LLM-as-judge handlers return a 1–5 rating (rather
+// than a 0–1 fraction). Every other user metric is assumed already normalized
+// to [0, 1]. Single-sourced so FE and BE agree; the FE's `getMetricCategory`
+// derives its `aiBased` category from this list.
+export const ONE_TO_FIVE_METRIC_KEYS = ['correctness', 'helpfulness'] as const;
+
+/**
+ * Normalize a raw metric value to a [0, 1] "score", or return null when the
+ * metric isn't a score we can chart/average:
+ *  - reserved operational metrics (token counts, execution time) → null
+ *  - 1–5 AI-judge metrics → value / 5
+ *  - any other metric → passed through only if already in [0, 1]; an
+ *    unknown-scale value outside that range can't be meaningfully scaled, so
+ *    it's excluded rather than rendered as a bogus percentage.
+ *
+ * Shared by the FE compare surfaces and the BE avg-score/insights derivation
+ * so a "score" means the same thing everywhere.
+ */
+export function normalizeMetricScore(key: string, value: number): number | null {
+	if ((RESERVED_METRIC_KEYS as readonly string[]).includes(key)) return null;
+	if (Number.isNaN(value)) return null;
+	const normalized = (ONE_TO_FIVE_METRIC_KEYS as readonly string[]).includes(key)
+		? value / 5
+		: value;
+	return normalized >= 0 && normalized <= 1 ? normalized : null;
+}
+
 // Per-version entry on a create-collection request. Either reference an
 // existing test run (`existingTestRunId`) to reuse it, or omit it and the
 // service will schedule a fresh run pinned to `workflowVersionId`. A null

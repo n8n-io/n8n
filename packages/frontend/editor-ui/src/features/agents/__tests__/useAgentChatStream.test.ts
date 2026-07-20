@@ -1,13 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref, nextTick } from 'vue';
-import {
-	APPROVAL_TOOL_NAME,
-	ASK_CREDENTIAL_TOOL_NAME,
-	ASK_LLM_TOOL_NAME,
-	N8N_CHAT_ACTION_TOOL_NAME,
-	type AgentSseEvent,
-} from '@n8n/api-types';
+import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -52,11 +46,11 @@ function makeSseResponse(events: AgentSseEvent[]): Response {
 	});
 }
 
-function buildHook(endpoint: 'build' | 'chat' = 'build') {
+function buildHook(continueSessionId?: string) {
 	return useAgentChatStream({
 		projectId: ref('p1'),
 		agentId: ref('a1'),
-		endpoint: ref<'build' | 'chat'>(endpoint),
+		...(continueSessionId ? { continueSessionId: ref(continueSessionId) } : {}),
 	});
 }
 
@@ -76,106 +70,6 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		globalThis.fetch = originalFetch;
 		vi.stubGlobal('localStorage', originalLocalStorage);
 		vi.restoreAllMocks();
-	});
-
-	it('renders an interactive ask_llm card and stamps the runId from the suspended event', async () => {
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-1',
-					runId: 'run-42',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main model' },
-				},
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('hello');
-		await nextTick();
-
-		expect(hook.messages.value).toHaveLength(2);
-		const assistant = hook.messages.value[1];
-		expect(assistant.role).toBe('assistant');
-		expect(assistant.status).toBe('awaitingUser');
-		expect(assistant.toolCalls).toHaveLength(1);
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-		expect(assistant.interactive?.toolName).toBe(ASK_LLM_TOOL_NAME);
-		expect(assistant.interactive?.runId).toBe('run-42');
-		expect(assistant.interactive?.resolvedValue).toBeUndefined();
-		expect(assistant.interactive?.resolvedAt).toBeUndefined();
-	});
-
-	it('flips the card to resolved state when a follow-up `tool-result` carries the matching toolCallId', async () => {
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-1',
-					runId: 'run-42',
-					toolName: ASK_CREDENTIAL_TOOL_NAME,
-					input: { purpose: 'Slack', credentialType: 'slackApi' },
-				},
-			},
-			{
-				type: 'tool-result',
-				toolCallId: 'tc-1',
-				toolName: ASK_CREDENTIAL_TOOL_NAME,
-				output: { credentialId: 'cred-1', credentialName: 'Acme Slack' },
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('add slack');
-		await nextTick();
-
-		const assistant = hook.messages.value[1];
-		expect(assistant.toolCalls?.[0].state).toBe('done');
-		expect(assistant.status).toBe('success');
-		expect(assistant.interactive?.resolvedAt).toBeDefined();
-		expect(assistant.interactive?.resolvedValue).toEqual({
-			credentialId: 'cred-1',
-			credentialName: 'Acme Slack',
-		});
-	});
-
-	it('does NOT lose the interactive card when tool-call-suspended arrives after a tool-call already ran', async () => {
-		// SDK ordering: the `tool-call` event lands first, then
-		// `tool-call-suspended` marks it as awaiting user input.
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
-				input: { purpose: 'main' },
-			},
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-1',
-					runId: 'run-7',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main' },
-				},
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('build me an agent');
-		await nextTick();
-
-		const assistant = hook.messages.value[1];
-		expect(assistant.toolCalls).toHaveLength(1);
-		expect(assistant.toolCalls?.[0].state).toBe('suspended');
-		expect(assistant.interactive?.runId).toBe('run-7');
-		expect(assistant.status).toBe('awaitingUser');
 	});
 
 	it('renders an approval card when preview chat suspends for tool approval', async () => {
@@ -203,7 +97,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		];
 		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
 
-		const hook = buildHook('chat');
+		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
 		await nextTick();
 
@@ -259,7 +153,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-		const hook = buildHook('chat');
+		const hook = buildHook();
 		await hook.sendMessage('calculate 2 + 2');
 		await nextTick();
 
@@ -347,18 +241,18 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		// in place, not push a duplicate into a freshly-minted ChatMessage.
 		const events: AgentSseEvent[] = [
 			{ type: 'start-step' },
-			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: ASK_LLM_TOOL_NAME },
+			{ type: 'tool-input-start', toolCallId: 'tc-1', toolName: 'calculator' },
 			{
 				type: 'tool-call',
 				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
-				input: { purpose: 'main' },
+				toolName: 'calculator',
+				input: { input: '2 + 2' },
 			},
 			{ type: 'finish-step' },
 			{
 				type: 'tool-execution-start',
 				toolCallId: 'tc-1',
-				toolName: ASK_LLM_TOOL_NAME,
+				toolName: 'calculator',
 				startTime: 1_000,
 			},
 			{
@@ -366,8 +260,8 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-9',
-					toolName: ASK_LLM_TOOL_NAME,
-					input: { purpose: 'main' },
+					toolName: 'calculator',
+					input: { type: 'approval', toolName: 'calculator', args: { input: '2 + 2' } },
 				},
 			},
 			{ type: 'done' },
@@ -924,48 +818,6 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			msg.interactives?.find((payload) => payload.toolCallId === 'tc-card-2')?.resolvedAt,
 		).toBeUndefined();
 	});
-
-	it('builder tool (ask_question) still sets tc.input from suspend payload and builds card', async () => {
-		const askInput = {
-			question: 'What is your preferred language?',
-			options: [
-				{ label: 'TypeScript', value: 'ts' },
-				{ label: 'Python', value: 'py' },
-			],
-		};
-		const events: AgentSseEvent[] = [
-			{
-				type: 'tool-call',
-				toolCallId: 'tc-ask',
-				toolName: 'ask_question',
-				input: { question: 'placeholder' },
-			},
-			{
-				type: 'tool-call-suspended',
-				payload: {
-					toolCallId: 'tc-ask',
-					runId: 'run-ask',
-					toolName: 'ask_question',
-					input: askInput,
-				},
-			},
-			{ type: 'done' },
-		];
-		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
-
-		const hook = buildHook();
-		await hook.sendMessage('set language');
-		await nextTick();
-
-		const msg = hook.messages.value.at(-1)!;
-		const tc = msg.toolCalls!.find((t) => t.toolCallId === 'tc-ask')!;
-		expect(tc.input).toEqual(askInput); // overwritten from suspend payload (builder behaviour)
-		expect(tc.suspendPayload).toBeUndefined();
-		expect(tc.state).toBe('suspended');
-		expect(msg.interactive?.toolName).toBe('ask_question');
-		expect(msg.interactive?.runId).toBe('run-ask');
-		expect(msg.status).toBe('awaitingUser');
-	});
 });
 
 describe('useAgentChatStream — loadHistory', () => {
@@ -1012,12 +864,10 @@ describe('useAgentChatStream — loadHistory', () => {
 			openSuspensions: [{ toolCallId: 'tc-1', runId: 'run-9' }],
 		});
 
-		// loadHistory is triggered on mount; we need a hook with endpoint='chat'
-		// (no continueId → getTestChatMessages path)
+		// loadHistory uses getTestChatMessages when no continue session id is set
 		const hook = useAgentChatStream({
 			projectId: ref('p1'),
 			agentId: ref('a1'),
-			endpoint: ref<'build' | 'chat'>('chat'),
 		});
 		await hook.loadHistory();
 
@@ -1054,7 +904,6 @@ describe('useAgentChatStream — loadHistory', () => {
 		const hook = useAgentChatStream({
 			projectId: ref('p1'),
 			agentId: ref('a1'),
-			endpoint: ref<'build' | 'chat'>('chat'),
 			continueSessionId: ref('thread-1'),
 		});
 		await hook.loadHistory();

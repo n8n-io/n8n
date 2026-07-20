@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
+import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
 
@@ -21,6 +22,20 @@ describe('Instance AI runtime skills', () => {
 			'utf-8',
 		);
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
+	});
+
+	it('tells the workflow-builder not to add sticky notes by default', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).toContain(
+			'Do not add sticky notes (`sticky(...)` / `n8n-nodes-base.stickyNote`) unless',
+		);
+		expect(skill).not.toMatch(/import \{\n(?:[^\n]*\n)*?\s*sticky,/);
+		expect(skill).toMatch(
+			/opt-in only when the user explicitly\s+asks for a sticky note on the canvas/,
+		);
 	});
 
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
@@ -65,6 +80,55 @@ describe('Instance AI runtime skills', () => {
 		expect(loadResult.content).toContain('Fast Routing');
 	});
 
+	it('loads the bundled config-evals skill and its linked files', async () => {
+		const source = loadInstanceAiRuntimeSkillSource();
+		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
+
+		expect(configEvals).toMatchObject({
+			name: 'config-evals',
+			platforms: ['daytona'],
+			recommendedTools: ['eval-config', 'data-tables'],
+		});
+		expect(configEvals?.linkedFiles.references).toEqual([
+			expect.objectContaining({ path: 'references/config-eval-playbook.md' }),
+		]);
+
+		const loadTool = createSkillLoadTool(source);
+		const loadResult = await loadTool.handler?.(
+			{ skillId: 'config-evals', filePath: 'references/config-eval-playbook.md' },
+			{},
+		);
+		expect(loadResult).toMatchObject({
+			success: true,
+			skillId: 'config-evals',
+			name: 'config-evals',
+			filePath: 'references/config-eval-playbook.md',
+		});
+		if (
+			!loadResult ||
+			typeof loadResult !== 'object' ||
+			!('content' in loadResult) ||
+			typeof loadResult.content !== 'string'
+		) {
+			throw new Error('Expected load_skill to return file content');
+		}
+		expect(loadResult.content).toContain('Config Eval Playbook');
+	});
+
+	it('gates the config-evals skill by its folder id', () => {
+		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
+		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: false })).toContain(
+			CONFIG_EVALS_SKILL_ID,
+		);
+		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: true })).not.toContain(
+			CONFIG_EVALS_SKILL_ID,
+		);
+
+		const source = loadInstanceAiRuntimeSkillSource();
+		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
+		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
+	});
+
 	it('excludes the bundled intent-recognition skill unless the agents module is enabled', async () => {
 		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai');
 
@@ -91,7 +155,23 @@ describe('Instance AI runtime skills', () => {
 		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
 		const loadedText = skillLoadText(loadResult);
 		expect(loadedText).toContain('[Skill: "intent-recognition"]');
-		expect(loadedText).toContain('workflow | hybrid | agent | single-ai-task | ambiguous');
+		expect(loadedText).toContain(
+			'workflow-anchored | agent-anchored | needs-clarification | out-of-scope',
+		);
+	});
+
+	it('keeps agent tool routing in one dedicated section', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'intent-recognition', 'SKILL.md'),
+			'utf-8',
+		);
+
+		expect(skill).toContain('## Adding tools to an agent');
+		expect(skill).toContain('Direct agent tools are the default');
+		expect(skill.match(/multiple independent node tools/g)).toHaveLength(1);
+		expect(
+			skill.match(/one agent tool call must run an ordered\s+multi-node procedure/g),
+		).toHaveLength(1);
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
@@ -139,6 +219,7 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('n8n-docs-assistant');
+		expect(loaded?.instructions).toContain('Before calling `n8n-docs`, load it via `load_tool`');
 		expect(loaded?.instructions).toContain('n8n-docs(action="lookup")');
 		expect(loaded?.instructions).toContain('intent: "credential-setup"');
 		expect(loaded?.instructions).toContain('oauthRedirectUrl');
@@ -221,6 +302,9 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('planning');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
+		expect(loaded?.instructions).toContain(
+			'Before calling `create-tasks`, load it via `load_tool`',
+		);
 		expect(loaded?.instructions).toContain('Do not call `create-tasks` just to get approval');
 		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');
 		expect(loaded?.instructions).toContain('Do not spawn another agent');
@@ -315,7 +399,10 @@ describe('Instance AI runtime skills', () => {
 		expect(skill?.description).toContain('planned-task-follow-up');
 
 		const loaded = await source.loadSkill('planned-task-runtime');
-		expect(loaded?.instructions).toContain('<planned-task-follow-up type="synthesize">');
+		expect(loaded?.instructions).toContain(
+			'Before calling `create-tasks`, load it via `load_tool`',
+		);
+		expect(loaded?.instructions).toContain('load `create-tasks` via `load_tool` if needed');
 		expect(loaded?.instructions).toContain('You MUST take action in this same turn');
 		expect(loaded?.instructions).toContain('awaiting_replan');
 		expect(loaded?.instructions).toMatch(/Do NOT reply with an\s+acknowledgement/);
@@ -362,6 +449,6 @@ async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string |
 		process.env.N8N_ENABLED_MODULES = enabledModules;
 	}
 
-	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills');
+	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
 	return loadInstanceAiRuntimeSkillSource();
 }
