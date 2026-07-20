@@ -6,6 +6,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type NodeParameterValue,
+	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
@@ -221,6 +222,16 @@ export function useNodeSettingsParameters() {
 			if (hasPublicDisplayCondition(effectiveParameter, false)) {
 				effectiveParameter = stripPublicDisplayCondition(effectiveParameter);
 			}
+		}
+
+		const deployment: DeploymentCondition = settingsStore.isCloudDeployment ? 'cloud' : 'hosted';
+
+		if (
+			displayKey === 'displayOptions' &&
+			effectiveParameter.displayOptions?.showOnDeployment &&
+			effectiveParameter.displayOptions.showOnDeployment !== deployment
+		) {
+			return false;
 		}
 
 		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments

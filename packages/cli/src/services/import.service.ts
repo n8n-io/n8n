@@ -32,7 +32,11 @@ import {
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
-import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
+import {
+	replaceInvalidCredentials,
+	validateWorkflowStructure,
+	sanitizeNodeGroupDescriptions,
+} from '@/workflow-helpers';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
@@ -122,6 +126,10 @@ export class ImportService {
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 			validateWorkflowStructure(workflow);
+
+			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {
+				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);
+			}
 
 			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
 			// Only applies to workflows that are currently active in the database.

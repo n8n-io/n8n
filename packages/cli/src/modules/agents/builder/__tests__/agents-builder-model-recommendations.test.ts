@@ -233,9 +233,11 @@ describe('builder model recommendations', () => {
 		expect(skillsById.has('agent-builder-research')).toBe(false);
 
 		const integrations = skillsById.get('agent-builder-integrations');
-		expect(integrations?.description).toContain('chat integration/trigger versus a node tool');
-		expect(integrations?.instructions).toContain('Integration vs Node Tool Decision');
-		expect(integrations?.instructions).toContain('Linear node tools');
+		expect(integrations?.description).toContain(
+			'chat integration/trigger versus an MCP, node, or workflow tool',
+		);
+		expect(integrations?.instructions).toContain('Integration vs Callable Tool Decision');
+		expect(integrations?.instructions).toContain('Linear callable tools');
 
 		const resourceLocators = skillsById.get('agent-builder-resource-locators');
 		expect(resourceLocators?.description).toContain('stable dynamic selector fields');

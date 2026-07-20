@@ -11,6 +11,7 @@ import type {
 	CustomToolEntry,
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '../utils/agentPersonalisation';
+import { agentsEventBus } from '../agents.eventBus';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -20,6 +21,7 @@ const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+const sendPreviewSessionToInstanceAiMock = vi.fn();
 let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
@@ -85,6 +87,13 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
+}));
+
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff', () => ({
+	useInstanceAiAgentPreviewHandoff: () => ({
+		canSendPreviewToInstanceAi: ref(true),
+		sendPreviewSessionToInstanceAi: sendPreviewSessionToInstanceAiMock,
+	}),
 }));
 
 vi.mock('@/app/composables/useMessage', () => ({
@@ -368,7 +377,10 @@ const commonStubs = {
 			'localConfig',
 			'connectedTriggers',
 			'effectiveSessionId',
+			'initialPrompt',
+			'canSendToAssistant',
 		],
+		emits: ['config-updated', 'continue-loaded', 'open-build', 'send-to-assistant'],
 	},
 	AgentConfigTree: {
 		name: 'AgentConfigTree',
@@ -625,6 +637,28 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
 	});
 
+	it('sends the active preview session to instance AI from the preview page', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'thread-1';
+
+		const wrapper = await renderView();
+		const preview = wrapper.findComponent({ name: 'AgentPreviewChatPage' });
+
+		expect(preview.props('canSendToAssistant')).toBe(true);
+
+		preview.vm.$emit('send-to-assistant');
+		await flushPromises();
+
+		expect(sendPreviewSessionToInstanceAiMock).toHaveBeenCalledWith({
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			agentName: 'Agent One',
+			agentIcon: 'bot',
+			sessionTitle: 'agents.builder.chat.newChat.label',
+		});
+	});
+
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([
@@ -662,16 +696,32 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
 	});
 
-	it('adds the Knowledge tab only when the knowledge base is enabled', async () => {
+	it('always includes the Knowledge tab and keeps it selectable regardless of the knowledge base flag', async () => {
+		routeQuery.section = 'knowledge';
 		const withoutKnowledge = await renderView();
 		expect(
 			withoutKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
-		).not.toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+		).toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+		expect(
+			withoutKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('activeMainTab'),
+		).toBe('knowledge');
+		expect(
+			withoutKnowledge
+				.findComponent({ name: 'AgentBuilderEditorColumn' })
+				.props('knowledgeBaseEnabled'),
+		).toBe(false);
 
 		const withKnowledge = await renderView({ knowledgeBaseEnabled: true });
 		expect(
 			withKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
 		).toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+	});
+
+	it('does not fetch knowledge files when the knowledge base is disabled', async () => {
+		routeQuery.section = 'knowledge';
+		await renderView();
+
+		expect(listAgentFilesMock).not.toHaveBeenCalled();
 	});
 
 	it('marks the knowledge files panel unpublished for an unpublished agent', async () => {
@@ -732,9 +782,68 @@ describe('AgentBuilderView — preview routing', () => {
 			expect.objectContaining({
 				name: 'AgentPreviewView',
 				params: { projectId: 'p1', agentId: 'a1' },
+				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
+			}),
+		);
+	});
+
+	it('opens preview with the latest thread when prior sessions exist', async () => {
+		sessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentPreviewView',
+				params: { projectId: 'p1', agentId: 'a1' },
+				query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
+			}),
+		);
+	});
+
+	it('opens the preview route in the same tab from artifact mode', async () => {
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentPreviewView',
+				params: { projectId: 'p2', agentId: 'a2' },
+				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
+			}),
+		);
+		expect(windowOpen).not.toHaveBeenCalled();
+	});
+
+	it('mints a fresh preview session when landing with no prior threads', async () => {
+		routeName = 'AgentPreviewView';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		expect(routerReplace).toHaveBeenCalledWith(
+			expect.objectContaining({
 				query: expect.objectContaining({ continueSessionId: expect.any(String) }),
 			}),
 		);
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
+		).toEqual(expect.any(String));
 	});
 
 	it('does not open preview when the agent is not runnable', async () => {
@@ -767,6 +876,27 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
 		).toBe('faulty-thread');
+	});
+
+	it('replaces an unknown continued session with a fresh chat when there is no history', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'stale-missing-thread';
+
+		const wrapper = await renderView();
+		routerReplace.mockClear();
+
+		(wrapper.vm as unknown as { onContinueLoaded: (count: number) => void }).onContinueLoaded(0);
+		await flushPromises();
+
+		expect(routerReplace).toHaveBeenCalledWith(
+			expect.objectContaining({
+				query: expect.objectContaining({ continueSessionId: expect.any(String) }),
+			}),
+		);
+		const replaceQuery = routerReplace.mock.calls[0]?.[0]?.query as {
+			continueSessionId: string;
+		};
+		expect(replaceQuery.continueSessionId).not.toBe('stale-missing-thread');
 	});
 
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
@@ -1038,6 +1168,83 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
 		expect(fetchConfigMock).toHaveBeenCalledWith('p2', 'a2');
+	});
+
+	it('refreshes the shell when another surface reports an update to this agent', async () => {
+		// Unique ids: earlier tests leave mounted instances (and their bus
+		// listeners) behind, so shared ids would inflate the mock call counts.
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-bus',
+				artifactAgentId: 'a-bus',
+				artifactRefreshKey: 0,
+			},
+		});
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'channel-setup-card' });
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p-bus',
+			'a-bus',
+		);
+		expect(fetchConfigMock).toHaveBeenCalledWith('p-bus', 'a-bus');
+
+		// Other agents' updates and the builder's own writes are ignored.
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-other', source: 'channel-setup-card' });
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'agent-builder' });
+		await flushPromises();
+
+		expect(getAgentMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+
+		wrapper.unmount();
+	});
+
+	it('replays external agent updates that arrive before initialization completes', async () => {
+		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
+		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
+
+		// Unique ids so stale mounted instances from earlier tests ignore the emit.
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-bus-init',
+				artifactAgentId: 'a-bus-init',
+				artifactRefreshKey: 0,
+			},
+		});
+		await vi.waitFor(() => {
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+		});
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus-init', source: 'channel-setup-card' });
+		await nextTick();
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledTimes(2);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(2);
+		expect(getAgentMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p-bus-init',
+			'a-bus-init',
+		);
+		expect(fetchConfigMock).toHaveBeenLastCalledWith('p-bus-init', 'a-bus-init');
+
+		wrapper.unmount();
 	});
 
 	it('replays artifact refresh key changes that arrive before initialization completes', async () => {
