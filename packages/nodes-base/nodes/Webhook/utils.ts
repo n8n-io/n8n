@@ -223,7 +223,8 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 
 	if (respondToWebhookNodes.length > 0 && !['responseNode', 'streaming'].includes(responseMode)) {
 		// A Respond to Webhook node downstream of a Wait node resuming on
-		// webhook/form belongs to that Wait node, not to this webhook.
+		// webhook/form and responding via Respond to Webhook node belongs to
+		// that Wait node, not to this webhook.
 		const descendantNames = new Set(connectedNodes.map((node) => node.name));
 		const isOwnedByDownstreamWait = (respondNode: NodeTypeAndVersion) =>
 			context
@@ -233,7 +234,8 @@ export const checkResponseModeConfiguration = (context: IWebhookFunctions) => {
 						descendantNames.has(node.name) &&
 						node.type === 'n8n-nodes-base.wait' &&
 						!node.disabled &&
-						['webhook', 'form'].includes((node.parameters?.resume as string) ?? ''),
+						['webhook', 'form'].includes((node.parameters?.resume as string) ?? '') &&
+						node.parameters?.responseMode === 'responseNode',
 				);
 
 		const hasUnusedRespondNode = respondToWebhookNodes.some(
