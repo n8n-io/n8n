@@ -57,6 +57,11 @@ const { mcpConnectionsExperimentMock, computerUseExperimentMock, browserUseExper
 		computerUseExperimentMock: vi.fn(),
 	}));
 
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal()),
+	useRouter: () => ({ push: vi.fn() }),
+}));
+
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
 }));
@@ -69,19 +74,7 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
 }));
 
-const renderComponent = createComponentRenderer(SettingsInstanceAiView, {
-	global: {
-		stubs: {
-			// jsdom can't drive element-plus's ElSwitch (it touches a null input ref),
-			// so stub it with a button that emits the toggled value.
-			ElSwitch: {
-				props: ['modelValue', 'disabled'],
-				template:
-					'<button type="button" role="switch" :data-test-id="$attrs[\'data-test-id\']" :aria-checked="!!modelValue" :disabled="disabled" @click="$emit(\'update:modelValue\', !modelValue)" />',
-			},
-		},
-	},
-});
+const renderComponent = createComponentRenderer(SettingsInstanceAiView);
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
@@ -135,8 +128,7 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('env-only config', () => {
-		// Model, search, sandbox and advanced options are configured via environment
-		// variables only; the settings page exposes just the enable toggle and permissions.
+		// Search, sandbox, and advanced options remain environment-managed.
 		it.each([
 			['model', 'instanceAi.settings.section.model'],
 			['search', 'instanceAi.settings.section.search'],
@@ -152,9 +144,9 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
 		});
 
-		it('renders the Enable toggle', () => {
+		it('renders the enabled status action', () => {
 			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-enable-toggle')).toBeVisible();
+			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
 		});
 	});
 
