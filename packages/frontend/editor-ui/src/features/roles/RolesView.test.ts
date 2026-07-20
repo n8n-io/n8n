@@ -3,6 +3,7 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/vue';
 import RolesView from './RolesView.vue';
 
 const mockReplace = vi.fn();
@@ -73,13 +74,30 @@ describe('RolesView', () => {
 			expect(getByText('Project roles')).toBeInTheDocument();
 		});
 
-		it('hides the instance tab from a role:manageProject-only user', () => {
+		it('shows the instance tab disabled with a tooltip to a role:manageProject-only user', async () => {
 			rbacStore.hasScope = vi.fn().mockReturnValue(false);
 
-			const { getByText, queryByText, getByTestId, queryByTestId } = renderComponent();
+			const { getByText, getByTestId, queryByTestId } = renderComponent();
 
-			expect(queryByText('Instance roles')).not.toBeInTheDocument();
+			const instanceTab = getByText('Instance roles').closest('[aria-disabled]');
+			expect(instanceTab).toHaveAttribute('aria-disabled', 'true');
 			expect(getByText('Project roles')).toBeInTheDocument();
+			expect(getByTestId('project-roles-view')).toBeInTheDocument();
+			expect(queryByTestId('instance-roles-view')).not.toBeInTheDocument();
+
+			await userEvent.hover(getByText('Instance roles'));
+			expect(
+				await screen.findByText('Your role does not have the permission to create instance roles'),
+			).toBeInTheDocument();
+		});
+
+		it('keeps the project tab active when the disabled instance tab is clicked', async () => {
+			rbacStore.hasScope = vi.fn().mockReturnValue(false);
+
+			const { getByText, getByTestId, queryByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Instance roles'));
+
 			expect(getByTestId('project-roles-view')).toBeInTheDocument();
 			expect(queryByTestId('instance-roles-view')).not.toBeInTheDocument();
 		});

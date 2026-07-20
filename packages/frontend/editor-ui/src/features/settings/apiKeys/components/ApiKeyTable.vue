@@ -11,13 +11,18 @@ import ApiKeyLabelCell from './ApiKeyLabelCell.vue';
 import ApiKeyOwnerCell from './ApiKeyOwnerCell.vue';
 import ApiKeyScopesCell from './ApiKeyScopesCell.vue';
 
-const props = defineProps<{
-	apiKeys: ApiKey[];
-	itemsLength: number;
-	loading?: boolean;
-	/** When set, Edit is only offered for keys owned by this user. */
-	currentUserId?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		apiKeys: ApiKey[];
+		itemsLength: number;
+		loading?: boolean;
+		/** When set, Edit is only offered for keys owned by this user. */
+		currentUserId?: string;
+		/** Whether the current user's role allows editing/rotating their own keys. */
+		canUpdate?: boolean;
+	}>(),
+	{ currentUserId: undefined, canUpdate: true },
+);
 
 const emit = defineEmits<{
 	edit: [apiKey: ApiKey];
@@ -61,7 +66,7 @@ type ApiKeyAction = 'edit' | 'view' | 'revoke' | 'rotate';
 
 function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> {
 	const actions: Array<ActionDropdownItem<ApiKeyAction>> = [];
-	if (isOwn(apiKey)) {
+	if (isOwn(apiKey) && props.canUpdate) {
 		actions.push({
 			id: 'edit',
 			label: i18n.baseText('settings.api.actions.edit'),
@@ -77,7 +82,8 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 			});
 		}
 	} else {
-		// Non-owners open the same modal, which renders read-only based on ownership.
+		// Non-owners and roles without apiKey:update open the same modal,
+		// which renders read-only based on ownership and scopes.
 		actions.push({
 			id: 'view',
 			label: i18n.baseText('settings.api.actions.view'),
