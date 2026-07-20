@@ -2,10 +2,10 @@ import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from '
 
 import { microsoftApiRequest } from '../transport';
 
-// The editor stops auto-paging while a filter is typed, so filtered matches on
-// later pages would be unreachable; the search walks pages itself instead,
-// bounded so one keystroke can't crawl an arbitrarily large drive.
-export const FILTERED_SEARCH_PAGE_LIMIT = 10;
+// A drive page can yield nothing to show (wrong item kind, or no filter match);
+// those pages are walked here in one call — the editor would otherwise re-request
+// per empty page — capped so a single dropdown request can't crawl a whole drive.
+export const SEARCH_PAGE_LIMIT = 10;
 
 type DriveItem = { id?: string; name?: string; folder?: unknown; file?: unknown };
 
@@ -36,7 +36,7 @@ export async function searchDriveItems(
 	// sort would reset at every page boundary and read as misordered
 	const results: INodeListSearchResult['results'] = [];
 	let nextToken = options.paginationToken;
-	let pagesLeft = filterLower ? FILTERED_SEARCH_PAGE_LIMIT : 1;
+	let pagesLeft = SEARCH_PAGE_LIMIT;
 
 	do {
 		const response = nextToken
@@ -60,7 +60,11 @@ export async function searchDriveItems(
 
 		nextToken = response['@odata.nextLink'];
 		pagesLeft -= 1;
-	} while (nextToken !== undefined && pagesLeft > 0);
+	} while (
+		nextToken !== undefined &&
+		pagesLeft > 0 &&
+		(filterLower !== undefined || results.length === 0)
+	);
 
 	return { results, paginationToken: nextToken };
 }

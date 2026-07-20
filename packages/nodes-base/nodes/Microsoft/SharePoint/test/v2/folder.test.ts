@@ -5,7 +5,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { folderRLC, getFolders } from '../../v2/folder';
-import { FILTERED_SEARCH_PAGE_LIMIT } from '../../v2/helpers/driveItemSearch';
+import { SEARCH_PAGE_LIMIT } from '../../v2/helpers/driveItemSearch';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../v2/transport';
 import type * as _importType0 from '../../v2/transport';
@@ -115,12 +115,12 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 		const result = await getFolders.call(ctx, 'archive');
 
 		// Bounded so one keystroke cannot crawl an arbitrarily large drive
-		expect(apiRequest).toHaveBeenCalledTimes(FILTERED_SEARCH_PAGE_LIMIT);
+		expect(apiRequest).toHaveBeenCalledTimes(SEARCH_PAGE_LIMIT);
 		expect(result.results).toEqual([]);
 		expect(result.paginationToken).toBe('https://graph.microsoft.com/next');
 	});
 
-	it('fetches a single page when no filter is set', async () => {
+	it('stops at the first page that yields folders when no filter is set', async () => {
 		apiRequest.mockResolvedValue({
 			value: [{ id: 'folder-1', name: 'Reports', folder: {} }],
 			'@odata.nextLink': 'https://graph.microsoft.com/next',
@@ -129,6 +129,37 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 		const result = await getFolders.call(ctx);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);
+		expect(result.paginationToken).toBe('https://graph.microsoft.com/next');
+	});
+
+	it('walks past pages holding no folders when no filter is set', async () => {
+		const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/drive/items?$skiptoken=p2';
+		apiRequest
+			.mockResolvedValueOnce({
+				value: [{ id: 'file-1', name: 'a.txt', file: {} }],
+				'@odata.nextLink': nextLink,
+			})
+			.mockResolvedValueOnce({
+				value: [{ id: 'folder-1', name: 'Reports', folder: {} }],
+			});
+
+		const result = await getFolders.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
+		expect(result.results).toEqual([{ name: 'Reports', value: 'folder-1' }]);
+	});
+
+	it('caps the unfiltered walk over folder-less pages and hands back the residual link', async () => {
+		apiRequest.mockImplementation(async () => ({
+			value: [{ id: 'file-x', name: 'not-a-folder.txt', file: {} }],
+			'@odata.nextLink': 'https://graph.microsoft.com/next',
+		}));
+
+		const result = await getFolders.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledTimes(SEARCH_PAGE_LIMIT);
+		expect(result.results).toEqual([]);
 		expect(result.paginationToken).toBe('https://graph.microsoft.com/next');
 	});
 
