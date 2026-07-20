@@ -1,5 +1,5 @@
 {
-	"description": "Agent-artifact case #2 (TRUST-268): GitHub bug-triage agent stressing mock-layer reliability on a read-then-write chain — the duplicate search result must steer a conditional comment-vs-create decision, so cross-request mock consistency (search response feeding the follow-up call) is the capability under test. One scenario also asserts the ABSENCE of a request (no issue created when a duplicate exists).",
+	"description": "Agent-artifact case: GitHub bug-triage agent stressing mock-layer reliability on a read-then-write chain — the duplicate search result must steer a conditional comment-vs-create decision, so cross-request mock consistency is the capability under test. One scenario also asserts the ABSENCE of a request (no issue created when a duplicate exists).",
 	"conversation": [
 		{
 			"role": "user",

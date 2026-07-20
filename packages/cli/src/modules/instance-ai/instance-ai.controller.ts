@@ -931,9 +931,7 @@ export class InstanceAiController {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
-	// Agent scenario run: tool HTTP mocked at the wire, the agent's own model
-	// call real and recorded. Runs for minutes, same client timeout handling as
-	// the workflow variant.
+	// Runs for minutes; same client timeout handling as the workflow variant.
 	@Post('/eval/execute-agent-with-llm-mock/:agentId')
 	@GlobalScope('instanceAi:eval')
 	async executeAgentWithLlmMock(

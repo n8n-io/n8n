@@ -106,10 +106,10 @@ export async function generateJson<T>(
 			});
 			const validated = validate(parsed);
 			if (validated !== undefined) return validated;
-			logger.warn(`[EvalMcpMock] ${agentName} attempt ${attempt} returned an unusable shape`);
+			logger.warn(`[EvalMock] ${agentName} attempt ${attempt} returned an unusable shape`);
 		} catch (error) {
 			logger.warn(
-				`[EvalMcpMock] ${agentName} attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`,
+				`[EvalMock] ${agentName} attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
 	}
@@ -172,7 +172,11 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 	const priorCallsByServer = new Map<string, string[]>();
 
 	function resolveServer(url: string): McpMockServerInfo {
-		const match = options.servers.find((server) => url.startsWith(server.url));
+		// Require a path boundary after the prefix so one server's URL can't
+		// swallow another's (…/mcp vs …/mcp-two).
+		const match = options.servers.find(
+			(server) => url === server.url || url.startsWith(`${server.url.replace(/\/+$/, '')}/`),
+		);
 		if (match) return match;
 		try {
 			return { name: new URL(url).hostname, url };
@@ -317,8 +321,12 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 		}
 		const result = await cached;
 		const priorEntries = priorCallsByServer.get(server.name) ?? [];
-		const entry = `- ${toolName}(${JSON.stringify(args ?? {})}) -> ${result.text.slice(0, 300)}`;
-		if (priorEntries.join('\n').length < MAX_PRIOR_CALL_CONTEXT_CHARS) {
+		const entry = `- ${toolName}(${JSON.stringify(args ?? {}).slice(0, 300)}) -> ${result.text.slice(0, 300)}`;
+		// Repeat (cache-hit) calls add no new information — don't duplicate them.
+		if (
+			!priorEntries.includes(entry) &&
+			priorEntries.join('\n').length < MAX_PRIOR_CALL_CONTEXT_CHARS
+		) {
 			priorEntries.push(entry);
 			priorCallsByServer.set(server.name, priorEntries);
 		}
@@ -337,7 +345,10 @@ export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {
 		if (method !== 'POST') return new Response(null, { status: 405 });
 
 		const rawBody = typeof init?.body === 'string' ? init.body : '';
-		const message = jsonParse<Record<string, unknown>>(rawBody, { fallbackValue: {} });
+		const message = jsonParse<Record<string, unknown> | null>(rawBody, { fallbackValue: null });
+		if (message === null || typeof message !== 'object') {
+			return jsonRpcError(null, -32700, 'Parse error');
+		}
 		const { id, method: rpcMethod, params } = message;
 
 		// Notifications (no id) get 202 Accepted with no body.

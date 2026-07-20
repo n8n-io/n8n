@@ -1,5 +1,5 @@
 {
-	"description": "Agent-artifact case (TRUST-268): native (non-tool) web-search variant. The builder must create an agent using the model's built-in/provider-native web search, which executes inside the real model call at the provider — it is NOT served by the eval mock layer, so results are real and non-deterministic. Expectations are therefore deliberately process-level (searched via the native capability, grounded + cited answer, honest about failures) and never assert on specific real-world facts. Behaviour-tier material: keep out of gated tiers.",
+	"description": "Agent-artifact case, web search (native, non-tool): the builder must create an agent using the model's built-in/provider-native web search, which executes inside the real model call at the provider — it is not served by the eval mock layer, so results are real and non-deterministic. Expectations are deliberately process-level (searched via the native capability, grounded and cited answer, honest about failures) and never assert on specific real-world facts. Behaviour-tier: keep out of gated tiers.",
 	"conversation": [
 		{
 			"role": "user",

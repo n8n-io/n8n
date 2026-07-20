@@ -303,6 +303,7 @@ export async function executeWorkflow(
 	inputData: Record<string, unknown>,
 	context: WorkflowToolContext,
 	allOutputs = false,
+	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
 ): Promise<{
 	executionId: string;

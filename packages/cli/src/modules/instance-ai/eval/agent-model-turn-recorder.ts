@@ -49,11 +49,18 @@ function recordableRequestBody(body: unknown): unknown {
 	}
 	const parsed = jsonParse<unknown>(body, { fallbackValue: undefined });
 	if (parsed === undefined) return truncateForLlm(body, MAX_RECORDED_REQUEST_CHARS);
+	const redactedValue = redactSecretKeys(parsed);
 	// Truncating serialized JSON usually breaks parseability — keep the
 	// truncated string (redacted content survives) rather than dropping it.
-	const redacted = JSON.stringify(redactSecretKeys(parsed));
-	if (redacted.length <= MAX_RECORDED_REQUEST_CHARS) return redactSecretKeys(parsed);
-	return truncateForLlm(redacted, MAX_RECORDED_REQUEST_CHARS);
+	const serialized = JSON.stringify(redactedValue);
+	if (serialized.length <= MAX_RECORDED_REQUEST_CHARS) return redactedValue;
+	return truncateForLlm(serialized, MAX_RECORDED_REQUEST_CHARS);
+}
+
+/** Some gateways carry the API key as a query param — never record it. */
+function stripQuery(url: string): string {
+	const queryStart = url.indexOf('?');
+	return queryStart === -1 ? url : `${url.slice(0, queryStart)}?[query redacted]`;
 }
 
 export function createAgentModelTurnRecorder(
@@ -66,7 +73,7 @@ export function createAgentModelTurnRecorder(
 	const recordingFetch: FetchFn = async (input, init) => {
 		const url = resolveUrl(input);
 		const turn: InstanceAiEvalAgentModelTurnRecord = {
-			url,
+			url: stripQuery(url),
 			provider: providerFromUrl(url),
 			streamed: false,
 			requestBody: recordableRequestBody(init?.body),

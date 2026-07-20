@@ -93,7 +93,7 @@ export function createWebSearchMock(
 					'',
 					'## Agent under test (its instructions)',
 					'',
-					options.agentInstructions,
+					options.agentInstructions.slice(0, 3000),
 					...(options.scenarioHints
 						? ['', '## Scenario hints (mandated facts/failures)', '', options.scenarioHints]
 						: []),
@@ -127,11 +127,15 @@ export function createWebSearchMock(
 			cache.set(cacheKey, cached);
 		}
 		const result = await cached;
-		const entry = `- search(${JSON.stringify(args.query)}) -> ${result.results
+		const entry = `- search(${JSON.stringify(args.query).slice(0, 300)}) -> ${result.results
 			.map((hit) => hit.title)
 			.join(' | ')
 			.slice(0, 300)}`;
-		if (priorSearches.join('\n').length < MAX_PRIOR_SEARCH_CONTEXT_CHARS) {
+		// Repeat (cache-hit) searches add no new information — don't duplicate them.
+		if (
+			!priorSearches.includes(entry) &&
+			priorSearches.join('\n').length < MAX_PRIOR_SEARCH_CONTEXT_CHARS
+		) {
 			priorSearches.push(entry);
 		}
 		options.onSearch(args, result);

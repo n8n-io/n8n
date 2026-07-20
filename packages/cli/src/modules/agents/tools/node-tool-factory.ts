@@ -148,7 +148,7 @@ export async function resolveNodeTool(
 		? {
 				nodeName: sanitizedName,
 				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) =>
-					instrument(additionalData, { toolName: sanitizedName, toolKind: 'node' as const }),
+					instrument(additionalData, { toolName: sanitizedName, toolKind: 'node' }),
 			}
 		: {};
 

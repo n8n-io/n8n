@@ -1,5 +1,5 @@
 {
-	"description": "Agent-artifact case #3 (TRUST-268): standup-digest agent whose action is explicitly ONE reusable end-to-end tool (fetch GitHub bugs → summarize → post to Slack) — the natural shape for a workflow tool, so this case live-exercises the workflow-tool wire path (mock interception inside the agent's sub-workflow execution) that the first two cases never hit. Two services in one action also probes cross-service mock consistency inside a single sub-run.",
+	"description": "Agent-artifact case: standup-digest agent whose action is explicitly ONE reusable end-to-end tool (fetch GitHub bugs → summarize → post to Slack) — the natural shape for a workflow tool, exercising mock interception inside the agent's sub-workflow execution, with two services in one action probing cross-service mock consistency.",
 	"conversation": [
 		{
 			"role": "user",

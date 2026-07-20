@@ -1,5 +1,5 @@
 {
-	"description": "Builder-driven MCP experiment (TRUST-268): the assistant must build an agent that uses the Notion MCP server from the in-product MCP catalog. Probes the full builder path — search_mcp_servers against the seeded registry, verify/credential handling for an oauth2 server with no matching credential in the eval view, config attachment — and then whether the runtime MCP mock's generated catalog satisfies whatever the builder pinned (tool filters, instruction-referenced tool names). Requires the eval backend to run with N8N_ENABLED_MODULES including mcp-registry and E2E_TESTS=true (registry test seed).",
+	"description": "Agent-artifact case, MCP (Notion): the assistant must build an agent that uses the Notion MCP server from the in-product MCP catalog — search_mcp_servers against the seeded registry, verify/credential handling for an oauth2 server, config attachment — and the runtime scenario checks the mocked MCP catalog satisfies the agent's page-creation flow. Requires the mcp-registry module + E2E_TESTS=true on the eval backend.",
 	"conversation": [
 		{
 			"role": "user",
@@ -11,7 +11,7 @@
 	"credentials": [{ "type": "openAiApi" }, { "type": "notionMcpOAuth2Api" }],
 	"outcomeExpectations": [
 		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration).",
-		"The agent's configuration includes the Notion MCP server from the MCP catalog among its MCP servers (an mcpServers entry pointing at Notion's MCP endpoint).",
+		"The agent's configuration has the Notion MCP server from the MCP catalog attached.",
 		"The agent's instructions cover saving pasted meeting notes as a Notion page, confirming the created page, and reporting Notion failures honestly.",
 		"The agent's configured model is an OpenAI model."
 	],

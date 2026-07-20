@@ -1,5 +1,5 @@
 {
-	"description": "Agent-artifact case (TRUST-268): the assistant must build a first-class n8n Agent (not a workflow) that announces releases in Slack on request. Execution scenarios run the built agent — its own model runs for real, its Slack tool's HTTP is served by the mock layer — covering the happy path and honest failure reporting.",
+	"description": "Agent-artifact case: the assistant must build a first-class n8n Agent (not a workflow) that announces releases in Slack on request. Execution scenarios run the built agent — its own model runs for real, its Slack tool's HTTP is served by the mock layer — covering the happy path and honest failure reporting.",
 	"conversation": [
 		{
 			"role": "user",

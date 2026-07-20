@@ -24,7 +24,7 @@ export interface AgentRuntimeInstrumentation {
 	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
 	 * tool. When set, the tool attaches even without a search provider or
 	 * credential in the config. Provider-native web search is unaffected (it
-	 * runs inside the model call).
+	 * runs inside the model call). Shape matches `FallbackWebSearchHandler`.
 	 */
 	webSearch?: (args: {
 		query: string;
@@ -44,8 +44,9 @@ export interface AgentRuntimeInstrumentation {
 	/**
 	 * Transforms a configured sub-agent's config before its delegated runtime
 	 * is reconstructed (the child inherits this instrumentation, so its seams
-	 * are already covered — this hook strips the features the caller can't
-	 * serve, e.g. memory workers).
+	 * are already covered). May only REMOVE features — the child's tool
+	 * descriptors are resolved from the untransformed source, so added tools
+	 * would have no backing descriptors.
 	 */
 	transformDelegatedAgentConfig?: (
 		config: AgentJsonConfig,

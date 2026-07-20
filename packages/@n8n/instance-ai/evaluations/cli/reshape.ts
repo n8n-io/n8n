@@ -65,7 +65,7 @@ const targetOutputSchema = z.object({
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
 	agentEvalResult: z.unknown().optional(),
-	/** Rendered agent config + skills — set once per agent case (deduped on reshape). */
+	/** Rendered agent config + skills — attached to every agent row, deduped on reshape (first write wins). */
 	agentContext: z.string().optional(),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),

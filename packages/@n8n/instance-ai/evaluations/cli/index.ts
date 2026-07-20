@@ -1025,17 +1025,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			const { build, lane } = await cached;
 			// Run-debug capture reads the thread — let it settle before deletion.
 			if (build.threadId) await runDebugByThreadId.get(build.threadId)?.catch(() => {});
-			const agentRef = findAgentArtifactRef(build.artifactRefs);
-			if (agentRef) {
-				try {
-					await lane.runner.client.deleteAgent(
-						await lane.runner.client.getPersonalProjectId(),
-						agentRef.id,
-					);
-				} catch {
-					// Best-effort — the eval DB is disposable.
-				}
-			}
+			// cleanupBuild also deletes any built agent (agent-anchored builds).
 			const clean = await cleanupBuild(lane.runner.client, build, logger);
 			if (!clean) {
 				// Leave the entry in buildCache — the end-of-run pass retries it.
@@ -1096,9 +1086,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		} = await getOrBuild(iteration, inputs.testCaseFile);
 		const cacheKey = `${String(iteration)}:${inputs.testCaseFile}`;
 
-		// Agent-anchored build: scenarios target the agent, and a missing workflow
-		// is not a build failure (helper workflows are the agent's tools). Same
-		// routing rule as the direct loop's runWorkflowTestCase.
+		// Agent-anchored build: scenarios target the agent and a missing workflow is
+		// not a build failure (helper workflows are its tools) — mirrors the direct loop.
 		const agentRef = findAgentArtifactRef(build.artifactRefs);
 		const agentRunnable = agentRef !== undefined && build.transcript !== undefined;
 
@@ -1165,6 +1154,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		// Agent scenario path — real model, mocked tool HTTP. Mirrors the
 		// workflow branch below (retry loop, framework_issue guard, output shape).
 		if (agentRunnable && agentRef) {
+			// Dataset rows don't carry seedDataTables — check the authored scenario.
+			const declaredSeedTables = testCaseByFileSlug
+				.get(inputs.testCaseFile)
+				?.executionScenarios?.find((s) => s.name === scenario.name)?.seedDataTables;
+			if ((declaredSeedTables?.length ?? 0) > 0) {
+				logger.warn(
+					`    [${scenario.name}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
+				);
+			}
 			const agentExecStart = Date.now();
 			const agentContext =
 				(await agentContextByKey.get(cacheKey)) ?? '(agent configuration could not be fetched)';
@@ -1196,6 +1194,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					return await attachExpectations({
 						buildSuccess: true,
 						agentId: agentRef.id,
+						agentContext,
 						passed: false,
 						score: 0,
 						reasoning: `Agent scenario execution error: ${errorMessage}`,

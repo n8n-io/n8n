@@ -21,9 +21,8 @@ import type { EvalLlmMockHandler } from 'n8n-core';
 import { nodeNameToToolName } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-// Static imports from the agents module follow the established direction
-// (instance-ai.adapter.service.ts imports the agent-builder adapter the same
-// way); the ModuleRegistry gate above them decides availability at runtime.
+// Static agents-module imports are safe here: the ModuleRegistry gate decides
+// availability at runtime.
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
@@ -63,6 +62,10 @@ const MAX_ITERATIONS_CAP = 40;
 const MAX_AUTO_APPROVALS = 20;
 const MAX_RECORDED_TOOL_VALUE_CHARS = 4_000;
 
+// Keyed by the runtime tool name so entries merge with GenerateResult's tool
+// calls; a name collision across kinds (e.g. an MCP `<server>_<tool>` equal to
+// a node tool's sanitized name) merges into one record — accepted, the
+// interceptedRequests still disambiguate.
 type ToolLedger = Map<string, InstanceAiEvalInterceptedRequest[]>;
 
 @Service()
@@ -80,10 +83,9 @@ export class EvalAgentExecutionService {
 		user: User,
 		options: InstanceAiEvalAgentExecutionRequest,
 	): Promise<InstanceAiEvalAgentExecutionResult> {
-		// Workflow tools run sub-executions through WorkflowRunner with a
-		// configureAdditionalData closure that doesn't survive queue
-		// serialization — refuse upfront so tool HTTP can never leak to real
-		// services from a worker that never wired the mock.
+		// Workflow-tool sub-executions carry a configureAdditionalData closure
+		// that doesn't survive queue serialization — refuse upfront so tool
+		// HTTP can't leak to real services.
 		if (this.executionsConfig.mode === 'queue') {
 			return this.errorResult(
 				'Agent eval execution requires main process mode — queue mode is not supported.',
@@ -153,13 +155,9 @@ export class EvalAgentExecutionService {
 			this.logger,
 		);
 
-		// Mock MCP server for the agent's configured servers — tools/list and
-		// tools/call are LLM-generated, steered by the same seed hints (keyed by
-		// server name). Calls land in the tool ledger under the client-side
-		// prefixed name (`<server>_<tool>`) so they merge with GenerateResult's
-		// tool calls like every other tool kind. Always created, even with no
-		// servers on this agent: delegated sub-agents inherit the seam and may
-		// bring their own MCP servers (resolved by URL, hostname-named).
+		// Mock MCP server; ledger keys use the client-side `<server>_<tool>`
+		// names so entries merge with GenerateResult's tool calls. Always
+		// created — delegated sub-agents may bring their own servers.
 		const mcpServers = config.mcpServers ?? [];
 		const knownToolsByServer = await this.resolveCanonicalMcpCatalogs(mcpServers);
 		const mcpFetch = createMcpMockFetch({
@@ -191,10 +189,8 @@ export class EvalAgentExecutionService {
 			},
 		});
 
-		// Mock for the fallback web_search tool. Always created for the same
-		// reason as the MCP mock (delegated sub-agents may enable web search);
-		// when a model handles search natively the tool is never built and the
-		// mock simply goes unused.
+		// Fallback web_search mock — always created (sub-agents may enable web
+		// search); with native search the tool is never built and this goes unused.
 		const webSearchMock = createWebSearchMock({
 			agentInstructions: config.instructions,
 			scenarioHints: options.scenarioHints,
@@ -269,9 +265,8 @@ export class EvalAgentExecutionService {
 		}
 
 		const errors: string[] = [];
-		// GenerateResult.toolCalls entries carry no toolCallId, so approvals are
-		// attributed by tool name — good enough to flag "this tool's calls were
-		// auto-approved" for the judge.
+		// GenerateResult.toolCalls carry no toolCallId — approvals are attributed
+		// by tool name, enough to flag auto-approval for the judge.
 		const autoApprovedToolNames = new Set<string>();
 		const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 		const maxIterations = Math.min(
@@ -305,12 +300,15 @@ export class EvalAgentExecutionService {
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
+			// Flush so the failure result carries the recorded response bodies too.
+			await recorder.flush();
 			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
 				modelTurns: recorder.turns,
 				toolLedger,
 				credentialHelpers,
 			});
 		} finally {
+			await recorder.flush();
 			try {
 				await agent.close();
 			} catch (error) {
@@ -319,8 +317,6 @@ export class EvalAgentExecutionService {
 				});
 			}
 		}
-
-		await recorder.flush();
 
 		if (result.error !== undefined) {
 			errors.push(
@@ -351,17 +347,18 @@ export class EvalAgentExecutionService {
 				...(autoApprovedToolNames.has(entry.tool) ? { autoApproved: true } : {}),
 			};
 		});
-		// GenerateResult.toolCalls omits errored calls (node tools throw on
-		// failure), but their intercepted HTTP is exactly what the judge needs
-		// to verify the attempt (e.g. an injected channel_not_found). Surface
-		// ledger-only tools as explicit error records.
+		// Ledger entries with no matching toolCalls record are either errored
+		// calls (GenerateResult omits those) or a delegated sub-agent's calls
+		// (never reported on the parent) — surface them without asserting
+		// failure so the judge can weigh the intercepted traffic itself.
 		const reportedTools = new Set(toolCalls.map((entry) => entry.tool));
 		for (const [tool, interceptedRequests] of toolLedger) {
 			if (reportedTools.has(tool)) continue;
 			toolCalls.push({
 				tool,
 				kind: kindForTool(tool),
-				error: 'Tool call failed (not reported in the run result — see interceptedRequests)',
+				error:
+					'Not attributed to a reported tool call (a delegated sub-agent call, or an errored call) — see interceptedRequests',
 				mocked: interceptedRequests.length > 0,
 				interceptedRequests,
 				...(autoApprovedToolNames.has(tool) ? { autoApproved: true } : {}),
@@ -392,11 +389,6 @@ export class EvalAgentExecutionService {
 	}
 
 	/**
-	 * Wraps the shared mock handler to record intercepted requests against the
-	 * owning tool — the agent-eval analog of the workflow eval's
-	 * `createInterceptingHandler`, keyed by tool instead of node.
-	 */
-	/**
 	 * Resolve canonical tool catalogs for configured MCP servers, so the mock
 	 * exposes the tools the real server would: registry entries carry the
 	 * server's declared catalog (matched by remote URL), and an allow-mode
@@ -412,11 +404,17 @@ export class EvalAgentExecutionService {
 		if (this.moduleRegistry.isActive('mcp-registry')) {
 			try {
 				const entries = await Container.get(McpRegistryService).getAll();
+				// Match on a path boundary so a short URL can't claim every server
+				// (or vice versa) via bare prefix overlap.
+				const matchesRemote = (configUrl: string, remoteUrl: string): boolean => {
+					const shorter = configUrl.length <= remoteUrl.length ? configUrl : remoteUrl;
+					const longer = shorter === configUrl ? remoteUrl : configUrl;
+					const base = shorter.replace(/\/+$/, '');
+					return longer === shorter || longer === base || longer.startsWith(`${base}/`);
+				};
 				for (const server of mcpServers) {
 					const entry = entries.find((candidate) =>
-						candidate.remotes.some(
-							(remote) => server.url.startsWith(remote.url) || remote.url.startsWith(server.url),
-						),
+						candidate.remotes.some((remote) => matchesRemote(server.url, remote.url)),
 					);
 					if (entry && entry.tools.length > 0) {
 						result[server.name] = entry.tools.map((tool) => ({
@@ -445,6 +443,11 @@ export class EvalAgentExecutionService {
 		return Object.keys(result).length > 0 ? result : undefined;
 	}
 
+	/**
+	 * Wraps the shared mock handler to record intercepted requests against the
+	 * owning tool — the agent-eval analog of the workflow eval's
+	 * `createInterceptingHandler`, keyed by tool instead of node.
+	 */
 	private createRecordingMockHandler(
 		mockHandler: EvalLlmMockHandler,
 		toolName: string,
@@ -490,7 +493,9 @@ export class EvalAgentExecutionService {
 			toolCalls: partial
 				? [...partial.toolLedger.entries()].map(([tool, interceptedRequests]) => ({
 						tool,
-						kind: 'other' as const,
+						kind: interceptedRequests.some((request) => request.nodeType?.startsWith('mcp:'))
+							? ('mcp' as const)
+							: ('other' as const),
 						mocked: interceptedRequests.length > 0,
 						interceptedRequests,
 					}))

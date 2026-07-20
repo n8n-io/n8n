@@ -1,5 +1,5 @@
 {
-	"description": "Agent-artifact case (TRUST-268): fallback web-search tool variant. The builder must create an agent that answers questions by searching the web through an external search provider (Brave) — NOT the model's built-in browsing — so the runtime attaches the fallback web_search tool, which the eval layer serves with the scenario-steered web-search mock. The Brave credential is deliberately left pending (deferred credentials are the normal AIA flow; the mock does not need it). Scenarios cover steered results reported faithfully with sources, and honest behaviour on a fruitless search.",
+	"description": "Agent-artifact case, web search (fallback tool): the builder must create an agent that answers questions by searching the web through an external search provider (Brave) — not the model's built-in browsing — so the runtime attaches the fallback web_search tool, served by the scenario-steered web-search mock. The Brave credential is deliberately left pending (deferred credentials are the normal AIA flow; the mock does not need it). Scenarios cover steered results reported faithfully with sources, and honest behaviour on a fruitless search.",
 	"conversation": [
 		{
 			"role": "user",
@@ -20,7 +20,7 @@
 			"name": "reports-searched-fact-with-source",
 			"description": "Happy path: the agent searches, the results carry a specific fact, and the agent reports exactly that fact with its source.",
 			"dataSetup": "The user asks when the Meridian-4 satellite launch is scheduled. Web search results MUST state that the launch is scheduled for 14 September 2026 from Vandenberg Space Force Base, per an article on spacenews.example.",
-			"successCriteria": "The agent made a web_search tool call (see the intercepted search request and its mocked results), and its final reply states the launch is scheduled for 14 September 2026 (Vandenberg) and cites the spacenews.example source — it must not report a different date or answer without searching."
+			"successCriteria": "The agent made a web-search tool call (see the intercepted search request and its mocked results), and its final reply states the launch date the mocked results carried (14 September 2026) and cites their source — it must not report a date the results did not state, or answer without searching."
 		},
 		{
 			"name": "admits-fruitless-search",

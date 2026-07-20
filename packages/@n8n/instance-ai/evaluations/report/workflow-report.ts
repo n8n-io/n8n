@@ -618,15 +618,20 @@ function renderAgentScenarioDetail(
 		html += `<div class="category-badge category-${catClass}">${escapeHtml(sr.failureCategory)}${sr.rootCause ? ': ' + escapeHtml(sr.rootCause) : ''}</div>`;
 	}
 
-	if (ar.errors.length > 0) {
-		html += `<div class="error-box">${escapeHtml(ar.errors.join('; '))}</div>`;
+	// The reshape guard only validates runId/toolCalls/modelTurns/seed — default
+	// the rest so a partially-shaped row degrades instead of crashing the report.
+	const errors = ar.errors ?? [];
+	const seedWarnings = ar.seed.warnings ?? [];
+	const skippedFeatures = ar.skippedFeatures ?? [];
+	if (errors.length > 0) {
+		html += `<div class="error-box">${escapeHtml(errors.join('; '))}</div>`;
 	}
-	if (ar.seed.warnings.length > 0) {
-		html += `<div class="warning-box">${escapeHtml(ar.seed.warnings.join('; '))}</div>`;
+	if (seedWarnings.length > 0) {
+		html += `<div class="warning-box">${escapeHtml(seedWarnings.join('; '))}</div>`;
 	}
-	if (ar.skippedFeatures.length > 0) {
+	if (skippedFeatures.length > 0) {
 		html += `<div class="warning-box">Agent features disabled for this run (not mockable yet): ${escapeHtml(
-			ar.skippedFeatures.map((s) => s.feature).join(', '),
+			skippedFeatures.map((s) => s.feature).join(', '),
 		)}</div>`;
 	}
 
@@ -645,7 +650,7 @@ function renderAgentScenarioDetail(
 		html += '<div class="subsection-label">Global context</div>';
 		html += `<div class="hint-text">${escapeHtml(ar.seed.globalContext)}</div>`;
 	}
-	const toolHintEntries = Object.entries(ar.seed.toolHints);
+	const toolHintEntries = Object.entries(ar.seed.toolHints ?? {});
 	if (toolHintEntries.length > 0) {
 		html += '<div class="subsection-label">Per-tool hints</div>';
 		for (const [toolName, hint] of toolHintEntries) {

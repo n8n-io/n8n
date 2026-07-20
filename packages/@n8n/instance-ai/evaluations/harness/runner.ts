@@ -419,14 +419,8 @@ export async function runWorkflowTestCase(
 					})
 			: Promise.resolve<BuildExpectationResult[]>([]);
 
-	// Agent scenario path: the build produced a first-class Agent and the case
-	// has execution scenarios — run them against the agent (its own model runs
-	// for real; its tools' HTTP is served by the mock layer). Agent refs only
-	// come from build-agent sub-agent spawns, so their presence marks the case
-	// agent-anchored: any workflow built alongside is one of the agent's tools
-	// (the documented build-agent pattern), a dependency rather than the
-	// deliverable — same demotion logic multi-workflow routing applies to
-	// Execute Workflow sub-workflows.
+	// An agent ref marks the case agent-anchored: scenarios run against the agent
+	// (real model, mocked tool HTTP); co-built workflows are its tools, not the deliverable.
 	const agentScenarioRef = findAgentArtifactRef(build.artifactRefs);
 	const agentScenarios = testCase.executionScenarios ?? [];
 	if (agentScenarioRef && agentScenarios.length > 0 && build.transcript !== undefined) {
@@ -445,6 +439,11 @@ export async function runWorkflowTestCase(
 		const scenariosPromise = runWithConcurrency(
 			agentScenarios,
 			async (scenario) => {
+				if ((scenario.seedDataTables?.length ?? 0) > 0) {
+					logger.warn(
+						`    [${scenario.name}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
+					);
+				}
 				for (let attempt = 1; ; attempt++) {
 					try {
 						return await executeAgentScenario(
@@ -494,11 +493,6 @@ export async function runWorkflowTestCase(
 
 		if (!config.keepWorkflows) {
 			await cleanupBuild(client, build, logger);
-			try {
-				await client.deleteAgent(await client.getPersonalProjectId(), agentScenarioRef.id);
-			} catch {
-				// Best-effort cleanup — the eval DB is disposable.
-			}
 		}
 
 		return result;
@@ -509,11 +503,16 @@ export async function runWorkflowTestCase(
 	// no-workflow build. This also covers agent/config-eval builds: they produce
 	// no workflow by design and are graded on the rendered artifact context via
 	// the author expectations below (scenario-less agent builds land here too).
-	if (build.success && !build.workflowId) {
+	// An agent ref counts as build success even without `build.success` — the
+	// agent is the deliverable (same semantic as the LangSmith BUILD_ONLY row).
+	if ((build.success || agentScenarioRef !== undefined) && !build.workflowId) {
 		result.workflowBuildSuccess = true;
 		result.buildTrace = build.buildTrace;
 		const expectationResults = await expectationsPromise;
 		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		if (!config.keepWorkflows) {
+			await cleanupBuild(client, build, logger);
+		}
 		return result;
 	}
 
@@ -1296,7 +1295,7 @@ function sameSeedTableShape(
 }
 
 /**
- * Clean up workflows and data tables created during a build.
+ * Clean up workflows, data tables and any built agent created during a build.
  *
  * Returns false when any deletion failed so callers can retry later.
  */
@@ -1310,6 +1309,17 @@ export async function cleanupBuild(
 	for (const id of build.createdWorkflowIds) {
 		try {
 			await client.deleteWorkflow(id);
+		} catch {
+			clean = false; // Best-effort cleanup
+		}
+	}
+
+	// Agent-anchored builds create a first-class Agent — delete it with the
+	// rest of the build's artifacts so no caller has to remember to.
+	const agentRef = findAgentArtifactRef(build.artifactRefs);
+	if (agentRef) {
+		try {
+			await client.deleteAgent(await client.getPersonalProjectId(), agentRef.id);
 		} catch {
 			clean = false; // Best-effort cleanup
 		}
@@ -1599,9 +1609,8 @@ async function runScenario(
 	};
 }
 
-/** The shared scenario-routing rule for both eval paths (direct loop and the
- *  LangSmith evaluate() target): an agent ref marks the case agent-anchored,
- *  and the agent — not any helper workflow built as its tool — is the target. */
+/** Shared routing rule for both eval paths: an agent ref marks the case
+ *  agent-anchored — the agent, not any co-built helper workflow, is the target. */
 export function findAgentArtifactRef(
 	artifactRefs: ArtifactRef[] | undefined,
 ): ArtifactRef | undefined {

@@ -193,6 +193,18 @@ describe('createMcpMockFetch', () => {
 		expect(body.result.tools[1].inputSchema).toMatchObject({ type: 'object' });
 	});
 
+	it('answers an unparseable body with a JSON-RPC parse error', async () => {
+		const fetchFn = buildFetch();
+		const res = await fetchFn('https://mcp.acme-kb.example/mcp', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: 'not json {',
+		});
+		const body = (await res.json()) as { id: unknown; error: { code: number } };
+		expect(body.error.code).toBe(-32700);
+		expect(body.id).toBeNull();
+	});
+
 	it('answers unknown methods with a JSON-RPC method-not-found error', async () => {
 		const fetchFn = buildFetch();
 		const res = await fetchFn('https://mcp.acme-kb.example/mcp', { ...rpc('tasks/create') });

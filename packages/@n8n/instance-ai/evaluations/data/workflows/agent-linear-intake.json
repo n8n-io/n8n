@@ -1,5 +1,5 @@
 {
-	"description": "Builder-driven MCP experiment (TRUST-268), Linear variant: the assistant must build an agent that files bugs via the Linear MCP server from the in-product MCP catalog. Same probes as the Notion case (registry search, verify/credential handling, attach, runtime catalog match) with a second scenario asserting honest failure reporting through a mocked MCP error. Requires mcp-registry module + E2E_TESTS=true on the eval backend.",
+	"description": "Agent-artifact case, MCP (Linear): the assistant must build an agent that files bugs via the Linear MCP server from the in-product MCP catalog — registry search, verify/credential handling, config attachment, runtime catalog match — with a second scenario asserting honest failure reporting through a mocked MCP error. Requires the mcp-registry module + E2E_TESTS=true on the eval backend.",
 	"conversation": [
 		{
 			"role": "user",
@@ -11,7 +11,7 @@
 	"credentials": [{ "type": "openAiApi" }, { "type": "linearMcpOAuth2Api" }],
 	"outcomeExpectations": [
 		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration).",
-		"The agent's configuration includes the Linear MCP server from the MCP catalog among its MCP servers (an mcpServers entry pointing at Linear's MCP endpoint).",
+		"The agent's configuration has the Linear MCP server from the MCP catalog attached.",
 		"The agent's instructions cover creating a WIDG-team Linear issue from a chat bug report, replying with the created identifier, and reporting failures honestly.",
 		"The agent's configured model is an OpenAI model."
 	],
