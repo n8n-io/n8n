@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentFileDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type {
@@ -41,6 +41,7 @@ const props = defineProps<{
 	executionsDescription: string;
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
+	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
 const childrenDisabled = computed(() => !props.canEditAgent);
@@ -109,6 +110,7 @@ const i18n = useI18n();
 						:is-published="Boolean(agent?.activeVersionId)"
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
+						:validation-issues="configValidationIssues ?? []"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"

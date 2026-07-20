@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nDataTableServer,
 	N8nHeading,
@@ -219,7 +219,7 @@ onMounted(async () => {
 						</N8nTooltip>
 					</div>
 				</div>
-				<N8nActionBox
+				<N8nEmptyState
 					v-if="entries.length === 0"
 					:heading="i18n.baseText('settings.n8nConnect.usage.empty')"
 				/>
