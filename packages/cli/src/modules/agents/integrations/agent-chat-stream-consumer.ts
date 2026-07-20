@@ -24,10 +24,11 @@ interface ConsumeStreamOptions {
 interface ResponseState {
 	hasVisibleResponse: boolean;
 	/**
-	 * Why a fallback error may need to be posted when the run ends without any
-	 * visible output. A 'tool-error' fallback is cleared by a later successful
-	 * tool call (the retry recovered); a 'suspension' fallback is not — the
-	 * user still has an approval request they never received.
+	 * Why a fallback error may need to be posted when the run ends. A
+	 * 'tool-error' fallback is cleared by a later successful tool call (the
+	 * retry recovered) and suppressed by visible output (the agent's own text
+	 * explains the failure). A 'suspension' fallback is neither — the user
+	 * still has an approval request they never received.
 	 */
 	fallbackSource: 'tool-error' | 'suspension' | null;
 	fallbackError: unknown;
@@ -238,7 +239,11 @@ export class AgentChatStreamConsumer {
 		lifecycle: ResponseLifecycle,
 		thread: Thread<unknown, unknown>,
 	): Promise<void> {
-		if (!state.fallbackSource || state.hasVisibleResponse) return;
+		if (!state.fallbackSource) return;
+		// Earlier output only excuses a tool error (the agent's own text explains
+		// it). A dropped approval card is never explained by prior text — the run
+		// stays suspended, so the user must be told to retry.
+		if (state.fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
 
 		await lifecycle.startDiscreteResponse();
 		await this.options.postErrorToThread(thread, state.fallbackError);

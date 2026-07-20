@@ -432,6 +432,36 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenNthCalledWith(2, GENERIC_ERROR_MESSAGE);
 		});
 
+		it('posts a generic error when an approval card cannot be posted after earlier text', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				bufferedIntegration,
+				[
+					{ type: 'text-delta', id: 't1', delta: 'Let me check that.' },
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(3);
+			expect(thread.post).toHaveBeenNthCalledWith(1, { markdown: 'Let me check that.' });
+			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(3, GENERIC_ERROR_MESSAGE);
+		});
+
 		it('does not post when the buffer is only whitespace', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
@@ -655,6 +685,35 @@ describe('AgentChatBridge — consumeStream', () => {
 			const thread = await runMention(streamingIntegration, [successfulToolResult, finishChunk]);
 
 			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts a generic error when an approval card cannot be posted after streamed text', async () => {
+			const thread = makeThread();
+			thread.post
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValueOnce(new Error('card post failed'))
+				.mockResolvedValueOnce(undefined);
+			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
+
+			await runMention(
+				streamingIntegration,
+				[
+					{ type: 'text-delta', id: 't1', delta: 'Let me check that.' },
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
+			);
+
+			expect(thread.post).toHaveBeenCalledTimes(3);
+			expect(thread.post).toHaveBeenNthCalledWith(2, { card: { kind: 'card' } });
+			expect(thread.post).toHaveBeenNthCalledWith(3, GENERIC_ERROR_MESSAGE);
 		});
 
 		it('does not post an error when a failed streamed tool call is retried successfully', async () => {
