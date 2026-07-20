@@ -157,7 +157,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				N8N_ENV_FEAT_WORKFLOW_REVIEWS: 'false',
 			},
 		};
-		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW);
+		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW('anonymous'));
 		useReviewRequiredStore().setReviewRequired(defaultWorkflowProps.id, false);
 
 		const nodeTypesStore = useNodeTypesStore();

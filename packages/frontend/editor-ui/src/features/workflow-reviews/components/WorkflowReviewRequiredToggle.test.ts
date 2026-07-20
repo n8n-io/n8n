@@ -23,7 +23,7 @@ const renderComponent = createComponentRenderer(TestHost);
 
 describe('WorkflowReviewRequiredToggle', () => {
 	beforeEach(() => {
-		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW);
+		localStorage.removeItem(LOCAL_STORAGE_WORKFLOW_REVIEW_REQUIRED_BY_WORKFLOW('anonymous'));
 	});
 
 	it('renders the title, description, accessible checkbox item, and decorative design-system switch', async () => {
