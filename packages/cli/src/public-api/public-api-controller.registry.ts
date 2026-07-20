@@ -115,12 +115,10 @@ export class PublicApiControllerRegistry {
 				res.json(result);
 			};
 
-			const middlewares: RequestHandler[] = [
-				this.createAuthMiddleware(apiVersion),
-				...controllerMiddlewares,
-				...(route.middlewares ?? []),
-			];
+			const middlewares: RequestHandler[] = [this.createAuthMiddleware(apiVersion)];
 
+			// Authorize immediately after auth so controller/route middleware
+			// cannot run side effects for an under-scoped key.
 			if (route.apiKeyScope) {
 				middlewares.push(this.createApiKeyScopeMiddleware(route.apiKeyScope));
 			}
@@ -128,6 +126,8 @@ export class PublicApiControllerRegistry {
 			if (route.accessScope) {
 				middlewares.push(this.createAccessScopeMiddleware(route.accessScope));
 			}
+
+			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
 
 			const finalHandler: RequestHandler = async (req, res, next) => {
 				try {
