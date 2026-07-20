@@ -13,3 +13,15 @@ export class OidcConfigDto extends Z.class({
 	authenticationContextClassReference: z.array(z.string()).default([]),
 	additionalScopes: z.string().default(''),
 }) {}
+
+/**
+ * Public API PUT body for the OIDC SSO configuration: the same shape as
+ * {@link OidcConfigDto} but with every writable field required (no defaults),
+ * so a partial body is rejected instead of silently resetting omitted fields.
+ */
+export class UpdateOidcConfigurationDto extends OidcConfigDto.extend({
+	loginEnabled: z.boolean(),
+	prompt: z.enum(OIDC_PROMPT_VALUES),
+	authenticationContextClassReference: z.array(z.string()),
+	additionalScopes: z.string(),
+}) {}
