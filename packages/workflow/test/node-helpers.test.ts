@@ -3514,6 +3514,55 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'fixedCollection with multipleValues: true - skip when collection item value is a string instead of array',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'option1',
+									displayName: 'Option 1',
+									values: [
+										{
+											displayName: 'String',
+											name: 'string1',
+											type: 'string',
+											default: 'default string',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						// Simulates expression result where item value is a string instead of array
+						values: { option1: 'some expression string' } as any,
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {},
+						defaultsTrue: {
+							values: {},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {

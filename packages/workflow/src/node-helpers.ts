@@ -838,10 +838,13 @@ export function getNodeParameters(
 					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
 						continue;
 					}
+					const collectionItems = (propertyValues as INodeParameters)[itemName];
+					// Skip if collection items is not an array (e.g. string from expression)
+					if (!Array.isArray(collectionItems)) {
+						continue;
+					}
 					// Iterate over all items as it contains multiple ones
-					for (const nodeValue of (propertyValues as INodeParameters)[
-						itemName
-					] as INodeParameters[]) {
+					for (const nodeValue of collectionItems as INodeParameters[]) {
 						nodePropertyOptions = nodeProperties.options!.find(
 							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
 						) as INodePropertyCollection;
