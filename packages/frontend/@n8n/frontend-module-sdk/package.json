@@ -18,6 +18,7 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"

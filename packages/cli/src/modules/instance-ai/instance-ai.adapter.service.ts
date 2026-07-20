@@ -2134,6 +2134,7 @@ export class InstanceAiAdapterService {
 					maxContentLength?: number;
 					maxResponseBytes?: number;
 					timeoutMs?: number;
+					abortSignal?: AbortSignal;
 					authorizeUrl?: (targetUrl: string) => Promise<void>;
 				},
 			) {
@@ -2168,6 +2169,7 @@ export class InstanceAiAdapterService {
 					maxContentLength: options?.maxContentLength,
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
+					abortSignal: options?.abortSignal,
 					transport,
 				});
 
@@ -2199,16 +2201,21 @@ export class InstanceAiAdapterService {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
+			abortSignal?: AbortSignal;
 		};
 
 		const keyPrefix = userId ? `${userId}:` : '';
+		const searchCacheKey = (query: string, options?: SearchOptions) => {
+			const { abortSignal: _abortSignal, ...cacheable } = options ?? {};
+			return `${keyPrefix}${JSON.stringify([query, cacheable])}`;
+		};
 
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
 		// This intentionally takes priority over local SearXNG or API key configuration.
 		if (searchProxyConfig) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2223,7 +2230,7 @@ export class InstanceAiAdapterService {
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2235,7 +2242,7 @@ export class InstanceAiAdapterService {
 
 		if (searxngUrl) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 

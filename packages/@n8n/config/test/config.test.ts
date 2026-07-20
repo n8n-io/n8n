@@ -170,6 +170,7 @@ describe('GlobalConfig', () => {
 					'workflow-shared': '',
 					'project-shared': '',
 					'api-key-revoked': '',
+					'mcp-client-revoked': '',
 				},
 			},
 		},

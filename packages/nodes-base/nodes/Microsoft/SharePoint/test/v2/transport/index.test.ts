@@ -6,6 +6,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import {
 	getSharePointCredentialType,
 	microsoftApiRequest,
+	microsoftApiRequestAllItems,
 	SERVICE_PRINCIPAL_AUTH,
 } from '../../../v2/transport';
 
@@ -149,6 +150,223 @@ describe('Microsoft SharePoint v2 Transport', () => {
 		});
 	});
 
+	describe('microsoftApiRequestAllItems', () => {
+		it('follows @odata.nextLink across pages until it runs out (Return All)', async () => {
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: '1' }, { id: '2' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({ value: [{ id: '3' }, { id: '4' }] });
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+				{},
+				{ $select: 'id' },
+			);
+
+			expect(result).toEqual([{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }]);
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(2);
+			// A next-page link is a complete address — the continuation must never re-send the original qs
+			expect(mockRequestOAuth2.mock.calls[1][1]).toEqual(expect.objectContaining({ qs: {} }));
+		});
+
+		it('handles uneven ("short") page sizes across Return All pages', async () => {
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: '1' }, { id: '2' }, { id: '3' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({
+					value: [{ id: '4' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p3',
+				})
+				.mockResolvedValueOnce({ value: [{ id: '5' }, { id: '6' }] });
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+			);
+
+			expect(result).toEqual([
+				{ id: '1' },
+				{ id: '2' },
+				{ id: '3' },
+				{ id: '4' },
+				{ id: '5' },
+				{ id: '6' },
+			]);
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(3);
+		});
+
+		it('stops exactly at the limit even when the closing page still carries a nextLink (Limit mode)', async () => {
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: '1' }, { id: '2' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({
+					value: [{ id: '3' }, { id: '4' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p3',
+				})
+				.mockResolvedValueOnce({
+					value: [{ id: '5' }, { id: '6' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p4',
+				});
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+				{},
+				{},
+				6,
+			);
+
+			expect(result).toEqual([
+				{ id: '1' },
+				{ id: '2' },
+				{ id: '3' },
+				{ id: '4' },
+				{ id: '5' },
+				{ id: '6' },
+			]);
+			// A "fetch everything, then slice" implementation would make an unconfigured 4th call here
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(3);
+		});
+
+		it('returns everything found when the limit exceeds the total available', async () => {
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }, { id: '5' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({
+					value: [{ id: '6' }, { id: '7' }, { id: '8' }, { id: '9' }, { id: '10' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p3',
+				})
+				.mockResolvedValueOnce({ value: [{ id: '11' }, { id: '12' }] });
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+				{},
+				{},
+				50,
+			);
+
+			expect(result).toEqual([
+				{ id: '1' },
+				{ id: '2' },
+				{ id: '3' },
+				{ id: '4' },
+				{ id: '5' },
+				{ id: '6' },
+				{ id: '7' },
+				{ id: '8' },
+				{ id: '9' },
+				{ id: '10' },
+				{ id: '11' },
+				{ id: '12' },
+			]);
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(3);
+		});
+
+		it('stops after the first page when it alone already satisfies the limit', async () => {
+			mockRequestOAuth2.mockResolvedValueOnce({
+				value: [{ id: '1' }, { id: '2' }, { id: '3' }, { id: '4' }, { id: '5' }],
+			});
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+				{},
+				{},
+				3,
+			);
+
+			expect(result).toEqual([{ id: '1' }, { id: '2' }, { id: '3' }]);
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(1);
+		});
+
+		it('makes exactly one call and returns nothing when limit is 0', async () => {
+			mockRequestOAuth2.mockResolvedValueOnce({ value: [{ id: '1' }, { id: '2' }] });
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+				{},
+				{},
+				0,
+			);
+
+			expect(result).toEqual([]);
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(1);
+		});
+
+		it('clamps a negative limit to an empty result instead of slicing from the end', async () => {
+			mockRequestOAuth2.mockResolvedValueOnce({
+				value: [
+					{ id: '1' },
+					{ id: '2' },
+					{ id: '3' },
+					{ id: '4' },
+					{ id: '5' },
+					{ id: '6' },
+					{ id: '7' },
+					{ id: '8' },
+				],
+			});
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+				{},
+				{},
+				-5,
+			);
+
+			// Unclamped, Array.prototype.slice(0, -5) on 8 items returns the first 3 (wrong); clamped, it's []
+			expect(result).toEqual([]);
+		});
+
+		it('treats a page missing `value` as contributing zero items and keeps paginating', async () => {
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: '1' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p3',
+				})
+				.mockResolvedValueOnce({ value: [{ id: '2' }] });
+
+			const result = await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+			);
+
+			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
+			expect(mockRequestOAuth2).toHaveBeenCalledTimes(3);
+		});
+	});
+
 	describe('permission refusals', () => {
 		it('should name the missing delegated permission on a 403 under OAuth2', async () => {
 			setParams({ authentication: 'microsoftOAuth2Api', resource: 'list', operation: 'get' });
@@ -158,6 +376,18 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			});
 
 			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l')).rejects.toThrow(
+				/Sites\.Read\.All/,
+			);
+		});
+
+		it('should name the missing delegated permission on a 403 for list:getAll', async () => {
+			setParams({ authentication: 'microsoftOAuth2Api', resource: 'list', operation: 'getAll' });
+			mockRequestOAuth2.mockRejectedValue({
+				statusCode: 403,
+				error: { error: { code: 'accessDenied', message: 'Access denied' } },
+			});
+
+			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists')).rejects.toThrow(
 				/Sites\.Read\.All/,
 			);
 		});
@@ -299,6 +529,28 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			// literal 0 — not undefined
 			ctx.getNodeParameter.mockReturnValue(0 as never);
 			expect(getSharePointCredentialType.call(ctx)).toBe('microsoftOAuth2Api');
+		});
+	});
+
+	describe('binary bodies', () => {
+		it('passes a Buffer body through raw, with the caller Content-Type winning', async () => {
+			setParams({ authentication: 'microsoftOAuth2Api' });
+			const payload = Buffer.from('binary-bytes');
+
+			await microsoftApiRequest.call(
+				ctx,
+				'PUT',
+				'/v1.0/sites/s/drive/items/f:/a.png:/content',
+				payload,
+				{},
+				undefined,
+				{ 'Content-Type': 'image/png' },
+			);
+
+			const options = mockRequestOAuth2.mock.calls[0][1];
+			expect(options.body).toBe(payload);
+			expect(options.headers['Content-Type']).toBe('image/png');
+			expect(options.json).toBe(true);
 		});
 	});
 });
