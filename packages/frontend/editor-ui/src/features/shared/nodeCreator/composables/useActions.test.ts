@@ -2,6 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useActions } from './useActions';
 import {
 	AGENT_NODE_TYPE,
@@ -43,6 +44,8 @@ describe('useActions', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 		mockDocumentStoreState.allNodes = [];
+		mockDocumentStoreState.getNodeById = () => undefined;
+		useUIStore().lastInteractedWithNodeId = undefined;
 	});
 
 	describe('getAddedNodesAndConnections', () => {
@@ -297,6 +300,26 @@ describe('useActions', () => {
 				connections: [{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } }],
 				nodes: [{ type: WEBHOOK_NODE_TYPE, openDetail: true }, { type: SLACK_NODE_TYPE }],
 			});
+		});
+	});
+
+	describe('getConnectionTriggerNode', () => {
+		test('should return undefined when the node creator was not opened by connecting to a node', () => {
+			useUIStore().lastInteractedWithNodeId = undefined;
+
+			const { getConnectionTriggerNode } = useActions();
+
+			expect(getConnectionTriggerNode()).toBeUndefined();
+		});
+
+		test('should return the node the node creator was opened from', () => {
+			const node = { id: '1', name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi;
+			mockDocumentStoreState.getNodeById = (id: string) => (id === node.id ? node : undefined);
+			useUIStore().lastInteractedWithNodeId = node.id;
+
+			const { getConnectionTriggerNode } = useActions();
+
+			expect(getConnectionTriggerNode()).toBe(node);
 		});
 	});
 
