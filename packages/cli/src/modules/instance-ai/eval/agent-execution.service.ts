@@ -39,6 +39,7 @@ import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { createMcpMockFetch, type McpMockCanonicalTool } from './mcp-mock-fetch';
 import { createLlmMockHandler } from './mock-handler';
 import { truncateForLlm } from './request-sanitizer';
+import { createWebSearchMock } from './web-search-mock';
 
 // ---------------------------------------------------------------------------
 // Runs a built first-class Agent for ONE scenario turn:
@@ -47,8 +48,10 @@ import { truncateForLlm } from './request-sanitizer';
 //   - node-tool and workflow-tool HTTP is intercepted at the same engine
 //     choke points the workflow eval uses (`evalLlmMockHandler` on the tools'
 //     additionalData) with LLM-generated responses;
-//   - features the mock layer can't serve yet (memory, vector stores, MCP,
-//     configured sub-agents, chat integrations, fallback web search) are
+//   - MCP servers, the fallback web_search tool, and configured sub-agents
+//     are served by dedicated mocks/seams (see mcp-mock-fetch, web-search-mock
+//     and AgentRuntimeInstrumentation); features the mock layer can't serve
+//     yet (memory, vector stores, SSE-transport MCP, chat integrations) are
 //     pruned from a config copy and reported as `skippedFeatures`.
 // The runtime is built UNCACHED (never through AgentRuntimeCacheService) so an
 // instrumented runtime can never leak into a normal chat run.
@@ -154,42 +157,65 @@ export class EvalAgentExecutionService {
 		// tools/call are LLM-generated, steered by the same seed hints (keyed by
 		// server name). Calls land in the tool ledger under the client-side
 		// prefixed name (`<server>_<tool>`) so they merge with GenerateResult's
-		// tool calls like every other tool kind.
+		// tool calls like every other tool kind. Always created, even with no
+		// servers on this agent: delegated sub-agents inherit the seam and may
+		// bring their own MCP servers (resolved by URL, hostname-named).
 		const mcpServers = config.mcpServers ?? [];
 		const knownToolsByServer = await this.resolveCanonicalMcpCatalogs(mcpServers);
-		const mcpFetch =
-			mcpServers.length > 0
-				? createMcpMockFetch({
-						servers: mcpServers.map((server) => ({
-							name: server.name,
-							url: server.url,
-							description: server.description,
-						})),
-						agentInstructions: config.instructions,
-						scenarioHints: options.scenarioHints,
-						globalContext: seed.globalContext,
-						serverHints: seed.toolHints,
-						knownToolsByServer,
-						logger: this.logger,
-						onToolCall: (call) => {
-							const key = `${call.serverName}_${call.toolName}`;
-							let entries = toolLedger.get(key);
-							if (!entries) {
-								entries = [];
-								toolLedger.set(key, entries);
-							}
-							entries.push({
-								url:
-									mcpServers.find((server) => server.name === call.serverName)?.url ??
-									call.serverName,
-								method: 'POST',
-								nodeType: `mcp:${call.serverName}`,
-								requestBody: call.args,
-								mockResponse: call.result,
-							});
-						},
-					})
-				: undefined;
+		const mcpFetch = createMcpMockFetch({
+			servers: mcpServers.map((server) => ({
+				name: server.name,
+				url: server.url,
+				description: server.description,
+			})),
+			agentInstructions: config.instructions,
+			scenarioHints: options.scenarioHints,
+			globalContext: seed.globalContext,
+			serverHints: seed.toolHints,
+			knownToolsByServer,
+			logger: this.logger,
+			onToolCall: (call) => {
+				const key = `${call.serverName}_${call.toolName}`;
+				let entries = toolLedger.get(key);
+				if (!entries) {
+					entries = [];
+					toolLedger.set(key, entries);
+				}
+				entries.push({
+					url: mcpServers.find((server) => server.name === call.serverName)?.url ?? call.serverName,
+					method: 'POST',
+					nodeType: `mcp:${call.serverName}`,
+					requestBody: call.args,
+					mockResponse: call.result,
+				});
+			},
+		});
+
+		// Mock for the fallback web_search tool. Always created for the same
+		// reason as the MCP mock (delegated sub-agents may enable web search);
+		// when a model handles search natively the tool is never built and the
+		// mock simply goes unused.
+		const webSearchMock = createWebSearchMock({
+			agentInstructions: config.instructions,
+			scenarioHints: options.scenarioHints,
+			globalContext: seed.globalContext,
+			searchHint: seed.toolHints?.web_search,
+			logger: this.logger,
+			onSearch: (args, result) => {
+				let entries = toolLedger.get('web_search');
+				if (!entries) {
+					entries = [];
+					toolLedger.set('web_search', entries);
+				}
+				entries.push({
+					url: 'mock://web-search',
+					method: 'POST',
+					nodeType: 'web-search:fallback',
+					requestBody: args,
+					mockResponse: result,
+				});
+			},
+		});
 
 		const reconstruction = Container.get(AgentRuntimeReconstructionService);
 		const credentialProvider = createAgentCredentialProvider(
@@ -207,7 +233,20 @@ export class EvalAgentExecutionService {
 				user,
 				{
 					modelFetch: recorder.fetch,
-					...(mcpFetch ? { mcpFetch } : {}),
+					mcpFetch,
+					webSearch: webSearchMock,
+					// Delegated (configured) sub-agents inherit every seam above; their
+					// configs get the same pruning, reported under the child's id.
+					transformDelegatedAgentConfig: (childConfig, delegationContext) => {
+						const pruned = pruneConfigForEval(childConfig);
+						skippedFeatures.push(
+							...pruned.skippedFeatures.map((skip) => ({
+								...skip,
+								feature: `subAgent ${delegationContext.subAgentId}: ${skip.feature}`,
+							})),
+						);
+						return pruned.config;
+					},
 					configureToolAdditionalData: (additionalData, toolContext) => {
 						const helper = new EvalMockedCredentialsHelper(
 							additionalData.credentialsHelper,
@@ -291,10 +330,14 @@ export class EvalAgentExecutionService {
 
 		const kindByToolName = new Map(toolSummaries.map((tool) => [tool.name, tool.kind]));
 		// MCP summaries are keyed by SERVER name; the model calls the client-side
-		// prefixed `<server>_<tool>` names.
+		// prefixed `<server>_<tool>` names. Sub-agent-brought servers aren't in
+		// this agent's summaries — their ledger entries carry an `mcp:` nodeType.
 		const kindForTool = (tool: string): InstanceAiEvalAgentToolCallRecord['kind'] =>
 			kindByToolName.get(tool) ??
-			(mcpServers.some((server) => tool.startsWith(`${server.name}_`)) ? 'mcp' : 'other');
+			(mcpServers.some((server) => tool.startsWith(`${server.name}_`)) ||
+			(toolLedger.get(tool) ?? []).some((request) => request.nodeType?.startsWith('mcp:'))
+				? 'mcp'
+				: 'other');
 		const toolCalls = (result.toolCalls ?? []).map((entry): InstanceAiEvalAgentToolCallRecord => {
 			const interceptedRequests = toolLedger.get(entry.tool) ?? [];
 			return {
@@ -507,30 +550,11 @@ export function pruneConfigForEval(original: AgentJsonConfig): {
 		config.mcpServers = remaining.length > 0 ? remaining : undefined;
 	}
 
-	if ((config.subAgents?.agents?.length ?? 0) > 0) {
-		skippedFeatures.push({
-			feature: 'subAgents',
-			reason:
-				'Configured sub-agents do not propagate the mock context yet; inline delegation remains available and mocked.',
-		});
-		config.subAgents = undefined;
-	}
-
-	if (config.config?.webSearch?.enabled) {
-		// Provider-native web search executes server-side within the real model
-		// call and stays enabled; only the fallback tool (a live Brave/SearXNG
-		// call with a placeholder key) is stripped.
-		const nativeCapable =
-			isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model);
-		if (!nativeCapable) {
-			skippedFeatures.push({
-				feature: 'webSearch',
-				reason:
-					'Fallback web search would make live calls with a placeholder credential — disabled for the run.',
-			});
-			config.config = { ...config.config, webSearch: undefined };
-		}
-	}
+	// Configured sub-agents stay: the delegated child inherits the run's
+	// instrumentation and its config is pruned by the same rules via
+	// `transformDelegatedAgentConfig`. Web search stays too: the native
+	// variant runs inside the real model call and the fallback tool is served
+	// by the web-search mock.
 
 	return { config, skippedFeatures };
 }
@@ -583,6 +607,19 @@ export function summarizeTools(
 			name: server.name,
 			kind: 'mcp',
 			description: server.description ?? `MCP tool server at ${server.url}`,
+		});
+	}
+	// The fallback web_search tool is served by the web-search mock; a hint
+	// keyed by its name steers the generated result sets. Native web search
+	// runs inside the real model call and needs no hint.
+	if (
+		config.config?.webSearch?.enabled &&
+		!(isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model))
+	) {
+		summaries.push({
+			name: 'web_search',
+			kind: 'other',
+			description: 'Web search returning {title, url, snippet} result lists',
 		});
 	}
 	return summaries;

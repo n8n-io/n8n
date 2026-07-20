@@ -87,7 +87,7 @@ function fenceStrip(raw: string): string {
 	return raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '');
 }
 
-async function generateJson<T>(
+export async function generateJson<T>(
 	agentName: string,
 	instructions: string,
 	userPrompt: string,

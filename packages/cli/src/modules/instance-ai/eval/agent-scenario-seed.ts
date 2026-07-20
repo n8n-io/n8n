@@ -14,7 +14,7 @@ import { buildDateAnchors } from './date-anchors';
 export interface AgentSeedToolSummary {
 	/** Sanitized tool name — the identifier the model will call and the mock layer keys on. */
 	name: string;
-	kind: 'node' | 'workflow' | 'custom' | 'mcp';
+	kind: 'node' | 'workflow' | 'custom' | 'mcp' | 'other';
 	description?: string;
 	/** Node type for node tools (e.g. n8n-nodes-base.slackTool). */
 	nodeType?: string;

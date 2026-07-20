@@ -52,6 +52,12 @@ const WEB_SEARCH_INPUT_SCHEMA = z.object({
 	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
 });
 
+const WEB_SEARCH_PLAN_INSTRUCTION =
+	'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.';
+
+export type FallbackWebSearchArgs = z.infer<typeof WEB_SEARCH_INPUT_SCHEMA>;
+export type FallbackWebSearchHandler = (args: FallbackWebSearchArgs) => Promise<unknown>;
+
 const WEB_SEARCH_POLICY_INSTRUCTION =
 	'### Web search policy\n' +
 	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
@@ -103,6 +109,12 @@ export interface BuildFromJsonOptions {
 	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
 	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
 	modelFetch?: FetchFn;
+	/**
+	 * Replaces the live Brave/SearXNG call behind the fallback `web_search`
+	 * tool. When set, the tool is attached without requiring a search provider
+	 * or credential in the config (eval instrumentation only).
+	 */
+	fallbackWebSearch?: FallbackWebSearchHandler;
 }
 
 /**
@@ -170,7 +182,11 @@ export async function buildFromJson(
 			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
-	const fallbackWebSearchTool = buildFallbackWebSearchTool(config, options.credentialProvider);
+	const fallbackWebSearchTool = buildFallbackWebSearchTool(
+		config,
+		options.credentialProvider,
+		options.fallbackWebSearch,
+	);
 	if (fallbackWebSearchTool) {
 		agent.tool(fallbackWebSearchTool);
 	}
@@ -264,11 +280,21 @@ export function buildProviderToolsForModel(
 function buildFallbackWebSearchTool(
 	config: AgentJsonConfig,
 	credentialProvider: CredentialProvider,
+	fallbackWebSearch?: FallbackWebSearchHandler,
 ): BuiltTool | null {
 	const webSearchConfig = config.config?.webSearch;
 
 	if (!webSearchConfig?.enabled) return null;
 	if (isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model)) return null;
+	if (fallbackWebSearch) {
+		return {
+			name: WEB_SEARCH_TOOL_NAME,
+			description: 'Search the web for current information.',
+			systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
+			inputSchema: WEB_SEARCH_INPUT_SCHEMA,
+			handler: async (input) => await fallbackWebSearch(WEB_SEARCH_INPUT_SCHEMA.parse(input)),
+		};
+	}
 	if (webSearchConfig.provider !== 'brave' && webSearchConfig.provider !== 'searxng') {
 		throw new Error('Web search is enabled but no fallback search provider is configured.');
 	}
@@ -280,8 +306,7 @@ function buildFallbackWebSearchTool(
 	return {
 		name: WEB_SEARCH_TOOL_NAME,
 		description: 'Search the web for current information.',
-		systemInstruction:
-			'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.',
+		systemInstruction: WEB_SEARCH_PLAN_INSTRUCTION,
 		inputSchema: WEB_SEARCH_INPUT_SCHEMA,
 		handler: async (input) => {
 			const args = WEB_SEARCH_INPUT_SCHEMA.parse(input);

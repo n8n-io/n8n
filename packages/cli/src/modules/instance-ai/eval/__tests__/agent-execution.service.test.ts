@@ -271,13 +271,54 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			'integrations',
 			'mcpServers (sse transport)',
 			'memory',
-			'subAgents',
 			'vectorStores',
 		]);
 		const rebuiltEntity = reconstructFromAgentEntity.mock.calls[0][0] as AgentEntity;
 		expect(rebuiltEntity.schema?.memory).toBeUndefined();
 		expect(rebuiltEntity.schema?.mcpServers).toBeUndefined();
-		expect(rebuiltEntity.integrations).toEqual([]);
+		// Configured sub-agents are kept — the delegated child inherits the
+		// instrumentation and its config is pruned via the transform hook.
+		expect(rebuiltEntity.schema?.subAgents).toEqual({ agents: [{ agentId: 'child-1' }] });
+	});
+
+	it('serves fallback web search and configured sub-agents through the instrumentation', async () => {
+		const fullConfig = {
+			...baseConfig,
+			model: 'mistral/mistral-large',
+			config: { webSearch: { enabled: true, provider: 'brave', credential: 'cred-2' } },
+			subAgents: { agents: [{ agentId: 'child-1' }] },
+		} as unknown as AgentJsonConfig;
+		findByIdAndProjectId.mockResolvedValue(makeEntity(fullConfig));
+		reconstructFromAgentEntity.mockResolvedValue({
+			agent: { generate: vi.fn().mockResolvedValue(makeGenerateResult()), close: vi.fn() },
+			toolRegistry: {},
+		});
+
+		const result = await buildService().executeWithLlmMock('agent-1', user, request);
+
+		const instrumentation = reconstructFromAgentEntity.mock.calls[0][4] as {
+			webSearch?: unknown;
+			transformDelegatedAgentConfig?: (
+				config: AgentJsonConfig,
+				context: { subAgentId: string },
+			) => AgentJsonConfig;
+		};
+		expect(instrumentation.webSearch).toBeDefined();
+		expect(result.skippedFeatures).toEqual([]);
+
+		// Delegated child configs get the same pruning, reported under the child id
+		// (the returned skippedFeatures array is live for the duration of the run).
+		const childConfig = {
+			...baseConfig,
+			memory: { enabled: true },
+		} as unknown as AgentJsonConfig;
+		const prunedChild = instrumentation.transformDelegatedAgentConfig?.(childConfig, {
+			subAgentId: 'child-1',
+		});
+		expect(prunedChild?.memory).toBeUndefined();
+		expect(result.skippedFeatures.map((entry) => entry.feature)).toContain(
+			'subAgent child-1: memory',
+		);
 	});
 
 	it('surfaces errored tool calls omitted from the run result via the intercepted ledger', async () => {
@@ -410,7 +451,7 @@ describe('pruneConfigForEval', () => {
 		expect(skippedFeatures[0].reason).toContain('legacy');
 	});
 
-	it('strips fallback web search for a provider without native search', () => {
+	it('keeps fallback web search — the web-search mock serves it', () => {
 		const withSearch = {
 			...baseConfig,
 			model: 'mistral/mistral-large',
@@ -419,12 +460,24 @@ describe('pruneConfigForEval', () => {
 
 		const { config, skippedFeatures } = pruneConfigForEval(withSearch);
 
-		expect(skippedFeatures.map((entry) => entry.feature)).toContain('webSearch');
-		expect(config.config?.webSearch).toBeUndefined();
+		expect(skippedFeatures).toHaveLength(0);
+		expect(config.config?.webSearch?.enabled).toBe(true);
 	});
 });
 
 describe('summarizeTools', () => {
+	it('summarizes the fallback web_search tool so the seed can steer it', () => {
+		const config = {
+			...baseConfig,
+			model: 'mistral/mistral-large',
+			config: { webSearch: { enabled: true, provider: 'brave', credential: 'cred-2' } },
+		} as unknown as AgentJsonConfig;
+
+		const summaries = summarizeTools(config, {}, (name) => name);
+
+		expect(summaries.find((entry) => entry.name === 'web_search')?.kind).toBe('other');
+	});
+
 	it('summarizes MCP servers by server name with kind mcp', () => {
 		const config = {
 			...baseConfig,

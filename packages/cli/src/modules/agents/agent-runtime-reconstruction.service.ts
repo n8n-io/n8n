@@ -110,6 +110,8 @@ export interface ReconstructAgentRuntimeParams {
 	 * integration parents, which keep the project-scoped trust boundary.
 	 */
 	user?: User;
+	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
+	instrumentation?: AgentRuntimeInstrumentation;
 }
 
 async function getChatIntegrationToolServices() {
@@ -376,6 +378,7 @@ export class AgentRuntimeReconstructionService {
 			resolveManagedEmbeddingProviderOptions: async () =>
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
 			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
+			fallbackWebSearch: instrumentation?.webSearch,
 		});
 
 		await this.injectRuntimeDependencies({
@@ -390,6 +393,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			credentialIntegrations,
 			user,
+			instrumentation,
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
@@ -510,6 +514,7 @@ export class AgentRuntimeReconstructionService {
 		integrationType?: string;
 		credentialIntegrations: AgentIntegrationConfig[];
 		user?: User;
+		instrumentation?: AgentRuntimeInstrumentation;
 	}): Promise<void> {
 		const {
 			agent,
@@ -523,6 +528,7 @@ export class AgentRuntimeReconstructionService {
 			integrationType,
 			credentialIntegrations,
 			user,
+			instrumentation,
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
@@ -611,6 +617,7 @@ export class AgentRuntimeReconstructionService {
 				credentialProvider,
 				delegation: subAgentDelegation,
 				user,
+				instrumentation,
 			});
 			this.attachWriteTodosTool(agent, agentId);
 		}
@@ -630,9 +637,18 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		delegation: SubAgentDelegationConfig;
 		user?: User;
+		instrumentation?: AgentRuntimeInstrumentation;
 	}): Promise<void> {
-		const { agent, config, parentAgentId, projectId, credentialProvider, delegation, user } =
-			params;
+		const {
+			agent,
+			config,
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			delegation,
+			user,
+			instrumentation,
+		} = params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
 			credentialProvider,
@@ -645,6 +661,7 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId,
 				credentialProvider,
 				user,
+				instrumentation,
 				policy: this.buildSubAgentPolicy(config),
 				...(inlineSubAgentModelsByDifficulty !== undefined
 					? { inlineSubAgentModelsByDifficulty }
