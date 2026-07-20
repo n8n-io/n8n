@@ -609,7 +609,7 @@ describe('run', () => {
 			expect(processError).not.toHaveBeenCalled();
 		});
 
-		it('still rejects on other startup errors', async () => {
+		it('still fails the execution on other startup errors', async () => {
 			const error = new Error('boom');
 			const { data } = arrangeFailingRunDeps(error);
 			// @ts-expect-error Private method
@@ -618,7 +618,6 @@ describe('run', () => {
 
 			const execId = await runner.run(data);
 			expect(execId).toBeTruthy();
-			expect(processError).toHaveBeenCalled();
 
 			expect(processError).toHaveBeenCalled();
 			expect(failExecution).toHaveBeenCalled();
