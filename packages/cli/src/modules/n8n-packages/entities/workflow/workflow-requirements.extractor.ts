@@ -12,16 +12,34 @@ export class WorkflowRequirementsExtractor
 	extract(workflow: WorkflowEntity): WorkflowSubWorkflowRequirement[] {
 		const byId = new Map<string, WorkflowSubWorkflowRequirement>();
 
-		for (const node of workflow.nodes ?? []) {
-			const referencedWorkflowId = getStaticSubworkflowId(node);
-			if (!referencedWorkflowId || byId.has(referencedWorkflowId)) continue;
+		const addRequirement = (referencedWorkflowId: string | undefined) => {
+			if (!referencedWorkflowId || byId.has(referencedWorkflowId)) return;
 
 			byId.set(referencedWorkflowId, {
 				workflowId: workflow.id,
 				referencedWorkflowId,
 			});
+		};
+
+		for (const node of workflow.nodes ?? []) {
+			addRequirement(getStaticSubworkflowId(node));
 		}
 
+		addRequirement(this.getErrorWorkflowId(workflow));
+
 		return [...byId.values()];
+	}
+
+	private getErrorWorkflowId(workflow: WorkflowEntity): string | undefined {
+		const errorWorkflow = workflow.settings?.errorWorkflow;
+
+		// Only a static id is a workflow dependency. `DEFAULT` is a sentinel, and an
+		// expression (e.g. `={{ $vars.ERROR_WORKFLOW_ID }}`) is a variable dependency
+		// handled by the variable extractor, not a concrete referenced workflow.
+		if (!errorWorkflow || errorWorkflow === 'DEFAULT' || errorWorkflow.startsWith('=')) {
+			return undefined;
+		}
+
+		return errorWorkflow;
 	}
 }
