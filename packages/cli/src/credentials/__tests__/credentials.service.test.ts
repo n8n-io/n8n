@@ -973,7 +973,7 @@ describe('CredentialsService', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
 			instanceCredentialAssignmentRepository.findOne.mockResolvedValue(
 				mock<InstanceCredentialAssignment>({
-					consumerId: 'instance-ai:model',
+					credentialUseId: 'instance-ai:model',
 					credentialId: credential.id,
 				}),
 			);
@@ -995,7 +995,7 @@ describe('CredentialsService', () => {
 				.mockResolvedValueOnce(null)
 				.mockResolvedValueOnce(
 					mock<InstanceCredentialAssignment>({
-						consumerId: 'instance-ai:model',
+						credentialUseId: 'instance-ai:model',
 						credentialId: credential.id,
 					}),
 				);

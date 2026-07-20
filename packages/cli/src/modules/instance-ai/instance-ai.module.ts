@@ -28,10 +28,10 @@ export class InstanceAiModule implements ModuleInterface {
 		} = await import('./instance-ai-settings.service.js');
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const credentialBroker = Container.get(InstanceCredentialBroker);
-		credentialBroker.registerConsumer(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
-		credentialBroker.registerConsumer(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY);
-		credentialBroker.registerConsumer(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY);
-		credentialBroker.registerConsumer(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
+		credentialBroker.registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
+		credentialBroker.registerUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY);
+		credentialBroker.registerUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY);
+		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
 		await settingsService.loadFromDb();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');

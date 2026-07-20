@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_credential_assignment" ("consumerId" varchar(128) PRIMARY KEY NOT NULL, "credentialId" varchar(36) NOT NULL, CONSTRAINT "FK_instance_credential_assignment_credential" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE RESTRICT)
+CREATE TABLE "instance_credential_assignment" ("credentialUseId" varchar(128) PRIMARY KEY NOT NULL, "credentialId" varchar(36) NOT NULL, CONSTRAINT "FK_instance_credential_assignment_credential" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE RESTRICT)
 ```
 
 </details>
@@ -15,23 +15,23 @@ CREATE TABLE "instance_credential_assignment" ("consumerId" varchar(128) PRIMARY
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| consumerId | varchar(128) |  | false |  |  |  |
 | credentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
+| credentialUseId | varchar(128) |  | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE |
-| consumerId | PRIMARY KEY | PRIMARY KEY (consumerId) |
-| sqlite_autoindex_instance_credential_assignment_1 | PRIMARY KEY | PRIMARY KEY (consumerId) |
+| credentialUseId | PRIMARY KEY | PRIMARY KEY (credentialUseId) |
+| sqlite_autoindex_instance_credential_assignment_1 | PRIMARY KEY | PRIMARY KEY (credentialUseId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_9626b8dc1bee96a86a3ee09d73 | CREATE INDEX "IDX_9626b8dc1bee96a86a3ee09d73" ON "instance_credential_assignment" ("credentialId")  |
-| sqlite_autoindex_instance_credential_assignment_1 | PRIMARY KEY (consumerId) |
+| sqlite_autoindex_instance_credential_assignment_1 | PRIMARY KEY (credentialUseId) |
 
 ## Relations
 
@@ -41,8 +41,8 @@ erDiagram
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 
 "instance_credential_assignment" {
-  varchar_128_ consumerId PK
   varchar_36_ credentialId FK
+  varchar_128_ credentialUseId PK
 }
 "credentials_entity" {
   VARCHAR_16_ availability

@@ -974,8 +974,8 @@ erDiagram
   varchar_255_ workflowName PK
 }
 "instance_credential_assignment" {
-  varchar_128_ consumerId PK
   varchar_36_ credentialId FK
+  varchar_128_ credentialUseId PK
 }
 "instance_version_history" {
   datetime_3_ createdAt

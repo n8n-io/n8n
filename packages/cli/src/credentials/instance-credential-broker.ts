@@ -14,9 +14,9 @@ import { UnprocessableRequestError } from '@/errors/response-errors/unprocessabl
 
 import { CredentialsService } from './credentials.service';
 import {
-	InstanceCredentialConsumerRegistry,
-	type InstanceCredentialConsumer,
-} from './instance-credential-consumer.registry';
+	InstanceCredentialUseRegistry,
+	type InstanceCredentialUse,
+} from './instance-credential-use.registry';
 
 export type InstanceCredentialSummary = Pick<CredentialsEntity, 'id' | 'name' | 'type'>;
 
@@ -28,83 +28,87 @@ export interface ResolvedInstanceCredential extends InstanceCredentialSummary {
 export class InstanceCredentialBroker {
 	constructor(
 		private readonly logger: Logger,
-		private readonly consumerRegistry: InstanceCredentialConsumerRegistry,
+		private readonly useRegistry: InstanceCredentialUseRegistry,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly assignmentRepository: InstanceCredentialAssignmentRepository,
 		private readonly credentialsService: CredentialsService,
 	) {}
 
-	registerConsumer(consumer: InstanceCredentialConsumer): void {
-		this.consumerRegistry.register(consumer);
+	registerUse(credentialUse: InstanceCredentialUse): void {
+		this.useRegistry.register(credentialUse);
 	}
 
-	async listForConsumer(consumerId: string): Promise<InstanceCredentialSummary[]> {
-		const consumer = this.consumerRegistry.get(consumerId);
+	async listForUse(credentialUseId: string): Promise<InstanceCredentialSummary[]> {
+		const credentialUse = this.useRegistry.get(credentialUseId);
 		return await this.credentialsRepository.find({
 			select: ['id', 'name', 'type'],
 			where: {
 				availability: 'instance',
-				type: In([...consumer.credentialTypes]),
+				type: In([...credentialUse.credentialTypes]),
 			},
 			order: { name: 'ASC' },
 		});
 	}
 
-	async assignForConsumer(
-		consumerId: string,
+	async assignForUse(
+		credentialUseId: string,
 		credentialId: string,
 		transactionManager?: EntityManager,
 	): Promise<InstanceCredentialSummary> {
-		const consumer = this.consumerRegistry.get(consumerId);
-		const credential = await this.findCredential(consumer, credentialId, transactionManager);
+		const credentialUse = this.useRegistry.get(credentialUseId);
+		const credential = await this.findCredential(credentialUse, credentialId, transactionManager);
 		if (!credential) {
 			throw new UnprocessableRequestError(
-				`Credential "${credentialId}" is not valid for instance credential consumer "${consumerId}"`,
+				`Credential "${credentialId}" is not valid for instance credential use "${credentialUseId}"`,
 			);
 		}
 		if (transactionManager) {
-			await transactionManager.upsert(InstanceCredentialAssignment, { consumerId, credentialId }, [
-				'consumerId',
-			]);
+			await transactionManager.upsert(
+				InstanceCredentialAssignment,
+				{ credentialUseId, credentialId },
+				['credentialUseId'],
+			);
 		} else {
-			await this.assignmentRepository.upsert({ consumerId, credentialId }, ['consumerId']);
+			await this.assignmentRepository.upsert({ credentialUseId, credentialId }, [
+				'credentialUseId',
+			]);
 		}
-		this.logger.debug('Assigned instance credential', { consumerId, credentialId });
+		this.logger.debug('Assigned instance credential', { credentialUseId, credentialId });
 		return { id: credential.id, name: credential.name, type: credential.type };
 	}
 
-	async clearForConsumer(consumerId: string, transactionManager?: EntityManager): Promise<void> {
-		this.consumerRegistry.get(consumerId);
+	async clearForUse(credentialUseId: string, transactionManager?: EntityManager): Promise<void> {
+		this.useRegistry.get(credentialUseId);
 		if (transactionManager) {
-			await transactionManager.delete(InstanceCredentialAssignment, { consumerId });
+			await transactionManager.delete(InstanceCredentialAssignment, { credentialUseId });
 		} else {
-			await this.assignmentRepository.delete({ consumerId });
+			await this.assignmentRepository.delete({ credentialUseId });
 		}
 	}
 
 	async getAssignedCredentialId(
-		consumerId: string,
+		credentialUseId: string,
 		transactionManager?: EntityManager,
 	): Promise<string | null> {
-		this.consumerRegistry.get(consumerId);
+		this.useRegistry.get(credentialUseId);
 		const assignment = transactionManager
-			? await transactionManager.findOneBy(InstanceCredentialAssignment, { consumerId })
-			: await this.assignmentRepository.findOneBy({ consumerId });
+			? await transactionManager.findOneBy(InstanceCredentialAssignment, { credentialUseId })
+			: await this.assignmentRepository.findOneBy({ credentialUseId });
 		return assignment?.credentialId ?? null;
 	}
 
-	async resolveForConsumer(
-		consumerId: string,
+	async resolveForUse(
+		credentialUseId: string,
 		transactionManager?: EntityManager,
 	): Promise<ResolvedInstanceCredential | null> {
-		const credentialId = await this.getAssignedCredentialId(consumerId, transactionManager);
+		const credentialId = await this.getAssignedCredentialId(credentialUseId, transactionManager);
 		if (!credentialId) return null;
 
-		const consumer = this.consumerRegistry.get(consumerId);
-		const credential = await this.findCredential(consumer, credentialId, transactionManager);
+		const credentialUse = this.useRegistry.get(credentialUseId);
+		const credential = await this.findCredential(credentialUse, credentialId, transactionManager);
 		if (!credential) {
 			throw new UnprocessableRequestError(
-				`Credential "${credentialId}" is not valid for instance credential consumer "${consumerId}"`,
+				`Credential "${credentialId}" is not valid for instance credential use "${credentialUseId}"`,
 			);
 		}
 
@@ -114,12 +118,12 @@ export class InstanceCredentialBroker {
 			type: credential.type,
 			data: await this.credentialsService.decrypt(credential, true),
 		};
-		this.logger.debug('Resolved instance credential', { consumerId, credentialId });
+		this.logger.debug('Resolved instance credential', { credentialUseId, credentialId });
 		return resolved;
 	}
 
 	private async findCredential(
-		consumer: InstanceCredentialConsumer,
+		credentialUse: InstanceCredentialUse,
 		credentialId: string,
 		transactionManager?: EntityManager,
 	): Promise<CredentialsEntity | null> {
@@ -127,7 +131,7 @@ export class InstanceCredentialBroker {
 			where: {
 				id: credentialId,
 				availability: 'instance',
-				type: In([...consumer.credentialTypes]),
+				type: In([...credentialUse.credentialTypes]),
 			},
 		};
 		return transactionManager

@@ -974,12 +974,12 @@ export class CredentialsService {
 
 	private async ensureInstanceCredentialIsNotInUse(credentialId: string): Promise<void> {
 		const assignment = await this.instanceCredentialAssignmentRepository.findOne({
-			select: ['consumerId'],
+			select: ['credentialUseId'],
 			where: { credentialId },
 		});
 		if (assignment) {
 			throw new BadRequestError(
-				`This credential is in use by instance feature "${assignment.consumerId}" and cannot be deleted`,
+				`This credential is assigned to credential use "${assignment.credentialUseId}" and cannot be deleted`,
 			);
 		}
 	}

@@ -245,12 +245,12 @@ export class InstanceAiSettingsService {
 				);
 				this.validateAdminSettingsUpdate(settingsUpdate, current);
 				if (modelCredentialId === null) {
-					await this.instanceCredentialBroker.clearForConsumer(
+					await this.instanceCredentialBroker.clearForUse(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 						transactionManager,
 					);
 				} else if (modelCredentialId !== undefined) {
-					const credential = await this.instanceCredentialBroker.assignForConsumer(
+					const credential = await this.instanceCredentialBroker.assignForUse(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 						modelCredentialId,
 						transactionManager,
@@ -359,7 +359,7 @@ export class InstanceAiSettingsService {
 
 	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
-		const instanceCredentials = await this.instanceCredentialBroker.listForConsumer(
+		const instanceCredentials = await this.instanceCredentialBroker.listForUse(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 		);
 		return instanceCredentials.map((c) => ({
@@ -374,9 +374,9 @@ export class InstanceAiSettingsService {
 	async listInstanceServiceCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const credentials = await Promise.all([
-			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id),
-			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id),
-			this.instanceCredentialBroker.listForConsumer(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id),
+			this.instanceCredentialBroker.listForUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id),
+			this.instanceCredentialBroker.listForUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id),
+			this.instanceCredentialBroker.listForUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id),
 		]);
 		return credentials.flat().map((c) => ({
 			id: c.id,
@@ -394,7 +394,7 @@ export class InstanceAiSettingsService {
 			apiKey: daytonaApiKey || undefined,
 		};
 		const resolved = await this.instanceCredentialBroker
-			.resolveForConsumer(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id)
+			.resolveForUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id)
 			.catch((error: unknown) => {
 				this.warnCredentialFallback(
 					'Daytona sandbox',
@@ -425,7 +425,7 @@ export class InstanceAiSettingsService {
 			apiKey: n8nSandboxServiceApiKey || undefined,
 		};
 		const resolved = await this.instanceCredentialBroker
-			.resolveForConsumer(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id)
+			.resolveForUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id)
 			.catch((error: unknown) => {
 				this.warnCredentialFallback(
 					'n8n Sandbox',
@@ -458,7 +458,7 @@ export class InstanceAiSettingsService {
 			searxngUrl: searxngUrl || undefined,
 		};
 		const resolved = await this.instanceCredentialBroker
-			.resolveForConsumer(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id)
+			.resolveForUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id)
 			.catch((error: unknown) => {
 				this.warnCredentialFallback('search', INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id, error);
 				return null;
@@ -479,11 +479,11 @@ export class InstanceAiSettingsService {
 		return envConfig;
 	}
 
-	private warnCredentialFallback(service: string, consumerId: string, error: unknown): void {
+	private warnCredentialFallback(service: string, credentialUseId: string, error: unknown): void {
 		Container.get(Logger)
 			.scoped('instance-ai')
 			.warn(`Could not resolve the configured ${service} credential; using environment fallback`, {
-				consumerId,
+				credentialUseId,
 				error: ensureError(error).message,
 			});
 	}
@@ -587,7 +587,7 @@ export class InstanceAiSettingsService {
 	}
 
 	private async resolveModelCredential() {
-		return await this.instanceCredentialBroker.resolveForConsumer(
+		return await this.instanceCredentialBroker.resolveForUse(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 		);
 	}
@@ -658,16 +658,16 @@ export class InstanceAiSettingsService {
 	];
 
 	private async updateCredentialAssignment(
-		consumerId: string,
+		credentialUseId: string,
 		credentialId: string | null | undefined,
 		transactionManager: EntityManager,
 	): Promise<void> {
 		if (credentialId === undefined) return;
 		if (credentialId === null) {
-			await this.instanceCredentialBroker.clearForConsumer(consumerId, transactionManager);
+			await this.instanceCredentialBroker.clearForUse(credentialUseId, transactionManager);
 		} else {
-			await this.instanceCredentialBroker.assignForConsumer(
-				consumerId,
+			await this.instanceCredentialBroker.assignForUse(
+				credentialUseId,
 				credentialId,
 				transactionManager,
 			);

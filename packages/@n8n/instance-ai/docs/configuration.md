@@ -128,10 +128,10 @@ Admin-selected credentials for Instance AI (model, sandbox, search) are **instan
 credentials**: regular credential rows with `availability: 'instance'`, managed only
 by owners/admins (global scope `credential:manageInstance`) and never usable in the
 workflow canvas. Instance AI resolves them server-side through the
-`InstanceCredentialBroker` under these consumer IDs:
+`InstanceCredentialBroker` under these credential use IDs:
 
-| Consumer ID | Credential types |
-|-------------|------------------|
+| Credential use ID | Credential types |
+|-------------------|------------------|
 | `instance-ai:model` | LLM provider credentials (`openAiApi`, `anthropicApi`, ...) |
 | `instance-ai:sandbox:daytona` | `daytonaApi` |
 | `instance-ai:sandbox:n8n` | `httpHeaderAuth` |

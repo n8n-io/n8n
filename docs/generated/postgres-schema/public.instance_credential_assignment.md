@@ -4,24 +4,24 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| consumerId | varchar(128) |  | false |  |  | Stable server-side feature use registered with the credential broker |
 | credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
+| credentialUseId | varchar(128) |  | false |  |  | Stable credential use registered with the instance credential broker |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | FK_instance_credential_assignment_credential | FOREIGN KEY | FOREIGN KEY ("credentialId") REFERENCES credentials_entity(id) ON DELETE RESTRICT |
-| PK_3d4cbf3bcfe7577d2160c030cdd | PRIMARY KEY | PRIMARY KEY ("consumerId") |
-| instance_credential_assignment_consumerId_not_null | n | NOT NULL "consumerId" |
+| PK_984b0a98726485c9a330cde6b2f | PRIMARY KEY | PRIMARY KEY ("credentialUseId") |
 | instance_credential_assignment_credentialId_not_null | n | NOT NULL "credentialId" |
+| instance_credential_assignment_credentialUseId_not_null | n | NOT NULL "credentialUseId" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
 | IDX_9626b8dc1bee96a86a3ee09d73 | CREATE INDEX "IDX_9626b8dc1bee96a86a3ee09d73" ON public.instance_credential_assignment USING btree ("credentialId") |
-| PK_3d4cbf3bcfe7577d2160c030cdd | CREATE UNIQUE INDEX "PK_3d4cbf3bcfe7577d2160c030cdd" ON public.instance_credential_assignment USING btree ("consumerId") |
+| PK_984b0a98726485c9a330cde6b2f | CREATE UNIQUE INDEX "PK_984b0a98726485c9a330cde6b2f" ON public.instance_credential_assignment USING btree ("credentialUseId") |
 
 ## Relations
 
@@ -31,8 +31,8 @@ erDiagram
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 
 "public.instance_credential_assignment" {
-  varchar_128_ consumerId
   varchar_36_ credentialId FK
+  varchar_128_ credentialUseId
 }
 "public.credentials_entity" {
   varchar_16_ availability
