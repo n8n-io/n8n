@@ -445,10 +445,10 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('does not overwrite an existing pending record', async () => {
-			// Reconciliation only enqueues workflows that had no in-flight record at
-			// detection time, so a conflicting pending record can only have been
-			// enqueued concurrently (e.g. a publish committing mid-statement) — it is
-			// at least as fresh as reconciliation's snapshot and must win.
+			// Reconciliation's detection and its enqueue are two separate statements:
+			// a publish can commit a pending record in the gap between them. That
+			// record is at least as fresh as reconciliation's snapshot and must win —
+			// overwriting it could roll the workflow back to a stale version.
 			const workflow = await createActiveWorkflow();
 			await repository.enqueue(workflow.id, 'v-concurrent');
 
