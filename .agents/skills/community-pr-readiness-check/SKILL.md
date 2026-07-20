@@ -23,7 +23,7 @@ Given a PR number or branch name, determine whether it is ready for human review
 ## Decision tree
 
 1. **Bot author** (`n8n-cat-bot` / `aikido-autofix`) → cleanup-only, no review. See "Internal automation PRs" below.
-2. **Auto-rejection screen matches** (typo-only / unsanctioned new node) → action path **D — close** with the matching template.
+2. **Auto-rejection screen matches** (typo-only / unsanctioned new node / low-value) → action path **D — close** with the matching template.
 3. **All checks pass** (`readyForReview === true`) → action path **B — triage to team**.
 4. **One or more checks fail** → action path **A** (if title is minor-fix only) then **C — post comment**.
 
@@ -39,7 +39,7 @@ gh pr view <branch> --repo n8n-io/n8n --json number --jq .number
 
 ```bash
 gh pr view <number> --repo n8n-io/n8n \
-  --json number,title,body,author,headRefName,headRefOid,files,isDraft,state,labels
+  --json number,title,body,author,headRefName,headRefOid,files,isDraft,state,labels,additions,deletions
 ```
 
 ### Internal automation PRs (bot authors)
@@ -91,22 +91,25 @@ gh api --paginate "repos/n8n-io/n8n/issues/<number>/comments" \
 
 ## Step 2.5 — Auto-rejection screen
 
-Per `CONTRIBUTING.md`, two PR patterns should be closed outright rather than reviewed:
+Per `CONTRIBUTING.md`, three PR patterns should be closed outright rather than reviewed:
 
 - **Typo-only PR** — diff is entirely spelling/grammar fixes with no logic or tests.
 - **New-node PR** — adds a brand-new node, unless the n8n team has explicitly agreed to take it.
+- **Low-value / automated PR** — diff is entirely whitespace/formatting/reordering, an unexplained mass rename or dependency bump, badge/comment-only tweaks, or a bulk scripted submission, with no functional change or rationale. Screen conservatively.
 
-If either matches, set `checks.AutoReject` and skip directly to action **D**. Full rules and how to verify each pattern: see `reference/checks.md`.
+If any matches, set `checks.AutoReject` and skip directly to action **D**. Full rules and how to verify each pattern: see `reference/checks.md`.
 
-## Step 3 — Run the five checks
+## Step 3 — Run the readiness checks
 
 Run when `AutoReject` is `null`. Full rules for each in `reference/checks.md`:
 
 - **A. CLA** — `cla-signed` label present.
 - **B. Title** — matches the conventional-commit regex. Authoritative rules in `.github/pull_request_title_conventions.md`.
 - **C. Description** — every section heading and checklist item from `.github/pull_request_template.md` is present in the PR body. The template is read at check time, so changes to it propagate automatically.
-- **D. Tests** — source logic changes have matching test files. Skip for `docs/ci/chore/build` PRs.
+- **D. Tests** — source logic changes have matching test files (a `fix` needs a regression test covering the bug). Skip for `docs/ci/chore/build` PRs.
 - **E. cubic-dev-ai** — no unresolved comments (resolved = "Addressed in commit" marker).
+- **F. Linked issue or forum discussion** — `fix` PRs link a GitHub issue; `feat`/`refactor`/`perf` PRs link an issue or `community.n8n.io` topic. Skip for `docs/ci/chore/build/test`.
+- **G. Size** — `additions` ≤ 1000 and one logical change; sets `Oversized`.
 
 ## Step 4 — Identify the responsible team
 
@@ -158,18 +161,20 @@ Also inspect the matched Linear issue ticket (from the search above) for an alre
   "relatedIssueTickets": [<"GHC-1234" | "NODE-5678" | ...>],
   "duplicatePRs": [<{ "number": <int>, "title": "<string>" }, ...>],
   "checks": {
-    "AutoReject": <"typo-only" | "new-node" | null>,
+    "AutoReject": <"typo-only" | "new-node" | "low-value" | null>,
     "CLA": <bool>,
     "Title": <bool>,
     "Description": <bool>,
     "TestsNeeded": <bool>,
     "TestsIncluded": <bool>,
-    "CubicIssues": <true if unresolved cubic issues exist, false otherwise>
+    "CubicIssues": <true if unresolved cubic issues exist, false otherwise>,
+    "LinkedIssueOrDiscussion": <true if the §1 issue/forum link is present or the type is skipped>,
+    "Oversized": <true if additions > 1000 and the work is separable>
   }
 }
 ```
 
-`readyForReview` is `true` only when: `AutoReject` is `null`; `CLA`, `Title`, and `Description` are all `true`; `CubicIssues` is `false`; and either `TestsNeeded` is `false` or `TestsIncluded` is `true`. If `AutoReject` is set, `readyForReview` is always `false`.
+`readyForReview` is `true` only when: `AutoReject` is `null`; `CLA`, `Title`, `Description`, and `LinkedIssueOrDiscussion` are all `true`; `CubicIssues` and `Oversized` are both `false`; and either `TestsNeeded` is `false` or `TestsIncluded` is `true`. If `AutoReject` is set, `readyForReview` is always `false`.
 
 Emit the JSON first, then take the appropriate action path below.
 
@@ -255,13 +260,15 @@ The PR's own review ticket is **not** canceled in the classic path — it remain
 
 If `relatedIssueTickets` is non-empty, run "Linking a PR to its issue ticket" (not-ready variant): add the PR link and post the "in progress, still being triaged" comment. **Leave each issue ticket's state unchanged and do not cancel the PR's own review ticket** — the PR isn't ready yet, so we only flag the in-progress work. (Optionally surface `duplicatePRs` to the user, but do not close here — closing is a path-D action driven from B.)
 
+`messageForUser` should list every failing check the contributor must address, including a **missing linked issue / forum topic** (check F — ask them to open or link a GitHub issue for a `fix`, or a `community.n8n.io` topic for a `feat`/`refactor`) and an **oversized PR** (check G — ask them to split it into focused PRs *if the work is separable*).
+
 Show `messageForUser` and ask `Post as-is / Edit before posting / Skip`. On post:
 
 ```bash
 gh pr comment <number> --repo n8n-io/n8n --body "<final message>"
 ```
 
-Then apply the right terminal triage label — exactly one, priority `triage:tests-needed` > `triage:needs-info`. See `reference/label-flow.md`. On `Skip`, leave the PR on `triage:in-progress` so the next loop picks it up.
+Then apply the right terminal triage label — exactly one, priority `triage:tests-needed` > `triage:needs-info` (a missing linked issue/forum topic or an oversized PR maps to `triage:needs-info`). See `reference/label-flow.md`. On `Skip`, leave the PR on `triage:in-progress` so the next loop picks it up.
 
 Skip C entirely if A already handled the only failing check and the PR is now ready — run B instead.
 
@@ -269,7 +276,7 @@ Skip C entirely if A already handled the only failing check and the PR is now re
 
 Used when the PR should be closed rather than reviewed. Three common triggers:
 
-1. **Auto-rejection** (`AutoReject` set) — typo-only or unsanctioned new node.
+1. **Auto-rejection** (`AutoReject` set) — typo-only, unsanctioned new node, or low-value/automated.
 2. **Duplicate** — `duplicatePRs` is non-empty (another open PR addresses the same change), confirmed via the duplicate guard in path B. Use `#<other-pr>` from `duplicatePRs` in the template.
 3. **Out of scope / bundled** — multiple unrelated fixes that should be split, or scope n8n team has declined.
 
@@ -280,6 +287,9 @@ Ask `Close + comment / Edit before closing / Skip`. Templates below; pick one an
 
 **New node:**
 > Thanks for the contribution! n8n no longer accepts new nodes directly into the core monorepo unless the team has explicitly agreed to scope one in. Please publish this as a [community node](https://docs.n8n.io/integrations/creating-nodes/overview/) instead — that gives you full ownership and avoids the long review queue here. Closing this PR per our [contributing guide](../blob/master/CONTRIBUTING.md#community-pr-guidelines).
+
+**Low-value / automated:**
+> Thanks for taking the time to open this! We review every PR by hand, so per our [contributing guide](../blob/master/CONTRIBUTING.md#community-pr-guidelines) we only take changes that carry a clear functional benefit. This one doesn't change behaviour (or comes without a rationale we can act on), so we're closing it to keep the review queue focused. If there's a real fix or improvement behind it, please open an issue or forum topic describing the problem first and we'll be glad to look. 🙏
 
 **Duplicate of another PR:**
 > Thanks for the contribution! This change is already being handled in #<other-pr>, which is further along in review. Closing this in favour of that PR to keep the queue tidy — please feel free to chime in over there if there's anything missing.
