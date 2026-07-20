@@ -1,6 +1,7 @@
 import { XataChatMessageHistory } from '@langchain/community/stores/message/xata';
 import { BaseClient } from '@xata.io/client';
 import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
+import { withOrphanCleanup } from '@utils/memory/withOrphanCleanup';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	ISupplyDataFunctions,
@@ -144,14 +145,16 @@ export class MemoryXata implements INodeType {
 				? {}
 				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
 
-		const memory = new memClass({
-			chatHistory,
-			memoryKey: 'chat_history',
-			returnMessages: true,
-			inputKey: 'input',
-			outputKey: 'output',
-			...kOptions,
-		});
+		const memory = withOrphanCleanup(
+			new memClass({
+				chatHistory,
+				memoryKey: 'chat_history',
+				returnMessages: true,
+				inputKey: 'input',
+				outputKey: 'output',
+				...kOptions,
+			}),
+		);
 
 		return {
 			response: logWrapper(memory, this),

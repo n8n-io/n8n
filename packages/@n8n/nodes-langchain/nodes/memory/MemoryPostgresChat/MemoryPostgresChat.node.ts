@@ -1,5 +1,6 @@
 import { PostgresChatMessageHistory } from '@langchain/community/stores/message/postgres';
 import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
+import { withOrphanCleanup } from '@utils/memory/withOrphanCleanup';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
@@ -107,14 +108,16 @@ export class MemoryPostgresChat implements INodeType {
 				? {}
 				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
 
-		const memory = new memClass({
-			memoryKey: 'chat_history',
-			chatHistory: pgChatHistory,
-			returnMessages: true,
-			inputKey: 'input',
-			outputKey: 'output',
-			...kOptions,
-		});
+		const memory = withOrphanCleanup(
+			new memClass({
+				memoryKey: 'chat_history',
+				chatHistory: pgChatHistory,
+				returnMessages: true,
+				inputKey: 'input',
+				outputKey: 'output',
+				...kOptions,
+			}),
+		);
 
 		return {
 			response: logWrapper(memory, this),

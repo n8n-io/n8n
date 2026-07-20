@@ -161,7 +161,7 @@ export function buildToolContext(steps: ToolCallData[]): string {
  * @param chatHistory - Array of messages to clean up
  * @returns Cleaned array with orphaned messages removed from the start
  */
-function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
+export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
 	let changed = true;
 	while (changed && chatHistory.length > 0) {
 		changed = false;
