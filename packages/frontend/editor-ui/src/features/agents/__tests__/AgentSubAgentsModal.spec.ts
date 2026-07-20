@@ -46,7 +46,7 @@ vi.mock('@/app/components/Modal.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', () => ({
-	N8nActionBox: {
+	N8nEmptyState: {
 		props: ['heading', 'description'],
 		template: '<div v-bind="$attrs">{{ heading }} {{ description }}</div>',
 	},

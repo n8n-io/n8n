@@ -2,9 +2,9 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { untilSiteSelected } from '../../descriptions';
 import { folderRLC } from '../../folder';
 import { getUploadBufferWithinCap, validateSharePointFileName } from '../../helpers/utils';
+import { untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
 import { microsoftApiRequest } from '../../transport';
 
@@ -62,11 +62,8 @@ export async function execute(
 		this.getNodeParameter('folder', i, '', { extractValue: true }) as string
 	).trim();
 
-	// Everything local fails before any request is sent — the site resolution
-	// below can itself cost a Graph lookup in URL mode.
 	validateSharePointFileName(this.getNode(), fileName, i);
 
-	// An empty segment would change the request shape — fail loudly instead.
 	if (folderId === '') {
 		throw new NodeOperationError(this.getNode(), "The 'Parent Folder' parameter is empty", {
 			description: "Set the folder ID (or 'root' for the library root) and try again.",
@@ -75,7 +72,6 @@ export async function execute(
 
 	const { body, contentType } = await getUploadBufferWithinCap(this, i, binaryPropertyName);
 
-	// resolveSiteId validates the site field itself, including the empty case
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 
 	// Encode segments: site IDs contain commas and file names spaces; encoding

@@ -56,4 +56,20 @@ describe('CompareHeader', () => {
 
 		expect(container.textContent).toContain('Running');
 	});
+
+	it('shows the failed badge when every run errored', () => {
+		const { container } = renderComponent({
+			props: {
+				collectionName: 'Exp',
+				versions: [
+					version({ index: 0, status: 'error', avgScore: null }),
+					version({ index: 1, status: 'cancelled', avgScore: null }),
+				],
+				bestVersionIndex: null,
+			},
+		});
+
+		expect(container.textContent).toContain('Failed');
+		expect(container.textContent).not.toContain('Done');
+	});
 });

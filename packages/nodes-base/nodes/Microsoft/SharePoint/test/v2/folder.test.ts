@@ -60,8 +60,6 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 				$filter: 'folder ne null',
 			},
 		);
-		// Files and ID-less entries are dropped even if Graph ignores the filter;
-		// the API's order is kept (pages concatenate in the editor)
 		expect(result.results).toEqual([
 			{ name: 'Reports', value: 'folder-1' },
 			{ name: 'Archive', value: 'folder-2' },
@@ -90,8 +88,6 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 	});
 
 	it('walks further pages while filtering, so matches beyond page one are found', async () => {
-		// The editor stops auto-paging while a filter is typed — matches on later
-		// pages must be fetched here or they would be unreachable
 		const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/drive/items?$skiptoken=p2';
 		apiRequest
 			.mockResolvedValueOnce({
@@ -175,7 +171,6 @@ describe('Microsoft SharePoint v2 — folder selection', () => {
 		apiRequest.mockResolvedValueOnce({ value: [{ id: 'folder-2', name: 'Archive', folder: {} }] });
 		const secondPage = await getFolders.call(ctx, undefined, nextLink);
 
-		// The link is a complete address — passed through verbatim, never rebuilt
 		expect(apiRequest).toHaveBeenLastCalledWith('GET', '', {}, {}, nextLink);
 		expect(secondPage.results).toEqual([{ name: 'Archive', value: 'folder-2' }]);
 		expect(secondPage.paginationToken).toBeUndefined();

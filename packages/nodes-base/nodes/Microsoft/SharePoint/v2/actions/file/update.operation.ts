@@ -2,10 +2,10 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { untilFolderSelected, untilSiteSelected } from '../../descriptions';
 import { fileRLC } from '../../file';
-import { folderRLC } from '../../folder';
+import { untilFolderSelected, folderRLC  } from '../../folder';
 import { getUploadBufferWithinCap, validateSharePointFileName } from '../../helpers/utils';
+import { untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
 import { microsoftApiRequest } from '../../transport';
 

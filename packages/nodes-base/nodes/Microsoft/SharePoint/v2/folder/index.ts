@@ -3,8 +3,8 @@ import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } fr
 import { searchDriveItems } from '../helpers/driveItemSearch';
 import { resolveSiteId } from '../site';
 
-// The whole folder-selection piece lives here — the field and the search
-// behind it — so the later file actions plug it in without their own copies.
+/** Hide gate: file fields stay hidden until a folder is chosen. */
+export const untilFolderSelected = { folder: [''] };
 
 export const folderRLC: INodeProperties = {
 	displayName: 'Parent Folder',
@@ -14,7 +14,6 @@ export const folderRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	description: 'The folder to operate on, within the site’s default document library',
 	typeOptions: {
-		// Re-fetch the folder list whenever the chosen site changes
 		loadOptionsDependsOn: ['site.value'],
 	},
 	modes: [
@@ -45,7 +44,6 @@ export async function getFolders(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	// resolveSiteId validates the site field itself, including the empty case
 	const siteId = paginationToken ? '' : await resolveSiteId.call(this, 0);
 
 	return await searchDriveItems.call(this, {

@@ -15,11 +15,15 @@ import {
 } from '@/features/agents/model-providers';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import AgentSelectorParameterInput from '@/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue';
-import { AGENT_NODE_WIDTH } from '@/app/utils/nodeViewUtils';
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
 import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
+import { AGENT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+
+// Width comes from the shared constant so canvas placement and tidy-up layout
+// stay in sync with the rendered card.
+const cardStyle = { width: `${AGENT_NODE_SIZE[0]}px` };
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
@@ -28,8 +32,6 @@ const emit = defineEmits<{
 }>();
 
 const $style = useCssModule();
-// New-node placement math relies on this width — keep it bound to the shared constant
-const cardWidth = `${AGENT_NODE_WIDTH}px`;
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const nav = useAgentNavigation();
@@ -182,6 +184,7 @@ watch(
 <template>
 	<div
 		:class="[$style.card, classes]"
+		:style="cardStyle"
 		data-test-id="canvas-node-agent"
 		@dblclick.stop="onActivate"
 		@contextmenu="onOpenContextMenu"
@@ -263,7 +266,7 @@ watch(
 	// Own stacking context so the header/body/glow z-indexes below stay local and
 	// never compete with the connection handles (which must stay on top).
 	isolation: isolate;
-	width: v-bind(cardWidth);
+	// Width is bound inline from AGENT_NODE_SIZE — see cardStyle in the script.
 	border-radius: var(--agent-card--radius);
 }
 

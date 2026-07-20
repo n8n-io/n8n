@@ -98,7 +98,7 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nCallout,
 	N8nCard,
@@ -2529,7 +2529,7 @@ const onNameSubmit = async (name: string) => {
 					:personal-project="personalProject"
 					resource-type="workflows"
 				/>
-				<N8nActionBox
+				<N8nEmptyState
 					v-else-if="currentFolder"
 					data-test-id="empty-folder-action-box"
 					:heading="
@@ -2548,7 +2548,7 @@ const onNameSubmit = async (name: string) => {
 								? i18n.baseText('readOnlyEnv.cantAdd.workflow')
 								: i18n.baseText('generic.missing.permissions')
 						}}
-					</template></N8nActionBox
+					</template></N8nEmptyState
 				>
 				<ResourcesListEmptyState
 					v-else-if="showArchivedOnlyHint"
