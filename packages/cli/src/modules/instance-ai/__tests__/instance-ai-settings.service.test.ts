@@ -69,7 +69,9 @@ describe('InstanceAiSettingsService', () => {
 			async (_entity, value, conflictPaths) =>
 				await settingsRepository.upsert(value as never, conflictPaths as never),
 		);
-		settingsManager.transaction.mockImplementation(async (fn) => await fn(transactionManager));
+		settingsManager.transaction.mockImplementation(async (fn: unknown) => {
+			return await (fn as (manager: EntityManager) => Promise<unknown>)(transactionManager);
+		});
 		service = new InstanceAiSettingsService(
 			globalConfig as never,
 			settingsRepository,

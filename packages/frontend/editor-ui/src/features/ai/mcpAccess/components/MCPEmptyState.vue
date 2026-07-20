@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nActionBox } from '@n8n/design-system';
+import { N8nEmptyState } from '@n8n/design-system';
 import { N8nText } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useI18n } from '@n8n/i18n';
@@ -25,7 +25,7 @@ const i18n = useI18n();
 
 <template>
 	<div :class="$style.container" data-test-id="mcp-empty-state-container">
-		<N8nActionBox
+		<N8nEmptyState
 			:icon="{ type: 'icon', value: 'mcp' }"
 			:heading="i18n.baseText('settings.mcp.actionBox.heading')"
 			:description="i18n.baseText('settings.mcp.description')"
@@ -57,7 +57,7 @@ const i18n = useI18n();
 					</a>
 				</N8nText>
 			</template>
-		</N8nActionBox>
+		</N8nEmptyState>
 	</div>
 </template>
 

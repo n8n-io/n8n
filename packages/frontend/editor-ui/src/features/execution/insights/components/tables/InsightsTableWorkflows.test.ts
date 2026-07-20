@@ -71,6 +71,7 @@ const mockInsightsData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-1',
 			workflowName: 'Test Workflow 1',
+			hasReadAccess: true,
 			total: 100,
 			failed: 5,
 			failureRate: 0.05,
@@ -84,6 +85,7 @@ const mockInsightsData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-2',
 			workflowName: 'Test Workflow 2 With Very Long Name That Should Be Truncated',
+			hasReadAccess: true,
 			total: 50,
 			failed: 0,
 			failureRate: 0,
@@ -198,6 +200,49 @@ describe('InsightsTableWorkflows', () => {
 					{
 						workflow_id: 'workflow-1',
 					},
+				);
+			});
+
+			it('should render workflow name as a link when the user has access', () => {
+				renderComponent();
+
+				const row1 = screen.getByTestId('workflow-row-workflow-1');
+				expect(within(row1).getByText('Test Workflow 1').closest('a')).not.toBeNull();
+			});
+
+			it('should render workflow name as static text without a link when the user has no access', () => {
+				const noAccessData: InsightsByWorkflow = {
+					count: 1,
+					data: [{ ...mockInsightsData.data[0], hasReadAccess: false }],
+				};
+
+				renderComponent({
+					props: { data: noAccessData, loading: false, isDashboardEnabled: true },
+				});
+
+				const row1 = screen.getByTestId('workflow-row-workflow-1');
+				const name = within(row1).getByText('Test Workflow 1');
+				expect(name).toBeInTheDocument();
+				expect(name.closest('a')).toBeNull();
+			});
+
+			it('should not track telemetry when clicking a workflow the user cannot access', async () => {
+				const user = userEvent.setup();
+				const noAccessData: InsightsByWorkflow = {
+					count: 1,
+					data: [{ ...mockInsightsData.data[0], hasReadAccess: false }],
+				};
+
+				renderComponent({
+					props: { data: noAccessData, loading: false, isDashboardEnabled: true },
+				});
+
+				const row1 = screen.getByTestId('workflow-row-workflow-1');
+				await user.click(within(row1).getByText('Test Workflow 1'));
+
+				expect(mockTelemetry.track).not.toHaveBeenCalledWith(
+					'User clicked on workflow from insights table',
+					expect.anything(),
 				);
 			});
 		});

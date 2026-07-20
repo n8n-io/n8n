@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import EmptyStateIconCards from './EmptyStateIconCards.vue';
+import type { EmptyStateIconCards as EmptyStateIconCardsIcon } from './types';
 import type { ButtonVariant } from '../../types/button';
 import N8nButton from '../N8nButton';
 import N8nCallout, { type CalloutTheme } from '../N8nCallout';
@@ -9,8 +11,8 @@ import type { IconOrEmoji } from '../N8nIconPicker/types';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
-interface ActionBoxProps {
-	icon?: IconOrEmoji;
+interface EmptyStateProps {
+	icon?: IconOrEmoji | EmptyStateIconCardsIcon;
 	heading?: string;
 	buttonText?: string;
 	buttonVariant?: ButtonVariant;
@@ -22,18 +24,24 @@ interface ActionBoxProps {
 	calloutIcon?: IconName;
 }
 
-defineOptions({ name: 'N8nActionBox' });
-withDefaults(defineProps<ActionBoxProps>(), {
+defineOptions({ name: 'N8nEmptyState' });
+withDefaults(defineProps<EmptyStateProps>(), {
 	calloutTheme: 'info',
 	buttonIcon: undefined,
 });
 </script>
 
 <template>
-	<div :class="['n8n-action-box', $style.container]" data-test-id="action-box">
+	<div :class="['n8n-empty-state', $style.container]" data-test-id="empty-state">
 		<div v-if="icon" :class="$style.icon">
+			<EmptyStateIconCards
+				v-if="icon.type === 'cards'"
+				:center-icon="icon.center"
+				:side-icons="icon.sides"
+				:animated="icon.animated ?? true"
+			/>
 			<N8nIcon
-				v-if="icon.type === 'icon'"
+				v-else-if="icon.type === 'icon'"
 				:icon="icon.value"
 				:size="40"
 				:stroke-width="1.5"
@@ -41,17 +49,23 @@ withDefaults(defineProps<ActionBoxProps>(), {
 			/>
 			<span v-else>{{ icon.value }}</span>
 		</div>
-		<div v-if="heading || $slots.heading" :class="$style.heading">
-			<N8nHeading size="xlarge" align="center">
-				<slot name="heading">{{ heading }}</slot>
-			</N8nHeading>
-		</div>
-		<div v-if="description" :class="$style.description" @click="$emit('descriptionClick', $event)">
-			<N8nText color="text-base">
-				<slot name="description">
-					<span v-n8n-html="description"></span>
-				</slot>
-			</N8nText>
+		<div v-if="heading || $slots.heading || description" :class="$style.text">
+			<div v-if="heading || $slots.heading" :class="$style.heading">
+				<N8nHeading size="xlarge" align="center">
+					<slot name="heading">{{ heading }}</slot>
+				</N8nHeading>
+			</div>
+			<div
+				v-if="description"
+				:class="$style.description"
+				@click="$emit('descriptionClick', $event)"
+			>
+				<N8nText color="text-base">
+					<slot name="description">
+						<span v-n8n-html="description"></span>
+					</slot>
+				</N8nText>
+			</div>
 		</div>
 		<N8nTooltip v-if="buttonText" :disabled="!buttonDisabled">
 			<template #content>
@@ -90,29 +104,27 @@ withDefaults(defineProps<ActionBoxProps>(), {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: var(--spacing--3xl);
-
-	> * {
-		margin-bottom: var(--spacing--lg);
-
-		&:last-child {
-			margin-bottom: 0;
-		}
-	}
+	gap: var(--spacing--md);
+	padding: var(--spacing--3xl) var(--spacing--xl);
 }
 
 .icon {
 	font-size: 40px;
 }
 
+.text {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	max-width: 32rem;
+}
+
 .heading {
-	margin-bottom: var(--spacing--lg);
 	text-align: center;
 }
 
 .description {
 	color: var(--color--text);
-	margin-bottom: var(--spacing--xl);
 	text-align: center;
 }
 
