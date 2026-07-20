@@ -20,8 +20,26 @@ describe('MicrosoftExcelSharePoint (hidden shell)', () => {
 		expect(node.description.displayName).not.toBe(oneDriveNode.description.displayName);
 	});
 
-	it('should not be exposed as an AI tool yet', () => {
+	it('should be exposed as an AI tool', () => {
 		expect(node.description.version).toBe(1);
-		expect(node.description.usableAsTool).toBeUndefined();
+		expect(node.description.usableAsTool).toBe(true);
+	});
+
+	it('describes every operation for a model choosing between tools', () => {
+		const operationProperties = node.description.properties.filter(
+			(property) => property.name === 'operation',
+		);
+
+		expect(operationProperties.length).toBeGreaterThan(0);
+		for (const property of operationProperties) {
+			for (const option of property.options ?? []) {
+				if (!('value' in option)) continue;
+				expect(option.description, `operation ${String(option.value)}`).toMatch(/\w+/);
+				expect(
+					(option as { action?: string }).action,
+					`operation ${String(option.value)} action`,
+				).toMatch(/\w+/);
+			}
+		}
 	});
 });

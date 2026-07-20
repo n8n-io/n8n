@@ -32,6 +32,9 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		hidden: true,
+		// The generated Tool variant inherits `hidden`, so both stay out of the
+		// panel until launch; removing `hidden` exposes node and tool together.
+		usableAsTool: true,
 		// Legacy credentials deliberately excluded: the SharePoint one targets
 		// the old _api host (not Graph); the Excel one has no Sites.* scopes.
 		credentials: [
