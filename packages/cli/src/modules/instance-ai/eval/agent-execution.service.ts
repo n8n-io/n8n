@@ -68,6 +68,17 @@ const MAX_RECORDED_TOOL_VALUE_CHARS = 4_000;
 // interceptedRequests still disambiguate.
 type ToolLedger = Map<string, InstanceAiEvalInterceptedRequest[]>;
 
+/**
+ * One URL is the other or a path-boundary prefix of it — bare prefix overlap
+ * (`…/mcp` vs `…/mcp-two`) must not match.
+ */
+export function mcpUrlsMatch(configUrl: string, remoteUrl: string): boolean {
+	const shorter = configUrl.length <= remoteUrl.length ? configUrl : remoteUrl;
+	const longer = shorter === configUrl ? remoteUrl : configUrl;
+	const base = shorter.replace(/\/+$/, '');
+	return longer === shorter || longer === base || longer.startsWith(`${base}/`);
+}
+
 @Service()
 export class EvalAgentExecutionService {
 	constructor(
@@ -404,17 +415,9 @@ export class EvalAgentExecutionService {
 		if (this.moduleRegistry.isActive('mcp-registry')) {
 			try {
 				const entries = await Container.get(McpRegistryService).getAll();
-				// Match on a path boundary so a short URL can't claim every server
-				// (or vice versa) via bare prefix overlap.
-				const matchesRemote = (configUrl: string, remoteUrl: string): boolean => {
-					const shorter = configUrl.length <= remoteUrl.length ? configUrl : remoteUrl;
-					const longer = shorter === configUrl ? remoteUrl : configUrl;
-					const base = shorter.replace(/\/+$/, '');
-					return longer === shorter || longer === base || longer.startsWith(`${base}/`);
-				};
 				for (const server of mcpServers) {
 					const entry = entries.find((candidate) =>
-						candidate.remotes.some((remote) => matchesRemote(server.url, remote.url)),
+						candidate.remotes.some((remote) => mcpUrlsMatch(server.url, remote.url)),
 					);
 					if (entry && entry.tools.length > 0) {
 						result[server.name] = entry.tools.map((tool) => ({

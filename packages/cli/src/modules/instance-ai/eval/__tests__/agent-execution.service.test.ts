@@ -17,6 +17,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 import {
 	EvalAgentExecutionService,
+	mcpUrlsMatch,
 	pruneConfigForEval,
 	summarizeTools,
 } from '../agent-execution.service';
@@ -462,6 +463,20 @@ describe('pruneConfigForEval', () => {
 
 		expect(skippedFeatures).toHaveLength(0);
 		expect(config.config?.webSearch?.enabled).toBe(true);
+	});
+});
+
+describe('mcpUrlsMatch', () => {
+	it.each([
+		['https://mcp.notion.com/mcp', 'https://mcp.notion.com/mcp', true],
+		['https://mcp.notion.com/mcp/', 'https://mcp.notion.com/mcp', true],
+		['https://mcp.notion.com/mcp/v2', 'https://mcp.notion.com/mcp', true],
+		['https://mcp.notion.com/mcp-two', 'https://mcp.notion.com/mcp', false],
+		['https://mcp.acme.com', 'https://mcp.acme.com.evil.example/mcp', false],
+		['https://mcp.linear.app/mcp', 'https://mcp.notion.com/mcp', false],
+	])('%s vs %s -> %s', (configUrl, remoteUrl, expected) => {
+		expect(mcpUrlsMatch(configUrl, remoteUrl)).toBe(expected);
+		expect(mcpUrlsMatch(remoteUrl, configUrl)).toBe(expected);
 	});
 });
 

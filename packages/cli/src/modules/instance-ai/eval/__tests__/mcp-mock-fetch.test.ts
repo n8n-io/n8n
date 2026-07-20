@@ -193,6 +193,25 @@ describe('createMcpMockFetch', () => {
 		expect(body.result.tools[1].inputSchema).toMatchObject({ type: 'object' });
 	});
 
+	it('resolves the server on a path boundary, not by bare prefix', async () => {
+		extractText.mockReturnValue(toolsListJson);
+		const fetchFn = createMcpMockFetch({
+			servers: [
+				{ name: 'kb', url: 'https://mcp.example.com/mcp' },
+				{ name: 'kb_two', url: 'https://mcp.example.com/mcp-two' },
+			],
+			agentInstructions: 'irrelevant',
+			onToolCall: vi.fn(),
+			logger,
+		});
+
+		const res = await fetchFn('https://mcp.example.com/mcp-two', {
+			...rpc('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: {} }),
+		});
+		const body = (await res.json()) as { result: { serverInfo: { name: string } } };
+		expect(body.result.serverInfo.name).toBe('kb_two');
+	});
+
 	it('answers an unparseable body with a JSON-RPC parse error', async () => {
 		const fetchFn = buildFetch();
 		const res = await fetchFn('https://mcp.acme-kb.example/mcp', {
