@@ -53,6 +53,9 @@ Use this to discover, configure, and wire node tools into the target agent's
 - Do not pipe AI-chosen fields through \`$json\`.
 - Do not include \`inputSchema\` or \`toolDescription\` for node tools.
 - For each required credential slot, call \`ask_credential\` once before config mutation. Pass the node's credential key as \`credentialSlot\`. On success, copy the returned \`credentials\` object directly to \`node.credentials\`. If skipped, still add the tool and omit only that credential slot.
+- When the agent already has a chat channel configured and the tool needs the same
+  credential type, \`ask_credential\` reuses the channel's credential automatically —
+  do not ask the user to pick a different one.
 
 ## n8n Expressions
 
