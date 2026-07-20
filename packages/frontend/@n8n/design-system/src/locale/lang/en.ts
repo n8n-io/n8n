@@ -29,6 +29,8 @@ export default {
 		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
 	'datatable.pageSize': 'Page size',
+	'pagination.goTo': 'Go to',
+	'pagination.goToPage': 'Go to page',
 	'codeDiff.couldNotReplace': 'Could not replace code',
 	'codeDiff.codeReplaced': 'Code replaced',
 	'codeDiff.replaceMyCode': 'Replace my code',

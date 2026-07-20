@@ -11,7 +11,8 @@ import {
 } from 'reka-ui';
 import { computed, useCssModule, ref, watch } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import { useI18n } from '@n8n/design-system/composables/useI18n';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 
 import type {
@@ -19,7 +20,6 @@ import type {
 	PaginationProps,
 	PaginationSlots,
 	PaginationSizes,
-	PaginationVariants,
 } from './Pagination.types';
 
 defineOptions({ inheritAttrs: false });
@@ -27,9 +27,7 @@ defineOptions({ inheritAttrs: false });
 const $style = useCssModule();
 
 const props = withDefaults(defineProps<PaginationProps>(), {
-	variant: 'default',
-	size: 'small',
-	background: false,
+	size: 'default',
 	layout: 'prev, pager, next',
 	pageSizes: () => [10, 20, 30, 40, 50, 100],
 	hideOnSinglePage: false,
@@ -42,15 +40,15 @@ const props = withDefaults(defineProps<PaginationProps>(), {
 });
 
 const emit = defineEmits<PaginationEmits>();
-const slots = defineSlots<PaginationSlots>();
+defineSlots<PaginationSlots>();
 
-// Prop mapping: Element+ → Reka UI
+const { t } = useI18n();
+
 const page = computed(
 	() => props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage,
 );
 const itemsPerPage = ref(props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10);
 
-// Watch for external pageSize/itemsPerPage changes and sync
 watch(
 	() => props.pageSize ?? props.itemsPerPage,
 	(newSize: number | undefined) => {
@@ -93,10 +91,8 @@ const totalItems = computed(() => {
 	return 0;
 });
 
-// Hide component when only one page
 const shouldHide = computed(() => props.hideOnSinglePage && pageCount.value <= 1);
 
-// Layout parsing
 const layoutParts = computed(() => props.layout?.split(',').map((s) => s.trim()) ?? []);
 const showPrev = computed(() => layoutParts.value.includes('prev'));
 const showNext = computed(() => layoutParts.value.includes('next'));
@@ -123,18 +119,25 @@ const deduplicatedLayoutParts = computed(() => {
 	return result;
 });
 
-// Forward props to Reka UI
 const rootProps = useForwardPropsEmits(reactivePick(props, 'disabled', 'showEdges'), emit);
 
-// Internal page size state for v-model:page-size
 const internalPageSize = ref(itemsPerPage.value);
 
-// Track previous page for directional events
 const prevPage = ref(page.value);
+const jumperValue = ref(String(page.value ?? 1));
 
-// Handle page updates
+watch(
+	() => page.value,
+	(newPage) => {
+		if (newPage === undefined) return;
+		prevPage.value = newPage;
+		jumperValue.value = String(newPage);
+	},
+);
+
 const handlePageUpdate = (newPage: number) => {
-	// Emit directional events based on page change
+	if (props.disabled) return;
+
 	if (newPage < prevPage.value) {
 		emit('prev-click', newPage);
 	} else if (newPage > prevPage.value) {
@@ -142,14 +145,16 @@ const handlePageUpdate = (newPage: number) => {
 	}
 
 	prevPage.value = newPage;
+	jumperValue.value = String(newPage);
 
 	emit('update:page', newPage);
 	emit('update:currentPage', newPage);
 	emit('current-change', newPage);
 };
 
-// Handle page size updates
 const handlePageSizeUpdate = (newSize: number | string) => {
+	if (props.disabled) return;
+
 	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
 	internalPageSize.value = size;
 	emit('update:pageSize', size);
@@ -159,70 +164,107 @@ const handlePageSizeUpdate = (newSize: number | string) => {
 	handlePageUpdate(1);
 };
 
-// Styles
-const variants: Record<PaginationVariants, string> = {
-	default: $style.default,
-	ghost: $style.ghost,
-};
-const variant = computed(() => variants[props.variant]);
-
 const sizes: Record<PaginationSizes, string> = {
+	default: $style.default,
 	small: $style.small,
-	medium: $style.medium,
 };
 const size = computed(() => sizes[props.size]);
 
-// Background class
-const backgroundClass = computed(() => (props.background ? $style.background : ''));
+const navButtonSize = computed(() => (props.size === 'small' ? 'xsmall' : 'medium'));
+const navIconSize = computed(() => (props.size === 'small' ? 'small' : 'medium'));
 
-// Page size selector items
 const pageSizeItems = computed(() =>
 	props.pageSizes.map((s) => ({ value: String(s), label: `${s} / page` })),
 );
 
-// Total text
 const totalText = computed(() => {
 	if (props.total === undefined) return '';
 	return `Total ${props.total}`;
 });
 
-// Jumper state
-const jumperValue = ref<string>('');
-const handleJumperSubmit = () => {
-	const targetPage = parseInt(jumperValue.value, 10);
-	if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= pageCount.value) {
-		handlePageUpdate(targetPage);
-		jumperValue.value = '';
+const handleJumperSubmit = (input: HTMLInputElement) => {
+	if (props.disabled) return;
+
+	const parsed = parseInt(jumperValue.value, 10);
+	if (isNaN(parsed)) {
+		jumperValue.value = String(prevPage.value);
+		input.blur();
+		return;
 	}
+
+	const targetPage = Math.min(Math.max(parsed, 1), pageCount.value);
+	jumperValue.value = String(targetPage);
+	handlePageUpdate(targetPage);
+	input.blur();
+};
+
+const onJumperKeydown = (event: KeyboardEvent) => {
+	if (event.key !== 'Enter') return;
+	if (!(event.target instanceof HTMLInputElement)) return;
+
+	handleJumperSubmit(event.target);
+};
+
+const onJumperFocus = (event: FocusEvent) => {
+	if (!(event.target instanceof HTMLInputElement)) return;
+	event.target.select();
+};
+
+const onJumperBlur = () => {
+	jumperValue.value = String(prevPage.value);
+};
+
+const jumperInputStyle = computed(() => {
+	const digits = Math.max(String(jumperValue.value).length, 1);
+	return { width: `calc(${digits}ch + var(--spacing--xs))` };
+});
+
+const handlePagerKeydown = (event: KeyboardEvent) => {
+	if (props.disabled) return;
+	if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+	const list = event.currentTarget;
+	if (!(list instanceof HTMLElement)) return;
+
+	const buttons = Array.from(list.querySelectorAll<HTMLElement>('button:not(:disabled)'));
+	if (buttons.length === 0) return;
+
+	const active = document.activeElement;
+	const currentIndex = buttons.findIndex((button) => button === active || button.contains(active));
+	if (currentIndex === -1) return;
+
+	const nextIndex =
+		event.key === 'ArrowRight'
+			? Math.min(currentIndex + 1, buttons.length - 1)
+			: Math.max(currentIndex - 1, 0);
+
+	if (nextIndex === currentIndex) return;
+
+	event.preventDefault();
+	buttons[nextIndex]?.focus();
 };
 </script>
 
 <template>
 	<div
 		v-if="!shouldHide"
-		:class="['n8n-pagination', $style.paginationContainer, variant, size, backgroundClass]"
+		:class="['n8n-pagination', $style.paginationContainer, size, { [$style.isDisabled]: disabled }]"
 		v-bind="$attrs"
 	>
-		<!-- Render layout parts in order specified by layout prop -->
 		<template v-for="part in deduplicatedLayoutParts" :key="part">
-			<!-- Total count -->
 			<div v-if="part === 'total'" :class="$style.total">
 				{{ totalText }}
 			</div>
 
-			<!-- Page size selector -->
 			<N8nSelect
 				v-else-if="part === 'sizes'"
 				:model-value="String(internalPageSize)"
 				:items="pageSizeItems"
 				:size="props.size === 'small' ? 'xsmall' : 'small'"
-				:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
 				:disabled="disabled"
-				:class="$style.pageSizeSelect"
 				@update:model-value="handlePageSizeUpdate"
 			/>
 
-			<!-- Pager (prev, pages, next) -->
 			<PaginationRoot
 				v-else-if="part === 'pager-group'"
 				v-bind="rootProps"
@@ -231,28 +273,45 @@ const handleJumperSubmit = () => {
 				:total="totalItems"
 				:sibling-count="siblingCount"
 				:show-edges="showEdges"
+				:disabled="disabled"
 				@update:page="handlePageUpdate"
 			>
-				<PaginationList v-slot="{ items }" :class="$style.paginationList">
-					<!-- Previous button -->
-					<PaginationPrev v-if="showPrev" v-slot="slotProps" :class="$style.paginationButton">
-						<slot name="prev" v-bind="slotProps">
-							<span v-if="prevText">{{ prevText }}</span>
-							<Icon v-else :icon="prevIcon" />
+				<PaginationList
+					v-slot="{ items }"
+					:class="$style.paginationList"
+					@keydown="handlePagerKeydown"
+				>
+					<PaginationPrev v-if="showPrev" as-child>
+						<slot name="prev">
+							<N8nButton
+								v-if="prevText"
+								variant="ghost"
+								:size="navButtonSize"
+								aria-label="Previous page"
+							>
+								{{ prevText }}
+							</N8nButton>
+							<N8nButton
+								v-else
+								variant="ghost"
+								icon-only
+								:icon="prevIcon"
+								:icon-size="navIconSize"
+								:size="navButtonSize"
+								aria-label="Previous page"
+							/>
 						</slot>
 					</PaginationPrev>
 
-					<!-- Page items -->
 					<template v-if="showPager">
 						<template
 							v-for="(item, index) in items"
 							:key="item.type === 'ellipsis' ? `ellipsis-${index}` : item.value"
 						>
-							<!-- Ellipsis button -->
 							<PaginationEllipsis
 								v-if="item.type === 'ellipsis'"
 								:index="index"
-								:class="[$style.paginationEllipsis, $style.paginationButton]"
+								:class="$style.paginationEllipsis"
 							>
 								<span aria-hidden="true">&#8230;</span>
 							</PaginationEllipsis>
@@ -262,69 +321,102 @@ const handleJumperSubmit = () => {
 						</template>
 					</template>
 
-					<!-- Next button -->
-					<PaginationNext v-if="showNext" v-slot="slotProps" :class="$style.paginationButton">
-						<slot name="next" v-bind="slotProps">
-							<span v-if="nextText">{{ nextText }}</span>
-							<Icon v-else :icon="nextIcon" />
+					<PaginationNext v-if="showNext" as-child>
+						<slot name="next">
+							<N8nButton
+								v-if="nextText"
+								variant="ghost"
+								:size="navButtonSize"
+								aria-label="Next page"
+							>
+								{{ nextText }}
+							</N8nButton>
+							<N8nButton
+								v-else
+								variant="ghost"
+								icon-only
+								:icon="nextIcon"
+								:icon-size="navIconSize"
+								:size="navButtonSize"
+								aria-label="Next page"
+							/>
 						</slot>
 					</PaginationNext>
 				</PaginationList>
 			</PaginationRoot>
 
-			<!-- Page jumper -->
 			<div v-else-if="part === 'jumper'" :class="$style.jumper">
-				<span :class="$style.jumperText">Go to</span>
+				<span :class="$style.jumperAddon">{{ t('pagination.goTo') }}</span>
 				<input
 					v-model="jumperValue"
 					type="number"
 					:min="1"
 					:max="pageCount"
 					:class="$style.jumperInput"
+					:style="jumperInputStyle"
 					:disabled="disabled"
-					@keyup.enter="handleJumperSubmit"
+					:aria-label="t('pagination.goToPage')"
+					@focus="onJumperFocus"
+					@blur="onJumperBlur"
+					@keydown="onJumperKeydown"
 				/>
 			</div>
 		</template>
 	</div>
 </template>
 
-<style module>
+<style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+@use '@n8n/design-system/css/mixins/input' as input-mixin;
+
 .paginationContainer {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--shade-1);
 }
 
 .default {
-	/* Default styling */
-}
+	.paginationItem,
+	.paginationEllipsis {
+		height: var(--height--md);
+		min-width: var(--height--md);
+	}
 
-.ghost {
-	/* Ghost variant */
+	.total {
+		font-size: var(--font-size--2xs);
+	}
+
+	.jumper {
+		@include input-mixin.size-variables('medium');
+	}
 }
 
 .small {
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--3xs);
+
+	.paginationItem,
+	.paginationEllipsis {
+		height: var(--height--xs);
+		min-width: var(--height--xs);
+		font-size: var(--font-size--3xs);
+		padding-top: 1px;
+	}
+
+	.total {
+		font-size: var(--font-size--4xs);
+	}
+
+	.jumper {
+		@include input-mixin.size-variables('mini');
+	}
 }
 
-.medium {
-	font-size: var(--font-size--xs);
-}
-
-.background {
-	/* Applied when background prop is true */
+.isDisabled {
+	pointer-events: none;
 }
 
 .total {
-	color: var(--color--text--tint-1);
-	margin-right: var(--spacing--2xs);
-}
-
-.pageSizeSelect {
-	margin-right: var(--spacing--2xs);
+	color: var(--text-color--subtler);
 }
 
 .paginationList {
@@ -333,149 +425,120 @@ const handleJumperSubmit = () => {
 	gap: var(--spacing--4xs);
 }
 
-/* Prev/Next buttons - minimal style like Element+ */
-.paginationButton {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	min-width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	padding: 0 var(--spacing--3xs);
-	border-radius: var(--radius);
-	border: none;
-	background-color: transparent;
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	user-select: none;
-	transition: color 0.2s;
+.jumper {
+	@include input-mixin.theme-variables(var(--border-color));
 
-	&:hover:not([data-disabled]) {
-		color: var(--color--primary);
+	display: inline-flex;
+	align-items: stretch;
+
+	&:hover:not(:focus-within) .jumperAddon,
+	&:hover:not(:focus-within) .jumperInput:not(:disabled) {
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
 	}
 
-	&[data-disabled] {
-		cursor: not-allowed;
-		color: var(--color--text--tint-2);
+	&:focus-within .jumperAddon,
+	&:focus-within .jumperInput {
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
 	}
 }
 
-/* Page number buttons - minimal style like Element+ */
-.paginationItem {
-	display: inline-flex;
+.jumperAddon {
+	display: flex;
 	align-items: center;
-	justify-content: center;
-	min-width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	padding: 0 var(--spacing--3xs);
-	border-radius: var(--radius);
-	border: 1px solid transparent;
-	background-color: transparent;
-	color: var(--color--text--shade-1);
-	cursor: pointer;
-	user-select: none;
-	transition: all 0.2s;
-	font-weight: var(--font-weight--regular);
+	flex-shrink: 0;
+	padding: 0 var(--input--padding);
+	border-radius: var(--input--radius) 0 0 var(--input--radius);
+	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+	color: var(--text-color--subtler);
+	font-size: var(--input--font-size);
+	white-space: nowrap;
+	margin-right: -1px;
+}
 
-	&:hover:not([data-selected]):not([data-disabled]) {
-		color: var(--color--primary);
-	}
+.jumperInput {
+	height: var(--input--height);
+	padding: 0;
+	border: none;
+	border-radius: 0 var(--input--radius) var(--input--radius) 0;
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+	color: var(--text-color);
+	font-size: var(--input--font-size);
+	text-align: center;
+	appearance: textfield;
+	-moz-appearance: textfield;
 
-	&[data-selected] {
-		border-color: var(--color--primary);
-		color: var(--color--primary);
-		font-weight: var(--font-weight--bold);
-		cursor: default;
-	}
+	@include focus.focus-within-ring;
 
-	&[data-disabled] {
+	&:disabled {
 		cursor: not-allowed;
 		opacity: 0.5;
 	}
-}
 
-/* Background variant - filled style */
-.background .paginationItem {
-	background-color: var(--color--background--light-2);
-	border-color: var(--color--foreground);
-
-	&[data-selected] {
-		background-color: var(--color--primary);
-		border-color: var(--color--primary);
-		color: white;
+	&::-webkit-outer-spin-button,
+	&::-webkit-inner-spin-button {
+		appearance: none;
+		-webkit-appearance: none;
+		margin: 0;
 	}
 }
 
-/* Ellipsis - minimal style */
+.paginationItem,
 .paginationEllipsis {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	color: var(--color--text--tint-1);
-	user-select: none;
-	border: none;
-	background: transparent;
-
-	&:not([disabled]) {
-		cursor: pointer;
-
-		&:hover {
-			color: var(--color--primary);
-		}
-	}
-}
-
-.jumper {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	margin-left: var(--spacing--2xs);
-}
-
-.jumperText {
-	color: var(--color--text--tint-1);
-}
-
-.jumperInput {
-	width: 50px;
-	height: var(--spacing--lg);
 	padding: 0 var(--spacing--3xs);
-	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-3);
-	color: var(--color--text--shade-1);
-	font-size: var(--font-size--2xs);
-	text-align: center;
+	border: none;
+	border-radius: var(--radius--3xs);
+	background-color: transparent;
+	user-select: none;
+}
+
+.paginationItem {
+	color: var(--text-color--subtle);
+	cursor: pointer;
+	font-weight: var(--font-weight--regular);
+	box-shadow: inset 0 0 0 1px transparent;
+
+	&:hover:not([data-selected]):not(:disabled) {
+		color: var(--text-color);
+		background-color: var(--background--hover);
+	}
+
+	&[data-selected] {
+		color: var(--text-color);
+		background-color: var(--background--active);
+		cursor: default;
+	}
 
 	&:focus {
 		outline: none;
-		border-color: var(--color--primary);
-		box-shadow: 0 0 0 2px var(--color--secondary);
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+		box-shadow: inset 0 0 0 1px var(--focus--border-color);
 	}
 
 	&:disabled {
 		cursor: not-allowed;
 		opacity: 0.5;
-		background-color: var(--color--background--light-2);
-	}
-
-	/* Hide number input spinners */
-	&::-webkit-outer-spin-button,
-	&::-webkit-inner-spin-button {
-		-webkit-appearance: none;
-		margin: 0;
-	}
-
-	&[type='number'] {
-		-moz-appearance: textfield;
 	}
 }
 
-.medium .paginationButton,
-.medium .paginationItem,
-.medium .jumperInput {
-	height: 36px;
-	min-width: 36px;
+.paginationEllipsis {
+	color: var(--text-color--subtler);
+	pointer-events: none;
+	cursor: default;
 }
 </style>

@@ -2,8 +2,7 @@ import type { PaginationRootEmits, PaginationRootProps } from 'reka-ui';
 
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
-export type PaginationSizes = 'small' | 'medium';
-export type PaginationVariants = 'default' | 'ghost';
+export type PaginationSizes = 'default' | 'small';
 
 export type PaginationProps = Omit<
 	PaginationRootProps,
@@ -15,7 +14,6 @@ export type PaginationProps = Omit<
 	pageCount?: number; // Total number of pages (alternative to total)
 	itemsPerPage?: number; // Optional, can be inferred from pageSize
 	pagerCount?: number; // Alias for siblingCount (Element+ shows odd number, e.g., 7 means 3 siblings)
-	background?: boolean; // For styling (default variant)
 	layout?: string; // Controls which elements to show: 'prev, pager, next, sizes, jumper, total'
 	pageSizes?: number[]; // For page size selector dropdown
 	hideOnSinglePage?: boolean; // Hide when total pages === 1
@@ -30,7 +28,6 @@ export type PaginationProps = Omit<
 
 	// UI props
 	size?: PaginationSizes;
-	variant?: PaginationVariants;
 
 	// Override to make total optional (Element+ allows omitting it)
 	total?: number;

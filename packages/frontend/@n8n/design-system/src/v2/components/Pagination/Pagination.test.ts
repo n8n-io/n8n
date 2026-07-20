@@ -1,19 +1,13 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
-import type { PaginationSizes, PaginationVariants } from './Pagination.types';
+import type { PaginationSizes } from './Pagination.types';
 import Pagination from './Pagination.vue';
 
 const sizeCases: Array<[PaginationSizes | undefined, string]> = [
-	[undefined, 'small'],
-	['small', 'small'],
-	['medium', 'medium'],
-];
-
-const variantCases: Array<[PaginationVariants | undefined, string]> = [
 	[undefined, 'default'],
 	['default', 'default'],
-	['ghost', 'ghost'],
+	['small', 'small'],
 ];
 
 describe('v2/components/Pagination', () => {
@@ -38,13 +32,42 @@ describe('v2/components/Pagination', () => {
 		});
 
 		it('should render disabled state', () => {
-			const { container } = render(Pagination, {
+			const wrapper = render(Pagination, {
 				props: {
 					total: 100,
+					pageSize: 10,
+					disabled: true,
+					layout: 'prev, pager, next, jumper',
+				},
+			});
+
+			const container = wrapper.container.firstChild as HTMLElement;
+			expect(container?.className).toContain('isDisabled');
+
+			const buttons = wrapper.container.querySelectorAll('button');
+			expect(buttons.length).toBeGreaterThan(0);
+			buttons.forEach((button) => {
+				expect(button).toBeDisabled();
+			});
+
+			const jumper = wrapper.container.querySelector('input[type="number"]');
+			expect(jumper).toBeDisabled();
+		});
+
+		it('should not emit page changes when disabled', async () => {
+			const wrapper = render(Pagination, {
+				props: {
+					currentPage: 1,
+					total: 100,
+					pageSize: 10,
 					disabled: true,
 				},
 			});
-			expect(container).not.toBeEmptyDOMElement();
+
+			const page2Button = wrapper.getByText('2');
+			await userEvent.click(page2Button);
+
+			expect(wrapper.emitted('update:currentPage')).toBeFalsy();
 		});
 
 		it('should hide when hideOnSinglePage is true and only one page', () => {
@@ -80,30 +103,6 @@ describe('v2/components/Pagination', () => {
 			});
 			const container = wrapper.container.firstChild as HTMLElement;
 			expect(container?.className).toContain(expected);
-		});
-	});
-
-	describe('variants', () => {
-		test.each(variantCases)('variant %s should apply %s class', (variant, expected) => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					variant,
-				},
-			});
-			const container = wrapper.container.firstChild as HTMLElement;
-			expect(container?.className).toContain(expected);
-		});
-
-		it('should apply background class when background prop is true', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					background: true,
-				},
-			});
-			const container = wrapper.container.firstChild as HTMLElement;
-			expect(container?.className).toContain('background');
 		});
 	});
 
@@ -150,7 +149,9 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 			expect(wrapper.getByText('Go to')).toBeInTheDocument();
-			expect(wrapper.container.querySelector('input[type="number"]')).toBeInTheDocument();
+			const input = wrapper.container.querySelector('input[type="number"]');
+			expect(input).toBeInTheDocument();
+			expect(input).toHaveValue(1);
 		});
 	});
 
@@ -428,7 +429,7 @@ describe('v2/components/Pagination', () => {
 			});
 		});
 
-		it('should not jump to invalid page number', async () => {
+		it('should clamp jumper input to the nearest valid page', async () => {
 			const wrapper = render(Pagination, {
 				props: {
 					currentPage: 1,
@@ -444,8 +445,10 @@ describe('v2/components/Pagination', () => {
 			await userEvent.type(input!, '999');
 			await userEvent.keyboard('{Enter}');
 
-			// Should not emit any update since 999 is out of range
-			expect(wrapper.emitted('update:currentPage')).toBeFalsy();
+			await waitFor(() => {
+				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([10]);
+			});
+			expect(input).toHaveValue(10);
 		});
 	});
 
