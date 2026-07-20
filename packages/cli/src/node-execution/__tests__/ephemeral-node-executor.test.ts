@@ -544,6 +544,25 @@ describe('EphemeralNodeExecutor', () => {
 			);
 		});
 
+		it('does not add data table project context for other node types', async () => {
+			const additionalData = {};
+			mockGetBase.mockResolvedValue(additionalData);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: { ok: true } }]]),
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(additionalData).not.toHaveProperty('dataTableProjectId');
+		});
+
 		it('runs nodeType.execute and returns its first output batch on success', async () => {
 			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true, count: 3 } }]]);
 			nodeTypes.getByNameAndVersion.mockReturnValue({
