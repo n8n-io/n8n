@@ -287,6 +287,48 @@ describe('InterruptedRunSweeper', () => {
 	});
 });
 
+describe('orphaned child closure (INS-931)', () => {
+	const spawned = (agentId: string): InstanceAiEvent => ({
+		type: 'agent-spawned',
+		runId: RUN,
+		agentId,
+		payload: { parentId: AGENT, role: 'builder', tools: [] },
+	});
+	const completed = (agentId: string): InstanceAiEvent => ({
+		type: 'agent-completed',
+		runId: RUN,
+		agentId,
+		payload: { role: 'builder', result: 'done' },
+	});
+
+	it('sweep closes orphaned spawned agents before the terminal fact', async () => {
+		const { sweeper, published } = buildSweeper({
+			events: [runStart(), spawned('sub-orphan'), spawned('sub-done'), completed('sub-done')],
+		});
+
+		await sweeper.sweep();
+
+		expect(published.map((e) => e.type)).toEqual(['agent-completed', 'run-finish']);
+		const closure = published[0];
+		expect(closure.type === 'agent-completed' && closure.agentId).toBe('sub-orphan');
+		expect(closure.type === 'agent-completed' && closure.payload.result).toBe('');
+		expect(closure.type === 'agent-completed' && closure.payload.error).toBe(
+			'Interrupted by a restart',
+		);
+	});
+
+	it('cancel-time closure carries the cancelled wording', async () => {
+		const { sweeper, published } = buildSweeper({
+			events: [runStart(), spawned('sub-orphan')],
+		});
+
+		await sweeper.cancelUnfinishedRuns(THREAD);
+
+		const closure = published.find((e) => e.type === 'agent-completed');
+		expect(closure?.type === 'agent-completed' && closure.payload.error).toBe('Cancelled');
+	});
+});
+
 describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 	it('terminalizes a dead run as cancelled and returns the count', async () => {
 		const { sweeper, published, metrics } = buildSweeper({

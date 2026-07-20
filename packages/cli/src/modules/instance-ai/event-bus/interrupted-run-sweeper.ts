@@ -21,6 +21,12 @@ interface InFlightToolCall {
 	args: Record<string, unknown>;
 }
 
+/** A spawned (sub/background) agent with no terminal fact when the run died. */
+interface OrphanedChildAgent {
+	agentId: string;
+	role: string;
+}
+
 /**
  * The narrow slice of InstanceAiService the sweeper consults. Injected at init
  * (module wiring) instead of DI to avoid a service-level dependency cycle.
@@ -241,6 +247,20 @@ export class InterruptedRunSweeper {
 			this.metrics.recordSweepToolInterruptedFact();
 		}
 
+		// Spawned agents whose agent-completed never landed would fold as active
+		// forever (run-finish settles the root and tool calls, not child agent
+		// status). Close them at the source so no client ever has to walk trees
+		// flipping stale statuses.
+		const orphanError = finish.status === 'cancelled' ? 'Cancelled' : 'Interrupted by a restart';
+		for (const child of collectOrphanedChildAgents(events)) {
+			this.eventBus.publish(threadId, {
+				type: 'agent-completed',
+				runId,
+				agentId: child.agentId,
+				payload: { role: child.role, result: '', error: orphanError },
+			});
+		}
+
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
@@ -249,6 +269,19 @@ export class InterruptedRunSweeper {
 		});
 		return inFlight.length;
 	}
+}
+
+/** agent-spawned facts with no matching agent-completed. */
+export function collectOrphanedChildAgents(events: InstanceAiEvent[]): OrphanedChildAgent[] {
+	const open = new Map<string, OrphanedChildAgent>();
+	for (const event of events) {
+		if (event.type === 'agent-spawned') {
+			open.set(event.agentId, { agentId: event.agentId, role: event.payload.role });
+		} else if (event.type === 'agent-completed') {
+			open.delete(event.agentId);
+		}
+	}
+	return [...open.values()];
 }
 
 /** tool-call facts with no matching terminal fact (result/error/interrupted). */
