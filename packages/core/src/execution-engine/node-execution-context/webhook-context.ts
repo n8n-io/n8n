@@ -157,7 +157,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return this.webhookData.webhookDescription.name;
 	}
 
-	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
+	logHitlResponse(payload: { approved: boolean; authorized?: boolean }) {
 		this.additionalData.logHitlResponse?.({
 			...payload,
 			nodeType: this.node.type,

@@ -505,6 +505,11 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		return { noWebhookResponse: true };
 	}
 
+	// Advanced HITL: the confirmation-page POST is the actioned response.
+	if (confirmationPage && method === 'POST') {
+		this.logHitlResponse({ approved });
+	}
+
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
 		workflowData: [[{ json: { data: { approved, respondedAt: new Date().toISOString() } } }]],

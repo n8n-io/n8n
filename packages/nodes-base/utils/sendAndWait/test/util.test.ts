@@ -675,6 +675,7 @@ describe('Send and Wait utils tests', () => {
 				expect(page).toContain('Yes, approve');
 				expect(page).toContain('Approval required');
 				expect(page).toContain('Please review the request');
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
 			});
 
 			it('should use the disapprove label on the confirmation page when approved=false', async () => {
@@ -718,6 +719,39 @@ describe('Send and Wait utils tests', () => {
 					webhookResponse: expect.any(String),
 					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
 				});
+				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({ approved: true });
+			});
+
+			it('should log a declined HITL response on POST when the option is enabled', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'false' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({ approved: false });
+			});
+
+			it('should not log a HITL response on POST when the option is disabled', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: false,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
 			});
 
 			it('should record the response on GET when the option is disabled', async () => {
@@ -737,6 +771,7 @@ describe('Send and Wait utils tests', () => {
 					webhookResponse: expect.any(String),
 					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
 				});
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
 			});
 
 			it('should return noWebhookResponse for bot user-agent on POST', async () => {
@@ -759,6 +794,7 @@ describe('Send and Wait utils tests', () => {
 
 				expect(send).toHaveBeenCalledWith('');
 				expect(result).toEqual({ noWebhookResponse: true });
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
 			});
 
 			it('should escape HTML in the confirmation page content', async () => {

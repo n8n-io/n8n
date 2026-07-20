@@ -3718,5 +3718,43 @@ describe('TelemetryEventRelay', () => {
 				is_authorized: false,
 			});
 		});
+
+		it('should forward a truthy `authorized` as `is_authorized`', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: true,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: true,
+			});
+		});
+
+		it('should omit `is_authorized` when `authorized` is undefined (email nodes)', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.gmail',
+				approved: false,
+				authorized: undefined,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Advanced HITL response actioned',
+				expect.anything(),
+			);
+			const props = vi.mocked(telemetry.track).mock.calls[0][1];
+			expect(props).not.toHaveProperty('is_authorized');
+			expect(props).toMatchObject({ node_type: 'n8n-nodes-base.gmail', is_approved: false });
+		});
 	});
 });

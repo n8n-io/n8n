@@ -223,11 +223,15 @@ export class TelemetryEventRelay extends EventRelay {
 		approved,
 		authorized,
 	}: RelayEventMap['hitl-response-actioned']) {
-		this.telemetry.track('Advanced HITL response actioned', {
+		const props: { node_type: string; is_approved: boolean; is_authorized?: boolean } = {
 			node_type: nodeType,
 			is_approved: approved,
-			is_authorized: authorized,
-		});
+		};
+		// Email nodes cannot identify the responder, so they omit `authorized`.
+		if (authorized !== undefined) {
+			props.is_authorized = authorized;
+		}
+		this.telemetry.track('Advanced HITL response actioned', props);
 	}
 
 	// #endregion
