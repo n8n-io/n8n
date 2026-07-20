@@ -71,7 +71,7 @@ describe('useInvalidNodeGroupCleanup', () => {
 		expect(trackSpy).not.toHaveBeenCalled();
 	});
 
-	it('removes a group whose members do not form a connected subgraph (sticky note member)', () => {
+	it('keeps a group with a sticky note member and shows no toast', () => {
 		const store = setupDocumentStore({
 			nodes: [
 				createTestNode({ id: 'node-a', name: 'Node A' }),
@@ -80,6 +80,27 @@ describe('useInvalidNodeGroupCleanup', () => {
 			],
 			connections: createConnection('Node A', 'Node B'),
 			nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'sticky'] }],
+		});
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+		const removed = removeInvalidNodeGroups(store);
+
+		expect(removed).toEqual([]);
+		expect(store.allGroups).toHaveLength(1);
+		expect(showMessageSpy).not.toHaveBeenCalled();
+		expect(trackSpy).not.toHaveBeenCalled();
+	});
+
+	it('removes a group whose members do not form a connected subgraph', () => {
+		const store = setupDocumentStore({
+			nodes: [
+				createTestNode({ id: 'node-a', name: 'Node A' }),
+				createTestNode({ id: 'node-b', name: 'Node B' }),
+				createTestNode({ id: 'node-c', name: 'Node C' }),
+			],
+			connections: createConnection('Node A', 'Node B'),
+			// Node C is not connected to the rest of the group
+			nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'node-c'] }],
 		});
 
 		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
@@ -102,7 +123,7 @@ describe('useInvalidNodeGroupCleanup', () => {
 				workflow_id: WORKFLOW_ID,
 				group_id: 'group-1',
 				group_title: 'Group 1',
-				node_ids: ['node-a', 'node-b', 'sticky'],
+				node_ids: ['node-a', 'node-b', 'node-c'],
 				node_count: 3,
 				source: 'invalid-on-save',
 			}),
@@ -110,6 +131,19 @@ describe('useInvalidNodeGroupCleanup', () => {
 		expect(trackSpy).toHaveBeenCalledWith('Auto-ungrouped invalid node groups', {
 			groups_affected: 1,
 		});
+	});
+
+	it('removes a group that has no members', () => {
+		const store = setupDocumentStore({
+			nodes: [createTestNode({ id: 'node-a', name: 'Node A' })],
+			nodeGroups: [{ id: 'group-1', name: 'Group 1', nodeIds: [] }],
+		});
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+		const removed = removeInvalidNodeGroups(store);
+
+		expect(removed.map((group) => group.id)).toEqual(['group-1']);
+		expect(store.allGroups).toHaveLength(0);
 	});
 
 	it('removes a group referencing a node that does not exist', () => {
