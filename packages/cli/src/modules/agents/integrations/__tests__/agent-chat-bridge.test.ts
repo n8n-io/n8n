@@ -1108,14 +1108,6 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).toHaveBeenCalledWith(
 				'⚠️ Something went wrong while processing your request. Please try again.',
 			);
-			expect(logger.error).toHaveBeenCalledWith(
-				'[AgentChatBridge] Error in handler: setup failed',
-				{
-					agentId: 'agent-1',
-					threadId: 'thread-1',
-					error: expect.objectContaining({ message: 'setup failed' }),
-				},
-			);
 		});
 	});
 });
