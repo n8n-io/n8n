@@ -381,6 +381,8 @@ export class AgentRuntimeReconstructionService {
 				await this.resolveManagedEmbeddingProviderOptions(projectId),
 			modelFetch: instrumentation?.modelFetch ?? aiProxyFetch,
 			fallbackWebSearch: instrumentation?.webSearch,
+			// Only the mock MCP transport makes attaching auth-pending servers safe.
+			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 		});
 
 		await this.injectRuntimeDependencies({

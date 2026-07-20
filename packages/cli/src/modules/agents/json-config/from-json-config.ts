@@ -115,6 +115,12 @@ export interface BuildFromJsonOptions {
 	 * or credential in the config (eval instrumentation only).
 	 */
 	fallbackWebSearch?: FallbackWebSearchHandler;
+	/**
+	 * Attach MCP servers whose credential is still pending instead of skipping
+	 * them. Only safe when MCP traffic cannot reach the real server — set by
+	 * the eval path when its mock MCP transport is injected.
+	 */
+	attachAuthPendingMcpServers?: boolean;
 }
 
 /**
@@ -163,7 +169,12 @@ export async function buildFromJson(
 			// requires auth, so treat either as an incomplete draft and skip
 			// attaching it rather than risk a connection attempt.
 			if (!server.url.trim()) continue;
-			if (server.authentication !== 'none' && !server.credential) continue;
+			if (
+				server.authentication !== 'none' &&
+				!server.credential &&
+				!options.attachAuthPendingMcpServers
+			)
+				continue;
 
 			const client = await options.buildMcpClient(server);
 			agent.mcp(client);
