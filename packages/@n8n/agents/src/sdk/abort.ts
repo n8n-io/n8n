@@ -23,31 +23,36 @@ export function throwIfAborted(signal?: AbortSignal): void {
 	}
 }
 
-async function abortRejection(signal: AbortSignal): Promise<never> {
-	return await new Promise((_, reject) => {
-		if (signal.aborted) {
-			reject(createAbortError(signal.reason));
-			return;
-		}
-		signal.addEventListener(
-			'abort',
-			() => {
-				reject(createAbortError(signal.reason));
-			},
-			{ once: true },
-		);
-	});
-}
-
 /**
- * Race a promise against an abort signal so Stop settles promptly even when
- * the underlying work ignores cancellation. Cooperative callers should still
- * forward `abortSignal` into I/O where the provider supports it.
+ * Race work against an abort signal so Stop settles promptly even when the
+ * underlying work ignores cancellation. Pass a factory when work must not start
+ * until after the abort check (e.g. sandbox recover/retry). Cooperative callers
+ * should still forward `abortSignal` into I/O where the provider supports it.
+ *
+ * The abort listener is always removed when the race settles so run-scoped
+ * signals do not accumulate listeners across nested tool calls.
  */
-export async function raceWithAbort<T>(work: Promise<T>, signal?: AbortSignal): Promise<T> {
+export async function raceWithAbort<T>(
+	work: Promise<T> | (() => Promise<T>),
+	signal?: AbortSignal,
+): Promise<T> {
+	const run = typeof work === 'function' ? work : async () => await work;
 	if (!signal) {
-		return await work;
+		return await run();
 	}
 	throwIfAborted(signal);
-	return await Promise.race([work, abortRejection(signal)]);
+
+	let onAbort!: () => void;
+	const rejection = new Promise<never>((_, reject) => {
+		onAbort = () => {
+			reject(createAbortError(signal.reason));
+		};
+		signal.addEventListener('abort', onAbort, { once: true });
+	});
+
+	try {
+		return await Promise.race([run(), rejection]);
+	} finally {
+		signal.removeEventListener('abort', onAbort);
+	}
 }

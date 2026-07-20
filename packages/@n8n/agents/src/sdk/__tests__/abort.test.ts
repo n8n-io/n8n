@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createAbortError, isAbortError, raceWithAbort, throwIfAborted } from '../abort';
 
@@ -59,6 +59,29 @@ describe('abort helpers', () => {
 				name: 'AbortError',
 				message: 'Agent run was aborted',
 			});
+		});
+
+		it('removes the abort listener when work wins the race', async () => {
+			const controller = new AbortController();
+			const removeSpy = vi.spyOn(controller.signal, 'removeEventListener');
+
+			for (let i = 0; i < 12; i++) {
+				await expect(raceWithAbort(Promise.resolve(i), controller.signal)).resolves.toBe(i);
+			}
+
+			expect(removeSpy).toHaveBeenCalledTimes(12);
+			expect(removeSpy.mock.calls.every(([type]) => type === 'abort')).toBe(true);
+		});
+
+		it('does not start factory work when the signal is already aborted', async () => {
+			const controller = new AbortController();
+			controller.abort();
+			const work = vi.fn().mockResolvedValue('started');
+
+			await expect(raceWithAbort(work, controller.signal)).rejects.toMatchObject({
+				name: 'AbortError',
+			});
+			expect(work).not.toHaveBeenCalled();
 		});
 
 		it('returns createAbortError for string reasons', () => {

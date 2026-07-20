@@ -8,6 +8,7 @@
  * Without this adapter, Daytona workspaces only get sandbox tools (execute_command).
  */
 import type {
+	AbortableOptions,
 	AppendOptions,
 	CopyOptions,
 	FileContent,
@@ -135,7 +136,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 		}, options?.abortSignal);
 	}
 
-	async exists(path: string): Promise<boolean> {
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
 		return await this.withFs(async (fs) => {
 			try {
 				await fs.getFileDetails(path);
@@ -147,10 +148,10 @@ export class DaytonaFilesystem extends BaseFilesystem {
 				if (isDaytona404(error)) return false;
 				throw error;
 			}
-		});
+		}, options?.abortSignal);
 	}
 
-	async stat(path: string): Promise<FileStat> {
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
 		return await this.withFs(async (fs) => {
 			let info;
 			try {
@@ -169,7 +170,7 @@ export class DaytonaFilesystem extends BaseFilesystem {
 				createdAt: new Date(info.modTime ?? 0),
 				modifiedAt: new Date(info.modTime ?? 0),
 			};
-		});
+		}, options?.abortSignal);
 	}
 }
 

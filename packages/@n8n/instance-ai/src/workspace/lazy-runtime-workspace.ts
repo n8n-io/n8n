@@ -3,6 +3,7 @@ import {
 	BaseSandbox,
 	Workspace,
 	raceWithAbort,
+	type AbortableOptions,
 	type AppendOptions,
 	type CommandResult,
 	type CopyOptions,
@@ -260,16 +261,19 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 		return await (await this.getFilesystem(options?.abortSignal)).readdir(path, options);
 	}
 
-	async exists(path: string): Promise<boolean> {
-		return await (await this.getFilesystem()).exists(path);
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
+		return await (await this.getFilesystem(options?.abortSignal)).exists(path, options);
 	}
 
-	async stat(path: string): Promise<FileStat> {
-		return await (await this.getFilesystem()).stat(path);
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
+		return await (await this.getFilesystem(options?.abortSignal)).stat(path, options);
 	}
 
 	private async getFilesystem(abortSignal?: AbortSignal): Promise<WorkspaceFilesystem> {
-		const filesystem = await raceWithAbort(this.resolver.getFilesystem(), abortSignal);
+		const filesystem = await raceWithAbort(
+			async () => await this.resolver.getFilesystem(),
+			abortSignal,
+		);
 		this.syncStatus(filesystem);
 		return filesystem;
 	}
@@ -355,7 +359,7 @@ class LazyRuntimeSandbox extends BaseSandbox {
 	}
 
 	private async getSandbox(abortSignal?: AbortSignal): Promise<WorkspaceSandbox> {
-		const sandbox = await raceWithAbort(this.resolver.getSandbox(), abortSignal);
+		const sandbox = await raceWithAbort(async () => await this.resolver.getSandbox(), abortSignal);
 		this.syncStatus(sandbox);
 		return sandbox;
 	}

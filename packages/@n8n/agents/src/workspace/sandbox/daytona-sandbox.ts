@@ -10,7 +10,7 @@ import type {
 } from '@daytona/sdk';
 import { randomUUID } from 'node:crypto';
 
-import { raceWithAbort } from '../../sdk/abort';
+import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import type {
 	AbortableOptions,
 	CommandResult,
@@ -202,8 +202,8 @@ export class DaytonaSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		return await raceWithAbort(
-			this.recoverAndRetry(async () => {
+		return await raceWithAbort(async () => {
+			return await this.recoverAndRetry(async () => {
 				await this.ensureRunning({ abortSignal: options?.abortSignal });
 				await this.ensureAuthFresh();
 				const startedAt = Date.now();
@@ -226,9 +226,8 @@ export class DaytonaSandbox extends BaseSandbox {
 					stderr: '',
 					executionTimeMs: Date.now() - startedAt,
 				};
-			}),
-			options?.abortSignal,
-		);
+			});
+		}, options?.abortSignal);
 	}
 
 	/**
@@ -241,14 +240,13 @@ export class DaytonaSandbox extends BaseSandbox {
 		op: (fs: Sandbox['fs']) => Promise<T>,
 		options?: AbortableOptions,
 	): Promise<T> {
-		return await raceWithAbort(
-			this.recoverAndRetry(async () => {
+		return await raceWithAbort(async () => {
+			return await this.recoverAndRetry(async () => {
 				await this.ensureRunning({ abortSignal: options?.abortSignal });
 				await this.ensureAuthFresh();
 				return await op(this.instance.fs);
-			}),
-			options?.abortSignal,
-		);
+			});
+		}, options?.abortSignal);
 	}
 
 	/**
@@ -365,6 +363,7 @@ export class DaytonaSandbox extends BaseSandbox {
 		try {
 			return await op();
 		} catch (error) {
+			if (isAbortError(error)) throw error;
 			if (!(await this.isRecoverable(error))) throw error;
 			await this.recover();
 			return await op();

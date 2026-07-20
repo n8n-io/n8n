@@ -2,6 +2,7 @@ import { BaseFilesystem } from '../../workspace/filesystem/base-filesystem';
 import { BaseSandbox } from '../../workspace/sandbox/base-sandbox';
 import { ProcessHandle, SandboxProcessManager } from '../../workspace/types';
 import type {
+	AbortableOptions,
 	AppendOptions,
 	CommandResult,
 	FileContent,
@@ -174,13 +175,13 @@ export class InMemoryFilesystem extends BaseFilesystem {
 		return entries;
 	}
 
-	async exists(filePath: string): Promise<boolean> {
+	async exists(filePath: string, _options?: AbortableOptions): Promise<boolean> {
 		await this.ensureReady();
 		const p = this.normalizePath(filePath);
 		return this.files.has(p) || this.dirs.has(p);
 	}
 
-	async stat(filePath: string): Promise<FileStat> {
+	async stat(filePath: string, _options?: AbortableOptions): Promise<FileStat> {
 		await this.ensureReady();
 		const p = this.normalizePath(filePath);
 		if (this.dirs.has(p)) {

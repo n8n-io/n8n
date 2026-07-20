@@ -132,7 +132,7 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 			if (this.stopPromise) await this.stopPromise.catch(() => {});
 		}
 		if (this.status !== 'running') {
-			await raceWithAbort(this._start(), options?.abortSignal);
+			await raceWithAbort(async () => await this._start(), options?.abortSignal);
 		}
 		if (this.status !== 'running') {
 			throw new Error(`Sandbox "${this.name}" failed to start (status: ${this.status})`);
@@ -151,10 +151,11 @@ export abstract class BaseSandbox implements WorkspaceSandbox {
 		const fullCommand = args?.length ? `${command} ${args.map(shellQuote).join(' ')}` : command;
 		const handle = await this.processes.spawn(fullCommand, options);
 		return await raceWithAbort(
-			handle.wait({
-				onStdout: options?.onStdout,
-				onStderr: options?.onStderr,
-			}),
+			async () =>
+				await handle.wait({
+					onStdout: options?.onStdout,
+					onStderr: options?.onStderr,
+				}),
 			options?.abortSignal,
 		);
 	}

@@ -4,6 +4,7 @@ import type {
 	FileContent,
 	FileStat,
 	FileEntry,
+	AbortableOptions,
 	AppendOptions,
 	ReadOptions,
 	WriteOptions,
@@ -148,6 +149,6 @@ export abstract class BaseFilesystem implements WorkspaceFilesystem {
 	abstract mkdir(path: string, options?: MkdirOptions): Promise<void>;
 	abstract rmdir(path: string, options?: RemoveOptions): Promise<void>;
 	abstract readdir(path: string, options?: ListOptions): Promise<FileEntry[]>;
-	abstract exists(path: string): Promise<boolean>;
-	abstract stat(path: string): Promise<FileStat>;
+	abstract exists(path: string, options?: AbortableOptions): Promise<boolean>;
+	abstract stat(path: string, options?: AbortableOptions): Promise<FileStat>;
 }

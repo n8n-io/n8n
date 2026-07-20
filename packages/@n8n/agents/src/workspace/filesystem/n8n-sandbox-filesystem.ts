@@ -3,6 +3,7 @@ import { dirname } from 'node:path/posix';
 
 import { raceWithAbort } from '../../sdk/abort';
 import type {
+	AbortableOptions,
 	AppendOptions,
 	CopyOptions,
 	FileContent,
@@ -54,13 +55,10 @@ export class N8nSandboxFilesystem extends BaseFilesystem {
 		) => Promise<T>,
 	): Promise<T> {
 		await this.ensureReady();
-		return await raceWithAbort(
-			(async () => {
-				const { client, sandboxId } = await this.getClientAndSandboxId(abortSignal);
-				return await op(client, sandboxId);
-			})(),
-			abortSignal,
-		);
+		return await raceWithAbort(async () => {
+			const { client, sandboxId } = await this.getClientAndSandboxId(abortSignal);
+			return await op(client, sandboxId);
+		}, abortSignal);
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
@@ -142,11 +140,9 @@ export class N8nSandboxFilesystem extends BaseFilesystem {
 		});
 	}
 
-	async exists(path: string): Promise<boolean> {
-		await this.ensureReady();
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
 		try {
-			const { client, sandboxId } = await this.getClientAndSandboxId();
-			await client.stat(sandboxId, path);
+			await this.stat(path, options);
 			return true;
 		} catch (error) {
 			if (error instanceof SandboxServiceError && error.status === 404) {
@@ -156,17 +152,17 @@ export class N8nSandboxFilesystem extends BaseFilesystem {
 		}
 	}
 
-	async stat(path: string): Promise<FileStat> {
-		await this.ensureReady();
-		const { client, sandboxId } = await this.getClientAndSandboxId();
-		const stat = await client.stat(sandboxId, path);
-		return {
-			name: stat.name,
-			path: stat.path,
-			type: stat.type,
-			size: stat.size,
-			createdAt: new Date(stat.createdAt),
-			modifiedAt: new Date(stat.modifiedAt),
-		};
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
+		return await this.withSandbox(options?.abortSignal, async (client, sandboxId) => {
+			const stat = await client.stat(sandboxId, path);
+			return {
+				name: stat.name,
+				path: stat.path,
+				type: stat.type,
+				size: stat.size,
+				createdAt: new Date(stat.createdAt),
+				modifiedAt: new Date(stat.modifiedAt),
+			};
+		});
 	}
 }

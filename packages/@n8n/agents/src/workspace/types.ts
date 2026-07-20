@@ -87,8 +87,8 @@ export interface WorkspaceFilesystem {
 	mkdir(path: string, options?: MkdirOptions): Promise<void>;
 	rmdir(path: string, options?: RemoveOptions): Promise<void>;
 	readdir(path: string, options?: ListOptions): Promise<FileEntry[]>;
-	exists(path: string): Promise<boolean>;
-	stat(path: string): Promise<FileStat>;
+	exists(path: string, options?: AbortableOptions): Promise<boolean>;
+	stat(path: string, options?: AbortableOptions): Promise<FileStat>;
 
 	init?(): Promise<void>;
 	destroy?(): Promise<void>;

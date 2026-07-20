@@ -1,5 +1,6 @@
 import {
 	Workspace,
+	type AbortableOptions,
 	type AppendOptions,
 	type CopyOptions,
 	type FileContent,
@@ -117,12 +118,12 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 		return await this.filesystem.readdir(resolvePath(this.root, path), options);
 	}
 
-	async exists(path: string): Promise<boolean> {
-		return await this.filesystem.exists(resolvePath(this.root, path));
+	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
+		return await this.filesystem.exists(resolvePath(this.root, path), options);
 	}
 
-	async stat(path: string): Promise<FileStat> {
-		return await this.filesystem.stat(resolvePath(this.root, path));
+	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
+		return await this.filesystem.stat(resolvePath(this.root, path), options);
 	}
 }
 

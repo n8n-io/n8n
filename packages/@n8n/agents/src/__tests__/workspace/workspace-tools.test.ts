@@ -337,7 +337,7 @@ describe('createWorkspaceTools', () => {
 
 			const result = await statTool.handler!({ path: '/test.txt' }, {} as never);
 
-			expect(fs.stat).toHaveBeenCalledWith('/test.txt');
+			expect(fs.stat).toHaveBeenCalledWith('/test.txt', { abortSignal: undefined });
 			expect(result).toEqual({
 				name: 'test.txt',
 				path: '/test.txt',
