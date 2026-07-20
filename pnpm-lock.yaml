@@ -2186,6 +2186,9 @@ importers:
 
   packages/@n8n/eslint-config:
     dependencies:
+      '@n8n/eslint-plugin-design-system':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/eslint-plugin-design-system
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -5105,6 +5108,49 @@ importers:
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2)
+
+  packages/frontend/@n8n/eslint-plugin-design-system:
+    dependencies:
+      '@typescript-eslint/utils':
+        specifier: ^8.35.0
+        version: 8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1))
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)
+    devDependencies:
+      '@n8n/typescript-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/typescript-config
+      '@n8n/vitest-config':
+        specifier: workspace:*
+        version: link:../../../@n8n/vitest-config
+      '@types/eslint':
+        specifier: ^9.6.1
+        version: 9.6.1
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.41
+      '@typescript-eslint/rule-tester':
+        specifier: ^8.35.0
+        version: 8.35.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1))
+      '@typescript/native':
+        specifier: catalog:typescript-tooling
+        version: typescript@7.0.2
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.0.1
+      typescript:
+        specifier: catalog:typescript-tooling
+        version: '@typescript/typescript6@6.0.2'
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.9(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(@vitest/browser-playwright@4.1.9)(@vitest/coverage-v8@4.1.9)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
+      vue-eslint-parser:
+        specifier: ^10.1.3
+        version: 10.1.3(eslint@9.29.0(jiti@2.6.1))
 
   packages/frontend/@n8n/frontend-module-sdk:
     dependencies:

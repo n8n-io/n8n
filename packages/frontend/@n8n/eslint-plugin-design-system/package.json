@@ -1,0 +1,47 @@
+{
+  "name": "@n8n/eslint-plugin-design-system",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "main": "./dist/plugin.js",
+  "types": "./dist/plugin.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/plugin.d.ts",
+      "default": "./dist/plugin.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "build:unchecked": "tsc --project tsconfig.json --noCheck",
+    "clean": "rimraf dist .turbo",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^8.35.0"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/eslint": "^9.6.1",
+    "@types/node": "catalog:",
+    "@typescript-eslint/rule-tester": "^8.35.0",
+    "@typescript/native": "catalog:typescript-tooling",
+    "rimraf": "catalog:",
+    "typescript": "catalog:typescript-tooling",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vue-eslint-parser": "^10.1.3"
+  },
+  "peerDependencies": {
+    "eslint": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}
