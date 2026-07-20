@@ -1,0 +1,26 @@
+{
+	"description": "Builder-driven MCP experiment (TRUST-268): the assistant must build an agent that uses the Notion MCP server from the in-product MCP catalog. Probes the full builder path — search_mcp_servers against the seeded registry, verify/credential handling for an oauth2 server with no matching credential in the eval view, config attachment — and then whether the runtime MCP mock's generated catalog satisfies whatever the builder pinned (tool filters, instruction-referenced tool names). Requires the eval backend to run with N8N_ENABLED_MODULES including mcp-registry and E2E_TESTS=true (registry test seed).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create an n8n agent called 'Meeting Scribe'. When I paste meeting notes into the chat, it should save them as a new page in our Notion workspace — use the Notion MCP server from the MCP catalog for that. After saving it should confirm what page it created. If saving to Notion fails for any reason, it must tell me plainly instead of pretending it worked. Use OpenAI gpt-4o-mini as its model with my OpenAI credential. No clarifying questions needed — build it with exactly this."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["agent", "build", "mcp", "notion"],
+	"credentials": [{ "type": "openAiApi" }, { "type": "notionMcpOAuth2Api" }],
+	"outcomeExpectations": [
+		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration).",
+		"The agent's configuration includes the Notion MCP server from the MCP catalog among its MCP servers (an mcpServers entry pointing at Notion's MCP endpoint).",
+		"The agent's instructions cover saving pasted meeting notes as a Notion page, confirming the created page, and reporting Notion failures honestly.",
+		"The agent's configured model is an OpenAI model."
+	],
+	"executionScenarios": [
+		{
+			"name": "saves-meeting-notes",
+			"description": "Happy path: pasted notes are saved as a new Notion page and the agent confirms.",
+			"dataSetup": "The user pastes short meeting notes titled 'Q3 platform sync' (attendees, three decisions). The Notion MCP server's page-creation succeeds and returns a new page titled 'Q3 platform sync'.",
+			"successCriteria": "The agent invoked a Notion MCP tool to create a page containing the pasted notes (see the intercepted MCP call and its result), and its final reply confirms the page was created without inventing failures."
+		}
+	]
+}
