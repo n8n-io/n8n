@@ -145,24 +145,39 @@ export class NodeTypes implements INodeTypes {
 	}
 
 	/**
-	 * The `typeVersion`s this instance can resolve for a node type, or `undefined`
-	 * when the type is unknown. For a synthetic tool name (`…Tool`), only versions
-	 * whose base node can be used as a tool count (`…HitlTool` has no such
+	 * The `typeVersion`s this instance can resolve for a node type. Returns
+	 * `undefined` when the type is unknown or fails to load (a warning is logged
+	 * for anything but a plain unrecognized type), and `[]` when the type exists
+	 * but no version satisfies the request — e.g. a synthetic tool name (`…Tool`)
+	 * whose base node cannot be used as a tool (`…HitlTool` has no such
 	 * requirement). Read-only — unlike `getByNameAndVersion`, never caches or
 	 * mutates loaded nodes.
 	 */
 	getSupportedVersions(nodeTypeName: string): number[] | undefined {
-		const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
-		const requiresToolCapability = isSyntheticTool && !nodeTypeName.endsWith('HitlTool');
-
-		let type: INodeType | IVersionedNodeType;
+		// The whole resolution runs fail-closed: name lookups use `in`, so a
+		// hostile name (e.g. `n8n-nodes-base.constructor`) can surface
+		// prototype-chain values that throw at any of the reads below. Fold any
+		// such failure into "unknown type" instead of failing the caller.
 		try {
-			({ type } = this.loadNodesAndCredentials.getNode(baseName));
+			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
+			const requiresToolCapability = isSyntheticTool && !nodeTypeName.endsWith('HitlTool');
+
+			const { type } = this.loadNodesAndCredentials.getNode(baseName);
+
+			if ('nodeVersions' in type) {
+				return Object.entries(type.nodeVersions)
+					.filter(
+						([, versioned]) => !requiresToolCapability || !!versioned.description.usableAsTool,
+					)
+					.map(([version]) => Number(version));
+			}
+
+			if (requiresToolCapability && !type.description.usableAsTool) return [];
+
+			const { version } = type.description;
+			return Array.isArray(version) ? [...version] : [version];
 		} catch (error) {
 			if (!(error instanceof UnrecognizedNodeTypeError)) {
-				// `getNode` resolves names via `in` lookups, so a hostile name can
-				// surface non-node values that throw further down. Treat any such
-				// failure as "unknown type" instead of failing the caller.
 				this.logger.warn('Failed to resolve node type while listing supported versions', {
 					nodeType: nodeTypeName,
 					error: ensureError(error).message,
@@ -170,17 +185,6 @@ export class NodeTypes implements INodeTypes {
 			}
 			return undefined;
 		}
-
-		if ('nodeVersions' in type) {
-			return Object.entries(type.nodeVersions)
-				.filter(([, versioned]) => !requiresToolCapability || !!versioned.description.usableAsTool)
-				.map(([version]) => Number(version));
-		}
-
-		if (requiresToolCapability && !type.description.usableAsTool) return [];
-
-		const { version } = type.description;
-		return Array.isArray(version) ? [...version] : [version];
 	}
 
 	async getNodeTranslationPath({
