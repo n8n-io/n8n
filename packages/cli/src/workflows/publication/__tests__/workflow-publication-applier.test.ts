@@ -177,14 +177,20 @@ describe('WorkflowPublicationApplier', () => {
 			);
 		});
 
-		test('skips with workflow-inactive when there is no published-version mapping', async () => {
+		test('completes as unpublished when there is no published-version mapping, so stale trigger-status rows are cleared', async () => {
+			// A retried/reconciled unpublish whose mapping is already gone must still
+			// end in `unpublished` (not a skip): the reporter clears the workflow's
+			// trigger-status rows only on that result, and an interrupted unpublish
+			// can leave rows behind after the mapping was removed.
 			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(null));
 
 			const result = await applier.apply(makeRecord());
 
-			expect(result).toEqual({ type: 'skipped', reason: 'workflow-inactive' });
+			expect(result).toEqual({ type: 'unpublished' });
 			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
-			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
 		});
 
