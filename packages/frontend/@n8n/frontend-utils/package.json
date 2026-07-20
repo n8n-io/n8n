@@ -1,7 +1,7 @@
 {
-  "name": "@n8n/composables",
+  "name": "@n8n/frontend-utils",
   "type": "module",
-  "version": "1.21.0",
+  "version": "0.1.0",
   "files": [
     "dist"
   ],
@@ -20,7 +20,6 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
-    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -28,21 +27,15 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
-    "@vueuse/core": "catalog:frontend",
-    "lodash": "catalog:",
-    "vue": "catalog:frontend"
+    "vue": "catalog:frontend",
+    "xss": "catalog:"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
-    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@testing-library/vue": "catalog:frontend",
     "@testing-library/jest-dom": "catalog:frontend",
-    "@testing-library/user-event": "catalog:frontend",
-    "@types/lodash": "catalog:",
-    "@vitejs/plugin-vue": "catalog:frontend",
-    "@vue/tsconfig": "catalog:frontend",
+    "@testing-library/vue": "catalog:frontend",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
