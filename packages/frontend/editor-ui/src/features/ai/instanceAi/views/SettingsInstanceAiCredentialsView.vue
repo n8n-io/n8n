@@ -5,6 +5,7 @@ import {
 	N8nDropdownMenu,
 	N8nEmptyState,
 	N8nIcon,
+	N8nLoading,
 	N8nOption,
 	N8nSelect,
 	N8nSettingsLayout,
@@ -19,6 +20,7 @@ import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { INSTANCE_AI_SETTINGS_VIEW } from '../constants';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
@@ -26,23 +28,28 @@ const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const router = useRouter();
 const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
 
-const INSTANCE_MODEL_CREDENTIAL_TYPES: Array<{ type: string; label: string }> = [
-	{ type: 'openAiApi', label: 'OpenAI' },
-	{ type: 'anthropicApi', label: 'Anthropic' },
-	{ type: 'googlePalmApi', label: 'Google Gemini' },
-	{ type: 'ollamaApi', label: 'Ollama' },
-	{ type: 'groqApi', label: 'Groq' },
-	{ type: 'deepSeekApi', label: 'DeepSeek' },
-	{ type: 'mistralCloudApi', label: 'Mistral' },
-	{ type: 'xAiApi', label: 'xAI' },
-	{ type: 'openRouterApi', label: 'OpenRouter' },
-	{ type: 'cohereApi', label: 'Cohere' },
-];
+const INSTANCE_MODEL_CREDENTIAL_TYPES = [
+	'openAiApi',
+	'anthropicApi',
+	'googlePalmApi',
+	'ollamaApi',
+	'groqApi',
+	'deepSeekApi',
+	'mistralCloudApi',
+	'xAiApi',
+	'openRouterApi',
+	'cohereApi',
+] as const;
+
+function credentialTypeLabel(type: string) {
+	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
+}
 
 const createModelCredentialItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
-	INSTANCE_MODEL_CREDENTIAL_TYPES.map(({ type, label }) => ({ id: type, label })),
+	INSTANCE_MODEL_CREDENTIAL_TYPES.map((type) => ({ id: type, label: credentialTypeLabel(type) })),
 );
 const canConfigure = computed(
 	() => store.canManage && !store.isProxyEnabled && !store.isCloudManaged,
@@ -118,9 +125,7 @@ watch(
 			:show-docs-link="false"
 		/>
 
-		<div v-if="store.isLoading" :class="$style.loading">
-			<N8nIcon icon="spinner" spin />
-		</div>
+		<N8nLoading v-if="store.isLoading" :rows="3" :shrink-last="false" />
 
 		<N8nSettingsSection
 			v-else-if="canConfigure"
@@ -152,7 +157,7 @@ watch(
 									v-for="credential in store.instanceModelCredentials"
 									:key="credential.id"
 									:value="credential.id"
-									:label="`${credential.name} (${credential.provider})`"
+									:label="`${credential.name} · ${credentialTypeLabel(credential.type)}`"
 								/>
 							</N8nSelect>
 
@@ -195,14 +200,6 @@ watch(
 </template>
 
 <style lang="scss" module>
-.loading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--2xl);
-	color: var(--text-color--subtle);
-}
-
 .credentialControls {
 	display: flex;
 	align-items: center;
