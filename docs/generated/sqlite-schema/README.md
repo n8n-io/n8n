@@ -63,7 +63,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [installed_nodes](installed_nodes.md) | 4 |  | table |
 | [installed_packages](installed_packages.md) | 6 |  | table |
 | [instance_ai_checkpoints](instance_ai_checkpoints.md) | 9 |  | table |
-| [instance_ai_events](instance_ai_events.md) | 7 |  | table
+| [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
 | [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |

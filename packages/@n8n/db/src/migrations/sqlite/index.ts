@@ -217,16 +217,6 @@ import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '.
 import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/1784000000049-AddScheduledTaskDispatchedAt';
 import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
-import { CreateWorkflowReviewRequestTables1784000000046 } from '../common/1784000000046-CreateWorkflowReviewRequestTables';
-import { CreateInstanceAiEventsTable1784000000046 } from '../common/1784000000046-CreateInstanceAiEventsTable';
-import { CreateWorkflowReviewRequestTables1784000000047 } from '../common/1784000000047-CreateWorkflowReviewRequestTables';
-import { BackfillPreScopingOAuthGrantScopes1784000000047 } from '../common/1784000000047-BackfillPreScopingOAuthGrantScopes';
-import { CreateWorkflowReviewRequestTables1784000000048 } from '../common/1784000000048-CreateWorkflowReviewRequestTables';
-import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '../common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus';
-import { CreateWorkflowReviewRequestTables1784000000049 } from '../common/1784000000049-CreateWorkflowReviewRequestTables';
-import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/1784000000049-AddScheduledTaskDispatchedAt';
-import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
-import { CreateWorkflowReviewRequestTables1784000000051 } from '../common/1784000000051-CreateWorkflowReviewRequestTables';
 import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
 
 const sqliteMigrations: Migration[] = [
@@ -447,14 +437,6 @@ const sqliteMigrations: Migration[] = [
 	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
 	AddScheduledTaskDispatchedAt1784000000049,
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
-	BackfillInstanceAiEventLog1784000000051,
-	CreateWorkflowReviewRequestTables1784000000046,
-	CreateInstanceAiEventsTable1784000000046,
-	BackfillPreScopingOAuthGrantScopes1784000000047,
-	AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048,
-	AddScheduledTaskDispatchedAt1784000000049,
-	AddHostRunIdToInstanceAiCheckpoints1784000000050,
-	CreateWorkflowReviewRequestTables1784000000051,
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000052,
 ];
