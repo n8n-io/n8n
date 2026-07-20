@@ -129,7 +129,8 @@ describe('Microsoft SharePoint v2 — file selection', () => {
 	});
 
 	it('walks past pages holding no files when no filter is set', async () => {
-		const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/drive/items/f/children?$skiptoken=p2';
+		const nextLink =
+			'https://graph.microsoft.com/v1.0/sites/s/drive/items/f/children?$skiptoken=p2';
 		apiRequest
 			.mockResolvedValueOnce({
 				value: [{ id: 'folder-1', name: 'Subfolder', folder: {} }],
