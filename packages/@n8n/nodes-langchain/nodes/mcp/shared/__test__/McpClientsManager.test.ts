@@ -87,6 +87,53 @@ describe('McpClientsManager', () => {
 			expect(manager.size).toBe(0);
 		});
 
+		it('registers a handler on cache hit that closes and evicts the client', async () => {
+			manager = makeManager();
+			const client = fakeClient();
+			let handler: () => void = () => {};
+
+			// Run that connects and later transitions to waiting — its finish handler never fires.
+			await manager.getOrConnect('k', async () => ({ client, mcpTools: [] }));
+
+			// The resumed run gets a cache hit and registers on its fresh lifecycle hooks.
+			await manager.getOrConnect(
+				'k',
+				async () => ({ client: fakeClient(), mcpTools: [] }),
+				captureHandler((h) => {
+					handler = h;
+				}),
+			);
+
+			handler();
+			expect(client.close).toHaveBeenCalledTimes(1);
+			expect(manager.size).toBe(0);
+		});
+
+		it('does not let a cache-hit handler close a client that replaced its entry', async () => {
+			manager = makeManager();
+			const client1 = fakeClient();
+			const client2 = fakeClient();
+			let hitHandler: () => void = () => {};
+
+			await manager.getOrConnect('k', async () => ({ client: client1, mcpTools: [] }));
+			await manager.getOrConnect(
+				'k',
+				async () => ({ client: fakeClient(), mcpTools: [] }),
+				captureHandler((h) => {
+					hitHandler = h;
+				}),
+			);
+
+			// Transport drop evicts client1's entry, then a reconnect stores client2.
+			client1.onclose?.();
+			await manager.getOrConnect('k', async () => ({ client: client2, mcpTools: [] }));
+			expect(manager.size).toBe(1);
+
+			hitHandler();
+			expect(client2.close).not.toHaveBeenCalled();
+			expect(manager.size).toBe(1);
+		});
+
 		it('does not let a stale handler close a client that replaced it under the same key', async () => {
 			manager = makeManager();
 			const client1 = fakeClient();

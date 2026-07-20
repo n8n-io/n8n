@@ -22,7 +22,7 @@ interface CachedClient {
 
 interface GetOrConnectOpts {
 	logger?: McpCacheLogger;
-	/** Lifecycle callbacks are registered by the connecting caller only; concurrent waiters' opts are ignored. */
+	/** Lifecycle callbacks are registered on connect and on cache hits; concurrent waiters' opts are ignored. */
 	onExecutionCancellation?: (handler: () => void) => void;
 	onExecutionFinish?: (handler: () => void) => void;
 }
@@ -79,6 +79,7 @@ export class McpClientsManager {
 		if (cached) {
 			opts.logger?.debug('McpClientsManager: cache hit', { cacheKey: key });
 			cached.lastUsedAt = Date.now();
+			this.registerLifecycleCleanup(key, cached.epoch, opts);
 			return { client: cached.client, mcpTools: cached.mcpTools };
 		}
 
@@ -102,9 +103,7 @@ export class McpClientsManager {
 				detachLifecycle: this.attachTransportLifecycle(result.client, key, epoch, opts.logger),
 			});
 			this.enforceMaxSize();
-			const closeIfCurrent = () => this.removeIfCurrent(key, epoch, opts.logger);
-			opts.onExecutionCancellation?.(closeIfCurrent);
-			opts.onExecutionFinish?.(closeIfCurrent);
+			this.registerLifecycleCleanup(key, epoch, opts);
 			return result;
 		} finally {
 			this.pendingConnections.delete(key);
@@ -127,6 +126,20 @@ export class McpClientsManager {
 		void entry.client.close().catch((error: unknown) => {
 			logger?.warn('McpClientsManager: failed to close cached client', { cacheKey: key, error });
 		});
+	}
+
+	/**
+	 * Close the entry when its execution is cancelled or finishes. Must run on
+	 * cache hits too: a resumed (previously waiting) execution gets fresh
+	 * lifecycle hooks, and the finish handler registered by the run that
+	 * connected intentionally skipped the `waiting` transition and never fires
+	 * again. Duplicate registrations within one run are harmless — the handler
+	 * is epoch-guarded and `remove` is idempotent.
+	 */
+	private registerLifecycleCleanup(key: string, epoch: number, opts: GetOrConnectOpts): void {
+		const closeIfCurrent = () => this.removeIfCurrent(key, epoch, opts.logger);
+		opts.onExecutionCancellation?.(closeIfCurrent);
+		opts.onExecutionFinish?.(closeIfCurrent);
 	}
 
 	/** A later reconnect under the same key owns its own cleanup — evict only while `epoch` is current. */
