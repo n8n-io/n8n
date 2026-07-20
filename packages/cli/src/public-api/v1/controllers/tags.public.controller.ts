@@ -7,12 +7,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 import { TagService } from '@/services/tag.service';
 
-/**
- * Reference public API controller (API-37).
- *
- * Copy-me example for the `@PublicApiController` pattern: thin adapter over
- * `TagService`, public output DTO, API-key scope — no direct repository access.
- */
 @PublicApiController('/tags')
 export class TagsPublicController {
 	constructor(private readonly tagService: TagService) {}

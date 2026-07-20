@@ -46,7 +46,6 @@ export class ControllerRegistry {
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
-			// Public API controllers are mounted by PublicApiControllerRegistry.
 			if (metadata.isPublicApi) continue;
 			this.activateController(app, controllerClass);
 		}

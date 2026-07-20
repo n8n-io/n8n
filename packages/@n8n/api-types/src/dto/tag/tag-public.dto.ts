@@ -2,10 +2,6 @@ import { z } from 'zod';
 
 import { Z } from '../../zod-class';
 
-/**
- * Public API tag resource shape — strips internal fields at the registry boundary.
- * Matches `handlers/tags/spec/schemas/tag.yml`.
- */
 export const tagPublicSchema = z.object({
 	id: z.string(),
 	name: z.string(),

@@ -20,7 +20,6 @@ import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
-// Side-effect: register @PublicApiController classes into ControllerRegistryMetadata.
 import './v1/controllers/tags.public.controller';
 
 // Renders `x-required-scope` as a badge on each operation. swagger-ui-express
@@ -332,8 +331,6 @@ function createApiRouter(
 		`/${publicApiEndpoint}/${version}`,
 		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
-		// Decorator-based public controllers (API-37+) mount before eov so they
-		// own matching routes; remaining OpenAPI paths stay on eov handlers.
 		createPublicControllerMiddleware(version),
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);

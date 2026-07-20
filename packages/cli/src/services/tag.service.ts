@@ -102,9 +102,6 @@ export class TagService {
 		}) as Promise<GetAllResult<T>>);
 	}
 
-	/**
-	 * Offset/limit page of tags plus total count (for public API cursor pagination).
-	 */
 	async getPaginated({ offset, limit }: { offset: number; limit: number }): Promise<{
 		data: TagEntity[];
 		count: number;

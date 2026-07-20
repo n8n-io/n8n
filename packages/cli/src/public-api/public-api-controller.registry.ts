@@ -31,13 +31,6 @@ function apiKeyScopesSatisfy(
 	return requirement.allOf.every((scope) => granted.includes(scope));
 }
 
-/**
- * Mounts `@PublicApiController` classes onto a router under `/api/v1`.
- *
- * Sibling to `ControllerRegistry`: reuses route/arg metadata, but uses API-key
- * auth via `AuthStrategyRegistry`, public error serialization, and optional
- * `@ApiResponse` output parsing — no JWT `/rest` coupling.
- */
 @Service()
 export class PublicApiControllerRegistry {
 	constructor(
@@ -47,10 +40,6 @@ export class PublicApiControllerRegistry {
 		private readonly eventService: EventService,
 	) {}
 
-	/**
-	 * Register all public API controllers on `router`. The caller must mount
-	 * that router at `/{publicApi.path}/{version}` (e.g. `/api/v1`).
-	 */
 	activate(router: Router, apiVersion: string) {
 		for (const controllerClass of this.metadata.controllerClasses) {
 			const metadata = this.metadata.getControllerMetadata(controllerClass);
@@ -159,9 +148,7 @@ export class PublicApiControllerRegistry {
 
 			const userId = (req as AuthenticatedRequest).user?.id;
 			if (userId) {
-				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => {
-					/* best-effort */
-				});
+				this.lastActiveAtService.updateLastActiveIfStale(userId).catch(() => undefined);
 				this.eventService.emit('public-api-invoked', {
 					userId,
 					path: req.path,
