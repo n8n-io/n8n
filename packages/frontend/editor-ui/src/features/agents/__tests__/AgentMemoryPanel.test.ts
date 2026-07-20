@@ -46,6 +46,7 @@ vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue
 			selectedCredentialId: { type: String, default: null },
 			hideCreateNew: Boolean,
 			teleported: Boolean,
+			credentialModalAppendToBody: Boolean,
 		},
 		emits: ['credential-selected'],
 	},
@@ -55,14 +56,15 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	default: {
 		name: 'AgentModelSelector',
 		template: '<div />',
-		props: [
-			'selectedModel',
-			'credentials',
-			'modelsByProvider',
-			'isLoading',
-			'projectId',
-			'warnMissingCredentials',
-		],
+		props: {
+			selectedModel: { type: Object, default: null },
+			credentials: { type: Object, default: null },
+			modelsByProvider: { type: Object, required: true },
+			isLoading: Boolean,
+			projectId: String,
+			warnMissingCredentials: Boolean,
+			credentialModalAppendToBody: Boolean,
+		},
 	},
 }));
 
@@ -163,7 +165,18 @@ describe('AgentMemoryPanel', () => {
 			credentialType: 'openAiApi',
 			hideCreateNew: false,
 			teleported: false,
+			credentialModalAppendToBody: true,
 		});
+	});
+
+	it('opens model credential flows above memory settings', async () => {
+		const wrapper = mountPanel({ proxyEnabled: false });
+
+		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
+
+		expect(
+			wrapper.findComponent({ name: 'AgentModelSelector' }).props('credentialModalAppendToBody'),
+		).toBe(true);
 	});
 
 	it('enables episodic memory after selecting a self-hosted credential', async () => {

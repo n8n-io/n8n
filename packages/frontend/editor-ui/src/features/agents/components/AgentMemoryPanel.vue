@@ -269,6 +269,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 							:is-loading="isLoading"
 							:project-id="projectId"
 							:warn-missing-credentials="true"
+							credential-modal-append-to-body
 							data-testid="agent-memory-recall-model-selector"
 							@change="onMemoryRecallModelChange"
 							@select-credential="onSelectCredential"
@@ -302,6 +303,7 @@ function onEpisodicMemoryToggle(enabled: boolean) {
 							:show-delete="false"
 							:hide-create-new="false"
 							:teleported="false"
+							credential-modal-append-to-body
 							:class="$style.credentialPicker"
 							data-testid="agent-episodic-memory-credential-picker"
 							@credential-selected="enableEpisodicMemory"
