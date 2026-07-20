@@ -3,7 +3,6 @@ import { LicenseState, Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -194,14 +193,12 @@ export class InsightsService {
 		// Global `workflow:read` holders (admins/owners) can access every workflow,
 		// so we skip the sharing query entirely for the common viewer case. A `null`
 		// set below means "access to everything".
-		const accessibleWorkflowIds = hasGlobalScope(user, 'workflow:read')
-			? null
-			: new Set(
-					await this.workflowSharingService.getSharedWorkflowIds(user, {
-						scopes: ['workflow:read'],
-						projectId,
-					}),
-				);
+		const accessibleWorkflowIds = new Set(
+			await this.workflowSharingService.getSharedWorkflowIds(user, {
+				scopes: ['workflow:read'],
+				projectId,
+			}),
+		);
 
 		const data = rows.map((row) => ({
 			...row,
