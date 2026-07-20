@@ -7,7 +7,13 @@ type BlockingIssue =
 			existingWorkflowId: string;
 			name: string;
 	  }
-	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] };
+	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] }
+	| {
+			type: 'missing-node-type';
+			nodeType: string;
+			typeVersion: number;
+			usedByWorkflows: string[];
+	  };
 
 function formatIssue(issue: unknown): string {
 	if (typeof issue !== 'object' || issue === null) return JSON.stringify(issue);
@@ -18,6 +24,10 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'credential-unresolved') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
 		return `credential ${it.sourceId} unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'missing-node-type') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		return `node type ${it.nodeType} @ v${it.typeVersion} missing on this instance, used by workflow(s) ${usedBy}`;
 	}
 	return JSON.stringify(issue);
 }

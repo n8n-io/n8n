@@ -17,6 +17,7 @@ export interface ImportPackageFields {
 	bindings?: string;
 	workflowConflictPolicy: string;
 	workflowIdPolicy?: string;
+	missingNodeTypeMode?: string;
 	folderConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
