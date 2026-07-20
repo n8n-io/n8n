@@ -1,5 +1,6 @@
 import { createActiveWorkflow, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
+import { UNPUBLISH_VERSION_SENTINEL } from '@n8n/db';
 import type { WorkflowPublicationTriggerKind } from '@n8n/db';
 import {
 	WorkflowPublicationOutboxRepository,
@@ -404,11 +405,11 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(pending.map((record) => record.workflowId)).not.toContain(wf2.id);
 		});
 
-		it('enqueues unpublished and archived workflows at their draft version so stale trigger-status rows can be healed', async () => {
+		it('enqueues unpublished and archived workflows with the unpublish sentinel so stale trigger-status rows can be healed', async () => {
 			// The reconciler enqueues whatever its detection query returns; refusing
-			// any of it here would re-detect the same workflow forever. The version id
-			// is inert for these records — the applier dispatches an unpublish on the
-			// workflow's null `activeVersionId` and never reads it.
+			// any of it here would re-detect the same workflow forever. The sentinel
+			// is inert — the applier dispatches an unpublish on the workflow's null
+			// `activeVersionId` and never reads the record's version.
 			const unpublished = await createWorkflow(); // no activeVersionId
 			const archived = await createWorkflow();
 			await Container.get(WorkflowRepository).update(archived.id, { isArchived: true });
@@ -420,11 +421,11 @@ describe('WorkflowPublicationOutboxRepository', () => {
 				expect.arrayContaining([
 					expect.objectContaining({
 						workflowId: unpublished.id,
-						publishedVersionId: unpublished.versionId,
+						publishedVersionId: UNPUBLISH_VERSION_SENTINEL,
 					}),
 					expect.objectContaining({
 						workflowId: archived.id,
-						publishedVersionId: archived.versionId,
+						publishedVersionId: UNPUBLISH_VERSION_SENTINEL,
 					}),
 				]),
 			);

@@ -5,6 +5,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import {
+	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus as Status,
 } from '../entities/workflow-publication-outbox';
@@ -185,9 +186,10 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		const workflowTableName = this.getTableName('workflow_entity');
 
 		// COALESCE: an unpublished workflow has no `activeVersionId`, but the column
-		// is NOT NULL. The fallback is inert — the applier dispatches an unpublish
-		// on the workflow's null `activeVersionId` and never reads the record's
-		// version. (Mirrored in the sqlite variant below.)
+		// is NOT NULL, so those records carry the unpublish sentinel. It is inert —
+		// the applier dispatches an unpublish on the workflow's null
+		// `activeVersionId` and never reads the record's version. (Mirrored in the
+		// sqlite variant below.)
 		//
 		// DO NOTHING, unlike `enqueue`: reconciliation's detection and this enqueue
 		// are two separate statements, so a publish/unpublish can commit a pending
@@ -196,7 +198,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		// snapshot — overwriting it could roll the workflow back to a stale version.
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", w."versionId"), '${Status.Pending}'
+			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" = ANY($1)
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
@@ -212,7 +214,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 
 		await this.query(
 			`INSERT INTO ${outboxTableName} ("workflowId", "publishedVersionId", "status")
-			 SELECT w."id", COALESCE(w."activeVersionId", w."versionId"), '${Status.Pending}'
+			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
 			 FROM ${workflowTableName} w
 			 WHERE w."id" IN (${placeholders})
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
