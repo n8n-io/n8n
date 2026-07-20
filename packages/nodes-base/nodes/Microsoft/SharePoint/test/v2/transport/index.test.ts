@@ -218,6 +218,87 @@ describe('Microsoft SharePoint v2 Transport', () => {
 
 			expect(thrown).toBeInstanceOf(NodeApiError);
 			expect(thrown?.message).not.toContain('MARKER-do-not-leak');
+			// Airtight, not just message-deep: the marker must not survive anywhere
+			// in the serialized error (description, messages[], context)
+			expect(JSON.stringify(thrown)).not.toContain('MARKER-do-not-leak');
+			expect(thrown?.message).toBe(
+				"Microsoft Graph rejected the request (HTTP 500). Check the operation's inputs and the app registration's permissions.",
+			);
+		});
+
+		it('should pin httpCode "404" on the delegated not-found rewrite', async () => {
+			// resolveSiteId keys on httpCode === '404' — this anchor must not drift
+			setParams({ authentication: 'microsoftOAuth2Api', resource: 'list', operation: 'get' });
+			mockRequestOAuth2.mockRejectedValue({
+				statusCode: 404,
+				error: { error: { code: 'NotFound', message: 'Resource not found' } },
+			});
+
+			let thrown: NodeApiError | undefined;
+			try {
+				await microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l');
+			} catch (error) {
+				thrown = error as NodeApiError;
+			}
+
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown?.httpCode).toBe('404');
+			expect(thrown?.message).toBe('List not found');
+		});
+
+		it("should rewrite SharePoint's own not-found code (itemNotFound) too", async () => {
+			// SharePoint Graph surfaces send itemNotFound/ItemNotFound rather than
+			// the generic OData NotFound; the rewrite keys on code alone
+			setParams({ authentication: 'microsoftOAuth2Api', resource: 'list', operation: 'get' });
+			mockRequestOAuth2.mockRejectedValue({
+				statusCode: 404,
+				error: {
+					error: { code: 'itemNotFound', message: 'The provided item does not exist.' },
+				},
+			});
+
+			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l')).rejects.toThrow(
+				'List not found',
+			);
+		});
+	});
+
+	describe('same-origin guard', () => {
+		it('refuses a uri override pointing at a different host', async () => {
+			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
+
+			await expect(
+				microsoftApiRequest.call(
+					ctx,
+					'GET',
+					'',
+					{},
+					{},
+					'https://graph.microsoft.com/v1.0/sites?$skiptoken=abc',
+				),
+			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+			expect(mockRequestOAuth2).not.toHaveBeenCalled();
+		});
+
+		it('allows a same-origin next-page link', async () => {
+			ctx.getCredentials.mockResolvedValue({ graphApiBaseUrl: 'https://graph.microsoft.us' });
+			const nextLink = 'https://graph.microsoft.us/v1.0/sites?$skiptoken=abc';
+
+			await microsoftApiRequest.call(ctx, 'GET', '', {}, {}, nextLink);
+
+			expect(mockRequestOAuth2).toHaveBeenCalledWith(
+				'microsoftOAuth2Api',
+				expect.objectContaining({ uri: nextLink }),
+			);
+		});
+	});
+
+	describe('load-options fallback', () => {
+		it('should treat the literal fallback 0 as the default credential type', () => {
+			// A real load-options call returns the fallback value itself — the
+			// literal 0 — not undefined
+			ctx.getNodeParameter.mockReturnValue(0 as never);
+			expect(getSharePointCredentialType.call(ctx)).toBe('microsoftOAuth2Api');
 		});
 	});
 });

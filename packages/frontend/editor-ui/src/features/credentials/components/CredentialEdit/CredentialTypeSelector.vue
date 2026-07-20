@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nPreviewTag, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nLink, N8nPreviewTag, N8nText, N8nTooltip } from '@n8n/design-system';
+import { END_USER_CREDENTIALS_DOCS_URL } from '@/app/constants';
 
 const props = defineProps<{
 	// `true` = end-user (private) credential, `false` = fixed (static) credential.
@@ -33,7 +34,12 @@ function select(value: boolean): void {
 			<N8nPreviewTag size="small" />
 			<N8nTooltip v-if="infoTip" placement="top">
 				<template #content>
-					<div>{{ infoTip }}</div>
+					<div>
+						{{ infoTip }}
+						<N8nLink bold :to="END_USER_CREDENTIALS_DOCS_URL" size="small">
+							{{ i18n.baseText('generic.learnMore') }}
+						</N8nLink>
+					</div>
 				</template>
 				<N8nIcon icon="circle-help" size="small" color="text-light" />
 			</N8nTooltip>
