@@ -1,11 +1,6 @@
-import type {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeListSearchResult,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
 
-import { escapeODataFilterValue, type GraphSearchReply } from '../helpers/utils';
+import { type GraphSearchReply } from '../helpers/utils';
 import { resolveSiteId } from '../site';
 import { microsoftApiRequest } from '../transport';
 
@@ -69,23 +64,25 @@ export async function getLists(
 			paginationToken,
 		)) as ListSearchReply;
 	} else {
-		const qs: IDataObject = { $select: 'id,displayName' };
-		if (filter) {
-			qs.$filter = `startswith(displayName,'${escapeODataFilterValue(filter)}')`;
-		}
 		response = (await microsoftApiRequest.call(
 			this,
 			'GET',
 			`/v1.0/sites/${encodeURIComponent(siteId)}/lists`,
 			{},
-			qs,
+			{ $select: 'id,displayName' },
 		)) as ListSearchReply;
 	}
 
+	// Graph's /lists only honors `eq` filters (no startswith), so the typed
+	// text filters the reply client-side instead of being sent as a $filter.
+	const filterLower = filter?.toLowerCase();
 	// Kept in the API's order — a per-page sort would reset at every page
 	// boundary once results span pages (see getSites).
 	const results = (response.value ?? [])
-		.filter((list) => list.id)
+		.filter(
+			(list) =>
+				list.id && (!filterLower || (list.displayName ?? '').toLowerCase().includes(filterLower)),
+		)
 		.map((list) => ({ name: list.displayName ?? String(list.id), value: String(list.id) }));
 
 	return { results, paginationToken: response['@odata.nextLink'] };

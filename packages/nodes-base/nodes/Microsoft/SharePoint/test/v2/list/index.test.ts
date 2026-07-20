@@ -37,7 +37,7 @@ describe('Microsoft SharePoint v2 — list search', () => {
 		setParams({ site: { mode: 'id', value: SITE_ID } });
 	});
 
-	it('searches a site’s lists by display name, with no $filter when no text is typed', async () => {
+	it('requests a site’s lists without a server-side filter', async () => {
 		apiRequest.mockResolvedValue({ value: [] });
 
 		await getLists.call(ctx);
@@ -50,17 +50,23 @@ describe('Microsoft SharePoint v2 — list search', () => {
 		);
 	});
 
-	it('escapes a literal quote in the filter text before sending it as an OData string', async () => {
-		apiRequest.mockResolvedValue({ value: [] });
+	it('filters the fetched lists by name client-side, case-insensitively', async () => {
+		apiRequest.mockResolvedValue({
+			value: [
+				{ id: 'l1', displayName: 'Quarterly Reports' },
+				{ id: 'l2', displayName: 'Archive' },
+			],
+		});
 
-		await getLists.call(ctx, "O'Brien");
+		const result = await getLists.call(ctx, 'reports');
 
 		expect(apiRequest).toHaveBeenCalledWith(
 			'GET',
 			`/v1.0/sites/${ENCODED_SITE_ID}/lists`,
 			{},
-			{ $select: 'id,displayName', $filter: "startswith(displayName,'O''Brien')" },
+			{ $select: 'id,displayName' },
 		);
+		expect(result.results).toEqual([{ name: 'Quarterly Reports', value: 'l1' }]);
 	});
 
 	it('hands back the next-page link and requests it exactly as returned', async () => {
