@@ -1,3 +1,11 @@
+## [2.31.4](https://github.com/n8n-io/n8n/compare/n8n@2.31.3...n8n@2.31.4) (2026-07-20)
+
+
+### Bug Fixes
+
+* **editor:** Auto-ungroup invalid groups on workflow save ([#34513](https://github.com/n8n-io/n8n/issues/34513)) ([bb8dbed](https://github.com/n8n-io/n8n/commit/bb8dbedb8459f2c084b7f76e78c073f780da1c41))
+
+
 ## [2.31.3](https://github.com/n8n-io/n8n/compare/n8n@2.31.2...n8n@2.31.3) (2026-07-17)
 
 
