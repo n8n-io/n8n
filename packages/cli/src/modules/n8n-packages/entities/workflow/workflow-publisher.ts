@@ -13,6 +13,7 @@ import type { PersistedWorkflowPlanItem } from './workflow-import.types';
 import { decideWorkflowPublishingAction } from './workflow-publishing-policy';
 import {
 	WorkflowPublishingPolicy,
+	type WorkflowPublishingBlockedReason,
 	type WorkflowPublishingContext,
 	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
@@ -81,7 +82,7 @@ export class WorkflowPublisher {
 		item: PersistedWorkflowPlanItem,
 		workflow: WorkflowEntity,
 		policy: WorkflowPublishingPolicy,
-		publishBlockedSourceWorkflowIds?: ReadonlySet<string>,
+		publishBlocked: ReadonlyMap<string, WorkflowPublishingBlockedReason>,
 	): Promise<WorkflowPublishingResult> {
 		const action = decideWorkflowPublishingAction(policy, toPublishingContext(item, workflow));
 
@@ -89,7 +90,8 @@ export class WorkflowPublisher {
 			return { workflow, publishing: { state: 'unchanged' } };
 		}
 
-		if (action === 'publish' && publishBlockedSourceWorkflowIds?.has(item.sourceWorkflowId)) {
+		const blockedReason = publishBlocked.get(item.sourceWorkflowId);
+		if (action === 'publish' && blockedReason) {
 			// A prior published version may still be active after an update; report
 			// that the live publish state is unchanged rather than "blocked".
 			if (workflow.activeVersionId) {
@@ -97,14 +99,14 @@ export class WorkflowPublisher {
 					workflow,
 					publishing: {
 						state: 'unchanged',
-						skippedPublishReason: 'stub-credential',
+						skippedPublishReason: blockedReason,
 					},
 				};
 			}
 
 			return {
 				workflow,
-				publishing: { state: 'blocked', blockedReason: 'stub-credential' },
+				publishing: { state: 'blocked', blockedReason },
 			};
 		}
 

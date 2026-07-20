@@ -133,6 +133,7 @@ export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
+	missingNodeTypeMode: MissingNodeTypeMode;
 };
 
 export type ImportFolderProperties = {

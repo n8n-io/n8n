@@ -16,6 +16,7 @@ import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
@@ -43,6 +44,7 @@ async function importProjects(
 		workflowConflictPolicy: 'new-version',
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
+		missingNodeTypeMode: 'fail',
 		folderConflictPolicy: 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
@@ -82,6 +84,9 @@ async function isAdminOf(projectId: string, userId: string): Promise<boolean> {
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	// Register node types so the plan-phase missing-node-type check can resolve
+	// the node types used by the package fixtures.
+	await initNodeTypes();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	licenseMocker.setDefaults({
 		features: ['feat:projectRole:admin', 'feat:folders'],

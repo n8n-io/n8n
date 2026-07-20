@@ -29,6 +29,9 @@ beforeAll(async () => {
 	const credentialTypesMock = mockInstance(CredentialTypes);
 	credentialTypesMock.recognizes.mockReturnValue(true);
 
+	// Register node types so imports pass the default fail-on-missing-node-type check.
+	await utils.initNodeTypes();
+
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(

@@ -40,6 +40,7 @@ import {
 	DataTableMatchingMode,
 	DataTableMissingMode,
 	DataTableSchemaConflictPolicy,
+	MissingNodeTypeMode,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -65,6 +66,7 @@ type ImportPackageParams = Omit<
 	| 'workflowConflictPolicy'
 	| 'workflowPublishingPolicy'
 	| 'workflowIdPolicy'
+	| 'missingNodeTypeMode'
 	| 'folderConflictPolicy'
 	| 'dataTableMatchingMode'
 	| 'dataTableMissingMode'
@@ -79,6 +81,7 @@ type ImportPackageParams = Omit<
 			| 'workflowConflictPolicy'
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
+			| 'missingNodeTypeMode'
 			| 'folderConflictPolicy'
 			| 'dataTableMatchingMode'
 			| 'dataTableMissingMode'
@@ -93,6 +96,7 @@ async function importPackage(params: ImportPackageParams) {
 		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		workflowIdPolicy: WorkflowIdPolicy.New,
+		missingNodeTypeMode: MissingNodeTypeMode.Fail,
 		folderConflictPolicy: FolderConflictPolicy.Merge,
 		dataTableMatchingMode: DataTableMatchingMode.ById,
 		dataTableMissingMode: DataTableMissingMode.Create,
