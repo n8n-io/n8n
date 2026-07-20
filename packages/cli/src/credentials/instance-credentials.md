@@ -14,11 +14,11 @@ credentials, and disallowed credential types fail closed.
 1. **Register each credential use** during module init:
 
    ```typescript
-	Container.get(InstanceCredentialBroker).registerUse({
-		id: 'my-feature:purpose',
-		credentialTypes: ['someApi'],
-	});
-	```
+   Container.get(InstanceCredentialBroker).registerUse({
+     id: 'my-feature:purpose',
+     credentialTypes: ['someApi'],
+   });
+   ```
 
 2. **List matching credentials.** Only `id`, `name`, and `type` are returned:
 
@@ -30,17 +30,17 @@ credentials, and disallowed credential types fail closed.
    credential use, credential availability, and type before it writes the
    `instance_credential_assignment` row:
 
-	```typescript
-	await broker.assignForUse('my-feature:purpose', credentialId);
-	await broker.clearForUse('my-feature:purpose');
-	```
+   ```typescript
+   await broker.assignForUse('my-feature:purpose', credentialId);
+   await broker.clearForUse('my-feature:purpose');
+   ```
 
 4. **Resolve at runtime** with the credential use ID. The broker reads the assignment,
    repeats the policy checks, and decrypts the credential on the server:
 
-	```typescript
-	await broker.resolveForUse('my-feature:purpose');
-	```
+   ```typescript
+   await broker.resolveForUse('my-feature:purpose');
+   ```
 
 Apply your feature's deployment and license gates before broker calls; the broker
 enforces credential policy, not feature availability. The assignment foreign key
