@@ -4,15 +4,11 @@ docs/generated/sqlite-schema/instance_ai_threads.md
   s_44a98ba2784a12::t_16f911908620c5 79
 docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
   s_44a98ba2784a12::t_16f911908620c5 78
-packages/@n8n/db/src/migrations/common/1784000000051-CreateWorkflowReviewRequestTables.ts
-  s_44a98ba2784a12::t_00dfed75f4d4c3 19
 docs/generated/postgres-schema/README.md
-  s_44a98ba2784a12::t_16f911908620c5 65,97,837,1151
+  s_44a98ba2784a12::t_16f911908620c5 65,97,822,1136
 docs/generated/sqlite-schema/README.md
-  s_44a98ba2784a12::t_16f911908620c5 65,97,824,1138
-  s_44a98ba2784a12::t_c7a37a3d8a1ed7 87,1052
-packages/cli/test/migration/1784000000051-create-workflow-review-request-tables.test.ts
-  s_44a98ba2784a12::t_78a208a46ec827 13
+  s_44a98ba2784a12::t_16f911908620c5 65,97,809,1123
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 87,1037
 packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
   ai_agent 1-31
 docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
@@ -24,9 +20,9 @@ docs/generated/sqlite-schema/scheduled_job.md
 docs/generated/sqlite-schema/scheduled_task.md
   s_44a98ba2784a12::t_16f911908620c5 9,21,65
 packages/@n8n/db/src/migrations/sqlite/index.ts
-  s_44a98ba2784a12::t_893c5ef8fdc256 217-219,217-218
-  s_44a98ba2784a12::t_daa8f45a138448 437-439,437-438
-  s_44a98ba2784a12::t_fe94af8470378e 435,435
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-218
+  s_44a98ba2784a12::t_daa8f45a138448 436-437
+  s_44a98ba2784a12::t_fe94af8470378e 434,434
   s_44a98ba2784a12::t_bfa5a9f5ac9def 215,215
 docs/generated/postgres-schema/public.scheduled_job.md
   s_44a98ba2784a12::t_16f911908620c5 92
@@ -35,10 +31,10 @@ docs/generated/postgres-schema/public.instance_ai_threads.md
 docs/generated/sqlite-schema/instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,20,57
 packages/@n8n/db/src/migrations/postgresdb/index.ts
-  s_44a98ba2784a12::t_51812c9029fdb3 455-457,455-456
-  s_44a98ba2784a12::t_d25d8416783ebe 225-227,225-226
+  s_44a98ba2784a12::t_51812c9029fdb3 454-455
+  s_44a98ba2784a12::t_d25d8416783ebe 225-226
   s_44a98ba2784a12::t_aa1e8f3f5a3b38 223,223
-  s_44a98ba2784a12::t_473e032380eaeb 453,453
+  s_44a98ba2784a12::t_473e032380eaeb 452,452
 docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
 docs/generated/sqlite-schema/oauth_user_consents.md
@@ -46,14 +42,14 @@ docs/generated/sqlite-schema/oauth_user_consents.md
 docs/generated/sqlite-schema/oauth_clients.md
   s_44a98ba2784a12::t_c7a37a3d8a1ed7 95
 docs/generated/sqlite-schema/user.md
-  s_44a98ba2784a12::t_c7a37a3d8a1ed7 241
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 236
 packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
   s_44a98ba2784a12::t_2b023adf499a11 1-100
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
-  "base_commit_sha": "7c58ddc55d006491621204068248ab9fdf1e1880",
+  "base_commit_sha": "5a3394aa34df80a2c90c5937a65f3bb0643ac323",
   "prompts": {},
   "humans": {
     "h_760178ed151f13": {

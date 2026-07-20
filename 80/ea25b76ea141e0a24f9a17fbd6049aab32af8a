@@ -2,13 +2,8 @@
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.5.2",
-  "base_commit_sha": "694d023cba42e9ca9416d7ae08eb812e638cc0b2",
+  "base_commit_sha": "80ea25b76ea141e0a24f9a17fbd6049aab32af8a",
   "prompts": {},
-  "humans": {
-    "h_760178ed151f13": {
-      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
-    }
-  },
   "sessions": {
     "s_44a98ba2784a12": {
       "agent_id": {
