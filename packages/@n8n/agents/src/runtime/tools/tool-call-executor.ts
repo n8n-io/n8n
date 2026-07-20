@@ -7,6 +7,7 @@ import {
 import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import type {
@@ -143,12 +144,6 @@ interface ProcessToolCallParams {
 
 function isDeniedApprovalResumeData(value: unknown): boolean {
 	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
-}
-
-function isAbortError(error: unknown): boolean {
-	if (!(error instanceof Error)) return false;
-	if (error.name === 'AbortError') return true;
-	return error.message === 'Aborted' || error.message === 'This operation was aborted';
 }
 
 function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {
@@ -800,14 +795,17 @@ export class ToolCallExecutor {
 			input,
 			resolvedTelemetry,
 			async () =>
-				await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
-					runId,
-					persistence,
-					emitEvent: (event) => this.eventBus.emit(event),
+				await raceWithAbort(
+					executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
+						runId,
+						persistence,
+						emitEvent: (event) => this.eventBus.emit(event),
+						abortSignal,
+						executionCounter,
+						suspendPayload,
+					}),
 					abortSignal,
-					executionCounter,
-					suspendPayload,
-				}),
+				),
 		);
 	}
 

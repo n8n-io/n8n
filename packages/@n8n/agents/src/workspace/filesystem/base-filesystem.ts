@@ -4,11 +4,13 @@ import type {
 	FileContent,
 	FileStat,
 	FileEntry,
+	AppendOptions,
 	ReadOptions,
 	WriteOptions,
 	ListOptions,
 	RemoveOptions,
 	CopyOptions,
+	MkdirOptions,
 } from '../types';
 
 export type FilesystemLifecycleHook = (args: {
@@ -139,11 +141,11 @@ export abstract class BaseFilesystem implements WorkspaceFilesystem {
 
 	abstract readFile(path: string, options?: ReadOptions): Promise<string | Buffer>;
 	abstract writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void>;
-	abstract appendFile(path: string, content: FileContent): Promise<void>;
+	abstract appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void>;
 	abstract deleteFile(path: string, options?: RemoveOptions): Promise<void>;
 	abstract copyFile(src: string, dest: string, options?: CopyOptions): Promise<void>;
 	abstract moveFile(src: string, dest: string, options?: CopyOptions): Promise<void>;
-	abstract mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+	abstract mkdir(path: string, options?: MkdirOptions): Promise<void>;
 	abstract rmdir(path: string, options?: RemoveOptions): Promise<void>;
 	abstract readdir(path: string, options?: ListOptions): Promise<FileEntry[]>;
 	abstract exists(path: string): Promise<boolean>;

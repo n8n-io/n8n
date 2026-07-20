@@ -2,6 +2,7 @@ import { BaseFilesystem } from '../../workspace/filesystem/base-filesystem';
 import { BaseSandbox } from '../../workspace/sandbox/base-sandbox';
 import { ProcessHandle, SandboxProcessManager } from '../../workspace/types';
 import type {
+	AppendOptions,
 	CommandResult,
 	FileContent,
 	FileEntry,
@@ -73,7 +74,11 @@ export class InMemoryFilesystem extends BaseFilesystem {
 		this.files.set(p, Buffer.from(content));
 	}
 
-	async appendFile(filePath: string, content: FileContent): Promise<void> {
+	async appendFile(
+		filePath: string,
+		content: FileContent,
+		_options?: AppendOptions,
+	): Promise<void> {
 		await this.ensureReady();
 		const p = this.normalizePath(filePath);
 		const existing = this.files.get(p) ?? Buffer.alloc(0);

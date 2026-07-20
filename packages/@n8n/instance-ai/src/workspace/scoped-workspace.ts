@@ -1,10 +1,12 @@
 import {
 	Workspace,
+	type AppendOptions,
 	type CopyOptions,
 	type FileContent,
 	type FileEntry,
 	type FileStat,
 	type ListOptions,
+	type MkdirOptions,
 	type ProviderStatus,
 	type ReadOptions,
 	type RemoveOptions,
@@ -79,8 +81,8 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 		await this.filesystem.writeFile(resolvePath(this.root, path), content, options);
 	}
 
-	async appendFile(path: string, content: FileContent): Promise<void> {
-		await this.filesystem.appendFile(resolvePath(this.root, path), content);
+	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
+		await this.filesystem.appendFile(resolvePath(this.root, path), content, options);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
@@ -103,7 +105,7 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 		);
 	}
 
-	async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
 		await this.filesystem.mkdir(resolvePath(this.root, path), options);
 	}
 
