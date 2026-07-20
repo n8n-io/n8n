@@ -77,8 +77,10 @@ export async function getFolders(
 					{},
 					{
 						$select: 'id,name,folder',
-						// `folder` isn't a documented filterable property, so the reply is
-						// re-checked below; when honored this just trims the payload
+						// This enumeration route 400s without a $filter, yet doesn't honor
+						// this one (`folder` isn't filterable) — it must stay even though
+						// the reply is re-checked below. Same contract v1 has shipped on
+						// since day one.
 						$filter: 'folder ne null',
 					},
 				)) as FolderSearchReply);
