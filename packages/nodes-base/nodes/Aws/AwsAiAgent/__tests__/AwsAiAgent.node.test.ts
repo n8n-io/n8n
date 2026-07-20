@@ -33,25 +33,32 @@ describe('AWS AI Agent node — parameters', () => {
 		expect(arnMode).toBeDefined();
 	});
 
-	it('has an identity selector with the three modes', () => {
-		const identity = prop('identity');
-		const values = (identity?.options ?? []).map((o) => (o as { value: string }).value);
-		expect(values).toEqual(['iamPrincipal', 'oauthBearer', 'workloadIdentity']);
-		expect(identity?.default).toBe('iamPrincipal');
-	});
-
-	it('shows user id only for oauth bearer identity', () => {
-		const p = prop('userId');
-		expect(p?.displayOptions?.show?.identity).toEqual(['oauthBearer']);
-	});
-
-	it('keeps authentication/secret fields out of the node properties', () => {
-		// The bearer token is an auth secret and must come from the credential, not a node field.
+	it('carries identity on credentials, not hardcoded node fields', () => {
+		// No identity dropdown, no user-id field, no bearer-token field on the node itself.
+		expect(prop('identity')).toBeUndefined();
+		expect(prop('userId')).toBeUndefined();
 		expect(prop('bearerToken')).toBeUndefined();
+
+		const creds = node.description.credentials ?? [];
+		// AWS credential is the invocation identity (IAM / SigV4).
+		expect(creds.some((c) => c.name === 'aws')).toBe(true);
+		// On-behalf-of-user identity is an optional separate credential on top.
+		const obo = creds.find((c) => c.name === 'httpBearerAuth');
+		expect(obo).toBeDefined();
+		expect(obo?.required).toBe(false);
 	});
 
-	it('exposes session id and an advanced options collection (region lives inside it)', () => {
-		expect(prop('sessionId')?.type).toBe('string');
+	it('supports session lifecycle: new vs resume', () => {
+		const sessionMode = prop('sessionMode');
+		expect(sessionMode?.type).toBe('options');
+		const values = (sessionMode?.options ?? []).map((o) => (o as { value: string }).value);
+		expect(values).toEqual(['new', 'resume']);
+		expect(sessionMode?.default).toBe('new');
+		// Session ID is only requested when resuming a conversation.
+		expect(prop('sessionId')?.displayOptions?.show?.sessionMode).toEqual(['resume']);
+	});
+
+	it('exposes an advanced options collection (region lives inside it)', () => {
 		// Region is a secondary override, so it belongs inside the collection, not top-level.
 		expect(prop('region')).toBeUndefined();
 		const options = prop('options');
@@ -111,24 +118,34 @@ describe('AWS AI Agent node — execute (stubbed)', () => {
 		return ctx;
 	};
 
-	it('returns a correctly shaped fake response', async () => {
-		const ctx = setup({ input: 'hello agent', sessionId: 'sess-123' });
+	it('resumes an existing conversation by echoing the provided session ID', async () => {
+		const ctx = setup({ input: 'hello agent', sessionMode: 'resume', sessionId: 'sess-123' });
 		const result = await node.execute.call(ctx);
 		const json = result[0][0].json as {
 			response: string;
 			sessionId: string;
+			sessionMode: string;
 			usage: { inputTokens: number; outputTokens: number };
 			traceRefs: string[];
 		};
 		expect(json.response).toContain('hello agent');
+		expect(json.sessionMode).toBe('resume');
 		expect(json.sessionId).toBe('sess-123');
 		expect(typeof json.usage.inputTokens).toBe('number');
 		expect(typeof json.usage.outputTokens).toBe('number');
 		expect(Array.isArray(json.traceRefs)).toBe(true);
 	});
 
+	it('starts a new conversation with a generated session ID', async () => {
+		const ctx = setup({ input: 'hi', sessionMode: 'new' });
+		const result = await node.execute.call(ctx);
+		const json = result[0][0].json as { sessionMode: string; sessionId: string };
+		expect(json.sessionMode).toBe('new');
+		expect(json.sessionId).toMatch(/^sess-/);
+	});
+
 	it('catches and returns error when continueOnFail is true', async () => {
-		const ctx = setup({ input: 'test', sessionId: 'sess-456' });
+		const ctx = setup({ input: 'test', sessionMode: 'resume', sessionId: 'sess-456' });
 		ctx.continueOnFail.mockReturnValue(true);
 		ctx.getNodeParameter.mockImplementation(() => {
 			throw new Error('boom');

@@ -27,7 +27,16 @@ export class AwsAiAgent implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: awsNodeCredentials,
+		credentials: [
+			...awsNodeCredentials,
+			{
+				// Optional on-behalf-of-user identity. When set, the agent is invoked on behalf of
+				// this bearer token instead of the workflow's IAM principal. Identity rides on the
+				// credential — it is never entered as a node field.
+				name: 'httpBearerAuth',
+				required: false,
+			},
+		],
 		properties: [
 			awsNodeAuthOptions,
 			{
@@ -66,46 +75,34 @@ export class AwsAiAgent implements INodeType {
 				description: 'The prompt or messages to send to the agent',
 			},
 			{
-				displayName: 'Session ID',
-				name: 'sessionId',
-				type: 'string',
-				default: '={{ $json.sessionId }}',
-				description: 'Identifier for multi-turn continuity across invocations',
-			},
-			{
-				displayName: 'Identity',
-				name: 'identity',
+				displayName: 'Session',
+				name: 'sessionMode',
 				type: 'options',
-				default: 'iamPrincipal',
-				description: 'How the agent invocation is authorized and scoped',
+				default: 'new',
+				description: 'Start a new conversation or resume an existing one',
 				options: [
 					{
-						name: 'IAM Credential (as Workflow Principal)',
-						value: 'iamPrincipal',
-						description: 'Invoke with the AWS credential above (baseline)',
+						name: 'Start New Conversation',
+						value: 'new',
+						description: 'Begin a fresh session; a new session ID is returned in the output',
 					},
 					{
-						name: 'OAuth Bearer (on Behalf of User)',
-						value: 'oauthBearer',
-						description: "Pass the end user's JWT so tools run scoped to that user",
-					},
-					{
-						name: 'Workload Identity (Coming Soon)',
-						value: 'workloadIdentity',
-						description: 'Inherit the rights of where the workflow runs',
+						name: 'Resume Conversation',
+						value: 'resume',
+						description: 'Continue an existing session using its session ID',
 					},
 				],
 			},
 			{
-				displayName: 'User ID',
-				name: 'userId',
+				displayName: 'Session ID',
+				name: 'sessionId',
 				type: 'string',
-				default: '',
-				description:
-					'Identifier of the end user the agent runs on behalf of (the bearer token itself comes from the credential, not from a node field)',
+				default: '={{ $json.sessionId }}',
+				required: true,
+				description: 'ID of the conversation to resume, from a previous run output',
 				displayOptions: {
 					show: {
-						identity: ['oauthBearer'],
+						sessionMode: ['resume'],
 					},
 				},
 			},
@@ -252,11 +249,17 @@ export class AwsAiAgent implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const input = this.getNodeParameter('input', i, '') as string;
-				const sessionId = (this.getNodeParameter('sessionId', i, '') as string) || 'sess-simulated';
+				const sessionMode = this.getNodeParameter('sessionMode', i, 'new') as string;
+				// Resume echoes the caller's session ID; a new conversation gets a fresh simulated one.
+				const sessionId =
+					sessionMode === 'resume'
+						? (this.getNodeParameter('sessionId', i, '') as string)
+						: `sess-${Date.now().toString(36)}-${i}`;
 
 				returnData.push({
 					response: `Simulated agent response to: ${input}`,
 					sessionId,
+					sessionMode,
 					usage: {
 						inputTokens: input.length,
 						outputTokens: 128,
