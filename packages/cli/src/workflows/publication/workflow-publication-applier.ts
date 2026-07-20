@@ -192,6 +192,9 @@ export class WorkflowPublicationApplier {
 		oldVersion: WorkflowHistory | null,
 		record: WorkflowPublicationOutbox,
 	): Promise<PublicationResult> {
+		// If there is no oldVersion we may be retrying an unpublish that was
+		// interrupted after removing the mapping: nothing to tear down, but we
+		// still complete as `unpublished`.
 		const toRemove = new Set(
 			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
 		);
