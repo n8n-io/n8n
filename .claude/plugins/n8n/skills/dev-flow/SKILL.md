@@ -2,7 +2,8 @@
 name: n8n:dev-flow
 description: >-
   End-to-end orchestrator for developing a feature or fixing a bug in the n8n
-  checkout, driven by a Linear ticket (PAY-/DEV-/ENG-XXXX). Runs the full agent loop: read the
+  checkout, driven by a Linear ticket (PAY-/DEV-/ENG-XXXX) or, when invoked with no argument,
+  by the preceding conversation. Runs the full agent loop: read the
   ticket (title, description, comments, attachments, links) → plan → planner↔reviewer consensus
   loop → implement → parallel multi-angle review (architecture, security, conventions, testing)
   → fix↔re-review loop until clean → open a PR → watch the PR (CI, review comments, bot findings)
@@ -78,13 +79,22 @@ Resolve the repo root in this order and `cd` there before Phase 1:
 
 From here on, all repo paths are relative to this root (e.g. `.claude/plans/`, `packages/cli`).
 
-The input is a Linear ticket ID (e.g. `PAY-1234`). If the user didn't give one, ask for it.
+The input, in order of precedence:
+
+1. **Explicit Linear ticket ID** (e.g. `PAY-1234`) given by the user.
+2. **No argument:** if the preceding conversation mentions a ticket ID, use that. If it
+   discusses the work without a ticket, the conversation IS the task — distill it into a task
+   statement (goal, constraints, decisions already made), skip Phase 1 (no ticket to read), and
+   carry the settled decisions into planning without re-asking them. The feature/bug and
+   security-fix classification then comes from the discussion.
+3. **Neither:** ask the user for the ticket ID or task.
+
 At the start of Phase 3, reuse the feature branch if you're already on one; otherwise create it
 using the name **Linear** provides (see there) — not a hand-rolled slug, **unless this is a
-security fix** (see Phase 3).
+security fix** (see Phase 3). When there is no ticket, use a short slug of the task instead.
 
 Create a TodoWrite list with one item per phase so progress is visible and resumable. Track the
-ticket ID — every phase references it.
+ticket ID (or the task slug when there is no ticket) — every phase references it.
 
 ## Autonomy & loop discipline
 
@@ -104,6 +114,9 @@ Every loop in this skill is **bounded** to avoid spinning forever:
 ---
 
 ## Phase 1 — Read the ticket (full context)
+
+**Skip this phase when running from conversation context with no ticket** (Setup case 2) —
+the distilled task statement takes the ticket's place.
 
 Invoke the repo's issue-analysis skill to gather everything about the ticket:
 
