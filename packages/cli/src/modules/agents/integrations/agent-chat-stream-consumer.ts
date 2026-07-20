@@ -23,7 +23,13 @@ interface ConsumeStreamOptions {
 
 interface ResponseState {
 	hasVisibleResponse: boolean;
-	needsFallback: boolean;
+	/**
+	 * Why a fallback error may need to be posted when the run ends without any
+	 * visible output. A 'tool-error' fallback is cleared by a later successful
+	 * tool call (the retry recovered); a 'suspension' fallback is not — the
+	 * user still has an approval request they never received.
+	 */
+	fallbackSource: 'tool-error' | 'suspension' | null;
 	fallbackError: unknown;
 }
 
@@ -35,8 +41,8 @@ interface ResponseLifecycle {
 
 const createResponseState = (): ResponseState => ({
 	hasVisibleResponse: false,
-	needsFallback: false,
-	fallbackError: new Error('Agent execution ended without a response'),
+	fallbackSource: null,
+	fallbackError: null,
 });
 
 export class AgentChatStreamConsumer {
@@ -163,7 +169,7 @@ export class AgentChatStreamConsumer {
 						const posted = await this.options.handleSuspension(chunk, thread);
 						responseState.hasVisibleResponse ||= posted;
 						if (!posted) {
-							responseState.needsFallback = true;
+							responseState.fallbackSource = 'suspension';
 							responseState.fallbackError = new Error('Failed to post tool approval request');
 						}
 						// Don't start new streaming post — wait for next text delta
@@ -180,8 +186,10 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'tool-result':
 						if (chunk.isError) {
-							responseState.needsFallback = true;
+							responseState.fallbackSource = 'tool-error';
 							responseState.fallbackError = chunk.output;
+						} else if (responseState.fallbackSource === 'tool-error') {
+							responseState.fallbackSource = null;
 						}
 						break;
 					default:
@@ -230,7 +238,7 @@ export class AgentChatStreamConsumer {
 		lifecycle: ResponseLifecycle,
 		thread: Thread<unknown, unknown>,
 	): Promise<void> {
-		if (!state.needsFallback || state.hasVisibleResponse) return;
+		if (!state.fallbackSource || state.hasVisibleResponse) return;
 
 		await lifecycle.startDiscreteResponse();
 		await this.options.postErrorToThread(thread, state.fallbackError);
@@ -284,7 +292,7 @@ export class AgentChatStreamConsumer {
 						const posted = await this.options.handleSuspension(chunk, thread);
 						responseState.hasVisibleResponse ||= posted;
 						if (!posted) {
-							responseState.needsFallback = true;
+							responseState.fallbackSource = 'suspension';
 							responseState.fallbackError = new Error('Failed to post tool approval request');
 						}
 						break;
@@ -302,8 +310,10 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'tool-result':
 						if (chunk.isError) {
-							responseState.needsFallback = true;
+							responseState.fallbackSource = 'tool-error';
 							responseState.fallbackError = chunk.output;
+						} else if (responseState.fallbackSource === 'tool-error') {
+							responseState.fallbackSource = null;
 						}
 						break;
 					default:

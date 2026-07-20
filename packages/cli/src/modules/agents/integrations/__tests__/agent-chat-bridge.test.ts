@@ -514,6 +514,42 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
+
+		it('does not post an error when a failed tool call is retried successfully', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'slack',
+					output: { error: 'invalid input' },
+					isError: true,
+				},
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-2',
+					toolName: 'slack',
+					output: { ok: true },
+					isError: false,
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				bufferedIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('when deriving memory scope', () => {
@@ -727,6 +763,42 @@ describe('AgentChatBridge — consumeStream', () => {
 				{
 					type: 'tool-result',
 					toolCallId: 'tool-1',
+					toolName: 'slack',
+					output: { ok: true },
+					isError: false,
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post an error when a failed streamed tool call is retried successfully', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-1',
+					toolName: 'slack',
+					output: { error: 'invalid input' },
+					isError: true,
+				},
+				{
+					type: 'tool-result',
+					toolCallId: 'tool-2',
 					toolName: 'slack',
 					output: { ok: true },
 					isError: false,
