@@ -301,19 +301,22 @@ export const useActions = () => {
 	}
 
 	/**
-	 * Returns the node the node creator was opened from when connecting to an
-	 * existing node (e.g. dragging a connection out of a trigger's output),
-	 * or undefined if the creator wasn't opened in that context.
+	 * Returns the trigger the node creator was opened from when connecting to
+	 * an existing node (e.g. dragging a connection out of a trigger's output),
+	 * or undefined if the creator wasn't opened in that context, the
+	 * last-interacted-with node isn't a trigger, or a node-replacement is in
+	 * progress (the "last interacted" node there is the one being removed).
 	 */
 	function getConnectionTriggerNode(): INodeUi | undefined {
+		if (nodeCreatorStore.openingContext === 'replacement') return undefined;
+
 		const nodeId = uiStore.lastInteractedWithNodeId;
-		return nodeId ? workflowDocumentStore.value.getNodeById(nodeId) : undefined;
+		const node = nodeId ? workflowDocumentStore.value.getNodeById(nodeId) : undefined;
+
+		return node && nodeTypesStore.isTriggerNode(node.type) ? node : undefined;
 	}
 
-	function getAddedNodesAndConnections(
-		addedNodes: AddedNode[],
-		existingTriggerNode?: INodeUi,
-	): AddedNodesAndConnections {
+	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
 		if (addedNodes.length === 0) {
 			return { nodes: [], connections: [] };
 		}
@@ -328,13 +331,15 @@ export const useActions = () => {
 		}
 
 		// If the node creator was opened by connecting from an existing trigger,
-		// that trigger should receive the connection - never prepend a new one.
-		const isConnectingToExistingTrigger =
-			!!existingTriggerNode && nodeTypesStore.isTriggerNode(existingTriggerNode.type);
+		// that trigger should receive the connection instead of prepending a
+		// duplicate Chat Trigger. The LLM Chain prepend still runs regardless:
+		// a language model node can't take a Main connection from the existing
+		// trigger anyway, so it always needs its own Chat Trigger + Chain wrapper.
+		const isConnectingToExistingTrigger = !!getConnectionTriggerNode();
 
 		if (
-			!isConnectingToExistingTrigger &&
-			(shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes))
+			shouldPrependLLMChain(addedNodes) ||
+			(!isConnectingToExistingTrigger && shouldPrependChatTrigger(addedNodes))
 		) {
 			if (shouldPrependLLMChain(addedNodes)) {
 				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
@@ -348,7 +353,7 @@ export const useActions = () => {
 				from: { nodeIndex: 0 },
 				to: { nodeIndex: 1 },
 			});
-		} else if (!isConnectingToExistingTrigger && shouldPrependManualTrigger(addedNodes)) {
+		} else if (shouldPrependManualTrigger(addedNodes)) {
 			addedNodes.unshift({ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true });
 			connections.push({
 				from: { nodeIndex: 0 },

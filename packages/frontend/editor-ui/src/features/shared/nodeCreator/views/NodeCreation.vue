@@ -60,7 +60,7 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const workflowId = useWorkflowId();
 
-const { getAddedNodesAndConnections, getConnectionTriggerNode } = useActions();
+const { getAddedNodesAndConnections } = useActions();
 const { shouldShowCoachmark, onDismissCoachmark } = useNodeCreatorShortcutCoachmark();
 
 const sidePanelTooltip = computed(() => {
@@ -99,7 +99,7 @@ function closeNodeCreator(hasAddedNodes = false) {
 }
 
 function nodeTypeSelected(value: NodeTypeSelectedPayload[]) {
-	emit('addNodes', getAddedNodesAndConnections(value, getConnectionTriggerNode()));
+	emit('addNodes', getAddedNodesAndConnections(value));
 	closeNodeCreator(true);
 }
 

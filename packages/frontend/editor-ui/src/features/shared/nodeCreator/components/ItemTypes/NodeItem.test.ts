@@ -5,7 +5,7 @@ import { DRAG_EVENT_DATA_KEY, MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodeItem from './NodeItem.vue';
-import type { AddedNodesAndConnections, INodeUi } from '@/Interface';
+import type { AddedNodesAndConnections } from '@/Interface';
 
 const mockDocumentStoreState = {
 	allNodes: [],
@@ -23,12 +23,10 @@ const mockGetAddedNodesAndConnections = vi.fn<() => AddedNodesAndConnections>(()
 	nodes: [],
 	connections: [],
 }));
-const mockGetConnectionTriggerNode = vi.fn<() => INodeUi | undefined>(() => undefined);
 
 vi.mock('../../composables/useActions', () => ({
 	useActions: () => ({
 		getAddedNodesAndConnections: mockGetAddedNodesAndConnections,
-		getConnectionTriggerNode: mockGetConnectionTriggerNode,
 	}),
 }));
 
@@ -89,36 +87,7 @@ describe('NodeItem', () => {
 		expect(container.querySelector('[data-test-id="node-creator-node-item"]')).toBeInTheDocument();
 	});
 
-	it('forwards the connection trigger node when dragging the node onto the canvas', async () => {
-		const triggerNode = {
-			id: '1',
-			name: 'Manual Trigger',
-			type: 'n8n-nodes-base.manualTrigger',
-		} as INodeUi;
-		mockGetConnectionTriggerNode.mockReturnValue(triggerNode);
-
-		const { findByTestId } = render({
-			pinia,
-			props: {
-				nodeType: mockSimplifiedNodeType({
-					name: 'n8n-nodes-base.slack',
-					displayName: 'Slack',
-					group: ['output'],
-				}),
-			},
-		});
-		const draggable = await findByTestId('node-creator-node-item');
-
-		dispatchDragStart(draggable);
-
-		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith(
-			[{ type: 'n8n-nodes-base.slack' }],
-			triggerNode,
-		);
-	});
-
 	it('sets the drag data to the result of getAddedNodesAndConnections', async () => {
-		mockGetConnectionTriggerNode.mockReturnValue(undefined);
 		const addedNodesAndConnections = { nodes: [{ type: 'n8n-nodes-base.slack' }], connections: [] };
 		mockGetAddedNodesAndConnections.mockReturnValue(addedNodesAndConnections);
 
@@ -136,10 +105,9 @@ describe('NodeItem', () => {
 
 		const dataTransfer = dispatchDragStart(draggable);
 
-		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith(
-			[{ type: 'n8n-nodes-base.slack' }],
-			undefined,
-		);
+		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith([
+			{ type: 'n8n-nodes-base.slack' },
+		]);
 		expect(dataTransfer.setData).toHaveBeenCalledWith(
 			DRAG_EVENT_DATA_KEY,
 			JSON.stringify(addedNodesAndConnections),

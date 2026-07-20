@@ -6,6 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useActions } from './useActions';
 import {
 	AGENT_NODE_TYPE,
+	AI_CATEGORY_LANGUAGE_MODELS,
 	BASIC_CHAIN_NODE_TYPE,
 	GITHUB_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
@@ -13,14 +14,49 @@ import {
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
-import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+
+const mockTriggerNodeType = (type: string): Record<number, INodeTypeDescription> => ({
+	1: {
+		name: type,
+		displayName: type,
+		group: ['trigger'],
+		version: 1,
+		defaults: {},
+		inputs: [],
+		outputs: [],
+		properties: [],
+		description: '',
+	},
+});
+
+const mockLanguageModelNodeType = (type: string): Record<number, INodeTypeDescription> => ({
+	1: {
+		name: type,
+		displayName: type,
+		group: ['transform'],
+		version: 1,
+		defaults: {},
+		inputs: [],
+		outputs: [],
+		properties: [],
+		description: '',
+		codex: { subcategories: { [AI_CATEGORY_LANGUAGE_MODELS]: [type] } },
+	},
+});
 
 const mockDocumentStoreState = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
@@ -47,6 +83,7 @@ describe('useActions', () => {
 		mockDocumentStoreState.allNodes = [];
 		mockDocumentStoreState.getNodeById = () => undefined;
 		useUIStore().lastInteractedWithNodeId = undefined;
+		useNodeCreatorStore().openingContext = null;
 	});
 
 	describe('getAddedNodesAndConnections', () => {
@@ -138,36 +175,65 @@ describe('useActions', () => {
 		test('should NOT insert a ChatTrigger node when connecting a compatible chat node directly to an existing Manual Trigger', () => {
 			const nodeTypesStore = useNodeTypesStore();
 			nodeTypesStore.nodeTypes = {
-				[MANUAL_TRIGGER_NODE_TYPE]: {
-					1: {
-						name: MANUAL_TRIGGER_NODE_TYPE,
-						displayName: 'Manual Trigger',
-						group: ['trigger'],
-						version: 1,
-						defaults: {},
-						inputs: [],
-						outputs: [],
-						properties: [],
-						description: '',
-					},
-				},
+				[MANUAL_TRIGGER_NODE_TYPE]: mockTriggerNodeType(MANUAL_TRIGGER_NODE_TYPE),
 			};
 
-			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
-			mockDocumentStoreState.allNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
-
-			const { getAddedNodesAndConnections } = useActions();
 			const existingTriggerNode = {
 				id: '1',
 				name: 'Manual Trigger',
 				type: MANUAL_TRIGGER_NODE_TYPE,
 			} as INodeUi;
+			mockDocumentStoreState.workflowTriggerNodes = [existingTriggerNode];
+			mockDocumentStoreState.allNodes = [existingTriggerNode];
+			mockDocumentStoreState.getNodeById = (id) =>
+				id === existingTriggerNode.id ? existingTriggerNode : undefined;
+			useUIStore().lastInteractedWithNodeId = existingTriggerNode.id;
 
-			expect(
-				getAddedNodesAndConnections([{ type: BASIC_CHAIN_NODE_TYPE }], existingTriggerNode),
-			).toEqual({
+			const { getAddedNodesAndConnections } = useActions();
+
+			expect(getAddedNodesAndConnections([{ type: BASIC_CHAIN_NODE_TYPE }])).toEqual({
 				connections: [],
 				nodes: [{ type: BASIC_CHAIN_NODE_TYPE, openDetail: true }],
+			});
+		});
+
+		test('should still prepend a Chat Trigger and Chain LLM wrapper when a language model is added directly to an existing Manual Trigger', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[MANUAL_TRIGGER_NODE_TYPE]: mockTriggerNodeType(MANUAL_TRIGGER_NODE_TYPE),
+				[OPEN_AI_CHAT_MODEL_NODE_TYPE]: mockLanguageModelNodeType(OPEN_AI_CHAT_MODEL_NODE_TYPE),
+			};
+
+			const existingTriggerNode = {
+				id: '1',
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+			} as INodeUi;
+			mockDocumentStoreState.workflowTriggerNodes = [existingTriggerNode];
+			mockDocumentStoreState.allNodes = [existingTriggerNode];
+			mockDocumentStoreState.aiNodes = [];
+			mockDocumentStoreState.getNodeById = (id) =>
+				id === existingTriggerNode.id ? existingTriggerNode : undefined;
+			useUIStore().lastInteractedWithNodeId = existingTriggerNode.id;
+
+			const { getAddedNodesAndConnections } = useActions();
+
+			// A language model node has no Main input, so the auto-connect from
+			// the existing trigger would silently fail - it always needs its own
+			// Chat Trigger + Chain LLM wrapper, even when opened from a trigger.
+			expect(getAddedNodesAndConnections([{ type: OPEN_AI_CHAT_MODEL_NODE_TYPE }])).toEqual({
+				connections: [
+					{
+						from: { nodeIndex: 2, type: NodeConnectionTypes.AiLanguageModel },
+						to: { nodeIndex: 1 },
+					},
+					{ from: { nodeIndex: 0 }, to: { nodeIndex: 1 } },
+				],
+				nodes: [
+					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true },
+					{ type: OPEN_AI_CHAT_MODEL_NODE_TYPE, openDetail: true },
+				],
 			});
 		});
 
@@ -352,7 +418,12 @@ describe('useActions', () => {
 			expect(getConnectionTriggerNode()).toBeUndefined();
 		});
 
-		test('should return the node the node creator was opened from', () => {
+		test('should return the node the node creator was opened from when it is a trigger', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[MANUAL_TRIGGER_NODE_TYPE]: mockTriggerNodeType(MANUAL_TRIGGER_NODE_TYPE),
+			};
+
 			const node = { id: '1', name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi;
 			mockDocumentStoreState.getNodeById = (id: string) => (id === node.id ? node : undefined);
 			useUIStore().lastInteractedWithNodeId = node.id;
@@ -360,6 +431,49 @@ describe('useActions', () => {
 			const { getConnectionTriggerNode } = useActions();
 
 			expect(getConnectionTriggerNode()).toBe(node);
+		});
+
+		test('should return undefined when the last interacted node is not a trigger', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[HTTP_REQUEST_NODE_TYPE]: {
+					1: {
+						name: HTTP_REQUEST_NODE_TYPE,
+						displayName: 'HTTP Request',
+						group: ['transform'],
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
+						description: '',
+					},
+				},
+			};
+
+			const node = { id: '1', name: 'HTTP Request', type: HTTP_REQUEST_NODE_TYPE } as INodeUi;
+			mockDocumentStoreState.getNodeById = (id: string) => (id === node.id ? node : undefined);
+			useUIStore().lastInteractedWithNodeId = node.id;
+
+			const { getConnectionTriggerNode } = useActions();
+
+			expect(getConnectionTriggerNode()).toBeUndefined();
+		});
+
+		test('should return undefined while a node replacement is in progress', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[MANUAL_TRIGGER_NODE_TYPE]: mockTriggerNodeType(MANUAL_TRIGGER_NODE_TYPE),
+			};
+
+			const node = { id: '1', name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi;
+			mockDocumentStoreState.getNodeById = (id: string) => (id === node.id ? node : undefined);
+			useUIStore().lastInteractedWithNodeId = node.id;
+			useNodeCreatorStore().openingContext = 'replacement';
+
+			const { getConnectionTriggerNode } = useActions();
+
+			expect(getConnectionTriggerNode()).toBeUndefined();
 		});
 	});
 
@@ -479,11 +593,15 @@ describe('useActions', () => {
 
 		test('should work with multiple nodes having actionNames', () => {
 			const nodeCreatorStore = useNodeCreatorStore();
+			const nodeTypesStore = useNodeTypesStore();
 
 			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
 			vi.spyOn(nodeCreatorStore, 'openSource', 'get').mockReturnValue(
 				NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
 			);
+			nodeTypesStore.nodeTypes = {
+				[WEBHOOK_NODE_TYPE]: mockTriggerNodeType(WEBHOOK_NODE_TYPE),
+			};
 
 			const { getAddedNodesAndConnections } = useActions();
 

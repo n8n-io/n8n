@@ -4,7 +4,6 @@ import ActionItem from './ActionItem.vue';
 import type {
 	ActionTypeDescription,
 	AddedNodesAndConnections,
-	INodeUi,
 	SimplifiedNodeType,
 } from '@/Interface';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
@@ -13,7 +12,6 @@ const mockGetAddedNodesAndConnections = vi.fn<() => AddedNodesAndConnections>(()
 	nodes: [],
 	connections: [],
 }));
-const mockGetConnectionTriggerNode = vi.fn<() => INodeUi | undefined>(() => undefined);
 
 vi.mock('../../composables/useActions', () => ({
 	useActions: () => ({
@@ -23,7 +21,6 @@ vi.mock('../../composables/useActions', () => ({
 			value: actionItem.values ?? {},
 		}),
 		getAddedNodesAndConnections: mockGetAddedNodesAndConnections,
-		getConnectionTriggerNode: mockGetConnectionTriggerNode,
 		setAddedNodeActionParameters: vi.fn(),
 	}),
 }));
@@ -74,13 +71,7 @@ describe('ActionItem', () => {
 		vi.clearAllMocks();
 	});
 
-	it('forwards the connection trigger node when dragging the action onto the canvas', async () => {
-		const triggerNode = {
-			id: '1',
-			name: 'Manual Trigger',
-			type: 'n8n-nodes-base.manualTrigger',
-		} as INodeUi;
-		mockGetConnectionTriggerNode.mockReturnValue(triggerNode);
+	it('sets the drag data to the result of getAddedNodesAndConnections', async () => {
 		const addedNodesAndConnections = { nodes: [{ type: 'n8n-nodes-base.slack' }], connections: [] };
 		mockGetAddedNodesAndConnections.mockReturnValue(addedNodesAndConnections);
 
@@ -91,29 +82,12 @@ describe('ActionItem', () => {
 
 		const dataTransfer = dispatchDragStart(draggable);
 
-		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith(
-			[{ type: 'n8n-nodes-base.slack' }],
-			triggerNode,
-		);
+		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith([
+			{ type: 'n8n-nodes-base.slack' },
+		]);
 		expect(dataTransfer.setData).toHaveBeenCalledWith(
 			DRAG_EVENT_DATA_KEY,
 			JSON.stringify(addedNodesAndConnections),
-		);
-	});
-
-	it('passes undefined when the node creator was not opened by connecting to an existing node', async () => {
-		mockGetConnectionTriggerNode.mockReturnValue(undefined);
-
-		const { container, findByText } = renderComponent();
-		await findByText(action.displayName);
-		const draggable = container.querySelector('[draggable]');
-		if (!draggable) throw new Error('draggable element not found');
-
-		dispatchDragStart(draggable);
-
-		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith(
-			[{ type: 'n8n-nodes-base.slack' }],
-			undefined,
 		);
 	});
 });

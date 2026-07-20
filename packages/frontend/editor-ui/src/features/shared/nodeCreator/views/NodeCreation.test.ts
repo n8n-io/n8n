@@ -2,18 +2,16 @@ import type * as Vue from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import NodeCreation from './NodeCreation.vue';
-import type { AddedNodesAndConnections, INodeUi } from '@/Interface';
+import type { AddedNodesAndConnections } from '@/Interface';
 
 const mockGetAddedNodesAndConnections = vi.fn<() => AddedNodesAndConnections>(() => ({
 	nodes: [],
 	connections: [],
 }));
-const mockGetConnectionTriggerNode = vi.fn<() => INodeUi | undefined>(() => undefined);
 
 vi.mock('../composables/useActions', () => ({
 	useActions: () => ({
 		getAddedNodesAndConnections: mockGetAddedNodesAndConnections,
-		getConnectionTriggerNode: mockGetConnectionTriggerNode,
 	}),
 }));
 
@@ -74,13 +72,7 @@ describe('NodeCreation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('forwards the connection trigger node to getAddedNodesAndConnections when a node type is selected', async () => {
-		const triggerNode = {
-			id: '1',
-			name: 'Manual Trigger',
-			type: 'n8n-nodes-base.manualTrigger',
-		} as INodeUi;
-		mockGetConnectionTriggerNode.mockReturnValue(triggerNode);
+	it('emits addNodes with the result of getAddedNodesAndConnections when a node type is selected', async () => {
 		const addedNodesAndConnections = {
 			nodes: [{ type: 'n8n-nodes-base.slack' }],
 			connections: [],
@@ -96,28 +88,9 @@ describe('NodeCreation', () => {
 			expect(mockGetAddedNodesAndConnections).toHaveBeenCalled();
 		});
 
-		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith(
-			[{ type: 'n8n-nodes-base.slack' }],
-			triggerNode,
-		);
+		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith([
+			{ type: 'n8n-nodes-base.slack' },
+		]);
 		expect(emitted('addNodes')).toEqual([[addedNodesAndConnections]]);
-	});
-
-	it('passes undefined when the node creator was not opened by connecting to an existing node', async () => {
-		mockGetConnectionTriggerNode.mockReturnValue(undefined);
-
-		const { findByTestId } = renderComponent();
-		const selectButton = await findByTestId('node-creator-stub-select');
-
-		selectButton.click();
-
-		await vi.waitFor(() => {
-			expect(mockGetAddedNodesAndConnections).toHaveBeenCalled();
-		});
-
-		expect(mockGetAddedNodesAndConnections).toHaveBeenCalledWith(
-			[{ type: 'n8n-nodes-base.slack' }],
-			undefined,
-		);
 	});
 });
