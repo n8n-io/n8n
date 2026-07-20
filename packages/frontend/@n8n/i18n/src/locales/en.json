@@ -4935,7 +4935,7 @@
 	"settings.n8nAgent.modelCredential.label": "Model credential",
 	"settings.n8nAgent.modelCredential.description": "Choose an instance credential or create one",
 	"settings.n8nAgent.modelCredential.placeholder": "Select a credential",
-	"settings.n8nAgent.modelCredential.none": "No instance credential",
+	"settings.n8nAgent.modelCredential.none": "Use environment configuration",
 	"settings.n8nAgent.modelCredential.createNew": "Create credential",
 	"settings.n8nAgent.sandboxCredential.label": "Sandbox credential",
 	"settings.n8nAgent.sandboxCredential.description": "Choose an instance credential or create one",

@@ -993,6 +993,9 @@ export class SourceControlImportService {
 			},
 			select: ['id', 'name', 'type', 'data', 'availability'],
 		});
+		const existingCredentialsById = new Map(
+			existingCredentials.map((credential) => [credential.id, credential]),
+		);
 		const existingSharedCredentials = await this.sharedCredentialsRepository.find({
 			select: ['credentialsId', 'projectId', 'role'],
 			where: {
@@ -1008,9 +1011,9 @@ export class SourceControlImportService {
 				const credential = jsonParse<ExportableCredential>(
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				);
-				const existingCredential = existingCredentials.find(
-					(e) => e.id === credential.id && e.type === credential.type,
-				);
+				const existingCredentialById = existingCredentialsById.get(credential.id);
+				const existingCredential =
+					existingCredentialById?.type === credential.type ? existingCredentialById : undefined;
 
 				// Carry the "private"/resolvable nature across environments. resolverId is
 				// instance-local and handled separately (see IAM-906).
@@ -1025,9 +1028,7 @@ export class SourceControlImportService {
 					availability: remoteAvailability = 'workflow',
 				} = credential;
 				// Availability is instance-local state; imports never change it for existing credentials
-				const availability =
-					existingCredentials.find((e) => e.id === credential.id)?.availability ??
-					remoteAvailability;
+				const availability = existingCredentialById?.availability ?? remoteAvailability;
 				const newCredentialObject = new Credentials({ id, name }, type);
 				if (availability === 'instance' && (isGlobal || isResolvable || resolvableAllowFallback)) {
 					throw new UserError('Instance credentials cannot be global or dynamically resolved');

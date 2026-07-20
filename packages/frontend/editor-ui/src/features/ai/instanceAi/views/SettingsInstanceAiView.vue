@@ -5,6 +5,7 @@ import {
 	N8nDropdownMenu,
 	N8nEmptyState,
 	N8nIcon,
+	N8nLoading,
 	N8nOption,
 	N8nSelect,
 	N8nSettingsLayout,
@@ -174,9 +175,7 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 			:show-docs-link="false"
 		/>
 
-		<div v-if="store.isLoading" :class="$style.loading">
-			<N8nIcon icon="spinner" spin />
-		</div>
+		<N8nLoading v-if="store.isLoading" :rows="3" :shrink-last="false" />
 
 		<N8nEmptyState
 			v-else-if="!isEnabled"
@@ -365,14 +364,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 </template>
 
 <style lang="scss" module>
-.loading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--2xl);
-	color: var(--text-color--subtle);
-}
-
 .statusLabel {
 	display: inline-flex;
 	align-items: center;
