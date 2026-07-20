@@ -71,6 +71,7 @@ describe('PublicationStatusReporter', () => {
 	test('completed writes trigger rows, marks the record completed, and clears activation errors', async () => {
 		await reporter.report(makeRecord(), {
 			type: 'completed',
+			appliedVersionId: 'v-2',
 			triggerStatuses: [
 				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
 				{ nodeId: 'b', nodeName: 'Schedule', status: 'activated', triggerKind: 'in-memory' },
@@ -195,6 +196,7 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'failed',
 			error,
+			appliedVersionId: 'v-2',
 			triggerStatuses: [
 				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
 				{
@@ -237,6 +239,7 @@ describe('PublicationStatusReporter', () => {
 	test('partial marks partial_success, writes all trigger rows, and pushes the failures without registering activation errors', async () => {
 		await reporter.report(makeRecord(), {
 			type: 'partial',
+			appliedVersionId: 'v-2',
 			triggerStatuses: [
 				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'persisted' },
 				{

@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowEntity,
 	WorkflowHistory,
-	WorkflowHistoryRepository,
 	WorkflowPublicationOutbox,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
@@ -38,7 +37,6 @@ export class WorkflowPublicationApplier {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
@@ -48,8 +46,12 @@ export class WorkflowPublicationApplier {
 
 	/**
 	 * Applies a single publication outbox record, dispatching to {@link publish}
-	 * (reconcile triggers to the requested version) or {@link unpublish} (tear the
-	 * published triggers down) based on the workflow's current state.
+	 * (reconcile triggers to the workflow's current `activeVersionId`) or
+	 * {@link unpublish} (tear the published triggers down) based on the workflow's
+	 * current state. The record carries no target of its own — it only marks the
+	 * workflow as needing reconciliation; the target is always derived fresh from
+	 * `workflow_entity`, so a record can never apply a version that has since been
+	 * superseded.
 	 *
 	 * The caller must uphold these invariants for `apply` to behave correctly:
 	 *
@@ -108,7 +110,7 @@ export class WorkflowPublicationApplier {
 			`Calculated trigger diff for workflow publication: ${toAdd.size} to add, ${toRemove.size} to remove`,
 			{
 				workflowId: record.workflowId,
-				publishedVersionId: record.publishedVersionId,
+				publishedVersionId: newVersion.versionId,
 				toAdd: Array.from(toAdd),
 				toRemove: Array.from(toRemove),
 			},
@@ -131,9 +133,10 @@ export class WorkflowPublicationApplier {
 		// No trigger changed: advance the published version and finish. Unchanged
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {
-			await this.advancePublishedVersion(record);
+			await this.advancePublishedVersion(record.workflowId, newVersion.versionId);
 			return {
 				type: 'completed',
+				appliedVersionId: newVersion.versionId,
 				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 					activated: [],
 					failures: [],
@@ -148,23 +151,29 @@ export class WorkflowPublicationApplier {
 			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
 		}
 
-		await this.advancePublishedVersion(record);
+		await this.advancePublishedVersion(record.workflowId, newVersion.versionId);
 
 		try {
 			if (toAdd.size > 0) {
 				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
-				return this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds);
+				return this.classifyActivationOutcome(
+					outcome,
+					desiredTriggerNodes,
+					triggerKinds,
+					newVersion.versionId,
+				);
 			}
 
 			if (toRemove.size > 0) {
 				await this.workflowTriggerActivator.updateTriggerCount(workflow, newVersion);
 			}
 		} catch (e) {
-			return { type: 'failed', error: ensureError(e) };
+			return { type: 'failed', error: ensureError(e), appliedVersionId: newVersion.versionId };
 		}
 
 		return {
 			type: 'completed',
+			appliedVersionId: newVersion.versionId,
 			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 				activated: [],
 				failures: [],
@@ -220,18 +229,26 @@ export class WorkflowPublicationApplier {
 		outcome: TriggerActivationOutcome,
 		desiredTriggerNodes: INode[],
 		triggerKinds: Map<INode['id'], WorkflowPublicationTriggerKind>,
+		appliedVersionId: string,
 	): PublicationResult {
 		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, outcome);
-		if (outcome.failures.length === 0) return { type: 'completed', triggerStatuses };
+		if (outcome.failures.length === 0) {
+			return { type: 'completed', appliedVersionId, triggerStatuses };
+		}
 
 		// Check whether this is a partial or full failure: If at least one trigger
 		// has been activated successfully, it's partial.
 		const hasRunningTrigger = triggerStatuses.some((s) => s.status === 'activated');
 		if (!hasRunningTrigger) {
-			return { type: 'failed', error: this.toActivationError(outcome.failures), triggerStatuses };
+			return {
+				type: 'failed',
+				error: this.toActivationError(outcome.failures),
+				appliedVersionId,
+				triggerStatuses,
+			};
 		}
 
-		return { type: 'partial', triggerStatuses };
+		return { type: 'partial', appliedVersionId, triggerStatuses };
 	}
 
 	/**
@@ -278,26 +295,32 @@ export class WorkflowPublicationApplier {
 
 	/**
 	 * Loads the workflow and the two versions whose triggers are diffed: the
-	 * version being published (`newVersion`, null if its history row no longer
-	 * exists) and the currently published version (`oldVersion`, null on a first
-	 * publication). The workflow is loaded independently of the published-version
-	 * mapping so a first publication (no mapping row yet) still resolves it.
+	 * version being published (`newVersion` — the workflow's `activeVersion`
+	 * relation, joined in the same query; null if the workflow is unpublished or
+	 * the history row no longer exists) and the currently published version
+	 * (`oldVersion`, null on a first publication). The workflow is loaded
+	 * independently of the published-version mapping so a first publication (no
+	 * mapping row yet) still resolves it.
 	 */
 	private async resolveVersions(record: WorkflowPublicationOutbox): Promise<{
 		workflow: WorkflowEntity | null;
 		oldVersion: WorkflowHistory | null;
 		newVersion: WorkflowHistory | null;
 	}> {
-		const [workflow, currentlyPublishedVersion, newVersion] = await Promise.all([
-			this.workflowRepository.findOneBy({ id: record.workflowId }),
+		const [workflow, currentlyPublishedVersion] = await Promise.all([
+			this.workflowRepository.findOne({
+				where: { id: record.workflowId },
+				relations: { activeVersion: true },
+				loadEagerRelations: false,
+			}),
 			this.workflowPublishedVersionRepository.findOne({
 				where: { workflowId: record.workflowId },
 				relations: { publishedVersion: true },
 				loadEagerRelations: false,
 			}),
-			this.workflowHistoryRepository.findOneBy({ versionId: record.publishedVersionId }),
 		]);
 
+		const newVersion = workflow?.activeVersion ?? null;
 		const oldVersion = currentlyPublishedVersion?.publishedVersion ?? null;
 
 		return { workflow, oldVersion, newVersion };
@@ -308,15 +331,12 @@ export class WorkflowPublicationApplier {
 	 * the new triggers so they execute the newly published version rather than
 	 * the previous one.
 	 */
-	private async advancePublishedVersion(record: WorkflowPublicationOutbox) {
+	private async advancePublishedVersion(workflowId: string, versionId: string) {
 		// Invalidate → write → refresh: with the cache empty across the write, reads
 		// fall through to the database (the source of truth) rather than ever serving
 		// a stale version, before the new version is cached again.
-		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
-		await this.workflowPublishedVersionRepository.setPublishedVersion(
-			record.workflowId,
-			record.publishedVersionId,
-		);
-		await this.workflowPublishedDataService.refreshCache(record.workflowId);
+		await this.workflowPublishedDataService.invalidateCache(workflowId);
+		await this.workflowPublishedVersionRepository.setPublishedVersion(workflowId, versionId);
+		await this.workflowPublishedDataService.refreshCache(workflowId);
 	}
 }

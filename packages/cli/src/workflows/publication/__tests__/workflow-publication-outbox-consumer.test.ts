@@ -66,7 +66,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		vi.useFakeTimers();
 		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
-		applier.apply.mockResolvedValue({ type: 'completed', triggerStatuses: [] });
+		applier.apply.mockResolvedValue({
+			type: 'completed',
+			appliedVersionId: 'v-1',
+			triggerStatuses: [],
+		});
 		reporter.report.mockResolvedValue(undefined);
 		consumer = createConsumer();
 	});
@@ -219,7 +223,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				started.push(record.id);
 				startedSignals.get(record.id)!();
 				await new Promise<void>((resolve) => releases.set(record.id, resolve));
-				return { type: 'completed', triggerStatuses: [] };
+				return { type: 'completed', appliedVersionId: 'v-1', triggerStatuses: [] };
 			});
 
 			consumer.startPolling();
@@ -258,7 +262,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				await new Promise<void>((resolve) => {
 					releaseApply = resolve;
 				});
-				return { type: 'completed', triggerStatuses: [] };
+				return { type: 'completed', appliedVersionId: 'v-1', triggerStatuses: [] };
 			});
 
 			consumer.startPolling();
@@ -288,7 +292,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	describe('processRecord', () => {
 		test('applies the record then reports the result', async () => {
 			const record = makeRecord();
-			const result: PublicationResult = { type: 'completed', triggerStatuses: [] };
+			const result: PublicationResult = {
+				type: 'completed',
+				appliedVersionId: 'v-1',
+				triggerStatuses: [],
+			};
 			applier.apply.mockResolvedValue(result);
 
 			await consumer.processRecord(record);
@@ -343,11 +351,15 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		}
 
 		test.each([
-			[{ type: 'completed', triggerStatuses: [] }, 'published', 'none'],
+			[{ type: 'completed', appliedVersionId: 'v-1', triggerStatuses: [] }, 'published', 'none'],
 			[{ type: 'unpublished' }, 'unpublished', 'none'],
 			[{ type: 'skipped', reason: 'workflow-not-found' }, 'skipped', 'workflow_not_found'],
 			[{ type: 'version-missing' }, 'failed', 'version_missing'],
-			[{ type: 'partial', triggerStatuses: [] }, 'partial_success', 'none'],
+			[
+				{ type: 'partial', appliedVersionId: 'v-1', triggerStatuses: [] },
+				'partial_success',
+				'none',
+			],
 			[{ type: 'failed', error: new Error('boom') }, 'failed', 'none'],
 		] as Array<[PublicationResult, string, string]>)(
 			'emits result=%o as result=%s reason=%s',
@@ -363,7 +375,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		);
 
 		test('emits a failed outcome when the reporter throws', async () => {
-			applier.apply.mockResolvedValue({ type: 'completed', triggerStatuses: [] });
+			applier.apply.mockResolvedValue({
+				type: 'completed',
+				appliedVersionId: 'v-1',
+				triggerStatuses: [],
+			});
 			reporter.report.mockRejectedValue(new Error('db write failed'));
 
 			await consumer.processRecord(makeRecord());
