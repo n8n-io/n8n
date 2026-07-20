@@ -1,3 +1,4 @@
+import type { BuiltTool } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
@@ -168,6 +169,116 @@ describe('RuntimeTelemetry.withRootSpan()', () => {
 			'langsmith.metadata.agent_name': 'my-agent',
 			'langsmith.metadata.agent_run_id': 'run-1',
 		});
+	});
+
+	it('adds gen_ai.conversation.id when metadata carries a string thread_id', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({ tracer, metadata: { thread_id: 'thread-abc' } });
+		const config = { name: 'my-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			{ telemetry },
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).toMatchObject({ 'gen_ai.conversation.id': 'thread-abc' });
+	});
+
+	it('omits gen_ai.prompt when the tool summary cannot be JSON-stringified', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({ tracer });
+		const circularSchema: Record<string, unknown> = {};
+		circularSchema.self = circularSchema;
+		const config = {
+			name: 'my-agent',
+			tools: [{ name: 'circular-tool', inputSchema: circularSchema } as unknown as BuiltTool],
+		} as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			{ telemetry },
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).not.toHaveProperty('gen_ai.prompt');
+	});
+
+	it('filters out non-string tool names when building the LangSmith tool catalog', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({ tracer, isLangSmith: true });
+		const config = {
+			name: 'my-agent',
+			tools: [
+				{ name: 'valid-tool', description: 'ok' } as unknown as BuiltTool,
+				// A tool name that isn't a string shouldn't normally occur (BuiltTool.name
+				// is typed as string), but the catalog builder guards against it defensively.
+				{ name: 123 as unknown as string, description: 'bad' } as unknown as BuiltTool,
+			],
+		} as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			{ telemetry },
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).toMatchObject({
+			'langsmith.metadata.available_tools': ['valid-tool'],
+		});
+	});
+
+	it('falls back to the runtime name for the span name when resolved telemetry has no functionId', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({ tracer, functionId: undefined });
+		const config = { name: 'fallback-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+		// resolve() always stamps a functionId when it returns telemetry, so the
+		// `?? this.config.name` fallback in withRootSpan is unreachable through
+		// the real resolve() path — spy on it to inject telemetry that skips
+		// that stamping, exercising the fallback directly.
+		vi.spyOn(runtimeTelemetry, 'resolve').mockReturnValue(telemetry);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			undefined,
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [name] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('fallback-agent.generate');
+	});
+
+	it('records the exception, sets error status, and rethrows when fn() throws', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+		const config = { name: 'my-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+		const error = new Error('boom');
+
+		await expect(
+			runtimeTelemetry.withRootSpan('generate', { telemetry }, 'run-1', () => {
+				throw error;
+			}),
+		).rejects.toThrow('boom');
+
+		expect(span.recordException).toHaveBeenCalledWith(error);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: 2, message: String(error) });
+		expect(span.end).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -343,5 +454,24 @@ describe('RuntimeTelemetry.withToolSpan()', () => {
 			'ai.toolCall.result': '{"ok":true}',
 			'gen_ai.tool.call.result': '{"ok":true}',
 		});
+	});
+
+	it('records the exception, sets error status, and rethrows when fn() throws', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+		const config = { name: 'my-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+		const error = new Error('tool boom');
+
+		await expect(
+			runtimeTelemetry.withToolSpan('tc1', 'my-tool', { x: 1 }, telemetry, () => {
+				throw error;
+			}),
+		).rejects.toThrow('tool boom');
+
+		expect(span.recordException).toHaveBeenCalledWith(error);
+		expect(span.setStatus).toHaveBeenCalledWith({ code: 2, message: String(error) });
+		expect(span.end).toHaveBeenCalledTimes(1);
 	});
 });
