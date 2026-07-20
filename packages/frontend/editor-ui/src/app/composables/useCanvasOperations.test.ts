@@ -648,7 +648,39 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([464, 96]);
+			expect(position).toEqual([480, 96]);
+		});
+
+		it('keeps a constant gap when connection-dropping after a configurable (non-main-input) node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			// x=112 so the configurable step lands grid-exact (112 + 224 + 160 = 496 = 31*16)
+			const lastInteracted = createTestNode({ position: [112, 112], type: 'test', typeVersion: 1 });
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+
+			// Source renders as a configurable node (has a non-main input)
+			vi.spyOn(NodeHelpers, 'getConnectionTypes')
+				.mockReturnValueOnce([NodeConnectionTypes.Main, NodeConnectionTypes.AiTool])
+				.mockReturnValue([NodeConnectionTypes.Main]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			// The new node must clear the configurable node's actual right edge by exactly
+			// NODE_X_SPACING — not a phantom 140 that leaves a 108/112 gap (CAT-2395).
+			const gap = position[0] - (lastInteracted.position[0] + CONFIGURABLE_NODE_SIZE[0]);
+			expect(gap).toBe(NODE_X_SPACING);
 		});
 
 		it('should place the node at the last clicked position if no other position is set', () => {

@@ -1635,8 +1635,9 @@ export function useCanvasOperations() {
 					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
-						// If the node has scoped inputs, push it down a bit more
-						pushOffset += 140;
+						// Nodes with scoped (non-main) inputs render at the wider configurable size,
+						// so offset by that width delta to keep the standard gap to their right edge
+						pushOffset += CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
 					}
 					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
 						? agentNodeCanvasGeometryStore.getNodeHeight(
