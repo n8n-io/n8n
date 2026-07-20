@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { isAxiosError } from '@n8n/backend-network';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
@@ -1976,7 +1977,9 @@ export class WorkflowExecute {
 								// BaseError subclasses specify shouldReport and level
 								// so always report and let beforeSend decide
 								toReport = error;
-							} else if (error instanceof Error) {
+							} else if (error instanceof Error && !isAxiosError(error)) {
+								// Axios errors are suppressed in ErrorReporter's beforeSend via the
+								// `isAxiosError` brand, which sanitizing below would strip - so skip them here
 								// Non-BaseError errors only report their class and call frames
 								// The full error is still stored in the execution resultData
 								// Stack frames are in the format `<name>: <message>\n<call frames>`
