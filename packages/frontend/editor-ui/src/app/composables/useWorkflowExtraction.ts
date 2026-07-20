@@ -5,6 +5,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 } from 'n8n-workflow';
 import type {
 	ExtractableSubgraphData,
@@ -17,6 +18,8 @@ import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { UpdateNodeGroupCommand } from '@/app/models/history';
+import { deleteGroupWithHistory } from '@/features/workflows/canvas/nodeGroups.utils';
+import { useCanvasNodeGroupTelemetry } from '@/features/workflows/canvas/composables/useCanvasNodeGroupTelemetry';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useSelectionValidation } from './useSelectionValidation';
 
@@ -49,6 +52,7 @@ export function useWorkflowExtraction() {
 	const canvasOperations = useCanvasOperations();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
+	const groupTelemetry = useCanvasNodeGroupTelemetry();
 	const { expandSelectionWithSubNodes, isSelectionExtractable } = useSelectionValidation();
 
 	function showError(message: string) {
@@ -121,7 +125,7 @@ export function useWorkflowExtraction() {
 				},
 				options: {},
 			},
-			type: 'n8n-nodes-base.executeWorkflow',
+			type: EXECUTE_WORKFLOW_NODE_TYPE,
 			typeVersion: 1.2,
 			position,
 			name,
@@ -389,7 +393,7 @@ export function useWorkflowExtraction() {
 			})
 		)[0];
 
-		addReplacementNodeToSelectionGroup(
+		addReplacementNodeToCanvasGroup(
 			nodesToRemoveFromParent.map((node) => node.id),
 			executeWorkflowNode.id,
 		);
@@ -430,9 +434,9 @@ export function useWorkflowExtraction() {
 		historyStore.stopRecordingUndo();
 	}
 
-	function addReplacementNodeToSelectionGroup(selectionIds: string[], replacementNodeId: string) {
+	function addReplacementNodeToCanvasGroup(removableNodeIds: string[], replacementNodeId: string) {
 		const affectedGroupIds = uniq(
-			selectionIds
+			removableNodeIds
 				.map((nodeId) => workflowDocumentStore.value.getGroupForNode(nodeId)?.id)
 				.filter((id): id is string => id !== undefined),
 		);
@@ -440,14 +444,28 @@ export function useWorkflowExtraction() {
 		if (affectedGroupIds.length !== 1) return;
 
 		const groupId = affectedGroupIds[0];
-		const groupBefore = workflowDocumentStore.value.getGroupById(groupId);
+		const groupBeforeReplacements = workflowDocumentStore.value.getGroupById(groupId);
+		if (!groupBeforeReplacements) return;
+
+		const remainingGroupMembers = groupBeforeReplacements.nodeIds.filter(
+			(id) => !removableNodeIds.includes(id),
+		);
+
+		// Whole group extracted: the only node left would be the Execute node. In this case, a single-node
+		// group is invalid, so dissolve the group and leave the Execute node ungrouped.
+		if (remainingGroupMembers.length === 0) {
+			deleteGroupWithHistory(groupBeforeReplacements, workflowDocumentStore.value, historyStore);
+			groupTelemetry.trackUngrouped(groupBeforeReplacements, 'sub-workflow-extraction');
+			return;
+		}
+
 		workflowDocumentStore.value.addNodesToGroup(groupId, [replacementNodeId]);
-		const groupAfter = workflowDocumentStore.value.getGroupById(groupId);
-		if (groupBefore && groupAfter) {
+		const groupAfterReplacements = workflowDocumentStore.value.getGroupById(groupId);
+		if (groupAfterReplacements) {
 			historyStore.pushCommandToUndo(
 				new UpdateNodeGroupCommand(
-					{ ...groupBefore, nodeIds: [...groupBefore.nodeIds] },
-					{ ...groupAfter, nodeIds: [...groupAfter.nodeIds] },
+					{ ...groupBeforeReplacements, nodeIds: [...groupBeforeReplacements.nodeIds] },
+					{ ...groupAfterReplacements, nodeIds: [...groupAfterReplacements.nodeIds] },
 					Date.now(),
 				),
 			);

@@ -23,6 +23,7 @@ import {
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	NO_OP_NODE_TYPE,
 	OPEN_AI_ASSISTANT_NODE_TYPE,
@@ -273,6 +274,7 @@ export const useActions = () => {
 		const COMPATIBLE_CHAT_NODES = [
 			QA_CHAIN_NODE_TYPE,
 			AGENT_NODE_TYPE,
+			MESSAGE_AN_AGENT_NODE_TYPE,
 			BASIC_CHAIN_NODE_TYPE,
 			OPEN_AI_ASSISTANT_NODE_TYPE,
 			OPEN_AI_NODE_MESSAGE_ASSISTANT_TYPE,
@@ -434,5 +436,6 @@ export const useActions = () => {
 		getConnectionTriggerNode,
 		getActionData,
 		setAddedNodeActionParameters,
+		shouldPrependChatTrigger,
 	};
 };

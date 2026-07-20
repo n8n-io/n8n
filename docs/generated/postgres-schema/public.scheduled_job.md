@@ -89,6 +89,7 @@ erDiagram
   integer attempts
   varchar_255_ claimedBy
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
   bigint id
