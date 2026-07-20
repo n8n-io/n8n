@@ -52,11 +52,14 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
+		"@n8n/eslint-config": "workspace:*",
 		"@n8n/typescript-config": "workspace:*",
 		"@n8n/vitest-config": "workspace:*",
 		"@types/lodash": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
+		"eslint": "catalog:",
 		"typescript": "catalog:typescript",
+		"vite": "catalog:",
 		"vitest": "catalog:",
 		"vitest-mock-extended": "catalog:"
 	},
