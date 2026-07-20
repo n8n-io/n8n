@@ -15,6 +15,7 @@ import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
 
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import { getAgent } from '@/features/agents/composables/useAgentApi';
 import { useAgentChannelSetup } from '@/features/agents/composables/useAgentChannelSetup';
 import { useAgentIntegrationStatus } from '@/features/agents/composables/useAgentIntegrationStatus';
@@ -132,6 +133,16 @@ function finish(approved: boolean) {
 	emit('resolve', { approved });
 }
 
+/**
+ * The connect above persists the integration via REST immediately, but the
+ * builder's own `configUpdated` refresh only fires for config-mutation tools
+ * at end of turn — notify other surfaces (e.g. the agent artifact panel's
+ * Channels section) now so they don't stay stale until the run finishes.
+ */
+function notifyAgentUpdated() {
+	agentsEventBus.emit('agentUpdated', { agentId: props.agentId, source: 'channel-setup-card' });
+}
+
 function skipSetup() {
 	if (connectionInFlight.value) return;
 	finish(false);
@@ -145,6 +156,7 @@ async function saveChannelConfig() {
 	connectionInFlight.value = true;
 	try {
 		await connect(props.integrationType, credentialId, channelSetupRef.value?.currentSettings);
+		notifyAgentUpdated();
 		finish(true);
 	} catch {
 		// useAgentIntegrationStatus exposes the connection error to the setup component.
@@ -157,7 +169,10 @@ async function setupSlackApp(appConfigurationToken: string): Promise<boolean> {
 	if (isBlocked() || connectionInFlight.value) return false;
 	connectionInFlight.value = true;
 	try {
-		return await runSlackAppSetup(appConfigurationToken, () => finish(true));
+		return await runSlackAppSetup(appConfigurationToken, () => {
+			notifyAgentUpdated();
+			finish(true);
+		});
 	} finally {
 		connectionInFlight.value = false;
 	}

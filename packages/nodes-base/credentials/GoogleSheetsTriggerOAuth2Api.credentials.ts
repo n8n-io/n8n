@@ -30,7 +30,7 @@ export class GoogleSheetsTriggerOAuth2Api implements ICredentialType {
 			type: 'notice',
 			default: '',
 			displayOptions: {
-				hideOnCloud: true,
+				showOnDeployment: 'hosted',
 			},
 		},
 	];

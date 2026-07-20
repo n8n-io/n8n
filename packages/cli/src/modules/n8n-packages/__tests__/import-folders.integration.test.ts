@@ -43,6 +43,9 @@ async function importFolders(params: FolderImportParams) {
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
 		folderConflictPolicy: params.folderConflictPolicy ?? 'merge',
+		dataTableMatchingMode: 'by-id',
+		dataTableMissingMode: 'create',
+		dataTableSchemaConflictPolicy: 'keep-existing',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }
@@ -502,11 +505,48 @@ describe('folder shell import', () => {
 			},
 		});
 
-		// The folder-nested workflow is now imported (LIGO-723), so its missing must-preexist credential
-		// resolves through the same gate as a top-level workflow and blocks the import before any writes.
 		await expect(
 			importFolders({ user: owner, projectId: project.id, packageBuffer }),
 		).rejects.toBeInstanceOf(UnprocessableRequestError);
 		expect(await findFolder('F1')).toBeNull();
+	});
+
+	it('blocks re-importing a matched workflow into a different folder and never re-parents it', async () => {
+		const first = await importFolders({
+			user: owner,
+			projectId: project.id,
+			packageBuffer: await buildEntityPackageBuffer({
+				folders: [{ target: 'folders/fa', folder: serializedFolder({ id: 'FA', name: 'fa' }) }],
+				workflows: [
+					{
+						target: 'folders/fa/workflows/wf',
+						workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+					},
+				],
+			}),
+		});
+		const localId = first.workflows[0].localId;
+		expect((await findWorkflow(localId))?.parentFolder?.id).toBe('FA');
+
+		// Re-import the same source workflow nested under a different folder: the matched workflow is not
+		// re-parented; the mismatch blocks the whole import before anything is written.
+		await expect(
+			importFolders({
+				user: owner,
+				projectId: project.id,
+				packageBuffer: await buildEntityPackageBuffer({
+					folders: [{ target: 'folders/fb', folder: serializedFolder({ id: 'FB', name: 'fb' }) }],
+					workflows: [
+						{
+							target: 'folders/fb/workflows/wf',
+							workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+						},
+					],
+				}),
+			}),
+		).rejects.toBeInstanceOf(ConflictError);
+
+		expect((await findWorkflow(localId))?.parentFolder?.id).toBe('FA');
+		expect(await findFolder('FB')).toBeNull();
 	});
 });

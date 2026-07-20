@@ -97,6 +97,7 @@ export const startTestRun = async (
 	if (options?.compileFromConfig !== undefined) {
 		body.compileFromConfig = options.compileFromConfig;
 	}
+	if (options?.rowIndices !== undefined) body.rowIndices = options.rowIndices;
 	const response = await request({
 		method: 'POST',
 		baseURL: context.baseUrl,

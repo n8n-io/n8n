@@ -18,6 +18,7 @@ import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
+	BuiltTelemetry,
 	EpisodicMemoryTaskLockHandle,
 	EpisodicMemoryTaskLockMethods,
 } from '../../types';
@@ -29,6 +30,7 @@ import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import type { AgentMessageList } from '../model/message-list';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
 import type { AgentEventBus } from '../state/event-bus';
+import type { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const logger = createFilteredLogger();
@@ -67,6 +69,7 @@ export class MemoryOrchestrator {
 		private readonly config: AgentRuntimeConfig,
 		private readonly backgroundTasks: BackgroundTaskTracker,
 		private readonly eventBus: AgentEventBus,
+		private readonly runtimeTelemetry: RuntimeTelemetry,
 	) {}
 
 	async loadHistoryMessages(persistence: AgentPersistenceOptions): Promise<AgentDbMessage[]> {
@@ -255,9 +258,11 @@ export class MemoryOrchestrator {
 		// Memory jobs receive the execution counter so their LLM and embedding
 		// usage contributes to token_count.
 
+		const telemetry = this.runtimeTelemetry.resolve(options);
 		const observationTasks = this.scheduleObservationLogJobs(
 			options.persistence,
 			options.executionCounter,
+			telemetry,
 		);
 		this.scheduleEpisodicMemoryJob(options.persistence, observationTasks, options.executionCounter);
 	}
@@ -265,6 +270,7 @@ export class MemoryOrchestrator {
 	private scheduleObservationLogJobs(
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		telemetry?: BuiltTelemetry,
 	): Array<Promise<unknown>> {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogStore(memory)) return [];
@@ -293,6 +299,7 @@ export class MemoryOrchestrator {
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
 							executionCounter,
+							telemetry,
 						}),
 				),
 			);
@@ -313,6 +320,7 @@ export class MemoryOrchestrator {
 							reflectorThresholdTokens,
 							reflect,
 							executionCounter,
+							telemetry,
 						}),
 				),
 			);

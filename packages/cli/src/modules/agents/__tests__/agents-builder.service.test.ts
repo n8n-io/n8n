@@ -1,19 +1,18 @@
-import type { Mocked } from 'vitest';
 import type { SerializableAgentState } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import type { AgentsConfig } from '@n8n/config';
-import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
+import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentsService } from '../agents.service';
-import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
-import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
-import type { N8nMemory } from '../integrations/n8n-memory';
 import type { NodeCatalogService } from '@/node-catalog';
 
-import { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
+import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
-import type { AgentsBuilderSettingsService } from '../builder/agents-builder-settings.service';
+import { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import type { N8nMemory } from '../integrations/n8n-memory';
+import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
 function suspendedCheckpoint(threadId: string): SerializableAgentState {
 	return {
@@ -44,10 +43,9 @@ function makeService(agentCheckpointRepository: Mocked<AgentCheckpointRepository
 		mock<NodeCatalogService>(),
 		mock<AgentsBuilderToolsService>(),
 		mock<N8nMemory>(),
-		mock<AgentsBuilderSettingsService>(),
+		mock<InstanceAiCreditService>(),
 		mock<N8NCheckpointStorage>(),
 		agentCheckpointRepository,
-		mock<AgentsConfig>(),
 	);
 }
 

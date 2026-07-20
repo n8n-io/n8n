@@ -1428,6 +1428,24 @@ describe('createHitlToolkit', () => {
 		expect(result.tools[1].metadata?.sourceNodeName).toBe('HITL Node');
 	});
 
+	it('should extract tools from a toolkit whose class identity differs', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'foreign_tool',
+			description: 'Tool from a foreign toolkit',
+			schema: z.object({ a: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Node 1' },
+		});
+		const foreignToolkit = { tools: [tool], getTools: () => [tool] };
+
+		const result = createHitlToolkit([foreignToolkit as unknown as StructuredToolkit], hitlNode);
+
+		expect(result.tools).toHaveLength(1);
+		expect(result.tools[0].name).toBe('foreign_tool');
+		expect(result.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[0].metadata?.gatedToolNodeName).toBe('Node 1');
+	});
+
 	it('should handle mixed array of tools and toolkits', () => {
 		const standaloneTool = new DynamicStructuredTool({
 			name: 'standalone_tool',
@@ -1617,6 +1635,17 @@ describe('extendResponseMetadata', () => {
 		extendResponseMetadata(toolkit, { name: 'HITL Node' } as INode);
 		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
 	});
+	it('should extend metadata for toolkits whose class identity differs (duplicated n8n-core)', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+		const foreignToolkit = { tools: [tool], getTools: () => [tool] };
+		extendResponseMetadata(foreignToolkit, { name: 'HITL Node' } as INode);
+		expect(tool.metadata?.sourceNodeName).toBe('HITL Node');
+	});
 	it('should extend metadata for tools', () => {
 		const tool = new DynamicStructuredTool({
 			name: 'test_tool',
@@ -1626,5 +1655,15 @@ describe('extendResponseMetadata', () => {
 		});
 		extendResponseMetadata(tool, { name: 'HITL Node' } as INode);
 		expect(tool.metadata?.sourceNodeName).toBe('HITL Node');
+	});
+	it('should extend metadata for a single tool whose class identity differs (duplicated @langchain/core)', () => {
+		const foreignTool = {
+			name: 'foreign_tool',
+			description: 'Tool from another copy',
+			invoke: async () => 'x',
+			metadata: {} as Record<string, unknown>,
+		};
+		extendResponseMetadata(foreignTool, { name: 'HITL Node' } as INode);
+		expect(foreignTool.metadata.sourceNodeName).toBe('HITL Node');
 	});
 });
