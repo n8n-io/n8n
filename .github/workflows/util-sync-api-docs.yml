@@ -15,7 +15,9 @@ on:
       # - a Zod DTO/schema the generator reads from changes
       - 'packages/@n8n/api-types/src/dto/**/*.ts'
       - 'packages/@n8n/api-types/src/schemas/**/*.ts'
-      # - the build script or dependencies change
+      # - the build orchestration script that runs the generator changes
+      - 'packages/cli/scripts/build.mjs'
+      # - the cli package manifest or dependencies change
       - 'packages/cli/package.json'
       # - any main dependencies change
       - 'pnpm-lock.yaml'
@@ -45,7 +47,7 @@ jobs:
           # n8n (packages/cli) + its dependency graph replaces the previous no-op build + standalone
           # `build:data` step. Scoped to `n8n...` rather than a full `pnpm build` since this
           # workflow only needs the Public API schema.
-          build-command: 'pnpm --filter "n8n..." build'
+          build-command: 'pnpm --filter n8n... build'
 
       - name: Verify OpenAPI schema exists
         id: verify_file
@@ -113,6 +115,7 @@ jobs:
               'packages/cli/src/public-api/**/*.yaml' \
               'packages/cli/src/public-api/**/*.yml' \
               'packages/cli/src/public-api/v1/openapi-gen/**/*.ts' \
+              'packages/cli/scripts/build.mjs' \
               'packages/@n8n/api-types/src/dto/**/*.ts' \
               'packages/@n8n/api-types/src/schemas/**/*.ts')
           fi
