@@ -62,7 +62,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		});
 	};
 
-	const patchCall = () => apiRequest.mock.calls.find(([method]: [string]) => method === 'PATCH');
+	const patchCall = () => apiRequest.mock.calls.find((call: unknown[]) => call[0] === 'PATCH');
 
 	beforeEach(() => {
 		vi.clearAllMocks();
