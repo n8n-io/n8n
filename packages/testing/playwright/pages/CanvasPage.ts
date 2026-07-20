@@ -1261,6 +1261,14 @@ export class CanvasPage extends BasePage {
 		return this.getNodeGroupByTitle(title).getByTestId('canvas-node-group-frame');
 	}
 
+	async getNodeGroupFrameBoundingBox(
+		title: string,
+	): Promise<{ x: number; y: number; width: number; height: number }> {
+		const box = await this.getNodeGroupFrame(title).boundingBox();
+		if (!box) throw new Error(`Node group frame for "${title}" not found or not visible`);
+		return box;
+	}
+
 	async toggleNodeGroup(title: string) {
 		await this.groupToggleButton(title).click();
 	}

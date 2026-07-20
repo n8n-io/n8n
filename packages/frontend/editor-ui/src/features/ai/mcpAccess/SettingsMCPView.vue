@@ -5,8 +5,8 @@ import type { WorkflowListItem } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	LOADING_INDICATOR_TIMEOUT,
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
@@ -44,16 +44,15 @@ const mcp = useMcp();
 const telemetry = useTelemetry();
 
 const mcpStore = useMCPStore();
-const usersStore = useUsersStore();
 const uiStore = useUIStore();
 const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
 
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
 
-const isOwner = computed(() => usersStore.isInstanceOwner);
-const isAdmin = computed(() => usersStore.isAdmin);
-const canManageMcpInstance = computed(() => isOwner.value || isAdmin.value);
+const canManageMcpInstance = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
+);
 
 const tabs = computed<Array<TabOptions<MCPTabs>>>(() => {
 	const base: Array<TabOptions<MCPTabs>> = [

@@ -5,6 +5,9 @@ import { NodeOperationError } from 'n8n-workflow';
 export const LIST_SIMPLIFY_SELECT =
 	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
 
+/** Shape shared by every Graph collection reply a listSearch method here consumes. */
+export type GraphSearchReply<T> = { '@odata.nextLink'?: string; value?: T[] };
+
 /** Characters SharePoint forbids in file names; Graph rejects them with a misleading 400. */
 export const SHAREPOINT_ILLEGAL_FILE_NAME_CHARS = ['"', '*', ':', '<', '>', '?', '/', '\\', '|'];
 

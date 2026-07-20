@@ -2,8 +2,8 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { untilSiteSelected } from '../../descriptions';
 import { folderRLC } from '../../folder';
+import { untilSiteSelected } from '../../list';
 import { MAX_SIMPLE_UPLOAD_BYTES, validateSharePointFileName } from '../../helpers/utils';
 import { resolveSiteId, siteRLC } from '../../site';
 import { microsoftApiRequest } from '../../transport';

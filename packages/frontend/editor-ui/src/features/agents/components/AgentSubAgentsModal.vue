@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nIcon,
 	N8nHeading,
@@ -168,7 +168,7 @@ function onConfirm() {
 					</div>
 				</N8nScrollArea>
 
-				<N8nActionBox
+				<N8nEmptyState
 					v-else-if="hasAgents && !hasMatchingAgents"
 					:icon="{ type: 'icon', value: 'bot' }"
 					:heading="i18n.baseText('agents.builder.subAgents.modal.noResults.title')"
@@ -176,7 +176,7 @@ function onConfirm() {
 					data-testid="agent-sub-agents-modal-no-results"
 				/>
 
-				<N8nActionBox
+				<N8nEmptyState
 					v-else
 					:icon="{ type: 'icon', value: 'bot' }"
 					:heading="i18n.baseText('agents.builder.subAgents.modal.empty.title')"

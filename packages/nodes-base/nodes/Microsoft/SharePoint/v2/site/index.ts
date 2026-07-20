@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { type GraphSearchReply } from '../helpers/utils';
 import {
 	getSharePointCredentialType,
 	microsoftApiRequest,
@@ -58,10 +59,7 @@ export const siteRLC: INodeProperties = {
 	],
 };
 
-type SiteSearchReply = {
-	'@odata.nextLink'?: string;
-	value?: Array<{ id?: string; displayName?: string; webUrl?: string }>;
-};
+type SiteSearchReply = GraphSearchReply<{ id?: string; displayName?: string; webUrl?: string }>;
 
 /**
  * Searches sites by name. Graph quirks: the parameter is literally `search`
@@ -129,6 +127,8 @@ export async function getSites(
  * Callers with a per-item loop pass `siteIdCache` (hoisted in the router) so
  * a multi-item run resolves each distinct URL once instead of per item —
  * without it the run doubles its Graph request volume and risks 429 throttling.
+ * Load-options callers (the list-search dropdown) have no per-run cache to
+ * hoist and pass none — each dropdown open is its own one-off lookup.
  */
 export async function resolveSiteId(
 	this: IExecuteFunctions | ILoadOptionsFunctions,

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Component } from 'vue';
 
 import * as modalRegistry from './modalRegistry';
-import type { ModalDefinition } from './module.types';
+import type { ModalDefinition } from '../types/modal';
 
 describe('modalRegistry', () => {
 	const mockComponent1 = { name: 'TestModal1' } as Component;

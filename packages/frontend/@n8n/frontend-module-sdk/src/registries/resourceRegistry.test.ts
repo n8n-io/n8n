@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import type { ResourceMetadata } from './module.types';
+import type { ResourceMetadata } from '../types/resource';
 
 // The registry keeps module-level state and exposes no reset, so re-import a
 // fresh module instance before each test to keep them isolated.
