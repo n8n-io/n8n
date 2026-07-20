@@ -1,0 +1,85 @@
+packages/nodes-base/nodes/Form/interfaces.ts
+  s_f0409e523c398c::t_8c839d9d331569 52
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-user/n8n-user-sealed-extractor.ts
+  s_f0409e523c398c::t_1c763dc32e7ede 1-85
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-user/index.ts
+  s_f0409e523c398c::t_d3d35491fa7396 1-5
+packages/cli/src/services/form-user-auth-token.service.ts
+  s_f0409e523c398c::t_371eb30f97726e 1-41
+packages/workflow/src/trigger-identity.ts
+  s_f0409e523c398c::t_4f8fb919c81968 68-73
+  s_f0409e523c398c::t_0e872fa75f5b67 4
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_f0409e523c398c::t_1038fd20c32b6f 889,897-899,919
+  s_f0409e523c398c::t_cf4e142c3074cb 250
+  s_f0409e523c398c::t_566ee30785e4ac 896
+  s_f0409e523c398c::t_271bb1b440995d 273
+  s_f0409e523c398c::t_4d9cc49c486f06 562,577
+  s_f0409e523c398c::t_c0d33091ef12db 233
+  s_f0409e523c398c::t_3e3ffcd781b667 620
+packages/cli/templates/form-trigger.handlebars
+  s_f0409e523c398c::t_cc4648fc70e857 1127-1242
+  s_f0409e523c398c::t_1437c1cca44b4b 474-488
+packages/cli/src/services/trigger-auth-identity-seeder-proxy.service.ts
+  s_f0409e523c398c::t_fbcbfef989abc3 4-16,18,31-38,40
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-user/metadata.ts
+  s_f0409e523c398c::t_d29b993d2adf21 1-20
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/__tests__/n8n-identifier.test.ts
+  s_f0409e523c398c::t_79cbaa1e8f6714 6-7,10
+  s_f0409e523c398c::t_b3f9844332250f 26-31
+packages/nodes-base/nodes/Form/v2/FormTriggerV2.node.ts
+  s_f0409e523c398c::t_0804cf051f4e9a 227-239
+  s_f0409e523c398c::t_3bee5848cee868 226
+packages/cli/src/modules/dynamic-credentials.ee/credential-resolvers/identifiers/n8n-identifier.ts
+  s_f0409e523c398c::t_d66dff7209ba8c 57-61,68-69
+  s_f0409e523c398c::t_b5be55058a57f6 2-3,9-10,28-35,40-41
+  s_f0409e523c398c::t_f42fe81c72b3ca 90-111
+packages/cli/src/modules/dynamic-credentials.ee/services/dynamic-credential-web.service.ts
+  s_f0409e523c398c::t_993df14c1f6a9f 71-82
+  s_f0409e523c398c::t_0f8d6aa838b5ec 11
+packages/cli/src/modules/dynamic-credentials.ee/__tests__/workflow-status.controller.test.ts
+  s_f0409e523c398c::t_7b47900fc9861e 69-70
+  s_f0409e523c398c::t_2e07cb30c41933 3-4
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.module.ts
+  s_f0409e523c398c::t_7b254808f3a00f 26-27,30-33
+  s_f0409e523c398c::t_830661d632b015 34-36
+packages/cli/src/modules/dynamic-credentials.ee/workflow-status.controller.ts
+  s_f0409e523c398c::t_84690a459a6c67 32-33
+  s_f0409e523c398c::t_abd716fda3bb48 72-84
+  s_f0409e523c398c::t_8671a2daa2ea46 4,11
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/n8n-oauth-seeder.ts
+  s_f0409e523c398c::t_9cb072285ff098 7-10,21-27,30-31
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-user/__tests__/n8n-user.test.ts
+  s_f0409e523c398c::t_5e45b91434ad58 1-125
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-oauth/__tests__/n8n-oauth.test.ts
+  s_f0409e523c398c::t_6f1352c4afc432 10
+  s_f0409e523c398c::t_eb241430a79092 96-101
+  s_f0409e523c398c::t_014c0455d1f60a 71-75,127-131,143-147
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_f0409e523c398c::t_173c7e746eebd2 623-648
+  s_f0409e523c398c::t_bbd73e3e24f38e 275-300
+  s_f0409e523c398c::t_937281876953dc 60
+  s_f0409e523c398c::t_f8cf9118c027fc 791-843
+  s_f0409e523c398c::t_86f93dcbd1dfa6 591-595
+  s_f0409e523c398c::t_136895aa885e17 274
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_f0409e523c398c::t_b54ea01edd22f8 361
+packages/cli/src/modules/dynamic-credentials.ee/context-establishment-hooks/n8n-user/n8n-user-seeder.ts
+  s_f0409e523c398c::t_7858cf36196a65 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "53b0813f4516dc5f75d690aa42260d35bb33fc91",
+  "prompts": {},
+  "sessions": {
+    "s_f0409e523c398c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a32b1c67-f6a4-47cc-8353-8a94ba4a6550",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}
