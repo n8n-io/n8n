@@ -63,7 +63,7 @@ export interface MkdirOptions extends AbortableOptions {
 	recursive?: boolean;
 }
 
-export interface AppendOptions extends AbortableOptions {}
+export type AppendOptions = AbortableOptions;
 
 export interface MountConfig {
 	type: 'local';
