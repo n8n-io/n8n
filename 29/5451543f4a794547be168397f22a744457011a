@@ -45,6 +45,11 @@ docs/generated/sqlite-schema/workflow_review_request_workflow.md
   "git_ai_version": "1.5.2",
   "base_commit_sha": "295451543f4a794547be168397f22a744457011a",
   "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  },
   "sessions": {
     "s_44a98ba2784a12": {
       "agent_id": {
