@@ -1,9 +1,11 @@
+import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
+import { detectUnparseableOpenAiSchema } from './detect-unparseable-openai-schema';
 import { detectWrongKindLocatorValues } from './detect-wrong-kind-locator';
 import { collectValidationIssues, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
@@ -87,6 +89,7 @@ function validateCompiledWorkflow(
 	collectValidationIssues(schemaValidation.warnings, warnings);
 	warnings.push(...detectArrayInputCollapse(json));
 	warnings.push(...detectWrongKindLocatorValues(json, context.nodeTypesProvider));
+	warnings.push(...detectUnparseableOpenAiSchema(json));
 	return warnings;
 }
 
@@ -219,6 +222,7 @@ function enhanceBuildErrors(errors: string[]): string[] {
 async function compileTypeScriptWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
+	abortSignal?: AbortSignal,
 ): Promise<WorkflowSourceCompileResult> {
 	if (!context.workspace) {
 		return {
@@ -240,9 +244,12 @@ async function compileTypeScriptWorkflowSource(
 		buildResult = await runInSandbox(
 			context.workspace,
 			`node --import tsx build.mjs '${escapeSingleQuotes(sandboxFilePath)}'`,
-			root,
+			{ cwd: root, abortSignal },
 		);
 	} catch (error) {
+		// Preserve Stop/cancel so callers do not record a sandbox build failure.
+		if (isAbortError(error)) throw error;
+		if (abortSignal?.aborted) throw createAbortError(abortSignal.reason);
 		return {
 			success: false,
 			reason: 'workflow_source_sandbox_unavailable',
@@ -334,12 +341,13 @@ export async function compileWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
 	source: string,
+	abortSignal?: AbortSignal,
 ): Promise<WorkflowSourceCompileResult> {
 	let result: WorkflowSourceCompileResult;
 	if (isWorkflowJsonSourceFile(filePath)) {
 		result = parseWorkflowJsonSource(source);
 	} else if (isTypeScriptWorkflowSource(filePath)) {
-		result = await compileTypeScriptWorkflowSource(context, filePath);
+		result = await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
 	} else {
 		result = {
 			success: false,

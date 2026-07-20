@@ -14,7 +14,7 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
-export type {
+export {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
@@ -75,7 +75,9 @@ export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
 export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
+export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
+export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
@@ -128,6 +130,8 @@ export { GetResourceDependenciesDto } from './workflows/get-resource-dependencie
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
+export { ListTagsQueryDto } from './tag/list-tags-query.dto';
+export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -155,6 +159,12 @@ export {
 } from './log-streaming/create-destination.dto';
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
+export {
+	PublicCreateDestinationDto,
+	PublicDestinationResponseDto,
+	type PublicCreateDestination,
+	type PublicDestinationType,
+} from './log-streaming/public-destination.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 export {
@@ -232,7 +242,9 @@ export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
+	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
+	DeleteOAuthClientQueryDto,
 	DeleteOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';

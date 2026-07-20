@@ -13,6 +13,7 @@ export const DOMAIN_TOOL_IDS = {
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
 	TEMPLATES: 'templates',
+	AGENTS: 'agents',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the
@@ -31,6 +32,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
 	BUILD_AGENT: 'build-agent',
+	GET_SESSION: 'get-session',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -57,6 +59,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	DOMAIN_TOOL_IDS.TEMPLATES,
+	DOMAIN_TOOL_IDS.AGENTS,
 	'web-search',
 	'fetch-url',
 ]);

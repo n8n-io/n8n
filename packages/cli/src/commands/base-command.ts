@@ -141,7 +141,7 @@ export abstract class BaseCommand<F = never> {
 			this.globalConfig.multiMainSetup.enabled ||
 			this.globalConfig.cache.backend === 'redis';
 		if (useRedisForLocking) {
-			const { RedisLockService } = await import('@/scaling/redis-lock.service');
+			const { RedisLockService } = await import('@/scaling/redis-lock.service.js');
 			Container.get(LockService).setProvider(Container.get(RedisLockService));
 		}
 
@@ -194,7 +194,7 @@ export abstract class BaseCommand<F = never> {
 				);
 			}
 
-			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module');
+			const { TaskRunnerModule } = await import('@/task-runners/task-runner-module.js');
 			await Container.get(TaskRunnerModule).start();
 		}
 
@@ -227,7 +227,7 @@ export abstract class BaseCommand<F = never> {
 		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
 		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
 			const { CommunityPackagesService } = await import(
-				'@/modules/community-packages/community-packages.service'
+				'@/modules/community-packages/community-packages.service.js'
 			);
 			await Container.get(CommunityPackagesService).init();
 		}
@@ -269,7 +269,7 @@ export abstract class BaseCommand<F = never> {
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
 		const isAzureWriteMode = binaryDataConfig.mode === 'azure';
 
-		const { DatabaseManager } = await import('@/binary-data/database.manager');
+		const { DatabaseManager } = await import('@/binary-data/database.manager.js');
 		binaryDataService.setManager('database', Container.get(DatabaseManager));
 
 		if (isS3WriteMode) {
@@ -340,7 +340,7 @@ export abstract class BaseCommand<F = never> {
 			const objectStoreService = await this.initObjectStoreIfConfigured();
 			if (objectStoreService) {
 				const { ObjectStoreManager } = await import(
-					'n8n-core/dist/binary-data/object-store.manager'
+					'n8n-core/dist/binary-data/object-store.manager.js'
 				);
 				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
 			}
@@ -354,7 +354,9 @@ export abstract class BaseCommand<F = never> {
 		try {
 			const azureBlobService = await this.initAzureStoreIfConfigured();
 			if (azureBlobService) {
-				const { AzureBlobManager } = await import('n8n-core/dist/binary-data/azure-blob.manager');
+				const { AzureBlobManager } = await import(
+					'n8n-core/dist/binary-data/azure-blob.manager.js'
+				);
 				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
 			}
 		} catch {
@@ -373,12 +375,12 @@ export abstract class BaseCommand<F = never> {
 		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
 
 		const { ObjectStoreService } = await import(
-			'n8n-core/dist/binary-data/object-store/object-store.service.ee'
+			'n8n-core/dist/binary-data/object-store/object-store.service.ee.js'
 		);
 		const objectStoreService = Container.get(ObjectStoreService);
 		await objectStoreService.init();
 
-		const { S3ByteStore } = await import('@/blob-storage/s3-byte-store.ee');
+		const { S3ByteStore } = await import('@/blob-storage/s3-byte-store.ee.js');
 		Container.get(ExecutionDataJsonStore).registerByteStore(
 			's3',
 			new S3ByteStore(objectStoreService),
@@ -391,12 +393,12 @@ export abstract class BaseCommand<F = never> {
 		if (Container.get(AzureBlobConfig).containerName === '') return;
 
 		const { AzureBlobService } = await import(
-			'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee'
+			'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee.js'
 		);
 		const azureBlobService = Container.get(AzureBlobService);
 		await azureBlobService.init();
 
-		const { AzureByteStore } = await import('@/blob-storage/azure-byte-store.ee');
+		const { AzureByteStore } = await import('@/blob-storage/azure-byte-store.ee.js');
 		Container.get(ExecutionDataJsonStore).registerByteStore(
 			'az',
 			new AzureByteStore(azureBlobService),

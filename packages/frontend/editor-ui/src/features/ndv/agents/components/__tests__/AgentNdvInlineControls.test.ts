@@ -5,7 +5,7 @@ import { describe, it, expect, vi } from 'vitest';
 import AgentNdvInlineControls from '../AgentNdvInlineControls.vue';
 import { NdvAgentConfigKey } from '../../composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '../../composables/useNdvAgentConfig';
-import type { AgentJsonConfig } from '@/features/agents/types';
+import type { AgentJsonConfig, AgentSkill } from '@/features/agents/types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -29,15 +29,30 @@ const CapabilitiesStub = {
 		'reloadKey',
 		'sections',
 	],
-	emits: ['add-tool', 'open-tool', 'remove-tool', 'update:config'],
+	emits: [
+		'add-tool',
+		'open-tool',
+		'remove-tool',
+		'add-skill',
+		'open-skill',
+		'remove-skill',
+		'update:config',
+	],
 	template: '<div data-testid="capabilities-stub" />',
 };
 
 const InfoPanelStub = {
 	name: 'AgentInfoPanel',
-	props: ['config', 'projectId', 'disabled', 'embedded'],
+	props: ['config', 'projectId', 'disabled', 'embedded', 'showInstructions'],
 	emits: ['update:config'],
 	template: '<div data-testid="info-panel-stub" />',
+};
+
+const MarkdownEditorStub = {
+	name: 'N8nMarkdownEditor',
+	props: ['modelValue', 'disabled'],
+	emits: ['update:modelValue'],
+	template: '<div data-testid="markdown-editor-stub" />',
 };
 
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
@@ -55,6 +70,7 @@ function createNdvStub(
 		isAgentNode: boolean;
 		mode: 'referenced' | 'inline';
 		localConfig: AgentJsonConfig | null;
+		appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	}> = {},
 ) {
 	const scheduleConfigUpdate = vi.fn();
@@ -62,6 +78,10 @@ function createNdvStub(
 		onOpenAddToolModal: vi.fn(),
 		onOpenToolFromList: vi.fn(),
 		onRemoveTool: vi.fn(),
+		onOpenAddSkillModal: vi.fn(),
+		onOpenSkillFromList: vi.fn(),
+		onRemoveSkill: vi.fn(),
+		appliedSkills: computed(() => overrides.appliedSkills ?? []),
 	};
 
 	const value = {
@@ -87,6 +107,7 @@ function mountControls(ndv: UseNdvAgentConfigReturn, props: { isReadOnly?: boole
 			stubs: {
 				AgentCapabilitiesSection: CapabilitiesStub,
 				AgentInfoPanel: InfoPanelStub,
+				MarkdownEditor: MarkdownEditorStub,
 			},
 		},
 	});
@@ -104,47 +125,59 @@ describe('AgentNdvInlineControls', () => {
 		expect(nonAgent.find('[data-test-id="agent-ndv-inline-controls"]').exists()).toBe(false);
 	});
 
-	it('schedules a name update from the name input', async () => {
-		const { value, scheduleConfigUpdate } = createNdvStub();
-		const wrapper = mountControls(value);
-
-		await wrapper
-			.find('[data-test-id="agent-ndv-inline-controls"]')
-			.find('input')
-			.setValue('Renamed');
-
-		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ name: 'Renamed' });
-	});
-
-	it('passes the local config to the panels and restricts capabilities to tools', () => {
+	it('passes the local config to the panels and enables the tools + skills sections', () => {
 		const config = makeConfig();
-		const { value } = createNdvStub({ localConfig: config });
+		const appliedSkills = [
+			{ id: 'skill_triage', skill: { name: 'Triage', description: '', instructions: '' } },
+		];
+		const { value } = createNdvStub({ localConfig: config, appliedSkills });
 		const wrapper = mountControls(value);
 
 		const infoPanel = wrapper.findComponent(InfoPanelStub);
 		expect(infoPanel.props('config')).toEqual(config);
 		expect(infoPanel.props('disabled')).toBe(false);
+		expect(infoPanel.props('showInstructions')).toBe(false);
+
+		const markdownEditor = wrapper.findComponent(MarkdownEditorStub);
+		expect(markdownEditor.props('modelValue')).toBe(config.instructions);
+		expect(markdownEditor.props('disabled')).toBe(false);
 
 		const capabilities = wrapper.findComponent(CapabilitiesStub);
-		expect(capabilities.props('sections')).toEqual(['tools']);
-		expect(capabilities.props('skills')).toEqual([]);
+		expect(capabilities.props('sections')).toEqual(['tools', 'skills']);
+		expect(capabilities.props('skills')).toEqual(appliedSkills);
 	});
 
 	it('routes panel edits and tool actions to the inline adapter', async () => {
 		const { value, scheduleConfigUpdate, actions } = createNdvStub();
 		const wrapper = mountControls(value);
 
-		wrapper.findComponent(InfoPanelStub).vm.$emit('update:config', { instructions: 'New.' });
+		wrapper.findComponent(MarkdownEditorStub).vm.$emit('update:modelValue', 'New.');
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ instructions: 'New.' });
 
 		wrapper.findComponent(CapabilitiesStub).vm.$emit('add-tool');
 		expect(actions.onOpenAddToolModal).toHaveBeenCalled();
 	});
 
+	it('routes skill actions to the inline adapter', () => {
+		const { value, actions } = createNdvStub();
+		const wrapper = mountControls(value);
+
+		const capabilities = wrapper.findComponent(CapabilitiesStub);
+		capabilities.vm.$emit('add-skill');
+		expect(actions.onOpenAddSkillModal).toHaveBeenCalled();
+
+		capabilities.vm.$emit('open-skill', 'skill_triage');
+		expect(actions.onOpenSkillFromList).toHaveBeenCalledWith('skill_triage');
+
+		capabilities.vm.$emit('remove-skill', 'skill_triage');
+		expect(actions.onRemoveSkill).toHaveBeenCalledWith('skill_triage');
+	});
+
 	it('disables editing when the NDV is read-only', () => {
 		const wrapper = mountControls(createNdvStub().value, { isReadOnly: true });
 
 		expect(wrapper.findComponent(InfoPanelStub).props('disabled')).toBe(true);
+		expect(wrapper.findComponent(MarkdownEditorStub).props('disabled')).toBe(true);
 		expect(wrapper.findComponent(CapabilitiesStub).props('disabled')).toBe(true);
 	});
 });

@@ -25,8 +25,6 @@ vi.mock('node:fs', async (importActual) => ({
 }));
 
 import { DirectedGraph } from '../partial-execution-utils';
-import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
-import { WorkflowExecute } from '../workflow-execute';
 import {
 	types,
 	nodeTypes,
@@ -34,6 +32,8 @@ import {
 	nodeTypeArguments,
 	modifyNode,
 } from './mock-node-types';
+import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
+import { WorkflowExecute } from '../workflow-execute';
 
 describe('processRunExecutionData', () => {
 	const runHook = vi.fn().mockResolvedValue(undefined);

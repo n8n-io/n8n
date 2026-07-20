@@ -1,3 +1,5 @@
+import { mockLogger } from '@n8n/backend-test-utils';
+import type { GlobalConfig } from '@n8n/config';
 import type {
 	DataSource,
 	ScheduledJob,
@@ -64,8 +66,24 @@ describe('DurableJobProvisioner', () => {
 				await run({ setAttribute() {}, setStatus() {} })) as typeof tracing.startSpan,
 		);
 		jobs.findManyByWorkflowNode.mockResolvedValue([]);
+		jobs.findManyByIds.mockResolvedValue([]);
 		jobs.insertMany.mockResolvedValue([]);
-		provisioner = new DurableJobProvisioner(dataSource, jobs, tasks, tracing);
+		tasks.insertIgnoringDuplicates.mockImplementation(async (_manager, occurrences) => ({
+			recorded: occurrences.length,
+			created: [],
+		}));
+		const globalConfig = mock<GlobalConfig>({
+			scheduler: { materializationWindowSeconds: 60 },
+			generic: { timezone: 'UTC' },
+		});
+		provisioner = new DurableJobProvisioner(
+			mockLogger(),
+			dataSource,
+			jobs,
+			tasks,
+			globalConfig,
+			tracing,
+		);
 	});
 
 	describe('provision', () => {
@@ -166,6 +184,136 @@ describe('DurableJobProvisioner', () => {
 			await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [desiredJob('wf:node:0')]);
 
 			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('seeding a freshly provisioned job', () => {
+		const SEED_NOW = new Date('2026-01-05T00:00:00.000Z');
+		const at = (seconds: number) => new Date(SEED_NOW.getTime() + seconds * 1000);
+
+		// A plain object, not `mock<ScheduledJob>`: the seed plans the row, and a mock
+		// would proxy its Date fields, which then leak into the recorded occurrences.
+		const intervalRow = (id: number, nextRunAt: Date): ScheduledJob =>
+			({
+				id,
+				name: 'wf:node:0',
+				workflowId: 'wf',
+				nodeId: 'node',
+				kind: 'interval',
+				cronExpression: null,
+				timezone: null,
+				recurrenceUnit: null,
+				recurrenceSize: null,
+				intervalSeconds: 30,
+				fireAt: null,
+				enabled: true,
+				nextRunAt,
+				lastFiredAt: null,
+				taskType: 'schedule-trigger',
+				payload: {},
+				maxAttempts: 1,
+			}) as unknown as ScheduledJob;
+
+		// The first fire (30s out) plus every fire up to the 60s window, each a task
+		// due at its own instant.
+		const firstWindowOf = (jobId: number) => [
+			{
+				jobId,
+				taskType: 'schedule-trigger',
+				payload: {},
+				scheduledFor: at(30),
+				runAt: at(30),
+				maxAttempts: 1,
+			},
+			{
+				jobId,
+				taskType: 'schedule-trigger',
+				payload: {},
+				scheduledFor: at(60),
+				runAt: at(60),
+				maxAttempts: 1,
+			},
+		];
+
+		beforeEach(() => {
+			// The seed sizes its window from DB time, not the instance clock.
+			tasks.readDbTime.mockResolvedValue(SEED_NOW);
+		});
+
+		it('queues the first window of a fresh job ahead of its due time instead of leaving it for a later poll', async () => {
+			const firstRunAt = at(30);
+			// The seed reads the row it just inserted back by id, now carrying its clock.
+			jobs.findManyByIds.mockResolvedValue([intervalRow(100, firstRunAt)]);
+			jobs.insertMany.mockResolvedValue([100]);
+
+			await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
+				desiredJob('wf:node:0', { kind: 'interval', intervalSeconds: 30 }, firstRunAt),
+			]);
+
+			// The whole first window is recorded now, at provision time. All fires lie
+			// in the future, so the executor fires them on time rather than discovering
+			// the first one only after it has already passed.
+			expect(jobs.findManyByIds).toHaveBeenCalledWith(manager, [100]);
+			expect(tasks.insertIgnoringDuplicates.mock.calls[0]?.[1]).toEqual(firstWindowOf(100));
+			// The first recorded fire is still in the future when it is queued.
+			expect(at(30).getTime()).toBeGreaterThan(SEED_NOW.getTime());
+			// The clock advances past the window, as a materializer pass would leave it.
+			expect(jobs.advanceMany.mock.calls[0]?.[1]).toEqual([
+				{ id: 100, nextRunAt: at(90), lastFiredAt: at(60) },
+			]);
+		});
+
+		it('re-seeds a redefined job, recording its new window only after the stale tasks are withdrawn', async () => {
+			const firstRunAt = at(30);
+			// An existing job with a different definition, so the desired rule redefines it.
+			jobs.findManyByWorkflowNode.mockResolvedValue([
+				mock<ScheduledJob>({
+					id: 10,
+					name: 'wf:node:0',
+					kind: 'cron',
+					cronExpression: '0 0 9 * * *',
+					timezone: 'UTC',
+					recurrenceUnit: null,
+					recurrenceSize: null,
+					intervalSeconds: null,
+					fireAt: null,
+					nextRunAt: at(0),
+				}),
+			]);
+			jobs.findManyByIds.mockResolvedValue([intervalRow(10, firstRunAt)]);
+
+			await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
+				desiredJob('wf:node:0', { kind: 'interval', intervalSeconds: 30 }, firstRunAt),
+			]);
+
+			// The redefine's stale tasks are withdrawn before the fresh window is seeded,
+			// so the new occurrences are the last word.
+			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, [10]);
+			expect(tasks.deletePendingByJobIds.mock.invocationCallOrder[0]).toBeLessThan(
+				tasks.insertIgnoringDuplicates.mock.invocationCallOrder[0],
+			);
+			expect(tasks.insertIgnoringDuplicates.mock.calls[0]?.[1]).toEqual(firstWindowOf(10));
+			expect(jobs.advanceMany.mock.calls[0]?.[1]).toEqual([
+				{ id: 10, nextRunAt: at(90), lastFiredAt: at(60) },
+			]);
+		});
+
+		it('does not seed a clock-dead job (a rule that never fires)', async () => {
+			const deadRow = mock<ScheduledJob>({
+				id: 101,
+				name: 'wf:node:0',
+				enabled: true,
+				nextRunAt: null,
+			});
+			jobs.findManyByIds.mockResolvedValue([deadRow]);
+			jobs.insertMany.mockResolvedValue([101]);
+
+			await provisioner.provision('wf', 'node', 'schedule-trigger', {}, [
+				desiredJob('wf:node:0', cronSchedule, null),
+			]);
+
+			expect(tasks.insertIgnoringDuplicates).not.toHaveBeenCalled();
+			expect(jobs.advanceMany).not.toHaveBeenCalled();
 		});
 	});
 

@@ -36,6 +36,10 @@ export function useNodeCredentialOptions(
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
 	const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
+	const hasOverride = computed(() => {
+		const override = unref(overrideCredType);
+		return typeof override === 'string' && override !== '';
+	});
 
 	const credentialTypesNodeDescriptions = computed(() =>
 		credentialsStore.getCredentialTypesNodeDescriptions(unref(overrideCredType), nodeType.value),
@@ -90,7 +94,7 @@ export function useNodeCredentialOptions(
 	}
 
 	function showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-		if (!node.value) {
+		if (!node.value || hasOverride.value) {
 			return false;
 		}
 
@@ -100,6 +104,10 @@ export function useNodeCredentialOptions(
 	}
 
 	function getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
+		if (hasOverride.value) {
+			return [credentialType.name];
+		}
+
 		const credentialIsRequired = showMixedCredentials(credentialType);
 		if (credentialIsRequired) {
 			if (mainNodeAuthField.value) {

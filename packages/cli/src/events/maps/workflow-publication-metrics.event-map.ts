@@ -14,11 +14,7 @@ export type PublicationOutcomeResult =
 	| 'failed';
 
 /** Why a record was skipped (or `none` for any non-skipped outcome). */
-export type PublicationOutcomeReason =
-	| 'none'
-	| 'workflow_not_found'
-	| 'workflow_inactive'
-	| 'version_missing';
+export type PublicationOutcomeReason = 'none' | 'workflow_not_found' | 'version_missing';
 
 /** A trigger operation performed during publication. */
 export type PublicationTriggerOperation = 'activate' | 'deactivate';

@@ -5,12 +5,13 @@
  * Parameters tab. Every edit is a plain node-parameter write (workflow dirty
  * state, save-with-workflow, export fidelity), so there is no save status.
  *
- * Scope mirrors the inline schema: name, model + credential, instructions,
- * tools (incl. MCP servers). Skills, memory, channels, sub-agents and tasks
- * are saved-agent features — the builder banner above nudges users there.
+ * Scope mirrors the inline schema: model + credential, instructions,
+ * tools (incl. MCP servers), and skills (bodies embedded in the node
+ * parameter). Memory, channels, sub-agents and tasks are saved-agent
+ * features — the builder banner above nudges users there.
  */
 import { computed, inject } from 'vue';
-import { N8nInput, N8nInputLabel, N8nSectionHeader } from '@n8n/design-system';
+import { N8nMarkdownEditor, N8nSectionHeader, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import AgentInfoPanel from '@/features/agents/components/AgentInfoPanel.vue';
@@ -39,13 +40,12 @@ const canUpdate = computed(() => !props.isReadOnly);
 
 const actions = computed(() => inline?.actions);
 
-// Eager, not debounced: writes are local node-parameter edits (workflow
-// persistence has its own debounce), and a deferred write could fire after a
-// node switch and land on the wrong node.
-function onNameUpdate(value: string) {
-	const name = value.trim();
-	if (!name || name === localConfig.value?.name) return;
-	inline?.scheduleConfigUpdate({ name });
+// Bind through a local computed: a ComputedRef nested inside the `actions`
+// computed does not auto-unwrap in the template.
+const appliedSkills = computed(() => inline?.actions.appliedSkills.value ?? []);
+
+function onInstructionsUpdate(instructions: string) {
+	inline?.scheduleConfigUpdate({ instructions });
 }
 </script>
 
@@ -57,28 +57,28 @@ function onNameUpdate(value: string) {
 	>
 		<N8nSectionHeader :title="i18n.baseText('agentNode.ndv.section.agent')" bordered />
 
-		<N8nInputLabel :label="i18n.baseText('agentNode.ndv.inline.name.label')" size="small">
-			<N8nInput
-				:model-value="localConfig?.name ?? ''"
-				:placeholder="i18n.baseText('agentNode.ndv.inline.name.placeholder')"
-				:disabled="!canUpdate"
-				size="small"
-				:maxlength="128"
-				data-test-id="agent-ndv-inline-name"
-				@update:model-value="onNameUpdate"
-			/>
-		</N8nInputLabel>
+		<AgentInfoPanel
+			:config="localConfig"
+			:project-id="projectId"
+			:disabled="!canUpdate"
+			embedded
+			:show-instructions="false"
+			@update:config="inline?.scheduleConfigUpdate"
+		/>
 
-		<div :class="$style.infoPanelWrapper">
-			<AgentInfoPanel
-				:config="localConfig"
-				:project-id="projectId"
+		<div :class="$style.field">
+			<N8nText tag="label" step="sm" bold>
+				{{ i18n.baseText('agents.builder.agent.instructions.label') }}
+			</N8nText>
+			<N8nMarkdownEditor
+				:model-value="localConfig?.instructions ?? ''"
 				:disabled="!canUpdate"
-				embedded
-				immediate-updates
-				instructions-max-height="240px"
-				:show-instructions-toolbar="false"
-				@update:config="inline?.scheduleConfigUpdate"
+				show-toolbar="always"
+				max-height="480px"
+				variant="contained"
+				:class="$style.markdownEditor"
+				data-testid="agent-ndv-inline-instructions"
+				@update:model-value="onInstructionsUpdate"
 			/>
 		</div>
 
@@ -86,16 +86,19 @@ function onNameUpdate(value: string) {
 			:config="localConfig"
 			:tools="localConfig?.tools ?? []"
 			:custom-tools="{}"
-			:skills="[]"
+			:skills="appliedSkills"
 			:connected-triggers="[]"
 			:disabled="!canUpdate"
 			:project-id="projectId"
 			agent-id=""
 			:is-published="false"
-			:sections="['tools']"
+			:sections="['tools', 'skills']"
 			@add-tool="actions?.onOpenAddToolModal"
 			@open-tool="actions?.onOpenToolFromList"
 			@remove-tool="actions?.onRemoveTool"
+			@add-skill="actions?.onOpenAddSkillModal"
+			@open-skill="actions?.onOpenSkillFromList"
+			@remove-skill="actions?.onRemoveSkill"
 			@update:config="inline?.scheduleConfigUpdate"
 		/>
 	</div>
@@ -110,9 +113,14 @@ function onNameUpdate(value: string) {
 	margin-top: var(--spacing--lg);
 }
 
-.infoPanelWrapper {
+.field {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--3xs);
 	width: 100%;
+}
+
+.markdownEditor {
+	aspect-ratio: 16/9;
 }
 </style>

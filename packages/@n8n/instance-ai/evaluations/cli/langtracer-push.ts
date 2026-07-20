@@ -1,10 +1,10 @@
-// Push selected on-disk eval cases (data/workflows/*.json) UP into a curated
+// Push selected on-disk eval cases (data/workflows/*.json) UP into a
 // lang-tracer suite over the REST API, upserting: create missing, update changed,
 // leave unchanged, skip unsupported. The inverse of `--source langtracer` (which
-// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (see .env.eval).
+// pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (repo-root .env.local).
 //
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
-//   dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building ai-quote-carousel ...
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline --changed
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline my-new-case ...
 //   ... --dry-run   # plan only, no writes
 
 import { execFileSync } from 'node:child_process';

@@ -4,7 +4,11 @@ import z from 'zod';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
-import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
+import {
+	autoPopulateNodeCredentials,
+	stripNullCredentialStubs,
+	trackAutoassignOutcomes,
+} from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { sanitizeSkillsUsed, SKILLS_USED_PARAM_DESCRIPTION } from './skills-used';
 import {
@@ -21,6 +25,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { NodeTypes } from '@/node-types';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
@@ -95,6 +100,12 @@ const outputSchema = {
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
 				credentialType: z.string().describe('The credential type that was auto-assigned'),
+				source: z
+					.enum(['user', 'aiGateway'])
+					.optional()
+					.describe(
+						'Where the credential came from: "user" for an existing user credential, "aiGateway" for a credential managed via n8n credits.',
+					),
 			}),
 		)
 		.optional()
@@ -157,6 +168,7 @@ export const createCreateWorkflowFromCodeTool = (
 	credentialsService: CredentialsService,
 	projectRepository: ProjectRepository,
 	dataTableOps: DataTableUserOperations,
+	aiGatewayService: AiGatewayService,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName,
 	config: {
@@ -278,14 +290,18 @@ export const createCreateWorkflowFromCodeTool = (
 				throw new Error(dataTableCheck.error);
 			}
 
-			const { assignments: credentialAssignments, skippedHttpNodes } =
-				await autoPopulateNodeCredentials(
-					newWorkflow,
-					user,
-					nodeTypes,
-					credentialsService,
-					effectiveProjectId,
-				);
+			const {
+				assignments: credentialAssignments,
+				skippedHttpNodes,
+				outcomes: autoAssignOutcomes,
+			} = await autoPopulateNodeCredentials(
+				newWorkflow,
+				user,
+				nodeTypes,
+				credentialsService,
+				effectiveProjectId,
+				aiGatewayService,
+			);
 
 			// Explicit credential ids in the generated code bypass auto-assignment,
 			// so verify they're reachable from the target project. This matches the
@@ -314,6 +330,16 @@ export const createCreateWorkflowFromCodeTool = (
 				versionName: versionMetadata.name,
 				versionDescription: versionMetadata.description,
 			});
+
+			const nodeTypesByName = new Map(savedWorkflow.nodes.map((n) => [n.name, n.type]));
+			trackAutoassignOutcomes(
+				telemetry,
+				user.id,
+				'create_workflow_from_code',
+				autoAssignOutcomes,
+				nodeTypesByName,
+				savedWorkflow.id,
+			);
 
 			const baseUrl = urlService.getInstanceBaseUrl();
 			const workflowUrl = `${baseUrl}/workflow/${savedWorkflow.id}`;

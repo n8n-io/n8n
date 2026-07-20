@@ -97,6 +97,11 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 			buildSuccessCount: totalRuns,
 			executionScenarios: scenarioAggs,
 			buildExpectations,
+			status:
+				scenarioAggs.some((sa) => sa.evaluatedCount > 0) ||
+				buildExpectations.some((ea) => ea.evaluatedCount > 0)
+					? ('verified' as const)
+					: ('notVerified' as const),
 		};
 	});
 	const evaluation: MultiRunEvaluation = { totalRuns, testCases };
@@ -257,6 +262,48 @@ describe('evaluateGate', () => {
 		expect(gate.excluded).toHaveLength(1);
 		expect(gate.excluded[0].kind).toBe('scenario');
 		expect(gate.excluded[0].slug).toBe('a/edge');
+	});
+
+	it('grades a scenario-less case by its outcome expectation alone, and fails it when the expectation never passes', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'agent-only',
+				expectations: [{ text: 'an agent was created', verdicts: [true, true, true] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.units).toHaveLength(1);
+		expect(gate.units[0].kind).toBe('buildExpectation');
+		expect(gate.green).toBe(true);
+
+		const { evaluation: failingEval, slugByTestCase: failingSlugs } = makeEval(3, [
+			{
+				slug: 'agent-only',
+				expectations: [{ text: 'an agent was created', verdicts: [false, false, false] }],
+			},
+		]);
+		const failingGate = evaluateGate(failingEval, { slugByTestCase: failingSlugs });
+		expect(failingGate.green).toBe(false);
+		expect(failingGate.failing).toHaveLength(1);
+	});
+
+	it('excludes expectations with no judge verdict instead of failing on them', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'a',
+				scenarios: [{ name: 'happy', passes: [true, true, true] }],
+				expectations: [
+					{ text: 'an agent was created', verdicts: ['incomplete', 'incomplete', 'incomplete'] },
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.green).toBe(true);
+		expect(gate.units).toHaveLength(1); // only the scenario
+		expect(gate.excluded).toHaveLength(1);
+		expect(gate.excluded[0].kind).toBe('buildExpectation');
 	});
 
 	it('minAggregatePassRate verdict tracks the pooled rate, not per-unit greenness', () => {

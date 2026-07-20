@@ -136,6 +136,74 @@ describe('EvalThreadRestoreService', () => {
 			expect(dataTableService.insertRows).not.toHaveBeenCalled();
 		});
 
+		it('seeds declared rows into the recreated table (TRUST-311)', async () => {
+			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
+
+			await service.restoreDataTables(
+				[
+					{
+						id: 'job-applications-1234',
+						name: 'Job Applications',
+						columns: [{ name: 'id', type: 'string' }],
+						rows: [{ id: 'row_001' }, { id: 'row_002' }],
+					},
+				],
+				'project-1',
+			);
+
+			// The table is created schema-only, then its rows are inserted against
+			// the freshly created id (not the seed id).
+			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-new', 'project-1', [
+				{ id: 'row_001' },
+				{ id: 'row_002' },
+			]);
+		});
+
+		it('rolls back the created table when row seeding fails', async () => {
+			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
+			dataTableService.insertRows.mockRejectedValueOnce(new Error('row insert failed'));
+
+			await expect(
+				service.restoreDataTables(
+					[
+						{
+							id: 'job-applications-1234',
+							name: 'Job Applications',
+							columns: [{ name: 'id', type: 'string' }],
+							rows: [{ id: 'row_001' }],
+						},
+					],
+					'project-1',
+				),
+			).rejects.toThrow('row insert failed');
+
+			expect(dataTableService.deleteDataTable).toHaveBeenCalledWith('dt-new', 'project-1');
+		});
+
+		it('creates the table under its EXACT name when uniquifyNames is false (TRUST-311)', async () => {
+			dataTableService.createDataTable.mockResolvedValue(mock<DataTable>({ id: 'dt-new' }));
+
+			await service.restoreDataTables(
+				[
+					{
+						id: 'job-applications-1234',
+						name: 'Job Applications',
+						columns: [{ name: 'application_id', type: 'string' }],
+						rows: [{ application_id: 'row_001' }],
+					},
+				],
+				'project-1',
+				{ uniquifyNames: false },
+			);
+
+			const [, dto] = dataTableService.createDataTable.mock.calls[0];
+			// No ` [seed <uuid>]` suffix — the built workflow references it by this name.
+			expect(dto.name).toBe('Job Applications');
+			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-new', 'project-1', [
+				{ application_id: 'row_001' },
+			]);
+		});
+
 		it('rejects a too-short table id without creating anything (unsafe to string-replace)', async () => {
 			await expect(
 				service.restoreDataTables(

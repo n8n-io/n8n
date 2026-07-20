@@ -81,11 +81,7 @@ const agentNodeType = {
 		{
 			displayName: 'Agent Source',
 			name: 'agentSource',
-			type: 'options',
-			options: [
-				{ name: 'Saved Agent', value: 'referenced' },
-				{ name: 'Inline Agent', value: 'inline' },
-			],
+			type: 'hidden',
 			default: 'referenced',
 		},
 		{
@@ -176,7 +172,6 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 				QuickConnectBanner: true,
 				CommunityNodeFooter: true,
 				CommunityNodeUpdateInfo: true,
-				AgentNdvBuilderBanner: true,
 				AgentNdvReferencedSummary: true,
 				AgentNdvInlineControls: true,
 				...stubs,
@@ -245,7 +240,7 @@ describe('NodeSettings', () => {
 			[NdvAgentConfigKey as symbol]: {} as UseNdvAgentConfigReturn,
 		};
 
-		it('renders the banner and referenced summary on the Parameters tab', async () => {
+		it('renders the referenced summary on the Parameters tab', async () => {
 			const { container } = renderNodeSettings({
 				node: agentNode,
 				nodeType: agentNodeType,
@@ -253,7 +248,6 @@ describe('NodeSettings', () => {
 			});
 
 			await waitFor(() => {
-				expect(container.querySelector('agent-ndv-builder-banner-stub')).not.toBeNull();
 				expect(container.querySelector('agent-ndv-referenced-summary-stub')).not.toBeNull();
 			});
 			expect(container.querySelector('agent-ndv-inline-controls-stub')).toBeNull();
@@ -269,7 +263,6 @@ describe('NodeSettings', () => {
 			});
 
 			await waitFor(() => {
-				expect(container.querySelector('agent-ndv-builder-banner-stub')).not.toBeNull();
 				expect(container.querySelector('agent-ndv-inline-controls-stub')).not.toBeNull();
 			});
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
@@ -282,7 +275,6 @@ describe('NodeSettings', () => {
 			});
 
 			await findByTestId('tab-params');
-			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
 		});
 
@@ -290,57 +282,7 @@ describe('NodeSettings', () => {
 			const { container, findByTestId } = renderNodeSettings({ provide });
 
 			await findByTestId('tab-params');
-			expect(container.querySelector('agent-ndv-builder-banner-stub')).toBeNull();
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
-		});
-
-		it('re-points an inline node at a saved agent in a single referenced-mode commit', async () => {
-			const inlineAgentNode = createTestNode({
-				name: 'Message an Agent',
-				type: MESSAGE_AN_AGENT_NODE_TYPE,
-				typeVersion: 2,
-				parameters: { agentSource: 'inline' },
-			});
-			const agentReference = {
-				__rl: true,
-				mode: 'list',
-				value: 'agent-9',
-				cachedResultName: 'Drafted',
-			};
-
-			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
-				node: inlineAgentNode,
-				nodeType: agentNodeType,
-				provide: {
-					[NdvAgentConfigKey as symbol]: { mode: ref('inline') } as UseNdvAgentConfigReturn,
-				},
-				stubs: {
-					// The banner's draft-creation flow ends in this emit; the stub only
-					// needs to fire it with the new saved agent's resource locator.
-					AgentNdvBuilderBanner: {
-						template:
-							'<button data-test-id="set-agent-reference-stub" @click="$emit(\'set-agent-reference\', agentReference)" />',
-						emits: ['set-agent-reference'],
-						data: () => ({ agentReference }),
-					},
-				},
-			});
-
-			await fireEvent.click(await findByTestId('set-agent-reference-stub'));
-
-			// One commit flips the node back to referenced mode AND points it at the
-			// new agent — a two-commit sequence would leave an inconsistent
-			// intermediate state (e.g. inline mode with a dangling reference).
-			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledTimes(1);
-			expect(workflowDocumentStore.setNodeParameters).toHaveBeenCalledWith(
-				expect.objectContaining({
-					name: inlineAgentNode.name,
-					value: expect.objectContaining({
-						agentId: agentReference,
-						agentSource: 'referenced',
-					}),
-				}),
-			);
 		});
 	});
 });
