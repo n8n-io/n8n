@@ -53,8 +53,6 @@ const SettingsPersonalView = async () =>
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
-const SettingsInstanceCredentialsView = async () =>
-	await import('@/features/credentials/views/SettingsInstanceCredentialsView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -997,27 +995,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'external-secrets',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'instance-credentials',
-				name: VIEWS.INSTANCE_CREDENTIALS_SETTINGS,
-				component: SettingsInstanceCredentialsView,
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: 'credential:manageInstance',
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'instance-credentials',
 							};
 						},
 					},

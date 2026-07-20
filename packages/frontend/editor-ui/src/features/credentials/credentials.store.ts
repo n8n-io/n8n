@@ -315,10 +315,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return credentials;
 	};
 
-	const fetchInstanceCredentials = async (): Promise<ICredentialsResponse[]> => {
-		return await credentialsApi.getInstanceCredentials(rootStore.restApiContext);
-	};
-
 	const fetchAllCredentialsForWorkflow = async (
 		options: { workflowId: string } | { projectId: string },
 	): Promise<ICredentialsResponse[]> => {
@@ -545,7 +541,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,
-		fetchInstanceCredentials,
 		fetchAllCredentialsForWorkflow,
 		createNewCredential,
 		updateCredential,
