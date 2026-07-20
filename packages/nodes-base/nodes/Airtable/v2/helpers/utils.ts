@@ -1,7 +1,7 @@
 import set from 'lodash/set';
 import {
-	ApplicationError,
 	isResourceMapperValue,
+	UserError,
 	type IDataObject,
 	type NodeApiError,
 } from 'n8n-workflow';
@@ -70,7 +70,7 @@ export function findMatches(
 		});
 
 		if (!matches?.length) {
-			throw new ApplicationError('No records match provided keys', { level: 'warning' });
+			throw new UserError('No records match provided keys', { level: 'warning' });
 		}
 
 		return matches;
@@ -85,7 +85,7 @@ export function findMatches(
 		});
 
 		if (!match) {
-			throw new ApplicationError('Record matching provided keys was not found', {
+			throw new UserError('Record matching provided keys was not found', {
 				level: 'warning',
 			});
 		}

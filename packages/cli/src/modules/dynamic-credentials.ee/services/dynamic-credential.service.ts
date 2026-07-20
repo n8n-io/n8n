@@ -1,9 +1,11 @@
 import { Logger } from '@n8n/backend-common';
+import { AuthenticatedRequest } from '@n8n/db';
 import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
+	ICredentialContext,
 	ICredentialDataDecryptedObject,
 	IExecutionContext,
 	IWorkflowSettings,
@@ -29,7 +31,6 @@ import { CredentialResolutionError } from '../errors/credential-resolution.error
 import { CredentialResolverNotConfiguredError } from '../errors/credential-resolver-not-configured.error';
 import { CredentialResolverNotFoundError } from '../errors/credential-resolver-not-found.error';
 import { MissingExecutionContextError } from '../errors/missing-execution-context.error';
-import { AuthenticatedRequest } from '@n8n/db';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -116,15 +117,17 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// Resolve expressions in resolver configuration using global data only
 			const resolverConfig = await this.expressionService.resolve(parsedConfig);
 
+			const handle = {
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+				configuration: resolverConfig,
+			};
+
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(
 				credentialsResolveMetadata.id,
 				credentialContext,
-				{
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: resolverConfig,
-				},
+				handle,
 			);
 
 			this.logger.debug('Successfully resolved dynamic credentials', {
@@ -141,8 +144,22 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				}
 			}
 
+			// Capture the n8n user the credentials resolved to (only resolvers
+			// keyed on n8n identities implement this). Best-effort: a failure to
+			// resolve the owning user must not fail credential resolution — the
+			// execution simply stays unattributed (redacted for everyone).
+			let resolvedUserId: string | undefined;
+			try {
+				resolvedUserId = await resolver.resolveOwningUserId?.(credentialContext, handle);
+			} catch (error) {
+				this.logger.debug('Could not resolve owning user for dynamic credentials', {
+					credentialId: credentialsResolveMetadata.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
 			// Adds and override static data with dynamically resolved data
-			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
+			return { data: { ...staticData, ...dynamicData }, isDynamic: true, resolvedUserId };
 		} catch (error) {
 			return this.handleResolutionError(
 				credentialsResolveMetadata,
@@ -155,6 +172,48 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 	getSystemResolverId(): string {
 		return SYSTEM_RESOLVER_ID;
+	}
+
+	/**
+	 * Resolves the n8n user a pending authorization link should be bound to, when
+	 * the resolver maps its context to an n8n user (`resolveOwningUserId`).
+	 *
+	 * - `unbound`: resolver doesn't map to an n8n user (external-subject resolvers
+	 *   like Slack / OAuth introspection) — the link stays unbound and works as today.
+	 * - `bound`: resolver named a user — bind the link to it.
+	 * - `unresolved`: resolver implements the mapping but threw or returned nothing —
+	 *   callers fail closed rather than issue an unbindable link.
+	 *
+	 * Self-contained (reuses the resolver-loading idiom of `resolveIfNeeded` without
+	 * touching that hot path).
+	 */
+	async resolveOwningUserIdForAuthorization(
+		credentialContext: ICredentialContext,
+		resolverId: string,
+	): Promise<
+		{ status: 'unbound' } | { status: 'bound'; userId: string } | { status: 'unresolved' }
+	> {
+		const resolverEntity = await this.resolverRepository.findOneBy({ id: resolverId });
+		const resolver =
+			resolverEntity && this.resolverRegistry.getResolverByTypename(resolverEntity.type);
+		if (!resolverEntity || !resolver?.resolveOwningUserId) {
+			return { status: 'unbound' };
+		}
+
+		try {
+			const parsedConfig = jsonParse<Record<string, unknown>>(
+				await this.cipher.decryptV2(resolverEntity.config),
+			);
+			const resolverConfig = await this.expressionService.resolve(parsedConfig);
+			const userId = await resolver.resolveOwningUserId(credentialContext, {
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+				configuration: resolverConfig,
+			});
+			return userId ? { status: 'bound', userId } : { status: 'unresolved' };
+		} catch {
+			return { status: 'unresolved' };
+		}
 	}
 
 	/**
@@ -212,7 +271,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// TODO(M14): emit `private_credential.resolution_failed_missing_connection`
 			// via EventService once the relay event is defined in RelayEventMap.
 			throw new CredentialResolutionError(
-				`'${credentialsResolveMetadata.name}' private credential is not connected for you. Connect yours to execute this workflow manually.`,
+				`'${credentialsResolveMetadata.name}' end-user credential is not connected for you. Connect yours to execute this workflow manually.`,
 				{ cause: error },
 			);
 		}
@@ -275,7 +334,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			credentialName: credentialsResolveMetadata.name,
 		});
 
-		throw new MissingExecutionContextError(credentialsResolveMetadata.name);
+		throw new MissingExecutionContextError();
 	}
 
 	/**

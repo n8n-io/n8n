@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import WorkflowExecutionAnnotationPanel from './WorkflowExecutionAnnotationPanel.ee.vue';
 import WorkflowExecutionAnnotationTags from './WorkflowExecutionAnnotationTags.ee.vue';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import ExecutionPreviewHost from './ExecutionPreviewHost.vue';
 import { useExecutionDebugging } from '../../composables/useExecutionDebugging';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
@@ -11,15 +11,18 @@ import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { formatBytes } from '@/app/utils/typesUtils';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
+import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
+import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -71,6 +74,35 @@ const debugButtonData = computed(() =>
 const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
 );
+
+const { isFeatureEnabled: isAddToDatasetFeatureEnabled } = useAddExecutionToDataset(workflowId);
+
+const router = useRouter();
+const evaluationsWizardStore = useEvaluationsWizardSidepanelStore();
+
+const showAddToDataset = computed(
+	() =>
+		isAddToDatasetFeatureEnabled.value &&
+		props.execution?.status === 'success' &&
+		// Don't offer to add an evaluation run back into the dataset it came from.
+		props.execution?.mode !== 'evaluation',
+);
+
+// Seed a new test case from this execution and navigate to the editor. The
+// Tests panel is opened editor-side (NodeView) off the pending seed, so the
+// handoff survives the route change instead of relying on focus-panel state set
+// here, on a route that never renders the panel.
+async function onAddToDatasetClick() {
+	if (!props.execution) return;
+	try {
+		const full = await executionsStore.fetchExecution(props.execution.id);
+		if (!full) return;
+		evaluationsWizardStore.setPendingSeedExecution(full);
+		await router.push({ name: VIEWS.WORKFLOW, params: { workflowId: workflowId.value } });
+	} catch (error) {
+		showError(error, locale.baseText('evaluations.tests.seedFromExecution.error'));
+	}
+}
 
 const isAnnotationEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedExecutionFilters],
@@ -135,6 +167,12 @@ const executionMetaText = computed(() => {
 	}
 
 	return null;
+});
+
+const executionDataSize = computed(() => {
+	if (!props.execution) return null;
+	const total = (props.execution.jsonSizeBytes ?? 0) + (props.execution.binaryDataSizeBytes ?? 0);
+	return total > 0 ? formatBytes(total) : null;
 });
 
 watch(
@@ -286,6 +324,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						color="text-base"
 						size="medium"
 					>
+						<template v-if="executionDataSize">| {{ executionDataSize }}</template>
 						| ID#{{ execution.id }}
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
@@ -309,6 +348,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						data-test-id="execution-preview-id"
 					>
 						{{ executionMetaText }}
+						<template v-if="executionDataSize">| {{ executionDataSize }}</template>
 						| ID#{{ execution.id }}
 						<template v-if="workflowVersionLabel && workflowVersionRoute">
 							|
@@ -404,6 +444,18 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					</template>
 				</ElDropdown>
 
+				<N8nButton
+					v-if="showAddToDataset"
+					variant="subtle"
+					size="medium"
+					icon="list-plus"
+					:disabled="!workflowPermissions.update"
+					data-test-id="execution-preview-add-to-dataset-button"
+					@click="onAddToDatasetClick"
+				>
+					{{ locale.baseText('evaluations.addToDataset.button.label') }}
+				</N8nButton>
+
 				<WorkflowExecutionAnnotationPanel
 					v-if="isAnnotationEnabled && activeExecution"
 					:execution="activeExecution"
@@ -421,14 +473,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 		</div>
 
-		<WorkflowPreview
-			:key="executionId"
-			mode="execution"
-			loader-type="spinner"
-			:execution-id="executionId"
-			:execution-mode="execution?.mode || ''"
-			:node-id="nodeId"
-		/>
+		<ExecutionPreviewHost :workflow-id="workflowId" :execution-id="executionId" :node-id="nodeId" />
 	</div>
 </template>
 
@@ -441,6 +486,9 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .executionDetails {
 	position: absolute;
+	// Stack above the native canvas below it; the canvas owns its own stacking
+	// context, so without this its panes would intercept clicks on these actions.
+	z-index: 1;
 	padding: var(--spacing--md);
 	width: 100%;
 	display: flex;

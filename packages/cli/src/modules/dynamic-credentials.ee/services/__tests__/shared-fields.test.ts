@@ -1,9 +1,14 @@
 import { Container } from '@n8n/di';
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import {
+	CREDENTIAL_BLANKING_VALUE,
+	type ICredentialType,
+	type INodeProperties,
+} from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { CredentialTypes } from '@/credential-types';
 
-import { extractSharedFields } from '../shared-fields';
+import { extractSharedFields, getChangedSharedFields } from '../shared-fields';
 
 describe('extractSharedFields', () => {
 	describe('with only static fields', () => {
@@ -200,6 +205,75 @@ describe('extractSharedFields', () => {
 		});
 	});
 
+	describe('getChangedSharedFields', () => {
+		const oauth2Credential: ICredentialType = {
+			name: 'oAuth2Api',
+			displayName: 'OAuth2 API',
+			properties: [
+				{ name: 'clientId', type: 'string', default: '' },
+				{ name: 'clientSecret', type: 'string', default: '' },
+				{ name: 'scope', type: 'string', default: '' },
+				{ name: 'accessToken', type: 'string', default: '', resolvableField: true },
+			] as INodeProperties[],
+		};
+
+		it('should detect a changed static field', () => {
+			const result = getChangedSharedFields(
+				oauth2Credential,
+				{ clientId: 'old', clientSecret: 'secret', scope: 'read' },
+				{ clientId: 'new', clientSecret: 'secret', scope: 'read' },
+			);
+
+			expect(result).toEqual(['clientId']);
+		});
+
+		it('should detect multiple changed static fields', () => {
+			const result = getChangedSharedFields(
+				oauth2Credential,
+				{ clientId: 'old', clientSecret: 'oldSecret', scope: 'read' },
+				{ clientId: 'new', clientSecret: 'newSecret', scope: 'read' },
+			);
+
+			expect(result).toEqual(['clientId', 'clientSecret']);
+		});
+
+		it('should return empty when nothing changed', () => {
+			const data = { clientId: 'id', clientSecret: 'secret', scope: 'read' };
+
+			expect(getChangedSharedFields(oauth2Credential, data, { ...data })).toEqual([]);
+		});
+
+		it('should ignore changes to resolvable (per-user) fields', () => {
+			const result = getChangedSharedFields(
+				oauth2Credential,
+				{ clientId: 'id', accessToken: 'oldToken' },
+				{ clientId: 'id', accessToken: 'newToken' },
+			);
+
+			expect(result).toEqual([]);
+		});
+
+		it('should ignore fields absent from the incoming payload (e.g. name-only edit)', () => {
+			const result = getChangedSharedFields(
+				oauth2Credential,
+				{ clientId: 'id', clientSecret: 'secret' },
+				{},
+			);
+
+			expect(result).toEqual([]);
+		});
+
+		it('should not treat the redaction placeholder as a change', () => {
+			const result = getChangedSharedFields(
+				oauth2Credential,
+				{ clientId: 'id', clientSecret: 'realSecret' },
+				{ clientId: 'id', clientSecret: CREDENTIAL_BLANKING_VALUE },
+			);
+
+			expect(result).toEqual([]);
+		});
+	});
+
 	describe('field order preservation', () => {
 		it('should preserve the order of fields in the result', () => {
 			const credentialType: ICredentialType = {
@@ -220,18 +294,18 @@ describe('extractSharedFields', () => {
 	});
 
 	describe('credential hierarchy with extends', () => {
-		let mockCredentialTypes: jest.Mocked<CredentialTypes>;
+		let mockCredentialTypes: Mocked<CredentialTypes>;
 
 		beforeEach(() => {
 			mockCredentialTypes = {
-				getByName: jest.fn(),
-			} as unknown as jest.Mocked<CredentialTypes>;
+				getByName: vi.fn(),
+			} as unknown as Mocked<CredentialTypes>;
 
-			jest.spyOn(Container, 'get').mockReturnValue(mockCredentialTypes);
+			vi.spyOn(Container, 'get').mockReturnValue(mockCredentialTypes);
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should merge properties from single parent credential', () => {

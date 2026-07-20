@@ -1,6 +1,12 @@
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
-import { readFileViaSandbox, writeFileViaSandbox, type SandboxWorkspace } from './sandbox-fs';
+import {
+	isTransientSandboxIoError,
+	readFileViaSandbox,
+	retryTransientSandboxIo,
+	writeFileViaSandbox,
+	type SandboxWorkspace,
+} from './sandbox-fs';
 
 export interface WorkspaceFileTarget {
 	filesystem?: {
@@ -15,9 +21,11 @@ export interface WorkspaceFileTarget {
 }
 
 export interface WorkspaceFileOptions {
-	logger?: Logger;
+	logger: Logger;
 	/** Used in log and error messages, e.g. "Knowledge base file". */
 	resourceLabel?: string;
+	/** Base for the exponential retry backoff on transient write errors. Default 1s. */
+	retryBackoffBaseMs?: number;
 }
 
 function resourceLabel(options?: WorkspaceFileOptions): string {
@@ -37,12 +45,26 @@ export async function readWorkspaceFile(
 	filePath: string,
 	options?: WorkspaceFileOptions,
 ): Promise<string | null> {
-	const readFile = workspace.filesystem?.readFile;
-	if (readFile) {
+	const filesystem = workspace.filesystem;
+	const readFile = filesystem?.readFile;
+	if (filesystem && readFile) {
 		try {
-			return decodeWorkspaceFileContent(await readFile(filePath, { encoding: 'utf-8' }));
+			return decodeWorkspaceFileContent(
+				await retryTransientSandboxIo(
+					// .call preserves the provider's `this` binding (e.g. LazyRuntimeFilesystem).
+					async () => await readFile.call(filesystem, filePath, { encoding: 'utf-8' }),
+					filePath,
+					options,
+				),
+			);
 		} catch (error) {
-			options?.logger?.debug(`${resourceLabel(options)} filesystem read missed`, {
+			// A provider failure is not a missing file — surface it instead of reporting null.
+			if (isTransientSandboxIoError(error)) {
+				throw new Error(
+					`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+				);
+			}
+			options?.logger.debug(`${resourceLabel(options)} filesystem read missed`, {
 				path: filePath,
 				error: formatErrorForLog(error),
 			});
@@ -53,9 +75,14 @@ export async function readWorkspaceFile(
 	if (!workspace.sandbox) return null;
 
 	try {
-		return await readFileViaSandbox(workspace, filePath);
+		return await readFileViaSandbox(workspace, filePath, options);
 	} catch (error) {
-		options?.logger?.debug(`${resourceLabel(options)} command read missed`, {
+		if (isTransientSandboxIoError(error)) {
+			throw new Error(
+				`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+			);
+		}
+		options?.logger.debug(`${resourceLabel(options)} command read missed`, {
 			path: filePath,
 			error: formatErrorForLog(error),
 		});
@@ -75,14 +102,19 @@ export async function writeWorkspaceFile(
 ): Promise<void> {
 	const label = resourceLabel(options);
 
-	if (workspace.filesystem) {
+	const filesystem = workspace.filesystem;
+	if (filesystem) {
 		try {
-			await workspace.filesystem.writeFile(filePath, content, { recursive: true });
+			await retryTransientSandboxIo(
+				async () => await filesystem.writeFile(filePath, content, { recursive: true }),
+				filePath,
+				options,
+			);
 			return;
 		} catch (error) {
 			try {
-				await writeFileViaSandbox(workspace, filePath, content);
-				options?.logger?.warn(`${label} filesystem write failed; used command fallback`, {
+				await writeFileViaSandbox(workspace, filePath, content, options);
+				options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
 					path: filePath,
 					error: formatErrorForLog(error),
 				});
@@ -96,7 +128,7 @@ export async function writeWorkspaceFile(
 	}
 
 	try {
-		await writeFileViaSandbox(workspace, filePath, content);
+		await writeFileViaSandbox(workspace, filePath, content, options);
 	} catch (error) {
 		throw new Error(
 			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,

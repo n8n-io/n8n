@@ -24,3 +24,4 @@ export {
 	filterReportByBaseline,
 } from './baseline.js';
 export type { BaselineFile, BaselineEntry } from './baseline.js';
+export { isSuppressed } from './suppress.js';

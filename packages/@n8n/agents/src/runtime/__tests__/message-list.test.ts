@@ -1,3 +1,5 @@
+import type { SystemModelMessage } from 'ai';
+
 import { isLlmMessage } from '../../sdk/message';
 import type {
 	AgentDbMessage,
@@ -5,7 +7,14 @@ import type {
 	ContentToolCall,
 	Message,
 } from '../../types/sdk/message';
-import { AgentMessageList } from '../message-list';
+import { AgentMessageList, buildSystemMessages } from '../model/message-list';
+
+function flattenSystemContent(system: SystemModelMessage | SystemModelMessage[]): string {
+	if (Array.isArray(system)) {
+		return system.map((entry) => entry.content).join('');
+	}
+	return system.content;
+}
 
 function makeUserMsg(text: string): AgentMessage {
 	return { role: 'user', content: [{ type: 'text', text }] };
@@ -76,6 +85,32 @@ describe('AgentMessageList — monotonic timestamps', () => {
 });
 
 // ---------------------------------------------------------------------------
+// inputDelta — input-only messages for eager persistence
+// ---------------------------------------------------------------------------
+
+describe('AgentMessageList — inputDelta', () => {
+	it('returns only input messages, excluding history and responses', () => {
+		const list = new AgentMessageList();
+		list.addHistory([makeDbMsg('old', new Date('2024-01-01T00:00:00.000Z'))]);
+		list.addInput([makeUserMsg('the user prompt')]);
+		list.addResponse([makeUserMsg('assistant reply')]);
+
+		const delta = list.inputDelta();
+
+		expect(delta).toHaveLength(1);
+		const [text] = (delta[0] as { content: Array<{ type: string; text: string }> }).content;
+		expect(text.text).toBe('the user prompt');
+	});
+
+	it('returns an empty array when no input was added', () => {
+		const list = new AgentMessageList();
+		list.addHistory([makeDbMsg('old', new Date('2024-01-01T00:00:00.000Z'))]);
+
+		expect(list.inputDelta()).toEqual([]);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // History messages keep their DB-sourced createdAt
 // ---------------------------------------------------------------------------
 
@@ -114,22 +149,16 @@ describe('AgentMessageList — preserving DB timestamps', () => {
 // LLM context assembly
 // ---------------------------------------------------------------------------
 
-function systemContent(list: AgentMessageList): string {
-	const [system] = list.forLlm('Base instructions');
-	expect(system.role).toBe('system');
-	return system.content as string;
-}
-
 describe('AgentMessageList — forLlm observation memory', () => {
 	it('does not inject a memory section when no observation log has been rendered', () => {
 		const list = new AgentMessageList();
 		list.addInput([makeUserMsg('hello')]);
 
-		const messages = list.forLlm('Base instructions');
-		const prompt = messages[0].content as string;
+		const { system, messages } = list.forLlm('Base instructions');
 
-		expect(prompt).toContain('Base instructions');
-		expect(prompt).not.toContain('## Memory');
+		expect(flattenSystemContent(system)).toContain('Base instructions');
+		expect(flattenSystemContent(system)).not.toContain('## Memory');
+		expect(Array.isArray(system)).toBe(false);
 		expect(messages).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({
@@ -150,11 +179,42 @@ describe('AgentMessageList — forLlm observation memory', () => {
 			'</observations>',
 		].join('\n');
 
-		const prompt = systemContent(list);
+		const { system } = list.forLlm('Base instructions');
+		const prompt = flattenSystemContent(system);
 
+		expect(Array.isArray(system)).toBe(true);
 		expect(prompt).toContain('Base instructions');
 		expect(prompt).toContain('<observations>');
 		expect(prompt).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
+	});
+
+	it('places observation memory in a separate, uncached system message so only instructions carry the cache breakpoint', () => {
+		const observationLog = [
+			'<observations>',
+			'* CRITICAL (14:30) User wants the SDK to stay unopinionated.',
+			'</observations>',
+		].join('\n');
+		const cacheOptions = {
+			anthropic: { cacheControl: { type: 'ephemeral' as const } },
+		};
+
+		const system = buildSystemMessages('Base instructions', observationLog, cacheOptions);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[0]).toEqual({
+			role: 'system',
+			content: 'Base instructions',
+			providerOptions: cacheOptions,
+		});
+		// The observation message changes on nearly every call, so it must never
+		// be marked — doing so would just pay the cache-write premium for no read.
+		expect(system[1]).toEqual({
+			role: 'system',
+			content: expect.stringContaining('<observations>') as unknown as string,
+		});
+		expect(system[1]?.content).not.toContain('Base instructions');
 	});
 
 	it('keeps recent history messages in LLM context when observation memory is empty', () => {
@@ -162,7 +222,7 @@ describe('AgentMessageList — forLlm observation memory', () => {
 		list.addHistory([makeDbMsg('recent history', new Date('2024-01-01T00:00:00.000Z'))]);
 		list.addInput([makeUserMsg('new request')]);
 
-		const messages = list.forLlm('Base instructions');
+		const { messages } = list.forLlm('Base instructions');
 
 		expect(messages).toEqual(
 			expect.arrayContaining([
@@ -176,6 +236,49 @@ describe('AgentMessageList — forLlm observation memory', () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe('buildSystemMessages — volatile tool-instruction fragments', () => {
+	it('places volatile instructions in an uncached second message when observation memory is absent', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[0]).toEqual({ role: 'system', content: 'Base instructions' });
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.providerOptions).toBeUndefined();
+		// The cached instructions message must stay byte-identical regardless of
+		// what volatile content exists — this is the whole point of the split.
+		expect(system[0]?.content).toBe('Base instructions');
+	});
+
+	it('combines volatile instructions and observation memory in the same uncached message', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.content).toContain('Some memory.');
+	});
+
+	it('keeps the single-message shape when neither observation memory nor volatile instructions are present', () => {
+		const system = buildSystemMessages('Base instructions', undefined, undefined, undefined);
+
+		expect(Array.isArray(system)).toBe(false);
+		expect(system).toEqual({ role: 'system', content: 'Base instructions' });
 	});
 });
 

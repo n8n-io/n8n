@@ -36,8 +36,10 @@ import useEnvironmentsStore from '@/features/settings/environments.ee/environmen
 import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 const props = defineProps<{
 	initialNode: INode;
@@ -49,6 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:valid': [isValid: boolean];
 	'update:node-name': [name: string];
+	'update:node': [node: INode];
 }>();
 
 const i18n = useI18n();
@@ -63,7 +66,11 @@ const node = shallowRef<INode | null>(props.initialNode);
 const userEditedName = ref(false);
 
 const existingToolNames = computed(() => props.existingToolNames ?? []);
-const credentialProjectId = computed(() => props.projectId ?? projectsStore.personalProject?.id);
+// `props.projectId` can be an empty string when the agent scope id has not
+// resolved yet (see `useAgentScopeProjectId`), so fall back with `||` rather
+// than `??` — otherwise the empty string sticks and the credential fetch below
+// is skipped on first open.
+const credentialProjectId = computed(() => props.projectId || projectsStore.personalProject?.id);
 
 const nodeTypeDescription = computed(() => {
 	if (!props.initialNode) {
@@ -94,9 +101,11 @@ const tabOptions = computed<Array<ITab<ToolSettingsTab>>>(() => {
 });
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(true, i18n.baseText.bind(i18n), settingsStore.isOtelEnabled).filter(
-		(s) => s.name !== 'notes' && s.name !== 'notesInFlow',
-	),
+	createCommonNodeSettings(
+		true,
+		i18n.baseText.bind(i18n),
+		settingsStore.isOtelCustomSpanAttributesEnabled,
+	).filter((s) => s.name !== 'notes' && s.name !== 'notesInFlow'),
 );
 
 const settingsNodeValues = computed<INodeParameters>(() => {
@@ -315,6 +324,16 @@ watch(isValid, (val) => {
 });
 
 watch(
+	node,
+	(updatedNode) => {
+		if (updatedNode) {
+			emit('update:node', updatedNode);
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
 	() => node.value?.name,
 	(name) => {
 		if (name) {
@@ -333,8 +352,16 @@ onMounted(async () => {
 	// Set project context for dynamic parameter loading and credential creation.
 	if (props.projectId) {
 		await projectsStore.fetchAndSetProject(props.projectId);
-	} else if (projectsStore.personalProject) {
-		projectsStore.setCurrentProject(projectsStore.personalProject);
+	} else {
+		// No usable project scope was provided (the agent scope id can resolve to
+		// '' before project state loads). Ensure the personal project is loaded so
+		// the credential fetch below has a real scope on first open.
+		if (!projectsStore.personalProject) {
+			await projectsStore.getPersonalProject();
+		}
+		if (projectsStore.personalProject) {
+			projectsStore.setCurrentProject(projectsStore.personalProject);
+		}
 	}
 
 	// Ensure credentials are loaded for the credentials selector to work.
@@ -342,7 +369,6 @@ onMounted(async () => {
 	// credentials from another project do not bleed into this tool config.
 	const projectId = credentialProjectId.value;
 	if (projectId) {
-		credentialsStore.setCredentials([]);
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
 			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
@@ -353,6 +379,13 @@ onMounted(async () => {
 onBeforeUnmount(() => {
 	// Clear current project to avoid side effects
 	projectsStore.setCurrentProject(null);
+
+	// Dispose the scoped document store and the NDV store its descendants
+	// materialize — Pinia stores are not freed on unmount. The doc id is a
+	// constant and only one tool-config host is mounted at a time.
+	const documentStore = workflowDocumentStore.value;
+	disposeNDVStore(useNDVStore(documentStore.documentId));
+	disposeWorkflowDocumentStore(documentStore);
 });
 
 defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
@@ -387,9 +420,13 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:project-id="credentialProjectId"
 						:hide-issues="false"
 						:hide-ask-assistant="props.hideAskAssistant"
+						:skip-credentials-fetch="true"
 						@credential-selected="handleChangeCredential"
 						@value-changed="handleChangeParameter"
 					/>
+					<div v-if="$slots.commonSettings" :class="$style.commonSettings">
+						<slot name="commonSettings" />
+					</div>
 				</ParameterInputList>
 				<div v-if="showNoParametersNotice" :class="$style.noParameters">
 					<N8nText>
@@ -448,6 +485,10 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 }
 
 .noParameters {
+	margin-top: var(--spacing--xs);
+}
+
+.commonSettings {
 	margin-top: var(--spacing--xs);
 }
 </style>

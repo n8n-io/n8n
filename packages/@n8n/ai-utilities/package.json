@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.17.0",
+  "version": "0.24.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -8,10 +8,16 @@
   "typesVersions": {
     "*": {
       "text-editor": [
+        "dist/esm/utils/workflow-text-editor.d.ts"
+      ],
+      "generic-text-editor": [
         "dist/esm/utils/text-editor.d.ts"
       ],
       "node-catalog": [
         "dist/esm/node-catalog/index.d.ts"
+      ],
+      "agent-config": [
+        "dist/esm/agent-config/index.d.ts"
       ],
       "fromai-helpers": [
         "dist/esm/utils/fromai-helpers.d.ts"
@@ -21,6 +27,9 @@
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
+      ],
+      "model-discovery": [
+        "dist/esm/model-discovery/index.d.ts"
       ]
     }
   },
@@ -31,6 +40,11 @@
       "require": "./dist/cjs/index.js"
     },
     "./text-editor": {
+      "types": "./dist/esm/utils/workflow-text-editor.d.ts",
+      "import": "./dist/esm/utils/workflow-text-editor.js",
+      "require": "./dist/cjs/utils/workflow-text-editor.js"
+    },
+    "./generic-text-editor": {
       "types": "./dist/esm/utils/text-editor.d.ts",
       "import": "./dist/esm/utils/text-editor.js",
       "require": "./dist/cjs/utils/text-editor.js"
@@ -39,6 +53,11 @@
       "types": "./dist/esm/node-catalog/index.d.ts",
       "import": "./dist/esm/node-catalog/index.js",
       "require": "./dist/cjs/node-catalog/index.js"
+    },
+    "./agent-config": {
+      "types": "./dist/esm/agent-config/index.d.ts",
+      "import": "./dist/esm/agent-config/index.js",
+      "require": "./dist/cjs/agent-config/index.js"
     },
     "./fromai-helpers": {
       "types": "./dist/esm/utils/fromai-helpers.d.ts",
@@ -55,6 +74,11 @@
       "import": "./dist/esm/web-search/index.js",
       "require": "./dist/cjs/web-search/index.js"
     },
+    "./model-discovery": {
+      "types": "./dist/esm/model-discovery/index.d.ts",
+      "import": "./dist/esm/model-discovery/index.js",
+      "require": "./dist/cjs/model-discovery/index.js"
+    },
     "./*": "./*"
   },
   "scripts": {
@@ -63,25 +87,34 @@
     "typecheck": "tsc --noEmit",
     "copy-tokenizer-json": "node scripts/copy-tokenizer-json.js .",
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && tsc-alias -p tsconfig.build.esm.json && tsc-alias -p tsconfig.build.cjs.json && pnpm copy-tokenizer-json dist/cjs && pnpm copy-tokenizer-json dist/esm",
+    "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck && tsc-alias -p tsconfig.build.esm.json && tsc-alias -p tsconfig.build.cjs.json && pnpm copy-tokenizer-json dist/cjs && pnpm copy-tokenizer-json dist/esm",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false"
   },
   "files": [
     "dist"
   ],
   "devDependencies": {
-    "@types/json-schema": "^7.0.15",
-    "jest-mock-extended": "^3.0.4",
+    "@types/json-schema": "catalog:",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
     "@types/mime-types": "catalog:",
+    "@types/lodash": "catalog:",
+    "@types/proxy-from-env": "catalog:",
+    "fast-glob": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:typescript",
     "axios": "catalog:",
-    "n8n-workflow": "workspace:*"
+    "nock": "catalog:"
   },
   "dependencies": {
     "zod": "catalog:",
@@ -92,17 +125,18 @@
     "@langchain/textsplitters": "1.0.1",
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
+    "lodash": "catalog:",
+    "@n8n/api-types": "workspace:*",
+    "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
-    "https-proxy-agent": "catalog:",
+    "@thednp/dommatrix": "^2.0.12",
     "pdf-parse": "catalog:",
-    "proxy-from-env": "^1.1.0",
-    "undici": "^6.21.0"
+    "undici": "catalog:undici-v6"
   },
-  "peerDependencies": {
-    "n8n-workflow": "*"
-  }
+  "license": "LicenseRef-n8n-sustainable-use"
 }

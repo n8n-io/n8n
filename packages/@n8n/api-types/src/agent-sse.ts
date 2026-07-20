@@ -29,11 +29,11 @@ import type { AgentPersistedMessageContentPart } from './agents';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
-	/** Run id of the suspended turn; FE echoes this back on `POST /build/resume`. */
+	/** Run id of the suspended turn; FE echoes this back on `POST /:agentId/chat/:threadId/resume`. */
 	runId: string;
 	/** Also the discriminator on the wire (no separate interactionType field). */
 	toolName: string;
-	/** Shape determined by toolName via the corresponding Ask*InputSchema. */
+	/** The tool's suspend payload; shape determined by toolName via the shared interaction-contract suspend schemas (`agents/agent-interaction.schema.ts`). */
 	input: unknown;
 }
 
@@ -69,6 +69,21 @@ export type AgentSseEvent =
 			type: 'tool-execution-start';
 			toolCallId: string;
 			toolName: string;
+			/** Epoch ms when the handler started, measured on the backend. */
+			startTime: number;
+	  }
+	| {
+			/**
+			 * Emitted as soon as an individual tool settles, so the FE can flip a
+			 * concurrent tool call to its terminal state immediately instead of
+			 * waiting for the batched `tool-result` events.
+			 */
+			type: 'tool-execution-end';
+			toolCallId: string;
+			toolName: string;
+			isError: boolean;
+			/** Epoch ms when the handler settled, measured on the backend. */
+			endTime: number;
 	  }
 	| {
 			type: 'tool-result';
@@ -76,12 +91,10 @@ export type AgentSseEvent =
 			toolName: string;
 			output: unknown;
 			isError?: boolean;
+			canceled?: boolean;
 	  }
 	| { type: 'tool-call-suspended'; payload: ToolSuspendedPayload }
 	| { type: 'message'; message: AgentSseMessage }
-	| { type: 'code-delta'; delta: string }
-	| { type: 'config-updated' }
-	| { type: 'tool-updated' }
 	| {
 			type: 'error';
 			message: string;

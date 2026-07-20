@@ -33,4 +33,25 @@ export interface ICredentialConnectionStatusProvider {
 	 * Deletes all per-user entries for the given credential. Used when toggling Private→Static.
 	 */
 	deleteAllUserEntries(credentialId: string, em?: EntityManager): Promise<void>;
+
+	/**
+	 * Re-evaluates access for the given users and deletes all their per-user
+	 * entries (across all resolvers) for any credential where they no longer
+	 * hold `credential:connect`. Pass `credentialId` to scope to one credential.
+	 */
+	cleanupOrphanedEntriesForUsers(
+		userIds: string[],
+		em?: EntityManager,
+		credentialId?: string,
+	): Promise<void>;
+
+	/**
+	 * Re-evaluates one credential's connections for members of the given
+	 * projects, deleting those who no longer hold `credential:connect`.
+	 */
+	cleanupOrphanedEntriesForProjects(
+		credentialId: string,
+		projectIds: string[],
+		em?: EntityManager,
+	): Promise<void>;
 }

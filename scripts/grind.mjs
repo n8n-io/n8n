@@ -66,44 +66,44 @@ if (!pkgRoot) {
 
 const fileRelToPkg = relative(pkgRoot, absFile);
 
-function detectRunner(pkgRootDir) {
+function detectVitest(pkgRootDir) {
 	const pkg = JSON.parse(readFileSync(resolve(pkgRootDir, 'package.json'), 'utf8'));
 	const deps = { ...pkg.devDependencies, ...pkg.dependencies };
-	if (deps.vitest) return 'vitest';
-	if (deps.jest) return 'jest';
+	if (deps.vitest) return true;
 
-	const testScript = pkg.scripts?.test ?? '';
-	if (/\bvitest\b/.test(testScript)) return 'vitest';
-	if (/\bjest\b/.test(testScript)) return 'jest';
+	if (/\bvitest\b/.test(pkg.scripts?.test ?? '')) return true;
 
-	if (existsSync(resolve(pkgRootDir, 'jest.config.js')) ||
-		existsSync(resolve(pkgRootDir, 'jest.config.ts')) ||
-		existsSync(resolve(pkgRootDir, 'jest.config.mjs'))) return 'jest';
-	if (existsSync(resolve(pkgRootDir, 'vitest.config.ts')) ||
+	return (
+		existsSync(resolve(pkgRootDir, 'vitest.config.ts')) ||
 		existsSync(resolve(pkgRootDir, 'vitest.config.js')) ||
-		existsSync(resolve(pkgRootDir, 'vitest.config.mjs'))) return 'vitest';
-
-	return null;
+		existsSync(resolve(pkgRootDir, 'vitest.config.mjs'))
+	);
 }
 
-const runner = detectRunner(pkgRoot);
-if (!runner) {
-	console.error(`Could not detect vitest or jest in ${pkgRoot}/package.json`);
+if (!detectVitest(pkgRoot)) {
+	console.error(`Could not detect vitest in ${pkgRoot}/package.json`);
 	process.exit(2);
 }
 
-const runnerArgs =
-	runner === 'vitest'
-		? ['vitest', 'run', fileRelToPkg, '--reporter=dot']
-		: ['jest', fileRelToPkg, '--colors=false'];
+const runnerArgs = ['vitest', 'run', fileRelToPkg, '--reporter=dot'];
 
 let passed = 0;
+let firstFailureLogged = false;
 for (let i = 0; i < n; i++) {
 	const res = spawnSync('pnpm', runnerArgs, {
 		cwd: pkgRoot,
-		stdio: values.json ? ['ignore', 'ignore', 'ignore'] : ['ignore', 'inherit', 'inherit'],
+		stdio: values.json ? ['ignore', 'ignore', 'pipe'] : ['ignore', 'inherit', 'inherit'],
+		encoding: 'utf8',
 	});
-	if (res.status === 0) passed++;
+	if (res.status === 0) {
+		passed++;
+	} else if (values.json && !firstFailureLogged) {
+		// Without this, JSON-mode invocations (used in CI) swallow every
+		// vitest error message and leave authors with no diagnostic trail.
+		firstFailureLogged = true;
+		process.stderr.write(`\n[grind] first failing iteration for ${fileRelToPkg}:\n`);
+		if (res.stderr) process.stderr.write(res.stderr);
+	}
 	if (!values.json) process.stdout.write(res.status === 0 ? '.' : 'F');
 }
 

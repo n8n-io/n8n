@@ -1,7 +1,8 @@
 import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
+
+import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
@@ -23,6 +24,11 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	handler: ToolCallback<InputArgs>;
 };
 
+/** Registers a tool on the per-request server if the granted scopes cover it. */
+export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
+	tool: ToolDefinition<InputArgs>,
+) => void;
+
 // Shared MCP tool types
 export const SEARCH_WORKFLOWS_SORT_BY_VALUES = [
 	'updatedAt:desc',
@@ -39,6 +45,7 @@ export type SearchWorkflowsParams = {
 	limit?: number;
 	query?: string;
 	projectId?: string;
+	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
 };
 
@@ -53,6 +60,7 @@ export type SearchWorkflowsItem = {
 	scopes: string[];
 	canExecute: boolean;
 	availableInMCP: boolean;
+	tags: Array<{ id: string; name: string }>;
 };
 
 export type SearchWorkflowsResult = {
@@ -69,13 +77,15 @@ export type JSONRPCRequest = {
 	jsonrpc?: string;
 	method?: string;
 	params?: {
-		clientInfo?: {
-			name?: string;
-			version?: string;
-		};
+		clientInfo?: McpClientInfo;
 		[key: string]: unknown;
 	};
 	id?: string | number | null;
+};
+
+export type McpClientInfo = {
+	name?: string;
+	version?: string;
 };
 
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
@@ -119,31 +129,16 @@ export type UserCalledMCPToolEventPayload = {
 	};
 };
 
+/**
+ * n8n Connect coverage snapshot surfaced in tool output when the
+ * gateway is available: the credential and node types it can provide managed
+ * credentials for.
+ */
+export type N8nConnectCoverage = {
+	credentialTypes: string[];
+	nodes: string[];
+};
+
 export type MCPTriggersMap = {
 	[K in keyof typeof SUPPORTED_PRODUCTION_MCP_TRIGGERS]: INode[];
-};
-
-export type AuthFailureReason =
-	| 'missing_authorization_header'
-	| 'invalid_bearer_format'
-	| 'jwt_decode_failed'
-	| 'invalid_token'
-	| 'token_not_found_in_db'
-	| 'user_not_found'
-	| 'user_id_not_in_auth_info'
-	| 'unknown_error';
-
-export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
-
-export type TelemetryAuthContext = {
-	reason: AuthFailureReason;
-	auth_type: Mcpauth_type;
-	error_details?: string;
-};
-
-export type UserWithContext = {
-	user: User | null;
-	actor?: User;
-	context?: TelemetryAuthContext;
-	authType?: Mcpauth_type;
 };

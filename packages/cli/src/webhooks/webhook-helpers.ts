@@ -7,15 +7,19 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type express from 'express';
 import merge from 'lodash/merge';
-import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import {
+	BinaryDataService,
+	ErrorReporter,
+	establishExecutionContext,
+	WAITING_TOKEN_QUERY_PARAM,
+} from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
-	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
@@ -27,6 +31,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
+	OAuth2FailureReason,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -36,7 +41,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
-	createDeferredPromise,
 	createRunExecutionData,
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
@@ -54,12 +58,17 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
+import {
+	type AuthFailureReason,
+	OAuthTokenVerifierProxy,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
@@ -72,6 +81,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowRunner } from '@/workflow-runner';
 
+import { applySandboxCSP } from './webhook-response-headers';
 import {
 	WebhookResponseHeaders,
 	type WebhookNodeResponseHeaders,
@@ -312,12 +322,14 @@ export function setupResponseNodePromise(
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 				stream.pipe(res, { end: false });
 				await finished(stream);
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
 				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
+				applySandboxCSP(res);
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
 			} else {
@@ -450,7 +462,7 @@ export async function executeWebhook(
 		additionalKeys,
 	);
 
-	let project: Project | undefined = undefined;
+	let project: Project;
 	try {
 		project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowData.id);
 	} catch (error) {
@@ -509,6 +521,62 @@ export async function executeWebhook(
 			firstName: user.firstName,
 			lastName: user.lastName,
 		};
+	};
+
+	const translateAuthFailureReason = (reason?: AuthFailureReason): OAuth2FailureReason => {
+		switch (reason) {
+			case 'verifier_not_registered':
+			case 'unknown_error':
+				return 'verifier_unavailable';
+			case 'insufficient_scope':
+				return 'insufficient_scope';
+			default:
+				return 'invalid_token';
+		}
+	};
+
+	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
+		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
+		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
+		if (result.user) {
+			return {
+				valid: true,
+				user: {
+					id: result.user.id,
+					email: result.user.email,
+					firstName: result.user.firstName,
+					lastName: result.user.lastName,
+				},
+			};
+		}
+
+		return {
+			valid: false,
+			reason: translateAuthFailureReason(result.context?.reason),
+		};
+	};
+
+	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+		if (runExecutionData === undefined) {
+			throw new UnexpectedError('Execution data is not available to establish trigger identity');
+		}
+		await Container.get(TriggerAuthIdentitySeederProxy).seed(runExecutionData, token, resource);
+
+		await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
+	};
+
+	// Eager pre-execution credential-status gate. Uses the execution context that
+	// `establishTriggerIdentity` already established (the triggering user's identity),
+	// so the check runs on the request-handling main, before any enqueue. Returns
+	// `undefined` when the dynamic-credentials module is disabled or no identity was
+	// established, in which case the caller proceeds to execute normally.
+	additionalData.checkTriggerCredentialStatus = async () => {
+		const credentialCheckProxy = additionalData['dynamic-credentials']?.credentialCheckProxy;
+		const executionContext = runExecutionData?.executionData?.runtimeData;
+		if (!credentialCheckProxy || !workflow.id || !executionContext?.credentials) {
+			return undefined;
+		}
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
 	};
 
 	let didSendResponse = false;
@@ -710,7 +778,7 @@ export async function executeWebhook(
 			const mcpListToolsRelayValue =
 				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
 			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+				const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 				const publisher = Container.get(Publisher);
 				await publisher.publishMcpRelay({
 					sessionId: mcpListToolsRelayValue.sessionId,
@@ -803,6 +871,8 @@ export async function executeWebhook(
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId: project.id,
+			projectName: project.name,
 			source: 'webhook',
 		});
 
@@ -837,24 +907,10 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			const executionRepository = Container.get(ExecutionRepository);
-			void executePromise
-				.then(async (subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					await WorkflowHelpers.updateParentExecutionWithChildResults(
-						executionRepository,
-						parentExecution.executionId,
-						subworkflowResults,
-					);
-					return subworkflowResults;
-				})
-				.then((subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					const waitTracker = Container.get(WaitTracker);
-					void waitTracker.startExecution(parentExecution.executionId);
-				});
+			void Container.get(WaitTracker).resumeParentExecution(parentExecution, executePromise, {
+				executionId,
+				workflowId: workflowData.id,
+			});
 		}
 
 		if (!didSendResponse) {
@@ -963,7 +1019,7 @@ export async function executeWebhook(
 		return executionId;
 	} catch (e) {
 		let error: Error;
-		if (e instanceof UnprocessableRequestError) {
+		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;
 		} else {
 			Container.get(ErrorReporter).error(e, { executionId });

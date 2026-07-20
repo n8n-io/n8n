@@ -14,14 +14,17 @@ import { foldLegacyErrorConnections, normalizeConnections } from './types/base';
 import { workflow } from './workflow-builder';
 
 /**
- * Writes a .generated.ts file next to the original JSON fixture.
+ * Writes a .generated.ts.txt file next to the original JSON fixture.
  * These files are gitignored and provide a TypeScript SDK representation
- * of each workflow for inspection/debugging.
+ * of each workflow for inspection/debugging. The .txt suffix keeps Vitest's
+ * Rolldown-based loader from ever attempting to parse them as source —
+ * the generated code can include placeholder/unfinished constructs while
+ * tests run in parallel.
  */
 function writeGeneratedTsFile(id: string, json: WorkflowJSON): void {
 	try {
 		const code = generateWorkflowCode(json);
-		const generatedPath = path.join(DOWNLOADED_FIXTURES_DIR, `${id}.generated.ts`);
+		const generatedPath = path.join(DOWNLOADED_FIXTURES_DIR, `${id}.generated.ts.txt`);
 		fs.writeFileSync(generatedPath, code, 'utf-8');
 	} catch {
 		// Don't fail the test if code generation fails
@@ -86,7 +89,9 @@ function loadTestWorkflows(): TestWorkflow[] {
 const workflows = loadTestWorkflows();
 
 describe('Real Workflow Round-Trip', () => {
-	// Download fixtures if needed
+	// Download fixtures if needed. Unpacking ~2000 workflow files is IO-bound and
+	// can take well over the default 10s hook timeout on a contended CI runner, so
+	// give it a generous budget to avoid flaky "Hook timed out" failures.
 	beforeAll(() => {
 		try {
 			ensureFixtures();
@@ -99,7 +104,7 @@ describe('Real Workflow Round-Trip', () => {
 			}
 			throw error;
 		}
-	});
+	}, 60_000);
 
 	if (workflows.length === 0) {
 		it('should have fixtures available (run tests again after download)', () => {
@@ -250,9 +255,11 @@ describe('Real Workflow Round-Trip', () => {
 });
 
 describe('Real Workflow Patterns', () => {
+	// Generous timeout: fixture extraction is IO-bound and can exceed the default
+	// 10s hook timeout on a contended CI runner.
 	beforeAll(() => {
 		ensureFixtures();
-	});
+	}, 60_000);
 
 	it('should handle AI agent workflows with subnodes', () => {
 		expect(workflows.length).toBeGreaterThan(0);
@@ -330,9 +337,11 @@ describe('Real Workflow Patterns', () => {
 });
 
 describe('Expression Preservation', () => {
+	// Generous timeout: fixture extraction is IO-bound and can exceed the default
+	// 10s hook timeout on a contended CI runner.
 	beforeAll(() => {
 		ensureFixtures();
-	});
+	}, 60_000);
 
 	function extractExpressions(json: WorkflowJSON): string[] {
 		const expressions: string[] = [];

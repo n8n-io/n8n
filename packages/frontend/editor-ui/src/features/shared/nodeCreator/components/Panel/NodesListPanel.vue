@@ -28,6 +28,7 @@ import {
 	type NodeView,
 } from '../../views/viewsData';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
+import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import SearchBar from './SearchBar.vue';
 
@@ -56,6 +57,8 @@ const viewStacks = computed(() => useViewStacks().viewStacks);
 
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
 
+const isAgentsMode = computed(() => useViewStacks().activeViewStackMode === 'agents');
+
 const searchPlaceholder = computed(() => {
 	let node = activeViewStack.value?.title as string;
 
@@ -67,6 +70,10 @@ const searchPlaceholder = computed(() => {
 		return i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 			interpolate: { node },
 		});
+	}
+
+	if (isAgentsMode.value) {
+		return i18n.baseText('nodeCreator.agentsPanel.searchPlaceholder');
 	}
 
 	return i18n.baseText('nodeCreator.searchBar.searchNodes');
@@ -182,6 +189,11 @@ watch(
 			...additionalOptions[selectedView],
 		};
 		pushViewStack(viewStack);
+
+		const pending = nodeCreatorStore.consumePendingInitialViewStack();
+		if (pending) {
+			pushViewStack(pending);
+		}
 	},
 	{ immediate: true },
 );
@@ -269,6 +281,9 @@ function onBackButton() {
 				/>
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
+
+				<!-- Agents mode -->
+				<AgentsRenderer v-else-if="isAgentsMode" v-bind="$attrs" />
 
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />

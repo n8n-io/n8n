@@ -1,85 +1,37 @@
 import { executeTool } from '../../__tests__/tool-test-utils';
+import type { InstanceAiContext } from '../../types';
 import { createTemplatesTool } from '../templates.tool';
 
+// ── Mock helpers ───────────────────────────────────────────────────────────────
+
+function makeContext(getTemplate: (id: string) => Promise<unknown>): InstanceAiContext {
+	return {
+		workflowTemplateService: { getTemplate },
+	} as unknown as InstanceAiContext;
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────────
+
 describe('templates tool', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
+	it('returns the template for an id', async () => {
+		const tool = createTemplatesTool(
+			// eslint-disable-next-line @typescript-eslint/require-await
+			makeContext(async (id: string) => ({ available: true, template: { id } })),
+		);
+
+		const result = await executeTool(tool, { templateId: '7' });
+
+		expect(result).toEqual({ available: true, template: { id: '7' } });
 	});
 
-	describe('best-practices action', () => {
-		it('should return list of available techniques when technique is "list"', async () => {
-			const tool = createTemplatesTool();
-			const result = await executeTool(
-				tool,
-				{ action: 'best-practices', technique: 'list' },
-				{} as never,
-			);
+	it('surfaces unavailable templates', async () => {
+		const tool = createTemplatesTool(
+			// eslint-disable-next-line @typescript-eslint/require-await
+			makeContext(async () => ({ available: false as const })),
+		);
 
-			const typed = result as {
-				technique: string;
-				availableTechniques: Array<{
-					technique: string;
-					description: string;
-					hasDocumentation: boolean;
-				}>;
-				message: string;
-			};
+		const result = await executeTool(tool, { templateId: '7' });
 
-			expect(typed.technique).toBe('list');
-			expect(typed.availableTechniques.length).toBeGreaterThan(0);
-			expect(typed.message).toContain('techniques');
-
-			// Verify each entry has required fields
-			for (const entry of typed.availableTechniques) {
-				expect(entry).toHaveProperty('technique');
-				expect(entry).toHaveProperty('description');
-				expect(entry).toHaveProperty('hasDocumentation');
-			}
-		});
-
-		it('should return documentation for a known technique with docs', async () => {
-			const tool = createTemplatesTool();
-			const result = await executeTool(
-				tool,
-				{ action: 'best-practices', technique: 'scheduling' },
-				{} as never,
-			);
-
-			const typed = result as { technique: string; documentation: string; message: string };
-
-			expect(typed.technique).toBe('scheduling');
-			expect(typed.documentation).toBeDefined();
-			expect(typeof typed.documentation).toBe('string');
-			expect(typed.documentation.length).toBeGreaterThan(0);
-			expect(typed.message).toContain('scheduling');
-		});
-
-		it('should return a message for a known technique without docs', async () => {
-			const tool = createTemplatesTool();
-			const result = await executeTool(
-				tool,
-				{ action: 'best-practices', technique: 'data_analysis' },
-				{} as never,
-			);
-
-			const typed = result as { technique: string; message: string };
-
-			expect(typed.technique).toBe('data_analysis');
-			expect(typed.message).toContain('does not have detailed documentation');
-		});
-
-		it('should return unknown technique message for invalid technique', async () => {
-			const tool = createTemplatesTool();
-			const result = await executeTool(
-				tool,
-				{ action: 'best-practices', technique: 'nonexistent_technique' },
-				{} as never,
-			);
-
-			const typed = result as { technique: string; message: string };
-
-			expect(typed.technique).toBe('nonexistent_technique');
-			expect(typed.message).toContain('Unknown technique');
-		});
+		expect(result).toEqual({ available: false });
 	});
 });

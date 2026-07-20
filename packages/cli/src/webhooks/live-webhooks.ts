@@ -90,6 +90,8 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const webhook = await this.findWebhook(path, httpMethod);
 
+		response.locals.workflowId = webhook.workflowId;
+
 		if (webhook.isDynamic) {
 			const pathElements = path.split('/').slice(1);
 
@@ -159,7 +161,7 @@ export class LiveWebhooks implements IWebhookManager {
 
 			return await new Promise((resolve, reject) => {
 				const executionMode = 'webhook';
-				void WebhookHelpers.executeWebhook(
+				WebhookHelpers.executeWebhook(
 					workflow,
 					webhookData,
 					activeWorkflowData, // Use activeWorkflowData instead of workflowData
@@ -178,7 +180,7 @@ export class LiveWebhooks implements IWebhookManager {
 						await this.workflowStaticDataService.saveStaticData(workflow);
 						resolve(data);
 					},
-				);
+				).catch(reject); // ensure the Promise settles even if executeWebhook throws
 			});
 		} finally {
 			await workflow.expression.releaseIsolate();

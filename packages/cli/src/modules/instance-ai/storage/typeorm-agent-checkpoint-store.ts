@@ -23,6 +23,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		const existing = await this.checkpointRepo.findOne({ where: { key } });
 		if (existing) {
 			existing.runId = this.getRunId(key);
+			existing.hostRunId = state.persistence?.hostRunId ?? null;
 			existing.threadId = threadId;
 			existing.resourceId = state.persistence?.resourceId ?? null;
 			existing.state = state;
@@ -34,6 +35,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		const checkpoint = this.checkpointRepo.create({
 			key,
 			runId: this.getRunId(key),
+			hostRunId: state.persistence?.hostRunId ?? null,
 			threadId,
 			resourceId: state.persistence?.resourceId ?? null,
 			state,
@@ -81,13 +83,8 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 
 	/**
 	 * Look up the most recent suspended sub-agent run for a given resourceId
-	 * and pull the info needed to resume it. Used by the orchestrator's
-	 * cascade-suspend path: when the `plan` tool resumes, it needs the
-	 * planner sub-agent's `runId` + `toolCallId` (to call `subAgent.resume`)
-	 * + its `persistence` (so the resumed call reuses the same sub-agent
-	 * thread and resourceId the original used). The sub-agent's resourceId
-	 * is deterministically derived from the parent thread + agent kind, so
-	 * the caller can compute the lookup key without stashing anything.
+	 * and pull the info needed to resume it. This supports deterministic
+	 * sub-agent persistence for suspended background or delegated work.
 	 */
 	async findSuspendedSubAgentResumeInfo(resourceId: string): Promise<
 		| {

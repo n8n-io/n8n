@@ -9,11 +9,34 @@ export interface ClientOptions {
 	debug?: (message: string) => void;
 }
 
+export interface ImportPackageFields {
+	projectId?: string;
+	folderId?: string;
+	credentialMatchingMode?: string;
+	credentialMissingMode?: string;
+	bindings?: string;
+	workflowConflictPolicy: string;
+	workflowIdPolicy?: string;
+	folderConflictPolicy?: string;
+	dataTableMatchingMode?: string;
+	dataTableMissingMode?: string;
+	dataTableSchemaConflictPolicy?: string;
+}
+
+export interface ExportPackageFields {
+	workflowIds?: string[];
+	folderIds?: string[];
+	projectIds?: string[];
+	includeVariableValues?: boolean;
+	missingWorkflowDependencyPolicy?: string;
+}
+
 export class ApiError extends Error {
 	constructor(
 		readonly statusCode: number,
 		message: string,
 		readonly hint?: string,
+		readonly details?: unknown,
 	) {
 		super(message);
 		this.name = 'ApiError';
@@ -47,7 +70,12 @@ export class N8nClient {
 	private async request<T>(
 		method: string,
 		path: string,
-		options: { body?: unknown; query?: Record<string, string> } = {},
+		options: {
+			body?: unknown;
+			query?: Record<string, string>;
+			formData?: FormData;
+			responseType?: 'json' | 'binary';
+		} = {},
 	): Promise<T> {
 		const url = new URL(`${this.baseUrl}${path}`);
 		if (options.query) {
@@ -59,13 +87,18 @@ export class N8nClient {
 		this.debug?.(`→ ${method} ${url}`);
 		const start = Date.now();
 
+		const headers = new Headers(this.headers);
+		let body: BodyInit | undefined;
+		if (options.formData) {
+			headers.delete('Content-Type');
+			body = options.formData;
+		} else if (options.body !== undefined) {
+			body = JSON.stringify(options.body);
+		}
+
 		let response: Response;
 		try {
-			response = await fetch(url.toString(), {
-				method,
-				headers: this.headers,
-				body: options.body ? JSON.stringify(options.body) : undefined,
-			});
+			response = await fetch(url.toString(), { method, headers, body });
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
 			this.debug?.(`✗ Connection failed (${Date.now() - start}ms): ${msg}`);
@@ -78,18 +111,11 @@ export class N8nClient {
 
 		this.debug?.(`← ${response.status} ${response.statusText} (${Date.now() - start}ms)`);
 
-		if (response.status === 204) {
-			return undefined as T;
-		}
-
-		const contentType = response.headers.get('content-type') ?? '';
-		const isJson = contentType.includes('application/json');
-		const data: unknown = isJson ? await response.json() : await response.text();
-
 		if (!response.ok) {
+			const errorBody = await this.readBody(response);
 			const message =
-				typeof data === 'object' && data !== null && 'message' in data
-					? String((data as Record<string, unknown>).message)
+				typeof errorBody === 'object' && errorBody !== null && 'message' in errorBody
+					? String((errorBody as Record<string, unknown>).message)
 					: `Request failed (${response.status})`;
 			const hint =
 				response.status === 401
@@ -97,10 +123,23 @@ export class N8nClient {
 					: response.status === 404
 						? 'Resource not found. Verify the ID is correct.'
 						: undefined;
-			throw new ApiError(response.status, message, hint);
+			throw new ApiError(response.status, message, hint, errorBody);
 		}
 
-		return data as T;
+		if (response.status === 204) {
+			return undefined as T;
+		}
+
+		if (options.responseType === 'binary') {
+			return Buffer.from(await response.arrayBuffer()) as T;
+		}
+
+		return (await this.readBody(response)) as T;
+	}
+
+	private async readBody(response: Response): Promise<unknown> {
+		const contentType = response.headers.get('content-type') ?? '';
+		return contentType.includes('application/json') ? await response.json() : await response.text();
 	}
 
 	private async get<T>(path: string, query?: Record<string, string>): Promise<T> {
@@ -390,6 +429,45 @@ export class N8nClient {
 	async sourceControlPull(options: { force?: boolean } = {}) {
 		return await this.post<Record<string, unknown>>('/source-control/pull', {
 			force: options.force ?? false,
+		});
+	}
+
+	// ─── Packages (beta) ───────────────────────────────────────────
+
+	async exportPackage(fields: ExportPackageFields): Promise<Buffer> {
+		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
+		const body: {
+			workflowIds?: string[];
+			folderIds?: string[];
+			projectIds?: string[];
+			includeVariableValues?: boolean;
+			missingWorkflowDependencyPolicy?: string;
+		} = {};
+		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
+		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
+		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
+		// `undefined` is dropped by JSON serialization, so the API's default applies.
+		body.includeVariableValues = fields.includeVariableValues;
+		if (fields.missingWorkflowDependencyPolicy)
+			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
+
+		return await this.request<Buffer>('POST', '/n8n-packages/export', {
+			body,
+			responseType: 'binary',
+		});
+	}
+
+	async importPackage(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageFields,
+	): Promise<Record<string, unknown>> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		for (const [key, value] of Object.entries(fields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+			formData: form,
 		});
 	}
 

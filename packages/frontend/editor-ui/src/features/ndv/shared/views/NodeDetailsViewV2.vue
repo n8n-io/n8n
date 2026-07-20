@@ -4,10 +4,14 @@ import type { MainPanelType, NodePanelType } from '../ndv.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, NodeConnectionType } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 
 import NDVHeader from '../../panel/components/NDVHeader.vue';
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
+import {
+	useNdvAgentConfig,
+	NdvAgentConfigKey,
+} from '@/features/ndv/agents/composables/useNdvAgentConfig';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useKeybindings } from '@/app/composables/useKeybindings';
@@ -31,8 +35,7 @@ import { ndvEventBus } from '../ndv.eventBus';
 import { injectNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -69,9 +72,13 @@ const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
+
+// The AI Agent node's NDV data facade (referenced summary + inline editing).
+// Owned here (the stable container) so it survives node switches. No-ops for
+// other nodes.
+provide(NdvAgentConfigKey, useNdvAgentConfig(activeNode));
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
@@ -220,7 +227,8 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.value.activeNode && ndvStore.value.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {
@@ -304,9 +312,7 @@ const outputPanelEditMode = computed(() => ndvStore.value.outputPanelEditMode);
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
 const isExecutionWaitingForWebhook = computed(
-	() =>
-		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId)
-			.executionWaitingForWebhook,
+	() => workflowExecutionStateStore.value.executionWaitingForWebhook,
 );
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);

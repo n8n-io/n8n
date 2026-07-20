@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, CredentialSummary, CredentialDetail } from '../../types';
@@ -18,13 +19,13 @@ function createMockContext(
 		nodeService: {} as InstanceAiContext['nodeService'],
 		dataTableService: {} as InstanceAiContext['dataTableService'],
 		credentialService: {
-			list: jest.fn().mockResolvedValue([]),
-			get: jest.fn().mockResolvedValue({}),
-			delete: jest.fn().mockResolvedValue(undefined),
-			test: jest.fn().mockResolvedValue({ success: true }),
-			searchCredentialTypes: jest.fn().mockResolvedValue([]),
-			getDocumentationUrl: jest.fn().mockResolvedValue(null),
-			getCredentialFields: jest.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue([]),
+			get: vi.fn().mockResolvedValue({}),
+			delete: vi.fn().mockResolvedValue(undefined),
+			test: vi.fn().mockResolvedValue({ success: true }),
+			searchCredentialTypes: vi.fn().mockResolvedValue([]),
+			getDocumentationUrl: vi.fn().mockResolvedValue(null),
+			getCredentialFields: vi.fn().mockResolvedValue([]),
 		},
 		permissions: {},
 		...overrides,
@@ -35,7 +36,7 @@ function noSuspendCtx() {
 	return { resumeData: undefined, suspend: undefined } as never;
 }
 
-function suspendCtx(suspendFn: jest.Mock = jest.fn()) {
+function suspendCtx(suspendFn: Mock = vi.fn()) {
 	return {
 		resumeData: undefined,
 		suspend: suspendFn,
@@ -47,7 +48,7 @@ function resumeCtx(resumeData: {
 	credentials?: Record<string, string>;
 	autoSetup?: { credentialType: string };
 }) {
-	const suspend = jest.fn();
+	const suspend = vi.fn();
 	return { resumeData, suspend } as never;
 }
 
@@ -152,7 +153,7 @@ describe('credentials tool', () => {
 				{ id: '3', name: 'Notion Key', type: 'notionApi' },
 			];
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
@@ -172,7 +173,7 @@ describe('credentials tool', () => {
 		it('should filter by type when provided', async () => {
 			const credentials: CredentialSummary[] = [{ id: '1', name: 'Slack Token', type: 'slackApi' }];
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			await executeTool(tool, { action: 'list' as const, type: 'slackApi' }, noSuspendCtx());
@@ -187,7 +188,7 @@ describe('credentials tool', () => {
 				type: 'testType',
 			}));
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -214,7 +215,7 @@ describe('credentials tool', () => {
 				type: 'testType',
 			}));
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
@@ -230,7 +231,7 @@ describe('credentials tool', () => {
 				{ id: '3', name: 'Notion Key', type: 'notionApi' },
 			];
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -256,7 +257,7 @@ describe('credentials tool', () => {
 				type: 'notionApi',
 			}));
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -279,7 +280,7 @@ describe('credentials tool', () => {
 				type: 'testType',
 			}));
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
@@ -299,7 +300,7 @@ describe('credentials tool', () => {
 				type: 'slackApi',
 			}));
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -317,7 +318,7 @@ describe('credentials tool', () => {
 				{ id: '1', name: 'Slack Token', type: 'slackApi', extraField: 'should-be-stripped' },
 			];
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(credentials);
+			(context.credentialService.list as Mock).mockResolvedValue(credentials);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
@@ -325,6 +326,80 @@ describe('credentials tool', () => {
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
 				{ id: '1', name: 'Slack Token', type: 'slackApi' },
 			]);
+		});
+	});
+
+	// ── list with n8n Connect ───────────────────────────────────────────────
+
+	describe('list action — n8n Connect entry', () => {
+		function makeContextWithGateway(isGatewaySupported: boolean | undefined) {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+			if (isGatewaySupported !== undefined) {
+				(
+					context.credentialService as unknown as {
+						isAiGatewayCredentialType: Mock;
+					}
+				).isAiGatewayCredentialType = vi.fn().mockResolvedValue(isGatewaySupported);
+			}
+			return context;
+		}
+
+		it('prepends a synthetic managed entry when the type is gateway-supported', async () => {
+			const context = makeContextWithGateway(true);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			expect((result as { credentials: unknown[] }).credentials).toEqual([
+				expect.objectContaining({ id: null, type: 'openAiApi', __aiGatewayManaged: true }),
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+		});
+
+		it('omits the managed entry when the type is not gateway-supported', async () => {
+			const context = makeContextWithGateway(false);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'cohereApi' },
+				noSuspendCtx(),
+			);
+
+			expect((result as { credentials: unknown[] }).credentials).toEqual([
+				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
+			]);
+		});
+
+		it('omits the managed entry when isAiGatewayCredentialType is not implemented', async () => {
+			const context = makeContextWithGateway(undefined);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(
+				tool,
+				{ action: 'list' as const, type: 'openAiApi' },
+				noSuspendCtx(),
+			);
+
+			const creds = (result as { credentials: Array<{ id: unknown }> }).credentials;
+			expect(creds.every((c) => c.id !== null)).toBe(true);
+		});
+
+		it('omits the managed entry when no type filter is provided', async () => {
+			const context = makeContextWithGateway(true);
+			const tool = createCredentialsTool(context);
+
+			const result = await executeTool(tool, { action: 'list' as const }, noSuspendCtx());
+
+			const creds = (result as { credentials: Array<{ id: unknown }> }).credentials;
+			expect(creds.every((c) => c.id !== null)).toBe(true);
 		});
 	});
 
@@ -339,7 +414,7 @@ describe('credentials tool', () => {
 				nodesWithAccess: [{ nodeType: 'n8n-nodes-base.notion' }],
 			};
 			const context = createMockContext();
-			(context.credentialService.get as jest.Mock).mockResolvedValue(detail);
+			(context.credentialService.get as Mock).mockResolvedValue(detail);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -396,7 +471,7 @@ describe('credentials tool', () => {
 			const context = createMockContext({
 				permissions: { deleteCredential: 'require_approval' },
 			});
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createCredentialsTool(context);
 			await executeTool(
@@ -420,7 +495,7 @@ describe('credentials tool', () => {
 			const context = createMockContext({
 				permissions: { deleteCredential: 'require_approval' },
 			});
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createCredentialsTool(context);
 			await executeTool(
@@ -439,7 +514,7 @@ describe('credentials tool', () => {
 
 		it('should suspend by default when permissions are not explicitly set', async () => {
 			const context = createMockContext({ permissions: {} });
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createCredentialsTool(context);
 			await executeTool(
@@ -498,9 +573,7 @@ describe('credentials tool', () => {
 				{ type: 'slackOAuth2Api', displayName: 'Slack OAuth2 API' },
 			];
 			const context = createMockContext();
-			(context.credentialService.searchCredentialTypes as jest.Mock).mockResolvedValue(
-				searchResults,
-			);
+			(context.credentialService.searchCredentialTypes as Mock).mockResolvedValue(searchResults);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -526,9 +599,7 @@ describe('credentials tool', () => {
 				{ type: 'oAuth2Api', displayName: 'OAuth2' },
 			];
 			const context = createMockContext();
-			(context.credentialService.searchCredentialTypes as jest.Mock).mockResolvedValue(
-				searchResults,
-			);
+			(context.credentialService.searchCredentialTypes as Mock).mockResolvedValue(searchResults);
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -555,6 +626,53 @@ describe('credentials tool', () => {
 
 			expect(result).toEqual({ results: [] });
 		});
+
+		it('should enumerate n8n Connect types when n8nConnectOnly is set, ignoring query', async () => {
+			const context = createMockContext();
+			context.credentialService.listAiGatewayCredentialTypes = vi
+				.fn()
+				.mockResolvedValue(['openAiApi', 'anthropicApi']);
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'search-types' as const, n8nConnectOnly: true },
+				noSuspendCtx(),
+			);
+
+			expect(context.credentialService.listAiGatewayCredentialTypes).toHaveBeenCalled();
+			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				results: [
+					{ type: 'openAiApi', n8nConnect: true },
+					{ type: 'anthropicApi', n8nConnect: true },
+				],
+			});
+		});
+
+		it('should return empty results for n8nConnectOnly when the accessor is unavailable', async () => {
+			const context = createMockContext();
+			context.credentialService.listAiGatewayCredentialTypes = undefined;
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{ action: 'search-types' as const, n8nConnectOnly: true },
+				noSuspendCtx(),
+			);
+
+			expect(result).toEqual({ results: [] });
+		});
+
+		it('should error when query is omitted without n8nConnectOnly', async () => {
+			const context = createMockContext();
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(tool, { action: 'search-types' as const }, noSuspendCtx());
+
+			expect(context.credentialService.searchCredentialTypes).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ results: [], error: expect.stringContaining('query') });
+		});
 	});
 
 	// ── setup ───────────────────────────────────────────────────────────────
@@ -565,9 +683,9 @@ describe('credentials tool', () => {
 				{ id: 'c1', name: 'Existing Slack', type: 'slackApi' },
 			];
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue(existingCreds);
+			(context.credentialService.list as Mock).mockResolvedValue(existingCreds);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createCredentialsTool(context);
 			await executeTool(
 				tool,
@@ -598,9 +716,9 @@ describe('credentials tool', () => {
 
 		it('should include suggestedName in credentialRequests when provided', async () => {
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createCredentialsTool(context);
 			await executeTool(
 				tool,
@@ -631,9 +749,9 @@ describe('credentials tool', () => {
 
 		it('should use plural message for multiple credentials', async () => {
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createCredentialsTool(context);
 			await executeTool(
 				tool,
@@ -652,18 +770,17 @@ describe('credentials tool', () => {
 			);
 		});
 
-		it('should include projectId in suspend payload when provided', async () => {
-			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+		it("should include the thread's project in the suspend payload", async () => {
+			const context = createMockContext({ projectId: 'proj-1' });
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createCredentialsTool(context);
 			await executeTool(
 				tool,
 				{
 					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
-					projectId: 'proj-1',
 				},
 				suspendCtx(suspendFn),
 			);
@@ -672,18 +789,17 @@ describe('credentials tool', () => {
 			expect(suspendFn.mock.calls[0][0]).toEqual(expect.objectContaining({ projectId: 'proj-1' }));
 		});
 
-		it('should scope credential lookup to projectId when provided', async () => {
-			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+		it("should scope the credential lookup to the thread's project", async () => {
+			const context = createMockContext({ projectId: 'proj-1' });
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const tool = createCredentialsTool(context);
 			await tool.handler!(
 				{
 					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
-					projectId: 'proj-1',
 				},
-				suspendCtx(jest.fn()),
+				suspendCtx(vi.fn()),
 			);
 
 			expect(context.credentialService.list).toHaveBeenCalledWith({
@@ -694,7 +810,7 @@ describe('credentials tool', () => {
 
 		it('should omit projectId from credential lookup when not provided', async () => {
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 
 			const tool = createCredentialsTool(context);
 			await tool.handler!(
@@ -702,7 +818,7 @@ describe('credentials tool', () => {
 					action: 'setup' as const,
 					credentials: [{ credentialType: 'slackApi' }],
 				},
-				suspendCtx(jest.fn()),
+				suspendCtx(vi.fn()),
 			);
 
 			expect(context.credentialService.list).toHaveBeenCalledWith({ type: 'slackApi' });
@@ -710,9 +826,9 @@ describe('credentials tool', () => {
 
 		it('should include credentialFlow in suspend payload for finalize stage', async () => {
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createCredentialsTool(context);
 			await executeTool(
 				tool,
@@ -749,6 +865,27 @@ describe('credentials tool', () => {
 			expect(result).toEqual({
 				success: true,
 				credentials: { slackApi: 'cred-123' },
+				message: expect.stringContaining('Credential setup is complete'),
+			});
+		});
+
+		it('should not claim credentials are ready when approved with no selections', async () => {
+			const context = createMockContext();
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				resumeCtx({ approved: true, credentials: {} }),
+			);
+
+			expect(result).toEqual({
+				success: true,
+				credentials: {},
+				message: expect.stringContaining('without any credential selected'),
 			});
 		});
 
@@ -774,10 +911,10 @@ describe('credentials tool', () => {
 
 		it('should return needsBrowserSetup when autoSetup is present', async () => {
 			const context = createMockContext();
-			(context.credentialService.getDocumentationUrl as jest.Mock).mockResolvedValue(
+			(context.credentialService.getDocumentationUrl as Mock).mockResolvedValue(
 				'https://docs.example.com/slack',
 			);
-			(context.credentialService.getCredentialFields as jest.Mock).mockResolvedValue([
+			(context.credentialService.getCredentialFields as Mock).mockResolvedValue([
 				{ name: 'apiKey', displayName: 'API Key', type: 'string', required: true },
 			]);
 
@@ -828,7 +965,7 @@ describe('credentials tool', () => {
 
 		it('should return missing_credentials error when credentials is undefined', async () => {
 			const context = createMockContext();
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createCredentialsTool(context);
 			const result = await tool.handler!(
@@ -846,7 +983,7 @@ describe('credentials tool', () => {
 
 		it('should return missing_credentials error when credentials is an empty array', async () => {
 			const context = createMockContext();
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 
 			const tool = createCredentialsTool(context);
 			const result = await tool.handler!(
@@ -863,9 +1000,9 @@ describe('credentials tool', () => {
 
 		it('should default reason when not provided in credential requests', async () => {
 			const context = createMockContext();
-			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
 
-			const suspendFn = jest.fn();
+			const suspendFn = vi.fn();
 			const tool = createCredentialsTool(context);
 			await executeTool(
 				tool,
@@ -894,7 +1031,7 @@ describe('credentials tool', () => {
 	describe('test action', () => {
 		it('should call credentialService.test and return result', async () => {
 			const context = createMockContext();
-			(context.credentialService.test as jest.Mock).mockResolvedValue({
+			(context.credentialService.test as Mock).mockResolvedValue({
 				success: true,
 				message: 'Connection successful',
 			});
@@ -912,9 +1049,7 @@ describe('credentials tool', () => {
 
 		it('should handle errors from credentialService.test', async () => {
 			const context = createMockContext();
-			(context.credentialService.test as jest.Mock).mockRejectedValue(
-				new Error('Connection refused'),
-			);
+			(context.credentialService.test as Mock).mockRejectedValue(new Error('Connection refused'));
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(
@@ -931,7 +1066,7 @@ describe('credentials tool', () => {
 
 		it('should handle non-Error throws from credentialService.test', async () => {
 			const context = createMockContext();
-			(context.credentialService.test as jest.Mock).mockRejectedValue('string error');
+			(context.credentialService.test as Mock).mockRejectedValue('string error');
 
 			const tool = createCredentialsTool(context);
 			const result = await executeTool(

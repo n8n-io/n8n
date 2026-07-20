@@ -23,7 +23,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -46,6 +46,19 @@ import { isEngineRequest } from '../../requests-response';
 function ensureArray<T>(value: T | T[] | undefined): T[] {
 	if (value === undefined) return [];
 	return Array.isArray(value) ? value : [value];
+}
+
+// Tools are matched structurally, not by class identity
+function isTool(value: unknown): value is StructuredTool | Tool {
+	if (value instanceof StructuredTool || value instanceof Tool) return true;
+	if (value instanceof StructuredToolkit) return false;
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { name?: unknown }).name === 'string' &&
+		typeof (value as { description?: unknown }).description === 'string' &&
+		typeof (value as { invoke?: unknown }).invoke === 'function'
+	);
 }
 
 export function createHitlToolkit(
@@ -364,7 +377,7 @@ function validateInputConfiguration(
 // Extends metadata for tools and toolkits to include the source node name that is used for HITL routing
 export function extendResponseMetadata(response: unknown, connectedNode: INode) {
 	// Ensure sourceNodeName is set for proper routing
-	if (response instanceof StructuredTool || response instanceof Tool) {
+	if (isTool(response)) {
 		response.metadata ??= {};
 		response.metadata.sourceNodeName = connectedNode.name;
 	}
@@ -483,10 +496,16 @@ export async function getInputConnectionData(
 						connectedNodeType,
 						runExecutionData,
 					),
+					// Pass a context so n8n expressions in the user-provided
+					// `toolDescription` are evaluated against the upstream input
+					// data (matches the behaviour of nodes that supply their own
+					// tool, such as `toolWorkflow`).
+					context: contextFactory(parentRunIndex, parentInputData),
+					itemIndex,
 				});
 				nodes.push(supplyData);
 			} else {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
+				throw new UnexpectedError('Node does not have a `supplyData` method defined', {
 					extra: { nodeName: connectedNode.name },
 				});
 			}

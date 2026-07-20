@@ -1,9 +1,10 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import nock from 'nock';
 
 import { AwsTextract } from '../AwsTextract.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { MockInstance } from 'vitest';
 
 const mockTextractResponse = {
 	ExpenseDocuments: [
@@ -28,14 +29,14 @@ const mockSimplifiedResponse = {
 
 describe('AWS Textract Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	let awsApiRequestSpy: jest.SpyInstance;
-	let simplifySpy: jest.SpyInstance;
+	let awsApiRequestSpy: MockInstance;
+	let simplifySpy: MockInstance;
 	const node = new AwsTextract();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		awsApiRequestSpy = jest.spyOn(GenericFunctions, 'awsApiRequestREST');
-		simplifySpy = jest.spyOn(GenericFunctions, 'simplify');
+		vi.resetAllMocks();
+		awsApiRequestSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		simplifySpy = vi.spyOn(GenericFunctions, 'simplify');
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			accessKeyId: 'test-key',
 			secretAccessKey: 'test-secret',

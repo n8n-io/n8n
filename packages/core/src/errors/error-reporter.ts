@@ -1,14 +1,27 @@
 import { inTest, Logger } from '@n8n/backend-common';
+import { isAxiosError } from '@n8n/backend-network';
 import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import { AxiosError } from 'axios';
-import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExecutionCancelledError,
+	BaseError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
-import { Tracing, SentryTracing } from '@/observability';
+import {
+	Tracing,
+	SentryTracing,
+	buildBeforeSendTransaction,
+	buildTracesSampler,
+	shouldIgnoreIncomingRequest,
+	shouldIgnoreOutgoingRequest,
+	DEFAULT_SLOW_SPAN_THRESHOLD_MS,
+} from '@/observability';
 
 type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
 
@@ -31,6 +44,15 @@ type ErrorReporterInitOptions = {
 
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
 	tracesSampleRate: number;
+
+	/** Threshold in ms below which non-errored `db`/`http.client` spans are dropped. */
+	slowSpanThresholdMs?: number;
+
+	/** Production webhook endpoint path segment (e.g. `webhook`), used to sample webhook traces. */
+	webhookEndpoint?: string;
+
+	/** Sample rate (0.0 to 1.0) for successful production webhook transaction traces. */
+	webhookTracesSampleRate?: number;
 
 	/** Sample rate for Sentry profiling (0.0 to 1.0). 0 means disabled */
 	profilesSampleRate: number;
@@ -56,8 +78,19 @@ const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
 
+const SENTRY_MAX_VALUE_LENGTH = 500;
+
 const PNPM_NESTED_FRAME_RE = /.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\//;
 const N8N_CLI_INSTALL_PREFIX = '/usr/local/lib/node_modules/n8n/';
+
+type ErrorReportingOptions = ReportingOptions & {
+	/**
+	 * Capture in a forked Sentry isolation scope, dropping any ambient HTTP
+	 * request context. Use for errors reported from background work, which would
+	 * otherwise inherit whatever unrelated request is active at capture time.
+	 */
+	shouldIsolate?: boolean;
+};
 
 /**
  * Normalises a Sentry stack-frame filename so that pnpm-nested dependency
@@ -78,7 +111,7 @@ export class ErrorReporter {
 	/** Hashes of error stack traces, to deduplicate error reports. */
 	private seenErrors = new Set<string>();
 
-	private report: (error: Error | string, options?: ReportingOptions) => void;
+	private report: (error: Error | string, options?: ErrorReportingOptions) => void;
 
 	private beforeSendFilter?: (event: ErrorEvent, hint: EventHint) => boolean;
 
@@ -137,6 +170,9 @@ export class ErrorReporter {
 		eventLoopBlockMaxEventsPerHour,
 		profilesSampleRate,
 		tracesSampleRate,
+		slowSpanThresholdMs = DEFAULT_SLOW_SPAN_THRESHOLD_MS,
+		webhookEndpoint,
+		webhookTracesSampleRate,
 		eligibleIntegrations = {},
 		healthEndpoint = '/healthz',
 	}: ErrorReporterInitOptions) {
@@ -179,6 +215,8 @@ export class ErrorReporter {
 			setUser,
 			requestDataIntegration,
 			rewriteFramesIntegration,
+			httpIntegration,
+			withIsolationScope,
 		} = sentry;
 
 		// Most of the integrations are listed here:
@@ -226,13 +264,34 @@ export class ErrorReporter {
 			release,
 			environment,
 			serverName,
-			...(isTracingEnabled ? { tracesSampleRate } : {}),
+			maxValueLength: SENTRY_MAX_VALUE_LENGTH,
+			...(isTracingEnabled
+				? {
+						tracesSampler: buildTracesSampler(tracesSampleRate),
+						beforeSendTransaction: buildBeforeSendTransaction(
+							slowSpanThresholdMs,
+							webhookEndpoint && webhookTracesSampleRate !== undefined
+								? { endpoint: webhookEndpoint, sampleRate: webhookTracesSampleRate }
+								: undefined,
+						),
+					}
+				: {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
-				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
+				...integrations.filter(({ name }) => enabledIntegrations.has(name) && name !== 'Http'),
+				// Replace the default Http integration with one that skips noise paths
+				// (static source maps, telemetry/posthog proxies, outbound telemetry).
+				...(enabledIntegrations.has('Http')
+					? [
+							httpIntegration({
+								ignoreIncomingRequests: shouldIgnoreIncomingRequest,
+								ignoreOutgoingRequests: shouldIgnoreOutgoingRequest,
+							}),
+						]
+					: []),
 				rewriteFramesIntegration({
 					root: '/',
 					iteratee: (frame) => {
@@ -262,7 +321,22 @@ export class ErrorReporter {
 			setUser({ id: serverName });
 		}
 
-		this.report = (error, options) => captureException(error, options);
+		this.report = (error, options) => {
+			if (options?.shouldIsolate) {
+				// The fork is a clone of the ambient isolation scope, so instance-level
+				// tags and user identity survive while request metadata is dropped.
+				withIsolationScope((isolationScope) => {
+					isolationScope.clearBreadcrumbs();
+					isolationScope.setSDKProcessingMetadata({
+						normalizedRequest: undefined,
+						ipAddress: undefined,
+					});
+					captureException(error, options);
+				});
+				return;
+			}
+			captureException(error, options);
+		};
 		this.beforeSendFilter = beforeSendFilter;
 	}
 
@@ -284,7 +358,7 @@ export class ErrorReporter {
 			return null;
 		}
 
-		if (originalException instanceof AxiosError) return null;
+		if (isAxiosError(originalException)) return null;
 
 		if (originalException instanceof BaseError) {
 			if (!originalException.shouldReport) return null;
@@ -319,7 +393,7 @@ export class ErrorReporter {
 		return event;
 	}
 
-	error(e: unknown, options?: ReportingOptions) {
+	error(e: unknown, options?: ErrorReportingOptions) {
 		if (e instanceof ExecutionCancelledError) return;
 		const toReport = this.wrap(e);
 		if (toReport) this.report(toReport, options);
@@ -335,7 +409,7 @@ export class ErrorReporter {
 
 	private wrap(e: unknown) {
 		if (e instanceof Error) return e;
-		if (typeof e === 'string') return new ApplicationError(e);
+		if (typeof e === 'string') return new UnexpectedError(e);
 		return;
 	}
 

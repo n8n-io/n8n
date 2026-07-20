@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { provide, watch, onMounted, onBeforeUnmount } from 'vue';
+import { watch, onMounted, onBeforeUnmount, provide } from 'vue';
 import BaseLayout from './BaseLayout.vue';
 import { useLayoutProps } from '@/app/composables/useLayoutProps';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { InstanceAiEditorCapabilityKey } from '@/app/composables/useInstanceAiEditorCapability';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -10,11 +10,11 @@ import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/
 import CanvasChatOverlay from '@/features/ai/chatHub/components/CanvasChatOverlay.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
+import { useInstanceAiHandoffCapability } from '@/features/ai/instanceAi/composables/useInstanceAiHandoffCapability';
 import AppHeader from '@/app/components/app/AppHeader.vue';
 import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { WorkflowStateKey } from '@/app/constants/injectionKeys';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 const { layoutProps } = useLayoutProps();
@@ -24,24 +24,26 @@ const pushConnectionStore = usePushConnectionStore();
 const settingsStore = useSettingsStore();
 const isCanvasOnly = settingsStore.isCanvasOnly;
 
-const workflowState = useWorkflowState();
-provide(WorkflowStateKey, workflowState);
-
 const {
 	isLoading,
 	workflowId,
 	currentWorkflowDocumentStore,
+	isOnboardingRoute,
 	isDebugRoute,
 	initializeData,
 	initializeWorkflow,
 	handleDebugModeRoute,
 	cleanup,
-} = useWorkflowInitialization(workflowState);
+} = useWorkflowInitialization();
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
-	workflowState,
 	currentWorkflowDocumentStore,
 });
+
+// As the standalone editor host, this layout defines what the editor's
+// Instance AI entry points do here: hand the current workflow off to a new
+// thread. Editors embedded elsewhere get their host's capability — or none.
+provide(InstanceAiEditorCapabilityKey, useInstanceAiHandoffCapability());
 
 onMounted(async () => {
 	pushConnectionStore.pushConnect();
@@ -88,7 +90,12 @@ onBeforeUnmount(() => {
 		<template v-if="!isCanvasOnly" #sidebar>
 			<AppSidebar />
 		</template>
-		<LoadingView v-if="isLoading" />
+		<!-- Gate on a non-null document store, not just isLoading: during a load/switch the
+		provided store is briefly null (disposed before the new one is created), and NodeView's
+		strict injectNDVStore() reads throw if it mounts in that window. Mirrors WorkflowCanvasHostBody's isReady.
+		Exclude the onboarding route: it renders a redirect-only view that never provides a
+		document store and must mount so its onMounted redirect can fire. -->
+		<LoadingView v-if="isLoading || (!currentWorkflowDocumentStore && !isOnboardingRoute)" />
 		<RouterView v-else />
 		<template v-if="layoutProps.logs" #footer>
 			<LogsPanel />

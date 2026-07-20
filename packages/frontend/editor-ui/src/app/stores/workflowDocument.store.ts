@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, type ShallowRef } from 'vue';
+import { computed, inject, provide, shallowRef, watchEffect, type ShallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -10,10 +10,8 @@ import { useWorkflowDocumentDescription } from './workflowDocument/useWorkflowDo
 import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
 import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
-import {
-	useWorkflowDocumentSettings,
-	DEFAULT_SETTINGS,
-} from './workflowDocument/useWorkflowDocumentSettings';
+import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
+import { DEFAULT_SETTINGS } from '@/app/constants/workflows';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
 import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
 import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
@@ -33,15 +31,15 @@ import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflo
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useWorkflowDocumentNodeGroups } from './workflowDocument/useWorkflowDocumentNodeGroups';
+import { useWorkflowDocumentPublicationStatus } from './workflowDocument/useWorkflowDocumentPublicationStatus';
 import { CHANGE_ACTION } from './workflowDocument/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
+import { assignNodeId, serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 import type { INode, ProjectSharingData } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, nodeIssuesToString } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import type { Scope } from '@n8n/permissions';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
@@ -122,6 +120,43 @@ export function createWorkflowDocumentId(
 }
 
 /**
+ * Synthetic version-token namespace for an execution preview's workflow
+ * document. The preview hydrates the workflow snapshot embedded in an
+ * execution — the workflow *as it ran* — which can differ node-for-node
+ * between executions as the workflow evolves. Keying by this namespace both
+ * guarantees the preview can never collide with the editor's
+ * `{workflowId}@latest` document, and, combined with the snapshot's own
+ * version below, gives each executed version its own document store.
+ */
+export const EXECUTION_PREVIEW_VERSION = 'execution-preview';
+
+/**
+ * Builds the version token for an execution-preview document. Includes the
+ * executed workflow's version so distinct versions get distinct stores —
+ * switching between executions of different versions then never re-hydrates
+ * (and re-shapes) a shared store. Falls back to the bare namespace for legacy
+ * executions whose snapshot carries no versionId.
+ */
+export function createExecutionPreviewDocumentVersion(workflowVersionId?: string): string {
+	return workflowVersionId
+		? `${EXECUTION_PREVIEW_VERSION}/${workflowVersionId}`
+		: EXECUTION_PREVIEW_VERSION;
+}
+
+/**
+ * The only sanctioned constructor for execution-preview document ids.
+ */
+export function createExecutionPreviewDocumentId(
+	workflowId: string,
+	workflowVersionId?: string,
+): WorkflowDocumentId {
+	return createWorkflowDocumentId(
+		workflowId,
+		createExecutionPreviewDocumentVersion(workflowVersionId),
+	);
+}
+
+/**
  * Gets the store ID for a workflow document store.
  */
 export function getWorkflowDocumentStoreId(id: string) {
@@ -143,7 +178,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const [workflowId, workflowVersion] = id.split('@');
 
 		const nodeTypesStore = useNodeTypesStore();
-		const nodeHelpers = useNodeHelpers();
 
 		const { cloneWorkflowObject, createWorkflowObject, ...workflowDocumentWorkflowObject } =
 			useWorkflowDocumentWorkflowObject({ workflowId });
@@ -152,6 +186,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
 		});
 		const workflowDocumentActive = useWorkflowDocumentActive();
+		const workflowDocumentPublicationStatus = useWorkflowDocumentPublicationStatus();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentSharedWithProjects = useWorkflowDocumentSharedWithProjects();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
@@ -159,7 +194,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
 		const workflowDocumentIsArchived = useWorkflowDocumentIsArchived();
-		const workflowDocumentPinData = useWorkflowDocumentPinData();
 		const workflowDocumentScopes = useWorkflowDocumentScopes();
 		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
 		const workflowDocumentSettings = useWorkflowDocumentSettings({
@@ -174,10 +208,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 			nodeMetadata: workflowDocumentNodeMetadata,
-			assignNodeId: (node) => nodeHelpers.assignNodeId(node),
+			assignNodeId,
 			syncWorkflowObject: (nodes) => workflowDocumentWorkflowObject.syncWorkflowObjectNodes(nodes),
-			unpinNodeData: (name) => workflowDocumentPinData.unpinNodeData(name),
 			workflowObject: workflowDocumentWorkflowObject.workflowObject,
+		});
+		// pinData subscribes to nodes' `onNodesChange` and clears orphan pin data
+		// on DELETE itself — so nodes doesn't need a reverse dep into pinData.
+		const workflowDocumentPinData = useWorkflowDocumentPinData({
+			nodesById: workflowDocumentNodes.nodesById,
+			onNodesChange: workflowDocumentNodes.onNodesChange,
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
 			useWorkflowDocumentConnections({
@@ -195,6 +234,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
 			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+			nodesById: workflowDocumentNodes.nodesById,
+			onNodesChange: workflowDocumentNodes.onNodesChange,
+			nodeIssuesToString,
 		});
 		const { onStateDirty: onNodeGroupsStateDirty, ...workflowDocumentNodeGroups } =
 			useWorkflowDocumentNodeGroups();
@@ -312,6 +354,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentName.setName('');
 			workflowDocumentDescription.setDescription('');
 			workflowDocumentActive.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentPublicationStatus.setPublicationStatus({ status: 'idle' });
 			workflowDocumentIsArchived.setIsArchived(false);
 			workflowDocumentHomeProject.setHomeProject(null);
 			workflowDocumentSharedWithProjects.setSharedWithProjects([]);
@@ -399,6 +442,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowVersion,
 			...workflowDocumentName,
 			...workflowDocumentActive,
+			...workflowDocumentPublicationStatus,
 			...workflowDocumentHomeProject,
 			...workflowDocumentSharedWithProjects,
 			...workflowDocumentChecksum,
@@ -470,4 +514,31 @@ export function injectWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore>
 	const injected = inject(WorkflowDocumentStoreKey, null);
 
 	return computed(() => injected?.value ?? fallback.value);
+}
+
+/**
+ * Re-provides the resolved workflow document store to the current component's
+ * subtree.
+ *
+ * Use this in hosts that render workflow-editor components (e.g. NDV parameter
+ * inputs, which call `injectNDVStore()`/`injectWorkflowDocumentStore()`)
+ * outside the normal workflow editor tree — such as the credential edit modal
+ * or the log-streaming settings modal. Those components are descendants of
+ * `App.vue` but may mount while no workflow document is loaded; re-providing
+ * here guarantees they resolve a valid scoped store instead of throwing.
+ *
+ * Returns the resolved (non-null) document store so the host can derive its own
+ * scoped stores from `documentId` (the host cannot inject what it provides).
+ */
+export function provideWorkflowDocumentStore(): ShallowRef<WorkflowDocumentStore> {
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const provided = shallowRef<WorkflowDocumentStore | null>(workflowDocumentStore.value);
+
+	watchEffect(() => {
+		provided.value = workflowDocumentStore.value;
+	});
+
+	provide(WorkflowDocumentStoreKey, provided);
+
+	return workflowDocumentStore;
 }

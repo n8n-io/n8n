@@ -6,11 +6,11 @@ import { isSecretKey, redactSecretKeys, truncateForLlm } from '../request-saniti
 // ---------------------------------------------------------------------------
 // Mock logger to verify warning behavior
 // ---------------------------------------------------------------------------
-const mockWarn = jest.fn();
+const mockWarn = vi.fn();
 
 beforeEach(() => {
 	mockWarn.mockClear();
-	jest.spyOn(Container, 'get').mockImplementation((token) => {
+	vi.spyOn(Container, 'get').mockImplementation((token) => {
 		if (token === Logger) return { warn: mockWarn } as unknown as Logger;
 		throw new Error(`Unexpected DI token: ${String(token)}`);
 	});

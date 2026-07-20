@@ -1,12 +1,15 @@
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -27,6 +30,9 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
+	if (error instanceof FolderNotFoundError) {
+		throw new NotFoundError(error.message);
+	}
 	if (error instanceof ResponseError) {
 		throw error;
 	}
@@ -183,7 +189,7 @@ const workflowHandlers: WorkflowHandlers = {
 				}
 			}
 
-			if (['global:owner', 'global:admin'].includes(req.user.role.slug)) {
+			if (hasGlobalScope(req.user, ['workflow:read'])) {
 				if (tags) {
 					const workflowIds = await Container.get(TagRepository).getWorkflowIdsViaTags(
 						parseTagNames(tags),
@@ -248,6 +254,7 @@ const workflowHandlers: WorkflowHandlers = {
 				'isArchived',
 				'nodes',
 				'connections',
+				'nodeGroups',
 				'settings',
 				'staticData',
 				'meta',
@@ -298,15 +305,21 @@ const workflowHandlers: WorkflowHandlers = {
 		projectScope('workflow:update', 'workflow'),
 		async (req, res) => {
 			const { id } = req.params;
+			const { parentFolderId, ...rest } = req.body;
 			const updateData = new WorkflowEntity();
-			Object.assign(updateData, req.body);
+			Object.assign(updateData, rest);
+
+			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
+			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
 			try {
+				// Credential tamper protection is enforced centrally in WorkflowService.update
 				const updatedWorkflow = await Container.get(WorkflowService).update(
 					req.user,
 					updateData,
 					id,
 					{
+						parentFolderId: resolvedParentFolderId,
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
 						publishIfActive: true,

@@ -8,7 +8,7 @@ import { useI18n } from '@n8n/i18n';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 
 import { N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import type { ButtonProps } from '@n8n/design-system';
+import type { ButtonProps, SelectSize } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useToast } from '@/app/composables/useToast';
@@ -26,6 +26,9 @@ const props = defineProps<{
 	createButtonVariant?: ButtonProps['variant'];
 	projectId?: string;
 	suggestedCredentialName?: string;
+	teleported?: boolean;
+	size?: SelectSize;
+	buttonSize?: ButtonProps['size'];
 }>();
 
 const emit = defineEmits<{
@@ -117,6 +120,9 @@ const createNewCredential = () => {
 		false,
 		props.projectId,
 		props.suggestedCredentialName,
+		undefined,
+		undefined,
+		{ closeOnSave: true },
 	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
@@ -219,8 +225,10 @@ watch(
 				:credential-type="props.credentialType"
 				:credential-options="credentialOptions"
 				:selected-credential-id="props.selectedCredentialId"
+				:size="props.size"
 				data-test-id="credential-dropdown"
 				:permissions="credentialPermissions"
+				:teleported="props.teleported"
 				@credential-selected="onCredentialSelected"
 				@new-credential="createNewCredential"
 			/>
@@ -233,6 +241,7 @@ watch(
 			>
 				<N8nIconButton
 					variant="subtle"
+					:size="props.buttonSize ?? undefined"
 					icon="pen"
 					:class="{
 						[$style.edit]: true,

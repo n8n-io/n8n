@@ -146,6 +146,8 @@ describe('CredentialSharing.ee', () => {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			});
 	});
 
@@ -394,6 +396,26 @@ describe('CredentialSharing.ee', () => {
 
 			// Team project shows the team sharee message
 			expect(getByText(/shared by team project/i)).toBeInTheDocument();
+		});
+	});
+
+	describe('dynamic credentials', () => {
+		it('should allow sharing a private credential', () => {
+			const credential = createCredential();
+			const { queryByText, getByTestId } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			// Sharing is no longer blocked: the add-share input is available...
+			expect(getByTestId('project-sharing-select')).toBeInTheDocument();
+			// ...and no "not supported" notice is shown
+			expect(queryByText(/not supported/i)).not.toBeInTheDocument();
 		});
 	});
 });

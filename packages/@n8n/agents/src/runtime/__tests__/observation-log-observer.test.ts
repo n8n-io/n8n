@@ -1,27 +1,44 @@
 import type * as AiImport from 'ai';
 
 import type { AgentDbMessage } from '../../types/sdk/message';
-import { InMemoryMemory } from '../memory-store';
+import type { MemoryTaskUsageReport } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogObserverPrompt,
 	createObservationLogObserveFn,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
 	DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
-} from '../observation-log-defaults';
+} from '../memory/observation-log-defaults';
 import {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
-} from '../observation-log-observer';
+} from '../memory/observation-log-observer';
 
 type GenerateTextCall = Record<string, unknown>;
-type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+type GenerateTextResult = {
+	text: string;
+	usage?: {
+		totalTokens?: number;
+		inputTokens?: number;
+		outputTokens?: number;
+		inputTokenDetails?: {
+			noCacheTokens?: number;
+			cacheReadTokens?: number;
+			cacheWriteTokens?: number;
+		};
+	};
+	providerMetadata?: Record<string, unknown>;
+};
 
-const mockGenerateText = jest.fn<Promise<GenerateTextResult>, [GenerateTextCall]>();
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<typeof AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
 		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
@@ -49,7 +66,7 @@ describe('observation-log observer defaults', () => {
 	});
 
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(500);
+		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_THRESHOLD_TOKENS).toBe(8_000);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain('Output the new observations only');
 		expect(DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT).toContain(
@@ -84,9 +101,9 @@ describe('observation-log observer defaults', () => {
 			usage: { totalTokens: 17 },
 		});
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		const result = await createObservationLogObserveFn('openai/gpt-4o-mini')({
@@ -104,6 +121,100 @@ describe('observation-log observer defaults', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(17);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
+	it('threads input.telemetry into generateText as a memory-observer-suffixed call, omitting it when disabled or absent', async () => {
+		mockGenerateText.mockResolvedValue({ text: '' });
+		const observe = createObservationLogObserveFn('openai/gpt-4o-mini');
+		const baseInput = {
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '',
+			transcriptTokenCount: 0,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+		};
+		const telemetry: BuiltTelemetry = {
+			enabled: true,
+			functionId: 'my-agent',
+			metadata: { thread_id: 't1' },
+			recordInputs: true,
+			recordOutputs: false,
+			integrations: [],
+		};
+
+		await observe({ ...baseInput, telemetry });
+		await observe(baseInput);
+		await observe({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
+
+		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
+			experimental_telemetry: {
+				isEnabled: true,
+				functionId: 'my-agent.memory-observer',
+				metadata: { thread_id: 't1' },
+				recordInputs: true,
+				recordOutputs: false,
+			},
+		});
+		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+	});
+
+	it('reports normalized, cache-aware usage through an async onUsage before the observer promise settles', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '* CRITICAL (14:30) Durable fact.',
+			usage: {
+				inputTokens: 100,
+				outputTokens: 10,
+				totalTokens: 110,
+				inputTokenDetails: { noCacheTokens: 20, cacheReadTokens: 80 },
+			},
+		});
+		let resolveUsage!: () => void;
+		const usageGate = new Promise<void>((resolve) => {
+			resolveUsage = resolve;
+		});
+		const onUsage = vi.fn(async (report: MemoryTaskUsageReport) => {
+			expect(report).toMatchObject({
+				task: 'observer',
+				model: 'anthropic/claude-haiku-4-5-20251001',
+				usage: expect.objectContaining({
+					promptTokens: 100,
+					completionTokens: 10,
+					totalTokens: 110,
+					inputTokenDetails: { noCache: 20, cacheRead: 80 },
+				}),
+				reportId: expect.any(String),
+			});
+			await usageGate;
+		});
+
+		const observePromise = createObservationLogObserveFn('anthropic/claude-haiku-4-5-20251001', {
+			onUsage,
+		})({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			deltaMessages: [],
+			transcript: '',
+			transcriptTokenCount: 0,
+			observationLogTail: [],
+			renderedObservationLogTail: null,
+		});
+		let observeSettled = false;
+		void observePromise.then(() => {
+			observeSettled = true;
+		});
+
+		await Promise.resolve();
+		await Promise.resolve();
+		expect(observeSettled).toBe(false);
+
+		resolveUsage();
+		await observePromise;
+
+		expect(observeSettled).toBe(true);
+		expect(onUsage).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -249,7 +360,7 @@ describe('runObservationLogObserver', () => {
 			messages: [message('m1', 'user', 'short turn', new Date(2026, 4, 12, 14, 30))],
 		});
 
-		const observe = jest.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
+		const observe = vi.fn().mockResolvedValue('* CRITICAL (14:30) User said something durable.');
 
 		const result = await runObservationLogObserver({
 			memory: store,
@@ -290,7 +401,7 @@ describe('runObservationLogObserver', () => {
 				),
 		});
 
-		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2 });
+		expect(result).toMatchObject({ status: 'ran', observationsWritten: 2, cursorAdvanced: true });
 		const observations = await store.getActiveObservationLog({
 			observationScopeId: 'thread-1',
 		});
@@ -309,5 +420,38 @@ describe('runObservationLogObserver', () => {
 		expect(await store.getCursor('thread-1')).toMatchObject({
 			lastObservedMessageId: 'm1',
 		});
+	});
+
+	it('does not advance the cursor when observe yields no parseable observations', async () => {
+		// A cursor advanced without persisted observations orphans the delta
+		// messages from future history loads, causing mid-thread amnesia.
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [message('m1', 'user', 'I need this remembered.', new Date(2026, 4, 12, 14, 30))],
+		});
+
+		const result = await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observerThresholdTokens: 1,
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 31),
+			// Empty / unparseable observe output (e.g. a failed or no-op generation).
+			observe: async () => await Promise.resolve('   \nnot a bullet line\n'),
+		});
+
+		expect(result).toMatchObject({
+			status: 'ran',
+			observationsWritten: 0,
+			cursorAdvanced: false,
+		});
+		// Cursor stays put so the delta is re-observed next time and remains in
+		// raw history in the meantime.
+		expect(await store.getCursor('thread-1')).toBeNull();
+		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
 	});
 });

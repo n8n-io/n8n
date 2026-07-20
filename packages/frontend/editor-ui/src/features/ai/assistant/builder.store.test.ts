@@ -19,18 +19,13 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { createTestNode } from '@/__tests__/mocks';
 import merge from 'lodash/merge';
-import { DEFAULT_POSTHOG_SETTINGS } from '@/app/stores/posthog.store.test';
 import { nextTick, reactive } from 'vue';
 import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
+import type { FrontendSettings } from '@n8n/api-types';
 import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -41,7 +36,17 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+
+const DEFAULT_POSTHOG_SETTINGS: FrontendSettings['posthog'] = {
+	enabled: true,
+	apiHost: 'host',
+	apiKey: 'key',
+	autocapture: false,
+	disableSessionRecording: true,
+	debug: false,
+	proxy: 'proxy',
+};
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -68,15 +73,6 @@ vi.mock('@/app/composables/useToast', () => ({
 		showMessage: vi.fn(),
 	}),
 }));
-
-// Mock to inject workflowState
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
 
 // Mock useWorkflowSaving
 const saveCurrentWorkflowMock = vi.fn().mockResolvedValue(true);
@@ -124,16 +120,11 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let getNodeTypeSpy: Mock;
 let getCredentialsByTypeSpy: Mock;
 
-const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+// `restoreMocks` restores spies before each test, so these are (re)established
+// in beforeEach rather than once at module scope.
+let apiSpy: MockInstance;
 
 const track = vi.fn();
-const spy = vi.spyOn(telemetryModule, 'useTelemetry');
-spy.mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 const currentRouteName = ENABLED_VIEWS[0];
 vi.mock('vue-router', () => ({
@@ -148,7 +139,19 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-let workflowState: WorkflowState;
+// The builder store derives the current workflow id from the route via
+// useRouteWorkflowId(). Back it by a holder wired to the workflows store in
+// beforeEach, so existing tests keep driving the id through setWorkflowId().
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
 
 describe('AI Builder store', () => {
 	beforeEach(() => {
@@ -170,9 +173,17 @@ describe('AI Builder store', () => {
 		posthogStore.init();
 		track.mockReset();
 
+		apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
+
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		credentialsStore = mockedStore(useCredentialsStore);
+
+		// Route the mocked useRouteWorkflowId() at this test's workflows store.
+		workflowIdHolder.current = () => workflowsStore.workflowId;
 
 		workflowsStore.setWorkflowId('test-workflow-id');
 		workflowDocumentStore = useWorkflowDocumentStore(
@@ -180,10 +191,9 @@ describe('AI Builder store', () => {
 		);
 		workflowDocumentStore.setNodes([]);
 		workflowDocumentStore.setConnections({});
-		workflowsStore.setWorkflowExecutionData(null);
-
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData(null);
 
 		getNodeTypeSpy = vi.fn();
 		vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(getNodeTypeSpy);
@@ -1297,10 +1307,11 @@ describe('AI Builder store', () => {
 	});
 
 	describe('fetchBuilderCredits', () => {
-		const mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
+		// `restoreMocks` restores this spy before each test, so re-create it here.
+		let mockGetBuilderCredits: MockInstance;
 
 		beforeEach(() => {
-			mockGetBuilderCredits.mockClear();
+			mockGetBuilderCredits = vi.spyOn(chatAPI, 'getBuilderCredits');
 		});
 
 		it('should fetch and update credits when AI builder is enabled', async () => {
@@ -2246,16 +2257,7 @@ describe('AI Builder store', () => {
 		});
 
 		describe('default plan mode based on canvas nodes', () => {
-			function enablePlanModeExperiment() {
-				vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
-					experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
-						? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
-						: undefined,
-				);
-			}
-
-			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
-				enablePlanModeExperiment();
+			it('should switch to plan mode when nodes become empty', async () => {
 				const builderStore = useBuilderStore();
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -2272,7 +2274,6 @@ describe('AI Builder store', () => {
 			});
 
 			it('should switch to build mode when nodes are added', async () => {
-				enablePlanModeExperiment();
 				// Start with nodes so the watcher can observe changes
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -2293,18 +2294,7 @@ describe('AI Builder store', () => {
 				expect(builderStore.builderMode).toBe('build');
 			});
 
-			it('should stay in build mode when plan mode experiment is not enabled', async () => {
-				const builderStore = useBuilderStore();
-
-				// Change workflowId to trigger the watcher (nodes stay empty)
-				workflowsStore.setWorkflowId('different-workflow-id');
-				await nextTick();
-
-				expect(builderStore.builderMode).toBe('build');
-			});
-
 			it('should not change mode when chat has messages', async () => {
-				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -2326,7 +2316,6 @@ describe('AI Builder store', () => {
 			});
 
 			it('should default to plan mode when workflowId changes with empty canvas', async () => {
-				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
 
 				// Simulate navigating to a new empty workflow
@@ -2341,7 +2330,6 @@ describe('AI Builder store', () => {
 			});
 
 			it('should not switch to plan mode after restoreToVersion truncates messages', async () => {
-				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
@@ -3405,6 +3393,103 @@ describe('AI Builder store', () => {
 			});
 		});
 
+		it('should force-save the post-modification version so a stale checksum cannot loop autosave', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.setWorkflowId('test-workflow-123');
+			workflowsStore.isNewWorkflow = false;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+			saveCurrentWorkflowMock.mockClear();
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+
+			await vi.waitFor(() => {
+				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
+			});
+		});
+
+		it('should reconcile the stale checksum on the error path without appending a version card', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.setWorkflowId('test-workflow-123');
+			workflowsStore.isNewWorkflow = false;
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setVersionData({
+				versionId: 'version-1',
+				name: null,
+				description: null,
+			});
+			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+			saveCurrentWorkflowMock.mockClear();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
+				onMessage({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+				onError(new Error('stream failed'));
+			});
+
+			await builderStore.sendChatMessage({ text: 'Build a workflow' });
+
+			await vi.waitFor(() => {
+				expect(saveCurrentWorkflowMock).toHaveBeenCalledWith({}, false, true);
+			});
+
+			expect(builderStore.chatMessages.some((m) => m.type === 'custom')).toBe(false);
+		});
+
 		it('should not add revertVersion to user message after streaming when workflow was not modified', async () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.setWorkflowId('test-workflow-123');
@@ -3449,14 +3534,6 @@ describe('AI Builder store', () => {
 	});
 
 	describe('Plan mode telemetry', () => {
-		function enablePlanMode() {
-			vi.spyOn(posthogStore, 'getVariant').mockImplementation((experiment) =>
-				experiment === AI_BUILDER_PLAN_MODE_EXPERIMENT.name
-					? AI_BUILDER_PLAN_MODE_EXPERIMENT.variant
-					: undefined,
-			);
-		}
-
 		function addPlanMessageToChat(builderStore: ReturnType<typeof useBuilderStore>) {
 			builderStore.chatMessages.push({
 				role: 'assistant',
@@ -3471,7 +3548,6 @@ describe('AI Builder store', () => {
 		describe('user_switched_builder_mode', () => {
 			it('tracks journey event when switching to plan mode', () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 
 				track.mockClear();
 				builderStore.setBuilderMode('plan');
@@ -3487,7 +3563,6 @@ describe('AI Builder store', () => {
 
 			it('tracks journey event when switching to build mode', () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				track.mockClear();
@@ -3501,27 +3576,11 @@ describe('AI Builder store', () => {
 					}),
 				);
 			});
-
-			it('does not track when plan mode is unavailable', () => {
-				const builderStore = useBuilderStore();
-				// Do NOT enable plan mode
-
-				track.mockClear();
-				builderStore.setBuilderMode('plan');
-
-				expect(track).not.toHaveBeenCalledWith(
-					'Workflow builder journey',
-					expect.objectContaining({
-						event_type: 'user_switched_builder_mode',
-					}),
-				);
-			});
 		});
 
 		describe('user_clicked_implement_plan', () => {
 			it('tracks journey event when user approves plan', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				// Set up interrupted state with a plan message
@@ -3546,7 +3605,6 @@ describe('AI Builder store', () => {
 		describe('mode in User submitted builder message', () => {
 			it('includes plan mode', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				apiSpy.mockImplementationOnce(() => {});
@@ -3591,7 +3649,6 @@ describe('AI Builder store', () => {
 
 			it('includes plan mode on abort when in plan mode', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				apiSpy.mockImplementationOnce(() => {});
@@ -3608,7 +3665,6 @@ describe('AI Builder store', () => {
 
 			it('includes plan_approved when plan was approved', async () => {
 				const builderStore = useBuilderStore();
-				enablePlanMode();
 				builderStore.setBuilderMode('plan');
 
 				// Set up interrupted state with a plan message

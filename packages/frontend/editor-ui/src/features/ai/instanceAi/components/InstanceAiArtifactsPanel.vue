@@ -1,34 +1,64 @@
 <script lang="ts" setup>
-import { computed, inject, ref } from 'vue';
-import {
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
+import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { N8nHeading, N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useThread } from '../instanceAi.store';
-import type { TaskItem } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system';
+import { computed, inject, ref, type Ref } from 'vue';
+import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
+import {
+	agentPreviewContextIcon,
+	formatAgentPreviewContextLabel,
+	getDismissedContextKeys,
+	handoffContextKey,
+} from '../instanceAi.handoffContext';
 import ConnectionsCard from './ConnectionsCard.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-const props = withDefaults(defineProps<{ isPinned?: boolean; isPinningAvailable?: boolean }>(), {
-	isPinned: true,
-	isPinningAvailable: true,
-});
-
-const emit = defineEmits<{ togglePinned: [] }>();
+const projectsStore = useProjectsStore();
+const store = useInstanceAiStore();
 
 const i18n = useI18n();
 const thread = useThread();
+const project = computed(() => {
+	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
+	if (!match)
+		return {
+			name: i18n.baseText('instanceAi.artifactsPanel.unknownProject'),
+			icon: { type: 'icon' as const, value: 'circle-help' as const },
+		};
+	const isPersonal = match.type === 'personal';
+	const icon = isIconOrEmoji(match.icon)
+		? match.icon
+		: { type: 'icon' as const, value: 'layers' as const };
+	return {
+		name: isPersonal ? i18n.baseText('instanceAi.artifactsPanel.personalSpace') : match.name,
+		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
+	};
+});
 const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
 	'openDataTablePreview',
 	undefined,
 );
+const openAgentPreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openAgentPreview',
+	undefined,
+);
+const pendingComposerContext = inject<Ref<InstanceAiHandoffContext | null> | undefined>(
+	'pendingComposerContext',
+	undefined,
+);
+
+interface ContextEntry {
+	key: string;
+	icon: string;
+	name: string;
+	subtitle: string;
+}
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 	if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -41,6 +71,10 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		if (!artifact.projectId || !openDataTablePreview) return;
 		e.preventDefault();
 		openDataTablePreview(artifact.id, artifact.projectId);
+	} else if (artifact.type === 'agent' && artifact.id) {
+		if (!artifact.projectId || !openAgentPreview) return;
+		e.preventDefault();
+		openAgentPreview(artifact.id, artifact.projectId);
 	}
 }
 
@@ -64,7 +98,7 @@ const statusIconMap: Record<
 const artifacts = computed((): ResourceEntry[] => {
 	const result: ResourceEntry[] = [];
 	for (const entry of thread.producedArtifacts.values()) {
-		if (entry.type === 'workflow' || entry.type === 'data-table') {
+		if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
 			result.push(entry);
 		}
 	}
@@ -74,6 +108,7 @@ const artifacts = computed((): ResourceEntry[] => {
 const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
+	agent: 'robot',
 };
 
 function artifactHref(artifact: ResourceEntry) {
@@ -83,6 +118,11 @@ function artifactHref(artifact: ResourceEntry) {
 			? `/projects/${artifact.projectId}/datatables/${artifact.id}`
 			: '/data-tables';
 	}
+	if (artifact.type === 'agent') {
+		return artifact.projectId
+			? `/projects/${artifact.projectId}/agents/${artifact.id}`
+			: '/home/agents';
+	}
 	return '#';
 }
 
@@ -90,40 +130,132 @@ function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
 
-const pinButtonLabel = computed(() =>
-	i18n.baseText(
-		props.isPinned ? 'instanceAi.artifactsPanel.unpinPanel' : 'instanceAi.artifactsPanel.pinPanel',
-	),
-);
+function contextEntryFor(context: InstanceAiHandoffContext): ContextEntry {
+	const key = handoffContextKey(context);
+
+	if (context.source === 'agent-preview') {
+		return {
+			key,
+			icon: agentPreviewContextIcon(context.agentIcon),
+			name: formatAgentPreviewContextLabel(
+				context,
+				(textKey, options) => i18n.baseText(textKey, options),
+				thread.producedArtifacts.get(context.agentId)?.name,
+			),
+			subtitle: i18n.baseText('instanceAi.artifactsPanel.context.addedToContext'),
+		};
+	}
+
+	return {
+		key,
+		icon: 'key-round',
+		name: context.credential.displayName,
+		subtitle: i18n.baseText('instanceAi.artifactsPanel.context.credentialModal'),
+	};
+}
+
+const contextEntries = computed<ContextEntry[]>(() => {
+	const entries: ContextEntry[] = [];
+	const seen = new Set<string>();
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+
+	// Pending handoff (preview "Send to Assistant") lives on the composer until
+	// the first send — include it so the sidebar matches the input chip.
+	const pending = pendingComposerContext?.value;
+	if (pending) {
+		const key = handoffContextKey(pending);
+		seen.add(key);
+		entries.push(contextEntryFor(pending));
+	}
+
+	for (const message of [...thread.messages].reverse()) {
+		if (message.role !== 'user' || !message.context) continue;
+
+		const key = handoffContextKey(message.context);
+		if (seen.has(key) || dismissedKeys.has(key)) continue;
+		seen.add(key);
+		entries.push(contextEntryFor(message.context));
+	}
+
+	return entries;
+});
+
+async function dismissContext(key: string) {
+	const pending = pendingComposerContext?.value;
+	if (pendingComposerContext && pending && handoffContextKey(pending) === key) {
+		pendingComposerContext.value = null;
+	}
+	const dismissedKeys = new Set(getDismissedContextKeys(store.getThreadMetadata(thread.id)));
+	dismissedKeys.add(key);
+	await store.updateThreadMetadata(thread.id, {
+		dismissedContextKeys: [...dismissedKeys],
+	});
+}
 </script>
 
 <template>
 	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
+			<!-- Project section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.project') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.artifactList">
+					<div :class="[$style.artifactRow]">
+						<span :class="$style.artifactIconWrap">
+							<ProjectIcon :icon="project.icon" size="small" border-less />
+						</span>
+						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Context section -->
+			<div v-if="contextEntries.length > 0" :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.context.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.contextList">
+					<div
+						v-for="entry in contextEntries"
+						:key="entry.key"
+						:class="$style.contextRow"
+						data-test-id="instance-ai-context-row"
+					>
+						<span :class="$style.artifactIconWrap">
+							<N8nIcon :icon="entry.icon" size="large" :class="$style.artifactIcon" />
+						</span>
+						<span :class="$style.contextText">
+							<span :class="$style.contextName">{{ entry.name }}</span>
+							<span :class="$style.contextSubtitle">{{ entry.subtitle }}</span>
+						</span>
+						<N8nIconButton
+							icon="x"
+							variant="ghost"
+							size="xsmall"
+							:class="$style.contextDismiss"
+							:aria-label="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							:title="i18n.baseText('instanceAi.artifactsPanel.context.dismiss')"
+							data-test-id="instance-ai-context-dismiss"
+							@click="dismissContext(entry.key)"
+						/>
+					</div>
+				</div>
+			</div>
+
 			<!-- Artifacts section -->
 			<div :class="$style.section">
 				<div :class="$style.sectionHeader">
 					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
 					</N8nHeading>
-					<N8nTooltip
-						v-if="props.isPinningAvailable"
-						:content="pinButtonLabel"
-						placement="left"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<N8nIconButton
-							icon="pin"
-							variant="ghost"
-							size="small"
-							icon-size="medium"
-							:aria-label="pinButtonLabel"
-							:aria-pressed="props.isPinned"
-							:class="[$style.pinButton, { [$style.pinButtonPinned]: props.isPinned }]"
-							data-test-id="instance-ai-artifacts-sidebar-pin"
-							@click="emit('togglePinned')"
-						/>
-					</N8nTooltip>
 				</div>
 
 				<div v-if="artifacts.length > 0" :class="$style.artifactList">
@@ -201,6 +333,7 @@ const pinButtonLabel = computed(() =>
 	flex-direction: column;
 	padding: 0 var(--spacing--sm) var(--spacing--sm);
 	overflow-y: auto;
+	max-height: 100%;
 }
 
 .group {
@@ -216,6 +349,10 @@ const pinButtonLabel = computed(() =>
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--2xs);
+
+	&:first-child {
+		padding-top: calc(var(--spacing--2xs) + var(--spacing--3xs));
+	}
 
 	& + & {
 		padding-top: var(--spacing--sm);
@@ -244,28 +381,52 @@ const pinButtonLabel = computed(() =>
 	color: var(--text-color--subtle);
 }
 
-.pinButton {
-	color: var(--color--text--tint-1);
-
-	&:hover,
-	&:focus-visible {
-		color: var(--color--text--shade-1);
-	}
-}
-
-.pinButtonPinned {
-	color: var(--color--text--shade-1);
-
-	:deep(svg),
-	:deep(path) {
-		fill: currentColor;
-	}
-}
-
 /* Artifact list */
 .artifactList {
 	display: flex;
 	flex-direction: column;
+}
+
+.contextList {
+	display: flex;
+	flex-direction: column;
+}
+
+.contextRow {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
+}
+
+.contextText {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.contextName {
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
+	color: var(--color--text--shade-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextSubtitle {
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	color: var(--color--text--tint-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.contextDismiss {
+	flex-shrink: 0;
+	margin-top: calc(var(--spacing--5xs) * -1);
 }
 
 .artifactRow {
@@ -273,21 +434,23 @@ const pinButtonLabel = computed(() =>
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs);
-	cursor: pointer;
 	border-radius: var(--radius);
 	color: var(--color--text);
 	text-decoration: none;
 	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
 
-	&:hover,
-	&:focus-visible {
-		background: var(--background--hover);
-		outline: none;
-		text-decoration: none;
-	}
+	&:is(a) {
+		cursor: pointer;
+		&:hover,
+		&:focus-visible {
+			background: var(--background--hover);
+			outline: none;
+			text-decoration: none;
+		}
 
-	&:visited {
-		color: var(--color--text);
+		&:visited {
+			color: var(--color--text);
+		}
 	}
 }
 

@@ -7,6 +7,8 @@ import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
 import type { AgentOptions } from 'https';
+import type { JSONSchema7 } from 'json-schema';
+import type { LookupFunction } from 'net';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -25,7 +27,6 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
-import type { IDeferredPromise } from './deferred-promise';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -37,7 +38,8 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
-import type { Result } from './result';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -107,7 +109,7 @@ export type ExecutionError =
 	| NodeOperationError
 	| NodeApiError;
 
-export type ExecutionStorageLocation = 'db' | 'fs';
+export type ExecutionStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 // Get used to gives nodes access to credentials
 export interface IGetCredentials {
@@ -145,6 +147,12 @@ export interface IUser {
 	firstName: string;
 	lastName: string;
 }
+
+export type OAuth2FailureReason = 'invalid_token' | 'verifier_unavailable' | 'insufficient_scope';
+
+export type N8nOAuth2ValidationResult =
+	| { valid: true; user: IUser }
+	| { valid: false; reason: OAuth2FailureReason };
 
 export type ProjectSharingData = {
 	id: string;
@@ -517,6 +525,7 @@ export interface IHttpRequestOptions {
 		sendImmediately?: boolean;
 	};
 	disableFollowRedirect?: boolean;
+	maxRedirects?: number; // Ignored when `disableFollowRedirect` is `true`.
 	encoding?: 'arraybuffer' | 'blob' | 'document' | 'json' | 'text' | 'stream';
 	skipSslCertificateValidation?: boolean;
 	returnFullResponse?: boolean;
@@ -543,7 +552,7 @@ export interface IHttpRequestOptions {
 	 * If set, requests to domains not in this list will be blocked.
 	 */
 	allowedDomains?: string;
-	agentOptions?: Omit<AgentOptions, 'socket'>;
+	agentOptions?: Omit<AgentOptions, 'socket' | 'lookup'>;
 }
 
 /**
@@ -771,12 +780,50 @@ export type ResolvedFilePath = string & {
 	[__brand]: 'ResolvedFilePath';
 };
 
+/**
+ * A directory pinned by an open file descriptor. Resolving names through it
+ * addresses entries relative to the held descriptor rather than re-walking the
+ * path. Always {@link PinnedDirectory.close} it when done.
+ */
+export interface PinnedDirectory {
+	/** A path that resolves `name` relative to the pinned directory descriptor. */
+	resolvePath(name: string): string;
+	close(): Promise<void>;
+}
+
 export interface FileSystemHelperFunctions {
 	resolvePath(path: PathLike): Promise<ResolvedFilePath>;
 	/**
 	 * Use {@link resolvePath} to resolve the path first.
 	 */
 	isFilePathBlocked(filePath: ResolvedFilePath): boolean;
+	/**
+	 * Throws if any directory component of the path is a symlink. Use {@link resolvePath} first.
+	 */
+	assertNoSymlinkInPath(filePath: ResolvedFilePath): Promise<void>;
+	/**
+	 * Creates the parent directory of the path and any missing ancestors without following symlinks.
+	 * Use {@link resolvePath} first.
+	 */
+	ensureParentDirectoryWithoutFollowingSymlinks(filePath: ResolvedFilePath): Promise<void>;
+	/**
+	 * Resolves a directory that is safe to use as a staging location for the given
+	 * target: the realpath'd allowed base that contains the target, with a fallback
+	 * for when no path restriction is configured. Use {@link resolvePath} first.
+	 */
+	resolveStagingBaseForTarget(filePath: ResolvedFilePath): Promise<ResolvedFilePath>;
+	/**
+	 * Pins the directory at `directoryPath` by descending from a trusted base one
+	 * component at a time without following symlinks, returning a handle whose
+	 * descriptor the final operation can address entries relative to. Returns
+	 * `null` when descriptor-relative resolution is unavailable (non-Linux) or the
+	 * directory is not within a trusted base, in which case the caller should fall
+	 * back to {@link assertNoSymlinkInPath}.
+	 */
+	pinDirectory(
+		directoryPath: string,
+		options: { create: boolean },
+	): Promise<PinnedDirectory | null>;
 	/**
 	 * Use {@link resolvePath} to resolve the path first.
 	 */
@@ -869,6 +916,18 @@ interface NodeHelperFunctions {
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 }
 
+/**
+ * Egress filter exposed to nodes whose embedded HTTP clients cannot go through
+ * `httpRequest`. Mirrors the two layers n8n's own egress uses: a pre-flight URL
+ * validation and a connect-time secure DNS lookup.
+ */
+export interface NodeEgressFilter {
+	/** Validate a target URL before any connection. Resolves hostnames; direct IP literals are checked without DNS. */
+	validateUrl(url: string | URL): Promise<Result<void, Error>>;
+	/** DNS lookup drop-in that validates resolved addresses against the configured egress rules. */
+	createSecureLookup(): LookupFunction;
+}
+
 export interface RequestHelperFunctions {
 	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 	httpRequestWithAuthentication(
@@ -884,6 +943,7 @@ export interface RequestHelperFunctions {
 		paginationOptions: PaginationOptions,
 		credentialsType?: string,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
+		sanitizedRequest?: IDataObject,
 	): Promise<any[]>;
 
 	/**
@@ -926,6 +986,12 @@ export interface RequestHelperFunctions {
 		credentialsType: string,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	/**
+	 * Returns the instance egress filter for clients that build their own HTTP
+	 * transport, or `undefined` when egress filtering is not configured (callers
+	 * then use the default transport).
+	 */
+	getSecureEgressFilter(): NodeEgressFilter | undefined;
 }
 
 export type SSHCredentials = {
@@ -964,6 +1030,12 @@ type CronRecurrenceRule =
 			typeInterval: 'hours' | 'days' | 'weeks' | 'months';
 	  };
 
+/**
+ * @deprecated Remnant of the legacy in-memory scheduling path. `registerCron`
+ * takes {@link Cron}, not this type; the durable scheduler path never uses it.
+ * Only `ScheduledTaskManager` and its helper still reference it (and only for
+ * `CronContext['recurrence']`). Slated to go away with `ScheduledTaskManager`.
+ */
 export type CronContext = {
 	nodeId: string;
 	workflowId: string;
@@ -972,7 +1044,26 @@ export type CronContext = {
 	recurrence?: CronRecurrenceRule;
 };
 
-export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
+/**
+ * Optional source descriptor.
+ * Which Schedule Trigger field produced this cron rule.
+ *
+ * Two different fields can produce the same cron string: a rule typed as a raw
+ * cron expression and a rule set to "every 30 seconds" can both come out as the
+ * same text. Knowing the original field lets code downstream tell them apart
+ * and store each one under the right kind.
+ */
+export type CronSource = {
+	field: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'cronExpression';
+	/** The interval size N (e.g. every N seconds); absent for a raw cron expression. */
+	size?: number;
+};
+
+export type Cron = {
+	expression: CronExpression;
+	recurrence?: CronRecurrenceRule;
+	source?: CronSource;
+};
 
 export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
@@ -1350,6 +1441,16 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	/**
+	 * Checks the status of the triggering identity's resolvable (private) credentials
+	 * for this workflow, using the execution context established by
+	 * `establishTriggerIdentity`. Returns connection URLs for any missing credential, or
+	 * `undefined` when no check applies (dynamic-credentials disabled or no identity
+	 * established). Used by the MCP trigger to gate a tool call before execution.
+	 */
+	checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined>;
 	getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
@@ -1368,6 +1469,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1611,7 +1714,8 @@ export type NodePropertyTypes =
 	| 'filter'
 	| 'assignmentCollection'
 	| 'credentials'
-	| 'workflowSelector';
+	| 'workflowSelector'
+	| 'agentSelector';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -1685,6 +1789,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
+	ignoreCredentialExpressionResolveError?: boolean; // Supported by credentials fields outside execution contexts
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -1722,6 +1827,11 @@ export interface ResourceMapperTypeOptionsBase {
 	};
 	showTypeConversionOptions?: boolean;
 	allowEmptyValues?: boolean;
+	// When true, a cached schema that is detected to be structurally incomplete
+	// (e.g. authored by an AI builder rather than loaded from the source) is
+	// reconciled against the source on node open. A complete-but-drifted schema
+	// still shows the stale-data warning, leaving the refresh up to the user.
+	refreshIncompleteSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod
@@ -1774,6 +1884,7 @@ export type DisplayCondition =
 export type NodeFeatures = Record<string, boolean>;
 export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
 export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+export type DeploymentCondition = 'cloud' | 'hosted';
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1786,6 +1897,11 @@ export interface IDisplayOptions {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 export interface ICredentialsDisplayOptions {
@@ -1797,6 +1913,11 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 
@@ -1911,6 +2032,7 @@ export interface INodePropertyOptions {
 	value: string | number | boolean;
 	action?: string;
 	description?: string;
+	disabled?: boolean;
 	builderHint?: IParameterBuilderHint;
 	routing?: INodePropertyRouting;
 	outputConnectionType?: NodeConnectionType;
@@ -1928,7 +2050,7 @@ export interface INodeListSearchItems extends INodePropertyOptions {
 
 export interface INodeListSearchResult {
 	results: INodeListSearchItems[];
-	paginationToken?: unknown;
+	paginationToken?: string;
 }
 
 export interface INodePropertyCollection {
@@ -1987,23 +2109,105 @@ export interface ITriggerResponse {
 	manualTriggerResponse?: Promise<INodeExecutionData[][]>;
 }
 
-export interface ExecuteWorkflowData {
+/** Private-credential usage a sub-execution reports to its caller, so the calling node's task inherits the flags and redaction covers the embedded output. */
+export interface DynamicCredentialsUsage {
+	/** True when the run resolved a private credential. */
+	usedDynamicCredentials?: boolean;
+	/** True when the run attempted to resolve a private credential (telemetry superset of `usedDynamicCredentials`). */
+	attemptedDynamicCredentials?: boolean;
+	/** The n8n user a resolved private credential belonged to; keeps the parent execution revealable to that user. */
+	dynamicCredentialsResolvedUserId?: string;
+}
+
+export interface ExecuteWorkflowData extends DynamicCredentialsUsage {
 	executionId: string;
 	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
 }
 
-export interface ExecuteAgentInfo {
-	/** The agent ID to execute. */
-	agentId: string;
+/**
+ * Inline agent definition embedded in the calling node's parameters. Kept
+ * structurally loose here (this package cannot depend on `@n8n/api-types`);
+ * the execution layer validates it against `InlineAgentConfigSchema`.
+ */
+export interface InlineAgentPayload {
+	config: {
+		name?: string;
+		model?: string;
+		credential?: string;
+		instructions?: string;
+		tools?: IDataObject[];
+		mcpServers?: IDataObject[];
+		skills?: Array<{ type?: string; id?: string }>;
+	};
+	/** Skill bodies keyed by the ids `config.skills` references. */
+	skills?: Record<string, IDataObject>;
+}
+
+/** Which agent to execute: a saved agent by id, or an inline definition. */
+export type ExecuteAgentSource =
+	| { agentId: string; inlineAgent?: never }
+	| { agentId?: never; inlineAgent: InlineAgentPayload };
+
+export type ExecuteAgentInfo = ExecuteAgentSource & {
 	/**
 	 * Optional caller-supplied session id. When set, this becomes the agent
 	 * thread id, letting workflows continue the same conversation (and reuse
 	 * memory) across executions. When omitted, a per-call thread is derived
-	 * from the workflow execution id and item index.
+	 * from the workflow execution id and item index. Applies to inline agents
+	 * too: their conversation threads persist, even though their runs don't
+	 * appear in the sessions UI.
 	 */
 	sessionId?: string;
+	/**
+	 * Optional JSON Schema describing the shape the agent should return. When
+	 * provided, it is applied to this call only, and the conforming object is
+	 * surfaced on {@link ExecuteAgentData.structuredOutput}.
+	 */
+	outputSchema?: JSONSchema7;
+	/**
+	 * Which slice of the calling node's input the agent's `fetch_input_data`
+	 * tool should expose: the single current item (`'item'`, default) or all
+	 * input items (`'all'`, used when the node invokes the agent once for the
+	 * whole batch).
+	 */
+	inputDataScope?: 'item' | 'all';
+	/**
+	 * When true, the agent additionally gets the `fetch_workflow_context` tool,
+	 * which can read any executed node's output. Off by default.
+	 */
+	exposeWorkflowData?: boolean;
+};
+
+/**
+ * Context about the calling workflow execution, passed to the agent runtime so
+ * it can expose the `fetch_input_data` and (opt-in) `fetch_workflow_context` tools to the agent. The
+ * `runExecutionData` is a live reference to the calling execution's run data —
+ * must be treated as read-only.
+ */
+export interface ExecuteAgentWorkflowContext {
+	workflowId?: string;
+	workflowName?: string;
+	/** Name of the node that invoked the agent */
+	callingNodeName: string;
+	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
+	inputData?: INodeExecutionData[];
+	/** Which slice {@link inputData} represents. */
+	inputDataScope?: 'item' | 'all';
+	/** Whether to attach the `fetch_workflow_context` tool. */
+	exposeWorkflowData?: boolean;
+	/**
+	 * Whether the caller supplied an explicit session id (vs the derived
+	 * per-call thread id). Inline agents persist conversation memory only when
+	 * true — a derived thread is never continued, so persisting it would only
+	 * accumulate unreachable rows.
+	 */
+	hasCallerSessionId?: boolean;
+	/** Name and type of every node in the calling workflow. */
+	nodes: Array<{ name: string; type: string }>;
+	/** The calling execution's run data (read-only by convention). */
+	runExecutionData: IRunExecutionData;
 }
 
 export interface ExecuteAgentOptions {
@@ -2035,14 +2239,21 @@ export interface ExecuteAgentData {
 	/**
 	 * Identifiers of the agent session this call wrote to. Surfaced so the
 	 * caller (e.g. the MessageAnAgent node) can link from a workflow execution
-	 * back to the agent session detail view.
+	 * back to the agent session detail view. `null` for inline agents, whose
+	 * runs are not recorded as sessions.
 	 */
 	session: {
 		agentId: string;
 		projectId: string;
-		/** The threadId persisted to the agent session. May be a caller-provided override. */
+		/**
+		 * Caller-facing session id: the override the caller supplied, or the
+		 * derived per-call id. Safe to feed back into the node's Session ID
+		 * parameter to continue the conversation.
+		 */
 		sessionId: string;
-	};
+		/** The internally scoped thread id the session was persisted under (deep-link key). */
+		threadId: string;
+	} | null;
 }
 
 export type WebhookSetupMethodNames = 'checkExists' | 'create' | 'delete';
@@ -2175,12 +2386,6 @@ type EngineAction<T = unknown> = ExecuteNodeAction<T>;
  * containing the results of all requested actions.
  *
  * @template T - The type of metadata associated with this request
- *
- * @todo This should use `unknown`, but jest-mock-extended will turn this into
- * `Partial<unknown>` which `unknown` cannot be assigned to, which leads to a
- * lot of type errors in our tests.
- * The correct fix is to make a PR to jest-mock-extended and make it handle
- * `unknown` special, turning it into `unknown` instead of `Partial<unknown>`.
  */
 export type EngineRequest<T = object> = {
 	/** Array of actions that the requesting node wants the engine to fulfill */
@@ -2225,10 +2430,20 @@ export type EngineResponse<T = unknown> = {
 };
 
 /**
+ * Tag identifying `Node` subclasses. `Symbol.for` interns into the global symbol
+ * registry, so every copy of `n8n-workflow` loaded in the same process resolves the identical
+ * symbol, regardless of the dependency tree layout.
+ */
+const NODE_CLASS_TAG: unique symbol = Symbol.for('n8n.workflow.NodeClass');
+
+/**
  * This class serves as the base for all nodes using the new context API
  * having this as a class enables us to identify these instances at runtime
  */
 export abstract class Node {
+	get [NODE_CLASS_TAG](): true {
+		return true;
+	}
 	abstract description: INodeTypeDescription;
 	execute?(
 		context: IExecuteFunctions,
@@ -2236,6 +2451,15 @@ export abstract class Node {
 	): Promise<INodeExecutionData[][] | EngineRequest>;
 	webhook?(context: IWebhookFunctions): Promise<IWebhookResponseData>;
 	poll?(context: IPollFunctions): Promise<INodeExecutionData[][] | null>;
+}
+
+/**
+ * Returns `true` when `nodeType` is an instance of a `Node` subclass (a node using the new
+ * context API). Prefer this over `nodeType instanceof Node` at runtime: it survives
+ * `n8n-workflow` module duplication, which breaks `instanceof`.
+ */
+export function isNodeClassInstance(nodeType: unknown): nodeType is Node {
+	return typeof nodeType === 'object' && nodeType !== null && NODE_CLASS_TAG in nodeType;
 }
 
 export interface IVersionedNodeType {
@@ -2759,6 +2983,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 		resumeFormUrl: string;
 		customData?: IWorkflowExecutionCustomData;
 	};
+	$evaluation?: { runId: string };
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
@@ -2928,6 +3153,12 @@ export interface ITaskMetadata {
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
+	/**
+	 * Private-credential usage a sub-execution reported while this execution was
+	 * waiting. The waiting task is popped and the node re-runs disabled on resume,
+	 * so the usage rides on the stack entry to reach the freshly stamped task.
+	 */
+	dynamicCredentialsUsage?: DynamicCredentialsUsage;
 	subNodeExecutionData?: {
 		actions: SubNodeExecutionDataAction[];
 		metadata: object;
@@ -2971,6 +3202,15 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
+	 * Error from a sub-workflow that finished with an error while its parent was
+	 * waiting for it. Written onto the parent's Execute Workflow stack entry by
+	 * `updateParentExecutionWithChildResults` (packages/cli) and consumed on resume
+	 * by `WorkflowExecute.runNode`, which fails the node with this error (honoring
+	 * its `onError` setting) instead of letting it pass its input through.
+	 */
+	resumeError?: ExecutionError;
+
+	/**
 	 * AI model token usage captured from vendor node API responses before the simplify step
 	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
 	 */
@@ -3009,6 +3249,14 @@ export interface ITaskData extends ITaskStartedData {
 	metadata?: ITaskMetadata;
 	/** True when at least one credential used by this node was resolved dynamically */
 	usedDynamicCredentials?: boolean;
+	/**
+	 * True when this node attempted to resolve at least one private (resolvable)
+	 * credential, regardless of whether resolution succeeded. Unlike
+	 * `usedDynamicCredentials` (set only on success and consumed by the redaction
+	 * layer), this is a superset used purely for telemetry: it also captures
+	 * failed attempts (e.g. the running user has not connected the credential).
+	 */
+	attemptedDynamicCredentials?: boolean;
 }
 
 export interface ISourceData {
@@ -3060,6 +3308,7 @@ export interface IWorkflowGroup {
 	id: string;
 	name: string;
 	nodeIds: string[];
+	description?: string;
 }
 
 export interface IWorkflowBase {
@@ -3124,7 +3373,6 @@ export type WorkflowExecutionMockDataSource =
 	| 'workflow_pin_data';
 
 export interface IWorkflowExecutionTelemetryMetadata {
-	source: WorkflowExecutionSource;
 	mockDataSources?: WorkflowExecutionMockDataSource[];
 }
 
@@ -3133,8 +3381,7 @@ export interface IWorkflowExecutionDataProcess {
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
-	 * When true, forces the execution data to be present in the run data
-	 * ignores N8N_MINIMIZE_EXECUTION_DATA_FETCHING environment variable if set
+	 * When true, forces the execution data to be present in the run data.
 	 */
 	forceFullExecutionData?: boolean;
 	/**
@@ -3151,6 +3398,13 @@ export interface IWorkflowExecutionDataProcess {
 	userId?: string;
 	projectId?: string;
 	projectName?: string;
+	/**
+	 * Who initiated this run. Unset means a regular user-initiated run;
+	 * `'instance_ai'` when the AI assistant ran the workflow on the user's
+	 * behalf. Consumed by the execution push (so the editor can tell agent runs
+	 * apart) and by telemetry.
+	 */
+	source?: WorkflowExecutionSource;
 	telemetryMetadata?: IWorkflowExecutionTelemetryMetadata;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
@@ -3183,6 +3437,8 @@ export interface IWorkflowExecutionDataProcess {
 	tracingContext?: { traceparent: string; tracestate?: string };
 	/** Encrypted credential context for a manual editor-triggered execution. */
 	encryptedRunnerIdentity?: string;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3225,6 +3481,17 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+/** Telemetry emitted when an advanced HITL (human-in-the-loop) response is actioned. */
+export type HitlResponseTelemetryPayload = {
+	nodeType: string;
+	/** The decision the responder made. */
+	approved: boolean;
+	/** Whether the responder was on the node's approver allow-list (empty list = anyone). */
+	authorized: boolean;
+	executionId?: string;
+	workflowId?: string;
+};
+
 export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
@@ -3242,11 +3509,14 @@ export interface IWorkflowExecuteAdditionalData {
 		options: ExecuteWorkflowOptions,
 	) => Promise<ExecuteWorkflowData>;
 	executeAgent?: (
-		agentId: string,
+		source: ExecuteAgentSource,
 		message: string,
 		executionId: string,
 		threadId: string,
 		additionalData: IWorkflowExecuteAdditionalData,
+		executionMode: WorkflowExecuteMode,
+		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
@@ -3256,6 +3526,12 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	validateN8nOAuth2Token?: (
+		token: string,
+		resourceUrl: string,
+	) => Promise<N8nOAuth2ValidationResult>;
+	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
 	httpRequest?: express.Request;
@@ -3268,6 +3544,8 @@ export interface IWorkflowExecuteAdditionalData {
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
+	mcpBaseUrl: string;
+	mcpTestBaseUrl: string;
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
@@ -3275,6 +3553,7 @@ export interface IWorkflowExecuteAdditionalData {
 	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
+	logHitlResponse?: (payload: HitlResponseTelemetryPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	/**
 	 * The execution mode of the root (top-level) workflow. Used to propagate manual
@@ -3282,6 +3561,8 @@ export interface IWorkflowExecuteAdditionalData {
 	 * data consistently across the entire execution tree.
 	 */
 	rootExecutionMode?: WorkflowExecuteMode;
+	/** Parent evaluation TestRun.id, exposed to expressions as `$evaluation.runId`. */
+	evaluationRunId?: string;
 	startRunnerTask<T, E = unknown>(
 		additionalData: IWorkflowExecuteAdditionalData,
 		jobType: string,
@@ -3307,6 +3588,22 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	/**
+	 * Mutable flag set to true during a node's execution when it attempts to resolve a
+	 * private (resolvable) credential, set before resolution is attempted so it is
+	 * recorded even when resolution throws (e.g. the user has not connected the
+	 * credential). Reset to false by the execution engine before each node runs.
+	 * Telemetry-only; the redaction layer relies on `currentNodeUsedDynamicCredentials`.
+	 */
+	currentNodeAttemptedDynamicCredentials?: boolean;
+	/**
+	 * The n8n user a dynamically-resolved private credential belongs to, set during
+	 * credential resolution when the resolver maps the execution's identity to an n8n
+	 * user. Execution-scoped (one identity per execution), so it is not reset per node.
+	 * The execution engine copies it onto `runtimeData.executedByUserId` for the
+	 * redaction layer.
+	 */
+	dynamicCredentialsResolvedUserId?: string;
 	otel?: {
 		injectTraceHeaders: (
 			executionId: string,
@@ -3509,6 +3806,7 @@ export interface INodeGraphItem {
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
+	mcp_server_domain_base?: string; // registrable domain of MCP server URL, for mcpClientTool / mcpClient
 	ai_model?: string; // AI model for model nodes and standalone AI nodes
 	ai_input_tokens?: number; // AI input (prompt) tokens for model nodes
 	ai_output_tokens?: number; // AI output (completion) tokens for model nodes
@@ -3577,12 +3875,15 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	workflowVersionId?: string | null;
+	jsonSizeBytes?: number;
+	binaryDataSizeBytes?: number;
 	status: ExecutionStatus;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
+	usedPrivateCredentials?: boolean;
 	annotation?: {
 		vote: AnnotationVote;
 		tags: Array<{

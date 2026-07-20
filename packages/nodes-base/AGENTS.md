@@ -56,7 +56,7 @@ Nodes can test credentials via `methods.credentialTest`.
 ## Testing
 
 ### Unit Tests
-- Use `jest-mock-extended` for mocking interfaces
+- Use `vitest-mock-extended` for mocking interfaces
 - Use `nock` for HTTP mocking
 - Mock all external dependencies
 - Test happy paths, error handling, edge cases, and binary data

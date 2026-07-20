@@ -8,42 +8,60 @@ import { InstanceSettings } from 'n8n-core';
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
 	async init() {
-		await import('./agents.controller');
-		await import('./builder/agents-builder-settings.controller');
+		await import('./agents-catalog.controller.js');
+		await import('./agent-threads.controller.js');
+		await import('./agents.controller.js');
+		await import('./agents-config.controller.js');
+		await import('./agents-skills.controller.js');
+		await import('./agent-knowledge.controller.js');
+		await import('./agent-publish.controller.js');
+		await import('./agent-chat.controller.js');
+		await import('./agent-integrations.controller.js');
+		await import('./agent-vector-stores.controller.js');
+		await import('./agent-tasks.controller.js');
+		await import('./agent-sandbox.controller.js');
+		await import('./agents-list.controller.js');
+		await import('./builder/agents-builder-settings.controller.js');
 
-		const { AgentsService } = await import('./agents.service');
+		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
 		const { AgentsBuilderSettingsService } = await import(
-			'./builder/agents-builder-settings.service'
+			'./builder/agents-builder-settings.service.js'
 		);
 		Container.get(AgentsBuilderSettingsService);
 
-		const { AgentExecutionService } = await import('./agent-execution.service');
+		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);
 
-		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository');
+		const { AgentRuntimeCacheService } = await import('./agent-runtime-cache.service.js');
+		Container.get(AgentRuntimeCacheService);
+
+		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository.js');
 		Container.get(AgentHistoryRepository);
 
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
-		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime');
+		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime.js');
 		Container.get(AgentSecureRuntime);
 
 		// Populate the integration registry with supported chat platforms.
 		// Adding a new platform is adding one subclass + one register() call.
-		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration');
-		const { SlackIntegration } = await import('./integrations/platforms/slack-integration');
-		const { TelegramIntegration } = await import('./integrations/platforms/telegram-integration');
-		const { LinearIntegration } = await import('./integrations/platforms/linear-integration');
+		const { ChatIntegrationRegistry } = await import('./integrations/agent-chat-integration.js');
+		const { SlackIntegration } = await import('./integrations/platforms/slack-integration.js');
+		const { TelegramIntegration } = await import(
+			'./integrations/platforms/telegram-integration.js'
+		);
+		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
+		const { N8nChatIntegration } = await import('./integrations/platforms/n8n-chat-integration.js');
 		const registry = Container.get(ChatIntegrationRegistry);
 		registry.register(Container.get(SlackIntegration));
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
+		registry.register(Container.get(N8nChatIntegration));
 
-		// Register Chat and Schedule services. Importing the services here also
-		// registers any @OnLeaderTakeover/@OnLeaderStepdown decorators with
-		// MultiMainMetadata before start.ts:295 wires up the listeners.
+		// Reconnect Chat and Task services on startup so this main resumes its
+		// integrations and tasks for the role it currently holds.
 		//
 		// Chat integrations run on every main: webhook-driven platforms (Slack,
 		// Linear, Telegram in webhook mode) need to be connected on every main
@@ -51,12 +69,12 @@ export class AgentsModule implements ModuleInterface {
 		// (Telegram in polling mode) are filtered to leader-only inside the
 		// service via `AgentChatIntegration.requiresLeader()`.
 		//
-		// Schedules remain leader-only by design — a cron firing on multiple
+		// Tasks remain leader-only by design — a cron firing on multiple
 		// mains would run the agent twice for the same tick.
-		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
-		const scheduleService = Container.get(AgentScheduleService);
+		const { ChatIntegrationService } = await import('./integrations/chat-integration.service.js');
+		const { AgentTaskService } = await import('./agent-task.service.js');
 		const chatService = Container.get(ChatIntegrationService);
+		const taskService = Container.get(AgentTaskService);
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		void chatService.reconnectAll().catch((error) => {
@@ -65,54 +83,64 @@ export class AgentsModule implements ModuleInterface {
 			});
 		});
 		if (instanceSettings.isLeader) {
-			void scheduleService.reconnectAll().catch((error) => {
-				logger.error('[Agents] Failed to reconnect schedules on startup', {
+			void taskService.reconnectAll().catch((error) => {
+				logger.error('[Agents] Failed to reconnect tasks on startup', {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			});
 		} else {
-			logger.debug('[Agents] Skipping schedule reconnect on startup — not leader');
+			logger.debug('[Agents] Skipping task reconnect on startup — not leader');
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
 	async settings() {
 		const config = Container.get(AgentsConfig);
+		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate.js');
+		const { AiService } = await import('@/services/ai.service.js');
+		const aiService = Container.get(AiService);
 		return {
 			enabled: true,
 			modules: [...config.modules],
+			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config, aiService.isProxyEnabled()),
 		};
 	}
 
 	async entities() {
-		const { Agent } = await import('./entities/agent.entity');
-		const { AgentFile } = await import('./entities/agent-file.entity');
-		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
-		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
-		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
-		const { AgentMessageEntity } = await import('./entities/agent-message.entity');
-		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity');
-		const { AgentExecution } = await import('./entities/agent-execution.entity');
-		const { AgentHistory } = await import('./entities/agent-history.entity');
-		const { AgentObservationEntity } = await import('./entities/agent-observation.entity');
+		const { Agent } = await import('./entities/agent.entity.js');
+		const { AgentFile } = await import('./entities/agent-file.entity.js');
+		const { AgentChatSubscription } = await import('./entities/agent-chat-subscription.entity.js');
+		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity.js');
+		const { AgentResourceEntity } = await import('./entities/agent-resource.entity.js');
+		const { AgentThreadEntity } = await import('./entities/agent-thread.entity.js');
+		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
+		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
+		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentHistory } = await import('./entities/agent-history.entity.js');
+		const { AgentTask } = await import('./entities/agent-task.entity.js');
+		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
+		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
+		const { AgentObservationEntity } = await import('./entities/agent-observation.entity.js');
 		const { AgentObservationCursorEntity } = await import(
-			'./entities/agent-observation-cursor.entity'
+			'./entities/agent-observation-cursor.entity.js'
 		);
-		const { AgentObservationLockEntity } = await import('./entities/agent-observation-lock.entity');
-		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity');
+		const { AgentObservationLockEntity } = await import(
+			'./entities/agent-observation-lock.entity.js'
+		);
+		const { AgentMemoryEntryEntity } = await import('./entities/agent-memory-entry.entity.js');
 		const { AgentMemoryEntryLockEntity } = await import(
-			'./entities/agent-memory-entry-lock.entity'
+			'./entities/agent-memory-entry-lock.entity.js'
 		);
 		const { AgentMemoryEntrySourceEntity } = await import(
-			'./entities/agent-memory-entry-source.entity'
+			'./entities/agent-memory-entry-source.entity.js'
 		);
 		const { AgentMemoryEntryCursorEntity } = await import(
-			'./entities/agent-memory-entry-cursor.entity'
+			'./entities/agent-memory-entry-cursor.entity.js'
 		);
 
 		return [
 			Agent,
 			AgentFile,
+			AgentChatSubscription,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,
@@ -120,6 +148,9 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecutionThread,
 			AgentExecution,
 			AgentHistory,
+			AgentTask,
+			AgentTaskRunLock,
+			AgentTaskSnapshot,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,
 			AgentObservationLockEntity,
@@ -131,7 +162,7 @@ export class AgentsModule implements ModuleInterface {
 	}
 
 	async context() {
-		const { AgentsService } = await import('./agents.service');
+		const { AgentsService } = await import('./agents.service.js');
 
 		return { agentsService: Container.get(AgentsService) };
 	}

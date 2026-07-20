@@ -1,11 +1,12 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { type Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
 	type NodeParameterValue,
+	type DeploymentCondition,
 	NodeHelpers,
 	deepCopy,
 } from 'n8n-workflow';
@@ -23,7 +24,7 @@ import {
 } from '@/features/ndv/shared/ndv.utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { CHAT_TRIGGER_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/app/constants';
 import {
 	getMainAuthField,
@@ -32,6 +33,7 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { reconcileNodeFromAIKeys } from '@/features/ndv/parameters/utils/fromAIOverride.utils';
 
 const hasPublicDisplayCondition = (parameter: INodeProperties, value: boolean) =>
 	parameter.displayOptions?.show?.public?.includes(value) ?? false;
@@ -55,6 +57,7 @@ const stripPublicDisplayCondition = (parameter: INodeProperties): INodePropertie
 
 export function useNodeSettingsParameters() {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
@@ -120,6 +123,10 @@ export function useNodeSettingsParameters() {
 			if (updatedDescription && nodeParameters) {
 				nodeParameters.toolDescription = updatedDescription;
 			}
+
+			if (nodeParameters) {
+				reconcileNodeFromAIKeys(nodeTypeDescription.properties, nodeParameters);
+			}
 		}
 
 		if (NodeHelpers.isDefaultNodeName(node.name, nodeTypeDescription, node.parameters ?? {})) {
@@ -168,7 +175,6 @@ export function useNodeSettingsParameters() {
 	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
 		if (!node) return;
 
-		const ndvStore = injectNDVStore();
 		const focusPanelStore = useFocusPanelStore();
 
 		focusPanelStore.openWithFocusedNodeParameter({
@@ -216,6 +222,16 @@ export function useNodeSettingsParameters() {
 			if (hasPublicDisplayCondition(effectiveParameter, false)) {
 				effectiveParameter = stripPublicDisplayCondition(effectiveParameter);
 			}
+		}
+
+		const deployment: DeploymentCondition = settingsStore.isCloudDeployment ? 'cloud' : 'hosted';
+
+		if (
+			displayKey === 'displayOptions' &&
+			effectiveParameter.displayOptions?.showOnDeployment &&
+			effectiveParameter.displayOptions.showOnDeployment !== deployment
+		) {
+			return false;
 		}
 
 		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments

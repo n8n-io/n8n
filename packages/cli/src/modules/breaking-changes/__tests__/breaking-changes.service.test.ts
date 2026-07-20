@@ -1,8 +1,9 @@
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
@@ -18,14 +19,14 @@ import { WaitNodeSubworkflowRule } from '../rules/v2/wait-node-subworkflow.rule'
 describe('BreakingChangeService', () => {
 	const logger = mockLogger();
 
-	let workflowRepository: jest.Mocked<WorkflowRepository>;
-	let workflowStatisticsRepository: jest.Mocked<WorkflowStatisticsRepository>;
+	let workflowRepository: Mocked<WorkflowRepository>;
+	let workflowStatisticsRepository: Mocked<WorkflowStatisticsRepository>;
 	let ruleRegistry: RuleRegistry;
-	let cacheService: jest.Mocked<CacheService>;
+	let cacheService: Mocked<CacheService>;
 	let service: BreakingChangeService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		workflowRepository = mock<WorkflowRepository>();
 		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
@@ -164,7 +165,7 @@ describe('BreakingChangeService', () => {
 			workflowRepository.count.mockResolvedValue(0);
 
 			// Create a spy on the detect method to track how many times it's called
-			const detectSpy = jest.spyOn(service, 'detect');
+			const detectSpy = vi.spyOn(service, 'detect');
 
 			// Simulate multiple concurrent requests for the same version
 			const promise1 = service.getDetectionResults('v2');
@@ -186,7 +187,7 @@ describe('BreakingChangeService', () => {
 			workflowRepository.find.mockResolvedValue([]);
 			workflowRepository.count.mockResolvedValue(0);
 
-			const detectSpy = jest.spyOn(service, 'detect');
+			const detectSpy = vi.spyOn(service, 'detect');
 
 			// First detection
 			await service.getDetectionResults('v2');

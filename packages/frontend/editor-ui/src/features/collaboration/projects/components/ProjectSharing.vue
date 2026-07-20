@@ -37,6 +37,8 @@ type Props = {
 	isSharedGlobally?: boolean;
 	allUsersLabel?: string;
 	disabledTooltip?: string;
+	// Show the dropdown chevron even in remote+filterable mode (element-plus hides it by default)
+	showSuffix?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -107,9 +109,12 @@ const filteredProjects = computed(() => {
 });
 
 const sortedProjects = computed((): ProjectListItem[] => {
+	const projects = [...filteredProjects.value].sort((projectA, projectB) =>
+		(projectA.name ?? '').localeCompare(projectB.name ?? ''),
+	);
 	return [
 		...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
-		...filteredProjects.value,
+		...projects,
 	];
 });
 
@@ -218,6 +223,7 @@ watch(
 				data-test-id="project-sharing-select"
 				filterable
 				remote
+				:remote-show-suffix="props.showSuffix"
 				:remote-method="setFilter"
 				:placeholder="selectPlaceholder"
 				:default-first-option="true"

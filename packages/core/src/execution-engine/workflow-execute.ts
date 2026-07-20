@@ -11,6 +11,7 @@ import type {
 	ExecutionBaseError,
 	ExecutionStatus,
 	ExecutionStorageLocation,
+	ExecutionError,
 	GenericValue,
 	IConnection,
 	IDataObject,
@@ -47,14 +48,16 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	ApplicationError,
+	BaseError,
 	sleep,
-	Node,
+	isNodeClassInstance,
 	UnexpectedError,
 	UserError,
 	OperationalError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	applyDynamicCredentialsUsage,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -139,7 +142,7 @@ export class WorkflowExecute {
 		startNode = startNode || workflow.getStartNode(destinationNode?.nodeName);
 
 		if (startNode === undefined) {
-			throw new ApplicationError('No node to start the workflow from could be found');
+			throw new UserError('No node to start the workflow from could be found');
 		}
 
 		// If a destination node is given we only run the direct parent nodes and no others
@@ -247,21 +250,34 @@ export class WorkflowExecute {
 			const parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 
 			for (const nodeName of parentNodes) {
-				if (runData[nodeName]) {
-					startNode = workflow.getNode(nodeName);
+				const parentNode = workflow.getNode(nodeName);
+				// Skip disabled nodes: they are removed from the execution subgraph, so a
+				// disabled node can never serve as a start node.
+				if (parentNode && !parentNode.disabled && runData[nodeName]) {
+					startNode = parentNode;
 					break;
 				}
 			}
 
 			if (!startNode) {
-				throw new UserError('Connect a trigger to run this node');
+				throw new UserError("Connect a trigger and make sure it's enabled to run this node");
 			}
 
 			trigger = startNode;
 		}
 
 		// 2. Find the Subgraph
-		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
+		const filteredGraph = filterDisabledNodes(graph);
+
+		// A disabled destination is removed by filterDisabledNodes, which would make the
+		// subgraph search below fail an internal membership assertion. Raise a clear user
+		// error instead. The trigger is always enabled here (both findTriggerForPartialExecution
+		// and the fallback above skip disabled nodes), so only the destination needs checking.
+		if (destination.disabled) {
+			throw new UserError('Cannot execute a disabled node');
+		}
+
+		graph = findSubgraph({ graph: filteredGraph, destination, trigger });
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes
@@ -967,9 +983,31 @@ export class WorkflowExecute {
 		return [];
 	}
 
+	/** Whether the node is configured to continue when it errors. */
+	private continuesOnError(node: INode): boolean {
+		return (
+			node.continueOnFail === true ||
+			['continueRegularOutput', 'continueErrorOutput'].includes(node.onError ?? '')
+		);
+	}
+
 	/**
-	 * Handles re-throwing errors from previous node execution attempts
+	 * Rethrows an already-failed node's error so it logs and displays correctly.
+	 * Structured node errors are thrown as-is; anything else (e.g. a DB-deserialized
+	 * error that is no longer a real `Error`) is wrapped so its stack and
+	 * `instanceof Error` behave like a normally-thrown node failure.
 	 */
+	private rethrowNodeError(error: ExecutionError): never {
+		if (error.name === 'NodeOperationError' || error.name === 'NodeApiError') {
+			throw error;
+		}
+
+		const wrapped = new Error(error.message);
+		wrapped.stack = error.stack;
+		throw wrapped;
+	}
+
+	/** Handles re-throwing errors from previous node execution attempts */
 	private rethrowLastNodeError(runExecutionData: IRunExecutionData, node: INode): void {
 		if (
 			runExecutionData.resultData.lastNodeExecuted === node.name &&
@@ -978,16 +1016,7 @@ export class WorkflowExecute {
 			// The node did already fail. So throw an error here that it displays and logs it correctly.
 			// Does get used by webhook and trigger nodes in case they throw an error that it is possible
 			// to log the error and display in Editor-UI.
-			if (
-				runExecutionData.resultData.error.name === 'NodeOperationError' ||
-				runExecutionData.resultData.error.name === 'NodeApiError'
-			) {
-				throw runExecutionData.resultData.error;
-			}
-
-			const error = new Error(runExecutionData.resultData.error.message);
-			error.stack = runExecutionData.resultData.error.stack;
-			throw error;
+			this.rethrowNodeError(runExecutionData.resultData.error);
 		}
 	}
 
@@ -1047,10 +1076,9 @@ export class WorkflowExecute {
 			if (customOperation) {
 				data = await customOperation.call(context);
 			} else if (nodeType.execute) {
-				data =
-					nodeType instanceof Node
-						? await nodeType.execute(context, subNodeExecutionResults)
-						: await nodeType.execute.call(context, subNodeExecutionResults);
+				data = isNodeClassInstance(nodeType)
+					? await nodeType.execute(context, subNodeExecutionResults)
+					: await nodeType.execute.call(context, subNodeExecutionResults);
 			} else {
 				throw new UnexpectedError(
 					"Can't execute node. There is no custom operation and the node has not execute function.",
@@ -1075,7 +1103,7 @@ export class WorkflowExecute {
 						closingError =
 							closingErrors[0] instanceof Error
 								? closingErrors[0]
-								: new ApplicationError("Error on execution node's close function(s)", {
+								: new UnexpectedError("Error on execution node's close function(s)", {
 										extra: { nodeName: node.name },
 										tags: { nodeType: node.type },
 										cause: closingErrors,
@@ -1192,7 +1220,7 @@ export class WorkflowExecute {
 	): Promise<IRunNodeResponse> {
 		if (mode === 'manual') {
 			// In manual mode start the trigger
-			const triggerResponse = await Container.get(TriggersAndPollers).runTrigger(
+			const triggerResponse = await Container.get(TriggersAndPollers).runTriggerFunction(
 				workflow,
 				node,
 				NodeExecuteFunctions.getExecuteTriggerFunctions,
@@ -1283,6 +1311,32 @@ export class WorkflowExecute {
 		const { node } = executionData;
 		let inputData = executionData.data;
 
+		if (executionData.metadata?.resumeError) {
+			const { resumeError, subExecution } = executionData.metadata;
+
+			if (this.continuesOnError(node)) {
+				// Mirror the node's own live whole-node-failure item shape: pair the error
+				// item with every input item (the sub-workflow ran for all of them), and
+				// link the failed child execution so the UI can navigate to it.
+				const pairedItem = (inputData.main?.[0] ?? []).map((_, item) => ({ item }));
+				return {
+					data: [
+						[
+							{
+								json: { error: resumeError.message },
+								pairedItem,
+								...(subExecution && { metadata: { subExecution } }),
+							},
+						],
+					],
+				};
+			}
+
+			// Route the resumed sub-workflow error like a live node failure would be
+			// (see the onError handling in `processRunExecutionData`).
+			this.rethrowNodeError(resumeError);
+		}
+
 		if (node.disabled === true) {
 			return this.handleDisabledNode(inputData);
 		}
@@ -1357,7 +1411,7 @@ export class WorkflowExecute {
 		}
 
 		if (nodeType.supplyData) {
-			throw new ApplicationError(
+			throw new UnexpectedError(
 				`The node "${node.type}" has a "supplyData" method but no "execute" method.`,
 			);
 		}
@@ -1405,7 +1459,15 @@ export class WorkflowExecute {
 			);
 
 			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
-			executionStackEntry.node.disabled = true;
+			// Error reporting itself does not depend on this: `runNode` checks
+			// `metadata.resumeError` before `node.disabled`, so the entry carrying the
+			// error fails either way. This guard only matters when ANOTHER stack entry
+			// shares this node object (legacy `executionOrder: 'v0'` with multiple wires
+			// into the node): keeping the node enabled lets those later entries execute
+			// normally instead of passing their input through in disabled mode.
+			if (!executionStackEntry.metadata?.resumeError) {
+				executionStackEntry.node.disabled = true;
+			}
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
 
@@ -1435,7 +1497,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new WorkflowHasIssuesError();
+			throw new WorkflowHasIssuesError(workflowIssues, workflow.nodes);
 		}
 	}
 
@@ -1616,8 +1678,20 @@ export class WorkflowExecute {
 						this.runExecutionData.executionData!.nodeExecutionStack.shift() as IExecuteData;
 					executionNode = executionData.node;
 
-					// Reset per-node dynamic credential flag before each node execution
+					// Reset per-node dynamic credential flags before each node execution
 					this.additionalData.currentNodeUsedDynamicCredentials = false;
+					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
+
+					// A sub-execution that finished while this execution was waiting reported its
+					// private-credential usage on the resumed stack entry (the node re-runs disabled,
+					// so `executeWorkflow` never reports again) — restore it so the new task and
+					// `runtimeData.executedByUserId` still inherit the flags. The stash is
+					// transport-only, so consume it to keep it out of the persisted task metadata.
+					const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
+					if (reportedUsage) {
+						applyDynamicCredentialsUsage(this.additionalData, reportedUsage);
+						delete executionData.metadata?.dynamicCredentialsUsage;
+					}
 
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
@@ -1678,9 +1752,7 @@ export class WorkflowExecute {
 
 					currentExecutionTry = `${executionNode.name}:${runIndex}`;
 					if (currentExecutionTry === lastExecutionTry) {
-						throw new ApplicationError(
-							'Stopped execution because it seems to be in an endless loop',
-						);
+						throw new UserError('Stopped execution because it seems to be in an endless loop');
 					}
 
 					if (
@@ -1717,13 +1789,17 @@ export class WorkflowExecute {
 					const isErrorValue = (v: unknown) => v !== undefined && v !== null && v !== false;
 					const checkFailure = (data: IRunNodeResponse | EngineRequest) =>
 						!isEngineRequest(data) && isErrorValue(data.data?.[0]?.[0]?.json?.error);
-					if (executionData.node.retryOnFail === true) {
+					// A node resuming with a sub-workflow error has already failed in the sub-workflow;
+					// there is nothing to re-run, so don't apply retryOnFail (it would just re-throw the
+					// same error after pointless waits without re-executing anything).
+					const isResumedError = executionData.metadata?.resumeError !== undefined;
+					if (executionData.node.retryOnFail === true && !isResumedError) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						maxTries = Math.min(5, Math.max(2, executionData.node.maxTries || 3));
 					}
 
 					let waitBetweenTries = 0;
-					if (executionData.node.retryOnFail === true) {
+					if (executionData.node.retryOnFail === true && !isResumedError) {
 						// TODO: Remove the hardcoded default-values here and also in NodeSettings.vue
 						waitBetweenTries = Math.min(
 							5000,
@@ -1896,17 +1972,37 @@ export class WorkflowExecute {
 							if (error instanceof ApplicationError) {
 								// Report any unhandled errors that were wrapped in by one of our error classes
 								if (error.cause instanceof Error) toReport = error.cause;
-							} else {
-								// Report any unhandled and non-wrapped errors to Sentry
+							} else if (error instanceof BaseError) {
+								// BaseError subclasses specify shouldReport and level
+								// so always report and let beforeSend decide
 								toReport = error;
+							} else if (error instanceof Error) {
+								// Non-BaseError errors only report their class and call frames
+								// The full error is still stored in the execution resultData
+								// Stack frames are in the format `<name>: <message>\n<call frames>`
+								// they can span multiple lines, so we drop everything except call frame lines
+								const errorClass = error.name || 'Error';
+								const sanitized = new Error(errorClass);
+								sanitized.name = errorClass;
+								const frames = (error.stack ?? '')
+									.split('\n')
+									.filter((line) => /^\s+at\s/.test(line));
+								sanitized.stack = [errorClass, ...frames].join('\n');
+								toReport = sanitized;
 							}
 							if (toReport) {
+								const { executionId, instanceBaseUrl } = this.additionalData;
 								Container.get(ErrorReporter).error(toReport, {
 									extra: {
 										nodeName: executionNode.name,
 										nodeType: executionNode.type,
 										nodeVersion: executionNode.typeVersion,
 										workflowId: workflow.id,
+										executionId,
+										executionUrl:
+											instanceBaseUrl && executionId
+												? `${instanceBaseUrl}workflow/${workflow.id}/executions/${executionId}`
+												: undefined,
 									},
 								});
 							}
@@ -1936,7 +2032,22 @@ export class WorkflowExecute {
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 						usedDynamicCredentials:
 							this.additionalData.currentNodeUsedDynamicCredentials || undefined,
+						attemptedDynamicCredentials:
+							this.additionalData.currentNodeAttemptedDynamicCredentials || undefined,
 					};
+
+					// Record the n8n user a dynamically-resolved private credential
+					// belongs to onto the execution context, so the redaction layer
+					// can grant that user access to their own data. The identity is
+					// execution-scoped, so this is the same value across nodes.
+					if (
+						this.additionalData.currentNodeUsedDynamicCredentials &&
+						this.additionalData.dynamicCredentialsResolvedUserId &&
+						this.runExecutionData.executionData?.runtimeData
+					) {
+						this.runExecutionData.executionData.runtimeData.executedByUserId =
+							this.additionalData.dynamicCredentialsResolvedUserId;
+					}
 
 					if (executionError !== undefined) {
 						taskData.error = executionError;
@@ -1964,13 +2075,7 @@ export class WorkflowExecute {
 						const aiToolDefaultsToContinue =
 							isAiToolExecution && executionData.node.onError !== 'stopWorkflow';
 
-						if (
-							executionData.node.continueOnFail === true ||
-							['continueRegularOutput', 'continueErrorOutput'].includes(
-								executionData.node.onError || '',
-							) ||
-							aiToolDefaultsToContinue
-						) {
+						if (this.continuesOnError(executionData.node) || aiToolDefaultsToContinue) {
 							// Workflow should continue running even if node errors
 							if (isAiToolExecution) {
 								// Surface the error on the ai_tool channel so the agent receives it
@@ -2134,7 +2239,7 @@ export class WorkflowExecute {
 									outputIndex
 								] ?? []) {
 									if (!Object.hasOwn(workflow.nodes, connectionData.node)) {
-										throw new ApplicationError('Destination node not found', {
+										throw new UnexpectedError('Destination node not found', {
 											extra: {
 												sourceNodeName: executionNode.name,
 												destinationNodeName: connectionData.node,

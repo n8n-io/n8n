@@ -1,5 +1,8 @@
-import { AgentCredentialIntegrationConfig } from '@n8n/api-types';
+import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
@@ -10,10 +13,20 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
-import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
+import {
+	AgentChatIntegration,
+	type AgentChatIntegrationContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
+} from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
-import type { IntegrationAction } from '../integration-tools';
+import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+import {
+	createTelegramBridgeExecutionContext,
+	createTelegramResumeExecutionContext,
+} from './telegram-bridge-behavior';
 
 /**
  * Telegram platform integration.
@@ -44,7 +57,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Telegram messages as agent triggers.',
 			'Respond in Telegram conversations and send direct Telegram messages.',
-			'Render Telegram-compatible rich interaction cards with buttons.',
+			'Render Telegram-compatible cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Telegram or act as a Telegram bot.',
@@ -57,9 +70,14 @@ export class TelegramIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'divider',
+		'fields',
+	];
 
-	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'send_dm']);
 
 	readonly needsShortCallbackData = true;
 
@@ -88,6 +106,9 @@ export class TelegramIntegration extends AgentChatIntegration {
 		private readonly urlService: UrlService,
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		super();
 	}
@@ -133,13 +154,12 @@ export class TelegramIntegration extends AgentChatIntegration {
 		if (this.getMode() !== 'webhook') return;
 		const webhookUrl = ctx.webhookUrlFor('telegram');
 		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
-		const resp = await fetch(this.botApiUrl(ctx.credential, 'setWebhook'), {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ url: webhookUrl, secret_token: secretToken }),
+		const response = await this.botApiRequest(ctx.credential, 'setWebhook', {
+			url: webhookUrl,
+			secret_token: secretToken,
 		});
-		if (!resp.ok) {
-			throw new Error(`Failed to register Telegram webhook: ${await resp.text()}`);
+		if (!this.isOkStatus(response.statusCode)) {
+			throw new Error(`Failed to register Telegram webhook: ${this.stringifyBody(response.body)}`);
 		}
 		this.logger.info(`[TelegramIntegration] Webhook registered: ${webhookUrl}`);
 	}
@@ -151,11 +171,11 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 */
 	async onBeforeDisconnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		if (this.getMode() !== 'webhook') return;
-		const resp = await fetch(this.botApiUrl(ctx.credential, 'deleteWebhook'), {
-			method: 'POST',
-		});
-		if (!resp.ok) {
-			throw new Error(`Failed to deregister Telegram webhook: ${await resp.text()}`);
+		const response = await this.botApiRequest(ctx.credential, 'deleteWebhook');
+		if (!this.isOkStatus(response.statusCode)) {
+			throw new Error(
+				`Failed to deregister Telegram webhook: ${this.stringifyBody(response.body)}`,
+			);
 		}
 		this.logger.info(
 			`[TelegramIntegration] Webhook deregistered for agent ${ctx.agentId}, credential ${ctx.credentialId}`,
@@ -170,10 +190,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 * they are normalized by stripping "@" before comparison. The SDK delivers
 	 * both userId and userName without "@".
 	 */
-	isUserAllowed(
-		author: Author,
-		integration: AgentCredentialIntegrationConfig | undefined,
-	): boolean {
+	isUserAllowed(author: Author, integration: AgentIntegrationConfig | undefined): boolean {
 		if (!integration) return true;
 		if (integration?.type !== 'telegram') {
 			throw new UnexpectedError(
@@ -187,6 +204,20 @@ export class TelegramIntegration extends AgentChatIntegration {
 			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
 			return normalized === author.userId || normalized === author.userName;
 		});
+	}
+
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		return createTelegramBridgeExecutionContext(params);
+	}
+
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return createTelegramResumeExecutionContext(params);
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
@@ -257,5 +288,32 @@ export class TelegramIntegration extends AgentChatIntegration {
 				? raw.trim().replace(/\/+$/, '')
 				: 'https://api.telegram.org';
 		return `${baseUrl}/bot${botToken}/${method}`;
+	}
+
+	private async botApiRequest(
+		credential: Record<string, unknown>,
+		method: string,
+		body?: Record<string, unknown>,
+	) {
+		return await this.outboundHttp
+			.requests({
+				// protection is applied because the Bot API host is user-configurable
+				ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
+			})
+			.request({
+				method: 'POST',
+				url: this.botApiUrl(credential, method),
+				...(body ? { body, json: true } : {}),
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
+			});
+	}
+
+	private isOkStatus(statusCode: number): boolean {
+		return statusCode >= 200 && statusCode < 300;
+	}
+
+	private stringifyBody(body: unknown): string {
+		return typeof body === 'string' ? body : JSON.stringify(body);
 	}
 }

@@ -1,10 +1,20 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { CredentialsEntity, Project, Variables } from '@n8n/db';
+import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import type { IRun, ITaskData, IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
+import type {
+	DynamicCredentialsUsage,
+	ExecutionError,
+	IRun,
+	ITaskData,
+	IWorkflowBase,
+	IWorkflowSettings,
+	RelatedExecution,
+} from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import {
 	getLastExecutedNodeData,
@@ -14,27 +24,31 @@ import {
 	removeDefaultValues,
 	replaceInvalidCredentials,
 	shouldRestartParentExecution,
+	updateParentExecutionWithChildResults,
 	validatePinDataSize,
 	validateWorkflowNodeGroups,
 	validateWorkflowStructure,
+	sanitizeNodeGroupDescriptions,
 	WorkflowStructureBadRequestError,
 } from '@/workflow-helpers';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {
 	beforeAll(() => {
 		mockInstance(VariablesService, {
 			async getAllCached() {
+				// Project VAR2 is listed before its global twin so resolution must
+				// be order-independent: the project value still has to win.
 				return [
 					{ id: '1', key: 'VAR1', value: 'value1' },
-					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '3',
 						key: 'VAR2',
 						value: 'value1Project',
 						project: { id: '1', name: 'project1' } as Project,
 					},
+					{ id: '2', key: 'VAR2', value: 'value2' },
 					{
 						id: '4',
 						key: 'VAR4',
@@ -77,6 +91,11 @@ describe('workflow-helpers', () => {
 		it('should prioritize passed of projectId over workflowId', async () => {
 			const variables = await getVariables('1', '2');
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2', VAR5: 'value5' });
+		});
+
+		it('should let a project variable override a same-key global regardless of order', async () => {
+			const variables = await getVariables(undefined, '1');
+			expect(variables.VAR2).toBe('value1Project');
 		});
 	});
 });
@@ -190,7 +209,7 @@ describe('preserveInputOverride', () => {
 describe('replaceInvalidCredentials', () => {
 	const credentialsRepository = mockInstance(CredentialsRepository);
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	function makeWorkflow(credentials: Record<string, { id: string | null; name: string }>) {
 		return {
@@ -272,6 +291,21 @@ describe('replaceInvalidCredentials', () => {
 			id: 'cred-new',
 			name: 'My Cred',
 		});
+	});
+
+	it('should skip credential types that resolve to object internal keys', async () => {
+		// JSON.parse keeps `__proto__` as an own enumerable key, unlike an object literal.
+		const credentials = JSON.parse(
+			'{"__proto__":{"id":"injected","name":"injected"},"constructor":{"id":"injected","name":"injected"}}',
+		) as Record<string, { id: string; name: string }>;
+		const workflow = makeWorkflow(credentials);
+
+		await replaceInvalidCredentials(workflow, 'project-1');
+
+		expect(credentialsRepository.findOneBy).not.toHaveBeenCalled();
+		expect(credentialsRepository.findByNameAndTypeInProject).not.toHaveBeenCalled();
+		expect(({} as Record<string, unknown>).id).toBeUndefined();
+		expect(({} as Record<string, unknown>).injected).toBeUndefined();
 	});
 });
 
@@ -444,65 +478,264 @@ describe('validateWorkflowNodeGroups', () => {
 
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }),
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }, null),
 		).not.toThrow();
 	});
 
 	it('should pass when nodeGroups is empty', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }),
+			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: [] }, null),
 		).not.toThrow();
 	});
 
 	it('should pass when all nodeIds reference existing nodes', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'] }],
+				},
+				null,
+			),
 		).not.toThrow();
 	});
 
 	it('should throw when a nodeId does not reference an existing node', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1')],
-				nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: ['n1', 'n999'] }],
+				},
+				null,
+			),
 		).toThrow('Group "My Group" references node ID "n999" that does not exist in the workflow.');
 	});
 
 	it('should throw for the first invalid nodeId found', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [],
-				nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [],
+					nodeGroups: [{ id: 'g1', name: 'Empty Group', nodeIds: ['bad1', 'bad2'] }],
+				},
+				null,
+			),
 		).toThrow('Group "Empty Group" references node ID "bad1"');
+	});
+
+	it('should throw when a group has no members', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: [] }],
+				},
+				null,
+			),
+		).toThrow('Group "My Group" has no members.');
 	});
 
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1'), makeNode('n2')],
-				nodeGroups: [
-					{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
-				],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [
+						{ id: 'g1', name: 'Group A', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Group B', nodeIds: ['n1', 'n2'] },
+					],
+				},
+				null,
+			),
 		).toThrow('Node "n1" belongs to multiple groups: "Group A" and "Group B".');
 	});
 
 	it('should throw when group names are not unique', () => {
 		expect(() =>
-			validateWorkflowNodeGroups({
-				nodes: [makeNode('n1')],
-				nodeGroups: [
-					{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
-					{ id: 'g2', name: 'Duplicate', nodeIds: [] },
-				],
-			}),
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [
+						{ id: 'g1', name: 'Duplicate', nodeIds: ['n1'] },
+						{ id: 'g2', name: 'Duplicate', nodeIds: [] },
+					],
+				},
+				null,
+			),
 		).toThrow('Duplicate node group name "Duplicate".');
+	});
+
+	it('should throw when group ids are not unique', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1'), makeNode('n2')],
+					nodeGroups: [
+						{ id: 'dup', name: 'Group A', nodeIds: ['n1'] },
+						{ id: 'dup', name: 'Group B', nodeIds: ['n2'] },
+					],
+				},
+				null,
+			),
+		).toThrow('Duplicate node group ID "dup".');
+	});
+
+	describe('full validation', () => {
+		const triggerType = { group: ['trigger'] } as never;
+		const regularType = { group: ['transform'] } as never;
+		// Two nodes connected n1 → n2 form a groupable chain.
+		const connectedNodes = [makeNode('n1'), makeNode('n2')];
+		const connections = {
+			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+		} as never;
+
+		it('passes for a valid connected group', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: connectedNodes,
+						connections,
+						nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2'] }],
+					},
+					() => regularType,
+				),
+			).not.toThrow();
+		});
+
+		it('rejects a group that contains a trigger node', () => {
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					() => triggerType,
+				),
+			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+		});
+
+		it('does not run full checks when getNodeType is null (basic-only)', () => {
+			// Same trigger-in-group that fails under full validation passes under basic-only.
+			expect(() =>
+				validateWorkflowNodeGroups(
+					{
+						nodes: [makeNode('n1')],
+						connections: {},
+						nodeGroups: [{ id: 'g1', name: 'Has trigger', nodeIds: ['n1'] }],
+					},
+					null,
+				),
+			).not.toThrow();
+		});
+
+		describe('sticky notes', () => {
+			const makeStickyNode = (id: string) =>
+				({
+					id,
+					name: `Sticky ${id}`,
+					type: STICKY_NODE_TYPE,
+					position: [0, 0],
+					parameters: {},
+				}) as never;
+			const stickyType = { name: STICKY_NODE_TYPE, group: ['input'] } as never;
+			const getNodeType = (node: { type: string }) =>
+				node.type === STICKY_NODE_TYPE ? stickyType : regularType;
+
+			it('passes for a group containing a sticky alongside a connected chain', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [...connectedNodes, makeStickyNode('s1')],
+							connections,
+							nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('passes for a sticky-only group', () => {
+				// Groups can degenerate to sticky-only when their last connectable
+				// node is deleted; such groups must keep saving.
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeStickyNode('s1'), makeStickyNode('s2')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Notes', nodeIds: ['s1', 's2'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('still rejects disconnected connectable nodes when a sticky is present', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeNode('n1'), makeNode('n2'), makeStickyNode('s1')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Disconnected', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).toThrow(
+					'Node group "Disconnected" (g1) must form a single connected subgraph with a single entry and exit.',
+				);
+			});
+		});
+	});
+});
+
+describe('sanitizeNodeGroupDescriptions', () => {
+	it('returns no warnings and leaves descriptions within the cap untouched', () => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: 'short' }],
+		};
+		expect(sanitizeNodeGroupDescriptions(workflow)).toEqual([]);
+		expect(workflow.nodeGroups[0].description).toBe('short');
+	});
+
+	it('truncates an over-cap description and returns a warning', () => {
+		const workflow = {
+			nodeGroups: [
+				{
+					id: 'g1',
+					name: 'Group 1',
+					nodeIds: [],
+					description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 10),
+				},
+			],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+		expect(warnings).toEqual([
+			`Group "Group 1" description exceeded ${GROUP_DESCRIPTION_MAX_LENGTH} characters and was truncated.`,
+		]);
+	});
+
+	it.each([
+		['a number', 123],
+		['an object', { a: 1 }],
+		['an array', Array.from({ length: GROUP_DESCRIPTION_MAX_LENGTH + 10 }, (_, i) => i)],
+	])('removes a non-string description (%s) and returns a warning', (_label, description) => {
+		const workflow = {
+			nodeGroups: [{ id: 'g1', name: 'Group 1', nodeIds: [], description: description as never }],
+		};
+		const warnings = sanitizeNodeGroupDescriptions(workflow);
+
+		expect(workflow.nodeGroups[0].description).toBeUndefined();
+		expect(warnings).toEqual(['Group "Group 1" description was not plain text and was removed.']);
+	});
+
+	it('handles missing nodeGroups and groups without a description', () => {
+		expect(sanitizeNodeGroupDescriptions({ nodeGroups: undefined })).toEqual([]);
+		expect(
+			sanitizeNodeGroupDescriptions({ nodeGroups: [{ id: 'g1', name: 'G', nodeIds: [] }] }),
+		).toEqual([]);
 	});
 });
 
@@ -665,4 +898,250 @@ describe('getLastExecutedNodeRuns', () => {
 		getLastExecutedNodeRuns(buildRun('Last executed node', { 'Last executed node': runs }));
 		expect(runs).toEqual(snapshot);
 	});
+});
+
+describe('updateParentExecutionWithChildResults', () => {
+	const PARENT_ID = 'parent-execution-id';
+
+	const waitingParent = (): IExecutionResponse =>
+		({
+			status: 'waiting',
+			data: {
+				executionData: {
+					nodeExecutionStack: [
+						{
+							node: { name: 'Execute Sub-workflow' },
+							data: { main: [[{ json: { in: 1 } }]] },
+							source: null,
+						},
+					],
+				},
+			},
+		}) as unknown as IExecutionResponse;
+
+	const childRun = (
+		status: string,
+		lastNode: string,
+		nodeRun: Partial<ITaskData>,
+		error?: ExecutionError,
+		executedByUserId?: string,
+	): IRun =>
+		({
+			mode: 'integrated',
+			status,
+			data: {
+				resultData: { lastNodeExecuted: lastNode, error, runData: { [lastNode]: [nodeRun] } },
+				...(executedByUserId ? { executionData: { runtimeData: { executedByUserId } } } : {}),
+			},
+		}) as unknown as IRun;
+
+	type StackEntry = {
+		data?: unknown;
+		metadata?: {
+			resumeError?: ExecutionError;
+			subExecution?: RelatedExecution;
+			dynamicCredentialsUsage?: DynamicCredentialsUsage;
+		};
+	};
+
+	// Runs the workflow helper against a waiting parent and returns the updated stack entry.
+	async function resumeWith(child: IRun, childExecution?: RelatedExecution) {
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(waitingParent());
+
+		await updateParentExecutionWithChildResults(PARENT_ID, child, childExecution);
+
+		expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(1);
+		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+		return (payload as IExecutionResponse).data.executionData!
+			.nodeExecutionStack[0] as unknown as StackEntry;
+	}
+
+	it('carries the child error and execution reference onto the parent node so resume can fail it', async () => {
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const entry = await resumeWith(childRun('error', 'Stop and Error', { error }, error), {
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
+
+		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+		expect(entry.metadata?.subExecution).toEqual({
+			executionId: 'child-execution-id',
+			workflowId: 'child-workflow-id',
+		});
+	});
+
+	it('copies the last node output for a successful child and sets no resume error', async () => {
+		const entry = await resumeWith(
+			childRun('success', 'Done', { data: { main: [[{ json: { out: 2 } }]] } }),
+		);
+
+		expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+		expect(entry.metadata?.resumeError).toBeUndefined();
+		expect(entry.metadata?.dynamicCredentialsUsage).toBeUndefined();
+	});
+
+	// The parent's waiting task is popped and its node re-runs disabled on resume, so the
+	// child's private-credential usage must ride on the stack entry to reach the new task.
+	it('stashes the child dynamic-credential usage on the resumed stack entry', async () => {
+		const entry = await resumeWith(
+			childRun(
+				'success',
+				'Done',
+				{
+					data: { main: [[{ json: { out: 2 } }]] },
+					usedDynamicCredentials: true,
+					attemptedDynamicCredentials: true,
+				},
+				undefined,
+				'resolved-user',
+			),
+		);
+
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({
+			usedDynamicCredentials: true,
+			attemptedDynamicCredentials: true,
+			dynamicCredentialsResolvedUserId: 'resolved-user',
+		});
+	});
+
+	it('stashes the attempted flag even when the child failed', async () => {
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const entry = await resumeWith(
+			childRun('error', 'Stop and Error', { error, attemptedDynamicCredentials: true }, error),
+		);
+
+		expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({ attemptedDynamicCredentials: true });
+	});
+
+	// "Run once for each item" spawns several children per wait; a weaker later report
+	// (attempted-only) must not clobber a sibling's used flag or resolved user.
+	it('unions the stash across sibling children instead of replacing it', async () => {
+		let stored = waitingParent();
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockImplementation(async () =>
+			structuredClone(stored),
+		);
+		executionPersistence.updateExistingExecution.mockImplementation(async (_id, patch) => {
+			stored = { ...stored, ...patch } as IExecutionResponse;
+			return true;
+		});
+
+		const usedChild = childRun(
+			'success',
+			'Done',
+			{
+				data: { main: [[{ json: { out: 1 } }]] },
+				usedDynamicCredentials: true,
+				attemptedDynamicCredentials: true,
+			},
+			undefined,
+			'resolved-user',
+		);
+		const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+		const attemptedChild = childRun(
+			'error',
+			'Stop and Error',
+			{ error, attemptedDynamicCredentials: true },
+			error,
+		);
+
+		await updateParentExecutionWithChildResults(PARENT_ID, usedChild);
+		await updateParentExecutionWithChildResults(PARENT_ID, attemptedChild);
+
+		const entry = stored.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+		expect(entry.metadata?.dynamicCredentialsUsage).toEqual({
+			usedDynamicCredentials: true,
+			attemptedDynamicCredentials: true,
+			dynamicCredentialsResolvedUserId: 'resolved-user',
+		});
+	});
+
+	// The parent can sit in 'waiting' for a long time with the child's output already
+	// embedded, so the waiting task must be flagged immediately, not only after resume.
+	it('stamps the parent waiting task and runtime data at stash time', async () => {
+		const parent = waitingParent();
+		parent.data.resultData = {
+			runData: {
+				'Execute Sub-workflow': [
+					{
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						executionStatus: 'waiting',
+						source: [],
+					} as ITaskData,
+				],
+			},
+		} as unknown as IExecutionResponse['data']['resultData'];
+		parent.data.executionData!.runtimeData = {
+			version: 1,
+			establishedAt: 0,
+			source: 'trigger',
+		};
+
+		const executionPersistence = mockInstance(ExecutionPersistence);
+		executionPersistence.findSingleExecution.mockResolvedValue(parent);
+
+		await updateParentExecutionWithChildResults(
+			PARENT_ID,
+			childRun(
+				'success',
+				'Done',
+				{
+					data: { main: [[{ json: { out: 2 } }]] },
+					usedDynamicCredentials: true,
+					attemptedDynamicCredentials: true,
+				},
+				undefined,
+				'resolved-user',
+			),
+		);
+
+		const [, payload] = executionPersistence.updateExistingExecution.mock.calls[0];
+		const persisted = payload as IExecutionResponse;
+		const waitingTask = persisted.data.resultData.runData['Execute Sub-workflow'][0];
+		expect(waitingTask.usedDynamicCredentials).toBe(true);
+		expect(waitingTask.attemptedDynamicCredentials).toBe(true);
+		expect(persisted.data.executionData?.runtimeData?.executedByUserId).toBe('resolved-user');
+	});
+
+	// In "run once for each item" mode multiple children update the same waiting
+	// parent. Contract: if any child errored before the parent resumed, the parent
+	// node fails — a later successful sibling must not mask the error.
+	it.each(['error-then-success', 'success-then-error'] as const)(
+		'preserves the child error on the parent when children complete in order %s',
+		async (order) => {
+			// In-memory persistence: deep-clone on read so the second call can only see
+			// the first call's write through the persisted blob, not via object aliasing
+			// (the helper mutates the stack entry it read in place).
+			let stored = waitingParent();
+			const executionPersistence = mockInstance(ExecutionPersistence);
+			executionPersistence.findSingleExecution.mockImplementation(async () =>
+				structuredClone(stored),
+			);
+			executionPersistence.updateExistingExecution.mockImplementation(async (_id, patch) => {
+				stored = { ...stored, ...patch } as IExecutionResponse;
+				return true;
+			});
+
+			const error = { name: 'NodeOperationError', message: 'ERROR' } as unknown as ExecutionError;
+			const errorChild = childRun('error', 'Stop and Error', { error }, error);
+			const successChild = childRun('success', 'Done', {
+				data: { main: [[{ json: { out: 2 } }]] },
+			});
+			const children =
+				order === 'error-then-success' ? [errorChild, successChild] : [successChild, errorChild];
+
+			for (const child of children) {
+				await updateParentExecutionWithChildResults(PARENT_ID, child);
+			}
+
+			const entry = stored.data.executionData!.nodeExecutionStack[0] as unknown as StackEntry;
+			expect(entry.metadata?.resumeError).toMatchObject({ message: 'ERROR' });
+			expect(entry.data).toEqual({ main: [[{ json: { out: 2 } }]] });
+			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledTimes(2);
+		},
+	);
 });

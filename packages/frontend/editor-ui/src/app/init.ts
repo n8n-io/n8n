@@ -3,7 +3,7 @@ import SourceControlInitializationErrorMessage from '@/features/integrations/sou
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { LOCAL_STORAGE_DATA_WORKER } from '@/app/constants/localStorage';
+import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { UserManagementAuthenticationMethod } from '@/Interface';
@@ -18,7 +18,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -218,7 +218,7 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleSettingsPages();
 
 	// Initialize run data worker and load node types
-	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
+	if (isDataWorkerEnabled()) {
 		const coordinator = await import('@/app/workers');
 		await coordinator.initialize({ version: settingsStore.settings.versionCli });
 		await coordinator.loadNodeTypes(rootStore.baseUrl);

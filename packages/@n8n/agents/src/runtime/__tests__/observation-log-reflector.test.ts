@@ -1,27 +1,33 @@
 import type * as AiImport from 'ai';
 
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
-import { InMemoryMemory } from '../memory-store';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogReflectorPrompt,
 	createObservationLogReflectFn,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
-} from '../observation-log-defaults';
+} from '../memory/observation-log-defaults';
 import {
 	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
 	runObservationLogReflector,
-} from '../observation-log-reflector';
+} from '../memory/observation-log-reflector';
 
 type GenerateTextCall = Record<string, unknown>;
-type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+type GenerateTextResult = {
+	text: string;
+	usage?: { totalTokens?: number; inputTokens?: number; outputTokens?: number };
+};
 
-const mockGenerateText = jest.fn<Promise<GenerateTextResult>, [GenerateTextCall]>();
+const { mockGenerateText } = vi.hoisted(() => ({
+	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
+}));
 
-jest.mock('ai', () => {
-	const actual = jest.requireActual<typeof AiImport>('ai');
+vi.mock('ai', async () => {
+	const actual = await vi.importActual<typeof AiImport>('ai');
 	return {
 		...actual,
 		generateText: async (call: GenerateTextCall): Promise<GenerateTextResult> =>
@@ -49,7 +55,7 @@ describe('observation-log reflector defaults', () => {
 	});
 
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(4_000);
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(12_000);
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain(
 			'CRITICAL. Facts, decisions, identities, commitments',
@@ -80,9 +86,9 @@ describe('observation-log reflector defaults', () => {
 			usage: { totalTokens: 19 },
 		});
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		const result = await createObservationLogReflectFn('openai/gpt-4o-mini')({
@@ -99,6 +105,68 @@ describe('observation-log reflector defaults', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(19);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
+	it('threads input.telemetry into generateText as a memory-reflector-suffixed call, omitting it when disabled or absent', async () => {
+		mockGenerateText.mockResolvedValue({ text: '{"drop":[],"merge":[]}' });
+		const reflect = createObservationLogReflectFn('openai/gpt-4o-mini');
+		const baseInput = {
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '',
+			tokenCount: 10,
+			tokenBudget: 12_000,
+		};
+		const telemetry: BuiltTelemetry = {
+			enabled: true,
+			functionId: 'my-agent',
+			metadata: { thread_id: 't1' },
+			recordInputs: true,
+			recordOutputs: false,
+			integrations: [],
+		};
+
+		await reflect({ ...baseInput, telemetry });
+		await reflect(baseInput);
+		await reflect({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
+
+		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
+			experimental_telemetry: {
+				isEnabled: true,
+				functionId: 'my-agent.memory-reflector',
+				metadata: { thread_id: 't1' },
+				recordInputs: true,
+				recordOutputs: false,
+			},
+		});
+		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+	});
+
+	it('reports usage with task="reflector" and the configured model through onUsage', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"drop":[],"merge":[]}',
+			usage: { inputTokens: 50, outputTokens: 5, totalTokens: 55 },
+		});
+		const onUsage = vi.fn();
+
+		await createObservationLogReflectFn('anthropic/claude-haiku-4-5-20251001', { onUsage })({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '',
+			tokenCount: 10,
+			tokenBudget: 12_000,
+		});
+
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				task: 'reflector',
+				model: 'anthropic/claude-haiku-4-5-20251001',
+				reportId: expect.any(String),
+			}),
+		);
 	});
 });
 
@@ -268,7 +336,7 @@ describe('runObservationLogReflector', () => {
 				tokenCount: 2,
 			},
 		]);
-		const reflect = jest.fn().mockResolvedValue('{"drop":[],"merge":[]}');
+		const reflect = vi.fn().mockResolvedValue('{"drop":[],"merge":[]}');
 
 		const result = await runObservationLogReflector({
 			memory: store,

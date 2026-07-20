@@ -1,20 +1,21 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ITriggerFunctions } from 'n8n-workflow';
 import * as GenericFunctions from '../GenericFunctions';
 import type { Channel, GetMessage } from 'amqplib';
 import { RabbitMQTrigger } from '../RabbitMQTrigger.node';
+import type { MockInstance } from 'vitest';
 
 describe('RabbitMQTrigger node', () => {
 	const trigger = new RabbitMQTrigger();
 	const mockTriggerFunctions = mockDeep<ITriggerFunctions>();
-	let connectSpy: jest.SpyInstance;
-	let handleMessageSpy: jest.SpyInstance;
+	let connectSpy: MockInstance;
+	let handleMessageSpy: MockInstance;
 	const mockChannel = mockDeep<Channel>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		connectSpy = jest.spyOn(GenericFunctions, 'rabbitmqConnectQueue');
-		handleMessageSpy = jest.spyOn(GenericFunctions, 'handleMessage');
+		vi.resetAllMocks();
+		connectSpy = vi.spyOn(GenericFunctions, 'rabbitmqConnectQueue');
+		handleMessageSpy = vi.spyOn(GenericFunctions, 'handleMessage');
 	});
 
 	describe('manual execution', () => {

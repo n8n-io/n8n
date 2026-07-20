@@ -1,7 +1,8 @@
 import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
-import { LICENSE_FEATURES, LICENSE_QUOTAS } from '@n8n/constants';
+import { LICENSE_FEATURES, LICENSE_QUOTAS, Time } from '@n8n/constants';
+import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
@@ -12,6 +13,7 @@ import path from 'path';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
+import { isWorkflowReviewsFeatureAvailable } from '@/constants/workflow-reviews';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
@@ -30,8 +32,12 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
+
 import { AiUsageService } from './ai-usage.service';
 import { UrlService } from './url.service';
+import { WorkflowReviewPolicyService } from './workflow-review-policy.service';
+
+const DYNAMIC_BANNER_FILTERS_CACHE_TTL = 30 * Time.seconds.toMilliseconds;
 
 /**
  * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
@@ -111,6 +117,10 @@ export class FrontendService {
 
 	private communityPackagesService?: CommunityPackagesService;
 
+	private publishedWorkflowCountCache?: { value: number; expiresAt: number };
+
+	private publishedWorkflowCountRequest?: Promise<number>;
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
@@ -129,12 +139,14 @@ export class FrontendService {
 		private readonly mfaService: MfaService,
 		private readonly ownershipService: OwnershipService,
 		private readonly aiUsageService: AiUsageService,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
-			void import('@/modules/community-packages/community-packages.service').then(
+			void import('@/modules/community-packages/community-packages.service.js').then(
 				({ CommunityPackagesService }) => {
 					this.communityPackagesService = Container.get(CommunityPackagesService);
 				},
@@ -210,6 +222,7 @@ export class FrontendService {
 			timezone: this.globalConfig.generic.timezone,
 			urlBaseWebhook: this.urlService.getWebhookBaseUrl(),
 			urlBaseEditor: instanceBaseUrl,
+			urlBaseWebhookTest: this.urlService.getTestWebhookBaseUrl(),
 			binaryDataMode: this.binaryDataConfig.mode,
 			nodeJsVersion: process.version.replace(/^v/, ''),
 			nodeEnv: process.env.NODE_ENV,
@@ -238,6 +251,9 @@ export class FrontendService {
 			dynamicBanners: {
 				endpoint: this.globalConfig.dynamicBanners.endpoint,
 				enabled: this.globalConfig.dynamicBanners.enabled && this.globalConfig.diagnostics.enabled,
+				filters: {
+					publishedWorkflowCount: 0,
+				},
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -292,6 +308,7 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -348,6 +365,8 @@ export class FrontendService {
 				customRoles: false,
 				personalSpacePolicy: false,
 				dataRedaction: false,
+				otelCustomSpanAttributes: false,
+				workflowReviews: false,
 			},
 			mfa: {
 				enabled: false,
@@ -400,9 +419,13 @@ export class FrontendService {
 			},
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
+				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,
+			collaboration: {
+				crdt: this.globalConfig.collaboration.crdt,
+			},
 			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}
@@ -430,11 +453,14 @@ export class FrontendService {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
+		this.settings.urlBaseWebhookTest = this.urlService.getTestWebhookBaseUrl();
 		this.settings.oauthCallbackUrls = {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 		};
 		this.settings.jwksUri = `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`;
+		this.settings.dynamicBanners.filters.publishedWorkflowCount =
+			await this.getPublishedWorkflowCountForDynamicBanners();
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
@@ -506,6 +532,8 @@ export class FrontendService {
 			customRoles: this.licenseState.isCustomRolesLicensed(),
 			personalSpacePolicy: this.licenseState.isPersonalSpacePolicyLicensed(),
 			dataRedaction: this.licenseState.isDataRedactionLicensed(),
+			otelCustomSpanAttributes: this.licenseState.isOtelCustomSpanAttributesLicensed(),
+			workflowReviews: this.licenseState.isWorkflowReviewsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {
@@ -572,6 +600,12 @@ export class FrontendService {
 		// TODO: read from settings
 		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
+		if (isWorkflowReviewsFeatureAvailable(this.licenseState.isWorkflowReviewsLicensed())) {
+			this.settings.workflowReviews = await this.workflowReviewPolicyService.get();
+		} else {
+			delete this.settings.workflowReviews;
+		}
+
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
 		this.settings.binaryDataMode = this.binaryDataConfig.mode;
@@ -587,6 +621,34 @@ export class FrontendService {
 		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();
 
 		return this.settings;
+	}
+
+	private async getPublishedWorkflowCountForDynamicBanners(): Promise<number> {
+		if (!this.settings.dynamicBanners.enabled) return 0;
+
+		const now = Date.now();
+		if (this.publishedWorkflowCountCache && this.publishedWorkflowCountCache.expiresAt > now) {
+			return this.publishedWorkflowCountCache.value;
+		}
+
+		try {
+			this.publishedWorkflowCountRequest ??= this.workflowRepository
+				.getPublishedCount()
+				.finally(() => {
+					this.publishedWorkflowCountRequest = undefined;
+				});
+
+			const value = await this.publishedWorkflowCountRequest;
+			this.publishedWorkflowCountCache = {
+				value,
+				expiresAt: Date.now() + DYNAMIC_BANNER_FILTERS_CACHE_TTL,
+			};
+
+			return value;
+		} catch (error) {
+			this.logger.warn('Failed to fetch published workflow count for dynamic banners', { error });
+			return this.publishedWorkflowCountCache?.value ?? 0;
+		}
 	}
 
 	/**

@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
-import type { UserAction } from '@/Interface';
-import {
-	N8nActionToggle,
-	N8nButton,
-	N8nDataTableServer,
-	N8nLoading,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nDataTableServer, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import { getClientBrand, isFullAccessGrant, scopeLabel } from '../../clients.utils';
+import OAuthClientDetailsModal from '../OAuthClientDetailsModal.vue';
 
 const i18n = useI18n();
 const mcpStore = useMCPStore();
@@ -20,12 +16,16 @@ const mcpStore = useMCPStore();
 type Props = {
 	clients: OAuthClientResponseDto[];
 	loading: boolean;
+	scopeTools?: Record<string, string[]>;
 };
 
 const props = defineProps<Props>();
 
 const page = ref(0);
 const itemsPerPage = ref(10);
+
+const detailsClient = ref<OAuthClientResponseDto | null>(null);
+const detailsOpen = ref(false);
 
 const visibleClients = computed(() => {
 	const start = page.value * itemsPerPage.value;
@@ -50,7 +50,15 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.clientName'),
 		key: 'name',
-		width: 250,
+		width: 220,
+		disableSort: true,
+		value() {
+			return;
+		},
+	},
+	{
+		title: i18n.baseText('settings.mcp.oAuthClients.table.access'),
+		key: 'scopes',
 		disableSort: true,
 		value() {
 			return;
@@ -58,8 +66,8 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 	},
 	{
 		title: i18n.baseText('settings.mcp.oAuthClients.table.connectedAt'),
-		key: 'createdAt',
-		width: 250,
+		key: 'grantedAt',
+		width: 160,
 		disableSort: true,
 		value() {
 			return;
@@ -69,7 +77,7 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 		title: '',
 		key: 'actions',
 		align: 'end',
-		width: 50,
+		width: 140,
 		disableSort: true,
 		value() {
 			return;
@@ -77,18 +85,36 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 	},
 ]);
 
-const tableActions = ref<Array<UserAction<OAuthClientResponseDto>>>([
-	{
-		label: i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess'),
-		value: 'revokeClient',
-	},
-]);
-
-const onTableAction = (action: string, item: OAuthClientResponseDto) => {
-	if (action === 'revokeClient') {
-		emit('revokeClient', item);
+function accessSummary(client: OAuthClientResponseDto): string {
+	if (client.scopes.length === 0) return i18n.baseText('settings.mcp.oAuthClients.access.none');
+	if (isFullAccessGrant(client.scopes)) {
+		return i18n.baseText('settings.mcp.oAuthClients.access.full');
 	}
-};
+	const visible = client.scopes
+		.slice(0, 2)
+		.map((scope) => scopeLabel(i18n, scope))
+		.join(', ');
+	const remaining = client.scopes.length - 2;
+	if (remaining <= 0) return visible;
+	return `${visible} ${i18n.baseText('settings.mcp.oAuthClients.scope.more', {
+		interpolate: { count: remaining },
+	})}`;
+}
+
+function clientTypeLabel(client: OAuthClientResponseDto): string | null {
+	const type = getClientBrand(client.name).type;
+	if (!type) return null;
+	return i18n.baseText(`settings.mcp.oAuthClients.clientType.${type}` as BaseTextKey);
+}
+
+function openDetails(item: OAuthClientResponseDto) {
+	detailsClient.value = item;
+	detailsOpen.value = true;
+}
+
+function onRevoke(item: OAuthClientResponseDto) {
+	emit('revokeClient', item);
+}
 </script>
 
 <template>
@@ -105,6 +131,7 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 				:headers="tableHeaders"
 				:items="visibleClients"
 				:items-length="props.clients.length"
+				@click:row="(_, { item }) => openDetails(item)"
 			>
 				<template v-if="props.clients.length === 0" #cover>
 					<div :class="$style['empty-state']">
@@ -128,26 +155,59 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 					</div>
 				</template>
 				<template #[`item.name`]="{ item }">
-					<N8nText data-test-id="mcp-client-name" color="text-base">
-						{{ item.name }}
+					<div :class="$style.client">
+						<span :class="$style['client-icon-chip']">
+							<component
+								:is="getClientBrand(item.name).icon"
+								v-if="getClientBrand(item.name).icon"
+								:class="$style['client-icon']"
+							/>
+							<N8nIcon v-else icon="mcp" :class="$style['client-icon']" />
+						</span>
+						<div :class="$style['client-name']">
+							<N8nText data-test-id="mcp-client-name" color="text-dark">
+								{{ item.name }}
+							</N8nText>
+							<N8nText
+								v-if="clientTypeLabel(item)"
+								data-test-id="mcp-client-type"
+								size="xsmall"
+								color="text-light"
+							>
+								{{ clientTypeLabel(item) }}
+							</N8nText>
+						</div>
+					</div>
+				</template>
+				<template #[`item.scopes`]="{ item }">
+					<N8nText data-test-id="mcp-client-access" color="text-light" :class="$style.access">
+						{{ accessSummary(item) }}
 					</N8nText>
 				</template>
-				<template #[`item.createdAt`]="{ item }">
+				<template #[`item.grantedAt`]="{ item }">
 					<N8nText data-test-id="mcp-client-created-at" color="text-base">
-						<TimeAgo :date="String(item.createdAt)" />
+						<TimeAgo :date="new Date(item.grantedAt).toISOString()" capitalize />
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nActionToggle
-						data-test-id="mcp-oauth-client-action-toggle"
-						placement="bottom"
-						:actions="tableActions"
-						theme="dark"
-						@action="onTableAction($event, item)"
-					/>
+					<N8nButton
+						variant="outline"
+						size="small"
+						data-test-id="mcp-oauth-client-revoke-button"
+						@click.stop="onRevoke(item)"
+					>
+						{{ i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess') }}
+					</N8nButton>
 				</template>
 			</N8nDataTableServer>
 		</div>
+
+		<OAuthClientDetailsModal
+			v-model:open="detailsOpen"
+			:client="detailsClient"
+			:scope-tools="props.scopeTools"
+			@revoke="onRevoke"
+		/>
 	</div>
 </template>
 
@@ -156,6 +216,44 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+}
+
+.client {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.client-icon-chip {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	flex-shrink: 0;
+	/* fixed white tile so dark brand marks stay visible on the dark theme */
+	background-color: var(--color--neutral-white);
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
+.client-icon {
+	width: var(--spacing--md);
+	height: var(--spacing--md);
+	/* the tile is always white, so the fallback MCP glyph must stay dark in both themes */
+	color: var(--color--neutral-black);
+}
+
+/* the whole row opens the details modal; hint that on the access summary */
+.access:hover {
+	color: var(--color--primary);
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.client-name {
+	display: flex;
+	flex-direction: column;
 }
 
 .empty-state {
