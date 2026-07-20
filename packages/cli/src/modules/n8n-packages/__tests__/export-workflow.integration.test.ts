@@ -216,7 +216,7 @@ describe('workflow package export', () => {
 			).rejects.toThrow(PackageExportBlockedError);
 			await expect(
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
-			).rejects.toThrow('sub-workflow dependency not included in the package');
+			).rejects.toThrow('workflow dependency not included in the package');
 
 			const stream = await service.exportPackage({
 				user: owner,
