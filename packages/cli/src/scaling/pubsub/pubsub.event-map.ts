@@ -4,6 +4,7 @@ import type {
 	InstanceAiEvent,
 	PushMessage,
 	WorkerStatus,
+	WorkflowPublicationStatusMessage,
 } from '@n8n/api-types';
 import type { IWorkflowBase, WorkflowActivateMode } from 'n8n-workflow';
 
@@ -113,6 +114,10 @@ export type PubSubCommandMap = {
 		errorDescription?: string;
 		nodeId?: string;
 	};
+
+	/** Relay a publication status push from the leader (which drains the publication
+	 * outbox) to the other mains, so clients connected to followers get the push too. */
+	'display-workflow-publication-status': WorkflowPublicationStatusMessage;
 
 	'relay-execution-lifecycle-event': PushMessage & {
 		pushRef: string;

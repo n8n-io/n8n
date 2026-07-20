@@ -108,6 +108,7 @@ export type {
 } from './push/chat-hub';
 
 export type { Collaborator } from './push/collaboration';
+export type { WorkflowPublicationStatusMessage } from './push/workflow';
 export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
