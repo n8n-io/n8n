@@ -9,7 +9,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
-import { DirectedGraph, WorkflowExecute } from 'n8n-core';
+import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
@@ -396,21 +396,21 @@ describe('run', () => {
 
 		const mockRunnerStartDeps = () => {
 			const activeExecutions = Container.get(ActiveExecutions);
-			jest.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
-			jest.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
-			jest.spyOn(activeExecutions, 'getPostExecutePromise').mockResolvedValue(undefined);
-			jest.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValue();
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+			vi.spyOn(activeExecutions, 'getPostExecutePromise').mockResolvedValue(undefined);
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValue();
 
 			return { activeExecutions };
 		};
 
 		it('returns immediately for onReceived before activation completes', async () => {
 			const activeExecutions = Container.get(ActiveExecutions);
-			jest.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
-			jest
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			vi
 				.spyOn(activeExecutions, 'waitForActivation')
-				.mockReturnValue(new Promise<void>(() => {}));
-			const permissionCheckSpy = jest.spyOn(Container.get(CredentialsPermissionChecker), 'check');
+				.mockReturnValue(new Promise<void>(() => { }));
+			const permissionCheckSpy = vi.spyOn(Container.get(CredentialsPermissionChecker), 'check');
 			const data = buildWebhookRunData();
 
 			await expect(
@@ -429,7 +429,7 @@ describe('run', () => {
 				const runMainProcessPromise = new Promise<void>((resolve) => {
 					resolveRunMainProcess = resolve;
 				});
-				const runMainProcessSpy = jest
+				const runMainProcessSpy = vi
 					.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
 					.mockReturnValue(runMainProcessPromise);
 
@@ -460,11 +460,11 @@ describe('run', () => {
 
 		it('fails the execution when credentials validation fails after activation', async () => {
 			const activeExecutions = Container.get(ActiveExecutions);
-			jest.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
-			jest.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('execution-id');
+			vi.spyOn(activeExecutions, 'waitForActivation').mockResolvedValue();
 			const error = new Error('credentials denied');
-			jest.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockRejectedValue(error);
-			const failExecutionSpy = jest
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockRejectedValue(error);
+			const failExecutionSpy = vi
 				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
 				.mockResolvedValue();
 			const data = buildWebhookRunData();
@@ -481,10 +481,10 @@ describe('run', () => {
 		it('fails the execution when workflow startup throws', async () => {
 			mockRunnerStartDeps();
 			const error = new Error('start failed');
-			jest
+			vi
 				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
 				.mockRejectedValue(error);
-			const failExecutionSpy = jest
+			const failExecutionSpy = vi
 				.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution')
 				.mockResolvedValue();
 			const data = buildWebhookRunData();
@@ -501,13 +501,13 @@ describe('run', () => {
 		it('clears streaming heartbeat on execution/startup failures', async () => {
 			mockRunnerStartDeps();
 			const error = new Error('startup failed');
-			jest
+			vi
 				.spyOn(runner as unknown as WorkflowRunnerInternals, 'runMainProcess')
 				.mockRejectedValue(error);
-			jest.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution').mockResolvedValue();
+			vi.spyOn(runner as unknown as WorkflowRunnerInternals, 'failExecution').mockResolvedValue();
 
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
 			const mockResponse = mock<Response>({
 				writableEnded: false,
@@ -533,28 +533,94 @@ describe('run', () => {
 
 		it('does not set an already activated onReceived execution running a second time', async () => {
 			const activeExecutions = Container.get(ActiveExecutions);
-			jest.spyOn(activeExecutions, 'getStatus').mockReturnValue('running');
-			jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
-			const setRunningSpy = jest.spyOn(Container.get(ExecutionRepository), 'setRunning');
+			vi.spyOn(activeExecutions, 'getStatus').mockReturnValue('running');
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+			const setRunningSpy = vi.spyOn(Container.get(ExecutionRepository), 'setRunning');
 			setRunningSpy.mockClear();
 
 			const additionalData = mock<IWorkflowExecuteAdditionalData>();
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
-			jest
-				.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
 				.mockReturnValue(mock<core.ExecutionLifecycleHooks>());
-			jest.spyOn(Container.get(ManualExecutionService), 'runManually').mockReturnValue(
-				new PCancelable(() => {
-					return mock<IRun>();
-				}),
+			vi.spyOn(Container.get(ManualExecutionService), 'runManually').mockReturnValue(
+				new PCancelable(() => mock<IRun>()),
 			);
 
-			await (runner as unknown as WorkflowRunnerInternals).runMainProcess(
-				'execution-id',
-				buildWebhookRunData(),
-			);
+			// Use a plain object for workflowData to avoid ObservableObject mutation conflicts
+			const plainWorkflowData: IWorkflowBase = {
+				id: 'workflow-id',
+				name: 'Webhook workflow',
+				nodes: [],
+				connections: {},
+				active: true,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				settings: {},
+			};
+
+			const data = {
+				...buildWebhookRunData(),
+				workflowData: plainWorkflowData,
+			};
+
+			await (runner as unknown as WorkflowRunnerInternals).runMainProcess('execution-id', data);
 
 			expect(setRunningSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('workflow issues pre-flight failure', () => {
+		function arrangeFailingRunDeps(error: Error) {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(() => {
+				throw error;
+			});
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+			return { data };
+		}
+
+		it('surfaces a WorkflowHasIssuesError as a failed run instead of rejecting', async () => {
+			const error = new WorkflowHasIssuesError(
+				{ node1: { parameters: { field: ['is missing'] } } },
+				{},
+			);
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).resolves.toBe('1');
+
+			expect(failExecution).toHaveBeenCalledWith(data, '1', error);
+			expect(processError).not.toHaveBeenCalled();
+		});
+
+		it('still rejects on other startup errors', async () => {
+			const error = new Error('boom');
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).rejects.toThrowError(error);
+
+			expect(processError).toHaveBeenCalled();
+			expect(failExecution).not.toHaveBeenCalled();
 		});
 	});
 });
@@ -1087,7 +1153,7 @@ describe('streaming functionality', () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
+		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => { }));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		vi.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
