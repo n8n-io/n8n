@@ -6,6 +6,7 @@ import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
@@ -88,6 +89,7 @@ function makeService() {
 	const telemetry = mock<Telemetry>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const integrationMessageContextService = mock<IntegrationMessageContextService>();
+	const externalHooks = mock<ExternalHooks>();
 
 	executionService.recordMessage.mockResolvedValue('execution-1');
 
@@ -98,6 +100,7 @@ function makeService() {
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
+		externalHooks,
 	);
 
 	return {
@@ -107,6 +110,7 @@ function makeService() {
 		telemetry,
 		runtimeCacheService,
 		integrationMessageContextService,
+		externalHooks,
 	};
 }
 
@@ -165,8 +169,13 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes in-app chat against the draft runtime', async () => {
-		const { service, runtimeCacheService, executionService, integrationMessageContextService } =
-			makeService();
+		const {
+			service,
+			runtimeCacheService,
+			executionService,
+			integrationMessageContextService,
+			externalHooks,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -206,6 +215,7 @@ describe('AgentExecutionOrchestratorService', () => {
 				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 			}),
 		);
+		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				source: undefined,
@@ -219,7 +229,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes published integration chat with integration-scoped runtime', async () => {
-		const { service, runtimeCacheService, executionService } = makeService();
+		const { service, runtimeCacheService, executionService, externalHooks } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -239,6 +249,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationType: 'slack',
 			usePublishedVersion: true,
 		});
+		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(externalHooks.run).toHaveBeenCalledTimes(1);
+		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
+		);
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				source: 'slack',
@@ -251,7 +266,7 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
-		const { service, runtimeCacheService, executionService } = makeService();
+		const { service, runtimeCacheService, executionService, externalHooks } = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -272,6 +287,11 @@ describe('AgentExecutionOrchestratorService', () => {
 			integrationType: 'task',
 			usePublishedVersion: true,
 		});
+		expect(externalHooks.run).toHaveBeenCalledWith('agent.preExecute', [agentId]);
+		expect(externalHooks.run).toHaveBeenCalledTimes(1);
+		expect(externalHooks.run.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+			runtimeCacheService.getRuntime.mock.invocationCallOrder[0] ?? 0,
+		);
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				source: 'task',
@@ -283,6 +303,46 @@ describe('AgentExecutionOrchestratorService', () => {
 				},
 			}),
 		);
+	});
+
+	it('does not execute a published scheduled task when the agent quota hook rejects it', async () => {
+		const { service, runtimeCacheService, externalHooks } = makeService();
+		const quotaError = new UserError('Execution quota exhausted');
+		externalHooks.run.mockRejectedValue(quotaError);
+
+		await expect(
+			collect(
+				service.executeForTaskPublished({
+					agentId,
+					projectId,
+					message: 'run task',
+					memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+					taskId: 'task-1',
+					taskVersionId: 'version-1',
+				}),
+			),
+		).rejects.toBe(quotaError);
+
+		expect(runtimeCacheService.getRuntime).not.toHaveBeenCalled();
+	});
+
+	it('does not run the quota hook for manually started scheduled tasks', async () => {
+		const { service, runtimeCacheService, externalHooks } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.executeForTaskNow({
+				agentId,
+				projectId,
+				user,
+				message: 'run task manually',
+				memory: { threadId: 'thread-1', resourceId: 'task-run-1' },
+				taskId: 'task-1',
+			}),
+		);
+
+		expect(externalHooks.run).not.toHaveBeenCalled();
 	});
 
 	it('adds the max-iterations assistant text before the finish chunk and persists it', async () => {
@@ -376,7 +436,8 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('rejects expired checkpoints and resumes active checkpoints without passing resourceId', async () => {
-		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService();
+		const { service, checkpointStorage, runtimeCacheService, executionService, externalHooks } =
+			makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 
 		checkpointStorage.getStatus.mockResolvedValueOnce({ status: 'expired' });
@@ -414,6 +475,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			{ value: 'yes' },
 			expect.objectContaining({ runId: 'run-1', toolCallId: 'tc-1' }),
 		);
+		expect(externalHooks.run).not.toHaveBeenCalled();
 		expect(JSON.stringify(runtime.agent.resume.mock.calls[0])).not.toContain('platform-user-1');
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
