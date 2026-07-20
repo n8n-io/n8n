@@ -14,7 +14,7 @@
   	4. Import your resource type from the local types file in your components
  */
 
-import { type ResourceMetadata } from './module.types';
+import { type ResourceMetadata } from '../types/resource';
 
 // Private module state
 const resources: Map<string, ResourceMetadata> = new Map();
