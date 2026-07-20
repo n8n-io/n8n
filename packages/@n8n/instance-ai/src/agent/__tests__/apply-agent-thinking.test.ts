@@ -22,7 +22,7 @@ describe('applyAgentThinking', () => {
 		vi.clearAllMocks();
 	});
 
-	it('enables adaptive thinking for Anthropic', () => {
+	it('enables adaptive thinking with low effort for Anthropic', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'anthropic/claude-opus-4-8');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
@@ -31,7 +31,7 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('enables adaptive thinking for dotted Anthropic provider IDs', () => {
+	it('enables adaptive thinking with low effort for dotted Anthropic provider IDs', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'anthropic.messages/claude-opus-4-8');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
@@ -40,7 +40,7 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('enables adaptive thinking for AI SDK Anthropic model objects', () => {
+	it('enables adaptive thinking with low effort for AI SDK Anthropic model objects', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, {
 			modelId: 'claude-opus-4-8',
