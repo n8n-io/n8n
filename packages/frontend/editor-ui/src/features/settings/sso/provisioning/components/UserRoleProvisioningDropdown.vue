@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { N8nCallout, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 export type RoleAssignmentSetting = 'manual' | 'instance' | 'instance_and_project';
 export type RoleMappingMethodSetting = 'idp' | 'rules_in_n8n';

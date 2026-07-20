@@ -355,7 +355,7 @@ describe('GlobalConfig', () => {
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			durableLog: false,
+			durableLog: true,
 		},
 		queue: {
 			health: {
@@ -650,6 +650,7 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
+			tracingEnabled: true,
 			modules: [],
 			sandboxEnabled: false,
 			sandboxProvider: '',
@@ -670,6 +671,15 @@ describe('GlobalConfig', () => {
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
 		expect(readFileSyncMock).not.toHaveBeenCalled();
+	});
+
+	it('should parse N8N_AGENTS_TRACING_ENABLED from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_ENABLED: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingEnabled).toBe(false);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
