@@ -162,6 +162,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				{
 					timeout: resolvedInput.timeout,
 					verificationPinData: prepared.verificationPinData,
+					abortSignal: context.abortSignal,
 				},
 			);
 

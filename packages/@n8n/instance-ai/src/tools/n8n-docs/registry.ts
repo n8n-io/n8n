@@ -1,5 +1,6 @@
+import { isAbortError } from '@n8n/agents';
+
 import type { Logger } from '../../logger';
-import { isAbortError } from '../shared/abortable-tool';
 import { sanitizeWebContent, wrapUntrustedData } from '../web-research/sanitize-web-content';
 
 const N8N_DOCS_ORIGIN = 'https://docs.n8n.io';

@@ -221,6 +221,7 @@ function enhanceBuildErrors(errors: string[]): string[] {
 async function compileTypeScriptWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
+	abortSignal?: AbortSignal,
 ): Promise<WorkflowSourceCompileResult> {
 	if (!context.workspace) {
 		return {
@@ -242,7 +243,7 @@ async function compileTypeScriptWorkflowSource(
 		buildResult = await runInSandbox(
 			context.workspace,
 			`node --import tsx build.mjs '${escapeSingleQuotes(sandboxFilePath)}'`,
-			root,
+			{ cwd: root, abortSignal },
 		);
 	} catch (error) {
 		return {
@@ -336,12 +337,13 @@ export async function compileWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
 	source: string,
+	abortSignal?: AbortSignal,
 ): Promise<WorkflowSourceCompileResult> {
 	let result: WorkflowSourceCompileResult;
 	if (isWorkflowJsonSourceFile(filePath)) {
 		result = parseWorkflowJsonSource(source);
 	} else if (isTypeScriptWorkflowSource(filePath)) {
-		result = await compileTypeScriptWorkflowSource(context, filePath);
+		result = await compileTypeScriptWorkflowSource(context, filePath, abortSignal);
 	} else {
 		result = {
 			success: false,
