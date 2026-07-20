@@ -1,6 +1,6 @@
 import type { ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
+import { DataSource, In, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
 import { Agent } from '../entities/agent.entity';
 
@@ -75,6 +75,17 @@ export class AgentRepository extends Repository<Agent> {
 		return await this.findOne({
 			where: { id, projectId },
 			relations: { activeVersion: true },
+		});
+	}
+
+	async findByIdsAndProjectId(
+		ids: string[],
+		projectId: string,
+	): Promise<Array<Pick<Agent, 'id' | 'activeVersionId'>>> {
+		if (ids.length === 0) return [];
+		return await this.find({
+			select: ['id', 'activeVersionId'],
+			where: { id: In(ids), projectId },
 		});
 	}
 

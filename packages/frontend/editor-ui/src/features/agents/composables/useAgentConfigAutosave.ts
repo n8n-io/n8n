@@ -143,5 +143,14 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		if (lastSaveError) throw lastSaveError;
 	}
 
-	return { saveStatus, scheduleAutosave, settleAutosave, flushAutosave };
+	function cancelPendingAutosave() {
+		if (autosaveTimer !== null) {
+			clearTimeout(autosaveTimer);
+			autosaveTimer = null;
+		}
+		pendingSnapshot = null;
+		pendingSnapshotRevision = 0;
+	}
+
+	return { saveStatus, scheduleAutosave, settleAutosave, flushAutosave, cancelPendingAutosave };
 }
