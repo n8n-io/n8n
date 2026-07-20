@@ -150,8 +150,9 @@ export class NodeTypes implements INodeTypes {
 	 * for anything but a plain unrecognized type), and `[]` when the type exists
 	 * but no version satisfies the request — e.g. a synthetic tool name (`…Tool`)
 	 * whose base node cannot be used as a tool (`…HitlTool` has no such
-	 * requirement). Read-only — unlike `getByNameAndVersion`, never caches or
-	 * mutates loaded nodes.
+	 * requirement). Unlike `getByNameAndVersion`, never registers synthetic tools
+	 * or mutates the registry, though resolving a known type may trigger its lazy
+	 * module load.
 	 */
 	getSupportedVersions(nodeTypeName: string): number[] | undefined {
 		// The whole resolution runs fail-closed: name lookups use `in`, so a
