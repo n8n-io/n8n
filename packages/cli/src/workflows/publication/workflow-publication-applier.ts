@@ -177,11 +177,12 @@ export class WorkflowPublicationApplier {
 	 * published version and removing the `workflow_published_version` mapping. The
 	 * version to deactivate comes from the mapping (`oldVersion`), since the
 	 * workflow's `activeVersionId` has already been cleared by the service that
-	 * enqueued this record. A missing mapping means nothing was published on this
-	 * leader, so there is nothing to tear down — but the record still completes as
-	 * `unpublished`, so the reporter clears any trigger-status rows left behind by
-	 * an unpublish that was interrupted between removing the mapping and clearing
-	 * the rows. Every step here is idempotent for exactly that retry.
+	 * enqueued this record.
+	 *
+	 * A missing mapping means nothing was published on this leader, so there is
+	 * nothing to tear down. In that case the record still completes as a
+	 * successful `unpublished` to support idempotent retries — the reporter then
+	 * clears any trigger-status rows left behind by an interrupted unpublish.
 	 *
 	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
 	 * so the mapping is only removed once teardown has succeeded.
