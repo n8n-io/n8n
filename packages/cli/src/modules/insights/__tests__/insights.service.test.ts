@@ -797,4 +797,48 @@ describe('InsightsService', () => {
 			});
 		});
 	});
+
+	describe('timeZone forwarding', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		it('forwards timeZone to getPreviousAndCurrentPeriodTypeAggregates', async () => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+				[],
+			);
+
+			await insightsService.getInsightsSummary({ startDate, endDate, timeZone: 'Europe/Berlin' });
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ timeZone: 'Europe/Berlin' }));
+		});
+
+		it('forwards timeZone to getInsightsByWorkflow', async () => {
+			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
+				count: 0,
+				rows: [],
+			});
+
+			await insightsService.getInsightsByWorkflow({
+				startDate,
+				endDate,
+				timeZone: 'Europe/Berlin',
+			});
+
+			expect(mockInsightsByPeriodRepository.getInsightsByWorkflow).toHaveBeenCalledWith(
+				expect.objectContaining({ timeZone: 'Europe/Berlin' }),
+			);
+		});
+
+		it('forwards timeZone to getInsightsByTime', async () => {
+			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+
+			await insightsService.getInsightsByTime({ startDate, endDate, timeZone: 'Europe/Berlin' });
+
+			expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+				expect.objectContaining({ timeZone: 'Europe/Berlin' }),
+			);
+		});
+	});
 });

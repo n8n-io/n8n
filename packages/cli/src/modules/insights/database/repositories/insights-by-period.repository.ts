@@ -94,7 +94,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return periodStartExpr;
 	}
 
-	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit) {
+	/**
+	 * @param timeZoneOffsetMinutes Caller-timezone UTC offset in minutes (e.g. 120 for Europe/Berlin
+	 * in summer). Defaults to 0, which keeps this UTC-truncated for internal compaction, where bucket
+	 * boundaries must stay timezone-agnostic since they define the stored/deduplicated period keys.
+	 */
+	private getPeriodStartExpr(periodUnitToCompactInto: PeriodUnit, timeZoneOffsetMinutes = 0) {
 		// Database-specific period start expression to truncate timestamp to the periodUnit
 		// SQLite by default
 		let periodStartExpr =
@@ -105,7 +110,24 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
 		}
 
-		return periodStartExpr;
+		if (timeZoneOffsetMinutes === 0) {
+			return periodStartExpr;
+		}
+
+		// Truncating in UTC splits a caller-local day/week across two UTC buckets for non-UTC
+		// callers (e.g. an extra prior-day chart bar for positive offsets, LIGO-808). Shift into
+		// the caller's local wall-clock time, truncate there, then shift the boundary back to UTC.
+		if (dbType === 'postgresdb') {
+			const periodField = this.escapeField('periodStart');
+			return `DATE_TRUNC('${periodUnitToCompactInto}', ${periodField} + INTERVAL '${timeZoneOffsetMinutes} minutes') - INTERVAL '${timeZoneOffsetMinutes} minutes'`;
+		}
+
+		const localTruncatedExpr =
+			periodUnitToCompactInto === 'week'
+				? `date(periodStart, '${timeZoneOffsetMinutes} minutes', '-6 days', 'weekday 1')`
+				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00', periodStart, '${timeZoneOffsetMinutes} minutes')`;
+
+		return `strftime('%Y-%m-%d %H:%M:%f', datetime(${localTruncatedExpr}, '${-timeZoneOffsetMinutes} minutes'))`;
 	}
 
 	getPeriodInsightsBatchQuery({
@@ -260,14 +282,15 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		startDate,
 		endDate,
 		projectId,
-	}: { projectId?: string; startDate: Date; endDate: Date }): Promise<
+		timeZone,
+	}: { projectId?: string; startDate: Date; endDate: Date; timeZone?: string }): Promise<
 		Array<{
 			period: 'previous' | 'current';
 			type: 0 | 1 | 2 | 3;
 			total_value: string | number;
 		}>
 	> {
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -327,6 +350,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		take = 20,
 		sortBy = 'total:desc',
 		projectId,
+		timeZone,
 	}: {
 		skip?: number;
 		take?: number;
@@ -334,11 +358,12 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
 		const [sortField, sortOrder] = this.parseSortingParams(sortBy);
 		const sumOfExecutions = sql`SUM(CASE WHEN insights.type IN (${TypeToNumber.success.toString()}, ${TypeToNumber.failure.toString()}) THEN value ELSE 0 END)`;
 
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
@@ -395,27 +420,36 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		projectId,
 		startDate,
 		endDate,
+		timeZone,
 	}: {
 		periodUnit: PeriodUnit;
 		insightTypes: TypeUnit[];
 		projectId?: string;
 		startDate: Date;
 		endDate: Date;
+		timeZone?: string;
 	}) {
-		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate });
+		const cte = getDateRangesCommonTableExpressionQuery({ dbType, startDate, endDate, timeZone });
 
 		const typesAggregation = insightTypes.map((type) => {
 			return `SUM(CASE WHEN insights.type = ${TypeToNumber[type]} THEN value ELSE 0 END) AS "${displayTypeName[TypeToNumber[type]]}"`;
 		});
 
+		// Anchored on startDate so historical ranges bucket using the offset that applied then,
+		// rather than today's offset (relevant for zones observing DST).
+		const timeZoneOffsetMinutes = timeZone
+			? DateTime.fromJSDate(startDate).setZone(timeZone).offset
+			: 0;
+		const periodStartExpr = this.getPeriodStartExpr(periodUnit, timeZoneOffsetMinutes);
+
 		const rawRowsQuery = this.createQueryBuilder('insights')
 			.addCommonTableExpression(cte, 'date_ranges')
-			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
+			.select([`${periodStartExpr} as "periodStart"`, ...typesAggregation])
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
 			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
-			.groupBy(this.getPeriodStartExpr(periodUnit))
-			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
+			.groupBy(periodStartExpr)
+			.orderBy(periodStartExpr, 'ASC');
 
 		if (projectId) {
 			rawRowsQuery

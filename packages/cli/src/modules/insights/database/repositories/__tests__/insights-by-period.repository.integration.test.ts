@@ -62,6 +62,100 @@ describe('InsightsByPeriodRepository', () => {
 		);
 	});
 
+	describe('getInsightsByTime timezone-aware bucketing (LIGO-808)', () => {
+		test('groups a caller-local day into a single bucket instead of splitting it across the UTC day boundary', async () => {
+			// ARRANGE
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({ nodes: [] }, project);
+			await createMetadata(workflow);
+
+			// Far enough in the past to land unambiguously in the "past range" branch of the date
+			// range CTE, and within Berlin summer time (UTC+2) so local midnight is 22:00 UTC the
+			// previous day - the case that previously produced an extra prior-day chart bar.
+			const localDayStart = DateTime.now()
+				.setZone('Europe/Berlin')
+				.minus({ days: 400 })
+				.startOf('day');
+			const localDayEnd = localDayStart.endOf('day');
+
+			// Hourly-compacted rows spread across the Berlin-local day, straddling the UTC day
+			// boundary: the first row is UTC-previous-day, the rest are UTC-same-day.
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: localDayStart.plus({ hours: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: localDayStart.plus({ hours: 12 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: localDayStart.plus({ hours: 23 }),
+			});
+
+			// ACT
+			const result = await insightsByPeriodRepository.getInsightsByTime({
+				periodUnit: 'day',
+				insightTypes: ['success'],
+				startDate: localDayStart.toJSDate(),
+				endDate: localDayEnd.toJSDate(),
+				timeZone: 'Europe/Berlin',
+			});
+
+			// ASSERT
+			expect(result).toHaveLength(1);
+			expect(result[0]?.succeeded).toBe(3);
+			expect(DateTime.fromISO(result[0].periodStart).toUTC().toISO()).toBe(
+				localDayStart.toUTC().toISO(),
+			);
+		});
+
+		test('keeps UTC-day bucketing when no timeZone is passed', async () => {
+			// ARRANGE
+			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({ nodes: [] }, project);
+			await createMetadata(workflow);
+
+			const utcDayStart = DateTime.utc().minus({ days: 420 }).startOf('day');
+
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: utcDayStart.plus({ hours: 1 }),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: utcDayStart.plus({ hours: 23 }),
+			});
+
+			// ACT
+			const result = await insightsByPeriodRepository.getInsightsByTime({
+				periodUnit: 'day',
+				insightTypes: ['success'],
+				startDate: utcDayStart.toJSDate(),
+				endDate: utcDayStart.endOf('day').toJSDate(),
+			});
+
+			// ASSERT
+			expect(result).toHaveLength(1);
+			expect(result[0]?.succeeded).toBe(2);
+			expect(DateTime.fromISO(result[0].periodStart).toUTC().toISO()).toBe(
+				utcDayStart.toUTC().toISO(),
+			);
+		});
+	});
+
 	describe('Avoid deadlock error', () => {
 		let defaultBatchSize: number;
 		beforeAll(() => {
