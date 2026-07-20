@@ -13,8 +13,6 @@ import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../../v2/transport';
 import type * as _importType0 from '../../../v2/transport';
 
-// Real transport module except the network helper, so getSharePointCredentialType
-// keeps its real behavior; only microsoftApiRequest is stubbed.
 vi.mock('../../../v2/transport', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
 	return {
@@ -28,7 +26,6 @@ const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const FOLDER_ID = '01SPEVVYBKV2ZKHGJASRA2HC7MOGBMUMAA';
 const FILE_BYTES = Buffer.from('col1,col2\n1,2\n');
 
-// Graph's driveItem reply for a completed upload (trimmed)
 const DRIVE_ITEM_REPLY = {
 	id: '01SPEVVYELNAJ4S3XKNBBIEUJZOWXGE64U',
 	name: 'report.csv',
@@ -55,8 +52,6 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 			...overrides,
 		}) as IBinaryData;
 
-	// `folder` is read with extractValue, so the mock stores the extracted string;
-	// `site` is read raw and stays a resource-locator object.
 	const baseParams = {
 		site: { mode: 'id', value: SITE_ID },
 		folder: FOLDER_ID,
@@ -82,7 +77,6 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 		expect(resource).toBe(
 			`/v1.0/sites/${ENCODED_SITE_ID}/drive/items/${FOLDER_ID}:/report.csv:/content`,
 		);
-		// The exact bytes of the input reach the transport — content parity
 		expect(Buffer.isBuffer(body)).toBe(true);
 		expect((body as Buffer).equals(FILE_BYTES)).toBe(true);
 		expect(headers).toEqual({ 'Content-Type': 'text/csv' });
@@ -162,11 +156,9 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 				fileName: 'big.zip',
 			});
 
-			// Ceil keeps the boundary readable: one byte over reports 251 MB, not "250 > 250"
 			await expect(execute.call(ctx, 0)).rejects.toThrow(
 				'The file is 251 MB, which is larger than the 250 MB limit for SharePoint uploads',
 			);
-			// Rejected on metadata alone: the payload is never read, nothing is sent
 			expect(ctx.helpers.getBinaryDataBuffer).not.toHaveBeenCalled();
 			expect(apiRequest).not.toHaveBeenCalled();
 		});

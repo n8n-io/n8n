@@ -155,8 +155,6 @@ export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-	// A Buffer body (uploads) passes through the request layer raw when the
-	// caller overrides Content-Type; `json: true` still parses the JSON reply.
 	body: IDataObject | Buffer = {},
 	qs: IDataObject = {},
 	uri?: string,

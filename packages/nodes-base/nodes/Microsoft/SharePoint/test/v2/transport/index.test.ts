@@ -320,7 +320,6 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			const options = mockRequestOAuth2.mock.calls[0][1];
 			expect(options.body).toBe(payload);
 			expect(options.headers['Content-Type']).toBe('image/png');
-			// The JSON flag stays on: it only governs parsing the driveItem reply
 			expect(options.json).toBe(true);
 		});
 	});

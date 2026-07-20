@@ -3,9 +3,6 @@ import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } fr
 import { resolveSiteId } from '../site';
 import { microsoftApiRequest } from '../transport';
 
-// The whole folder-selection piece lives here — the field and the search
-// behind it — so the later file actions plug it in without their own copies.
-
 export const folderRLC: INodeProperties = {
 	displayName: 'Parent Folder',
 	name: 'folder',
@@ -14,7 +11,6 @@ export const folderRLC: INodeProperties = {
 	default: { mode: 'list', value: '' },
 	description: 'The folder to operate on, within the site’s default document library',
 	typeOptions: {
-		// Re-fetch the folder list whenever the chosen site changes
 		loadOptionsDependsOn: ['site.value'],
 	},
 	modes: [
@@ -41,28 +37,17 @@ type FolderSearchReply = {
 	value?: Array<{ id?: string; name?: string; folder?: unknown }>;
 };
 
-// The editor stops auto-paging while a filter is typed, so filtered matches on
-// later pages would be unreachable; getFolders walks pages itself instead,
-// bounded so one keystroke can't crawl an arbitrarily large drive.
+// The editor stops auto-paging while a filter is typed, so getFolders pages itself, capped here
 const FILTERED_SEARCH_PAGE_LIMIT = 10;
 
-/**
- * Lists the folders of the chosen site's default document library. Graph can't
- * filter drive items by name server-side, so the typed filter is applied to
- * the fetched results — walking further pages when needed (see the page limit
- * above). Next-page links are requested exactly as returned — never rebuilt.
- */
 export async function getFolders(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	// resolveSiteId validates the site field itself, including the empty case
 	const siteId = paginationToken ? '' : await resolveSiteId.call(this, 0);
 
 	const filterLower = filter?.toLowerCase();
-	// Kept in the API's order: the editor concatenates pages, so a per-page
-	// sort would reset at every page boundary and read as misordered
 	const results: INodeListSearchResult['results'] = [];
 	let nextToken = paginationToken;
 	let pagesLeft = filterLower ? FILTERED_SEARCH_PAGE_LIMIT : 1;
@@ -77,10 +62,8 @@ export async function getFolders(
 					{},
 					{
 						$select: 'id,name,folder',
-						// This enumeration route 400s without a $filter, yet doesn't honor
-						// this one (`folder` isn't filterable) — it must stay even though
-						// the reply is re-checked below. Same contract v1 has shipped on
-						// since day one.
+						// Graph rejects this enumeration without a $filter but ignores this
+						// one, so it must stay; the reply is re-checked below
 						$filter: 'folder ne null',
 					},
 				)) as FolderSearchReply);

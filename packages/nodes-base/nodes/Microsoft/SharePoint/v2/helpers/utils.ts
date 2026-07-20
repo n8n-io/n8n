@@ -5,27 +5,12 @@ import { NodeOperationError } from 'n8n-workflow';
 export const LIST_SIMPLIFY_SELECT =
 	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
 
-/**
- * Characters SharePoint forbids in file names. Sending any of these breaks
- * Graph's `:/name:/` addressing (a colon collapses the URL to the item entity
- * endpoint), so Graph rejects the upload with a misleading
- * `Entity only allows writes with a JSON Content-Type header` 400.
- *
- * Twin of the OneDrive node's validator; kept as a per-node copy until a
- * shared Microsoft helper with per-product wording exists.
- */
+/** Characters SharePoint forbids in file names; Graph rejects them with a misleading 400. */
 export const SHAREPOINT_ILLEGAL_FILE_NAME_CHARS = ['"', '*', ':', '<', '>', '?', '/', '\\', '|'];
 
 /** Graph's cap for a single-request `PUT …:/content` upload; larger files need an upload session. */
 export const MAX_SIMPLE_UPLOAD_BYTES = 250 * 1024 * 1024;
 
-/**
- * Validates an upload file name before any Graph request is made. Throws a
- * `NodeOperationError` (carrying `itemIndex`) when the name is missing, blank,
- * or contains a character SharePoint doesn't allow, naming the offending
- * character(s) and suggesting a fix. The assertion signature narrows the name
- * to `string` for callers once it returns.
- */
 export function validateSharePointFileName(
 	node: INode,
 	fileName: string | undefined,

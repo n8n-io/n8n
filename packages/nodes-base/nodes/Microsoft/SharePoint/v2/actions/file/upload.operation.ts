@@ -62,11 +62,8 @@ export async function execute(
 		this.getNodeParameter('folder', i, '', { extractValue: true }) as string
 	).trim();
 
-	// Everything local fails before any request is sent — the site resolution
-	// below can itself cost a Graph lookup in URL mode.
 	validateSharePointFileName(this.getNode(), fileName, i);
 
-	// An empty segment would change the request shape — fail loudly instead.
 	if (folderId === '') {
 		throw new NodeOperationError(this.getNode(), "The 'Parent Folder' parameter is empty", {
 			description: "Set the folder ID (or 'root' for the library root) and try again.",
@@ -75,8 +72,6 @@ export async function execute(
 
 	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-	// Out-of-process binary data exposes its size as metadata — oversized files
-	// are rejected without ever being read.
 	let body: Buffer | undefined;
 	let fileSize: number;
 	if (binaryData.id) {
@@ -86,7 +81,6 @@ export async function execute(
 		fileSize = body.byteLength;
 	}
 	if (fileSize > MAX_SIMPLE_UPLOAD_BYTES) {
-		// Ceil so a just-over-the-cap file never reads as "250 MB is larger than 250 MB"
 		const sizeMb = Math.ceil(fileSize / (1024 * 1024));
 		throw new NodeOperationError(
 			this.getNode(),
@@ -99,13 +93,10 @@ export async function execute(
 		);
 	}
 
-	// resolveSiteId validates the site field itself, including the empty case
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
 
 	body ??= await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-	// Encode segments: site IDs contain commas and file names spaces; encoding
-	// also keeps user input from escaping its path segment under either credential.
 	return await microsoftApiRequest.call(
 		this,
 		'PUT',
