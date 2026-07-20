@@ -243,6 +243,7 @@ export class AgentExecutionOrchestratorService {
 				threadId,
 				userId: user?.id,
 				source: suspendedExecution?.source ?? 'unknown',
+				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
 			});
 
 			const resultStream = await agentInstance.resume('stream', resumeData, {

@@ -81,6 +81,8 @@ export class AgentRunTracingService {
 		return await new Telemetry()
 			.tracer(trace.getTracer(AGENTS_TRACER_NAME))
 			.metadata(attributes)
+			.recordInputs(this.agentsConfig.tracingRecordInputs)
+			.recordOutputs(this.agentsConfig.tracingRecordOutputs)
 			.build();
 	}
 }

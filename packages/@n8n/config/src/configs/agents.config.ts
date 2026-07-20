@@ -48,6 +48,20 @@ export class AgentsConfig {
 	tracingEnabled: boolean = true;
 
 	/**
+	 * Whether agent tracing records inputs (prompts, tool arguments).
+	 * Defaults to true. Set to false to exclude sensitive input data from traces.
+	 */
+	@Env('N8N_AGENTS_TRACING_RECORD_INPUTS')
+	tracingRecordInputs: boolean = true;
+
+	/**
+	 * Whether agent tracing records outputs (responses, tool results).
+	 * Defaults to true. Set to false to exclude sensitive output data from traces.
+	 */
+	@Env('N8N_AGENTS_TRACING_RECORD_OUTPUTS')
+	tracingRecordOutputs: boolean = true;
+
+	/**
 	 * Comma-separated list of agent sub-feature modules to enable. Each entry
 	 * gates a specific frontend/runtime capability inside the agents module.
 	 * Add supported module tokens to `AGENTS_MODULE_NAMES`.

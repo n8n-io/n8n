@@ -218,6 +218,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowId: this.workflow.id,
 			workflowName: this.workflow.name,
 			callingNodeName: this.node.name,
+			callingNodeId: this.node.id,
 			inputData: scopedInput,
 			inputDataScope,
 			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,

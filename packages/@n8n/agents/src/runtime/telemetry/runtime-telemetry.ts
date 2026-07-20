@@ -267,7 +267,14 @@ export class RuntimeTelemetry {
 		// see langsmith.* as the only descriptors on the span, which defeats the
 		// point of the generic gen_ai.* attributes below.
 		const isLangSmith = t.isLangSmith === true;
-		const metadataAttributes = this.buildTelemetryMetadataAttributes(t, 'langsmith.metadata');
+		const langSmithMetadataAttributes = this.buildTelemetryMetadataAttributes(
+			t,
+			'langsmith.metadata',
+		);
+		const genericMetadataAttributes = this.buildTelemetryMetadataAttributes(
+			t,
+			'ai.telemetry.metadata',
+		);
 
 		return {
 			...buildGenAiRootAttributes(this.config, t),
@@ -278,10 +285,11 @@ export class RuntimeTelemetry {
 						'langsmith.span.kind': 'chain',
 						'langsmith.metadata.agent_name': this.config.name,
 						'langsmith.metadata.agent_run_id': runId,
-						...metadataAttributes,
+						...langSmithMetadataAttributes,
 						...buildLangSmithToolCatalogAttributes(this.config),
 					}
 				: {}),
+			...genericMetadataAttributes,
 			...buildAgentRootInputAttributes(this.config),
 		};
 	}

@@ -395,7 +395,7 @@ export class AgentWorkflowExecutionService {
 				projectId,
 				executionId,
 				workflowId: workflowContext?.workflowId,
-				nodeId: workflowContext?.callingNodeName,
+				nodeId: workflowContext?.callingNodeId,
 			},
 		});
 
@@ -506,7 +506,7 @@ export class AgentWorkflowExecutionService {
 				projectId,
 				executionId,
 				workflowId: workflowContext?.workflowId,
-				nodeId: workflowContext?.callingNodeName,
+				nodeId: workflowContext?.callingNodeId,
 			},
 		});
 
