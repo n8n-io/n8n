@@ -21,6 +21,7 @@ function node(
 
 const EXECUTE_WORKFLOW = 'n8n-nodes-base.executeWorkflow';
 const TOOL_WORKFLOW = '@n8n/n8n-nodes-langchain.toolWorkflow';
+const RETRIEVER_WORKFLOW = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 
 const resourceLocator = (value: string, mode = 'list') => ({ __rl: true, mode, value });
 
@@ -65,6 +66,35 @@ describe('getStaticSubworkflowId', () => {
 					node(TOOL_WORKFLOW, 2.2, { workflowId: resourceLocator('wf-child') }),
 				),
 			).toBe('wf-child');
+		});
+	});
+
+	describe('Workflow Retriever', () => {
+		it('resolves the legacy v1 plain-string workflowId', () => {
+			expect(
+				getStaticSubworkflowId(
+					node(RETRIEVER_WORKFLOW, 1, { source: 'database', workflowId: 'wf-child' }),
+				),
+			).toBe('wf-child');
+		});
+
+		it('resolves the v1.1+ resource-locator workflowId', () => {
+			expect(
+				getStaticSubworkflowId(
+					node(RETRIEVER_WORKFLOW, 1.1, {
+						source: 'database',
+						workflowId: resourceLocator('wf-child'),
+					}),
+				),
+			).toBe('wf-child');
+		});
+
+		it('ignores a non-database source (parameter)', () => {
+			expect(
+				getStaticSubworkflowId(
+					node(RETRIEVER_WORKFLOW, 1, { source: 'parameter', workflowId: 'wf-child' }),
+				),
+			).toBeUndefined();
 		});
 	});
 
