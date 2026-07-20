@@ -59,7 +59,7 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). openrouter/* uses EVALS_OPENROUTER_KEY.'
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). openrouter/* → EVALS_OPENROUTER_KEY; xai/* → EVALS_XAI_KEY.'
         required: false
         type: string
         default: ''
@@ -94,7 +94,7 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-sonnet-4-6, openrouter/moonshotai/kimi-k3.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-sonnet-4-6, openrouter/moonshotai/kimi-k3, xai/grok-4.5.'
         required: false
         default: ''
 
@@ -165,6 +165,7 @@ jobs:
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
           EVALS_OPENROUTER_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
+          EVALS_XAI_KEY: ${{ secrets.EVALS_XAI_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -216,6 +217,12 @@ jobs:
               exit 1
             fi
             MODEL_API_KEY="$EVALS_OPENROUTER_KEY"
+          elif [[ "$INSTANCE_AI_MODEL" == xai/* ]]; then
+            if [ -z "$EVALS_XAI_KEY" ]; then
+              echo "::error::model is xai/* but EVALS_XAI_KEY secret is empty"
+              exit 1
+            fi
+            MODEL_API_KEY="$EVALS_XAI_KEY"
           fi
 
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
@@ -415,6 +422,7 @@ jobs:
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
           EVALS_OPENROUTER_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
+          EVALS_XAI_KEY: ${{ secrets.EVALS_XAI_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
@@ -425,8 +433,8 @@ jobs:
           # ::add-mask:: is a single-line workflow command. Multi-line secrets
           # (e.g. N8N_LICENSE_CERT is PEM-encoded) must be masked one line at
           # a time, otherwise only the first line is registered.
-          for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENROUTER_KEY" "$DAYTONA_API_KEY" \
-                   "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" \
+          for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENROUTER_KEY" "$EVALS_XAI_KEY" \
+                   "$DAYTONA_API_KEY" "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" \
                    "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue
             while IFS= read -r line; do
