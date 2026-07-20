@@ -635,6 +635,13 @@ export class N8nClient {
 	 * referenced workflows are recreated (node credentials stripped server-side)
 	 * and the native message log is written verbatim, so the thread continues
 	 * as if the conversation really happened.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each seed data
+	 * table's name to dodge the per-project unique-name constraint — safe when the
+	 * seed workflow references tables by id (id-remap). Pass false to keep the
+	 * EXACT declared names, so a freshly-built workflow's by-name references
+	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
+	 * seed only data tables.
 	 * POST /rest/instance-ai/eval/restore-thread
 	 */
 	async restoreThread(
@@ -642,12 +649,35 @@ export class N8nClient {
 		messages: Array<Record<string, unknown>>,
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
+		options: { uniquifyNames?: boolean } = {},
 	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
+		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables };
+		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
-			body: { threadId, messages, workflows, dataTables },
+			body,
 		});
 		return RestoreThreadEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
+	 * for the per-scenario row seeding of a case that pre-created its tables
+	 * before the build turn (TRUST-311). Unlike `restoreThread` (which CREATES
+	 * tables), this targets a table that already exists by id, so a scenario can
+	 * declare its own row state without disturbing the table the built workflow
+	 * bound. `threadId` scopes the table to the run's project server-side.
+	 * POST /rest/instance-ai/eval/seed-data-table-rows
+	 */
+	async seedDataTableRows(
+		threadId: string,
+		tableId: string,
+		rows: Array<Record<string, string | number | boolean | null>>,
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			method: 'POST',
+			body: { threadId, tableId, rows },
+		});
 	}
 
 	// -- Data tables ---------------------------------------------------------
