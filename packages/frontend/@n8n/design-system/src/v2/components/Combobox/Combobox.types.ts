@@ -11,6 +11,7 @@ export type AcceptableValue = string | Record<string, unknown>;
 
 export type ComboboxProps = Omit<ComboboxRootProps<AcceptableValue>, 'dir' | 'openOnFocus'> &
 	Pick<ComboboxContentProps, 'side' | 'sideOffset' | 'align'> & {
+		openOnFocus?: boolean;
 		size?: ComboboxSizes;
 		icon?: IconName;
 		placeholder?: string;

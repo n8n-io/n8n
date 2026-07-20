@@ -353,6 +353,19 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
+		it('should clear the selection when the input value is deleted', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2'],
+					modelValue: 'Option 1',
+				},
+			});
+
+			await userEvent.clear(getComboboxInput(wrapper));
+
+			expect(wrapper.emitted('update:modelValue')).toContainEqual([undefined]);
+		});
+
 		it('should display selected value for string items', async () => {
 			const wrapper = render(Combobox, {
 				props: {
@@ -449,6 +462,49 @@ describe('v2/components/Combobox', () => {
 	});
 
 	describe('events', () => {
+		it('should open when the input receives focus', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+				},
+			});
+
+			getComboboxInput(wrapper).focus();
+
+			await getPopoverContainer();
+		});
+
+		it('should stay closed on focus when openOnFocus is false', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+					openOnFocus: false,
+				},
+			});
+
+			getComboboxInput(wrapper).focus();
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
+			});
+		});
+
+		it('should close after selecting an item when opened on focus', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+				},
+			});
+
+			getComboboxInput(wrapper).focus();
+			const { popover } = await getPopoverContainer();
+			await userEvent.click(within(popover).getByRole('option', { name: 'Option 1' }));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
+			});
+		});
+
 		it('should emit update:open when dropdown opens', async () => {
 			const wrapper = render(Combobox, {
 				props: {

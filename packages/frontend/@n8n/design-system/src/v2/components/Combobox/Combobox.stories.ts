@@ -141,13 +141,14 @@ export const Items = {
 		},
 		template: `
 		<div style="${storyContainerStyle}">
-			<Combobox :items="args.items" v-model="value" placeholder="Search status..." />
+			<Combobox v-bind="args" v-model="value" placeholder="Search status..." />
 		</div>
 		`,
 	}),
 	args: {
 		items: statusItems,
 		modelValue: undefined,
+		openOnFocus: true,
 	},
 } satisfies Story;
 

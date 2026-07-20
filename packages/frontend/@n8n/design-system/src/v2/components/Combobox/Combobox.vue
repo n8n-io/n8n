@@ -14,7 +14,14 @@ import {
 	ComboboxViewport,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { computed, nextTick, useCssModule, useTemplateRef } from 'vue';
+import {
+	computed,
+	getCurrentInstance,
+	nextTick,
+	useAttrs,
+	useCssModule,
+	useTemplateRef,
+} from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -48,6 +55,18 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	labelKey: 'label',
 	clearable: false,
 	teleported: true,
+});
+const attrs = useAttrs();
+const instance = getCurrentInstance();
+const openOnFocus = computed(() => {
+	const assignedProps = instance?.vnode.props;
+	const isAssigned =
+		Object.hasOwn(assignedProps ?? {}, 'openOnFocus') ||
+		Object.hasOwn(assignedProps ?? {}, 'open-on-focus');
+
+	if (!isAssigned) return true;
+
+	return (attrs.openOnFocus ?? props.openOnFocus) !== false;
 });
 const emit = defineEmits<ComboboxEmits>();
 const slots = defineSlots<ComboboxSlots>();
@@ -200,6 +219,15 @@ function onClear() {
 function onTagsUpdate(value: TagsInputValue[]) {
 	emit('update:modelValue', value);
 }
+
+function onInput(event: Event) {
+	if (props.multiple || !hasValue.value) return;
+	if (!(event.target instanceof HTMLInputElement)) return;
+
+	if (event.target.value === '') {
+		emit('update:modelValue', undefined);
+	}
+}
 </script>
 
 <template>
@@ -209,6 +237,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 		:disabled="props.disabled"
 		:default-value="props.defaultValue"
 		:model-value="props.modelValue"
+		:open-on-focus="openOnFocus"
 	>
 		<ComboboxArrowKeyLoop />
 		<ComboboxAnchor
@@ -272,6 +301,7 @@ function onTagsUpdate(value: TagsInputValue[]) {
 				:auto-focus="props.autoFocus"
 				:display-value="getDisplayValue"
 				:aria-label="$attrs['aria-label'] ?? props.placeholder"
+				@input="onInput"
 			/>
 
 			<button

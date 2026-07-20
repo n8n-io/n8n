@@ -51,6 +51,7 @@ When `multiple` is true, selected values render via embedded `N8nTagsInput2` (sh
 - `resetSearchTermOnBlur?: boolean` — Reset search text on blur | reka default: `true`
 - `resetSearchTermOnSelect?: boolean` — Reset search text on select | reka default: `true`
 - `openOnClick?: boolean` — Open dropdown when input is clicked | reka default: `false`
+- `openOnFocus?: boolean` — Open dropdown when input receives focus | default: `true`
 - `highlightOnHover?: boolean` — Highlight items on hover (reka-ui root)
 - `clearable?: boolean` — When `true`, shows a clear button (×) when a value is selected. Hidden when disabled or empty. Default: `false`
 - `teleported?: boolean` — Whether to teleport the dropdown to body. Default: `true`
