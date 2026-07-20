@@ -75,6 +75,7 @@ export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
 export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
+export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
 
@@ -156,6 +157,12 @@ export {
 } from './log-streaming/create-destination.dto';
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
+export {
+	PublicCreateDestinationDto,
+	PublicDestinationResponseDto,
+	type PublicCreateDestination,
+	type PublicDestinationType,
+} from './log-streaming/public-destination.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 export {

@@ -75,6 +75,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
+import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -261,10 +262,11 @@ export class AgentRuntimeReconstructionService {
 			}
 
 			// ref.type === 'workflow'
-			const workflow = await this.workflowRepository.findOne({
-				where: { name: ref.workflow, shared: { projectId } },
-				relations: ['shared'],
-			});
+			const workflow = await findWorkflowToolWorkflow(
+				this.workflowRepository,
+				ref.workflow,
+				projectId,
+			);
 			if (!workflow) continue;
 
 			const accessibleWorkflow = await this.workflowFinderService.findWorkflowForUser(
@@ -535,7 +537,7 @@ export class AgentRuntimeReconstructionService {
 
 		if (
 			runtimeProfile !== 'inline' &&
-			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
+			isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled()) &&
 			(await this.agentFileRepository.hasFilesForAgent(agentId))
 		) {
 			const { createKnowledgeRetrievalTools } = await import(

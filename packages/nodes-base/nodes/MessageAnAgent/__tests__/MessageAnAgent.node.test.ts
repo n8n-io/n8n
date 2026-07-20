@@ -245,6 +245,27 @@ describe('MessageAnAgent Node', () => {
 			},
 		};
 
+		it('uses inline defaults when legacy advanced values are still saved', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+			mockParams({
+				agentSource: 'inline',
+				inlineAgent,
+				'advanced.invokeMode': 'perItem',
+				advanced: { allowOtherNodesData: true },
+			});
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(1);
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inputDataScope: 'all', exposeWorkflowData: false }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
 		it('passes the inline definition and never resolves its embedded expressions', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockParams({ agentSource: 'inline', inlineAgent });
@@ -268,6 +289,36 @@ describe('MessageAnAgent Node', () => {
 			);
 			const [source] = executeFunctions.executeAgent.mock.calls[0];
 			expect(source).not.toHaveProperty('agentId');
+		});
+
+		it('passes an inline definition with embedded skills through wholesale', async () => {
+			const inlineAgentWithSkills = {
+				config: {
+					...inlineAgent.config,
+					skills: [{ type: 'skill', id: 'skill_triage' }],
+				},
+				skills: {
+					skill_triage: {
+						name: 'Triage',
+						description: 'Triage incoming requests',
+						instructions: 'Categorize the request and route it.',
+					},
+				},
+			};
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ agentSource: 'inline', inlineAgent: inlineAgentWithSkills });
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			// The sibling skills record (bodies) rides along with the config refs —
+			// validation and ref/body joining happen in the execution layer.
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inlineAgent: inlineAgentWithSkills }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
 		});
 
 		it('passes a session id override through for inline agents (thread memory)', async () => {
@@ -654,6 +705,15 @@ describe('MessageAnAgent versioning', () => {
 
 		expect(v2.description.version).toBe(2);
 		expect(agentId?.type).toBe('agentSelector');
+	});
+
+	it('keeps agentSource hidden with a referenced default on v2', () => {
+		const v2 = new MessageAnAgentV2(baseDescription);
+		const agentSource = v2.description.properties.find((p) => p.name === 'agentSource');
+
+		expect(agentSource?.type).toBe('hidden');
+		expect(agentSource?.default).toBe('referenced');
+		expect(agentSource?.displayOptions).toBeUndefined();
 	});
 
 	it('keeps the same message field on both versions', () => {

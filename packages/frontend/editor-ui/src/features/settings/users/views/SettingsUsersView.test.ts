@@ -151,6 +151,7 @@ describe('SettingsUsersView', () => {
 			state: mockUsersList,
 			isLoading: false,
 			execute: vi.fn(),
+			executeImmediate: vi.fn(),
 			isReady: true,
 			error: null,
 			then: vi.fn(),
@@ -258,7 +259,7 @@ describe('SettingsUsersView', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('action-box')).toBeInTheDocument();
+		expect(getByTestId('empty-state')).toBeInTheDocument();
 	});
 
 	it('should show advanced permissions notice when feature is disabled', async () => {

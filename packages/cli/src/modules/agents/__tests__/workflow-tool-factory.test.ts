@@ -1,4 +1,5 @@
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { In } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,6 +12,7 @@ import {
 	validateCompatibility,
 } from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
+import { findWorkflowToolWorkflows } from '../tools/workflow-tool-workflow-resolver';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -170,6 +172,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(context.workflowRepository.findOne).toHaveBeenCalledWith(
 			expect.objectContaining({
 				where: { name: 'Scoped Workflow', shared: { projectId: 'project-1' } },
+				relations: ['shared'],
 			}),
 		);
 	});
@@ -233,5 +236,33 @@ describe('workflow tool compatibility', () => {
 				},
 			],
 		});
+	});
+});
+
+describe('findWorkflowToolWorkflows', () => {
+	it('returns an empty map without querying when no names are provided, and dedupes workflow names into a project-scoped map otherwise', async () => {
+		const workflowRepository = mock<WorkflowRepository>();
+
+		const emptyResult = await findWorkflowToolWorkflows(workflowRepository, [], 'project-1');
+
+		expect(emptyResult).toEqual(new Map());
+		expect(workflowRepository.find).not.toHaveBeenCalled();
+
+		const workflow = makeWorkflow({ id: 'wf-a', name: 'Workflow A' });
+		workflowRepository.find.mockResolvedValue([workflow]);
+
+		const result = await findWorkflowToolWorkflows(
+			workflowRepository,
+			['Workflow A', 'Workflow A', 'Workflow B'],
+			'project-1',
+		);
+
+		expect(workflowRepository.find).toHaveBeenCalledTimes(1);
+		expect(workflowRepository.find).toHaveBeenCalledWith({
+			where: { name: In(['Workflow A', 'Workflow B']), shared: { projectId: 'project-1' } },
+			select: ['id', 'name', 'nodes'],
+		});
+		expect(result.get('Workflow A')).toBe(workflow);
+		expect(result.has('Workflow B')).toBe(false);
 	});
 });

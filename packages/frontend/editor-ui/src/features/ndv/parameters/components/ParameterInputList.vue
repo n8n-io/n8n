@@ -24,8 +24,10 @@ import {
 	AGENT_NODE_TYPE,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	GOOGLE_GMAIL_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
+	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
@@ -45,9 +47,17 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
+	filterGmailHitlParameters,
+	useEnhancedHitlGmailExperiment,
+} from '@/experiments/enhancedHitlGmail';
+import {
 	filterTelegramHitlParameters,
 	useEnhancedHitlTelegramExperiment,
 } from '@/experiments/enhancedHitlTelegram';
+import {
+	filterSlackHitlParameters,
+	useEnhancedHitlSlackExperiment,
+} from '@/experiments/enhancedHitlSlack';
 import {
 	getParameterTypeOption,
 	type ParameterOptionsOverrides,
@@ -119,6 +129,8 @@ const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
+const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
+const { isFeatureEnabled: isEnhancedHitlGmailEnabled } = useEnhancedHitlGmailExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -196,6 +208,8 @@ throttledWatch(
 		node,
 		hasChatOrManualChatParent,
 		isEnhancedHitlTelegramEnabled,
+		isEnhancedHitlSlackEnabled,
+		isEnhancedHitlGmailEnabled,
 	],
 	async () => {
 		// Pre-calculate disabled state map
@@ -243,6 +257,20 @@ throttledWatch(
 			!isEnhancedHitlTelegramEnabled.value
 		) {
 			filteredParameters = filterTelegramHitlParameters(parameters);
+		} else if (
+			node.value &&
+			// usableAsTool appends `Tool` to the node type; gate the tool variant too.
+			(node.value.type === SLACK_NODE_TYPE || node.value.type === `${SLACK_NODE_TYPE}Tool`) &&
+			!isEnhancedHitlSlackEnabled.value
+		) {
+			filteredParameters = filterSlackHitlParameters(parameters);
+		} else if (
+			node.value &&
+			(node.value.type === GOOGLE_GMAIL_NODE_TYPE ||
+				node.value.type === `${GOOGLE_GMAIL_NODE_TYPE}Tool`) &&
+			!isEnhancedHitlGmailEnabled.value
+		) {
+			filteredParameters = filterGmailHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}

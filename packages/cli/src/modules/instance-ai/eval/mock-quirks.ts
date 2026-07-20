@@ -182,6 +182,43 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'The Gemini node parses candidates[].content.parts; bare payload objects yield empty output that downstream IF/parse nodes then misroute. Observed as mock_issue rows in run 29012884140 (whatsapp-faq-assistant, weekly-social-content-scheduler).',
 		addedAt: '2026-07-09',
 	},
+	{
+		service: 'Reddit',
+		// Authenticated Reddit uses oauth.reddit.com (service extracts to "Oauth");
+		// unauthenticated reads hit www.reddit.com ("Reddit"). Match on hostname so
+		// both resolve.
+		hostnames: ['*.reddit.com', 'reddit.com'],
+		guidance:
+			'Reddit WRITE endpoints wrap the created resource in a `{ "json": { "errors": [], "data": { ... } } }` envelope — the n8n Reddit node reads `response.json.data`, so a bare resource object (no `json` wrapper) yields nothing.\n' +
+			'  * `POST /api/submit` (create post) → `{ "json": { "errors": [], "data": { "id": "t3_abc", "name": "t3_abc", "url": "https://www.reddit.com/..." } } }`.\n' +
+			'  * `POST /api/comment` (add comment/reply) → the comment lives DEEPER, under `json.data.things[0].data`: `{ "json": { "errors": [], "data": { "things": [{ "kind": "t1", "data": { "id": "t1_xyz", "body": "...", "author": "..." } }] } } }` — the node reads `response.json.data.things[0].data`.\n' +
+			'READ listings are different (`GET r/{subreddit}.json` → `{ "kind": "Listing", "data": { "children": [{ "kind": "t3", "data": { ... } }], "after": null } }`); apply the `json`/`things` envelope ONLY to the write endpoints above.',
+		rationale:
+			'The Reddit node reads response.json.data for api/submit and response.json.data.things[0].data for api/comment; a flat resource object crashes/empties those reads. No quirk existed for Reddit before (TRUST-309).',
+		addedAt: '2026-07-16',
+	},
+	{
+		service: 'Hubapi',
+		// api.hubapi.com → service extracts to "Hubapi"; keep the hostname pattern as
+		// a backstop for any regional/legacy host.
+		hostnames: ['*.hubapi.com', 'hubapi.com'],
+		endpoint: 'POST /contacts/v1/contact/createOrUpdate/email/*',
+		guidance:
+			'HubSpot legacy contacts upsert `POST /contacts/v1/contact/createOrUpdate/email/{email}` → `{ "vid": <NUMBER>, "isNew": <boolean> }`. The n8n HubSpot node reads `response.vid` (a NUMBER — it interpolates it into a follow-up `GET /contacts/v1/contact/vid/{vid}/profile`) and `response.isNew`. NEVER return the CRM v3 shape (`{ "id": "...", "properties": { ... } }`) or a nested `{ "contact": { ... } }` — the node reads `response.vid` at the top level and crashes/misfires without it. `vid` MUST be numeric (e.g. `3234574`), not a hash or email.',
+		rationale:
+			'The HubSpot node reads responseData.vid and then GETs /contact/vid/{vid}/profile; a v3-shaped or nested body leaves vid undefined and breaks the follow-up. No quirk existed for HubSpot before (TRUST-309).',
+		addedAt: '2026-07-16',
+	},
+	{
+		service: 'Docs',
+		hostnames: ['docs.googleapis.com'],
+		endpoint: 'POST /v1/documents/*',
+		guidance:
+			'Google Docs `POST /v1/documents/{documentId}:batchUpdate` → `{ "documentId": "<id>", "replies": [ ... ] }`. The `replies` ARRAY is REQUIRED and MUST have one entry per request in the batch (the n8n Google Docs node reads `response.replies[0]` and calls `Object.keys` on it — a missing or empty `replies` crashes it). Many request types (e.g. `insertText`, `deleteContentRange`) produce an EMPTY reply object `{}`, so `replies: [{}]` is valid; request types that return data (e.g. `createNamedRange`) put it under the operation key, e.g. `replies: [{ "createNamedRange": { "namedRangeId": "..." } }]`. Return one reply element for each request you were sent.',
+		rationale:
+			'The Google Docs node reads responseData.replies[0] unconditionally; a body without a non-empty replies array throws. No quirk existed for Google Docs before (TRUST-309).',
+		addedAt: '2026-07-16',
+	},
 ];
 
 /**

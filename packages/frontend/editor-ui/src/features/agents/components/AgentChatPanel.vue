@@ -23,6 +23,7 @@ const props = withDefaults(
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
+		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 	}>(),
@@ -31,6 +32,7 @@ const props = withDefaults(
 		mode: 'panel',
 		continueSessionId: undefined,
 		canEditAgent: true,
+		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
 	},
@@ -40,6 +42,10 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
+	'initial-consumed': [];
+	back: [];
+	'open-build': [];
+	'send-to-assistant': [];
 }>();
 
 const locale = useI18n();
@@ -78,15 +84,29 @@ const {
 	},
 });
 
+const RUNTIME_ISSUE_PATH_PREFIXES = [
+	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
+	{ prefix: 'mcpServers.', key: 'agents.chat.misconfigured.missing.mcpServers' },
+	{ prefix: 'subAgents.agents.', key: 'agents.chat.misconfigured.missing.subAgents.agents' },
+] as const;
+
 function humaniseMissingField(field: string): string {
 	if (field.startsWith('skill:')) {
 		return locale.baseText('agents.chat.misconfigured.missing.skill', {
 			interpolate: { id: field.slice('skill:'.length) },
 		});
 	}
-	const key = `agents.chat.misconfigured.missing.${field}`;
-	const translated = locale.baseText(key as never);
-	return translated === key ? field : translated;
+	const exactKey = `agents.chat.misconfigured.missing.${field}`;
+	const exactTranslation = locale.baseText(exactKey as never);
+	if (exactTranslation !== exactKey) {
+		return exactTranslation;
+	}
+	for (const { prefix, key } of RUNTIME_ISSUE_PATH_PREFIXES) {
+		if (field.startsWith(prefix)) {
+			return locale.baseText(key);
+		}
+	}
+	return field;
 }
 
 const missingFields = computed(() => {
@@ -176,7 +196,7 @@ onBeforeUnmount(() => {
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
 				</span>
 				<span v-if="missingFields" :class="$style.errorBannerDetail">
-					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
+					{{ locale.baseText('agents.chat.misconfigured.issuesPrefix') }} {{ missingFields }}
 				</span>
 			</div>
 			<template #trailingContent>
@@ -197,7 +217,11 @@ onBeforeUnmount(() => {
 			:messages="messages"
 			:messaging-state="messagingState"
 			:project-id="projectId"
+			:agent-id="agentId"
+			:session-id="continueSessionId"
+			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
+			@send-to-assistant="emit('send-to-assistant')"
 		/>
 
 		<div :class="$style.inputArea">

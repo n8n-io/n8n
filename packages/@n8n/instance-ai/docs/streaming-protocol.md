@@ -65,6 +65,7 @@ Every event follows this schema:
   type: string;        // event type
   runId: string;       // correlates all events in a single message → response cycle
   agentId: string;     // agent this event is attributed to in the UI
+  ts?: number;         // epoch ms stamped at publish — replays reconstruct real timing from it
   payload?: object;    // event-specific data
 }
 ```
@@ -123,9 +124,32 @@ decision-making and supports faster iteration.
 reasoning tokens; when a model doesn't support it, no `reasoning-delta` events
 are sent. The frontend should handle the absence gracefully.
 
+### `tool-input-start`
+
+A tool call's arguments have started streaming from the model. Sent before
+`tool-call` — for tools with large arguments (e.g. `build-workflow` streaming
+generated workflow code) this can precede the full `tool-call` event by a
+long time, so the frontend can surface the pending call immediately.
+
+```json
+{
+  "type": "tool-input-start",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "toolCallId": "tc_abc123",
+    "toolName": "build-workflow"
+  }
+}
+```
+
+The frontend adds a pending entry to the agent's `toolCalls` with empty `args`
+and `isLoading: true`; the subsequent `tool-call` event fills in the args.
+
 ### `tool-call`
 
-An agent is invoking a tool. Sent before the tool executes.
+An agent is invoking a tool. Sent when the tool's arguments are complete,
+before the tool executes.
 
 ```json
 {
@@ -388,12 +412,13 @@ simultaneously persisted to thread storage and delivered to connected SSE client
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
 | Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. Off (default),
-replay serves from a bounded in-memory buffer per thread (500 events / 2 MB,
-FIFO-evicted; ids reset on restart). On, the durable event log
-(`instance_ai_events`) is the replay source: coalesced step-level facts are
-appended with a per-thread `seq` assigned by the writer's drain, so cursors
-stay valid across restarts and across mains sharing one database.
+Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. On (the default),
+the durable event log (`instance_ai_events`) is the replay source: coalesced
+step-level facts are appended with a per-thread `seq` assigned by the
+writer's drain, so cursors stay valid across restarts and across mains
+sharing one database. Off (the rollback switch until Gate B), replay serves
+from a bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted;
+ids reset on restart).
 
 ### Reconnection & Replay (Canonical Rule)
 
@@ -444,6 +469,15 @@ The frontend can abort a running agent by sending:
 - **Behavior**: Stops orchestrator and active background agents, then emits final
   `run-finish` with `payload.status = "cancelled"`.
 - **Race behavior**: If the run already completed, cancel is a no-op.
+
+### In-flight tool calls
+
+Cancel aborts the run `AbortSignal` that is passed to every tool as
+`ctx.abortSignal`. Instance AI wraps tool handlers so Stop unblocks the
+executor promptly (handlers race the signal). Long-running I/O tools should
+also forward `ctx.abortSignal` into fetches and child work so the underlying
+request stops, not only the handler promise. Aborted tool calls are settled as
+cancelled tool results (no dangling `tool_call` entries).
 
 ## Frontend Rendering
 

@@ -112,6 +112,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
+	UserError,
 	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
@@ -123,6 +124,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
+import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
@@ -269,6 +271,7 @@ export class InstanceAiAdapterService {
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
+		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -1744,7 +1747,7 @@ export class InstanceAiAdapterService {
 		evaluationConfigService: EvaluationConfigService,
 		user: User,
 	): InstanceAiEvaluationConfigService {
-		const { workflowFinderService } = this;
+		const { workflowFinderService, credentialsFinderService, llmJudgeProviderRegistry } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('evaluations');
 
 		const findWorkflow = async (
@@ -1757,6 +1760,17 @@ export class InstanceAiAdapterService {
 			}
 			return workflow;
 		};
+
+		// The judge `provider` is the chat-model node type, which the caller often
+		// doesn't know — but the credential they pick determines it (each credential
+		// type maps to exactly one provider). Fill any missing provider from the
+		// credential so the agent only needs to supply a credential + model.
+		const resolveProviders = async (input: UpsertEvaluationConfigInput) =>
+			await resolveMetricProviders(input, {
+				user,
+				credentialsFinderService,
+				llmJudgeProviderRegistry,
+			});
 
 		return {
 			async list(workflowId) {
@@ -1772,23 +1786,25 @@ export class InstanceAiAdapterService {
 			async create(workflowId, input) {
 				assertNotReadOnly();
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.create(
 					workflowId,
 					workflow,
 					user,
-					buildEvaluationConfigDto(input),
+					buildEvaluationConfigDto(resolved),
 				);
 				return evaluationConfigToSummary(config);
 			},
 			async update(workflowId, configId, input) {
 				assertNotReadOnly();
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
+				const resolved = await resolveProviders(input);
 				const config = await evaluationConfigService.update(
 					workflowId,
 					configId,
 					workflow,
 					user,
-					buildEvaluationConfigDto(input),
+					buildEvaluationConfigDto(resolved),
 				);
 				return evaluationConfigToSummary(config);
 			},
@@ -2118,6 +2134,7 @@ export class InstanceAiAdapterService {
 					maxContentLength?: number;
 					maxResponseBytes?: number;
 					timeoutMs?: number;
+					abortSignal?: AbortSignal;
 					authorizeUrl?: (targetUrl: string) => Promise<void>;
 				},
 			) {
@@ -2152,6 +2169,7 @@ export class InstanceAiAdapterService {
 					maxContentLength: options?.maxContentLength,
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
+					abortSignal: options?.abortSignal,
 					transport,
 				});
 
@@ -2183,16 +2201,21 @@ export class InstanceAiAdapterService {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
+			abortSignal?: AbortSignal;
 		};
 
 		const keyPrefix = userId ? `${userId}:` : '';
+		const searchCacheKey = (query: string, options?: SearchOptions) => {
+			const { abortSignal: _abortSignal, ...cacheable } = options ?? {};
+			return `${keyPrefix}${JSON.stringify([query, cacheable])}`;
+		};
 
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
 		// This intentionally takes priority over local SearXNG or API key configuration.
 		if (searchProxyConfig) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2207,7 +2230,7 @@ export class InstanceAiAdapterService {
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2219,7 +2242,7 @@ export class InstanceAiAdapterService {
 
 		if (searxngUrl) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
+				const cacheKey = searchCacheKey(query, options);
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -2875,6 +2898,53 @@ export type ResolveDataTableResult =
 	| { kind: 'hit'; table: DataTableRecord }
 	| { kind: 'miss' }
 	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
+
+interface ResolveMetricProvidersDeps {
+	user: User;
+	credentialsFinderService: CredentialsFinderService;
+	llmJudgeProviderRegistry?: LlmJudgeProviderRegistry;
+}
+
+/**
+ * Fill each metric's `provider` (the chat-model node type) from its credential
+ * when the caller didn't supply one. Each credential type maps to exactly one
+ * provider, so the agent only needs to pass a credential id + model. Metrics
+ * that already carry a provider are left untouched.
+ */
+export async function resolveMetricProviders(
+	input: UpsertEvaluationConfigInput,
+	deps: ResolveMetricProvidersDeps,
+): Promise<UpsertEvaluationConfigInput> {
+	const { user, credentialsFinderService, llmJudgeProviderRegistry } = deps;
+	const metrics = await Promise.all(
+		input.metrics.map(async (metric) => {
+			if (metric.provider) return metric;
+			if (!llmJudgeProviderRegistry) {
+				throw new UnexpectedError(
+					'Cannot derive the judge provider: provider registry is unavailable.',
+				);
+			}
+			const credential = await credentialsFinderService.findCredentialForUser(
+				metric.credentialId,
+				user,
+				['credential:read'],
+			);
+			if (!credential) {
+				throw new UserError(
+					`Credential "${metric.credentialId}" for metric "${metric.name}" was not found or is not accessible.`,
+				);
+			}
+			const provider = llmJudgeProviderRegistry.getByCredentialType(credential.type);
+			if (!provider) {
+				throw new UserError(
+					`Credential type "${credential.type}" for metric "${metric.name}" is not a supported LLM judge provider.`,
+				);
+			}
+			return { ...metric, provider: provider.nodeType };
+		}),
+	);
+	return { ...input, metrics };
+}
 
 /**
  * Map the tool's focused LLM-judge input onto the full evaluation-config DTO,

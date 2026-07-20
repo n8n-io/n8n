@@ -20,6 +20,7 @@ import {
 	UserError,
 	AI_VENDOR_NODE_TYPES,
 	createEmptyRunExecutionData,
+	DATA_TABLE_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
@@ -296,6 +297,10 @@ export class EphemeralNodeExecutor {
 			nodeTypes: this.nodeTypes,
 		});
 		const additionalData = await getBase({ projectId: tool.projectId });
+		if (tool.nodeType === DATA_TABLE_TOOL_NODE_TYPE) {
+			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
+			additionalData.dataTableProjectId = tool.projectId;
+		}
 		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
 		const inputData: ITaskDataConnections = { main: [inputItems] };

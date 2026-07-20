@@ -334,7 +334,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			credentialName: credentialsResolveMetadata.name,
 		});
 
-		throw new MissingExecutionContextError(credentialsResolveMetadata.name);
+		throw new MissingExecutionContextError();
 	}
 
 	/**

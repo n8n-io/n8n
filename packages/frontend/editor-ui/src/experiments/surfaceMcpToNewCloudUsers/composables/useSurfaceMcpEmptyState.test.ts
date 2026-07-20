@@ -48,21 +48,15 @@ vi.mock('./useSurfaceMcpToNewCloudUsersEligibility', () => ({
 function renderComposable({
 	canCreateWorkflow = true,
 	showAppSelection = false,
-	showBuilderPrompt = false,
-	showRecommendedTemplatesInline = false,
 }: Partial<{
 	canCreateWorkflow: boolean;
 	showAppSelection: boolean;
-	showBuilderPrompt: boolean;
-	showRecommendedTemplatesInline: boolean;
 }> = {}) {
 	const scope = effectScope();
 	const result = scope.run(() =>
 		useSurfaceMcpEmptyState({
 			canCreateWorkflow: ref(canCreateWorkflow),
 			showAppSelection: ref(showAppSelection),
-			showBuilderPrompt: ref(showBuilderPrompt),
-			showRecommendedTemplatesInline: ref(showRecommendedTemplatesInline),
 		}),
 	);
 
