@@ -6,7 +6,6 @@ import { computed, ref } from 'vue';
 
 import { defaultSettings } from '@/__tests__/defaults';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import type { AgentJsonConfig } from '../types';
 
@@ -42,7 +41,13 @@ vi.mock('@/features/credentials/components/CredentialPicker/CredentialPicker.vue
 	default: {
 		name: 'CredentialPicker',
 		template: '<div />',
-		props: ['selectedCredentialId'],
+		props: {
+			credentialType: String,
+			selectedCredentialId: { type: String, default: null },
+			hideCreateNew: Boolean,
+			teleported: Boolean,
+		},
+		emits: ['credential-selected'],
 	},
 }));
 
@@ -89,30 +94,40 @@ function baseConfig(): AgentJsonConfig {
 	};
 }
 
-function mountPanel({ aiAssistantEnabled }: { aiAssistantEnabled: boolean }) {
+function mountPanel({
+	proxyEnabled,
+	config = baseConfig(),
+}: {
+	proxyEnabled: boolean;
+	config?: AgentJsonConfig;
+}) {
 	createTestingPinia({ createSpy: vi.fn, stubActions: false });
 	const settingsStore = useSettingsStore();
 	settingsStore.setSettings({
 		...defaultSettings,
-		aiAssistant: { enabled: aiAssistantEnabled, setup: aiAssistantEnabled },
+		aiAssistant: { enabled: true, setup: true },
 	});
+	settingsStore.moduleSettings = {
+		agents: {
+			modules: [],
+			knowledgeBaseEnabled: false,
+			proxyEnabled,
+		},
+	};
 
 	return mount(AgentMemoryPanel, {
 		props: {
-			config: baseConfig(),
+			config,
 		},
 	});
 }
 
 describe('AgentMemoryPanel', () => {
-	it('enables episodic memory with managed credentials when AI Assistant is enabled', async () => {
-		const wrapper = mountPanel({ aiAssistantEnabled: true });
-		const uiStore = useUIStore();
+	it('enables episodic memory with managed credentials when the proxy is available', async () => {
+		const wrapper = mountPanel({ proxyEnabled: true });
 
-		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
 		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 
-		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		expect(wrapper.emitted('update:config')).toEqual([
 			[
 				{
@@ -129,14 +144,107 @@ describe('AgentMemoryPanel', () => {
 		]);
 	});
 
-	it('opens the credential selector when AI Assistant is disabled', async () => {
-		const wrapper = mountPanel({ aiAssistantEnabled: false });
-		const uiStore = useUIStore();
+	it('opens memory settings without enabling episodic memory when the proxy is unavailable', async () => {
+		const wrapper = mountPanel({ proxyEnabled: false });
 
-		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
 		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
 
-		expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+		expect(wrapper.findComponent({ name: 'CredentialPicker' }).exists()).toBe(true);
 		expect(wrapper.emitted('update:config')).toBeUndefined();
+	});
+
+	it('shows an OpenAI credential picker that allows creating a credential for self-hosting', async () => {
+		const wrapper = mountPanel({ proxyEnabled: false });
+
+		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
+
+		const picker = wrapper.findComponent({ name: 'CredentialPicker' });
+		expect(picker.props()).toMatchObject({
+			credentialType: 'openAiApi',
+			hideCreateNew: false,
+			teleported: false,
+		});
+	});
+
+	it('enables episodic memory after selecting a self-hosted credential', async () => {
+		const wrapper = mountPanel({ proxyEnabled: false });
+		await wrapper.find('[data-testid="agent-episodic-memory-toggle"]').trigger('click');
+
+		wrapper
+			.findComponent({ name: 'CredentialPicker' })
+			.vm.$emit('credential-selected', 'openai-credential');
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('update:config')).toEqual([
+			[
+				{
+					memory: {
+						enabled: true,
+						storage: 'n8n',
+						episodicMemory: {
+							enabled: true,
+							credential: 'openai-credential',
+						},
+					},
+				},
+			],
+		]);
+	});
+
+	it('offers to replace a managed credential when the proxy is unavailable', async () => {
+		const config = baseConfig();
+		config.memory = {
+			enabled: true,
+			storage: 'n8n',
+			episodicMemory: {
+				enabled: true,
+				credential: MANAGED_CREDENTIAL_TOKEN,
+			},
+		};
+		const wrapper = mountPanel({ proxyEnabled: false, config });
+
+		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
+
+		const picker = wrapper.findComponent({ name: 'CredentialPicker' });
+		expect(picker.props('selectedCredentialId')).toBeNull();
+
+		picker.vm.$emit('credential-selected', 'replacement-credential');
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('update:config')?.[0]?.[0]).toMatchObject({
+			memory: {
+				episodicMemory: {
+					enabled: true,
+					credential: 'replacement-credential',
+				},
+			},
+		});
+	});
+
+	it('shows the selected self-hosted credential in memory settings', async () => {
+		const config = baseConfig();
+		config.memory = {
+			enabled: true,
+			storage: 'n8n',
+			episodicMemory: {
+				enabled: true,
+				credential: 'existing-credential',
+			},
+		};
+		const wrapper = mountPanel({ proxyEnabled: false, config });
+
+		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
+
+		expect(wrapper.findComponent({ name: 'CredentialPicker' }).props('selectedCredentialId')).toBe(
+			'existing-credential',
+		);
+	});
+
+	it('hides the self-hosted credential picker when the proxy is available', async () => {
+		const wrapper = mountPanel({ proxyEnabled: true });
+
+		await wrapper.find('[data-testid="agent-memory-settings-button"]').trigger('click');
+
+		expect(wrapper.findComponent({ name: 'CredentialPicker' }).exists()).toBe(false);
 	});
 });

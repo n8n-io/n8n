@@ -16,7 +16,6 @@ export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
-export const AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY = 'agentEpisodicMemoryCredentialModal';
 export const AGENT_MODEL_CREDENTIAL_MODAL_KEY = 'agentModelCredentialModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 

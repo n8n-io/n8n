@@ -1,5 +1,6 @@
 import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
@@ -425,12 +426,13 @@ export class AgentChatBridge {
 		thread: Thread<unknown, unknown> | null,
 		error: unknown,
 	): Promise<void> {
-		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+		const normalizedError = ensureError(error);
+		const message = normalizedError.message || 'An unexpected error occurred';
 
-		this.logger.error('[AgentChatBridge] Error in handler', {
+		this.logger.error(`[AgentChatBridge] Error in handler: ${message}`, {
 			agentId: this.agentId,
 			threadId: thread?.id,
-			error: message,
+			error: normalizedError,
 		});
 
 		try {
