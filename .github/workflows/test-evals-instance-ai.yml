@@ -59,7 +59,7 @@ on:
         type: string
         default: ''
       model:
-        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default.'
+        description: 'Model override for all Instance AI agents in the lane backends, provider/model format. Empty = backend default (anthropic/claude-opus-4-8). openrouter/* uses EVALS_OPENROUTER_KEY.'
         required: false
         type: string
         default: ''
@@ -94,7 +94,7 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). For experiments: anthropic/claude-sonnet-4-6, anthropic/claude-sonnet-5.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-sonnet-4-6, openrouter/moonshotai/kimi-k3.'
         required: false
         default: ''
 
@@ -164,6 +164,7 @@ jobs:
       - name: Start n8n containers
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          EVALS_OPENROUTER_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
@@ -206,6 +207,17 @@ jobs:
             MODEL_ARGS+=(-e N8N_INSTANCE_AI_MODEL="$INSTANCE_AI_MODEL")
           fi
 
+          # Lane builds use the provider matching N8N_INSTANCE_AI_MODEL.
+          # The eval CLI step keeps EVALS_ANTHROPIC_KEY for Sonnet verifier/mocks.
+          MODEL_API_KEY="$EVALS_ANTHROPIC_KEY"
+          if [[ "$INSTANCE_AI_MODEL" == openrouter/* ]]; then
+            if [ -z "$EVALS_OPENROUTER_KEY" ]; then
+              echo "::error::model is openrouter/* but EVALS_OPENROUTER_KEY secret is empty"
+              exit 1
+            fi
+            MODEL_API_KEY="$EVALS_OPENROUTER_KEY"
+          fi
+
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           for i in "${!PORTS[@]}"; do
             port="${PORTS[$i]}"
@@ -223,7 +235,7 @@ jobs:
               -e E2E_TESTS=true \
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
-              -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
+              -e N8N_INSTANCE_AI_MODEL_API_KEY="$MODEL_API_KEY" \
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               "${SANDBOX_ARGS[@]}" \
@@ -303,13 +315,15 @@ jobs:
               echo "  lane $lane: sandboxEnabled=true sandboxProvider=$SANDBOX_PROVIDER ok"
             fi
             # /preferences returns the effective model name (user pref || config),
-            # i.e. the name part of provider/model.
+            # i.e. everything after the first provider/ segment (openrouter/moonshotai/kimi-k3
+            # → moonshotai/kimi-k3). Use #*/ not ##*/ so nested OpenRouter ids match.
             if [ -n "$INSTANCE_AI_MODEL" ]; then
+              expected_model="${INSTANCE_AI_MODEL#*/}"
               effective=$(curl -sf -b "/tmp/cookies-$port.txt" \
                 "http://localhost:$port/rest/instance-ai/preferences" \
                 | jq -r '.data.modelName')
-              if [ "$effective" != "${INSTANCE_AI_MODEL##*/}" ]; then
-                echo "::error::lane $lane (port $port): expected model '${INSTANCE_AI_MODEL##*/}', got '$effective'"
+              if [ "$effective" != "$expected_model" ]; then
+                echo "::error::lane $lane (port $port): expected model '$expected_model', got '$effective'"
                 bad=$((bad+1))
               else
                 echo "  lane $lane: model=$effective ok"
@@ -400,6 +414,7 @@ jobs:
         if: ${{ always() }}
         env:
           EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          EVALS_OPENROUTER_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
@@ -410,7 +425,7 @@ jobs:
           # ::add-mask:: is a single-line workflow command. Multi-line secrets
           # (e.g. N8N_LICENSE_CERT is PEM-encoded) must be masked one line at
           # a time, otherwise only the first line is registered.
-          for v in "$EVALS_ANTHROPIC_KEY" "$DAYTONA_API_KEY" \
+          for v in "$EVALS_ANTHROPIC_KEY" "$EVALS_OPENROUTER_KEY" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" \
                    "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue
