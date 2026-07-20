@@ -10,6 +10,7 @@ import * as getAllTables from './actions/table/getAll.operation';
 import * as getTableColumns from './actions/table/getColumns.operation';
 import * as getTableRows from './actions/table/getRows.operation';
 import * as lookupTable from './actions/table/lookup.operation';
+import * as workbook from './actions/workbook/Workbook.resource';
 import * as append from './actions/worksheet/append.operation';
 import * as clear from './actions/worksheet/clear.operation';
 import * as deleteWorksheet from './actions/worksheet/deleteWorksheet.operation';
@@ -91,6 +92,10 @@ export class MicrosoftExcelSharePoint implements INodeType {
 					{
 						name: 'Table',
 						value: 'table',
+					},
+					{
+						name: 'Workbook',
+						value: 'workbook',
 					},
 				],
 				default: 'worksheet',
@@ -187,6 +192,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 			...getTableColumns.description,
 			...getTableRows.description,
 			...lookupTable.description,
+			...workbook.description,
 		],
 	};
 
@@ -226,6 +232,14 @@ export class MicrosoftExcelSharePoint implements INodeType {
 
 		if (resource === 'worksheet' && operation === 'deleteWorksheet') {
 			return [await deleteWorksheet.execute.call(this, items)];
+		}
+
+		if (resource === 'workbook' && operation === 'addWorksheet') {
+			return [await workbook.addWorksheet.execute.call(this, items)];
+		}
+
+		if (resource === 'workbook' && operation === 'deleteWorkbook') {
+			return [await workbook.deleteWorkbook.execute.call(this, items)];
 		}
 
 		throw new NodeOperationError(
