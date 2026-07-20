@@ -217,7 +217,7 @@ describe('Test AirtableV2, update operation', () => {
 	});
 
 	it('should update a record by lookup field with array value, autoMapInputData', async () => {
-		(transport.apiRequestAllItems as jest.Mock).mockResolvedValueOnce({
+		vi.mocked(transport.apiRequestAllItems).mockResolvedValueOnce({
 			records: [
 				{
 					id: 'recAAA',
@@ -267,7 +267,7 @@ describe('Test AirtableV2, update operation', () => {
 	});
 
 	it('should update all matches by lookup field with array value, autoMapInputData', async () => {
-		(transport.apiRequestAllItems as jest.Mock).mockResolvedValueOnce({
+		vi.mocked(transport.apiRequestAllItems).mockResolvedValueOnce({
 			records: [
 				{
 					id: 'recAAA',
