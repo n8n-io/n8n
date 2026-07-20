@@ -4,7 +4,9 @@ import { ref, computed } from 'vue';
 
 import N8nBadge from '@n8n/design-system/components/N8nBadge/Badge.vue';
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nKeyboardShortcut from '@n8n/design-system/components/N8nKeyboardShortcut/N8nKeyboardShortcut.vue';
+import N8nTooltip from '@n8n/design-system/components/N8nTooltip/Tooltip.vue';
 import N8nCheckbox from '@n8n/design-system/v2/components/Checkbox/Checkbox.vue';
 
 import { useDropdownSearch } from './composables/useDropdownSearch';
@@ -431,6 +433,68 @@ export const NestedMenu: Story = {
 			},
 			{ id: 'project', label: 'Project', icon: { type: 'icon', value: 'layers' }, disabled: true },
 		] as Array<DropdownMenuItemProps<string>>,
+	},
+};
+
+export const WithTooltips: Story = {
+	render: (args) => ({
+		components: { DropdownMenu, N8nIcon, N8nTooltip },
+		setup() {
+			const handleSelect = (action: string) => {
+				console.log('Selected:', action);
+			};
+			return { args, handleSelect };
+		},
+		template: `
+		<div style="padding: 40px;">
+			<DropdownMenu :items="args.items" @select="handleSelect">
+				<template #item-label="{ item, ui }">
+					<N8nTooltip
+						v-if="item.id === 'main-menu-item'"
+						:content="item.data.tooltip"
+						placement="right"
+						teleported
+						as-child
+					>
+						<span :class="ui.class">{{ item.label }}</span>
+					</N8nTooltip>
+					<span v-else :class="ui.class">{{ item.label }}</span>
+				</template>
+				<template #item-trailing="{ item, ui }">
+					<N8nTooltip
+						v-if="item.id === 'submenu-item'"
+						:content="item.data.tooltip"
+						placement="right"
+						teleported
+						as-child
+					>
+						<N8nIcon icon="info" size="medium" :class="ui.class" />
+					</N8nTooltip>
+				</template>
+			</DropdownMenu>
+		</div>
+		`,
+	}),
+	args: {
+		items: [
+			{
+				id: 'main-menu-item',
+				label: 'Main menu item',
+				data: { tooltip: 'Tooltip for the main menu item' },
+			},
+			{
+				id: 'submenu',
+				label: 'Open submenu',
+				data: { tooltip: '' },
+				children: [
+					{
+						id: 'submenu-item',
+						label: 'Submenu item',
+						data: { tooltip: 'Tooltip for the submenu item' },
+					},
+				],
+			},
+		] as Array<DropdownMenuItemProps<string, { tooltip: string }>>,
 	},
 };
 
