@@ -278,6 +278,7 @@ describe('AgentWorkflowExecutionService', () => {
 			workflowId: 'wf-1',
 			workflowName: 'My workflow',
 			callingNodeName: 'Message an Agent',
+			callingNodeId: 'node-1',
 			inputData: [{ json: { a: 1 } }],
 			inputDataScope: 'item' as const,
 			nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
@@ -322,12 +323,12 @@ describe('AgentWorkflowExecutionService', () => {
 			expect(toolFn).toHaveBeenCalledTimes(1);
 			expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data']);
 			// Workflow-only correlation IDs land on the tracing metadata, keyed off
-			// the workflow context's workflowId/callingNodeName.
+			// the workflow context's workflowId/callingNodeId.
 			expect(agentRunTracingService.build).toHaveBeenCalledWith(
 				expect.objectContaining({
 					source: 'workflow',
 					workflowId: 'wf-1',
-					nodeId: 'Message an Agent',
+					nodeId: 'node-1',
 				}),
 			);
 		});
@@ -417,6 +418,7 @@ describe('AgentWorkflowExecutionService', () => {
 			const workflowContext: ExecuteAgentWorkflowContext = {
 				workflowId: 'wf-1',
 				callingNodeName: 'Message an Agent',
+				callingNodeId: 'node-1',
 				// Memory is injected only for caller-supplied session ids.
 				hasCallerSessionId: true,
 				nodes: [],
@@ -491,7 +493,7 @@ describe('AgentWorkflowExecutionService', () => {
 					agentId: 'inline:wf-1:Message an Agent',
 					source: 'workflow',
 					workflowId: 'wf-1',
-					nodeId: 'Message an Agent',
+					nodeId: 'node-1',
 				}),
 			);
 		});
