@@ -38,6 +38,8 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	beforePublish?: () => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
@@ -81,8 +83,12 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
 const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
+// Standalone keeps href for Cmd/Ctrl-click new-tab. Artifact mode is embedded
+// in Instance AI — plain button so a left-click cannot fall through to a link.
 const previewHref = computed(() =>
-	isPreviewDisabled.value ? undefined : router.resolve(previewRoute.value).href,
+	props.artifactMode || isPreviewDisabled.value
+		? undefined
+		: router.resolve(previewRoute.value).href,
 );
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
@@ -219,6 +225,8 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:agent-id="agentId"
 				:is-saving="saveStatus === 'saving'"
 				:before-revert-to-published="beforeRevertToPublished"
+				:config-validation-status="configValidationStatus"
+				:before-publish="beforePublish"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"

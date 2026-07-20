@@ -22,6 +22,7 @@ export const BUILDER_TOOLS = {
 	LIST_SUB_AGENTS: 'list_sub_agents',
 	PUBLISH_AGENT: 'publish_agent',
 	UNPUBLISH_AGENT: 'unpublish_agent',
+	RESOLVE_INTEGRATION: 'resolve_integration',
 	RESOLVE_LLM: 'resolve_llm',
 	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',

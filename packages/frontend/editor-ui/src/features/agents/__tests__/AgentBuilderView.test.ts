@@ -11,6 +11,7 @@ import type {
 	CustomToolEntry,
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '../utils/agentPersonalisation';
+import { agentsEventBus } from '../agents.eventBus';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -118,9 +119,11 @@ const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
 const updateConfigMock = vi.fn();
 const fetchConfigMock = vi.fn();
+const deleteAgentMock = vi.fn().mockResolvedValue(undefined);
 const listAgentFilesMock = vi.fn().mockResolvedValue([]);
 const uploadAgentFilesMock = vi.fn().mockResolvedValue([]);
 const warmAgentKnowledgeSandboxMock = vi.fn().mockResolvedValue({ accepted: true });
+const getAgentConfigValidationMock = vi.fn().mockResolvedValue({ status: 'valid', issues: [] });
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
@@ -128,7 +131,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
 	createAgentSkill: createAgentSkillMock,
-	deleteAgent: vi.fn(),
+	deleteAgent: deleteAgentMock,
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
 	getModelCatalog: vi.fn().mockResolvedValue({}),
@@ -136,6 +139,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	uploadAgentFiles: uploadAgentFilesMock,
 	deleteAgentFile: vi.fn(),
 	warmAgentKnowledgeSandbox: warmAgentKnowledgeSandboxMock,
+	getAgentConfigValidation: getAgentConfigValidationMock,
 }));
 
 vi.mock('../composables/useAgentBuilderTelemetry', () => ({
@@ -396,7 +400,7 @@ const commonStubs = {
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
-			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)"></div>',
+			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName" :data-artifact-mode="String(artifactMode)" :data-config-validation-status="String(configValidationStatus)"></div>',
 		props: [
 			'agent',
 			'projectId',
@@ -405,6 +409,8 @@ const commonStubs = {
 			'headerActions',
 			'beforeRevertToPublished',
 			'artifactMode',
+			'configValidationStatus',
+			'beforePublish',
 		],
 		emits: [
 			'header-action',
@@ -491,6 +497,42 @@ const commonStubs = {
 	Transition: { template: '<div><slot/></div>' },
 };
 
+// Common reset shared by every describe block below. Each describe's own
+// beforeEach calls this first, then applies its own divergent setup
+// (permission defaults, spy restoration, or mocks it alone exercises).
+function resetViewMocks() {
+	vi.clearAllMocks();
+	routerPush.mockReset();
+	routerReplace.mockReset();
+	openModalWithDataMock.mockReset();
+	closeModalMock.mockReset();
+	routeName = 'AgentBuilderView';
+	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
+	sessionThreads.length = 0;
+	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
+	// Reset to a built agent; tests that need an unbuilt agent override locally.
+	intendedConfig = {
+		name: 'Agent One',
+		instructions: 'You are a helpful assistant.',
+	};
+	mockConfig.value = withDefaultLlm(intendedConfig);
+	updateConfigMock.mockReset();
+	updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
+	getAgentMock.mockResolvedValue(makeAgentResponse());
+	getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
+	getAgentConfigValidationMock.mockReset();
+	getAgentConfigValidationMock.mockResolvedValue({ status: 'valid', issues: [] });
+	listAgentFilesMock.mockReset();
+	listAgentFilesMock.mockResolvedValue([]);
+	uploadAgentFilesMock.mockReset();
+	uploadAgentFilesMock.mockResolvedValue([]);
+	showErrorMock.mockReset();
+	fetchConfigMock.mockClear();
+	favoritesStoreMock.isFavorite.mockReturnValue(false);
+	instanceAiAvailableRef.value = true;
+	startInstanceAiThread.mockReset();
+}
+
 describe('AgentBuilderView — preview routing', () => {
 	// First Vite transform of this SFC + design-system deps can exceed the default
 	// 5s test timeout; warm the module once so each case measures mount behavior.
@@ -499,7 +541,7 @@ describe('AgentBuilderView — preview routing', () => {
 	}, 30_000);
 
 	beforeEach(() => {
-		vi.clearAllMocks();
+		resetViewMocks();
 		vi.restoreAllMocks();
 		createObjectURLSpy?.mockRestore();
 		revokeObjectURLSpy?.mockRestore();
@@ -507,43 +549,17 @@ describe('AgentBuilderView — preview routing', () => {
 		createObjectURLSpy = undefined;
 		revokeObjectURLSpy = undefined;
 		anchorClickSpy = undefined;
-		routerPush.mockReset();
-		routerReplace.mockReset();
-		openModalWithDataMock.mockReset();
-		closeModalMock.mockReset();
 		agentPermissionsMock.canCreate.value = true;
 		agentPermissionsMock.canUpdate.value = true;
 		agentPermissionsMock.canDelete.value = false;
 		agentPermissionsMock.canPublish.value = true;
 		agentPermissionsMock.canUnpublish.value = true;
-		routeName = 'AgentBuilderView';
-		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
-		sessionThreads.length = 0;
-		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
-		// Reset to a built agent; tests that need an unbuilt agent override locally.
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		updateConfigMock.mockReset();
-		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
-		getAgentMock.mockResolvedValue(makeAgentResponse());
-		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
-		listAgentFilesMock.mockReset();
-		listAgentFilesMock.mockResolvedValue([]);
-		uploadAgentFilesMock.mockReset();
-		uploadAgentFilesMock.mockResolvedValue([]);
+		deleteAgentMock.mockReset();
+		deleteAgentMock.mockResolvedValue(undefined);
 		warmAgentKnowledgeSandboxMock.mockClear();
-		showErrorMock.mockReset();
-		fetchConfigMock.mockClear();
-		showErrorMock.mockReset();
-		favoritesStoreMock.isFavorite.mockReturnValue(false);
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
-		instanceAiAvailableRef.value = true;
-		startInstanceAiThread.mockReset();
 	});
 
 	it('renders the manual editor without an agents-page build chat', async () => {
@@ -781,9 +797,68 @@ describe('AgentBuilderView — preview routing', () => {
 			expect.objectContaining({
 				name: 'AgentPreviewView',
 				params: { projectId: 'p1', agentId: 'a1' },
+				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
+			}),
+		);
+	});
+
+	it('opens preview with the latest thread when prior sessions exist', async () => {
+		sessionThreads.push({ id: 'thread-latest', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentPreviewView',
+				params: { projectId: 'p1', agentId: 'a1' },
+				query: expect.objectContaining({ continueSessionId: 'thread-latest' }),
+			}),
+		);
+	});
+
+	it('opens the preview route in the same tab from artifact mode', async () => {
+		const windowOpen = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+			},
+		});
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		header.vm.$emit('open-preview');
+		await flushPromises();
+
+		expect(routerPush).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'AgentPreviewView',
+				params: { projectId: 'p2', agentId: 'a2' },
+				query: expect.not.objectContaining({ continueSessionId: expect.anything() }),
+			}),
+		);
+		expect(windowOpen).not.toHaveBeenCalled();
+	});
+
+	it('mints a fresh preview session when landing with no prior threads', async () => {
+		routeName = 'AgentPreviewView';
+
+		const wrapper = await renderView();
+		await flushPromises();
+
+		expect(routerReplace).toHaveBeenCalledWith(
+			expect.objectContaining({
 				query: expect.objectContaining({ continueSessionId: expect.any(String) }),
 			}),
 		);
+		expect(
+			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
+		).toEqual(expect.any(String));
 	});
 
 	it('does not open preview when the agent is not runnable', async () => {
@@ -816,6 +891,27 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(
 			wrapper.findComponent({ name: 'AgentPreviewChatPage' }).props('effectiveSessionId'),
 		).toBe('faulty-thread');
+	});
+
+	it('replaces an unknown continued session with a fresh chat when there is no history', async () => {
+		routeName = 'AgentPreviewView';
+		routeQuery.continueSessionId = 'stale-missing-thread';
+
+		const wrapper = await renderView();
+		routerReplace.mockClear();
+
+		(wrapper.vm as unknown as { onContinueLoaded: (count: number) => void }).onContinueLoaded(0);
+		await flushPromises();
+
+		expect(routerReplace).toHaveBeenCalledWith(
+			expect.objectContaining({
+				query: expect.objectContaining({ continueSessionId: expect.any(String) }),
+			}),
+		);
+		const replaceQuery = routerReplace.mock.calls[0]?.[0]?.query as {
+			continueSessionId: string;
+		};
+		expect(replaceQuery.continueSessionId).not.toBe('stale-missing-thread');
 	});
 
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
@@ -900,38 +996,117 @@ describe('AgentBuilderView — preview routing', () => {
 	});
 });
 
+describe('AgentBuilderView — configuration validation', () => {
+	beforeEach(() => {
+		resetViewMocks();
+		vi.restoreAllMocks();
+		createObjectURLSpy?.mockRestore();
+		revokeObjectURLSpy?.mockRestore();
+		anchorClickSpy?.mockRestore();
+		createObjectURLSpy = undefined;
+		revokeObjectURLSpy = undefined;
+		anchorClickSpy = undefined;
+		agentPermissionsMock.canCreate.value = true;
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canDelete.value = false;
+		agentPermissionsMock.canPublish.value = true;
+		agentPermissionsMock.canUnpublish.value = true;
+		warmAgentKnowledgeSandboxMock.mockClear();
+	});
+
+	it('fetches validation on initial load and forwards the status to the header', async () => {
+		getAgentConfigValidationMock.mockResolvedValue({
+			status: 'invalid',
+			issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
+		});
+
+		const wrapper = await renderView();
+
+		expect(getAgentConfigValidationMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p1',
+			'a1',
+		);
+		const header = wrapper.find('[data-testid="stub-agent-builder-header"]');
+		expect(header.attributes('data-config-validation-status')).toBe('invalid');
+	});
+
+	it('flushes a pending config edit when the builder unmounts', async () => {
+		const wrapper = await renderView();
+		updateConfigMock.mockClear();
+		const vm = wrapper.vm as unknown as {
+			onConfigFieldUpdate: (updates: Partial<TestAgentConfig>) => void;
+		};
+
+		vm.onConfigFieldUpdate({ name: 'Renamed agent' });
+		await nextTick();
+		wrapper.unmount();
+		await flushPromises();
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({ name: 'Renamed agent' }),
+		);
+	});
+
+	it('refreshes validation after a successful config autosave lands', async () => {
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'invalid', issues: [] })
+			.mockResolvedValueOnce({ status: 'valid', issues: [] });
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			configValidation: { status: 'valid' | 'invalid' } | null;
+			saveConfig: (snapshot: {
+				type: 'config';
+				projectId: string;
+				agentId: string;
+				config: TestAgentConfig;
+			}) => Promise<void>;
+		};
+
+		expect(vm.configValidation?.status).toBe('invalid');
+
+		await vm.saveConfig({
+			type: 'config',
+			projectId: 'p1',
+			agentId: 'a1',
+			config: withDefaultLlm({
+				name: 'Agent One',
+				instructions: 'You are a helpful assistant.',
+			})!,
+		});
+		await nextTick();
+
+		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
+		expect(vm.configValidation?.status).toBe('valid');
+	});
+
+	it('flushes pending edits and revalidates before publishing, aborting when still invalid', async () => {
+		getAgentConfigValidationMock
+			.mockResolvedValueOnce({ status: 'valid', issues: [] })
+			.mockResolvedValueOnce({ status: 'invalid', issues: [] });
+
+		const wrapper = await renderView();
+		const vm = wrapper.vm as unknown as {
+			refreshValidationBeforePublish: () => Promise<boolean>;
+		};
+
+		const result = await vm.refreshValidationBeforePublish();
+
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(getAgentConfigValidationMock).toHaveBeenCalledTimes(2);
+		expect(result).toBe(false);
+	});
+});
+
 describe('AgentBuilderView — three-column shell', () => {
 	beforeEach(() => {
-		vi.clearAllMocks();
-		routerPush.mockReset();
-		routerReplace.mockReset();
-		openModalWithDataMock.mockReset();
-		closeModalMock.mockReset();
-		routeName = 'AgentBuilderView';
-		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
-		sessionThreads.length = 0;
-		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
-		intendedConfig = {
-			name: 'Agent One',
-			instructions: 'You are a helpful assistant.',
-		};
-		mockConfig.value = withDefaultLlm(intendedConfig);
-		updateConfigMock.mockReset();
-		updateConfigMock.mockResolvedValue({ versionId: 'v1', stale: false });
-		getAgentMock.mockResolvedValue(makeAgentResponse());
-		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
-		listAgentFilesMock.mockReset();
-		listAgentFilesMock.mockResolvedValue([]);
-		uploadAgentFilesMock.mockReset();
-		uploadAgentFilesMock.mockResolvedValue([]);
-		showErrorMock.mockReset();
-		fetchConfigMock.mockClear();
-		favoritesStoreMock.isFavorite.mockReturnValue(false);
+		resetViewMocks();
 		favoritesStoreMock.toggleFavorite.mockClear();
 		favoritesStoreMock.renameFavorite.mockClear();
 		favoritesStoreMock.removeFavoriteLocally.mockClear();
-		instanceAiAvailableRef.value = true;
-		startInstanceAiThread.mockReset();
 	});
 
 	it('renders only the manual editor without build chat controls', async () => {
@@ -1087,6 +1262,83 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		expect(getAgentMock).toHaveBeenCalledWith({ baseUrl: 'http://localhost:5678' }, 'p2', 'a2');
 		expect(fetchConfigMock).toHaveBeenCalledWith('p2', 'a2');
+	});
+
+	it('refreshes the shell when another surface reports an update to this agent', async () => {
+		// Unique ids: earlier tests leave mounted instances (and their bus
+		// listeners) behind, so shared ids would inflate the mock call counts.
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-bus',
+				artifactAgentId: 'a-bus',
+				artifactRefreshKey: 0,
+			},
+		});
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'channel-setup-card' });
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p-bus',
+			'a-bus',
+		);
+		expect(fetchConfigMock).toHaveBeenCalledWith('p-bus', 'a-bus');
+
+		// Other agents' updates and the builder's own writes are ignored.
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-other', source: 'channel-setup-card' });
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus', source: 'agent-builder' });
+		await flushPromises();
+
+		expect(getAgentMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+
+		wrapper.unmount();
+	});
+
+	it('replays external agent updates that arrive before initialization completes', async () => {
+		let resolveAgent!: (agent: ReturnType<typeof makeAgentResponse>) => void;
+		getAgentMock.mockReturnValueOnce(new Promise((resolve) => (resolveAgent = resolve)));
+
+		// Unique ids so stale mounted instances from earlier tests ignore the emit.
+		const wrapper = await renderView({
+			waitForAsyncSetup: false,
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p-bus-init',
+				artifactAgentId: 'a-bus-init',
+				artifactRefreshKey: 0,
+			},
+		});
+		await vi.waitFor(() => {
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
+			expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+		});
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'a-bus-init', source: 'channel-setup-card' });
+		await nextTick();
+		expect(getAgentMock).toHaveBeenCalledTimes(1);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(1);
+
+		resolveAgent(makeAgentResponse());
+		await flushPromises();
+		await flushPromises();
+
+		expect(getAgentMock).toHaveBeenCalledTimes(2);
+		expect(fetchConfigMock).toHaveBeenCalledTimes(2);
+		expect(getAgentMock).toHaveBeenLastCalledWith(
+			{ baseUrl: 'http://localhost:5678' },
+			'p-bus-init',
+			'a-bus-init',
+		);
+		expect(fetchConfigMock).toHaveBeenLastCalledWith('p-bus-init', 'a-bus-init');
+
+		wrapper.unmount();
 	});
 
 	it('replays artifact refresh key changes that arrive before initialization completes', async () => {

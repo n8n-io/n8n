@@ -412,12 +412,13 @@ simultaneously persisted to thread storage and delivered to connected SSE client
 | Single instance | In-process `EventEmitter` | Zero infrastructure |
 | Queue mode | Redis Pub/Sub | n8n already uses Redis |
 
-Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. Off (default),
-replay serves from a bounded in-memory buffer per thread (500 events / 2 MB,
-FIFO-evicted; ids reset on restart). On, the durable event log
-(`instance_ai_events`) is the replay source: coalesced step-level facts are
-appended with a per-thread `seq` assigned by the writer's drain, so cursors
-stay valid across restarts and across mains sharing one database.
+Replay storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`. On (the default),
+the durable event log (`instance_ai_events`) is the replay source: coalesced
+step-level facts are appended with a per-thread `seq` assigned by the
+writer's drain, so cursors stay valid across restarts and across mains
+sharing one database. Off (the rollback switch until Gate B), replay serves
+from a bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted;
+ids reset on restart).
 
 ### Reconnection & Replay (Canonical Rule)
 

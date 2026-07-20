@@ -146,6 +146,12 @@ function isDeniedApprovalResumeData(value: unknown): boolean {
 	return value !== null && typeof value === 'object' && Reflect.get(value, 'approved') === false;
 }
 
+function isAbortError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+	if (error.name === 'AbortError') return true;
+	return error.message === 'Aborted' || error.message === 'This operation was aborted';
+}
+
 function shouldEmitToolExecutionStart(tool: BuiltTool, resumeData: unknown): boolean {
 	if (!tool.approval) return true;
 	if (!tool.approval.required && tool.approval.conditional !== true) return true;

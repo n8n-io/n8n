@@ -1,7 +1,7 @@
 import type { AllEntities } from 'n8n-workflow';
 
 type NodeMap = {
-	list: 'get';
+	list: 'get' | 'getAll';
 };
 
 export type MicrosoftSharePointType = AllEntities<NodeMap>;

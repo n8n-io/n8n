@@ -7,7 +7,11 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postCancel, postConfirmation } from '../instanceAi.api';
-import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRuntime';
+import {
+	createThreadRuntime,
+	getAgentBuilderTargetFromThreadMetadata,
+	type ThreadRuntime,
+} from '../instanceAi.threadRuntime';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -2063,5 +2067,35 @@ describe('createThreadRuntime - "Builder generation stalled" telemetry', () => {
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(stalledCalls()).toHaveLength(1);
 		expect(stalledCalls()[0][1]).toEqual({ thread_id: 'thread-active' });
+	});
+});
+
+describe('getAgentBuilderTargetFromThreadMetadata', () => {
+	test('passes the persisted name through', () => {
+		expect(
+			getAgentBuilderTargetFromThreadMetadata({
+				instanceAiAgentBuilderTarget: {
+					agentId: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				},
+			}),
+		).toEqual({ agentId: 'agent-1', projectId: 'proj-1', name: 'Support Bot' });
+	});
+
+	test('drops a non-string name but still returns the target', () => {
+		expect(
+			getAgentBuilderTargetFromThreadMetadata({
+				instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'proj-1', name: 42 },
+			}),
+		).toEqual({ agentId: 'agent-1', projectId: 'proj-1' });
+	});
+
+	test('returns undefined when agentId or projectId is missing', () => {
+		expect(
+			getAgentBuilderTargetFromThreadMetadata({
+				instanceAiAgentBuilderTarget: { projectId: 'proj-1', name: 'Support Bot' },
+			}),
+		).toBeUndefined();
 	});
 });
