@@ -22,11 +22,12 @@ export function useClipboard({
 
 	// Find the correct navigator at copy-time so it works even when the
 	// pop-out window opens after the composable was created.
-	async function copy(value: string) {
+	async function copy(value: string | (() => Promise<string>)) {
 		const nav = popOutWindow?.value?.navigator;
 		if (nav?.clipboard) {
 			try {
-				await nav.clipboard.writeText(value);
+				const resolvedValue = typeof value === 'function' ? await value() : value;
+				await nav.clipboard.writeText(resolvedValue);
 				return;
 			} catch {
 				// Fall back to the core clipboard copy below.
