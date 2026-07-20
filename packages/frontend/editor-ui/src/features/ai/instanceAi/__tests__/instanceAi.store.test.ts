@@ -3,7 +3,6 @@ import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vites
 import { ensureThread } from '../instanceAi.api';
 import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -183,27 +182,15 @@ describe('useInstanceAiStore - credits', () => {
 		});
 	});
 
-	describe('credits push listener', () => {
+	describe('credits push handling', () => {
 		it('writes creditsUsed onto the matching thread from the push payload', () => {
-			let pushCb: (m: unknown) => void = () => {};
-			vi.mocked(usePushConnectionStore).mockReturnValue({
-				addEventListener: vi.fn((cb: (m: unknown) => void) => {
-					pushCb = cb;
-					return () => {};
-				}),
-			} as unknown as ReturnType<typeof usePushConnectionStore>);
-
 			const store = useInstanceAiStore();
 			store.threads.push(makeThread('t1', {}));
-			store.startCreditsPushListener();
 
-			pushCb({
-				type: 'updateInstanceAiCredits',
-				data: {
-					creditsQuota: 100,
-					creditsClaimed: 5,
-					creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
-				},
+			store.handleCreditsPush({
+				creditsQuota: 100,
+				creditsClaimed: 5,
+				creditsPerThread: { threadId: 't1', totalCreditsUsed: 2.5 },
 			});
 
 			expect(store.creditsClaimed).toBe(5);
