@@ -1,3 +1,9 @@
+// Load-bearing, same as data-tables.path.ts: extendZodWithOpenApi patches `.describe()`/`.openapi()`
+// and zod-to-openapi only reads its own metadata store, so the patch must be active before
+// `@n8n/api-types` evaluates its schemas. Importing it here too keeps generation deterministic
+// regardless of the order generate.ts imports this module vs data-tables.path.ts.
+import './zod-extend';
+
 import { PublicApiCreateDataTableDto } from '@n8n/api-types';
 
 /**
