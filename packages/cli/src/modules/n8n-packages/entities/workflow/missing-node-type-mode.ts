@@ -30,7 +30,8 @@ export function collectMissingNodeTypes(
 			const key = `${node.type}@${node.typeVersion}`;
 			const requirement = missing.get(key);
 			if (requirement) {
-				if (!requirement.usedByWorkflows.includes(sourceWorkflowId)) {
+				// Workflows fold sequentially, so a duplicate id can only be the last pushed.
+				if (requirement.usedByWorkflows.at(-1) !== sourceWorkflowId) {
 					requirement.usedByWorkflows.push(sourceWorkflowId);
 				}
 				continue;
@@ -69,13 +70,5 @@ export function missingNodeTypeBlockingFailures(
 
 /** Package workflow ids that should not be published because they use missing node types. */
 export function workflowsWithMissingNodeTypes(missing: MissingNodeTypeRequirement[]): Set<string> {
-	const blocked = new Set<string>();
-
-	for (const requirement of missing) {
-		for (const sourceWorkflowId of requirement.usedByWorkflows) {
-			blocked.add(sourceWorkflowId);
-		}
-	}
-
-	return blocked;
+	return new Set(missing.flatMap(({ usedByWorkflows }) => usedByWorkflows));
 }

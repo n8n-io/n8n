@@ -21,6 +21,7 @@ import { Container } from '@n8n/di';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import {
@@ -2471,34 +2472,34 @@ describe('Package import missing node type mode', () => {
 	it('fail (default) lists every missing pair and writes nothing', async () => {
 		const owner = await createOwner();
 
-		await expect(
-			importPackage({
-				user: owner,
-				// create-stub so the rollback assertion below proves no stub was written either.
-				credentialMissingMode: 'create-stub',
-				packageBuffer: await buildImportPackageBuffer(
-					[
-						serializedWorkflow({
-							id: 'wf-alpha',
-							name: 'Alpha',
-							nodes: [scheduleTriggerNode(), unknownNode()],
-						}),
-						serializedWorkflow({
-							id: 'wf-beta',
-							name: 'Beta',
-							nodes: [scheduleTriggerNode(), unknownNode(), unresolvableCredentialNode()],
-						}),
-						serializedWorkflow({
-							id: 'wf-gamma',
-							name: 'Gamma',
-							// Known node type at a version this instance does not have.
-							nodes: [{ ...serializedWorkflow().nodes[0], typeVersion: 9 }],
-						}),
-					],
-					{ sourceId },
-				),
-			}),
-		).rejects.toMatchObject({
+		const importPromise = importPackage({
+			user: owner,
+			// create-stub so the rollback assertion below proves no stub was written either.
+			credentialMissingMode: 'create-stub',
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-alpha',
+						name: 'Alpha',
+						nodes: [scheduleTriggerNode(), unknownNode()],
+					}),
+					serializedWorkflow({
+						id: 'wf-beta',
+						name: 'Beta',
+						nodes: [scheduleTriggerNode(), unknownNode(), unresolvableCredentialNode()],
+					}),
+					serializedWorkflow({
+						id: 'wf-gamma',
+						name: 'Gamma',
+						// Known node type at a version this instance does not have.
+						nodes: [{ ...serializedWorkflow().nodes[0], typeVersion: 9 }],
+					}),
+				],
+				{ sourceId },
+			),
+		});
+		await expect(importPromise).rejects.toBeInstanceOf(UnprocessableRequestError);
+		await expect(importPromise).rejects.toMatchObject({
 			meta: {
 				issues: expect.arrayContaining([
 					{

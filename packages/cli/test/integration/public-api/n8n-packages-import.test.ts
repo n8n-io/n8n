@@ -348,6 +348,8 @@ describe('POST /n8n-packages/import', () => {
 				serializedWorkflow({
 					id: 'wf-unknown-node',
 					name: 'Unknown Node Type',
+					// Published in the source, so a publish-intent policy would publish it.
+					isPublished: true,
 					nodes: [
 						{
 							id: 'unknown-node',
@@ -392,10 +394,16 @@ describe('POST /n8n-packages/import', () => {
 			.post('/n8n-packages/import')
 			.field('workflowConflictPolicy', 'fail')
 			.field('missingNodeTypeMode', 'import-anyway')
+			.field('workflowPublishingPolicy', 'match-source')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.workflows).toHaveLength(1);
+		// match-source wanted to publish it, but the missing node type blocks that.
+		expect(response.body.workflows[0].publishing).toEqual({
+			state: 'blocked',
+			blockedReason: 'missing-node-type',
+		});
 		expect(response.body.workflows[0].activeVersionId).toBeNull();
 	});
 

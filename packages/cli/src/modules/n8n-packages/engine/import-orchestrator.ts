@@ -43,6 +43,7 @@ import type {
 	ImportedFolderSummary,
 	ImportFolderProperties,
 	ImportWorkflowProperties,
+	MissingNodeTypeMode,
 	PackageImportBindings,
 } from '../n8n-packages.types';
 
@@ -199,7 +200,7 @@ export class ImportOrchestrator {
 		folderPlan: FolderImportPlan;
 		dataTablePlan: DataTableImportPlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
-		missingNodeTypeMode: ImportWorkflowProperties['missingNodeTypeMode'];
+		missingNodeTypeMode: MissingNodeTypeMode;
 	}): BlockingIssue[] {
 		return [
 			...workflowPlan.conflicts.map(
