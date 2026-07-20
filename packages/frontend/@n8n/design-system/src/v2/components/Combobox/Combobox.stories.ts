@@ -148,7 +148,6 @@ export const Items = {
 	args: {
 		items: statusItems,
 		modelValue: undefined,
-		openOnFocus: true,
 	},
 } satisfies Story;
 

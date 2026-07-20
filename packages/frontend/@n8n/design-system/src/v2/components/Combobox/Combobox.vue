@@ -58,16 +58,6 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 });
 const attrs = useAttrs();
 const instance = getCurrentInstance();
-const openOnFocus = computed(() => {
-	const assignedProps = instance?.vnode.props;
-	const isAssigned =
-		Object.hasOwn(assignedProps ?? {}, 'openOnFocus') ||
-		Object.hasOwn(assignedProps ?? {}, 'open-on-focus');
-
-	if (!isAssigned) return true;
-
-	return (attrs.openOnFocus ?? props.openOnFocus) !== false;
-});
 const emit = defineEmits<ComboboxEmits>();
 const slots = defineSlots<ComboboxSlots>();
 const { t } = useI18n();
@@ -237,7 +227,7 @@ function onInput(event: Event) {
 		:disabled="props.disabled"
 		:default-value="props.defaultValue"
 		:model-value="props.modelValue"
-		:open-on-focus="openOnFocus"
+		:open-on-focus="true"
 	>
 		<ComboboxArrowKeyLoop />
 		<ComboboxAnchor
