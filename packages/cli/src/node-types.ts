@@ -1,8 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { NeededNodeType } from '@n8n/task-runner';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { Dirent } from 'fs';
 import { readdir, readFile } from 'fs/promises';
-import { RoutingNode } from 'n8n-core';
+import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
 import { deepCopy, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
@@ -14,7 +16,23 @@ import { shouldAssignExecuteMethod, stripToolSuffix } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {
-	constructor(private readonly loadNodesAndCredentials: LoadNodesAndCredentials) {}
+	constructor(
+		private readonly logger: Logger,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {}
+
+	/**
+	 * Resolves a tool-variant name (`…Tool`/`…HitlTool`) to the base node type it
+	 * is synthesized from, unless a real node with that name exists on disk.
+	 */
+	private resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
+		const isSyntheticTool =
+			nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
+		return {
+			baseName: isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName,
+			isSyntheticTool,
+		};
+	}
 
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
@@ -65,23 +83,21 @@ export class NodeTypes implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
 
-		const toolRequested = nodeType.endsWith('Tool');
+		// `baseName` is the un-wrapped type to actually get from disk.
+		const { baseName, isSyntheticTool } = this.resolveBaseName(nodeType);
 
 		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node
-		if (toolRequested && this.loadNodesAndCredentials.recognizesNode(nodeType)) {
+		if (nodeType.endsWith('Tool') && !isSyntheticTool) {
 			const node = this.loadNodesAndCredentials.getNode(nodeType);
 			return NodeHelpers.getVersionedNodeType(node.type, version);
 		}
 
-		// Make sure the nodeType to actually get from disk is the un-wrapped type
-		if (toolRequested) {
-			nodeType = stripToolSuffix(nodeType);
-		}
-
-		const node = this.loadNodesAndCredentials.getNode(nodeType);
+		const node = this.loadNodesAndCredentials.getNode(baseName);
 		const versionedNodeType = NodeHelpers.getVersionedNodeType(node.type, version);
-		if (toolRequested && typeof versionedNodeType.supplyData === 'function') {
-			throw new UnexpectedError('Node already has a `supplyData` method', { extra: { nodeType } });
+		if (isSyntheticTool && typeof versionedNodeType.supplyData === 'function') {
+			throw new UnexpectedError('Node already has a `supplyData` method', {
+				extra: { nodeType: baseName },
+			});
 		}
 
 		if (shouldAssignExecuteMethod(versionedNodeType)) {
@@ -92,7 +108,7 @@ export class NodeTypes implements INodeTypes {
 			};
 		}
 
-		if (!toolRequested) return versionedNodeType;
+		if (!isSyntheticTool) return versionedNodeType;
 
 		const { loadedNodes } = this.loadNodesAndCredentials;
 		if (origType in loadedNodes) {
@@ -103,7 +119,7 @@ export class NodeTypes implements INodeTypes {
 		const isHitlTool = origType.endsWith('HitlTool');
 
 		if (!isHitlTool && !versionedNodeType.description.usableAsTool) {
-			throw new UserError('Node cannot be used as a tool', { extra: { nodeType } });
+			throw new UserError('Node cannot be used as a tool', { extra: { nodeType: baseName } });
 		}
 
 		// Instead of modifying the existing type, we extend it into a new type object
@@ -126,6 +142,45 @@ export class NodeTypes implements INodeTypes {
 
 	getKnownTypes() {
 		return this.loadNodesAndCredentials.knownNodes;
+	}
+
+	/**
+	 * The `typeVersion`s this instance can resolve for a node type, or `undefined`
+	 * when the type is unknown. For a synthetic tool name (`…Tool`), only versions
+	 * whose base node can be used as a tool count (`…HitlTool` has no such
+	 * requirement). Read-only — unlike `getByNameAndVersion`, never caches or
+	 * mutates loaded nodes.
+	 */
+	getSupportedVersions(nodeTypeName: string): number[] | undefined {
+		const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
+		const requiresToolCapability = isSyntheticTool && !nodeTypeName.endsWith('HitlTool');
+
+		let type: INodeType | IVersionedNodeType;
+		try {
+			({ type } = this.loadNodesAndCredentials.getNode(baseName));
+		} catch (error) {
+			if (!(error instanceof UnrecognizedNodeTypeError)) {
+				// `getNode` resolves names via `in` lookups, so a hostile name can
+				// surface non-node values that throw further down. Treat any such
+				// failure as "unknown type" instead of failing the caller.
+				this.logger.warn('Failed to resolve node type while listing supported versions', {
+					nodeType: nodeTypeName,
+					error: ensureError(error).message,
+				});
+			}
+			return undefined;
+		}
+
+		if ('nodeVersions' in type) {
+			return Object.entries(type.nodeVersions)
+				.filter(([, versioned]) => !requiresToolCapability || !!versioned.description.usableAsTool)
+				.map(([version]) => Number(version));
+		}
+
+		if (requiresToolCapability && !type.description.usableAsTool) return [];
+
+		const { version } = type.description;
+		return Array.isArray(version) ? [...version] : [version];
 	}
 
 	async getNodeTranslationPath({
@@ -172,9 +227,7 @@ export class NodeTypes implements INodeTypes {
 
 	getNodeTypeDescriptions(nodeTypes: NeededNodeType[]): INodeTypeDescription[] {
 		return nodeTypes.map(({ name: nodeTypeName, version: nodeTypeVersion }) => {
-			const isSyntheticTool =
-				nodeTypeName.endsWith('Tool') && !this.loadNodesAndCredentials.recognizesNode(nodeTypeName);
-			const baseName = isSyntheticTool ? stripToolSuffix(nodeTypeName) : nodeTypeName;
+			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
 
 			const nodeType = this.loadNodesAndCredentials.getNode(baseName);
 			const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, nodeTypeVersion);

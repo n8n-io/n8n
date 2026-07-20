@@ -44,6 +44,13 @@ export const FolderConflictPolicy = {
 	Fail: 'fail',
 } as const;
 
+export const MissingNodeTypeMode = {
+	/** Fails the import when any workflow uses a node type or version this instance does not have. */
+	Fail: 'fail',
+	/** Imports anyway; workflows containing missing node types are never published. */
+	ImportAnyway: 'import-anyway',
+} as const;
+
 export const MissingWorkflowDependencyPolicy = {
 	/** Fails the export when a static sub-workflow dependency is not included. */
 	Fail: 'fail',
@@ -81,6 +88,8 @@ export type WorkflowConflictPolicy =
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
 export type FolderConflictPolicy = (typeof FolderConflictPolicy)[keyof typeof FolderConflictPolicy];
+
+export type MissingNodeTypeMode = (typeof MissingNodeTypeMode)[keyof typeof MissingNodeTypeMode];
 
 export type MissingWorkflowDependencyPolicy =
 	(typeof MissingWorkflowDependencyPolicy)[keyof typeof MissingWorkflowDependencyPolicy];
@@ -238,7 +247,14 @@ export type BlockingIssue =
 			usedByWorkflows: string[];
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure);
+	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| {
+			type: 'missing-node-type';
+			/** Node type this instance cannot resolve (at least not at `typeVersion`). */
+			nodeType: string;
+			typeVersion: number;
+			usedByWorkflows: string[];
+	  };
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
