@@ -44,6 +44,16 @@ const INSTANCE_MODEL_CREDENTIAL_TYPES: Array<{ type: string; label: string }> = 
 const createModelCredentialItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
 	INSTANCE_MODEL_CREDENTIAL_TYPES.map(({ type, label }) => ({ id: type, label })),
 );
+const createSearchCredentialItems: Array<DropdownMenuItemProps<string>> = [
+	{
+		id: 'braveSearchApi',
+		label: i18n.baseText('settings.n8nAgent.searchCredential.createBrave'),
+	},
+	{
+		id: 'searXngApi',
+		label: i18n.baseText('settings.n8nAgent.searchCredential.createSearxng'),
+	},
+];
 const canConfigure = computed(
 	() => store.canManage && !store.isProxyEnabled && !store.isCloudManaged,
 );
@@ -51,8 +61,33 @@ const selectedModelCredentialId = computed(() => {
 	if (store.draft.modelCredentialId !== undefined) return store.draft.modelCredentialId ?? '';
 	return store.settings?.modelCredentialId ?? '';
 });
+const sandboxProvider = computed(() => store.settings?.sandboxProvider ?? 'n8n-sandbox');
+const sandboxProviderLabel = computed(() =>
+	sandboxProvider.value === 'daytona' ? 'Daytona' : 'n8n Sandbox Service',
+);
+const sandboxCredentialType = computed(() =>
+	sandboxProvider.value === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth',
+);
+const sandboxCredentials = computed(() =>
+	store.serviceCredentials.filter((credential) => credential.type === sandboxCredentialType.value),
+);
+const selectedSandboxCredentialId = computed(() => {
+	const field =
+		sandboxProvider.value === 'daytona' ? 'daytonaCredentialId' : 'n8nSandboxCredentialId';
+	if (store.draft[field] !== undefined) return store.draft[field] ?? '';
+	return store.settings?.[field] ?? '';
+});
+const searchCredentials = computed(() =>
+	store.serviceCredentials.filter(
+		(credential) => credential.type === 'braveSearchApi' || credential.type === 'searXngApi',
+	),
+);
+const selectedSearchCredentialId = computed(() => {
+	if (store.draft.searchCredentialId !== undefined) return store.draft.searchCredentialId ?? '';
+	return store.settings?.searchCredentialId ?? '';
+});
 
-let creatingModelCredential = false;
+let creatingCredentialFor: 'model' | 'sandbox' | 'search' | null = null;
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent.credentials.title'));
@@ -69,7 +104,23 @@ function handleModelCredentialChange(value: string | number | boolean | null) {
 }
 
 function handleCreateModelCredential(credentialType: string) {
-	creatingModelCredential = true;
+	openNewCredential(credentialType, 'model');
+}
+
+function handleSandboxCredentialChange(value: string | number | boolean | null) {
+	const field =
+		sandboxProvider.value === 'daytona' ? 'daytonaCredentialId' : 'n8nSandboxCredentialId';
+	store.setField(field, value ? String(value) : null);
+	void store.save();
+}
+
+function handleSearchCredentialChange(value: string | number | boolean | null) {
+	store.setField('searchCredentialId', value ? String(value) : null);
+	void store.save();
+}
+
+function openNewCredential(credentialType: string, target: 'model' | 'sandbox' | 'search') {
+	creatingCredentialFor = target;
 	uiStore.openNewCredential(
 		credentialType,
 		false,
@@ -82,9 +133,9 @@ function handleCreateModelCredential(credentialType: string) {
 	);
 }
 
-function editModelCredential() {
-	if (selectedModelCredentialId.value) {
-		uiStore.openExistingCredential(selectedModelCredentialId.value, { hideAskAssistant: true });
+function editCredential(credentialId: string) {
+	if (credentialId) {
+		uiStore.openExistingCredential(credentialId, { hideAskAssistant: true });
 	}
 }
 
@@ -92,15 +143,28 @@ watch(
 	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY],
 	async (isOpen, wasOpen) => {
 		if (!wasOpen || isOpen || !canConfigure.value) return;
-		const previousIds = new Set(store.instanceModelCredentials.map((credential) => credential.id));
-		await store.refreshInstanceModelCredentials();
-		if (!creatingModelCredential) return;
-
-		creatingModelCredential = false;
-		const newCredential = store.instanceModelCredentials.find(
-			(credential) => !previousIds.has(credential.id),
+		const previousModelIds = new Set(
+			store.instanceModelCredentials.map((credential) => credential.id),
 		);
-		if (newCredential) handleModelCredentialChange(newCredential.id);
+		const previousServiceIds = new Set(store.serviceCredentials.map((credential) => credential.id));
+		await Promise.all([store.refreshInstanceModelCredentials(), store.refreshCredentials()]);
+
+		const target = creatingCredentialFor;
+		creatingCredentialFor = null;
+		if (target === 'model') {
+			const credential = store.instanceModelCredentials.find(
+				(item) => !previousModelIds.has(item.id),
+			);
+			if (credential) handleModelCredentialChange(credential.id);
+		}
+		if (target === 'sandbox') {
+			const credential = sandboxCredentials.value.find((item) => !previousServiceIds.has(item.id));
+			if (credential) handleSandboxCredentialChange(credential.id);
+		}
+		if (target === 'search') {
+			const credential = searchCredentials.value.find((item) => !previousServiceIds.has(item.id));
+			if (credential) handleSearchCredentialChange(credential.id);
+		}
 	},
 );
 </script>
@@ -122,68 +186,192 @@ watch(
 			<N8nIcon icon="spinner" spin />
 		</div>
 
-		<N8nSettingsSection
-			v-else-if="canConfigure"
-			:title="i18n.baseText('settings.n8nAgent.credentials.model.title')"
-			:description="i18n.baseText('settings.n8nAgent.credentials.model.description')"
-		>
-			<N8nSettingsRowGroup>
-				<N8nSettingsRow
-					:title="i18n.baseText('settings.n8nAgent.modelCredential.label')"
-					:description="i18n.baseText('settings.n8nAgent.modelCredential.description')"
-					:action-max-width="false"
-				>
-					<template #action>
-						<div :class="$style.credentialControls">
-							<N8nSelect
-								:class="$style.credentialSelect"
-								:model-value="selectedModelCredentialId"
-								size="medium"
-								:disabled="store.isSaving"
-								:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
-								data-test-id="n8n-agent-model-credential-select"
-								@update:model-value="handleModelCredentialChange"
-							>
-								<N8nOption
-									value=""
-									:label="i18n.baseText('settings.n8nAgent.modelCredential.none')"
-								/>
-								<N8nOption
-									v-for="credential in store.instanceModelCredentials"
-									:key="credential.id"
-									:value="credential.id"
-									:label="`${credential.name} (${credential.provider})`"
-								/>
-							</N8nSelect>
+		<template v-else-if="canConfigure">
+			<N8nSettingsSection
+				:title="i18n.baseText('settings.n8nAgent.credentials.model.title')"
+				:description="i18n.baseText('settings.n8nAgent.credentials.model.description')"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.n8nAgent.modelCredential.label')"
+						:description="i18n.baseText('settings.n8nAgent.modelCredential.description')"
+						:action-max-width="false"
+					>
+						<template #action>
+							<div :class="$style.credentialControls">
+								<N8nSelect
+									:class="$style.credentialSelect"
+									:model-value="selectedModelCredentialId"
+									size="medium"
+									:disabled="store.isSaving"
+									:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
+									data-test-id="n8n-agent-model-credential-select"
+									@update:model-value="handleModelCredentialChange"
+								>
+									<N8nOption
+										value=""
+										:label="i18n.baseText('settings.n8nAgent.modelCredential.none')"
+									/>
+									<N8nOption
+										v-for="credential in store.instanceModelCredentials"
+										:key="credential.id"
+										:value="credential.id"
+										:label="`${credential.name} (${credential.provider})`"
+									/>
+								</N8nSelect>
 
-							<N8nButton
-								v-if="selectedModelCredentialId"
-								variant="outline"
-								size="medium"
-								:label="i18n.baseText('settings.n8nAgent.credentials.edit')"
-								:disabled="store.isSaving"
-								data-test-id="n8n-agent-model-credential-edit"
-								@click="editModelCredential"
-							/>
+								<N8nButton
+									v-if="selectedModelCredentialId"
+									variant="outline"
+									size="medium"
+									:label="i18n.baseText('settings.n8nAgent.credentials.edit')"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-model-credential-edit"
+									@click="editCredential(selectedModelCredentialId)"
+								/>
 
-							<N8nDropdownMenu
-								:items="createModelCredentialItems"
-								placement="bottom-end"
-								data-test-id="n8n-agent-model-credential-create"
-								@select="handleCreateModelCredential"
-							>
-								<template #trigger>
-									<N8nButton variant="outline" size="medium" :disabled="store.isSaving">
-										{{ i18n.baseText('settings.n8nAgent.modelCredential.createNew') }}
-										<N8nIcon icon="chevron-down" size="small" />
-									</N8nButton>
-								</template>
-							</N8nDropdownMenu>
-						</div>
-					</template>
-				</N8nSettingsRow>
-			</N8nSettingsRowGroup>
-		</N8nSettingsSection>
+								<N8nDropdownMenu
+									:items="createModelCredentialItems"
+									placement="bottom-end"
+									data-test-id="n8n-agent-model-credential-create"
+									@select="handleCreateModelCredential"
+								>
+									<template #trigger>
+										<N8nButton variant="outline" size="medium" :disabled="store.isSaving">
+											{{ i18n.baseText('settings.n8nAgent.modelCredential.createNew') }}
+											<N8nIcon icon="chevron-down" size="small" />
+										</N8nButton>
+									</template>
+								</N8nDropdownMenu>
+							</div>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+
+			<N8nSettingsSection
+				:title="i18n.baseText('settings.n8nAgent.credentials.sandbox.title')"
+				:description="
+					i18n.baseText('settings.n8nAgent.credentials.sandbox.description', {
+						interpolate: { provider: sandboxProviderLabel },
+					})
+				"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.n8nAgent.sandboxCredential.label')"
+						:description="i18n.baseText('settings.n8nAgent.sandboxCredential.description')"
+						:action-max-width="false"
+					>
+						<template #action>
+							<div :class="$style.credentialControls">
+								<N8nSelect
+									:class="$style.credentialSelect"
+									:model-value="selectedSandboxCredentialId"
+									size="medium"
+									:disabled="store.isSaving"
+									:placeholder="i18n.baseText('settings.n8nAgent.sandboxCredential.placeholder')"
+									data-test-id="n8n-agent-sandbox-credential-select"
+									@update:model-value="handleSandboxCredentialChange"
+								>
+									<N8nOption
+										value=""
+										:label="i18n.baseText('settings.n8nAgent.modelCredential.none')"
+									/>
+									<N8nOption
+										v-for="credential in sandboxCredentials"
+										:key="credential.id"
+										:value="credential.id"
+										:label="credential.name"
+									/>
+								</N8nSelect>
+
+								<N8nButton
+									v-if="selectedSandboxCredentialId"
+									variant="outline"
+									size="medium"
+									:label="i18n.baseText('settings.n8nAgent.credentials.edit')"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-sandbox-credential-edit"
+									@click="editCredential(selectedSandboxCredentialId)"
+								/>
+
+								<N8nButton
+									variant="outline"
+									size="medium"
+									:label="i18n.baseText('settings.n8nAgent.modelCredential.createNew')"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-sandbox-credential-create"
+									@click="openNewCredential(sandboxCredentialType, 'sandbox')"
+								/>
+							</div>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+
+			<N8nSettingsSection
+				:title="i18n.baseText('settings.n8nAgent.credentials.search.title')"
+				:description="i18n.baseText('settings.n8nAgent.credentials.search.description')"
+			>
+				<N8nSettingsRowGroup>
+					<N8nSettingsRow
+						:title="i18n.baseText('settings.n8nAgent.searchCredential.label')"
+						:description="i18n.baseText('settings.n8nAgent.searchCredential.description')"
+						:action-max-width="false"
+					>
+						<template #action>
+							<div :class="$style.credentialControls">
+								<N8nSelect
+									:class="$style.credentialSelect"
+									:model-value="selectedSearchCredentialId"
+									size="medium"
+									:disabled="store.isSaving"
+									:placeholder="i18n.baseText('settings.n8nAgent.searchCredential.placeholder')"
+									data-test-id="n8n-agent-search-credential-select"
+									@update:model-value="handleSearchCredentialChange"
+								>
+									<N8nOption
+										value=""
+										:label="i18n.baseText('settings.n8nAgent.modelCredential.none')"
+									/>
+									<N8nOption
+										v-for="credential in searchCredentials"
+										:key="credential.id"
+										:value="credential.id"
+										:label="`${credential.name} (${credential.provider})`"
+									/>
+								</N8nSelect>
+
+								<N8nButton
+									v-if="selectedSearchCredentialId"
+									variant="outline"
+									size="medium"
+									:label="i18n.baseText('settings.n8nAgent.credentials.edit')"
+									:disabled="store.isSaving"
+									data-test-id="n8n-agent-search-credential-edit"
+									@click="editCredential(selectedSearchCredentialId)"
+								/>
+
+								<N8nDropdownMenu
+									:items="createSearchCredentialItems"
+									placement="bottom-end"
+									data-test-id="n8n-agent-search-credential-create"
+									@select="openNewCredential($event, 'search')"
+								>
+									<template #trigger>
+										<N8nButton variant="outline" size="medium" :disabled="store.isSaving">
+											{{ i18n.baseText('settings.n8nAgent.modelCredential.createNew') }}
+											<N8nIcon icon="chevron-down" size="small" />
+										</N8nButton>
+									</template>
+								</N8nDropdownMenu>
+							</div>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
+			</N8nSettingsSection>
+		</template>
 
 		<N8nEmptyState
 			v-else
