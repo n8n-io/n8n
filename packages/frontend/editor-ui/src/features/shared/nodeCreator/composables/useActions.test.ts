@@ -5,6 +5,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useActions } from './useActions';
 import {
 	AGENT_NODE_TYPE,
+	BASIC_CHAIN_NODE_TYPE,
 	GITHUB_TRIGGER_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -26,6 +27,7 @@ const mockDocumentStoreState = vi.hoisted(() => ({
 	name: '',
 	settings: {},
 	getPinDataSnapshot: () => ({}),
+	getNodeById: (_id: string) => undefined as INodeUi | undefined,
 }));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockDocumentStoreState,
@@ -105,15 +107,63 @@ describe('useActions', () => {
 			});
 		});
 
-		test('should NOT insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger present', () => {
+		test('should insert a ChatTrigger node when an AI Agent is added with only a Manual Trigger present', () => {
 			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
 			mockDocumentStoreState.allNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
 
 			const { getAddedNodesAndConnections } = useActions();
 
 			expect(getAddedNodesAndConnections([{ type: AGENT_NODE_TYPE }])).toEqual({
+				connections: [
+					{
+						from: {
+							nodeIndex: 0,
+						},
+						to: {
+							nodeIndex: 1,
+						},
+					},
+				],
+				nodes: [
+					{ type: CHAT_TRIGGER_NODE_TYPE, isAutoAdd: true },
+					{ type: AGENT_NODE_TYPE, openDetail: true },
+				],
+			});
+		});
+
+		test('should NOT insert a ChatTrigger node when connecting a compatible chat node directly to an existing Manual Trigger', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[MANUAL_TRIGGER_NODE_TYPE]: {
+					1: {
+						name: MANUAL_TRIGGER_NODE_TYPE,
+						displayName: 'Manual Trigger',
+						group: ['trigger'],
+						version: 1,
+						defaults: {},
+						inputs: [],
+						outputs: [],
+						properties: [],
+						description: '',
+					},
+				},
+			};
+
+			mockDocumentStoreState.workflowTriggerNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as never];
+			mockDocumentStoreState.allNodes = [{ type: MANUAL_TRIGGER_NODE_TYPE } as INodeUi];
+
+			const { getAddedNodesAndConnections } = useActions();
+			const existingTriggerNode = {
+				id: '1',
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+			} as INodeUi;
+
+			expect(
+				getAddedNodesAndConnections([{ type: BASIC_CHAIN_NODE_TYPE }], existingTriggerNode),
+			).toEqual({
 				connections: [],
-				nodes: [{ type: AGENT_NODE_TYPE, openDetail: true }],
+				nodes: [{ type: BASIC_CHAIN_NODE_TYPE, openDetail: true }],
 			});
 		});
 

@@ -19,7 +19,12 @@ export interface Props {
 const props = defineProps<Props>();
 const telemetry = useTelemetry();
 
-const { getActionData, getAddedNodesAndConnections, setAddedNodeActionParameters } = useActions();
+const {
+	getActionData,
+	getAddedNodesAndConnections,
+	getConnectionTriggerNode,
+	setAddedNodeActionParameters,
+} = useActions();
 const { activeViewStack } = useViewStacks();
 
 const state = reactive({
@@ -56,7 +61,9 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
 		event.dataTransfer.setData(
 			DRAG_EVENT_DATA_KEY,
-			JSON.stringify(getAddedNodesAndConnections([{ type: actionData.value.key }])),
+			JSON.stringify(
+				getAddedNodesAndConnections([{ type: actionData.value.key }], getConnectionTriggerNode()),
+			),
 		);
 		if (telemetry) {
 			state.storeWatcher = setAddedNodeActionParameters(

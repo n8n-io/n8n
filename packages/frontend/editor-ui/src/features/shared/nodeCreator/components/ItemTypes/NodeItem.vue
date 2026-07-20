@@ -44,7 +44,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
-const { getAddedNodesAndConnections } = useActions();
+const { getAddedNodesAndConnections, getConnectionTriggerNode } = useActions();
 const { activeViewStack } = useViewStacks();
 const { isSubNodeType } = useNodeType({
 	nodeType: props.nodeType,
@@ -161,7 +161,9 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.setDragImage(draggableDataTransfer.value as Element, 0, 0);
 		event.dataTransfer.setData(
 			DRAG_EVENT_DATA_KEY,
-			JSON.stringify(getAddedNodesAndConnections([{ type: props.nodeType.name }])),
+			JSON.stringify(
+				getAddedNodesAndConnections([{ type: props.nodeType.name }], getConnectionTriggerNode()),
+			),
 		);
 	}
 

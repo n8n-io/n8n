@@ -11,6 +11,7 @@ import type {
 	AddedNodeConnection,
 	AddedNodesAndConnections,
 	INodeCreateElement,
+	INodeUi,
 	IUpdateInformation,
 	LabelCreateElement,
 	NodeCreateElement,
@@ -40,6 +41,7 @@ import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import {
@@ -55,6 +57,7 @@ export const useActions = () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const uiStore = useUIStore();
 	const i18n = useI18n();
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
@@ -279,14 +282,6 @@ export const useActions = () => {
 		if (!isCompatibleNode) return false;
 		const allNodes = workflowDocumentStore.value.allNodes;
 
-		const SHOULD_CONNECT_WITH_MANUAL_NODES = [AGENT_NODE_TYPE];
-		const shouldSkipChatTrigger = addedNodes.some((node) =>
-			SHOULD_CONNECT_WITH_MANUAL_NODES.includes(node.type),
-		);
-		const hasManualTrigger = allNodes.some((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
-
-		if (shouldSkipChatTrigger && hasManualTrigger) return false;
-
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
@@ -303,7 +298,20 @@ export const useActions = () => {
 		});
 	}
 
-	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
+	/**
+	 * Returns the node the node creator was opened from when connecting to an
+	 * existing node (e.g. dragging a connection out of a trigger's output),
+	 * or undefined if the creator wasn't opened in that context.
+	 */
+	function getConnectionTriggerNode(): INodeUi | undefined {
+		const nodeId = uiStore.lastInteractedWithNodeId;
+		return nodeId ? workflowDocumentStore.value.getNodeById(nodeId) : undefined;
+	}
+
+	function getAddedNodesAndConnections(
+		addedNodes: AddedNode[],
+		existingTriggerNode?: INodeUi,
+	): AddedNodesAndConnections {
 		if (addedNodes.length === 0) {
 			return { nodes: [], connections: [] };
 		}
@@ -317,7 +325,15 @@ export const useActions = () => {
 			nodeToAutoOpen.openDetail = true;
 		}
 
-		if (shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes)) {
+		// If the node creator was opened by connecting from an existing trigger,
+		// that trigger should receive the connection - never prepend a new one.
+		const isConnectingToExistingTrigger =
+			!!existingTriggerNode && nodeTypesStore.isTriggerNode(existingTriggerNode.type);
+
+		if (
+			!isConnectingToExistingTrigger &&
+			(shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes))
+		) {
 			if (shouldPrependLLMChain(addedNodes)) {
 				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
 				connections.push({
@@ -330,7 +346,7 @@ export const useActions = () => {
 				from: { nodeIndex: 0 },
 				to: { nodeIndex: 1 },
 			});
-		} else if (shouldPrependManualTrigger(addedNodes)) {
+		} else if (!isConnectingToExistingTrigger && shouldPrependManualTrigger(addedNodes)) {
 			addedNodes.unshift({ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true });
 			connections.push({
 				from: { nodeIndex: 0 },
@@ -415,6 +431,7 @@ export const useActions = () => {
 		getPlaceholderTriggerActions,
 		parseCategoryActions,
 		getAddedNodesAndConnections,
+		getConnectionTriggerNode,
 		getActionData,
 		setAddedNodeActionParameters,
 	};
