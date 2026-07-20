@@ -67,7 +67,7 @@ describe('InstanceAiSettingsService', () => {
 			browserMcp: false,
 		});
 		globalConfig.deployment.type = 'default';
-		instanceCredentialBroker.listForConsumer.mockResolvedValue([]);
+		instanceCredentialBroker.listForUse.mockResolvedValue([]);
 		instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue(null);
 		transactionManager.upsert.mockImplementation(
 			async (_entity, value, conflictPaths) =>
@@ -259,14 +259,14 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it('delegates model credential validation to the broker', async () => {
-			instanceCredentialBroker.assignForConsumer.mockRejectedValue(
+			instanceCredentialBroker.assignForUse.mockRejectedValue(
 				new UnprocessableRequestError('Invalid instance credential'),
 			);
 
 			await expect(service.updateAdminSettings({ modelCredentialId: 'cred-1' })).rejects.toThrow(
 				'Invalid instance credential',
 			);
-			expect(instanceCredentialBroker.assignForConsumer).toHaveBeenCalledWith(
+			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
 				'instance-ai:model',
 				'cred-1',
 				transactionManager,
@@ -280,13 +280,13 @@ describe('InstanceAiSettingsService', () => {
 				type: 'openAiApi',
 				availability: 'instance',
 			});
-			instanceCredentialBroker.resolveForConsumer.mockResolvedValue({
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
 				data: { apiKey: 'admin-key' },
 			});
-			instanceCredentialBroker.assignForConsumer.mockResolvedValue({
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
@@ -302,7 +302,7 @@ describe('InstanceAiSettingsService', () => {
 			);
 
 			expect(result).toEqual({ id: 'openai/gpt-4.1', url: '', apiKey: 'admin-key' });
-			expect(instanceCredentialBroker.resolveForConsumer).toHaveBeenCalledWith('instance-ai:model');
+			expect(instanceCredentialBroker.resolveForUse).toHaveBeenCalledWith('instance-ai:model');
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({ value: expect.not.stringContaining('modelCredentialId') }),
@@ -325,13 +325,13 @@ describe('InstanceAiSettingsService', () => {
 				type: 'openAiApi',
 				availability: 'instance',
 			});
-			instanceCredentialBroker.resolveForConsumer.mockResolvedValue({
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
 				data: { apiKey: 'admin-key' },
 			});
-			instanceCredentialBroker.assignForConsumer.mockResolvedValue({
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
 				id: credential.id,
 				name: credential.name,
 				type: credential.type,
@@ -341,7 +341,7 @@ describe('InstanceAiSettingsService', () => {
 			globalConfig.deployment.type = 'cloud';
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
-			expect(instanceCredentialBroker.resolveForConsumer).not.toHaveBeenCalled();
+			expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
 			await expect(service.listInstanceModelCredentials()).resolves.toEqual([]);
 		});
 	});

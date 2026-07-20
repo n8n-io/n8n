@@ -987,8 +987,8 @@ erDiagram
   varchar_255_ workflowName
 }
 "public.instance_credential_assignment" {
-  varchar_128_ consumerId
   varchar_36_ credentialId FK
+  varchar_128_ credentialUseId
 }
 "public.instance_version_history" {
   timestamp_3__with_time_zone createdAt

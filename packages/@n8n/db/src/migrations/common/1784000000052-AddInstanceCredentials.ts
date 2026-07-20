@@ -17,9 +17,9 @@ export class AddInstanceCredentials1784000000052 implements ReversibleMigration 
 		const { createTable, column } = schemaBuilder;
 		await createTable('instance_credential_assignment')
 			.withColumns(
-				column('consumerId')
+				column('credentialUseId')
 					.varchar(128)
-					.primary.comment('Stable server-side feature use registered with the credential broker'),
+					.primary.comment('Stable credential use registered with the instance credential broker'),
 				column('credentialId').varchar(36).notNull,
 			)
 			.withForeignKey('credentialId', {

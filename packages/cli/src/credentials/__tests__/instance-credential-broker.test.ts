@@ -9,26 +9,26 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '../credentials.service';
 import { InstanceCredentialBroker } from '../instance-credential-broker';
-import { InstanceCredentialConsumerRegistry } from '../instance-credential-consumer.registry';
+import { InstanceCredentialUseRegistry } from '../instance-credential-use.registry';
 
 describe('InstanceCredentialBroker', () => {
-	const consumerId = 'example:primary';
-	const consumerRegistry = new InstanceCredentialConsumerRegistry();
+	const credentialUseId = 'example:primary';
+	const useRegistry = new InstanceCredentialUseRegistry();
 	const logger = mock<Logger>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const assignmentRepository = mock<InstanceCredentialAssignmentRepository>();
 	const credentialsService = mock<CredentialsService>();
 	const broker = new InstanceCredentialBroker(
 		logger,
-		consumerRegistry,
+		useRegistry,
 		credentialsRepository,
 		assignmentRepository,
 		credentialsService,
 	);
 
 	beforeAll(() => {
-		broker.registerConsumer({
-			id: consumerId,
+		broker.registerUse({
+			id: credentialUseId,
 			credentialTypes: ['openAiApi'],
 		});
 	});
@@ -37,13 +37,13 @@ describe('InstanceCredentialBroker', () => {
 		vi.resetAllMocks();
 	});
 
-	it('rejects unknown consumers', async () => {
-		await expect(broker.listForConsumer('unknown')).rejects.toThrow(
-			'Unknown instance credential consumer "unknown"',
+	it('rejects unknown credential uses', async () => {
+		await expect(broker.listForUse('unknown')).rejects.toThrow(
+			'Unknown instance credential use "unknown"',
 		);
 	});
 
-	it('lists only credentials allowed by the consumer policy', async () => {
+	it('lists only credentials allowed for the credential use', async () => {
 		const credential = mock<CredentialsEntity>({
 			id: 'credential-id',
 			name: 'Primary model',
@@ -52,7 +52,7 @@ describe('InstanceCredentialBroker', () => {
 		});
 		credentialsRepository.find.mockResolvedValue([credential]);
 
-		await expect(broker.listForConsumer(consumerId)).resolves.toEqual([credential]);
+		await expect(broker.listForUse(credentialUseId)).resolves.toEqual([credential]);
 		expect(credentialsRepository.find).toHaveBeenCalledWith(
 			expect.objectContaining({
 				where: expect.objectContaining({ availability: 'instance' }),
@@ -60,16 +60,16 @@ describe('InstanceCredentialBroker', () => {
 		);
 	});
 
-	it('rejects assignments outside the consumer policy', async () => {
+	it('rejects assignments outside the credential use policy', async () => {
 		credentialsRepository.findOne.mockResolvedValue(null);
 
-		await expect(broker.assignForConsumer(consumerId, 'workflow-credential')).rejects.toThrow(
-			'not valid for instance credential consumer',
+		await expect(broker.assignForUse(credentialUseId, 'workflow-credential')).rejects.toThrow(
+			'not valid for instance credential use',
 		);
 		expect(credentialsService.decrypt).not.toHaveBeenCalled();
 	});
 
-	it('assigns and clears a credential for a consumer', async () => {
+	it('assigns and clears a credential for a credential use', async () => {
 		const credential = mock<CredentialsEntity>({
 			id: 'credential-id',
 			name: 'Primary model',
@@ -78,24 +78,24 @@ describe('InstanceCredentialBroker', () => {
 		});
 		credentialsRepository.findOne.mockResolvedValue(credential);
 
-		await expect(broker.assignForConsumer(consumerId, credential.id)).resolves.toEqual({
+		await expect(broker.assignForUse(credentialUseId, credential.id)).resolves.toEqual({
 			id: credential.id,
 			name: credential.name,
 			type: credential.type,
 		});
 		expect(assignmentRepository.upsert).toHaveBeenCalledWith(
-			{ consumerId, credentialId: credential.id },
-			['consumerId'],
+			{ credentialUseId, credentialId: credential.id },
+			['credentialUseId'],
 		);
 
-		await broker.clearForConsumer(consumerId);
-		expect(assignmentRepository.delete).toHaveBeenCalledWith({ consumerId });
+		await broker.clearForUse(credentialUseId);
+		expect(assignmentRepository.delete).toHaveBeenCalledWith({ credentialUseId });
 	});
 
-	it('returns no credential when the consumer has no assignment', async () => {
+	it('returns no credential when the credential use has no assignment', async () => {
 		assignmentRepository.findOneBy.mockResolvedValue(null);
 
-		await expect(broker.resolveForConsumer(consumerId)).resolves.toBeNull();
+		await expect(broker.resolveForUse(credentialUseId)).resolves.toBeNull();
 		expect(credentialsService.decrypt).not.toHaveBeenCalled();
 	});
 
@@ -107,12 +107,12 @@ describe('InstanceCredentialBroker', () => {
 			availability: 'instance',
 		});
 		assignmentRepository.findOneBy.mockResolvedValue(
-			mock<InstanceCredentialAssignment>({ consumerId, credentialId: credential.id }),
+			mock<InstanceCredentialAssignment>({ credentialUseId, credentialId: credential.id }),
 		);
 		credentialsRepository.findOne.mockResolvedValue(credential);
 		credentialsService.decrypt.mockResolvedValue({ apiKey: 'secret' });
 
-		await expect(broker.resolveForConsumer(consumerId)).resolves.toEqual({
+		await expect(broker.resolveForUse(credentialUseId)).resolves.toEqual({
 			id: credential.id,
 			name: credential.name,
 			type: credential.type,
@@ -120,7 +120,7 @@ describe('InstanceCredentialBroker', () => {
 		});
 		expect(credentialsService.decrypt).toHaveBeenCalledWith(credential, true);
 		expect(logger.debug).toHaveBeenCalledWith('Resolved instance credential', {
-			consumerId,
+			credentialUseId,
 			credentialId: credential.id,
 		});
 		expect(credentialsRepository.findOne).toHaveBeenCalledWith(

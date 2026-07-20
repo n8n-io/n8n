@@ -137,8 +137,8 @@ erDiagram
   varchar userId FK
 }
 "instance_credential_assignment" {
-  varchar_128_ consumerId PK
   varchar_36_ credentialId FK
+  varchar_128_ credentialUseId PK
 }
 "shared_credentials" {
   datetime_3_ createdAt

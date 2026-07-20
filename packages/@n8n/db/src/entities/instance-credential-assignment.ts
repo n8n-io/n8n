@@ -13,7 +13,7 @@ import type { CredentialsEntity } from './credentials-entity';
 @Entity({ name: 'instance_credential_assignment' })
 export class InstanceCredentialAssignment {
 	@PrimaryColumn({ type: 'varchar', length: 128 })
-	consumerId: string;
+	credentialUseId: string;
 
 	@Column({ type: 'varchar', length: 36 })
 	@Index()

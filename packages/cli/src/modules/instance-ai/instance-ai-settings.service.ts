@@ -221,12 +221,12 @@ export class InstanceAiSettingsService {
 				);
 				this.validateAdminSettingsUpdate(settingsUpdate, current);
 				if (modelCredentialId === null) {
-					await this.instanceCredentialBroker.clearForConsumer(
+					await this.instanceCredentialBroker.clearForUse(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 						transactionManager,
 					);
 				} else if (modelCredentialId !== undefined) {
-					const credential = await this.instanceCredentialBroker.assignForConsumer(
+					const credential = await this.instanceCredentialBroker.assignForUse(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 						modelCredentialId,
 						transactionManager,
@@ -320,7 +320,7 @@ export class InstanceAiSettingsService {
 
 	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
-		const instanceCredentials = await this.instanceCredentialBroker.listForConsumer(
+		const instanceCredentials = await this.instanceCredentialBroker.listForUse(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 		);
 		return instanceCredentials.map((c) => ({
@@ -532,7 +532,7 @@ export class InstanceAiSettingsService {
 	}
 
 	private async resolveModelCredential() {
-		return await this.instanceCredentialBroker.resolveForConsumer(
+		return await this.instanceCredentialBroker.resolveForUse(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
 		);
 	}

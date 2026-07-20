@@ -23,7 +23,7 @@ export class InstanceAiModule implements ModuleInterface {
 			'./instance-ai-settings.service.js'
 		);
 		const settingsService = Container.get(InstanceAiSettingsService);
-		Container.get(InstanceCredentialBroker).registerConsumer(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
+		Container.get(InstanceCredentialBroker).registerUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
 		await settingsService.loadFromDb();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
