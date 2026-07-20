@@ -693,9 +693,10 @@ export function buildSmithyHttpRequest(
 
 	// Drop host; smithy derives it from hostname.
 	const headers: Record<string, string> = { host: signOpts.host ?? hostname };
-	for (const [k, v] of Object.entries((signOpts.headers ?? {}) as Record<string, string>)) {
+	for (const [k, v] of Object.entries((signOpts.headers ?? {}) as Record<string, unknown>)) {
 		const lower = k.toLowerCase();
-		if (lower !== 'host') headers[lower] = v;
+		// Header values can originate from IDataObject as numbers, for example S3 multipart lengths.
+		if (lower !== 'host' && v != null) headers[lower] = String(v);
 	}
 
 	// aws4 defaults the Content-Type to 'application/x-www-form-urlencoded; charset=utf-8'
