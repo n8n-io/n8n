@@ -18,6 +18,14 @@
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
     "s_60c9025b151770": {
       "agent_id": {
         "tool": "claude",
