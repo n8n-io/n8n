@@ -58,13 +58,15 @@ export type MetricScale = 'unit' | 'oneToFive' | 'boolean';
  * of the discriminated union, so it's accessed behind a `type` guard.
  */
 export function metricScaleFromConfig(metric: EvaluationMetric): MetricScale {
-	if (
-		(metric.type === 'expression' || metric.type === 'llm_judge') &&
-		metric.config.outputType === 'boolean'
-	) {
-		return 'boolean';
-	}
+	// An LLM judge always scores on its 1–5 preset rubric. The workflow compiler
+	// forwards only the judge's preset (correctness/helpfulness) and ignores its
+	// `outputType`, so a judge's values are 1–5 regardless of a (meaningless)
+	// boolean outputType — treating such a judge as boolean would clamp 3 and 5
+	// both to 100%.
 	if (metric.type === 'llm_judge') return 'oneToFive';
+	// Only a deterministic expression scorer honors a boolean outputType (the
+	// compiler coerces its value to 0/1).
+	if (metric.type === 'expression' && metric.config.outputType === 'boolean') return 'boolean';
 	return 'unit';
 }
 

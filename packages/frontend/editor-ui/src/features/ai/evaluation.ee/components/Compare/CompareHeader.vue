@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
+import { VIEWS } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
 
 import type { CompareVersion } from '../../composables/useCompareData';
@@ -69,6 +70,9 @@ const legend = computed(() =>
 		...version,
 		scorePercent: version.avgScore !== null ? Math.round(version.avgScore * 100) : null,
 		isBest: version.index === props.bestVersionIndex,
+		// Which specific version's run is still in flight, so the chip can show a
+		// spinner — the collection-level "N/M complete" doesn't say which one.
+		isRunning: version.status === 'new' || version.status === 'running',
 	})),
 );
 </script>
@@ -102,21 +106,33 @@ const legend = computed(() =>
 		</N8nText>
 
 		<div :class="$style.legend">
-			<span
+			<router-link
 				v-for="version in legend"
 				:key="version.testRunId"
+				:to="{
+					name: VIEWS.EVALUATION_RUNS_DETAIL,
+					params: { workflowId, runId: version.testRunId },
+				}"
 				:class="$style.chip"
+				:title="i18n.baseText('evaluation.compare.versionsLegend.inspectRun')"
 				data-test-id="compare-header-version"
 			>
 				<VersionAvatar :index="version.index" variant="square" size="small" />
 				<N8nText size="xsmall" color="text-base">{{ version.label }}</N8nText>
-				<N8nText v-if="version.scorePercent !== null" size="xsmall" bold>
+				<N8nIcon
+					v-if="version.isRunning"
+					icon="spinner"
+					size="xsmall"
+					spin
+					:title="i18n.baseText('evaluation.compare.versionsLegend.running')"
+				/>
+				<N8nText v-else-if="version.scorePercent !== null" size="xsmall" bold>
 					{{ version.scorePercent }}%
 				</N8nText>
 				<N8nText v-if="version.isBest" size="xsmall" bold color="success">
 					{{ i18n.baseText('evaluation.compare.versionsLegend.best') }}
 				</N8nText>
-			</span>
+			</router-link>
 		</div>
 	</header>
 </template>
@@ -149,6 +165,8 @@ const legend = computed(() =>
 	margin-top: var(--spacing--3xs);
 }
 
+// Each chip links to its run's detail view; the border affordance signals it's
+// clickable while keeping the resting size stable (transparent → colored).
 .chip {
 	display: inline-flex;
 	align-items: center;
@@ -156,5 +174,14 @@ const legend = computed(() =>
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--radius--full);
 	background: var(--background--subtle);
+	border: 1px solid transparent;
+	text-decoration: none;
+	color: inherit;
+	cursor: pointer;
+	transition: border-color var(--animation--duration--snappy) var(--animation--easing);
+
+	&:hover {
+		border-color: var(--border-color--strong);
+	}
 }
 </style>

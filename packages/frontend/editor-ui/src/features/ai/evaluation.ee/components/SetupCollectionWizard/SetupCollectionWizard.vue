@@ -110,12 +110,28 @@ const visibleVersions = computed<EvalVersionEntry[]>(() => {
 			? allVersions.value
 			: allVersions.value.filter((v) => v.sourceLabel === sourceFilter.value);
 
-	const sorted = [...filtered];
-	sorted.sort((a, b) => {
+	// Dedupe by row key so a version can never appear twice (e.g. the live draft
+	// and a snapshot that resolve to the same key).
+	const seen = new Set<string>();
+	const deduped = filtered.filter((v) => {
+		const key = versionRowKey(v);
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+
+	const sorted = [...deduped].sort((a, b) => {
 		const aTs = a.lastRun ? new Date(a.lastRun.runAt).getTime() : 0;
 		const bTs = b.lastRun ? new Date(b.lastRun.runAt).getTime() : 0;
 		return sortOrder.value === 'recent' ? bTs - aTs : aTs - bTs;
 	});
+
+	// The "Current draft" (live workflow) is the primary choice — pin it to the
+	// very top regardless of the chosen sort so it's always the first row.
+	const draftIndex = sorted.findIndex((v) => v.workflowVersionId === null);
+	if (draftIndex > 0) {
+		sorted.unshift(sorted.splice(draftIndex, 1)[0]);
+	}
 	return sorted;
 });
 

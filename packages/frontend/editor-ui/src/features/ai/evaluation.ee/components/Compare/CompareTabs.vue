@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MetricScale } from '@n8n/api-types';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -21,6 +22,9 @@ const props = defineProps<{
 	workflowId: string;
 	// metric name → its custom LLM-judge prompt, when configured.
 	metricPrompts?: Record<string, string>;
+	// metric name → scale, threaded to OutputsTab so raw per-metric values are
+	// normalized before display.
+	metricScales?: Record<string, MetricScale>;
 }>();
 
 const i18n = useI18n();
@@ -93,6 +97,8 @@ function onDrilldown(caseIndex: number) {
 					:versions="versions"
 					:case-rows="caseRows"
 					:selected-index="selectedCaseIndex"
+					:workflow-id="workflowId"
+					:metric-scales="metricScales"
 					@update:selected-index="selectedCaseIndex = $event"
 				/>
 			</template>

@@ -118,7 +118,11 @@ const formatRunAt = (iso: string | null) => {
 		<div
 			v-for="row in rows"
 			:key="row.key"
-			:class="[$style.row, row.checked && $style.row_selected]"
+			:class="[
+				$style.row,
+				row.checked && $style.row_selected,
+				row.version.workflowVersionId === null && $style.row_draft,
+			]"
 			data-test-id="versions-table-row"
 			@click="emit('toggle-version', row.key)"
 		>
@@ -227,6 +231,14 @@ const formatRunAt = (iso: string | null) => {
 
 .row_selected {
 	background: var(--background--subtle);
+}
+
+// The live draft is the primary choice — a primary wash + left accent bar
+// so it stands out from historical versions (wins over the selected tint).
+.row_draft,
+.row_draft:hover {
+	background: var(--color--primary--tint-3);
+	box-shadow: inset 3px 0 0 var(--color--primary);
 }
 
 .col_check {

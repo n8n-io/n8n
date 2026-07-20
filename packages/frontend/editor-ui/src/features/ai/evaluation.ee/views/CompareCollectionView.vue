@@ -221,6 +221,7 @@ onBeforeUnmount(() => {
 				:cases-error="casesError"
 				:workflow-id="workflowId"
 				:metric-prompts="metricPrompts"
+				:metric-scales="detail?.metricScales"
 			/>
 		</template>
 	</div>

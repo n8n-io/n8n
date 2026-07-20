@@ -31,6 +31,7 @@ const versions: CompareVersion[] = [
 const cell = (versionIndex: number, output: string): CompareCaseCell => ({
 	versionIndex,
 	testCaseId: `c${versionIndex}`,
+	executionId: null,
 	inputs: { q: 'What is 2+2?' },
 	outputs: { output },
 	metrics: { helpfulness: 0.8 },

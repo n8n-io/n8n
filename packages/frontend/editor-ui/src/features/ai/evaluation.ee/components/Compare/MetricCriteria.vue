@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { N8nText } from '@n8n/design-system';
+import { N8nDialog, N8nDialogHeader, N8nDialogTitle, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
-import { getMetricDescriptionKey } from '../../evaluation.utils';
+import { formatMetricLabel, getMetricDescriptionKey } from '../../evaluation.utils';
 
 const props = defineProps<{
 	metricKey: string;
@@ -14,10 +14,11 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const expanded = ref(false);
+const isModalOpen = ref(false);
 
-// Characters of the custom criteria shown before it's truncated behind "Show
-// more" — judging prompts are often long rubrics.
+// Characters of the custom criteria shown inline before "Show more" opens the
+// full rubric in a modal. Judging prompts are often long, multi-paragraph
+// rubrics that would otherwise push the score chart far down the page.
 const PREVIEW_CHARS = 120;
 
 const description = computed(() => {
@@ -27,11 +28,24 @@ const description = computed(() => {
 
 const isLong = computed(() => (props.prompt?.length ?? 0) > PREVIEW_CHARS);
 
-const promptText = computed(() => {
+const previewText = computed(() => {
 	if (!props.prompt) return '';
-	if (expanded.value || !isLong.value) return props.prompt;
+	if (!isLong.value) return props.prompt;
 	return `${props.prompt.slice(0, PREVIEW_CHARS).trimEnd()}…`;
 });
+
+const modalTitle = computed(() => formatMetricLabel(props.metricKey));
+
+// The judge prompt is free-form, multi-paragraph text. Split on blank lines so
+// each instruction block (the intro, the input placeholders, the true/false
+// rules) renders as its own spaced paragraph in the modal instead of one dense
+// wall of text. Single newlines within a block are preserved via `pre-wrap`.
+const promptParagraphs = computed(() =>
+	(props.prompt ?? '')
+		.split(/\n\s*\n/)
+		.map((paragraph) => paragraph.trim())
+		.filter((paragraph) => paragraph.length > 0),
+);
 </script>
 
 <template>
@@ -39,28 +53,45 @@ const promptText = computed(() => {
 		<N8nText v-if="description" size="xsmall" color="text-light" :class="$style.text">
 			{{ description }}
 		</N8nText>
-		<N8nText
-			v-if="prompt"
-			size="xsmall"
-			color="text-light"
-			:class="[$style.text, expanded ? $style.expanded : null]"
-		>
+		<N8nText v-if="prompt" size="xsmall" color="text-light" :class="$style.text">
 			<span :class="$style.label">{{ i18n.baseText('evaluation.metric.criteria.label') }}</span>
-			{{ promptText }}
+			{{ previewText }}
 			<button
 				v-if="isLong"
 				type="button"
 				:class="$style.toggle"
 				data-test-id="metric-criteria-toggle"
-				@click.stop="expanded = !expanded"
+				@click.stop="isModalOpen = true"
 			>
-				{{
-					expanded
-						? i18n.baseText('evaluation.metric.criteria.showLess')
-						: i18n.baseText('evaluation.metric.criteria.showMore')
-				}}
+				{{ i18n.baseText('evaluation.metric.criteria.showMore') }}
 			</button>
 		</N8nText>
+
+		<N8nDialog :open="isModalOpen" size="large" @update:open="(value) => (isModalOpen = value)">
+			<N8nDialogHeader>
+				<N8nDialogTitle>{{ modalTitle }}</N8nDialogTitle>
+			</N8nDialogHeader>
+			<div :class="$style.modalBody" data-test-id="metric-criteria-modal">
+				<N8nText v-if="description" size="small" color="text-base" :class="$style.paragraph">
+					{{ description }}
+				</N8nText>
+				<div :class="$style.criteria">
+					<N8nText size="xsmall" bold color="text-light" :class="$style.criteriaLabel">
+						{{ i18n.baseText('evaluation.metric.criteria.label') }}
+					</N8nText>
+					<N8nText
+						v-for="(paragraph, index) in promptParagraphs"
+						:key="index"
+						tag="p"
+						size="small"
+						color="text-base"
+						:class="$style.paragraph"
+					>
+						{{ paragraph }}
+					</N8nText>
+				</div>
+			</div>
+		</N8nDialog>
 	</div>
 </template>
 
@@ -76,11 +107,6 @@ const promptText = computed(() => {
 	line-height: 1.3;
 }
 
-.expanded {
-	white-space: pre-wrap;
-	word-break: break-word;
-}
-
 .label {
 	font-weight: var(--font-weight--bold);
 }
@@ -93,5 +119,37 @@ const promptText = computed(() => {
 	color: var(--color--primary);
 	cursor: pointer;
 	font: inherit;
+}
+
+.modalBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+	// Cap the height so a long rubric scrolls inside the modal rather than
+	// growing it past the viewport.
+	max-height: 60vh;
+	overflow-y: auto;
+	// Keeps text off the scrollbar when the rubric overflows.
+	padding-right: var(--spacing--2xs);
+}
+
+.criteria {
+	display: flex;
+	flex-direction: column;
+	// Clear separation between the judge's instruction blocks.
+	gap: var(--spacing--sm);
+}
+
+.criteriaLabel {
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.paragraph {
+	margin: 0;
+	line-height: 1.6;
+	// Preserve single newlines within a block (e.g. a label above its value).
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 </style>

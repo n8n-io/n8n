@@ -12,6 +12,9 @@ import { averageNormalizedScore, indexOfMax, stringifyValue } from '../evaluatio
 export interface CompareCaseCell {
 	versionIndex: number;
 	testCaseId: string | null;
+	// The workflow execution that produced this output, so the Outputs tab can
+	// open it for inspection. Null when this version skipped the case.
+	executionId: string | null;
 	inputs: JsonObject | undefined;
 	outputs: JsonObject | undefined;
 	metrics: Record<string, number> | undefined;
@@ -160,6 +163,7 @@ export function useCompareCases(
 				return {
 					versionIndex,
 					testCaseId: record?.id ?? null,
+					executionId: record?.executionId ?? null,
 					inputs: record?.inputs,
 					outputs: record?.outputs,
 					metrics: record?.metrics,
