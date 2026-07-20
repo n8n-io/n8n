@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.29.0",
+  "version": "2.31.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -23,7 +23,7 @@
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --silent=false"
   },
   "files": [
@@ -48,6 +48,7 @@
     "axios": "catalog:",
     "nock": "catalog:",
     "reflect-metadata": "catalog:",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",

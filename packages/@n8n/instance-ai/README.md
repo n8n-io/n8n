@@ -14,7 +14,7 @@ database entities, settings, and n8n service adapters live in
 Instance AI is built around a deep-agent loop:
 
 - An orchestrator agent receives the user's request and maintains the plan.
-- Sub-agents can be delegated scoped tasks with a limited tool set.
+- Most work runs in the orchestrator; eval setup uses a focused background agent.
 - Domain tools read and update n8n resources through backend adapters.
 - Observational memory condenses long conversations.
 - Workflow building runs in a sandbox workspace, validates generated TypeScript,

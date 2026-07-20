@@ -14,6 +14,7 @@ import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnect
 import {
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
 	type McpServerConnectionItem,
+	type McpServerTool,
 	type McpToolSettings,
 	type PickableCredential,
 	type ServiceConnectionItem,
@@ -22,9 +23,11 @@ import {
 	type ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
+import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import type {
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolResponse,
 	McpRegistryServerResponse,
 	McpRegistryServerToolResponse,
 } from '@n8n/api-types';
@@ -54,6 +57,7 @@ const props = defineProps<{
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
+const mcpTelemetry = useInstanceAiMcpTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
@@ -112,6 +116,8 @@ interface PendingCredentialContext {
 
 const pendingCredentialContext = ref<PendingCredentialContext | null>(null);
 
+type McpToolMetadata = McpRegistryServerToolResponse | InstanceAiMcpConnectionToolResponse;
+
 async function connectOrSwapCredential(serverSlug: string, credentialId: string): Promise<boolean> {
 	const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
 	if (!existing) {
@@ -157,10 +163,57 @@ onBeforeUnmount(() => {
 	}
 });
 
-function categoryForTool(tool: McpRegistryServerToolResponse): 'read' | 'write' | undefined {
-	if (tool.annotations?.readOnlyHint === true) return 'read';
-	if (tool.annotations?.readOnlyHint === false) return 'write';
+function categoryForTool(
+	tool: McpRegistryServerToolResponse | undefined,
+): 'read' | 'write' | undefined {
+	if (tool?.annotations?.readOnlyHint === true) return 'read';
+	if (tool?.annotations?.readOnlyHint === false) return 'write';
 	return undefined;
+}
+
+function toMcpServerTool(
+	tool: McpToolMetadata,
+	categorySource?: McpRegistryServerToolResponse,
+): McpServerTool {
+	const out: McpServerTool = {
+		id: tool.name,
+		name: tool.name,
+	};
+	const category = categoryForTool(categorySource);
+	if (category !== undefined) out.category = category;
+	if ('description' in tool && tool.description) out.description = tool.description;
+	return out;
+}
+
+function settingsForConnection(connection: InstanceAiMcpConnectionResponse): McpToolSettings {
+	if (!connection.toolFilter) {
+		return { inclusionMode: 'all', selectedTools: [], excludedTools: [] };
+	}
+
+	if (connection.toolFilter.mode === 'allow') {
+		return {
+			inclusionMode: 'selected',
+			selectedTools: [...connection.toolFilter.tools],
+			excludedTools: [],
+		};
+	}
+
+	return {
+		inclusionMode: 'except',
+		selectedTools: [],
+		excludedTools: [...connection.toolFilter.tools],
+	};
+}
+
+function availableToolsForServer(
+	server: McpRegistryServerResponse,
+	connection: InstanceAiMcpConnectionResponse | undefined,
+): McpServerTool[] {
+	const liveTools = connection ? mcpStore.connectionToolsById.get(connection.id) : undefined;
+	if (!liveTools) return server.tools.map((tool) => toMcpServerTool(tool, tool));
+
+	const registryToolByName = new Map(server.tools.map((tool) => [tool.name, tool]));
+	return liveTools.map((tool) => toMcpServerTool(tool, registryToolByName.get(tool.name)));
 }
 
 function buildItem(
@@ -182,11 +235,8 @@ function buildItem(
 				required: true,
 			},
 		],
-		availableTools: server.tools.map((tool) => ({
-			id: tool.name,
-			name: tool.name,
-			category: categoryForTool(tool),
-		})),
+		availableTools: availableToolsForServer(server, connection),
+		...(connection ? { settings: settingsForConnection(connection) } : {}),
 		publisher:
 			server.isOfficial || server.websiteUrl
 				? { name: server.title, url: server.websiteUrl }
@@ -259,6 +309,15 @@ const items = computed<ToolConnectionItem[]>(() => {
 
 	return out;
 });
+
+watch(
+	() => (detailMode.value === 'settings' ? detailItem.value : null),
+	(item) => {
+		if (!item?.isConnected || item.kind !== 'mcp-server') return;
+		void mcpStore.fetchConnectionToolsLazy(item.id);
+	},
+	{ immediate: true },
+);
 
 async function openCredentialEditModal(server: McpRegistryServerResponse): Promise<void> {
 	await credentialsPromise;
@@ -350,6 +409,34 @@ function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResp
 	return mcpStore.catalog?.find((s) => s.slug === slug);
 }
 
+function trackMcpCredentialInteraction(
+	item: ToolConnectionItem,
+	track: (serverSlug: string) => void,
+): void {
+	if (item.kind !== 'mcp-server') return;
+	const server = findServerForItem(item);
+	if (!server) return;
+	track(server.slug);
+}
+
+function handleFirstCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackFirstCredentialConnectionStart(serverSlug);
+	});
+}
+
+function handleCredentialDropdownOpen(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackCredentialDropdownOpened(serverSlug);
+	});
+}
+
+function handleNewCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackNewCredentialConnectionStart(serverSlug);
+	});
+}
+
 async function handleSelectCredential(
 	item: ToolConnectionItem,
 	_authType: string,
@@ -358,17 +445,23 @@ async function handleSelectCredential(
 	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
+	mcpTelemetry.trackExistingCredentialSelected(server.slug);
 	const ok = await connectOrSwapCredential(server.slug, credentialId);
 	if (ok) showSettingsForServer(server.slug);
 }
 
 async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSettings) {
 	if (!settings) return;
-	// TODO: show success indicator
-	await mcpStore.updateConnection(item.id, {
+	const updated = await mcpStore.updateConnection(item.id, {
 		inclusionMode: settings.inclusionMode,
 		selectedTools: settings.selectedTools,
 		excludedTools: settings.excludedTools,
+	});
+	if (!updated) return;
+	mcpTelemetry.trackToolFilterSettingsUpdated(updated.serverSlug, settings.inclusionMode);
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText('instanceAi.mcp.settings.saved'),
 	});
 }
 
@@ -403,6 +496,9 @@ async function handleConnect(item: ToolConnectionItem) {
 		:hide-back-button="shouldHideBackButton"
 		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
+		@credential-dropdown-open="handleCredentialDropdownOpen"
+		@first-credential-connect="handleFirstCredentialConnect"
+		@new-credential-connect="handleNewCredentialConnect"
 		@connect="handleConnect"
 		@save="handleSave"
 		@disconnect="handleDisconnect"
@@ -419,7 +515,8 @@ async function handleConnect(item: ToolConnectionItem) {
 		</template>
 		<template #settings-body="{ item, onSave, onDisconnect }">
 			<McpToolSettingsContent
-				:item="item as McpServerConnectionItem"
+				v-if="item.kind === 'mcp-server'"
+				:item="item"
 				@save="(settings: McpToolSettings) => onSave(settings)"
 				@disconnect="onDisconnect"
 			/>

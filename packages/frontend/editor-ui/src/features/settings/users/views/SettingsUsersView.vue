@@ -32,10 +32,9 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -59,12 +58,6 @@ const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
-const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
-
-// Gates assigning custom instance roles (invite/change/reinvite).
-const customInstanceRolesEnabled = computed(() =>
-	envFeatureFlagCheck.value('CUSTOM_INSTANCE_ROLES'),
-);
 
 const i18n = useI18n();
 
@@ -165,13 +158,11 @@ const userRoles = computed((): Array<{ value: string; label: string; disabled?: 
 			label: i18n.baseText('auth.roles.admin'),
 			disabled: !isAdvancedPermissionsEnabled.value,
 		},
-		...(customInstanceRolesEnabled.value
-			? rolesStore.customInstanceRoles.map((role) => ({
-					value: role.slug,
-					label: role.displayName,
-					disabled: !role.licensed,
-				}))
-			: []),
+		...rolesStore.customInstanceRoles.map((role) => ({
+			value: role.slug,
+			label: role.displayName,
+			disabled: !role.licensed,
+		})),
 	];
 });
 
@@ -225,11 +216,9 @@ async function onReinvite(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user?.email && user?.role) {
-			// With custom instance roles, any assignable role (not owner/default/chat) can be
-			// reinvited; otherwise only the original member/admin roles are allowed.
-			const canReinvite = customInstanceRolesEnabled.value
-				? user.role !== ROLE.Owner && user.role !== ROLE.Default && user.role !== ROLE.ChatUser
-				: ([ROLE.Admin, ROLE.Member] as string[]).includes(user.role);
+			// Any assignable role (not owner/default/chat) can be reinvited.
+			const canReinvite =
+				user.role !== ROLE.Owner && user.role !== ROLE.Default && user.role !== ROLE.ChatUser;
 			if (!canReinvite) {
 				throw new Error('Invalid role name on reinvite');
 			}
@@ -460,7 +449,7 @@ const onSearch = (value: string) => {
 			}}</N8nText>
 		</N8nHeading>
 		<div v-if="!usersStore.usersLimitNotReached" :class="$style.setupInfoContainer">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
 				"

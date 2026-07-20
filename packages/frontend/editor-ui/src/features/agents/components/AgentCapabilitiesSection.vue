@@ -4,10 +4,10 @@ import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { N8nButton, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonMcpServerConfig, AgentJsonToolRef } from '../types';
@@ -23,6 +23,9 @@ import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 
+/** Capability rows this section can render. */
+export type AgentCapabilitySection = 'channels' | 'tools' | 'tasks' | 'skills' | 'subAgents';
+
 const props = withDefaults(
 	defineProps<{
 		config: AgentJsonConfig | null;
@@ -36,9 +39,29 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+		/** Structured backend validation issues — drives the invalid state on capability chips. */
+		validationIssues?: AgentConfigValidationIssue[];
+		/**
+		 * Allowlist of sections to render. Defaults to all — the Agent Builder
+		 * shows everything; the NDV passes `['tools', 'skills']` to hide Channels,
+		 * Tasks and Sub-agents (all standalone-agent concepts that don't apply when
+		 * the agent is invoked by the embedding workflow). Suppressing `channels`
+		 * also suppresses the inline `AgentChannelModal`.
+		 */
+		sections?: AgentCapabilitySection[];
 	}>(),
-	{ disabled: false, taskRefs: () => [] },
+	{
+		disabled: false,
+		taskRefs: () => [],
+		validationIssues: () => [],
+		sections: () => ['channels', 'tools', 'skills', 'subAgents', 'tasks'],
+	},
 );
+
+const visibleSections = computed(() => new Set(props.sections));
+function showSection(section: AgentCapabilitySection): boolean {
+	return visibleSections.value.has(section);
+}
 
 const emit = defineEmits<{
 	'open-tool': [target: ToolOpenTarget];
@@ -68,6 +91,8 @@ const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
 
 type TaskRow = AgentTaskDto & {
 	enabled: boolean;
+	invalid: boolean;
+	invalidReasons: string[];
 };
 
 const channelModalOpen = ref(false);
@@ -82,13 +107,18 @@ function channelIcon(integrationIcon?: string): IconName {
 	return 'zap';
 }
 
-const channelRows = computed<Array<{ type: string; label: string; icon: IconName }>>(() =>
+const channelRows = computed<
+	Array<{ type: string; label: string; icon: IconName; invalid: boolean; invalidReasons: string[] }>
+>(() =>
 	props.connectedTriggers.map((channel) => {
 		const integration = catalog.value?.find(({ type }) => type === channel);
+		const reasons = channelIssueMessages.value.get(channel) ?? [];
 		return {
 			type: channel,
 			label: integration?.label ?? channel,
 			icon: channelIcon(integration?.icon),
+			invalid: reasons.length > 0,
+			invalidReasons: reasons,
 		};
 	}),
 );
@@ -113,10 +143,13 @@ const availableSubAgents = computed(() =>
 const selectedSubAgents = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
 		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
+		const reasons = subAgentIssueMessages.value.get(agentId) ?? [];
 		return {
 			id: agentId,
 			name: agent?.name ?? agentId,
 			useWhen: useWhen ?? '',
+			invalid: reasons.length > 0,
+			invalidReasons: reasons,
 		};
 	}),
 );
@@ -130,14 +163,105 @@ const taskRows = computed<TaskRow[]>(() => {
 		.map((taskRef) => {
 			const body = bodiesById.get(taskRef.id);
 			if (!body) return null;
+			const reasons = taskIssueMessages.value.get(taskRef.id) ?? [];
 			return {
 				...body,
 				enabled: taskRef.enabled,
+				invalid: reasons.length > 0,
+				invalidReasons: reasons,
 			};
 		})
 		.filter((task): task is TaskRow => task !== null);
 });
 const hasTasks = computed(() => taskRows.value.length > 0);
+
+// `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
+// @n8n/i18n's built type declarations — matches the same workaround already
+// used for `agents.builder.preview.disabledTooltip` in AgentBuilderHeader.vue.
+const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
+	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
+	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
+	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
+	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
+	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
+	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
+	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+};
+
+/** Kind-specific overrides, keyed `<kind>.<code>` or `tool.<toolType>.<code>`. */
+const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
+	'subAgent.missing_reference':
+		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
+	'subAgent.incompatible_reference':
+		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
+	'skill.missing_reference':
+		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
+	'task.invalid_value': 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
+	'tool.workflow.missing_reference':
+		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
+	'tool.workflow.incompatible_reference':
+		'agents.builder.validation.issue.tool.workflow.incompatibleReference' as BaseTextKey,
+	'tool.custom.missing_reference':
+		'agents.builder.validation.issue.tool.custom.missingReference' as BaseTextKey,
+	'tool.node.missing_reference':
+		'agents.builder.validation.issue.tool.node.missingReference' as BaseTextKey,
+	'mcpServer.incompatible_credential':
+		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
+};
+
+function issueMessage(issue: AgentConfigValidationIssue): string {
+	const { kind, toolType, id } = issue.capability;
+	const key =
+		(kind === 'tool' && toolType
+			? SPECIFIC_ISSUE_KEYS[`tool.${toolType}.${issue.code}`]
+			: undefined) ??
+		SPECIFIC_ISSUE_KEYS[`${kind}.${issue.code}`] ??
+		GENERIC_ISSUE_KEYS[issue.code];
+	return i18n.baseText(key, { interpolate: { id: id ?? '' } });
+}
+
+function issueMessages(issues: AgentConfigValidationIssue[]): string[] {
+	return [...new Set(issues.map(issueMessage))];
+}
+
+function issuesFor(kind: AgentConfigValidationIssue['capability']['kind']) {
+	return props.validationIssues.filter((issue) => issue.capability.kind === kind);
+}
+
+/** Group a capability kind's issues into per-key message lists, keyed by `keyOf`. */
+function groupIssueMessages<TKey>(
+	kind: AgentConfigValidationIssue['capability']['kind'],
+	keyOf: (issue: AgentConfigValidationIssue) => TKey | undefined,
+): Map<TKey, string[]> {
+	const byKey = new Map<TKey, AgentConfigValidationIssue[]>();
+	for (const issue of issuesFor(kind)) {
+		const key = keyOf(issue);
+		if (key === undefined) continue;
+		const existing = byKey.get(key);
+		if (existing) existing.push(issue);
+		else byKey.set(key, [issue]);
+	}
+	return new Map([...byKey].map(([key, issues]) => [key, issueMessages(issues)]));
+}
+
+const channelIssueMessages = computed(() =>
+	groupIssueMessages('channel', (issue) => issue.capability.id),
+);
+const toolIssueMessages = computed(() =>
+	groupIssueMessages('tool', (issue) => issue.capability.index),
+);
+const mcpServerIssueMessages = computed(() =>
+	groupIssueMessages('mcpServer', (issue) => issue.capability.id),
+);
+const skillIssueMessages = computed(() =>
+	groupIssueMessages('skill', (issue) => issue.capability.id),
+);
+const taskIssueMessages = computed(() =>
+	groupIssueMessages('task', (issue) => issue.capability.id),
+);
+const subAgentIssueMessages = computed(() =>
+	groupIssueMessages('subAgent', (issue) => issue.capability.id),
+);
 
 async function reloadTasks() {
 	taskErrorMessage.value = '';
@@ -156,12 +280,13 @@ async function reloadTasks() {
 }
 
 onMounted(() => {
-	void reloadTasks();
-	void ensureProjectAgentsLoaded().catch(() => {});
+	if (showSection('tasks')) void reloadTasks();
+	// Sub-agent picker needs the project agent list; skip when the section is hidden.
+	if (showSection('subAgents')) void ensureProjectAgentsLoaded().catch(() => {});
 });
 
 watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
-	void reloadTasks();
+	if (showSection('tasks')) void reloadTasks();
 });
 
 function openTaskModal(task: TaskRow | null) {
@@ -246,7 +371,7 @@ function toolLabel(entry: CapabilityToolEntry) {
 }
 
 function toolIcon(entry: CapabilityToolEntry): IconName {
-	if (entry.kind === 'mcpServer') return 'globe';
+	if (entry.kind === 'mcpServer') return 'mcp';
 	const { tool } = entry;
 	if (tool.type === 'workflow') return 'workflow';
 	if (tool.type === 'custom') return 'code';
@@ -284,10 +409,16 @@ function toolTypeLabel(entry: CapabilityToolEntry, nodeType = toolNodeType(entry
 	return toolLabel(entry);
 }
 
+function toolEntryReasons(entry: CapabilityToolEntry): string[] {
+	if (entry.kind === 'mcpServer') return mcpServerIssueMessages.value.get(entry.server.name) ?? [];
+	return toolIssueMessages.value.get(entry.index) ?? [];
+}
+
 const toolRows = computed<ToolRow[]>(() => {
 	return buildToolRows(
 		capabilityTools.value.map((entry) => {
 			const nodeType = toolNodeType(entry);
+			const reasons = toolEntryReasons(entry);
 			return {
 				index: entry.index,
 				label: toolLabel(entry),
@@ -296,6 +427,8 @@ const toolRows = computed<ToolRow[]>(() => {
 				fallbackIcon: toolIcon(entry),
 				toolType: entry.kind === 'tool' ? entry.tool.type : 'mcpServer',
 				openTarget: entry.openTarget,
+				invalid: reasons.length > 0,
+				invalidReasons: reasons,
 			};
 		}),
 	);
@@ -386,7 +519,12 @@ async function openSubAgentsModal() {
 	});
 }
 
-function openExistingSubAgentModal(subAgent: { id: string; name: string; useWhen: string }) {
+function openExistingSubAgentModal(subAgent: {
+	id: string;
+	name: string;
+	useWhen: string;
+	invalidReasons: string[];
+}) {
 	uiStore.openModalWithData({
 		name: AGENT_SUB_AGENTS_MODAL_KEY,
 		data: {
@@ -395,6 +533,7 @@ function openExistingSubAgentModal(subAgent: { id: string; name: string; useWhen
 				name: subAgent.name,
 			},
 			useWhen: subAgent.useWhen,
+			invalidReasons: subAgent.invalidReasons,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
 				emitSubAgentRefs(
 					selectedSubAgentRefs.value.map((ref) =>
@@ -436,7 +575,7 @@ function handleChannelDisconnected(channelType: string) {
 			:inert="props.disabled || undefined"
 			data-testid="agent-capabilities-section"
 		>
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('channels')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.triggers.title') }}
 				</N8nText>
@@ -446,6 +585,8 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="channel in channelRows"
 						:key="channel.type"
 						:icon="channel.icon"
+						:invalid="channel.invalid"
+						:invalid-reasons="channel.invalidReasons"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-channel-row"
 						@click="openChannelEdit(channel.type)"
@@ -475,7 +616,7 @@ function handleChannelDisconnected(channelType: string) {
 				</div>
 			</div>
 
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('tools')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tools.title') }}
 				</N8nText>
@@ -491,6 +632,8 @@ function handleChannelDisconnected(channelType: string) {
 						>
 							<template #trigger>
 								<AgentChipButton
+									:invalid="tool.invalid"
+									:invalid-reasons="tool.invalidReasons"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
 								>
@@ -514,6 +657,8 @@ function handleChannelDisconnected(channelType: string) {
 						</N8nDropdownMenu>
 						<AgentChipButton
 							v-else-if="tool.nodeType"
+							:invalid="tool.invalid"
+							:invalid-reasons="tool.invalidReasons"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -526,6 +671,8 @@ function handleChannelDisconnected(channelType: string) {
 						<AgentChipButton
 							v-else
 							:icon="tool.fallbackIcon"
+							:invalid="tool.invalid"
+							:invalid-reasons="tool.invalidReasons"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -535,6 +682,7 @@ function handleChannelDisconnected(channelType: string) {
 					</template>
 
 					<N8nTooltip
+						v-if="!props.disabled"
 						:disabled="!hasTools"
 						:content="i18n.baseText('agents.builder.tools.add')"
 						placement="top"
@@ -543,7 +691,6 @@ function handleChannelDisconnected(channelType: string) {
 							variant="ghost"
 							size="medium"
 							:icon-only="hasTools"
-							:disabled="props.disabled"
 							data-testid="agent-capabilities-add-tool"
 							@click="emit('add-tool')"
 						>
@@ -556,7 +703,7 @@ function handleChannelDisconnected(channelType: string) {
 				</div>
 			</div>
 
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('skills')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.skills.title') }}
 				</N8nText>
@@ -566,6 +713,8 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="{ id, skill } in skills"
 						:key="id"
 						icon="sparkles"
+						:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+						:invalid-reasons="skillIssueMessages.get(id) ?? []"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-skill-row"
 						@click="emit('open-skill', id)"
@@ -574,6 +723,7 @@ function handleChannelDisconnected(channelType: string) {
 					</AgentChipButton>
 
 					<N8nTooltip
+						v-if="!props.disabled"
 						:disabled="!hasSkills"
 						:content="i18n.baseText('agents.builder.skills.add')"
 						placement="top"
@@ -582,7 +732,6 @@ function handleChannelDisconnected(channelType: string) {
 							variant="ghost"
 							size="medium"
 							:icon-only="hasSkills"
-							:disabled="props.disabled"
 							data-testid="agent-capabilities-add-skill"
 							@click="emit('add-skill')"
 						>
@@ -594,7 +743,7 @@ function handleChannelDisconnected(channelType: string) {
 					</N8nTooltip>
 				</div>
 			</div>
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('subAgents')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.subAgents.title') }}
 				</N8nText>
@@ -604,6 +753,8 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="subAgent in selectedSubAgents"
 						:key="subAgent.id"
 						icon="bot"
+						:invalid="subAgent.invalid"
+						:invalid-reasons="subAgent.invalidReasons"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-sub-agent-row"
 						@click="openExistingSubAgentModal(subAgent)"
@@ -629,7 +780,7 @@ function handleChannelDisconnected(channelType: string) {
 					</N8nTooltip>
 				</div>
 			</div>
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('tasks')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tasks.title') }}
 				</N8nText>
@@ -639,6 +790,8 @@ function handleChannelDisconnected(channelType: string) {
 						v-for="task in taskRows"
 						:key="task.id"
 						icon="clipboard-list"
+						:invalid="task.invalid"
+						:invalid-reasons="task.invalidReasons"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-task-row"
 						@click="openTaskModal(task)"
@@ -674,7 +827,7 @@ function handleChannelDisconnected(channelType: string) {
 		</div>
 
 		<AgentChannelModal
-			v-if="channelModalOpen"
+			v-if="showSection('channels') && channelModalOpen"
 			v-model:open="channelModalOpen"
 			v-model:view="channelModalView"
 			:agent-id="agentId"
@@ -692,7 +845,7 @@ function handleChannelDisconnected(channelType: string) {
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--spacing--xs);
 	width: 100%;
 }
 
@@ -714,7 +867,7 @@ function handleChannelDisconnected(channelType: string) {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	min-width: 0;
 	margin-top: var(--spacing--5xs);
 }

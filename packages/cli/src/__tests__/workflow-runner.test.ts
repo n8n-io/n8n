@@ -9,7 +9,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
-import { DirectedGraph, WorkflowExecute } from 'n8n-core';
+import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
 	type IExecuteData,
@@ -357,6 +357,59 @@ describe('run', () => {
 			await expect(runner.run(data)).resolves.toBe('1');
 		});
 	});
+
+	describe('workflow issues pre-flight failure', () => {
+		function arrangeFailingRunDeps(error: Error) {
+			const activeExecutions = Container.get(ActiveExecutions);
+			vi.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
+			vi.spyOn(WorkflowExecute.prototype, 'processRunExecutionData').mockImplementationOnce(() => {
+				throw error;
+			});
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const data = mock<IWorkflowExecutionDataProcess>({
+				workflowData: { nodes: [], id: 'workflow-id', settings: undefined, staticData: {} },
+				executionData: createRunExecutionData({}),
+				triggerToStartFrom: undefined,
+				startNodes: undefined,
+				destinationNode: undefined,
+				userId: 'mock-user-id',
+			});
+			return { data };
+		}
+
+		it('surfaces a WorkflowHasIssuesError as a failed run instead of rejecting', async () => {
+			const error = new WorkflowHasIssuesError(
+				{ node1: { parameters: { field: ['is missing'] } } },
+				{},
+			);
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).resolves.toBe('1');
+
+			expect(failExecution).toHaveBeenCalledWith(data, '1', error);
+			expect(processError).not.toHaveBeenCalled();
+		});
+
+		it('still rejects on other startup errors', async () => {
+			const error = new Error('boom');
+			const { data } = arrangeFailingRunDeps(error);
+			// @ts-expect-error Private method
+			const failExecution = vi.spyOn(runner, 'failExecution').mockResolvedValueOnce();
+			const processError = vi.spyOn(runner, 'processError').mockResolvedValueOnce();
+
+			await expect(runner.run(data)).rejects.toThrowError(error);
+
+			expect(processError).toHaveBeenCalled();
+			expect(failExecution).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('enqueueExecution', () => {
@@ -425,7 +478,7 @@ describe('enqueueExecution', () => {
 		const error = new Error('stop for test purposes');
 
 		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		// so that Vitest does not move on to tear down the suite until the PCancelable settles
 		addJob.mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method

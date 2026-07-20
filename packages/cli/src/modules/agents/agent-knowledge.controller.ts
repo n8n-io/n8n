@@ -7,11 +7,16 @@ import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AiService } from '@/services/ai.service';
 
 import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
 import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
-import { AgentUploadMiddleware, cleanupUploadedTempFiles } from './agent-upload.middleware';
+import {
+	AgentUploadMiddleware,
+	cleanupUploadedTempFiles,
+	describeMulterError,
+} from './agent-upload.middleware';
 
 const agentUploadMiddleware = Container.get(AgentUploadMiddleware);
 
@@ -21,11 +26,12 @@ export class AgentKnowledgeController {
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly agentsConfig: AgentsConfig,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
+		private readonly aiService: AiService,
 	) {}
 
-	/** Knowledge base endpoints are gated behind Daytona sandbox env vars. */
+	/** Knowledge base endpoints are gated behind Daytona sandbox env vars or AI Assistant proxy availability. */
 	private assertKnowledgeBaseEnabled() {
-		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
+		if (!isAgentKnowledgeBaseEnabled(this.agentsConfig, this.aiService.isProxyEnabled())) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}
@@ -61,7 +67,7 @@ export class AgentKnowledgeController {
 			if (req.fileUploadError) {
 				const error = req.fileUploadError;
 				if (error instanceof multer.MulterError) {
-					throw new BadRequestError(`File upload error: ${error.message}`);
+					throw new BadRequestError(`File upload error: ${describeMulterError(error)}`);
 				}
 				throw error;
 			}

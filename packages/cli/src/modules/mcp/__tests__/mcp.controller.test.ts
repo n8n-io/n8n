@@ -41,6 +41,7 @@ vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
 	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
+	mcpClientId?: string;
 };
 
 const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>
@@ -84,7 +85,7 @@ describe('McpController', () => {
 		Container.set(ApiKeyRepository, mock<ApiKeyRepository>());
 
 		// Imported here (not statically) so the Container.set above runs first.
-		({ McpController } = await import('../mcp.controller'));
+		({ McpController } = await import('../mcp.controller.js'));
 		controller = Container.get(McpController);
 	});
 
@@ -233,6 +234,7 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			true,
 			{ name: 'Claude', version: '1.0.0' },
+			undefined,
 		);
 	});
 
@@ -264,6 +266,7 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
 			false,
+			undefined,
 			undefined,
 		);
 		// Non-initialize requests still skip telemetry tracking.
@@ -329,6 +332,7 @@ describe('McpController', () => {
 			expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'user-1' }),
 				true,
+				undefined,
 				undefined,
 			);
 			expect(mockHandleRequest).toHaveBeenCalledWith(req, res, undefined);

@@ -176,6 +176,13 @@ export interface ExecutionOptions {
 	executionCounter?: AgentExecutionCounter;
 	onStepStart?: (event: OnStepStartEvent) => void | Promise<void>;
 	onStepFinish?: (event: OnStepFinishEvent) => void | Promise<void>;
+	/**
+	 * Durable-log RFC (resilience phase), opt-in: persist a `running`-status
+	 * checkpoint at every step boundary (after a tool batch settles, before the
+	 * next model call) so a crash loses only the in-flight step. Requires a
+	 * persistence-backed CheckpointStore; recover via `crashResume()`.
+	 */
+	stepCheckpoints?: boolean;
 }
 
 export interface PersistedExecutionOptions {
@@ -379,4 +386,11 @@ export interface SerializableAgentState {
 export type AgentPersistenceOptions = {
 	threadId: string;
 	resourceId: string;
+	/**
+	 * The host application's own run id (distinct from the agent-SDK runId that
+	 * keys checkpoints). Persisted with checkpoints so host-side recovery (e.g.
+	 * Instance AI's interrupted-run sweep) can match a checkpoint to its run
+	 * exactly instead of guessing by recency.
+	 */
+	hostRunId?: string;
 };

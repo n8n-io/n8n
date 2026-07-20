@@ -37,9 +37,6 @@ vi.mock('../tools/web-research/sanitize-web-content', () => ({
 	wrapUntrustedData: (content: string, source: string) =>
 		`<untrusted_data source="${source}">${content}</untrusted_data>`,
 }));
-vi.mock('../tools/orchestration/delegate.tool', () => ({
-	startDetachedDelegateTask: () => 'delegate-task',
-}));
 vi.mock('../tools', () => ({
 	createAllTools: () => ['all-tools'],
 }));
@@ -192,7 +189,7 @@ vi.mock('../parsers/validate-attachments', () => {
 
 describe('@n8n/instance-ai public entrypoint', () => {
 	it('exposes representative lazy exports without invoking them', async () => {
-		const entrypoint = await import('../index');
+		const entrypoint = await import('../index.js');
 
 		expect(entrypoint.MAX_STEPS.ORCHESTRATOR).toBeGreaterThan(0);
 		expect(entrypoint.createAllTools).toEqual(expect.any(Function));
@@ -209,7 +206,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 	});
 
 	it('loads lazy functions, classes, and getters through the public barrel', async () => {
-		const entrypoint = await import('../index');
+		const entrypoint = await import('../index.js');
 
 		expect(call(entrypoint.createInstanceAiTraceContext)).toBe('createInstanceAiTraceContext');
 		expect(call(entrypoint.createInternalOperationTraceContext)).toBe(
@@ -225,7 +222,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(entrypoint.wrapUntrustedData('hello', 'https://example.com')).toContain(
 			'<untrusted_data source="https://example.com">',
 		);
-		expect(call(entrypoint.startDetachedDelegateTask)).toBe('delegate-task');
 		expect(call(entrypoint.createAllTools)).toEqual(['all-tools']);
 
 		expect(entrypoint.PURE_REPLAY_TOOLS.has('web-search')).toBe(true);

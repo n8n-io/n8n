@@ -1,7 +1,8 @@
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { interactiveResumeDataSchema } from '../agent-builder-interactive';
+import { AgentVectorStoreConfigSchema } from './agent-json-config.schema';
+import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
@@ -54,6 +55,10 @@ export class ListAgentsQueryDto extends Z.class({
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
 
+export class AgentProviderModelsQueryDto extends Z.class({
+	credentialId: z.string().min(1).max(64).optional(),
+}) {}
+
 export class CreateAgentDto extends Z.class({
 	name: z.string().min(1),
 }) {}
@@ -75,84 +80,6 @@ export class UpdateAgentTaskDto extends Z.class({
 	objective: agentTaskSchema.shape.objective.optional(),
 	cronExpression: agentTaskSchema.shape.cronExpression.optional(),
 }) {}
-
-export const AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH = 65_536;
-export const AGENT_SKILL_REFERENCE_MAX_COUNT = 20;
-export const AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES = 65_536;
-export const AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES = 262_144;
-
-const agentSkillStringArraySchema = z.array(z.string().trim().min(1));
-
-const utf8ByteLength = (value: string) => new TextEncoder().encode(value).byteLength;
-
-const agentSkillReferenceSchema = z
-	.object({
-		path: z
-			.string()
-			.min(1)
-			.max(512)
-			.refine((path) => {
-				const normalized = path.replaceAll('\\', '/');
-				const segments = normalized.split('/');
-				return (
-					path === normalized &&
-					normalized.startsWith('references/') &&
-					(normalized.endsWith('.md') || normalized.endsWith('.markdown')) &&
-					segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
-				);
-			}, 'Reference path must be a markdown file under references/'),
-		content: z.string().min(1),
-	})
-	.strict()
-	.superRefine((reference, ctx) => {
-		if (utf8ByteLength(reference.content) > AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Reference content must be ${AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES} bytes or fewer`,
-				path: ['content'],
-			});
-		}
-	});
-
-const agentSkillReferencesSchema = z
-	.array(agentSkillReferenceSchema)
-	.max(AGENT_SKILL_REFERENCE_MAX_COUNT)
-	.superRefine((references, ctx) => {
-		const paths = new Set<string>();
-		let totalBytes = 0;
-		for (const [index, reference] of references.entries()) {
-			totalBytes += utf8ByteLength(reference.content);
-			if (paths.has(reference.path)) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: `Duplicate reference path "${reference.path}"`,
-					path: [index, 'path'],
-				});
-			}
-			paths.add(reference.path);
-		}
-		if (totalBytes > AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: `Reference content must total ${AGENT_SKILL_REFERENCES_TOTAL_MAX_BYTES} bytes or fewer`,
-			});
-		}
-	});
-
-const agentSkillShape = {
-	name: z.string().min(1).max(128),
-	description: z.string().min(1).max(512),
-	instructions: z.string().min(1).max(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
-	allowedTools: agentSkillStringArraySchema.optional(),
-	references: agentSkillReferencesSchema.optional(),
-	scripts: z.never().optional(),
-	templates: z.never().optional(),
-	assets: z.never().optional(),
-	examples: z.never().optional(),
-	other: z.never().optional(),
-};
-
-export const agentSkillSchema = z.object(agentSkillShape).strict();
 
 const updateAgentSkillShape = {
 	name: agentSkillShape.name.optional(),
@@ -201,15 +128,15 @@ export class AgentChatMessageDto extends Z.class({
 	sessionId: z.string().min(1).optional(),
 }) {}
 
-export class AgentBuildResumeDto extends Z.class({
-	runId: z.string().min(1),
-	toolCallId: z.string().min(1),
-	resumeData: interactiveResumeDataSchema,
-}) {}
-
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
+	// Deliberately untyped at this boundary: the possible resume shapes overlap
+	// (e.g. credential's `{approved}` matches questions' `{approved, answers}`
+	// and a non-discriminated union would parse against whichever member
+	// matches first, silently stripping fields the "wrong" schema doesn't
+	// know about). Each interactive tool validates its own resume payload via
+	// `.resume(schema)`.
 	resumeData: z.unknown(),
 }) {}
 
@@ -229,3 +156,13 @@ export class RevertAgentToVersionDto extends Z.class({
 export class CreateSlackAgentAppDto extends Z.class({
 	appConfigurationToken: z.string().min(1),
 }) {}
+
+export class TestAgentVectorStoreDto extends Z.class({
+	vectorStore: AgentVectorStoreConfigSchema,
+}) {}
+
+export interface VectorStoreTestResult {
+	success: boolean;
+	message?: string;
+	warning?: string;
+}

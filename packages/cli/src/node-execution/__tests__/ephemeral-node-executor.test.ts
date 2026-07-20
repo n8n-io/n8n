@@ -10,6 +10,7 @@ import {
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
+	type IExecuteFunctions,
 	type INodeCredentialsDetails,
 	type INodeType,
 	type INodeTypeDescription,
@@ -20,6 +21,7 @@ import { NodeTypes } from '@/node-types';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
+	AGENT_TOOL_NODE_DENYLIST,
 	EphemeralNodeExecutor,
 	isAgentProviderNode,
 	isUsableAsAgentTool,
@@ -182,6 +184,64 @@ describe('EphemeralNodeExecutor', () => {
 			});
 
 			expect(result.error).not.toMatch(/not usable as a tool/);
+		});
+
+		it.each([...AGENT_TOOL_NODE_DENYLIST])(
+			'rejects the denylisted node type "%s" even when it looks like a usable tool',
+			async (nodeType) => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mockNodeType({ description: toolDescription }),
+				);
+
+				const result = await executor.executeInline({
+					nodeType,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [],
+					projectId: 'p-1',
+				});
+
+				expect(result.status).toBe('error');
+				expect(result.error).toContain('not permitted for agent tool execution');
+				// The denylist check must run before the node-types lookup for the
+				// base type, otherwise resolveToolNodeType's `*Tool` remapping in
+				// the caller could dodge it via a type that doesn't exist yet.
+				expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([...AGENT_TOOL_NODE_DENYLIST])(
+			'rejects the `*Tool`-suffixed variant of the denylisted node type "%s"',
+			async (nodeType) => {
+				const result = await executor.executeInline({
+					nodeType: `${nodeType}Tool`,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					inputData: [],
+					projectId: 'p-1',
+				});
+
+				expect(result.status).toBe('error');
+				expect(result.error).toContain('not permitted for agent tool execution');
+			},
+		);
+
+		it('still executes a normal tool node that is not on the denylist', async () => {
+			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
 		});
 
 		it('returns a structured error when the operation is on the blacklist (sendAndWait)', async () => {
@@ -453,6 +513,55 @@ describe('EphemeralNodeExecutor', () => {
 		// Use plain objects so `typeof nodeType.supplyData === 'function'`
 		// reliably returns false — vitest-mock-extended auto-proxies every
 		// property as callable, which would route us to the supplyData path.
+
+		it('passes the project ID to data table helpers', async () => {
+			const getDataTableProxy = vi.fn().mockResolvedValue({});
+			mockGetBase.mockResolvedValue({
+				'data-table': { dataTableProxyProvider: { getDataTableProxy } },
+			});
+			const execute = vi.fn(async function (this: IExecuteFunctions) {
+				await this.helpers.getDataTableProxy?.('table-id');
+				return [[{ json: { ok: true } }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.dataTableTool',
+				nodeTypeVersion: 1.1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(getDataTableProxy).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				'table-id',
+				'p-1',
+			);
+		});
+
+		it('does not add data table project context for other node types', async () => {
+			const additionalData = {};
+			mockGetBase.mockResolvedValue(additionalData);
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute: vi.fn().mockResolvedValue([[{ json: { ok: true } }]]),
+			} as unknown as INodeType);
+
+			await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [{ json: {} }],
+				projectId: 'p-1',
+			});
+
+			expect(additionalData).not.toHaveProperty('dataTableProjectId');
+		});
 
 		it('runs nodeType.execute and returns its first output batch on success', async () => {
 			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true, count: 3 } }]]);

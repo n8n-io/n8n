@@ -6,13 +6,22 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import { MCP_CONNECT_WORKFLOWS_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 import type { WorkflowListItem } from '@/Interface';
+import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWorkflowsToMcp/constants';
+import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+
+const { hasPermissionMock } = vi.hoisted(() => ({
+	hasPermissionMock: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: hasPermissionMock,
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -37,11 +46,22 @@ vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
 	}),
 }));
 
+const { showErrorMock, showMessageMock } = vi.hoisted(() => ({
+	showErrorMock: vi.fn(),
+	showMessageMock: vi.fn(),
+}));
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: showErrorMock,
+		showMessage: showMessageMock,
+	}),
+}));
+
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
-let usersStore: MockedStore<typeof useUsersStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
+let exposeAllWorkflowsToMcpStore: MockedStore<typeof useExposeAllWorkflowsToMcpStore>;
 
 const createComponent = createComponentRenderer(SettingsMCPView, {
 	global: {
@@ -59,7 +79,7 @@ const createComponent = createComponentRenderer(SettingsMCPView, {
 			WorkflowsTable: {
 				inheritAttrs: true,
 				template:
-					'<div><button data-test-id="workflows-table-page-2" @click="$emit(\'update:options\', { page: 1, itemsPerPage: 10, sortBy: [] })">Page 2</button><button data-test-id="workflows-table-page-size-50" @click="$emit(\'update:options\', { page: 3, itemsPerPage: 50, sortBy: [] })">Page size 50</button>Workflows Table</div>',
+					'<div><button data-test-id="workflows-table-page-2" @click="$emit(\'update:options\', { page: 1, itemsPerPage: 10, sortBy: [] })">Page 2</button><button data-test-id="workflows-table-page-size-50" @click="$emit(\'update:options\', { page: 3, itemsPerPage: 50, sortBy: [] })">Page size 50</button><button data-test-id="workflows-table-bulk-remove" @click="$emit(\'bulkRemoveMcpAccess\', [\'wf-1\', \'wf-2\'])">Bulk remove</button>Workflows Table</div>',
 			},
 			OAuthClientsTable: {
 				inheritAttrs: true,
@@ -86,9 +106,11 @@ describe('SettingsMCPView', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia();
 		mcpStore = mockedStore(useMCPStore);
-		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		uiStore = mockedStore(useUIStore);
+		exposeAllWorkflowsToMcpStore = mockedStore(useExposeAllWorkflowsToMcpStore);
+		exposeAllWorkflowsToMcpStore.isEnabled = false;
+		hasPermissionMock.mockReturnValue(true);
 
 		settingsStore.settings = {
 			enterprise: {},
@@ -103,6 +125,8 @@ describe('SettingsMCPView', () => {
 
 		mcpStore.getAllOAuthClients.mockResolvedValue([]);
 		mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
+		mcpStore.fetchAllowedRedirectUris.mockResolvedValue([]);
+		mcpStore.setAllowedRedirectUris.mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -152,11 +176,6 @@ describe('SettingsMCPView', () => {
 	});
 
 	describe('Toggle MCP on/off', () => {
-		beforeEach(() => {
-			// Set user as admin to allow toggling
-			usersStore.isAdmin = true;
-		});
-
 		it('should call setMcpAccessEnabled when turning on MCP', async () => {
 			mcpStore.setMcpAccessEnabled.mockResolvedValue(true);
 
@@ -201,6 +220,88 @@ describe('SettingsMCPView', () => {
 
 			expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalled();
 			expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+		});
+	});
+
+	describe('Expose all workflows experiment', () => {
+		beforeEach(() => {
+			mcpStore.setMcpAccessEnabled.mockResolvedValue(true);
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
+			mcpStore.getAllOAuthClients.mockResolvedValue([]);
+		});
+
+		it('should offer to expose all workflows after enabling MCP when enrolled and eligible workflows exist', async () => {
+			exposeAllWorkflowsToMcpStore.isEnabled = true;
+			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 5, data: [] });
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByTestId('enable-mcp-button'));
+
+			await waitFor(() => {
+				expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+					expect.objectContaining({
+						name: EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY,
+						data: expect.objectContaining({ onExposed: expect.any(Function) }),
+					}),
+				);
+			});
+			// The connect popover must not stack on top of the expose-all modal
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
+		});
+
+		it('should not offer to expose all workflows when not enrolled in the experiment', async () => {
+			exposeAllWorkflowsToMcpStore.isEnabled = false;
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByTestId('enable-mcp-button'));
+
+			expect(mcpStore.getMcpEligibleWorkflows).not.toHaveBeenCalled();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			await waitFor(() => {
+				expect(mcpStore.openConnectPopover).toHaveBeenCalled();
+			});
+		});
+
+		it('should not offer to expose all workflows when there are no eligible workflows', async () => {
+			exposeAllWorkflowsToMcpStore.isEnabled = true;
+			mcpStore.getMcpEligibleWorkflows.mockResolvedValue({ count: 0, data: [] });
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByTestId('enable-mcp-button'));
+
+			await waitFor(() => {
+				expect(mcpStore.getMcpEligibleWorkflows).toHaveBeenCalled();
+			});
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			await waitFor(() => {
+				expect(mcpStore.openConnectPopover).toHaveBeenCalled();
+			});
+		});
+
+		it('should not offer to expose all workflows when disabling MCP', async () => {
+			exposeAllWorkflowsToMcpStore.isEnabled = true;
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.setMcpAccessEnabled.mockResolvedValue(false);
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			await userEvent.click(getByTestId('disable-mcp-button'));
+
+			expect(mcpStore.getMcpEligibleWorkflows).not.toHaveBeenCalled();
+			expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
 		});
 	});
 
@@ -269,9 +370,8 @@ describe('SettingsMCPView', () => {
 	});
 
 	describe('Permissions', () => {
-		it('should disable toggle button for non-owner/non-admin users', async () => {
-			usersStore.isInstanceOwner = false;
-			usersStore.isAdmin = false;
+		it('should disable toggle button for users without mcp:manage scope', async () => {
+			hasPermissionMock.mockReturnValue(false);
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
@@ -280,9 +380,8 @@ describe('SettingsMCPView', () => {
 			expect(enableButton).toBeDisabled();
 		});
 
-		it('should enable toggle button for admin users', async () => {
-			usersStore.isInstanceOwner = false;
-			usersStore.isAdmin = true;
+		it('should enable toggle button for users with mcp:manage scope', async () => {
+			// hasPermissionMock defaults to true
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
@@ -291,20 +390,7 @@ describe('SettingsMCPView', () => {
 			expect(enableButton).not.toBeDisabled();
 		});
 
-		it('should enable toggle button for owner users', async () => {
-			usersStore.isInstanceOwner = true;
-			usersStore.isAdmin = false;
-
-			const { getByTestId } = createComponent({ pinia });
-			await nextTick();
-
-			const enableButton = getByTestId('enable-mcp-button');
-			expect(enableButton).not.toBeDisabled();
-		});
-
-		it('should disable toggle button for owner when MCP is managed by env', async () => {
-			usersStore.isInstanceOwner = true;
-			usersStore.isAdmin = false;
+		it('should disable toggle button when MCP is managed by env, even with mcp:manage scope', async () => {
 			settingsStore.moduleSettings = {
 				mcp: {
 					mcpAccessEnabled: false,
@@ -320,7 +406,6 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should not call setMcpAccessEnabled when toggle is clicked under env management', async () => {
-			usersStore.isInstanceOwner = true;
 			settingsStore.moduleSettings = {
 				mcp: {
 					mcpAccessEnabled: false,
@@ -528,6 +613,68 @@ describe('SettingsMCPView', () => {
 		});
 	});
 
+	describe('Bulk workflow actions', () => {
+		beforeEach(() => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
+				workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
+			);
+			mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
+				updatedCount: 2,
+				unchangedCount: 0,
+				skippedCount: 0,
+				failedCount: 0,
+				updatedIds: ['wf-1', 'wf-2'],
+				unchangedIds: [],
+			});
+		});
+
+		it('should bulk-enable the workflows selected in the Connect Workflows modal', async () => {
+			const { getByTestId } = createComponent({ pinia });
+
+			await waitFor(() => {
+				expect(getByTestId('mcp-connect-workflows-header-button')).toBeVisible();
+			});
+			await userEvent.click(getByTestId('mcp-connect-workflows-header-button'));
+
+			const modalCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0] as unknown as {
+				data: { onEnableMcpAccess: (workflowIds: string[]) => Promise<void> };
+			};
+			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+
+			await modalCall.data.onEnableMcpAccess(['wf-1', 'wf-2']);
+
+			expect(mcpStore.toggleWorkflowsMcpAccess).toHaveBeenCalledWith(
+				{ workflowIds: ['wf-1', 'wf-2'] },
+				true,
+			);
+			expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+		});
+
+		it('should remove MCP access for bulk-selected workflows and refresh the table', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+
+			await userEvent.click(getByTestId('workflows-table-bulk-remove'));
+
+			await waitFor(() => {
+				expect(mcpStore.toggleWorkflowsMcpAccess).toHaveBeenCalledWith(
+					{ workflowIds: ['wf-1', 'wf-2'] },
+					false,
+				);
+			});
+			await waitFor(() => {
+				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalled();
+			});
+		});
+	});
+
 	describe('Instance capacity notice', () => {
 		beforeEach(() => {
 			settingsStore.moduleSettings = {
@@ -540,8 +687,7 @@ describe('SettingsMCPView', () => {
 			mcpStore.getInstanceClientStats.mockResolvedValue(null);
 		});
 
-		it('should render the notice for an instance owner when atCapacity is true', async () => {
-			usersStore.isInstanceOwner = true;
+		it('should render the notice for users with mcp:manage scope when atCapacity is true', async () => {
 			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
 
 			const { findByTestId } = createComponent({ pinia });
@@ -551,21 +697,10 @@ describe('SettingsMCPView', () => {
 			expect(notice.textContent).toContain('2/2');
 		});
 
-		it('should render the notice for an admin when atCapacity is true', async () => {
-			usersStore.isAdmin = true;
-			mcpStore.instanceClientStats = { count: 5, limit: 5, atCapacity: true };
-
-			const { findByTestId } = createComponent({ pinia });
-
-			const notice = await findByTestId('mcp-instance-capacity-notice');
-			expect(notice).toBeVisible();
-		});
-
-		it('should NOT render the notice for a non-admin member', async () => {
-			usersStore.isInstanceOwner = false;
-			usersStore.isAdmin = false;
+		it('should NOT render the notice for users without mcp:manage scope', async () => {
+			hasPermissionMock.mockReturnValue(false);
 			// Even if a stats payload sneaks in (shouldn't happen — store guards 403),
-			// the view should still hide the notice for non-admins.
+			// the view should still hide the notice for users without the manage scope.
 			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -575,7 +710,6 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should NOT render the notice when atCapacity is false', async () => {
-			usersStore.isInstanceOwner = true;
 			mcpStore.instanceClientStats = { count: 1, limit: 5, atCapacity: false };
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -585,7 +719,6 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should NOT render the notice when stats have not been fetched', async () => {
-			usersStore.isInstanceOwner = true;
 			mcpStore.instanceClientStats = null;
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -594,23 +727,192 @@ describe('SettingsMCPView', () => {
 			expect(queryByTestId('mcp-instance-capacity-notice')).not.toBeInTheDocument();
 		});
 
-		it('should fetch instance stats on mount for an admin/owner', async () => {
-			usersStore.isInstanceOwner = true;
-
+		it('should fetch instance stats on mount for users with mcp:manage scope', async () => {
 			createComponent({ pinia });
 			await nextTick();
 
 			expect(mcpStore.getInstanceClientStats).toHaveBeenCalled();
 		});
 
-		it('should not fetch instance stats on mount for a regular member', async () => {
-			usersStore.isInstanceOwner = false;
-			usersStore.isAdmin = false;
+		it('should not fetch instance stats on mount for users without mcp:manage scope', async () => {
+			hasPermissionMock.mockReturnValue(false);
 
 			createComponent({ pinia });
 			await nextTick();
 
 			expect(mcpStore.getInstanceClientStats).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Redirect URI controls decoupled from env-lock', () => {
+		beforeEach(() => {
+			mcpStore.fetchAllowedRedirectUris.mockResolvedValue(['https://example.com/oauth']);
+		});
+
+		it('should disable toggle but keep redirect-URI controls enabled when admin, env-managed, and MCP is enabled', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: true,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = true;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).toBeDisabled();
+
+			await clickTab(container, 'tab-settings');
+
+			const oauthSettingsTab = getByTestId('mcp-oauth-settings-tab');
+			expect(oauthSettingsTab).toBeVisible();
+
+			const redirectUriInput = getByTestId('mcp-redirect-uris-input');
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+
+			expect(redirectUriInput).not.toBeDisabled();
+			expect(saveButton).not.toBeDisabled();
+		});
+
+		it('should enable toggle and enable redirect-URI controls when admin, not env-managed, and MCP is enabled', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).not.toBeDisabled();
+
+			await clickTab(container, 'tab-settings');
+
+			const redirectUriInput = getByTestId('mcp-redirect-uris-input');
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+
+			expect(redirectUriInput).not.toBeDisabled();
+			expect(saveButton).not.toBeDisabled();
+		});
+
+		it('should disable both toggle and redirect-URI controls for users without mcp:manage scope', async () => {
+			hasPermissionMock.mockReturnValue(false);
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).toBeDisabled();
+			expect(queryByTestId('mcp-oauth-settings-tab')).not.toBeInTheDocument();
+		});
+
+		it('should reactively disable toggle but keep redirect-URI controls enabled when env-lock is toggled to true', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			await clickTab(container, 'tab-settings');
+
+			expect(getByTestId('disable-mcp-button')).not.toBeDisabled();
+			expect(getByTestId('mcp-redirect-uris-input')).not.toBeDisabled();
+
+			// Reassign the whole object instead of mutating nested properties
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: true,
+				},
+			};
+			mcpStore.mcpManagedByEnv = true;
+			await nextTick();
+
+			expect(getByTestId('disable-mcp-button')).toBeDisabled();
+			expect(getByTestId('mcp-redirect-uris-input')).not.toBeDisabled();
+		});
+		it('should display an error toast if the API call to save redirect URIs fails', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+			mcpStore.setAllowedRedirectUris.mockRejectedValue(new Error('API Error'));
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			await clickTab(container, 'tab-settings');
+
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+			await userEvent.click(saveButton);
+
+			await nextTick();
+			expect(showErrorMock).toHaveBeenCalled();
+		});
+
+		it('should display a validation error message if the user enters an invalid URL', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: true,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = true;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { getByTestId, container } = createComponent({ pinia });
+			await nextTick();
+
+			await clickTab(container, 'tab-settings');
+
+			const redirectUriInput = getByTestId('mcp-redirect-uris-input');
+			const saveButton = getByTestId('mcp-redirect-uris-save-button');
+
+			await userEvent.clear(redirectUriInput);
+			await userEvent.type(redirectUriInput, 'invalid-url');
+			await userEvent.click(saveButton);
+
+			await nextTick();
+			const errorDiv = container.querySelector('[class*="error-message"]');
+			expect(errorDiv).toBeVisible();
+		});
+
+		it('should not show the OAuth section when MCP is disabled', async () => {
+			settingsStore.moduleSettings = {
+				mcp: {
+					mcpAccessEnabled: false,
+					mcpManagedByEnv: false,
+				},
+			};
+			mcpStore.mcpAccessEnabled = false;
+			mcpStore.mcpManagedByEnv = false;
+
+			const { queryByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			expect(queryByTestId('mcp-oauth-settings-tab')).not.toBeInTheDocument();
 		});
 	});
 });

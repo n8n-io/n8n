@@ -98,6 +98,7 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				destroyTimeoutMs: 10_000,
 				idleTimeoutMs: 30_000,
 				statementTimeoutMs: 5 * 60 * 1000,
 				maxConnectionLifetimeMs: 60 * 60 * 1000,
@@ -125,6 +126,7 @@ describe('GlobalConfig', () => {
 			minRecoveryBackoffMs: 1_000,
 			maxRecoveryBackoffMs: 30_000,
 			connectionAcquisitionTimeoutMs: 30_000,
+			startupConnectMaxRetries: 5,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -192,6 +194,7 @@ describe('GlobalConfig', () => {
 			include: [],
 			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
+			mergeSqlSandboxMemoryLimitMb: 64,
 		},
 		publicApi: {
 			disabled: false,
@@ -201,7 +204,6 @@ describe('GlobalConfig', () => {
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
-			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -227,6 +229,7 @@ describe('GlobalConfig', () => {
 			publicationOutboxFailedRetentionHours: 168,
 			publicationOutboxCleanupIntervalSeconds: 1200,
 			publicationOutboxCleanupBatchSize: 1000,
+			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
 		},
 		endpoints: {
@@ -247,6 +250,8 @@ describe('GlobalConfig', () => {
 				includeQueueMetrics: false,
 				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
+				includeSchedulerMetrics: false,
+				schedulerMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
@@ -303,7 +308,7 @@ describe('GlobalConfig', () => {
 			cacheMaxSize: 500,
 		},
 		mcpServer: {
-			sessionIdleTtl: 3600000,
+			sessionIdleTtl: 900000,
 			sessionSweepInterval: 300000,
 		},
 		chatHub: {
@@ -320,7 +325,6 @@ describe('GlobalConfig', () => {
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
-			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -351,6 +355,7 @@ describe('GlobalConfig', () => {
 			outputRedactionPlaceholder: '[REDACTED]',
 			runDebugEnabled: false,
 			thinkingEnabled: true,
+			durableLog: true,
 		},
 		queue: {
 			health: {
@@ -440,13 +445,23 @@ describe('GlobalConfig', () => {
 		scheduler: {
 			enabled: false,
 			materializationWindowSeconds: 60,
-			sweepIntervalSeconds: 10,
+			materializationIntervalSeconds: 10,
+			materializationTimeoutSeconds: 60,
 			executorIntervalSeconds: 5,
+			executorTimeoutSeconds: 60,
 			claimBatchSize: 100,
 			reaperIntervalSeconds: 30,
+			reaperBatchSize: 100,
+			reaperTimeoutSeconds: 60,
 			leaseDurationSeconds: 60,
-			retentionSeconds: 604800,
+			retentionSeconds: 86400,
+			failedRetentionSeconds: 604800,
+			retentionIntervalSeconds: 3600,
+			retentionTimeoutSeconds: 300,
+			jitterRatio: 0.1,
 			minIntervalSeconds: 0,
+			maxConcurrentPasses: 10,
+			triggerNodeMode: 'legacy',
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -635,6 +650,7 @@ describe('GlobalConfig', () => {
 		},
 		agents: {
 			checkpointTtlSeconds: 345600,
+			tracingEnabled: true,
 			modules: [],
 			sandboxEnabled: false,
 			sandboxProvider: '',
@@ -642,7 +658,6 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: '',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaVolumeId: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
 		},
@@ -656,6 +671,15 @@ describe('GlobalConfig', () => {
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
 		expect(readFileSyncMock).not.toHaveBeenCalled();
+	});
+
+	it('should parse N8N_AGENTS_TRACING_ENABLED from env variables', () => {
+		process.env = {
+			N8N_AGENTS_TRACING_ENABLED: 'false',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.agents.tracingEnabled).toBe(false);
 	});
 
 	it('should parse N8N_AGENTS_AI_SANDBOX_EPHEMERAL from env variables', () => {
@@ -716,6 +740,7 @@ describe('GlobalConfig', () => {
 				minRecoveryBackoffMs: 1_000,
 				maxRecoveryBackoffMs: 30_000,
 				connectionAcquisitionTimeoutMs: 30_000,
+				startupConnectMaxRetries: 5,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,

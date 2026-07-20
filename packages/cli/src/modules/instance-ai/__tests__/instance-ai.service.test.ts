@@ -3,6 +3,11 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { z } = await vi.importActual<typeof import('zod')>('zod');
 	return {
 		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
+		isQuotaExhaustedError: (error: unknown) =>
+			typeof error === 'object' &&
+			error !== null &&
+			'errorCode' in error &&
+			error.errorCode === 'quota_exhausted',
 		McpClientManager: class {
 			getRegularTools = vi.fn().mockResolvedValue({});
 			disconnect = vi.fn();
@@ -32,6 +37,7 @@ vi.mock('@n8n/instance-ai', async () => {
 			},
 			loadSkill: vi.fn(),
 		})),
+		disabledInstanceAiSkillIds: vi.fn(() => []),
 		workflowBuildOutcomeSchema: z.object({}),
 		handleBuildOutcome: vi.fn(),
 		handleVerificationVerdict: vi.fn(),
@@ -50,6 +56,20 @@ vi.mock('@n8n/instance-ai', async () => {
 			}),
 		),
 		createInstanceAgent: vi.fn(),
+		tokenUsageToBuilderUsageItems: (
+			model: string,
+			usage: {
+				completionTokens?: number;
+				inputTokenDetails?: { noCache?: number; cacheRead?: number; cacheWrite?: number };
+			},
+		) => {
+			const uncachedInput = usage.inputTokenDetails?.noCache ?? 0;
+			const cacheRead = usage.inputTokenDetails?.cacheRead ?? 0;
+			const cacheWrite = usage.inputTokenDetails?.cacheWrite ?? 0;
+			const output = usage.completionTokens ?? 0;
+			if (uncachedInput + cacheRead + cacheWrite + output === 0) return [];
+			return [{ type: 'llmTokens', model, uncachedInput, cacheRead, cacheWrite, output }];
+		},
 		createAllTools: vi.fn(),
 		createOrchestratorRunControl: vi.fn(function () {
 			return {
@@ -151,35 +171,50 @@ vi.mock('@n8n/instance-ai', async () => {
 		},
 		resumeAgentRun: vi.fn(),
 		createInstanceAiTraceContext: vi.fn(async () => ({ rootRun: { otelTraceId: undefined } })),
+		shutdownProductTelemetryProviders: vi.fn(async () => {}),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
 		},
 	};
 });
 
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn(),
+}));
+
+import type { MemoryTaskUsageReport, ScopedMemoryTaskEvent } from '@n8n/agents';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	buildAgentTreeFromEvents,
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
+	createOrchestratorRunControl,
 	createSandbox,
 	createWorkspace,
 	loadInstanceAiRuntimeSkillSource,
 	resumeAgentRun,
 	setupSandboxWorkspace,
+	shutdownProductTelemetryProviders,
+	type BuilderUsageItem,
 	type ManagedBackgroundTask,
 	type InstanceAiTraceContext,
 	type SpawnBackgroundTaskOptions,
 	type SpawnBackgroundTaskResult,
 	type SpawnManagedBackgroundTaskOptions,
+	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
+
+import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
 import {
@@ -499,6 +534,37 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	return service;
 }
 
+type MemoryTaskObserverServiceInternals = {
+	memoryTaskObserverFor: (
+		threadId: string,
+		tracing: InstanceAiTraceContext | undefined,
+	) => (event: ScopedMemoryTaskEvent) => void;
+	memoryTaskRegistry: { handleEvent: Mock; getTasks: Mock };
+	logger: { info: Mock };
+};
+
+function createMemoryTaskObserverService(): MemoryTaskObserverServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as MemoryTaskObserverServiceInternals;
+	service.memoryTaskRegistry = { handleEvent: vi.fn(), getTasks: vi.fn(() => []) };
+	service.logger = { info: vi.fn() };
+	return service;
+}
+
+function queuedMemoryTaskEvent(): ScopedMemoryTaskEvent {
+	return {
+		type: 'queued',
+		task: {
+			id: 'task-1',
+			taskKind: 'observer',
+			observationScopeId: 'thread-1',
+			status: 'queued',
+			queuedAt: new Date(),
+		},
+	};
+}
+
 const fakeUser = { id: 'user-1' } as User;
 
 function createInstanceAiErrorReporterMock() {
@@ -548,6 +614,7 @@ type ShutdownServiceInternals = {
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
 	eventBus: { clear: MockedFunction<() => void> };
+	eventLog: { flushAll: MockedFunction<() => Promise<void>> };
 	_mcpClientManager?: { disconnect: MockedFunction<() => Promise<void>> };
 	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: Mock; warn: Mock };
@@ -636,6 +703,8 @@ type SnapshotServiceInternals = {
 		getEventsForRun: Mock;
 		getEventsForRuns: Mock;
 	};
+	eventLog: { flush: Mock; getEventsForRuns: Mock };
+	instanceAiConfig: { durableLog: boolean };
 	tracing: { getTraceContext: Mock };
 	logger: { warn: Mock };
 };
@@ -692,6 +761,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
+		durableLog: false,
 		eventBus: service.eventBus,
 		dbSnapshotStorage: {},
 		agentMemory: {},
@@ -729,6 +799,8 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRun: vi.fn(() => []),
 		getEventsForRuns: vi.fn(() => []),
 	};
+	service.eventLog = { flush: vi.fn(async () => {}), getEventsForRuns: vi.fn(async () => []) };
+	service.instanceAiConfig = { durableLog: false };
 	service.tracing = { getTraceContext: vi.fn(() => undefined) };
 	service.logger = { warn: vi.fn() };
 	return service;
@@ -780,7 +852,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			) => Promise<{
 				orchestrationContext: {
 					workspace?: unknown;
-					runtimeSkills?: { registry: { skills: Array<{ id: string }> } };
+					runtimeSkills?: {
+						registry: { skillsHash: string; skills: Array<{ id: string }> };
+						loadSkill: (skillId: string) => Promise<unknown>;
+					};
+					claimSubAgentUsage?: (
+						dedupeId: string,
+						usage: BuilderUsageItem[],
+						status: TraceStatus,
+					) => Promise<void>;
 				};
 			}>;
 			settingsService: {
@@ -794,6 +874,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			adapterService: {
 				createContext: Mock;
 				getNodeDefinitionDirs: Mock;
+				isConfigEvalsEnabled: Mock;
 			};
 			sourceControlPreferencesService: { getPreferences: Mock };
 			modelService: { resolveAgentModelConfig: Mock; resolveProxyModel: Mock };
@@ -802,10 +883,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
-			instanceAiConfig: { subAgentMaxSteps: number };
+			instanceAiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
-			logger: unknown;
+			logger: { warn: Mock };
 			telemetry: { track: Mock };
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
@@ -822,6 +903,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
 			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
+			creditService: { claimRunUsage: Mock };
 		};
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -839,6 +921,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.adapterService = {
 			createContext: vi.fn(() => ({})),
 			getNodeDefinitionDirs: vi.fn(() => []),
+			isConfigEvalsEnabled: vi.fn().mockResolvedValue(true),
 		};
 		service.sourceControlPreferencesService = {
 			getPreferences: vi.fn(() => ({ branchReadOnly: false })),
@@ -852,10 +935,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
-		service.instanceAiConfig = { subAgentMaxSteps: 10 };
+		service.instanceAiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
-		service.logger = {};
+		service.logger = { warn: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
 		service.webhookBaseUrl = 'http://localhost/webhook';
@@ -889,6 +972,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		service.creditService = { claimRunUsage: vi.fn() };
 		(createAllTools as Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -916,6 +1000,54 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
+
+		// The credit-metering hook is wired to the instance-AI thread/user in
+		// scope here, not whatever thread the sub-agent stream itself is keyed to.
+		const usageItem: BuilderUsageItem = {
+			type: 'llmTokens',
+			model: 'anthropic/claude-sonnet',
+			uncachedInput: 80,
+			cacheRead: 20,
+			cacheWrite: 0,
+			output: 20,
+		};
+		await environment.orchestrationContext.claimSubAgentUsage?.(
+			'dedupe-1',
+			[usageItem],
+			'completed',
+		);
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-1',
+			'dedupe-1',
+			[usageItem],
+			'completed',
+		);
+
+		// An unexpected claim rejection must not reject the awaited hook, and is
+		// reported centrally, then logged, instead of breaking the builder flow.
+		const claimError = new Error('claim failed');
+		service.creditService.claimRunUsage.mockRejectedValueOnce(claimError);
+		await expect(
+			environment.orchestrationContext.claimSubAgentUsage?.('dedupe-2', [usageItem], 'completed'),
+		).resolves.toBeUndefined();
+		expect(service.instanceAiErrorReporter.report).toHaveBeenCalledWith(claimError, {
+			component: 'instance-ai-agent-builder-usage',
+			threadId: 'thread-1',
+			runId: 'run-1',
+			userId: fakeUser.id,
+			projectId: 'project-1',
+		});
+		expect(service.logger.warn).toHaveBeenCalledWith('Failed to claim agent-builder usage', {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			dedupeId: 'dedupe-2',
+			error: 'claim failed',
+		});
+		expect(service.instanceAiErrorReporter.report.mock.invocationCallOrder[0]).toBeLessThan(
+			service.logger.warn.mock.invocationCallOrder[0],
+		);
+
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]
 			.workspace as { ensureWorkspace: () => Promise<unknown> };
@@ -969,6 +1101,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
+		// Without a sandbox the runtime skill catalog is used as-is (no
+		// workspace-materialized wrapper).
 		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
@@ -1010,6 +1144,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
 		service.eventBus = { clear: vi.fn() };
+		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
@@ -1021,6 +1156,52 @@ describe('InstanceAiService — shutdown', () => {
 		// are left intact (via the delegated sandboxService) so a restarted
 		// process can reconnect to them.
 		expect(service.sandboxService.stopSandboxExpiryTimers).toHaveBeenCalledTimes(1);
+
+		// The durable-log flush must precede eventBus.clear(): clear() invalidates
+		// drain lifecycles, so the reverse order would drop unflushed segment tails.
+		expect(service.eventLog.flushAll).toHaveBeenCalledTimes(1);
+		expect(service.eventLog.flushAll.mock.invocationCallOrder[0]).toBeLessThan(
+			service.eventBus.clear.mock.invocationCallOrder[0],
+		);
+
+		// Every trace's LangSmith provider is drained on final process shutdown,
+		// after run/background cleanup has already released each trace's own
+		// bookkeeping.
+		expect(shutdownProductTelemetryProviders).toHaveBeenCalledTimes(1);
+		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(shutdownProductTelemetryProviders).mock.invocationCallOrder[0],
+		);
+	});
+});
+
+describe('InstanceAiService — memory task observer', () => {
+	it('forwards memory task events to the trace context lease hook before existing registry/log handling', () => {
+		const service = createMemoryTaskObserverService();
+		const onMemoryTaskEvent = vi.fn();
+		const tracing = { onMemoryTaskEvent } as unknown as InstanceAiTraceContext;
+		const observer = service.memoryTaskObserverFor('thread-1', tracing);
+		const event = queuedMemoryTaskEvent();
+
+		observer(event);
+
+		expect(onMemoryTaskEvent).toHaveBeenCalledWith(event);
+		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
+		expect(service.logger.info).toHaveBeenCalledWith(
+			'Observational memory task queued',
+			expect.objectContaining({ threadId: 'thread-1', taskId: 'task-1' }),
+		);
+		expect(onMemoryTaskEvent.mock.invocationCallOrder[0]).toBeLessThan(
+			service.memoryTaskRegistry.handleEvent.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('still runs registry/log handling when the trace context has no lease hook', () => {
+		const service = createMemoryTaskObserverService();
+		const observer = service.memoryTaskObserverFor('thread-1', undefined);
+		const event = queuedMemoryTaskEvent();
+
+		expect(() => observer(event)).not.toThrow();
+		expect(service.memoryTaskRegistry.handleEvent).toHaveBeenCalledWith('thread-1', event);
 	});
 });
 
@@ -1156,6 +1337,30 @@ describe('InstanceAiService — background task auto-follow-up', () => {
 			'thread-a',
 			'run-1',
 			'How do I set this up?',
+			expect.any(AbortController),
+			undefined,
+			context,
+			'group-1',
+			undefined,
+		);
+	});
+
+	it('passes agent-preview handoff context into executeRun', () => {
+		const service = createStartRunService();
+		const context = {
+			source: 'agent-preview' as const,
+			agentId: 'agent-1',
+			threadId: 'preview-thread-1',
+			executionId: 'exec-1',
+		};
+
+		service.startRun(fakeUser, 'thread-a', 'Please improve this agent', undefined, context);
+
+		expect(service.executeRun).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			'Please improve this agent',
 			expect.any(AbortController),
 			undefined,
 			context,
@@ -1554,6 +1759,7 @@ function createPlannedTaskSchedulerService(): {
 		revertCheckpointToPlanned: Mock;
 		revertBuildWorkflowToPlanned: Mock;
 		markRunning: Mock;
+		markFailed: Mock;
 	};
 	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
 } {
@@ -1568,6 +1774,7 @@ function createPlannedTaskSchedulerService(): {
 		revertCheckpointToPlanned: vi.fn(async () => {}),
 		revertBuildWorkflowToPlanned: vi.fn(async () => {}),
 		markRunning: vi.fn(async () => {}),
+		markFailed: vi.fn(async () => graph),
 	};
 
 	service.revalidateActiveUser = vi.fn();
@@ -1586,8 +1793,29 @@ function createPlannedTaskSchedulerService(): {
 		getThreadResearchMode: vi.fn(() => false),
 		hasLiveRun: vi.fn(() => false),
 	};
-	service.createPlannedTaskDispatchContext = vi.fn(async () => ({}));
-	service.dispatchPlannedTask = vi.fn(async () => {});
+	service.createPlannedTaskDispatchContext = vi.fn(async () => ({
+		plannedTaskService,
+		threadId: 'thread-a',
+	}));
+	service.dispatchPlannedTask = vi.fn(async (task, context, _graph?) => {
+		if (task.kind === 'build-workflow' || task.kind === 'checkpoint') {
+			service.logger.warn('dispatchPlannedTask called for a runtime planned-task kind', {
+				threadId: context.threadId,
+				taskId: task.id,
+				kind: task.kind,
+			});
+			return;
+		}
+
+		await context.plannedTaskService?.markFailed(context.threadId, task.id, {
+			error: `Planned task kind "${task.kind}" is no longer supported`,
+		});
+
+		const nextGraph = await context.plannedTaskService?.getGraph(context.threadId);
+		if (nextGraph) {
+			await service.syncPlannedTasksToUi(context.threadId, nextGraph);
+		}
+	});
 	service.logger = { warn: vi.fn() };
 
 	return { service, plannedTaskService, graph };
@@ -1597,7 +1825,10 @@ type SuspendedRunResumeServiceInternals = {
 	resumeSuspendedRun: (
 		requestingUserId: string,
 		requestId: string,
-		data: { approved: boolean },
+		data: {
+			approved: boolean;
+			autoSetup?: { credentialType: string };
+		},
 	) => Promise<{ ok: true; runId: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
@@ -1611,6 +1842,8 @@ type SuspendedRunResumeServiceInternals = {
 	processResumedStream: Mock;
 	suspendedThreads: { dropPendingConfirmation: Mock };
 	trackInFlightExecution: Mock;
+	rebuildAgentForAutoSetupResume: Mock;
+	threadPushRef: { get: Mock };
 };
 
 function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
@@ -1636,6 +1869,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			modelId: undefined,
 			messageGroupId: 'group-1',
 			checkpoint: undefined,
+			runHandoff: undefined,
 		})),
 		activateSuspendedRun: vi.fn(),
 	};
@@ -1643,6 +1877,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	service.dbSnapshotStorage = {};
 	service.tracing = { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) };
 	service.processResumedStream = vi.fn();
+	service.rebuildAgentForAutoSetupResume = vi.fn();
+	service.threadPushRef = { get: vi.fn(() => undefined) };
 	return service;
 }
 
@@ -1858,25 +2094,24 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		);
 	});
 
-	it('continues scheduling in the same pass after dispatching planned tasks', async () => {
+	it('marks unsupported planned dispatch tasks as failed and continues scheduling', async () => {
 		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
-		const delegateTask = {
-			id: 'delegate-1',
-			title: 'Research',
+		const legacyTask = {
+			id: 'legacy-1',
+			title: 'Legacy task',
 			kind: 'delegate',
 			spec: 'Do the research',
 			deps: [],
-			tools: ['research'],
 			status: 'planned',
 		};
-		graph.tasks = [delegateTask];
+		graph.tasks = [legacyTask];
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
 		plannedTaskService.tick
 			.mockResolvedValueOnce({
 				type: 'dispatch',
 				graph,
-				tasks: [delegateTask],
+				tasks: [legacyTask],
 			})
 			.mockResolvedValueOnce({ type: 'none', graph });
 
@@ -1887,10 +2122,12 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			'thread-a',
 			graph,
 		);
-		expect(service.dispatchPlannedTask).toHaveBeenCalledWith(
-			delegateTask,
-			expect.anything(),
-			graph,
+		expect(plannedTaskService.markFailed).toHaveBeenCalledWith(
+			'thread-a',
+			'legacy-1',
+			expect.objectContaining({
+				error: expect.stringContaining('no longer supported'),
+			}),
 		);
 		expect(plannedTaskService.tick).toHaveBeenCalledTimes(2);
 		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
@@ -2144,6 +2381,165 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 			}),
 		);
 	});
+
+	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.rebuildAgentForAutoSetupResume.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			autoSetup: { credentialType: 'datadogApi' },
+		});
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForAutoSetupResume).toHaveBeenCalledWith(
+			freshUser,
+			'thread-a',
+			'run-1',
+			expect.any(AbortController),
+			undefined,
+			undefined,
+			'group-1',
+		);
+		expect(service.processResumedStream).toHaveBeenCalledWith(
+			rebuiltAgent,
+			expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
+			expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
+		);
+		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
+		expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
+	});
+
+	it('fails the resume and cancels the run when the rebuild fails', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+		service.rebuildAgentForAutoSetupResume.mockResolvedValue(undefined);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
+			approved: true,
+			autoSetup: { credentialType: 'datadogApi' },
+		});
+
+		expect(result).toBeNull();
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'agent_rebuild_failed');
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+	});
+
+	it('does not rebuild the agent for a plain resume without autoSetup', async () => {
+		const service = createSuspendedRunResumeService();
+		const freshUser = { id: 'user-1', disabled: false } as User;
+		service.revalidateActiveUser.mockResolvedValue(freshUser);
+
+		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+		expect(service.rebuildAgentForAutoSetupResume).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
+	type RebuildAgentServiceInternals = {
+		rebuildAgentForAutoSetupResume: (
+			user: User,
+			threadId: string,
+			runId: string,
+			abortController: AbortController,
+			tracing: InstanceAiTraceContext | undefined,
+			runHandoff: { handoffReason?: string } | undefined,
+			messageGroupId?: string,
+		) => Promise<{ agent: unknown; modelId?: unknown } | undefined>;
+		buildFreshInstanceAgent: Mock;
+		threadPushRef: { get: Mock };
+		logger: { warn: Mock };
+	};
+
+	function createRebuildAgentService(): RebuildAgentServiceInternals {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as RebuildAgentServiceInternals;
+		service.buildFreshInstanceAgent = vi.fn();
+		service.threadPushRef = { get: vi.fn(() => undefined) };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('reconnects the rebuilt context to the existing runHandoff state', async () => {
+		const service = createRebuildAgentService();
+		const orchestrationContext = {};
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.buildFreshInstanceAgent.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
+		});
+		const runHandoff = { handoffReason: undefined };
+
+		const result = await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			runHandoff,
+			'group-1',
+		);
+
+		expect(result).toEqual({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, runHandoff);
+	});
+
+	it('defaults to an empty handoff state when the run never had one', async () => {
+		const service = createRebuildAgentService();
+		const orchestrationContext = {};
+		service.buildFreshInstanceAgent.mockResolvedValue({
+			agent: {},
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
+		});
+
+		await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+		);
+
+		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, {});
+	});
+
+	it('returns undefined and logs a warning when the rebuild throws', async () => {
+		const service = createRebuildAgentService();
+		service.buildFreshInstanceAgent.mockRejectedValue(new Error('boom'));
+
+		const result = await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+		);
+
+		expect(result).toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to rebuild agent for credential auto-setup resume',
+			expect.objectContaining({ threadId: 'thread-a', runId: 'run-1' }),
+		);
+	});
 });
 
 describe('InstanceAiService — agent tree snapshots', () => {
@@ -2245,6 +2641,40 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			}),
 		);
 	});
+
+	it('reads snapshot input from the durable log instead of the bus when the flag is on', async () => {
+		const service = createSnapshotService();
+		service.instanceAiConfig.durableLog = true;
+		const logEvent: InstanceAiEvent = {
+			type: 'text-delta',
+			runId: 'run-1',
+			agentId: 'agent-001',
+			payload: { text: 'from the log' },
+		};
+		service.eventLog.getEventsForRuns.mockResolvedValue([logEvent]);
+		const snapshotStorage = {
+			getLatest: vi.fn(async () => undefined),
+			save: vi.fn(async () => {}),
+			updateLast: vi.fn(async () => {}),
+		};
+
+		await service.saveAgentTreeSnapshot('thread-a', 'run-1', snapshotStorage);
+
+		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
+		expect(service.eventBus.getEventsForRun).not.toHaveBeenCalled();
+		// Read-own-writes barrier: the drain settles before the snapshot input is
+		// read, so a just-published terminal fact can't be missing from the tree.
+		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
+		expect(service.eventLog.flush.mock.invocationCallOrder[0]).toBeLessThan(
+			service.eventLog.getEventsForRuns.mock.invocationCallOrder[0],
+		);
+		expect(snapshotStorage.save).toHaveBeenCalledWith(
+			'thread-a',
+			expect.objectContaining({ textContent: 'from the log' }),
+			'run-1',
+			expect.any(Object),
+		);
+	});
 });
 
 describe('InstanceAiService — terminal response guard wiring', () => {
@@ -2274,6 +2704,55 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
 		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		// Thrown run-loop errors must reach telemetry too, not just the SSE stream
+		expect(service.telemetry.track).toHaveBeenCalledWith('instance_ai_run_finished', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			status: 'error',
+			user_id: 'user-1',
+		});
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			error_message: 'provider failed',
+			error_source: 'exception',
+			user_id: 'user-1',
+		});
+	});
+
+	it('tracks "Builder generation errored" when a resumed stream reports an error', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'errored',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			error: new Error('model overloaded'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith('Builder generation errored', {
+			thread_id: 'thread-a',
+			run_id: 'run-1',
+			error_message: 'model overloaded',
+			error_source: 'stream',
+			user_id: 'user-1',
+		});
 	});
 
 	it('claims credits when a resumed run completes', async () => {
@@ -2322,7 +2801,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const usageItem = {
 			type: 'llmTokens' as const,
@@ -2376,7 +2855,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> continue', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,
@@ -2462,7 +2941,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 
 	it('bills each segment once under disjoint keys across suspend -> resume -> abort', async () => {
 		const service = createTerminalGuardOrderService();
-		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockResolvedValue(undefined);
 		const abortController = new AbortController();
 		const segmentOneUsage = {
 			type: 'llmTokens' as const,
@@ -2751,6 +3230,42 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 	});
 });
 
+describe('InstanceAiService — agent preview handoff scopes', () => {
+	type AgentPreviewPermissionService = {
+		assertAgentPreviewHandoffScopes: (user: User, projectId: string) => Promise<void>;
+	};
+
+	function createAgentPreviewPermissionService(): AgentPreviewPermissionService {
+		return Object.create(InstanceAiService.prototype) as AgentPreviewPermissionService;
+	}
+
+	beforeEach(() => {
+		vi.mocked(userHasScopes).mockReset();
+	});
+
+	it('requires both agent read and update scopes for preview handoffs', async () => {
+		const service = createAgentPreviewPermissionService();
+		vi.mocked(userHasScopes).mockResolvedValue(true);
+
+		await expect(
+			service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1'),
+		).resolves.toBeUndefined();
+
+		expect(userHasScopes).toHaveBeenCalledWith(fakeUser, ['agent:read', 'agent:update'], false, {
+			projectId: 'project-1',
+		});
+	});
+
+	it('rejects preview handoffs when either required agent scope is missing', async () => {
+		const service = createAgentPreviewPermissionService();
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+
+		await expect(service.assertAgentPreviewHandoffScopes(fakeUser, 'project-1')).rejects.toThrow(
+			'You do not have permission to load or edit agent previews in this project.',
+		);
+	});
+});
+
 describe('InstanceAiService — OAuth callback URL', () => {
 	// Regression: the OAuth callback URL exposed to browser-assisted credential
 	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
@@ -2767,6 +3282,15 @@ describe('InstanceAiService — OAuth callback URL', () => {
 		const source = InstanceAiService.toString();
 
 		expect(source).not.toMatch(/globalConfig\.editorBaseUrl\s*\|\|/);
+	});
+});
+
+describe('InstanceAiService — editor handoff context resources', () => {
+	it('builds the context block from combined workflow and agent attachments', () => {
+		const source = InstanceAiService.toString();
+
+		expect(source).toContain('buildContextResourcesBlock(contextAttachments)');
+		expect(source).not.toContain('buildContextResourcesBlock(workflowAttachments)');
 	});
 });
 
@@ -3189,5 +3713,355 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 				setupRequests: [],
 			}),
 		).toBeUndefined();
+	});
+});
+
+type TaskControlInternals = {
+	instanceSettings: { isMultiMain: boolean };
+	publisher: { publishCommand: Mock };
+	backgroundTasks: { getTaskSnapshots: Mock };
+	logger: { error: Mock };
+	sendCorrectionToTask: Mock;
+	cancelBackgroundTask: Mock;
+	cancelRun: Mock;
+	clearThreadState: Mock;
+	routeCorrectionToTask: InstanceAiService['routeCorrectionToTask'];
+	routeCancelBackgroundTask: InstanceAiService['routeCancelBackgroundTask'];
+	routeCancelRun: InstanceAiService['routeCancelRun'];
+	routeClearThreadState: InstanceAiService['routeClearThreadState'];
+	handleRelayTaskControl: InstanceAiService['handleRelayTaskControl'];
+};
+
+function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
+	const service = Object.create(InstanceAiService.prototype) as unknown as TaskControlInternals;
+	service.instanceSettings = { isMultiMain };
+	service.publisher = { publishCommand: vi.fn().mockResolvedValue(undefined) };
+	service.backgroundTasks = { getTaskSnapshots: vi.fn(() => []) };
+	service.logger = { error: vi.fn() };
+	service.sendCorrectionToTask = vi.fn(() => 'queued');
+	service.cancelBackgroundTask = vi.fn();
+	service.cancelRun = vi.fn();
+	service.clearThreadState = vi.fn(async () => {});
+	return service;
+}
+
+describe('InstanceAiService — cross-main task-control routing', () => {
+	describe('routeCorrectionToTask', () => {
+		it('broadcasts when the task is not local and multi-main', async () => {
+			const service = buildTaskControlService(true);
+			service.sendCorrectionToTask.mockReturnValue('task-not-found');
+
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.sendCorrectionToTask).toHaveBeenCalledWith('thread-a', 'task-1', 'try again');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: {
+					threadId: 'thread-a',
+					taskId: 'task-1',
+					action: 'correct',
+					correction: 'try again',
+				},
+			});
+		});
+
+		it('does not broadcast when the correction was applied locally', async () => {
+			const service = buildTaskControlService(true);
+			service.sendCorrectionToTask.mockReturnValue('queued');
+
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('does not broadcast in single-main even on a local miss', async () => {
+			const service = buildTaskControlService(false);
+			service.sendCorrectionToTask.mockReturnValue('task-not-found');
+
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('routeCancelBackgroundTask', () => {
+		it('broadcasts when the task is not local and multi-main', async () => {
+			const service = buildTaskControlService(true);
+			service.backgroundTasks.getTaskSnapshots.mockReturnValue([]);
+
+			await service.routeCancelBackgroundTask('thread-a', 'task-1');
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', taskId: 'task-1', action: 'cancel-task' },
+			});
+		});
+
+		it('does not broadcast when the task is local', async () => {
+			const service = buildTaskControlService(true);
+			service.backgroundTasks.getTaskSnapshots.mockReturnValue([{ taskId: 'task-1' }]);
+
+			await service.routeCancelBackgroundTask('thread-a', 'task-1');
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('routeCancelRun / routeClearThreadState', () => {
+		it('routeCancelRun cancels locally and always fans out in multi-main', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.routeCancelRun('thread-a');
+
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', action: 'cancel-thread' },
+			});
+		});
+
+		it('routeCancelRun does not fan out in single-main', async () => {
+			const service = buildTaskControlService(false);
+
+			await service.routeCancelRun('thread-a');
+
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('routeClearThreadState clears locally and fans out in multi-main', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.routeClearThreadState('thread-a');
+
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'relay-instance-ai-task-control',
+				payload: { threadId: 'thread-a', action: 'clear-thread' },
+			});
+		});
+	});
+
+	describe('handleRelayTaskControl', () => {
+		it('applies a relayed correction via the local method and never re-broadcasts', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'correct',
+				correction: 'fix it',
+			});
+
+			expect(service.sendCorrectionToTask).toHaveBeenCalledWith('thread-a', 'task-1', 'fix it');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('ignores a correction relay missing its correction text', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'correct',
+			});
+
+			expect(service.sendCorrectionToTask).not.toHaveBeenCalled();
+		});
+
+		it('routes cancel-task / cancel-thread / clear-thread to the local methods', async () => {
+			const service = buildTaskControlService(true);
+
+			await service.handleRelayTaskControl({
+				threadId: 'thread-a',
+				taskId: 'task-1',
+				action: 'cancel-task',
+			});
+			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'cancel-thread' });
+			await service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' });
+
+			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
+			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
+			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('swallows and logs errors from a local action (no unhandled rejection on the sibling main)', async () => {
+			const service = buildTaskControlService(true);
+			service.clearThreadState.mockRejectedValue(new Error('db exploded'));
+
+			await expect(
+				service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' }),
+			).resolves.toBeUndefined();
+			expect(service.logger.error).toHaveBeenCalledWith(
+				'Failed to apply relayed Instance AI task-control',
+				expect.objectContaining({ threadId: 'thread-a', action: 'clear-thread' }),
+			);
+		});
+	});
+});
+
+describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
+	type Internals = {
+		threadPushRef: Map<string, string>;
+		planRequestsByThread: Map<string, number>;
+		runState: { clearThread: Mock };
+		backgroundTasks: { cancelThread: Mock };
+		schedulerLocks: Map<string, unknown>;
+		liveness: { clearThreadState: Mock };
+		domainAccessTrackersByThread: Map<string, unknown>;
+		evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+		eventBus: { clearThread: Mock };
+		tracing: {
+			finalizeRunTracing: Mock;
+			finalizeBackgroundTaskTracing: Mock;
+			finalizeRemainingMessageTraceRoots: Mock;
+			deleteTraceContextsForThread: Mock;
+			getTrackedThreadIds: Mock;
+			clear: Mock;
+		};
+		memoryTaskRegistry: { clearThread: Mock };
+		sandboxService: { destroySandbox: Mock };
+		temporaryWorkflowService: { reapForThreadCleanup: Mock };
+		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+		logger: { warn: Mock };
+		clearThreadState: (threadId: string) => Promise<void>;
+	};
+
+	function buildService(): Internals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
+
+		service.threadPushRef = new Map();
+		service.planRequestsByThread = new Map();
+		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
+		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
+		service.schedulerLocks = new Map();
+		service.liveness = { clearThreadState: vi.fn() };
+		service.domainAccessTrackersByThread = new Map();
+		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.eventBus = { clearThread: vi.fn() };
+		service.tracing = {
+			finalizeRunTracing: vi.fn(async () => {}),
+			finalizeBackgroundTaskTracing: vi.fn(async () => {}),
+			finalizeRemainingMessageTraceRoots: vi.fn(async () => {}),
+			deleteTraceContextsForThread: vi.fn(),
+			getTrackedThreadIds: vi.fn(() => []),
+			clear: vi.fn(),
+		};
+		service.memoryTaskRegistry = { clearThread: vi.fn() };
+		service.sandboxService = { destroySandbox: vi.fn(async () => {}) };
+		service.temporaryWorkflowService = { reapForThreadCleanup: vi.fn(async () => {}) };
+		service.suspendedThreads = { dropPendingConfirmationsForThread: vi.fn(async () => {}) };
+		service.logger = { warn: vi.fn() };
+
+		return service;
+	}
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('clearThreadState deletes agent-builder sessions when the agents module is active', async () => {
+		const service = buildService();
+		const deleteBuilderSessions = vi.fn().mockResolvedValue(undefined);
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return { isActive: () => true };
+			if (token === InstanceAiBuilderDelegateAdapterService) {
+				return { deleteBuilderSessions };
+			}
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+
+		await service.clearThreadState('thread-a');
+
+		expect(deleteBuilderSessions).toHaveBeenCalledWith('thread-a');
+	});
+
+	it('clearThreadState swallows agent-builder cleanup failures', async () => {
+		const service = buildService();
+		const deleteBuilderSessions = vi.fn().mockRejectedValue(new Error('cleanup failed'));
+		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
+			if (token === ModuleRegistry) return { isActive: () => true };
+			if (token === InstanceAiBuilderDelegateAdapterService) {
+				return { deleteBuilderSessions };
+			}
+			throw new Error(`Unexpected Container.get call in test: ${String(token)}`);
+		});
+
+		await expect(service.clearThreadState('thread-a')).resolves.toBeUndefined();
+
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to clean up agent-builder sessions for thread',
+			expect.objectContaining({ threadId: 'thread-a' }),
+		);
+	});
+});
+
+describe('createAgentMemoryOptions', () => {
+	type MemoryOptionsInternals = {
+		createAgentMemoryOptions: (
+			user: User,
+			threadId: string,
+			runId: string,
+		) => { observationalMemory: { onTaskUsage: (report: MemoryTaskUsageReport) => Promise<void> } };
+		instanceAiConfig: Pick<
+			InstanceAiConfig,
+			'observerMessageTokens' | 'reflectorObservationTokens'
+		>;
+		creditService: { claimRunUsage: Mock };
+		logger: { warn: Mock };
+	};
+
+	function buildService(): MemoryOptionsInternals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
+		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
+		service.creditService = { claimRunUsage: vi.fn(async () => {}) };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('claims converted usage under the orchestrator dedupe key, and skips claiming when usage is zero', async () => {
+		const service = buildService();
+		const user = { id: 'user-1' } as User;
+		const { onTaskUsage } = service.createAgentMemoryOptions(
+			user,
+			'thread-1',
+			'run-1',
+		).observationalMemory;
+
+		await onTaskUsage({
+			task: 'observer',
+			model: 'anthropic/claude-sonnet-4-5',
+			usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+			reportId: 'report-1',
+		});
+
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			user,
+			'thread-1',
+			'run-1:memory:observer:report-1',
+			[
+				{
+					type: 'llmTokens',
+					model: 'anthropic/claude-sonnet-4-5',
+					uncachedInput: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					output: 20,
+				},
+			],
+			'completed',
+		);
+
+		await onTaskUsage({
+			task: 'reflector',
+			model: 'anthropic/claude-sonnet-4-5',
+			usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+			reportId: 'report-2',
+		});
+
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 });

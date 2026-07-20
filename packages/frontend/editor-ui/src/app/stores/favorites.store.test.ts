@@ -195,6 +195,52 @@ describe('favorites.store', () => {
 			expect(store.favorites).toHaveLength(1);
 			expect(track).not.toHaveBeenCalled();
 		});
+
+		it('should add an agent favorite and re-fetch', async () => {
+			const newFavorite = makeFavorite({
+				id: 3,
+				resourceId: 'agent-1',
+				resourceType: 'agent',
+				resourceName: 'My Agent',
+			});
+			vi.mocked(favoritesApi.getFavorites)
+				.mockResolvedValueOnce([]) // initial fetch
+				.mockResolvedValueOnce([newFavorite]); // re-fetch after add
+			vi.mocked(favoritesApi.addFavorite).mockResolvedValue(newFavorite);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+			await store.toggleFavorite('agent-1', 'agent');
+
+			expect(favoritesApi.addFavorite).toHaveBeenCalledWith(expect.anything(), 'agent-1', 'agent');
+			expect(store.favorites).toEqual([newFavorite]);
+			expect(track).toHaveBeenCalledWith('User toggled favorite', {
+				action: 'added',
+				resource_type: 'agent',
+			});
+		});
+
+		it('should remove an agent favorite', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
+				makeFavorite({ id: 3, resourceId: 'agent-1', resourceType: 'agent' }),
+			]);
+			vi.mocked(favoritesApi.removeFavorite).mockResolvedValue(true);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+			await store.toggleFavorite('agent-1', 'agent');
+
+			expect(favoritesApi.removeFavorite).toHaveBeenCalledWith(
+				expect.anything(),
+				'agent-1',
+				'agent',
+			);
+			expect(store.favorites).toHaveLength(0);
+			expect(track).toHaveBeenCalledWith('User toggled favorite', {
+				action: 'removed',
+				resource_type: 'agent',
+			});
+		});
 	});
 
 	describe('removeFavoriteLocally()', () => {
@@ -293,6 +339,18 @@ describe('favorites.store', () => {
 			expect(store.folderFavoriteIds).toEqual(['folder-1']);
 		});
 
+		it('should return agent favorite IDs', async () => {
+			vi.mocked(favoritesApi.getFavorites).mockResolvedValue([
+				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow' }),
+				makeFavorite({ id: 2, resourceId: 'agent-1', resourceType: 'agent' }),
+			]);
+
+			const store = useFavoritesStore();
+			await store.fetchFavorites();
+
+			expect(store.agentFavoriteIds).toEqual(['agent-1']);
+		});
+
 		it('should return empty arrays when no favorites exist', () => {
 			const store = useFavoritesStore();
 
@@ -300,6 +358,7 @@ describe('favorites.store', () => {
 			expect(store.projectFavoriteIds).toEqual([]);
 			expect(store.dataTableFavoriteIds).toEqual([]);
 			expect(store.folderFavoriteIds).toEqual([]);
+			expect(store.agentFavoriteIds).toEqual([]);
 		});
 	});
 });

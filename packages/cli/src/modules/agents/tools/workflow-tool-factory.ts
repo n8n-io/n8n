@@ -8,6 +8,7 @@ import {
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -17,7 +18,6 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -33,6 +33,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { WorkflowRunner } from '@/workflow-runner';
 
+import { findWorkflowToolWorkflow } from './workflow-tool-workflow-resolver';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 
 // ---------------------------------------------------------------------------
@@ -556,15 +557,15 @@ async function buildWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	const { workflowRepository } = context;
 	const workflowName = descriptor.workflow;
 
 	// Find the workflow by name. Access control is project sharing: the
 	// workflow must be shared with the agent's project.
-	const candidateWorkflow = await workflowRepository.findOne({
-		where: { name: workflowName, shared: { projectId: context.projectId } },
-		relations: ['shared'],
-	});
+	const candidateWorkflow = await findWorkflowToolWorkflow(
+		context.workflowRepository,
+		workflowName,
+		context.projectId,
+	);
 
 	if (!candidateWorkflow) {
 		throw new Error(`Workflow "${workflowName}" not found`);

@@ -119,7 +119,6 @@ describe('SettingsInstanceAiView', () => {
 		store.$patch({
 			settings: {
 				enabled: true,
-				subAgentMaxSteps: 10,
 				permissions: {},
 				mcpServers: '',
 				mcpAccessEnabled: true,

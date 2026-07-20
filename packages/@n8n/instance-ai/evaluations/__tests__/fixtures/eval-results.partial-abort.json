@@ -1,0 +1,75 @@
+{
+	"totalRuns": 1,
+	"summary": {
+		"testCases": 2,
+		"built": 1,
+		"notVerified": 0,
+		"scenariosTotal": 2,
+		"passAtK": 0.5,
+		"passHatK": 0.5,
+		"passRatePerIter": "50%"
+	},
+	"comparisonStatus": "not_attempted",
+	"testCases": [
+		{
+			"name": "build me something",
+			"status": "verified",
+			"buildSuccessCount": 1,
+			"totalRuns": 1,
+			"workflowChecksPerRun": [null],
+			"buildExpectationResultsPerRun": [null],
+			"buildExpectations": [],
+			"threadIds": [null],
+			"scenarios": [
+				{
+					"name": "happy path",
+					"passCount": 1,
+					"evaluatedCount": 1,
+					"totalRuns": 1,
+					"passAtK": 1,
+					"passHatK": 1,
+					"runs": [
+						{
+							"workflowId": "Wa",
+							"passed": true,
+							"score": 1,
+							"reasoning": "passed",
+							"execErrors": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "build me something",
+			"status": "verified",
+			"buildSuccessCount": 0,
+			"totalRuns": 1,
+			"workflowChecksPerRun": [null],
+			"buildExpectationResultsPerRun": [null],
+			"buildExpectations": [],
+			"threadIds": [null],
+			"scenarios": [
+				{
+					"name": "edge case",
+					"passCount": 0,
+					"evaluatedCount": 1,
+					"totalRuns": 1,
+					"passAtK": 0,
+					"passHatK": 0,
+					"runs": [
+						{
+							"workflowId": null,
+							"passed": false,
+							"score": 0,
+							"reasoning": "Scenario execution error: TimeoutError: The operation was aborted due to timeout",
+							"failureCategory": "framework_issue",
+							"rootCause": "Scenario execution exceeded its per-iteration time budget and was aborted before a verdict: TimeoutError: The operation was aborted due to timeout",
+							"execErrors": []
+						}
+					]
+				}
+			]
+		}
+	]
+}

@@ -258,8 +258,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
 		const agentPublishService = mock<AgentPublishService>();
 		const agentValidationService = mock<AgentValidationService>();
-		agentPublishService.publishAgent.mockResolvedValue(agent as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		agentPublishService.publishAgent.mockResolvedValue({
+			agent,
+			draftValidation: { status: 'valid', issues: [] },
+		} as never);
 		const { controller } = makeController({
 			agentIntegrationPersistenceService,
 			agentPublishService,
@@ -377,8 +379,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 			savedAgent as never,
 		);
-		agentPublishService.publishAgent.mockResolvedValue(publishedAgent as never);
-		agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+		agentPublishService.publishAgent.mockResolvedValue({
+			agent: publishedAgent,
+			draftValidation: { status: 'valid', issues: [] },
+		} as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockResolvedValue(undefined);
 		chatIntegrationService.broadcastIntegrationChange.mockResolvedValue(undefined);
@@ -487,7 +491,10 @@ describe('AgentIntegrationsController integration credentials', () => {
 		agentIntegrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
 			savedAgent as never,
 		);
-		agentPublishService.publishAgent.mockResolvedValue(publishedAgent as never);
+		agentPublishService.publishAgent.mockResolvedValue({
+			agent: publishedAgent,
+			draftValidation: { status: 'valid', issues: [] },
+		} as never);
 		const chatIntegrationService = mock<ChatIntegrationService>();
 		chatIntegrationService.connect.mockRejectedValue(new Error('Slack connect failed'));
 		const { controller } = makeController({
