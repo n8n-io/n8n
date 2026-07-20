@@ -180,6 +180,45 @@ describe('AgentChatBridge — consumeStream', () => {
 		credentialId: 'cred-1',
 	} as unknown as AgentIntegrationConfig;
 
+	const finishChunk: StreamChunk = { type: 'finish', finishReason: 'stop' };
+	const erroredToolResult: StreamChunk = {
+		type: 'tool-result',
+		toolCallId: 'tool-1',
+		toolName: 'slack',
+		output: { error: 'invalid input' },
+		isError: true,
+	};
+	const successfulToolResult: StreamChunk = {
+		type: 'tool-result',
+		toolCallId: 'tool-2',
+		toolName: 'slack',
+		output: { ok: true },
+		isError: false,
+	};
+
+	/** Build a bridge for the integration, fire a mention that streams the given chunks, and return the thread. */
+	async function runMention(
+		integration: AgentIntegrationConfig,
+		chunks: StreamChunk[],
+		options: { thread?: FakeThread } = {},
+	): Promise<FakeThread> {
+		const { bot, handlers } = makeBot();
+		const thread = options.thread ?? makeThread();
+
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			makeAgentExecutor(chunks) as never,
+			componentMapper,
+			logger,
+			'project-1',
+			integration,
+		);
+
+		await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+		return thread;
+	}
+
 	beforeEach(() => {
 		registry = new ChatIntegrationRegistry();
 		registry.register(new BufferingTestIntegration());
@@ -367,35 +406,26 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('posts a generic error when an approval card cannot be posted', async () => {
-			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			thread.post
 				.mockRejectedValueOnce(new Error('card post failed'))
 				.mockResolvedValueOnce(undefined);
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
 
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-call-suspended',
-					runId: 'run-1',
-					toolCallId: 'tool-1',
-					toolName: 'approval',
-					suspendPayload: { message: 'Approve?' },
-				},
-				{ type: 'finish', finishReason: 'stop' },
-			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
+			await runMention(
 				bufferedIntegration,
+				[
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-1',
+						toolCallId: 'tool-1',
+						toolName: 'approval',
+						suspendPayload: { message: 'Approve?' },
+					},
+					finishChunk,
+				],
+				{ thread },
 			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledTimes(2);
 			expect(thread.post).toHaveBeenNthCalledWith(1, { card: { kind: 'card' } });
@@ -426,127 +456,35 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('posts a generic error when an errored tool result ends without output', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { error: 'invalid input' },
-					isError: true,
-				},
-				{ type: 'finish', finishReason: 'stop' },
-			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				bufferedIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			const thread = await runMention(bufferedIntegration, [erroredToolResult, finishChunk]);
 
 			expect(thread.post).toHaveBeenCalledOnce();
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
 		it('does not add a generic error when text follows an errored tool result', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { error: 'invalid input' },
-					isError: true,
-				},
+			const thread = await runMention(bufferedIntegration, [
+				erroredToolResult,
 				{ type: 'text-delta', id: 't1', delta: 'I could not send that report.' },
-				{ type: 'finish', finishReason: 'stop' },
+				finishChunk,
 			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				bufferedIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledOnce();
 			expect(thread.post).toHaveBeenCalledWith({ markdown: 'I could not send that report.' });
 		});
 
 		it('does not post an error for a successful tool-only run', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { ok: true },
-					isError: false,
-				},
-				{ type: 'finish', finishReason: 'stop' },
-			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				bufferedIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			const thread = await runMention(bufferedIntegration, [successfulToolResult, finishChunk]);
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
 		it('does not post an error when a failed tool call is retried successfully', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { error: 'invalid input' },
-					isError: true,
-				},
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-2',
-					toolName: 'slack',
-					output: { ok: true },
-					isError: false,
-				},
-				{ type: 'finish', finishReason: 'stop' },
+			const thread = await runMention(bufferedIntegration, [
+				erroredToolResult,
+				successfulToolResult,
+				finishChunk,
 			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				bufferedIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
@@ -694,61 +632,18 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('posts a generic error when an errored tool result ends without output', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { error: 'invalid input' },
-					isError: true,
-				},
-				{ type: 'finish', finishReason: 'stop' },
-			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				streamingIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			const thread = await runMention(streamingIntegration, [erroredToolResult, finishChunk]);
 
 			expect(thread.post).toHaveBeenCalledOnce();
 			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
 		it('does not add a generic error when streamed text follows an errored tool result', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { error: 'invalid input' },
-					isError: true,
-				},
+			const thread = await runMention(streamingIntegration, [
+				erroredToolResult,
 				{ type: 'text-delta', id: 't1', delta: 'I could not send that report.' },
-				{ type: 'finish', finishReason: 'stop' },
+				finishChunk,
 			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				streamingIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).toHaveBeenCalledOnce();
 			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe(
@@ -757,66 +652,17 @@ describe('AgentChatBridge — consumeStream', () => {
 		});
 
 		it('does not post an error for a successful streamed tool-only run', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { ok: true },
-					isError: false,
-				},
-				{ type: 'finish', finishReason: 'stop' },
-			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				streamingIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			const thread = await runMention(streamingIntegration, [successfulToolResult, finishChunk]);
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
 		it('does not post an error when a failed streamed tool call is retried successfully', async () => {
-			const { bot, handlers } = makeBot();
-			const thread = makeThread();
-			const agentExecutor = makeAgentExecutor([
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-1',
-					toolName: 'slack',
-					output: { error: 'invalid input' },
-					isError: true,
-				},
-				{
-					type: 'tool-result',
-					toolCallId: 'tool-2',
-					toolName: 'slack',
-					output: { ok: true },
-					isError: false,
-				},
-				{ type: 'finish', finishReason: 'stop' },
+			const thread = await runMention(streamingIntegration, [
+				erroredToolResult,
+				successfulToolResult,
+				finishChunk,
 			]);
-
-			new AgentChatBridge(
-				bot as unknown as ChatBotLike,
-				'agent-1',
-				agentExecutor as never,
-				componentMapper,
-				logger,
-				'project-1',
-				streamingIntegration,
-			);
-
-			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
 			expect(thread.post).not.toHaveBeenCalled();
 		});
