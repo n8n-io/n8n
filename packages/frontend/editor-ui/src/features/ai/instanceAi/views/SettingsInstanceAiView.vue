@@ -5,7 +5,6 @@ import {
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
-	N8nLink,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -19,7 +18,6 @@ import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrows
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import type { InstanceAiPermissions, InstanceAiPermissionMode } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -235,14 +233,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 							<span :class="$style.settingsRowDescription">
 								{{ i18n.baseText('settings.n8nAgent.modelCredential.description') }}
 							</span>
-							<N8nLink
-								:class="$style.manageInstanceCredentialsLink"
-								size="small"
-								:to="{ name: VIEWS.INSTANCE_CREDENTIALS_SETTINGS }"
-								data-test-id="n8n-agent-manage-instance-credentials-link"
-							>
-								{{ i18n.baseText('settings.n8nAgent.modelCredential.manage') }}
-							</N8nLink>
 						</div>
 						<div :class="$style.modelCredentialControls">
 							<N8nSelect
@@ -546,11 +536,6 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 .modelCredentialSelect {
 	width: 240px;
 	max-width: 100%;
-}
-
-.manageInstanceCredentialsLink {
-	margin-top: var(--spacing--3xs);
-	align-self: flex-start;
 }
 
 .enableSection {

@@ -102,12 +102,6 @@ export class CredentialsController {
 		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
 	}
 
-	@Get('/instance')
-	@GlobalScope('credential:manageInstance')
-	async getInstanceCredentials() {
-		return await this.credentialsFinderService.findInstanceCredentials();
-	}
-
 	@Get('/new')
 	async generateUniqueName(
 		_req: unknown,

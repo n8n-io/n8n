@@ -96,14 +96,6 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
 			},
 			{
-				id: 'settings-instance-credentials',
-				icon: 'key-round',
-				label: i18n.baseText('settings.instanceCredentials'),
-				position: 'top',
-				available: canUserAccessRouteByName(VIEWS.INSTANCE_CREDENTIALS_SETTINGS),
-				route: { to: { name: VIEWS.INSTANCE_CREDENTIALS_SETTINGS } },
-			},
-			{
 				id: 'settings-credential-resolvers',
 				icon: 'key-round',
 				label: i18n.baseText('credentialResolver.view.title'),

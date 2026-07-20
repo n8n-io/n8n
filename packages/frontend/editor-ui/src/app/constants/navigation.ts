@@ -41,7 +41,6 @@ export const enum VIEWS {
 	SSO_SETTINGS = 'SSoSettings',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
-	INSTANCE_CREDENTIALS_SETTINGS = 'InstanceCredentialsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	MFA_VIEW = 'MfaView',
