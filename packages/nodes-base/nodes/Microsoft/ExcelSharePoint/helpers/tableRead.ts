@@ -33,10 +33,10 @@ export async function runPerItem(
 }
 
 export async function resolveTableEndpoint(
-	this: IExecuteFunctions,
-	itemIndex: number,
-	workbookRootCache: Map<string, string>,
-	siteIdCache: Map<string, string>,
+	this: AuthContext,
+	itemIndex = 0,
+	workbookRootCache: Map<string, string> = new Map(),
+	siteIdCache: Map<string, string> = new Map(),
 ): Promise<string> {
 	const workbookRoot = await resolveWorkbookRoot.call(
 		this,

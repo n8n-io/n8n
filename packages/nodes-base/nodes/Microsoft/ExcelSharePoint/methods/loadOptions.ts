@@ -1,6 +1,7 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { parseAddress } from '../../Excel/v2/helpers/utils';
+import { fetchTableColumnNames, resolveTableEndpoint } from '../helpers/tableRead';
 import { resolveWorkbookRoot, validatePathSegment } from '../helpers/utils';
 import { microsoftApiRequest } from '../transport';
 
@@ -45,4 +46,14 @@ export async function getWorksheetColumnRowSkipColumnToMatchOn(
 	return (await readHeaderRow.call(this))
 		.filter((column) => column !== columnToMatchOn)
 		.map((column) => ({ name: column, value: column }));
+}
+
+export async function getTableColumns(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const tableEndpoint = await resolveTableEndpoint.call(this);
+	return (await fetchTableColumnNames.call(this, tableEndpoint)).map((column) => ({
+		name: column,
+		value: column,
+	}));
 }
