@@ -27,12 +27,6 @@ export const BATCH_11AUG_EXPERIMENT = createExperiment('37_onboarding_experiment
 
 export const TEMPLATE_RECO_V2 = createExperiment('039_template_onboarding_v2');
 
-export const READY_TO_RUN_V2_EXPERIMENT = createExperiment('042_ready-to-run-worfklow_v2', {
-	control: 'control',
-	variant1: 'variant-1-singlebox',
-	variant2: 'variant-2-twoboxes',
-});
-
 export const READY_TO_RUN_V2_P3_EXPERIMENT = createExperiment('059_ready-to-run-worfklow_v2-3', {
 	control: 'control',
 	variant5: 'variant-5',
@@ -44,8 +38,6 @@ export const PERSONALIZED_TEMPLATES_V3 = createExperiment('044_template_reco_v3'
 export const COLLECTION_OVERHAUL_EXPERIMENT = createExperiment('048_collection_overhaul');
 
 export const TEMPLATE_SETUP_EXPERIENCE = createExperiment('055_template_setup_experience');
-
-export const AI_BUILDER_PLAN_MODE_EXPERIMENT = createExperiment('073_builder_plan_mode');
 
 export const AI_BUILDER_REVIEW_CHANGES_EXPERIMENT = createExperiment(
 	'075_ai_builder_review_changes',
@@ -89,7 +81,6 @@ export const INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT = createExperiment(
 export const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT = createExperiment(
 	'085_instance_ai_prompt_suggestions_v2',
 );
-export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
 
@@ -104,9 +95,6 @@ export const SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT = createExperiment(
 );
 
 export const EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT = createExperiment('088_config_evaluations');
-export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'087_instance_ai_workflow_preview_suggestions',
-);
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
 	'093_instance_ai_personalized_prompt_suggestions',
 	{
@@ -152,9 +140,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	BATCH_11AUG_EXPERIMENT.name,
 	TEMPLATE_RECO_V2.name,
 	READY_TO_RUN_V2_P3_EXPERIMENT.name,
-	AI_BUILDER_PLAN_MODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
-	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	CREDENTIALS_APP_SELECTION_EXPERIMENT.name,
@@ -168,12 +154,10 @@ export const EXPERIMENTS_TO_TRACK = [
 	WORKFLOW_CARD_MCP_TOGGLE_EXPERIMENT.name,
 	INSTANCE_AI_PROACTIVE_AGENT_EXPERIMENT.name,
 	INSTANCE_AI_PROMPT_SUGGESTIONS_V2_EXPERIMENT.name,
-	AA_EXPERIMENT_CHECK.name,
 	CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT.name,
 	FLOATING_CHAT_HUB_PANEL_EXPERIMENT.name,
 	SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.name,
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
-	INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_MCP_CONNECTIONS_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
