@@ -33,6 +33,7 @@ import { CredentialTypes } from '@/credential-types';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
@@ -40,6 +41,7 @@ import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentPublishService } from '../agent-publish.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
@@ -56,6 +58,7 @@ import {
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
+import { buildResolveIntegrationTool } from './resolve-integration.tool';
 import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
@@ -180,6 +183,7 @@ export class AgentsBuilderToolsService {
 		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly agentTaskService: AgentTaskService,
+		private readonly agentPublishService: AgentPublishService,
 		private readonly aiService: AiService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
@@ -465,6 +469,82 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const publishAgentTool = new Tool(BUILDER_TOOLS.PUBLISH_AGENT)
+			.description(
+				'Publish this target agent so it becomes live: integrations sync and scheduled tasks start running. ' +
+					'Idempotent when the draft is already the active published version. Pass optional `versionId` to ' +
+					'activate an existing history row instead of publishing the current draft. Call only when the user ' +
+					'asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. ' +
+					'Returns { ok: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
+			)
+			.input(
+				z.object({
+					versionId: z
+						.string()
+						.min(1)
+						.optional()
+						.describe(
+							'Optional history version ID to activate. Omit to publish the current draft.',
+						),
+				}),
+			)
+			.handler(async ({ versionId }: { versionId?: string }) => {
+				if (!(await userHasScopes(user, ['agent:publish'], false, { projectId }))) {
+					return {
+						ok: false,
+						errors: [{ message: 'You do not have permission to publish agents in this project.' }],
+					};
+				}
+				try {
+					const agent = await this.agentPublishService.publishAgent(
+						agentId,
+						projectId,
+						user,
+						versionId,
+					);
+					return {
+						ok: true,
+						agentId,
+						activeVersionId: agent.activeVersionId,
+						versionId: agent.versionId,
+					};
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
+		const unpublishAgentTool = new Tool(BUILDER_TOOLS.UNPUBLISH_AGENT)
+			.description(
+				'Unpublish this target agent: clears the live version while preserving the draft, disconnects chat ' +
+					'integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. ' +
+					'Returns { ok: true, agentId, activeVersionId: null } or { ok: false, errors }.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				if (!(await userHasScopes(user, ['agent:unpublish'], false, { projectId }))) {
+					return {
+						ok: false,
+						errors: [
+							{ message: 'You do not have permission to unpublish agents in this project.' },
+						],
+					};
+				}
+				try {
+					await this.agentPublishService.unpublishAgent(agentId, projectId);
+					return { ok: true, agentId, activeVersionId: null };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
+			.build();
+
 		const modelLookup: ModelLookup = {
 			list: async (credentialId, credentialType, provider) =>
 				await this.builderModelLiveLookupService.list(
@@ -482,6 +562,8 @@ export class AgentsBuilderToolsService {
 			patchConfigTool,
 			listIntegrationTypesTool,
 			listSubAgentsTool,
+			publishAgentTool,
+			unpublishAgentTool,
 			buildResolveLlmTool({ credentialProvider, modelLookup }),
 			buildAskCredentialTool({
 				credentialProvider,
@@ -512,6 +594,10 @@ export class AgentsBuilderToolsService {
 				),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
+			buildResolveIntegrationTool({
+				mcpRegistryService: this.mcpRegistryService,
+				agentsToolsService: this.agentsToolsService,
+			}),
 		];
 
 		return tools;
@@ -618,7 +704,7 @@ export class AgentsBuilderToolsService {
 					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
 					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
 					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published. Returns { ok: true, tasks: [{ id, name, enabled }, ...] } (same ' +
+					'the agent is (re)published via `publish_agent`. Returns { ok: true, tasks: [{ id, name, enabled }, ...] } (same ' +
 					'order as input, objectives and crons are not echoed back) or { ok: false, errors }.',
 			)
 			.systemInstruction(
@@ -661,7 +747,7 @@ export class AgentsBuilderToolsService {
 					try {
 						// Adds a `{ type:'task', id, enabled }` ref per task to the agent config
 						// and creates every body in one transaction. Enabled by default; each
-						// task starts running once the agent is (re)published.
+						// task starts running once the agent is (re)published via publish_agent.
 						const created = await this.agentTaskService.createTasks(
 							agentId,
 							projectId,

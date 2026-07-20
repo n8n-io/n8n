@@ -6,7 +6,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { libraryRLC, siteRLC } from '../../descriptions/common.descriptions';
 import { SERVICE_PRINCIPAL_AUTH } from '../../helpers/constants';
-import { searchLibraries, searchSites } from '../../methods/listSearch';
+import { getSheets, getTables, searchLibraries, searchSites } from '../../methods/listSearch';
 import { MicrosoftExcelSharePoint } from '../../MicrosoftExcelSharePoint.node';
 import * as transport from '../../transport';
 import type * as _importType0 from '../../transport';
@@ -20,7 +20,14 @@ vi.mock('../../transport', async () => {
 	};
 });
 
-describe('Microsoft Excel (SharePoint) — listSearch', () => {
+const SITE_ID = 'contoso.sharepoint.com,g1,g2';
+const WORKBOOK_ROOT = `/v1.0/sites/${encodeURIComponent(SITE_ID)}/drives/b!drive1/items/ITEM123`;
+const SHEET1 = { id: '{00000000-0000-0000-0000-000000000001}', name: 'Sheet1' };
+const SHEET2 = { id: '{00000000-0000-0000-0000-000000000002}', name: 'Costs' };
+const TABLE1 = { id: '{00000000-0000-0000-0000-000000000011}', name: 'Table1' };
+const TABLE2 = { id: '{00000000-0000-0000-0000-000000000012}', name: 'Expenses' };
+
+describe('Microsoft Excel (SharePoint) — dropdown search methods', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
 	const apiRequest = transport.microsoftApiRequest as Mock;
 
@@ -29,6 +36,12 @@ describe('Microsoft Excel (SharePoint) — listSearch', () => {
 			(name: string, _itemIndex?: number, fallback?: unknown) =>
 				(name in params ? params[name] : fallback) as never,
 		);
+	};
+
+	const byIdParams = {
+		workbook: { mode: 'id', value: 'ITEM123' },
+		site: { mode: 'id', value: SITE_ID },
+		library: { mode: 'id', value: 'b!drive1' },
 	};
 
 	beforeEach(() => {
@@ -216,6 +229,139 @@ describe('Microsoft Excel (SharePoint) — listSearch', () => {
 		});
 	});
 
+	describe('getSheets', () => {
+		it('lists the sheets in the workbook', async () => {
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({ value: [SHEET1, SHEET2] });
+
+			const result = await getSheets.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				`${WORKBOOK_ROOT}/workbook/worksheets`,
+				{},
+				{ $top: 100 },
+			);
+			expect(result.results).toEqual([
+				{ name: 'Sheet1', value: SHEET1.id },
+				{ name: 'Costs', value: SHEET2.id },
+			]);
+		});
+
+		it('filters the page by typed text, case-insensitively', async () => {
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({ value: [SHEET1, SHEET2] });
+
+			const result = await getSheets.call(ctx, 'cost');
+
+			expect(result.results).toEqual([{ name: 'Costs', value: SHEET2.id }]);
+		});
+
+		it('keeps paging on its own while filtering until a page has a match', async () => {
+			// The editor disables "load more" while a filter is active, so a sheet
+			// past the first page (e.g. #120 of 150) must still be reachable from
+			// one search call, not just from the page it happens to land on.
+			const nextLink =
+				'https://graph.microsoft.com/v1.0/sites/s/drives/d/items/i/workbook/worksheets?$skiptoken=p2';
+			setParams(byIdParams);
+			apiRequest
+				.mockResolvedValueOnce({ value: [SHEET1], '@odata.nextLink': nextLink })
+				.mockResolvedValueOnce({ value: [SHEET2] });
+
+			const result = await getSheets.call(ctx, 'cost');
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', '', {}, {}, nextLink);
+			expect(result.results).toEqual([{ name: 'Costs', value: SHEET2.id }]);
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('gives up once pages run out without a match, returning no results', async () => {
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({ value: [SHEET1] });
+
+			const result = await getSheets.call(ctx, 'nonexistent');
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+			expect(result.results).toEqual([]);
+			expect(result.paginationToken).toBeUndefined();
+		});
+
+		it('does not auto-page when there is no filter, even if the page has no items', async () => {
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({
+				value: [],
+				'@odata.nextLink': 'https://graph.microsoft.com/v1.0/...?$skiptoken=p2',
+			});
+
+			const result = await getSheets.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledTimes(1);
+			expect(result.results).toEqual([]);
+		});
+
+		it('follows a pagination token verbatim, without rebuilding the request', async () => {
+			const nextLink =
+				'https://graph.microsoft.com/v1.0/sites/s/drives/d/items/i/workbook/worksheets?$skiptoken=abc';
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({ value: [SHEET2] });
+
+			const result = await getSheets.call(ctx, undefined, nextLink);
+
+			expect(apiRequest).toHaveBeenCalledWith('GET', '', {}, {}, nextLink);
+			expect(result.results).toEqual([{ name: 'Costs', value: SHEET2.id }]);
+		});
+
+		it('surfaces the next @odata.nextLink as the pagination token', async () => {
+			const nextLink =
+				'https://graph.microsoft.com/v1.0/sites/s/drives/d/items/i/workbook/worksheets?$skiptoken=def';
+			setParams(byIdParams);
+			apiRequest.mockResolvedValue({ value: [SHEET1], '@odata.nextLink': nextLink });
+
+			const result = await getSheets.call(ctx);
+
+			expect(result.paginationToken).toBe(nextLink);
+		});
+	});
+
+	describe('getTables', () => {
+		const params = { ...byIdParams, worksheet: 'Sheet1' };
+
+		it('lists the tables in the chosen sheet', async () => {
+			setParams(params);
+			apiRequest.mockResolvedValue({ value: [TABLE1, TABLE2] });
+
+			const result = await getTables.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				`${WORKBOOK_ROOT}/workbook/worksheets/Sheet1/tables`,
+				{},
+				{ $top: 100 },
+			);
+			expect(result.results).toEqual([
+				{ name: 'Table1', value: TABLE1.id },
+				{ name: 'Expenses', value: TABLE2.id },
+			]);
+		});
+
+		it('filters the page by typed text', async () => {
+			setParams(params);
+			apiRequest.mockResolvedValue({ value: [TABLE1, TABLE2] });
+
+			const result = await getTables.call(ctx, 'expense');
+
+			expect(result.results).toEqual([{ name: 'Expenses', value: TABLE2.id }]);
+		});
+
+		it('rejects an empty Sheet', async () => {
+			setParams({ ...params, worksheet: '' });
+
+			await expect(getTables.call(ctx)).rejects.toThrow("The 'Sheet' parameter is empty");
+			expect(apiRequest).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('field shape', () => {
 		it('offers search first, with URL and ID modes alongside, for Site', () => {
 			expect(siteRLC.modes?.map((mode) => mode.name)).toEqual(['list', 'url', 'id']);
@@ -235,6 +381,8 @@ describe('Microsoft Excel (SharePoint) — listSearch', () => {
 
 			expect(node.methods?.listSearch?.searchSites).toBe(searchSites);
 			expect(node.methods?.listSearch?.searchLibraries).toBe(searchLibraries);
+			expect(node.methods?.listSearch?.getSheets).toBe(getSheets);
+			expect(node.methods?.listSearch?.getTables).toBe(getTables);
 		});
 	});
 });

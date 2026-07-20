@@ -18,10 +18,14 @@ const props = defineProps<{
 	localConfig: AgentJsonConfig | null;
 	connectedTriggers: string[];
 	effectiveSessionId?: string;
+	initialPrompt?: string;
+	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'continue-loaded': [count: number];
+	'open-build': [];
+	'send-to-assistant': [];
 	'open-memory-settings': [];
 }>();
 
@@ -53,7 +57,10 @@ const showEpisodicMemoryCallout = computed(
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
+				:can-send-to-assistant="canSendToAssistant"
 				@continue-loaded="emit('continue-loaded', $event)"
+				@open-build="emit('open-build')"
+				@send-to-assistant="emit('send-to-assistant')"
 			>
 				<template #above-input>
 					<N8nCallout

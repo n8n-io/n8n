@@ -6,7 +6,7 @@ import type {
 	IRequestOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { capitalize } from '../../../../../utils/utilities';
 
@@ -16,13 +16,19 @@ export type SharePointCredentialType = 'microsoftOAuth2Api' | typeof SERVICE_PRI
 
 export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
 
-// Consulted on 403s so the error names the missing permission; each action adds its row.
-export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; application: string }> = {
+// Consulted on 403s so the error names the missing permission; each action adds
+// its row. Invariant: every operation's permission is a superset of what its
+// pickers need, so a picker 403 naming the selected operation's permission stays
+// truthful; a picker wanting different copy catches httpCode '403' and rethrows
+// (see getSites). Frozen so no import can mutate the contract.
+export const REQUIRED_PERMISSIONS: Readonly<
+	Record<string, { delegated: string; application: string }>
+> = Object.freeze({
 	'list:get': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
-};
+});
 
 export function getSharePointCredentialType(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -42,7 +48,9 @@ function lookupRequiredPermissions(
 		if (typeof resource === 'string' && typeof operation === 'string') {
 			return REQUIRED_PERMISSIONS[`${resource}:${operation}`];
 		}
-	} catch {}
+	} catch {
+		// Load-options contexts may not expose this parameter
+	}
 	return undefined;
 }
 
@@ -54,6 +62,12 @@ type GraphRequestError = {
 	error?: { error?: GraphRequestError };
 };
 
+// Graph's not-found code varies by surface: SharePoint sends 'itemNotFound'
+// (v1 keys off it), the sibling Excel-on-SharePoint node verified 'ItemNotFound'
+// live, and 'NotFound' is the generic OData code. Match on code alone — the
+// message text is not a stable contract.
+const NOT_FOUND_CODES = ['NotFound', 'ItemNotFound', 'itemNotFound'];
+
 /** Best-effort; load-options contexts may not expose the resource parameter. */
 function nodeResourceName(this: IExecuteFunctions | ILoadOptionsFunctions): string | undefined {
 	try {
@@ -61,7 +75,9 @@ function nodeResourceName(this: IExecuteFunctions | ILoadOptionsFunctions): stri
 		if (typeof resource === 'string' && resource !== '') {
 			return capitalize(resource);
 		}
-	} catch {}
+	} catch {
+		// Load-options contexts may not expose this parameter
+	}
 	return undefined;
 }
 
@@ -121,7 +137,7 @@ function delegatedApiError(
 		error.statusCode = httpCode;
 		errorOptions.message = error.message;
 
-		if (error.code === 'NotFound' && error.message === 'Resource not found') {
+		if (error.code && NOT_FOUND_CODES.includes(error.code)) {
 			const nodeResource = nodeResourceName.call(this);
 			if (nodeResource) {
 				errorOptions.message = `${nodeResource} not found`;
@@ -148,6 +164,20 @@ export async function microsoftApiRequest(
 			? credentials.graphApiBaseUrl
 			: DEFAULT_GRAPH_BASE_URL
 	).replace(/\/+$/, '');
+	// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim —
+	// but it must stay on the credential's Graph host: the bearer token must
+	// never travel to an unexpected origin. Graph's own @odata.nextLink is
+	// always same-origin, so nothing legitimate is refused.
+	const target = uri ?? `${baseUrl}${resource}`;
+	if (new URL(target).origin !== new URL(baseUrl).origin) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
+	// Deliberately the family's request stack (Teams/Excel/OneDrive use the
+	// same deprecated helpers): the error mapping above is shape-coupled to
+	// its wrapped errors — migrate together with the family, not solo.
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -155,8 +185,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		// An explicit `uri` (e.g. a next-page link from Graph) is used verbatim
-		uri: uri ?? `${baseUrl}${resource}`,
+		uri: target,
 		json: true,
 	};
 	try {
