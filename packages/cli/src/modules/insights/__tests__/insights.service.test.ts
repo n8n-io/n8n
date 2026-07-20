@@ -845,16 +845,21 @@ describe('InsightsService', () => {
 			);
 		});
 
-		it('sets hasReadAccess true for all rows and skips the sharing query for admins', async () => {
+		it('sets hasReadAccess true for all rows for admins', async () => {
 			const user = makeUser(['workflow:read']);
 			mockInsightsByPeriodRepository.getInsightsByWorkflow.mockResolvedValue({
 				count: 2,
 				rows: [makeRow('wf-1'), makeRow('wf-2')],
 			});
+			// getSharedWorkflowIds returns all workflow IDs for users with the global scope
+			mockWorkflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1', 'wf-2']);
 
 			const result = await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
 
-			expect(mockWorkflowSharingService.getSharedWorkflowIds).not.toHaveBeenCalled();
+			expect(mockWorkflowSharingService.getSharedWorkflowIds).toHaveBeenCalledWith(user, {
+				scopes: ['workflow:read'],
+				projectId: undefined,
+			});
 			expect(result.data.every((r) => r.hasReadAccess)).toBe(true);
 		});
 

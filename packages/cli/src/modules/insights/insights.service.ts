@@ -199,10 +199,7 @@ export class InsightsService {
 
 		const data = rows.map((row) => ({
 			...row,
-			hasReadAccess:
-				accessibleWorkflowIds === null
-					? true
-					: row.workflowId !== null && accessibleWorkflowIds.has(row.workflowId),
+			hasReadAccess: row.workflowId !== null && accessibleWorkflowIds.has(row.workflowId),
 		}));
 
 		return {

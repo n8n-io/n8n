@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
@@ -18,7 +19,7 @@ function expectDatesClose(actual: Date, expected: Date, maxDriftMs?: number) {
 }
 
 // Request from an owner-like user holding the global `workflow:read` scope, so
-// every workflow is accessible (and the sharing query is short-circuited).
+// every workflow is accessible.
 const authReq = () =>
 	mock<AuthenticatedRequest>({
 		user: { role: { scopes: [{ slug: 'workflow:read' }] } },
@@ -34,6 +35,7 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
+	const workflowSharingService = mockInstance(WorkflowSharingService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
@@ -343,6 +345,13 @@ describe('InsightsController', () => {
 				timeSaved: 0,
 			},
 		];
+
+		beforeEach(() => {
+			// getSharedWorkflowIds returns all workflow IDs for the owner-like user
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(
+				mockRows.map((row) => row.workflowId),
+			);
+		});
 
 		it('should return empty insights by workflow if no data', async () => {
 			// ARRANGE
