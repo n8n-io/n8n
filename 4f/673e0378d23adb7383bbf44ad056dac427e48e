@@ -1,19 +1,12 @@
-packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.test.ts
-  s_b3f23ab76a494c::t_47046fc36a73c0 112,118
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.6.14",
   "base_commit_sha": "4f673e0378d23adb7383bbf44ad056dac427e48e",
   "prompts": {},
-  "sessions": {
-    "s_b3f23ab76a494c": {
-      "agent_id": {
-        "tool": "codex",
-        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
-        "model": "gpt-5.6-sol"
-      },
-      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
