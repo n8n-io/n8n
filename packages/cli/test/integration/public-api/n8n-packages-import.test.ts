@@ -8,6 +8,7 @@ import { CredentialTypes } from '@/credential-types';
 import { EventService } from '@/events/event.service';
 import {
 	buildImportPackageBuffer,
+	serializedWorkflow,
 	serializedWorkflowWithCredential,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
@@ -248,6 +249,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('bindings', '{}')
 			.field('workflowConflictPolicy', 'fail')
 			.field('workflowIdPolicy', 'new')
+			.field('missingNodeTypeMode', 'fail')
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
@@ -338,6 +340,63 @@ describe('POST /n8n-packages/import', () => {
 				}),
 			],
 		});
+	});
+
+	const unknownNodeTypePackage = async (sourceId: string) =>
+		await buildImportPackageBuffer(
+			[
+				serializedWorkflow({
+					id: 'wf-unknown-node',
+					name: 'Unknown Node Type',
+					nodes: [
+						{
+							id: 'unknown-node',
+							name: 'Unknown Node',
+							type: 'n8n-nodes-community.chatBot',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+				}),
+			],
+			{ sourceId },
+		);
+
+	test('returns 422 by default when a workflow uses an unknown node type', async () => {
+		const tarBuffer = await unknownNodeTypePackage('http-integration-missing-node-type-fail');
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toMatchObject({
+			message: expect.stringContaining('Import blocked'),
+			issues: [
+				{
+					type: 'missing-node-type',
+					nodeType: 'n8n-nodes-community.chatBot',
+					typeVersion: 1,
+					usedByWorkflows: ['wf-unknown-node'],
+				},
+			],
+		});
+	});
+
+	test('honors missingNodeTypeMode=import-anyway for a package with an unknown node type', async () => {
+		const tarBuffer = await unknownNodeTypePackage('http-integration-missing-node-type-anyway');
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('missingNodeTypeMode', 'import-anyway')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.workflows).toHaveLength(1);
+		expect(response.body.workflows[0].activeVersionId).toBeNull();
 	});
 
 	test('creates stub credentials by default when references are missing', async () => {
