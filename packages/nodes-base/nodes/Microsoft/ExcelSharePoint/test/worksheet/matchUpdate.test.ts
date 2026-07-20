@@ -84,7 +84,7 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		ctx.getInputData.mockReturnValue([{ json: { Name: 'Franklin', Email: 'frank@example.com' } }]);
 		mockSheetReads();
 
-		await node.execute.call(ctx);
+		const result = await node.execute.call(ctx);
 
 		const [, resource, body] = patchCall()!;
 		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B4')`);
@@ -96,6 +96,94 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 				['Frank Two', 'frank@example.com'],
 			],
 		});
+		// Only the updated row comes back as output — the updatedRows wiring
+		expect(result[0].map((item) => item.json)).toEqual([
+			{ Name: 'Franklin', Email: 'frank@example.com' },
+		]);
+	});
+
+	it('writes trailing empty rows back unchanged in Update — no trim, dimensions preserved', async () => {
+		setParams({ ...baseParams, operation: 'update' });
+		ctx.getInputData.mockReturnValue([{ json: { Name: 'Franklin', Email: 'frank@example.com' } }]);
+		apiRequest.mockImplementation(async (method: string, resource: string) => {
+			if (method === 'GET' && resource.endsWith('/usedRange')) {
+				return {
+					address: 'Sheet1!A1:B5',
+					values: [...SHEET.values, ['', '']],
+				};
+			}
+			return { address: 'Sheet1!A1:B5', values: [] };
+		});
+
+		await node.execute.call(ctx);
+
+		const [, resource, body] = patchCall()!;
+		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B5')`);
+		expect((body as { values: string[][] }).values).toHaveLength(5);
+		expect((body as { values: string[][] }).values.at(-1)).toEqual(['', '']);
+	});
+
+	it('appends below the used range, not the selected range', async () => {
+		setParams({ ...baseParams, operation: 'upsert', range: 'A1:B2' });
+		ctx.getInputData.mockReturnValue([{ json: { Name: 'New Person', Email: 'new@example.com' } }]);
+		apiRequest.mockImplementation(async (method: string, resource: string) => {
+			if (method === 'GET' && resource.includes('/usedRange')) {
+				return { address: 'Sheet1!A1:B4' };
+			}
+			if (method === 'GET') {
+				return {
+					address: 'Sheet1!A1:B2',
+					values: [
+						['Name', 'Email'],
+						['Frank', 'frank@example.com'],
+					],
+				};
+			}
+			return { address: 'Sheet1!A1:B5', values: [] };
+		});
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', `${SHEET_PATH}/range(address='A1:B2')`);
+		const [, resource, body] = patchCall()!;
+		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B5')`);
+		expect((body as { values: string[][] }).values.at(-1)).toEqual([
+			'New Person',
+			'new@example.com',
+		]);
+	});
+
+	it('appends directly below the selected range when Append After Selected Range is on', async () => {
+		setParams({
+			...baseParams,
+			operation: 'upsert',
+			range: 'A1:B2',
+			options: { appendAfterSelectedRange: true },
+		});
+		ctx.getInputData.mockReturnValue([{ json: { Name: 'New Person', Email: 'new@example.com' } }]);
+		apiRequest.mockImplementation(async (method: string, resource: string) => {
+			if (method === 'GET') {
+				return {
+					address: 'Sheet1!A1:B2',
+					values: [
+						['Name', 'Email'],
+						['Frank', 'frank@example.com'],
+					],
+				};
+			}
+			return { address: 'Sheet1!A1:B3', values: [] };
+		});
+
+		await node.execute.call(ctx);
+
+		const [, resource] = patchCall()!;
+		expect(resource).toBe(`${SHEET_PATH}/range(address='A1:B3')`);
+		expect(apiRequest).not.toHaveBeenCalledWith(
+			'GET',
+			`${SHEET_PATH}/usedRange`,
+			{},
+			{ $select: 'address' },
+		);
 	});
 
 	it('updates every matching row when Update All Matches is on', async () => {

@@ -175,6 +175,18 @@ const properties: INodeProperties[] = [
 				description: 'The name of the property into which to write the RAW data',
 			},
 			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'Fields to include in the response. Separate multiple fields with a comma.',
+				displayOptions: {
+					show: {
+						rawData: [true],
+					},
+				},
+			},
+			{
 				displayName: 'Update All Matches',
 				name: 'updateAll',
 				type: 'boolean',

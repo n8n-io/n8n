@@ -17,6 +17,7 @@ import { microsoftApiRequest } from '../transport';
 
 type MatchUpdateOptions = {
 	appendAfterSelectedRange?: boolean;
+	fields?: string;
 	rawData?: boolean;
 	dataProperty?: string;
 	updateAll?: boolean;
@@ -74,11 +75,16 @@ export async function executeMatchUpdate(
 
 		if (dataMode === 'raw') {
 			const rawRows = processJsonInput(this.getNodeParameter('data', 0), 'Data') as string[][];
+			const rawQs: IDataObject = {};
+			if (rawData && options.fields) {
+				rawQs.$select = options.fields;
+			}
 			const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 				this,
 				'PATCH',
 				`${sheetPath}/range(address='${range}')`,
 				{ values: rawRows },
+				rawQs,
 			);
 			returnData.push(
 				...prepareOutput.call(this, this.getNode(), responseData, { rawData, dataProperty }),
@@ -114,9 +120,11 @@ export async function executeMatchUpdate(
 
 		const appendAfterSelectedRange = options.appendAfterSelectedRange ?? false;
 
-		// Trailing all-empty rows would be re-written over rows below the range —
-		// the OneDrive node's current-version behaviour, preserved.
-		if (!appendAfterSelectedRange && updateSummary.updatedData.length) {
+		// Trailing all-empty rows would push appended rows further down — trimmed
+		// only on the append-or-update path, where the OneDrive node trims; its
+		// Update never trims, and Update's write range is never recomputed, so a
+		// trim there would make the values no longer match the range's dimensions.
+		if (appendUnmatched && !appendAfterSelectedRange && updateSummary.updatedData.length) {
 			for (let i = updateSummary.updatedData.length - 1; i >= 0; i--) {
 				const row = updateSummary.updatedData[i];
 				if (row.every((cell) => cell === '' || cell === undefined || cell === null)) {
