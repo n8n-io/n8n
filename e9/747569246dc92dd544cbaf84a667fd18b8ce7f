@@ -1,0 +1,21 @@
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_9e646f7411eb31::t_a250fd8896bcdb 12,360-412
+packages/cli/src/workflow-runner.ts
+  s_9e646f7411eb31::t_ad273d9264bfe6 15,483-490
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e9747569246dc92dd544cbaf84a667fd18b8ce7f",
+  "prompts": {},
+  "sessions": {
+    "s_9e646f7411eb31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_9e646f7411eb31",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}
