@@ -62,4 +62,20 @@ describe('@ApiKeyScope Decorator', () => {
 			void TestController;
 		}).toThrow(/bare array/);
 	});
+
+	it('should reject objects that declare both anyOf and allOf', () => {
+		const ambiguous = {
+			anyOf: ['tag:list' as const],
+			allOf: ['tag:create' as const],
+		};
+
+		expect(() => {
+			class TestController {
+				@Get('/')
+				@ApiKeyScope(ambiguous as never)
+				async handler() {}
+			}
+			void TestController;
+		}).toThrow(/both anyOf and allOf/);
+	});
 });

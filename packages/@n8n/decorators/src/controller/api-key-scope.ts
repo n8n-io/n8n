@@ -33,10 +33,17 @@ export const ApiKeyScope =
 		}
 
 		if (typeof requirement === 'object') {
-			if ('anyOf' in requirement && requirement.anyOf.length === 0) {
+			const hasAnyOf = 'anyOf' in requirement;
+			const hasAllOf = 'allOf' in requirement;
+			if (hasAnyOf && hasAllOf) {
+				throw new Error(
+					'@ApiKeyScope does not accept both anyOf and allOf — pick one authorization rule',
+				);
+			}
+			if (hasAnyOf && requirement.anyOf.length === 0) {
 				throw new Error('@ApiKeyScope({ anyOf }) requires at least one scope');
 			}
-			if ('allOf' in requirement && requirement.allOf.length === 0) {
+			if (hasAllOf && requirement.allOf.length === 0) {
 				throw new Error('@ApiKeyScope({ allOf }) requires at least one scope');
 			}
 		}
