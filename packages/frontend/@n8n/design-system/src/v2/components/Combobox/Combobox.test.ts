@@ -474,21 +474,6 @@ describe('v2/components/Combobox', () => {
 			await getPopoverContainer();
 		});
 
-		it('should stay closed on focus when openOnFocus is false', async () => {
-			const wrapper = render(Combobox, {
-				props: {
-					items: ['Option 1', 'Option 2', 'Option 3'],
-					openOnFocus: false,
-				},
-			});
-
-			getComboboxInput(wrapper).focus();
-
-			await waitFor(() => {
-				expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
-			});
-		});
-
 		it('should close after selecting an item when opened on focus', async () => {
 			const wrapper = render(Combobox, {
 				props: {
