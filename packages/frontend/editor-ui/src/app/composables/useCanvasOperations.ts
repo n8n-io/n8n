@@ -89,7 +89,7 @@ import {
 import * as NodeViewUtils from '@/app/utils/nodeViewUtils';
 import {
 	GRID_SIZE,
-	AGENT_NODE_WIDTH,
+	AGENT_NODE_SIZE,
 	CONFIGURABLE_NODE_SIZE,
 	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
@@ -156,6 +156,7 @@ import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.ut
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { clearAllNodeResourceLocatorValues } from '@/features/workflows/templates/utils/templateTransforms';
 import { useClipboard } from '@vueuse/core';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import {
 	createWorkflowDocumentId,
 	pinDataToExecutionData,
@@ -199,7 +200,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
  */
 function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
 	if (isAgentNodeV2(node)) {
-		return AGENT_NODE_WIDTH;
+		return AGENT_NODE_SIZE[0];
 	}
 	const { inputs } = nodeTypeDescription;
 	const isConfigurable =
@@ -219,6 +220,7 @@ export function useCanvasOperations() {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
+	const agentNodeCanvasGeometryStore = useAgentNodeCanvasGeometryStore();
 	const settingsStore = useSettingsStore();
 	const tagsStore = useTagsStore();
 	const nodeCreatorStore = useNodeCreatorStore();
@@ -1092,6 +1094,13 @@ export function useCanvasOperations() {
 		if (!nodeData) {
 			throw new Error(i18n.baseText('nodeViewV2.showError.failedToCreateNode'));
 		}
+		if (isAgentNodeV2(nodeData) && !options.keepPristine) {
+			agentNodeCanvasGeometryStore.setPendingCenterY(
+				workflowDocumentStore.value.workflowId,
+				nodeData.id,
+				nodeData.position[1] + AGENT_NODE_SIZE[1] / 2,
+			);
+		}
 
 		workflowDocumentStore.value.addNode(nodeData);
 		if (options.trackHistory) {
@@ -1619,26 +1628,37 @@ export function useCanvasOperations() {
 					// We want to place the new node directly to the right of the last interacted with node.
 
 					let pushOffset = HORIZONTAL_NODE_STEP;
-					if (isAgentNodeV2(lastInteractedWithNode.value)) {
+					if (isAgentNodeV2(lastInteractedWithNodeObject)) {
 						// The agent card is wider than a default node, so offset by its width
 						// to keep the standard gap to its right edge
-						pushOffset += AGENT_NODE_WIDTH - DEFAULT_NODE_SIZE[0];
+						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
 					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
 						// If the node has scoped inputs, push it down a bit more
 						pushOffset += 140;
 					}
+					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
+						? agentNodeCanvasGeometryStore.getNodeHeight(
+								workflowDocumentStore.value.workflowId,
+								lastInteractedWithNodeObject.id,
+							)
+						: undefined;
+					const sourceNodeHeight =
+						measuredSourceHeight ??
+						(isAgentNodeV2(lastInteractedWithNodeObject)
+							? AGENT_NODE_SIZE[1]
+							: DEFAULT_NODE_SIZE[1]);
+					const targetNodeHeight = isAgentNodeV2(node) ? AGENT_NODE_SIZE[1] : nodeSize[1];
+					const centeredY =
+						lastInteractedWithNode.value.position[1] + (sourceNodeHeight - targetNodeHeight) / 2;
 
 					// If a node is active then add the new node directly after the current one
-					position = [
-						lastInteractedWithNode.value.position[0] + pushOffset,
-						lastInteractedWithNode.value.position[1] + yOffset,
-					];
+					position = [lastInteractedWithNode.value.position[0] + pushOffset, centeredY + yOffset];
 
 					// When inserting via edge plus button, keep Y aligned to preserve vertical line
 					if (lastInteractedWithNodeConnection) {
-						position = [position[0], lastInteractedWithNode.value.position[1]];
+						position = [position[0], centeredY];
 					}
 				}
 			}
@@ -2024,7 +2044,7 @@ export function useCanvasOperations() {
 		// including the wider agent card offset applied in resolveNodePosition
 		let insertOffset = HORIZONTAL_NODE_STEP;
 		if (isAgentNodeV2(sourceNode)) {
-			insertOffset += AGENT_NODE_WIDTH - DEFAULT_NODE_SIZE[0];
+			insertOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
 		}
 		const insertPosition: XYPosition = [
 			sourceNode.position[0] + insertOffset,
@@ -3176,6 +3196,7 @@ export function useCanvasOperations() {
 			const createdGroup = workflowDocumentStore.value.createGroup(group.nodeIds, name, {
 				markDirty: setStateDirty,
 				startCollapsed: true,
+				description: group.description,
 			});
 			if (trackHistory) {
 				historyStore.pushCommandToUndo(new AddNodeGroupCommand(createdGroup, Date.now()));

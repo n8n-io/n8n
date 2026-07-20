@@ -7,6 +7,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
+import { createVariable } from '@test-integration/db/variables';
 
 import { PackageEntityAccessDeniedError } from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -14,6 +15,7 @@ import { readExport } from './utils/tar-support';
 import {
 	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
+	buildWorkflowReferencingVariables,
 } from './utils/test-builders';
 
 type ExportEntries = Awaited<ReturnType<typeof readExport>>['entries'];
@@ -40,6 +42,7 @@ beforeEach(async () => {
 		'SharedWorkflow',
 		'CredentialsEntity',
 		'SharedCredentials',
+		'Variables',
 		'ProjectRelation',
 		'Project',
 	]);
@@ -161,7 +164,7 @@ describe('folder package export', () => {
 			{ name: 'External Child', nodes: [], connections: {} },
 			projectB,
 		);
-		await buildWorkflowCallingSubWorkflow({
+		const parent = await buildWorkflowCallingSubWorkflow({
 			name: 'Parent',
 			project: projectA,
 			parentFolder: folder,
@@ -178,7 +181,9 @@ describe('folder package export', () => {
 		const childEntry = manifest.workflows!.find(({ id }) => id === externalChild.id);
 		expect(childEntry?.target).toBe('workflows/external-child');
 		expect(entries.find((e) => e.name === `${childEntry!.target}/workflow.json`)).toBeDefined();
-		expect(manifest.requirements).toBeUndefined();
+		expect(manifest.requirements?.workflows).toEqual([
+			{ id: externalChild.id, name: externalChild.name, usedByWorkflows: [parent.id] },
+		]);
 	});
 
 	it('preserves nesting through multiple levels when exporting a folder subtree', async () => {
@@ -368,6 +373,43 @@ describe('folder package export — with contained workflows', () => {
 		});
 		expect(
 			entries.find((e) => e.name === `${manifest.credentials![0].target}/credential.json`),
+		).toBeDefined();
+	});
+
+	it("gathers a contained workflow's variable at the package top level", async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const folder = await createFolder(project, { name: 'in_progress' });
+		const variable = await createVariable('API_URL', 'https://api.example.com');
+		const workflow = await buildWorkflowReferencingVariables({
+			name: 'triage',
+			project,
+			variableNames: ['API_URL'],
+			parentFolder: folder,
+		});
+
+		const stream = await service.exportPackage({
+			user: owner,
+			workflowIds: [],
+			folderIds: [folder.id],
+		});
+		const { manifest, entries } = await readExport(stream);
+
+		// Global variable bundles at top-level variables/, not under the folder.
+		expect(manifest.variables).toEqual([
+			{
+				id: variable.id,
+				name: 'API_URL',
+				target: 'variables/apiurl',
+			},
+		]);
+		expect(manifest.requirements).toEqual({
+			variables: [
+				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: [workflow.id] },
+			],
+		});
+		expect(
+			entries.find((e) => e.name === `${manifest.variables![0].target}/variable.json`),
 		).toBeDefined();
 	});
 

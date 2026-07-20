@@ -344,6 +344,41 @@ describe('useNodeSettingsParameters', () => {
 			});
 		});
 
+		describe('showOnDeployment', () => {
+			it('returns false when the parameter is limited to cloud on a hosted deployment', async () => {
+				mockNodeHelpers();
+				settingsStore.isCloudDeployment = false;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const parameter: INodeProperties = {
+					...mockParameter,
+					displayOptions: { showOnDeployment: 'cloud' },
+				};
+				const result = await shouldDisplayNodeParameter({}, null, parameter);
+
+				expect(result).toBe(false);
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
+
+			it('continues display evaluation when the deployment matches', async () => {
+				mockNodeHelpers();
+				settingsStore.isCloudDeployment = true;
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const parameter: INodeProperties = {
+					...mockParameter,
+					displayOptions: { showOnDeployment: 'cloud' },
+				};
+				const result = await shouldDisplayNodeParameter({}, null, parameter);
+
+				expect(result).toBe(true);
+				expect(displayParameterSpy).toHaveBeenCalledWith({}, parameter, '', null, 'displayOptions');
+			});
+		});
+
 		describe('custom API call handling', () => {
 			it('returns false for custom API call with mustHideDuringCustomApiCall', async () => {
 				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);

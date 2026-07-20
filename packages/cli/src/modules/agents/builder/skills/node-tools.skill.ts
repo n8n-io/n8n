@@ -5,8 +5,9 @@ export function nodeToolsSkill(): RuntimeSkill {
 		id: 'agent-builder-node-tools',
 		name: 'Agent Builder Node Tools',
 		description:
-			'Use when adding, changing, or removing node-backed tools: search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, or other n8n expressions.',
+			'Use when resolve_integration returns kind: "node" or the user explicitly requests an n8n node-backed tool: search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, or other n8n expressions.',
 		recommendedTools: [
+			'resolve_integration',
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
@@ -14,6 +15,7 @@ export function nodeToolsSkill(): RuntimeSkill {
 			'patch_config',
 		],
 		allowedTools: [
+			'resolve_integration',
 			'search_nodes',
 			'get_node_types',
 			'ask_credential',
@@ -32,7 +34,16 @@ Use this to discover, configure, and wire node tools into the target agent's
 
 ## Workflow
 
-- Use \`search_nodes\`, then \`get_node_types\`; never guess node type names.
+- For a generic external-service request, call \`resolve_integration\` before
+  node discovery unless a resolver result is already available.
+- If it returns \`kind: "mcp"\`, load \`agent-builder-mcp\` and stop this node-tool
+  workflow.
+- If it returns \`kind: "node"\`, use its returned node results and call
+  \`get_node_types\`; do not repeat the same search with \`search_nodes\`.
+- Call \`search_nodes\` directly only when the user explicitly requests an n8n
+  node, when refining node results, or when a verified MCP server lacks the
+  requested capability.
+- Never guess node type names.
 - Use the tool node id from discovery, usually ending in \`Tool\`.
 - Put fixed values in \`nodeParameters\`; use complete n8n expressions for values the agent should decide at runtime:
   \`={{ $fromAI('url', 'The URL to inspect', 'string') }}\`.
