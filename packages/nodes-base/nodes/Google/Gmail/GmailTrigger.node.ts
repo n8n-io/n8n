@@ -275,11 +275,18 @@ export class GmailTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		// Static data is scoped per node name so multiple Gmail Triggers in one workflow don't share state
-		const workflowStaticData = this.getWorkflowStaticData(
-			'node',
-		) as GmailWorkflowStaticDataDictionary;
+		const staticData = this.getWorkflowStaticData('node');
 		const node = this.getNode();
+		// Upgrade from v1: move root-level state under the node name once
+		if (staticData.lastTimeChecked !== undefined && !(node.name in staticData)) {
+			staticData[node.name] = {
+				lastTimeChecked: staticData.lastTimeChecked,
+				possibleDuplicates: staticData.possibleDuplicates,
+			};
+			delete staticData.lastTimeChecked;
+			delete staticData.possibleDuplicates;
+		}
+		const workflowStaticData = staticData as GmailWorkflowStaticDataDictionary;
 		const nodeStaticData = (workflowStaticData[node.name] ??= {});
 
 		const now = Math.floor(DateTime.now().toSeconds()).toString();

@@ -1,4 +1,5 @@
 import * as mailparser from 'mailparser';
+import type { IDataObject } from 'n8n-workflow';
 import nock from 'nock';
 
 import { testPollingTriggerNode } from '@test/nodes/TriggerHelpers';
@@ -217,6 +218,41 @@ describe('GmailTrigger', () => {
 		});
 
 		expect(response).toEqual(null);
+	});
+
+	it('should migrate v1 root-level static data under the node name', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' }), createListMessage({ id: '2' })],
+			resultSizeEstimate: 2,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		// Message 1 is a known duplicate from the migrated state and is filtered before fetching
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/2?.*'))
+			.reply(200, createMessage({ id: '2', internalDate: '2000000000000' }));
+
+		// v1 stored state flat at the root instead of keyed by node name
+		const workflowStaticData: IDataObject = {
+			lastTimeChecked: 1000000,
+			possibleDuplicates: ['1'],
+		};
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { parameters: { simple: true } },
+			workflowStaticData,
+		});
+
+		expect(response?.[0]).toHaveLength(1);
+		expect(response?.[0]?.[0]?.json?.id).toBe('2');
+		expect(workflowStaticData.lastTimeChecked).toBeUndefined();
+		expect(workflowStaticData.possibleDuplicates).toBeUndefined();
+		expect(workflowStaticData['Gmail Trigger']).toEqual({
+			lastTimeChecked: 2000000000,
+			possibleDuplicates: ['2'],
+		});
 	});
 
 	it('should handle duplicates and different date fields', async () => {
