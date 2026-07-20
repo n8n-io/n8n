@@ -190,9 +190,6 @@ export class InsightsService {
 			projectId,
 		});
 
-		// Global `workflow:read` holders (admins/owners) can access every workflow,
-		// so we skip the sharing query entirely for the common viewer case. A `null`
-		// set below means "access to everything".
 		const accessibleWorkflowIds = new Set(
 			await this.workflowSharingService.getSharedWorkflowIds(user, {
 				scopes: ['workflow:read'],
