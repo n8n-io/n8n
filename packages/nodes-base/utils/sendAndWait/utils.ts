@@ -23,6 +23,7 @@ import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
 	BUTTON_STYLE_SECONDARY,
+	createConfirmationPage,
 	createEmailBodyWithN8nAttribution,
 	createEmailBodyWithoutN8nAttribution,
 } from './email-templates';
@@ -485,6 +486,25 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 	const query = req.query as { approved: 'false' | 'true' };
 	const approved = query.approved === 'true';
+
+	const confirmationPage = this.getNodeParameter('confirmationPage', false) as boolean;
+	if (confirmationPage && method === 'GET') {
+		const approvalOptions = this.getNodeParameter('approvalOptions.values', {}) as {
+			approveLabel?: string;
+			disapproveLabel?: string;
+		};
+		const buttonLabel = approved
+			? approvalOptions.approveLabel || 'Approve'
+			: approvalOptions.disapproveLabel || 'Decline';
+		const subject = this.getNodeParameter('subject', '') as string;
+		const message = (this.getNodeParameter('message', '') as string)
+			.replace(/\\n/g, '\n')
+			.replace(/<br>/g, '\n');
+
+		res.send(createConfirmationPage(subject || 'Confirm your response', message, buttonLabel));
+		return { noWebhookResponse: true };
+	}
+
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
 		workflowData: [[{ json: { data: { approved, respondedAt: new Date().toISOString() } } }]],
