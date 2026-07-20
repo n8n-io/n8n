@@ -405,10 +405,17 @@ export class InstanceAiSettingsService {
 			});
 		if (!resolved) return envConfig;
 		const { data } = resolved;
-		return {
-			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
-			apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
-		};
+		const apiUrl = typeof data.apiUrl === 'string' ? data.apiUrl : undefined;
+		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : undefined;
+		if (!apiUrl || !apiKey) {
+			this.warnCredentialFallback(
+				'Daytona sandbox',
+				INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
+				new Error('Credential data is incomplete'),
+			);
+			return envConfig;
+		}
+		return { apiUrl, apiKey };
 	}
 
 	async resolveN8nSandboxConfig(): Promise<{ serviceUrl?: string; apiKey?: string }> {
@@ -432,10 +439,15 @@ export class InstanceAiSettingsService {
 		const { data } = resolved;
 		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
 		const apiKey = typeof data.value === 'string' ? data.value : undefined;
-		return {
-			serviceUrl: n8nSandboxServiceUrl || undefined,
-			apiKey: headerName === 'x-api-key' ? apiKey : n8nSandboxServiceApiKey || undefined,
-		};
+		if (headerName !== 'x-api-key' || !apiKey) {
+			this.warnCredentialFallback(
+				'n8n Sandbox',
+				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
+				new Error('Credential data is incomplete'),
+			);
+			return envConfig;
+		}
+		return { serviceUrl: n8nSandboxServiceUrl || undefined, apiKey };
 	}
 
 	/** Resolve search config from the admin-selected instance credential. */
@@ -453,13 +465,18 @@ export class InstanceAiSettingsService {
 			});
 		if (!resolved) return envConfig;
 		const { type, data } = resolved;
-		if (type === 'braveSearchApi') {
-			return { braveApiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined };
+		if (type === 'braveSearchApi' && typeof data.apiKey === 'string' && data.apiKey) {
+			return { braveApiKey: data.apiKey };
 		}
-		if (type === 'searXngApi') {
-			return { searxngUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined };
+		if (type === 'searXngApi' && typeof data.apiUrl === 'string' && data.apiUrl) {
+			return { searxngUrl: data.apiUrl };
 		}
-		return {};
+		this.warnCredentialFallback(
+			'search',
+			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
+			new Error('Credential data is incomplete'),
+		);
+		return envConfig;
 	}
 
 	private warnCredentialFallback(service: string, consumerId: string, error: unknown): void {

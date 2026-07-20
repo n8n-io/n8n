@@ -405,6 +405,32 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it('falls back to environment config when resolved credential data is incomplete', async () => {
+			const logger = mock<Logger>();
+			logger.scoped.mockReturnValue(logger);
+			Container.set(Logger, logger);
+			globalConfig.instanceAi.braveSearchApiKey = 'env-key';
+			globalConfig.instanceAi.searxngUrl = 'https://search.example.com';
+			instanceCredentialBroker.resolveForConsumer.mockResolvedValue({
+				id: 'search-credential',
+				name: 'Search',
+				type: 'braveSearchApi',
+				data: {},
+			});
+
+			await expect(service.resolveSearchConfig()).resolves.toEqual({
+				braveApiKey: 'env-key',
+				searxngUrl: 'https://search.example.com',
+			});
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not resolve the configured search credential; using environment fallback',
+				{
+					consumerId: 'instance-ai:search',
+					error: 'Credential data is incomplete',
+				},
+			);
+		});
+
 		it('reads service credential selections from broker assignments', async () => {
 			const assignments: Record<string, string> = {
 				'instance-ai:sandbox:daytona': 'daytona-cred',
