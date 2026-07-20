@@ -110,11 +110,20 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 	});
 
 	it('maps defined fields per item onto the columns, matching the OneDrive node', async () => {
-		setParams({
-			...baseParams,
-			dataMode: 'define',
-			'fieldsUi.values': [{ column: 'Email', fieldValue: 'new@example.com' }],
-		});
+		const fieldsByItem = [
+			[{ column: 'Email', fieldValue: 'new@example.com' }],
+			[{ column: 'Name', fieldValue: 'Dana' }],
+		];
+		const params: Record<string, unknown> = { ...baseParams, dataMode: 'define' };
+		ctx.getNodeParameter.mockImplementation(
+			(name: string, itemIndex?: number, fallback?: unknown) =>
+				(name === 'fieldsUi.values'
+					? fieldsByItem[itemIndex ?? 0]
+					: name in params
+						? params[name]
+						: fallback) as never,
+		);
+		ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
 		mockColumnsAndSession();
 
 		await node.execute.call(ctx);
@@ -122,7 +131,12 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 		expect(apiRequest).toHaveBeenCalledWith(
 			'POST',
 			`${TABLE_ENDPOINT}/rows/add`,
-			{ values: [[null, 'new@example.com']] },
+			{
+				values: [
+					[null, 'new@example.com'],
+					['Dana', null],
+				],
+			},
 			{},
 			undefined,
 			SESSION_HEADER,
