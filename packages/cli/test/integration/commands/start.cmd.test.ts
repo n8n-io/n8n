@@ -136,7 +136,7 @@ describe('Start.run() with workflow publication service', () => {
 		);
 
 		const outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 
 		// What a follower's publish triggers on this (leader) instance via Redis.
 		// Re-emitted per retry: a wake-up that lands while a previous drain is

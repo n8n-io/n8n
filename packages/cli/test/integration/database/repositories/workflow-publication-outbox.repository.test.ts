@@ -29,45 +29,65 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	it('enqueues a pending record that can then be claimed', async () => {
-		await repository.enqueue('wf-1', 'v-1');
+		const workflow = await createActiveWorkflow();
+
+		await repository.enqueue(workflow.id);
 
 		const claimed = await repository.claimNextPendingRecord();
 
-		expect(claimed?.workflowId).toBe('wf-1');
-		expect(claimed?.publishedVersionId).toBe('v-1');
+		expect(claimed?.workflowId).toBe(workflow.id);
+		expect(claimed?.publishedVersionId).toBe(workflow.activeVersionId);
 		expect(claimed?.status).toBe('in_progress');
 
 		const claimedAgain = await repository.claimNextPendingRecord();
 		expect(claimedAgain).toBeNull();
 	});
 
-	it('supersedes an existing pending record when re-enqueued for the same workflow', async () => {
-		await repository.enqueue('wf-1', 'v-1');
-		await repository.enqueue('wf-1', 'v-2');
+	it('is a no-op when a pending record already exists', async () => {
+		const workflow = await createActiveWorkflow();
+		await repository.enqueue(workflow.id);
+		const [original] = await repository.find({ where: { status: 'pending' } });
 
-		const claimed = await repository.claimNextPendingRecord();
-		expect(claimed?.workflowId).toBe('wf-1');
-		expect(claimed?.publishedVersionId).toBe('v-2');
+		await repository.enqueue(workflow.id);
 
-		// Only one record ever existed for the workflow, so nothing else is pending.
-		const claimedAgain = await repository.claimNextPendingRecord();
-		expect(claimedAgain).toBeNull();
+		// The record is a pure "reconcile this workflow" marker: a pending one
+		// already means "reconcile", so the original row remains untouched.
+		const pending = await repository.find({ where: { status: 'pending' } });
+		expect(pending).toHaveLength(1);
+		expect(pending[0].id).toBe(original.id);
+	});
+
+	it('enqueues unpublished workflows with the sentinel and skips missing ones', async () => {
+		const unpublished = await createWorkflow(); // no activeVersionId
+
+		await repository.enqueue(unpublished.id);
+		await repository.enqueue('does-not-exist');
+
+		const pending = await repository.find({ where: { status: 'pending' } });
+		expect(pending).toHaveLength(1);
+		expect(pending[0]).toMatchObject({
+			workflowId: unpublished.id,
+			publishedVersionId: UNPUBLISH_VERSION_SENTINEL,
+		});
 	});
 
 	it('enqueues within a provided transaction and is visible once it commits', async () => {
+		const workflow = await createActiveWorkflow();
+
 		await repository.manager.transaction(async (trx) => {
-			await repository.enqueue('wf-1', 'v-1', trx);
+			await repository.enqueue(workflow.id, trx);
 		});
 
 		const claimed = await repository.claimNextPendingRecord();
-		expect(claimed?.workflowId).toBe('wf-1');
-		expect(claimed?.publishedVersionId).toBe('v-1');
+		expect(claimed?.workflowId).toBe(workflow.id);
 	});
 
 	it('discards the enqueued record when the surrounding transaction rolls back', async () => {
+		const workflow = await createActiveWorkflow();
+
 		await expect(
 			repository.manager.transaction(async (trx) => {
-				await repository.enqueue('wf-1', 'v-1', trx);
+				await repository.enqueue(workflow.id, trx);
 				throw new Error('rollback');
 			}),
 		).rejects.toThrow('rollback');
@@ -76,52 +96,57 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	it('claims pending records in FIFO order', async () => {
-		await repository.enqueue('wf-1', 'v-1');
-		await repository.enqueue('wf-2', 'v-1');
+		const wf1 = await createActiveWorkflow();
+		const wf2 = await createActiveWorkflow();
+		await repository.enqueue(wf1.id);
+		await repository.enqueue(wf2.id);
 
 		const first = await repository.claimNextPendingRecord();
 		const second = await repository.claimNextPendingRecord();
 
-		expect(first?.workflowId).toBe('wf-1');
-		expect(second?.workflowId).toBe('wf-2');
+		expect(first?.workflowId).toBe(wf1.id);
+		expect(second?.workflowId).toBe(wf2.id);
 	});
 
 	it('does not claim a second record for a workflow already in progress', async () => {
-		// wf-1 is claimed (in progress), then a newer version is enqueued.
-		await repository.enqueue('wf-1', 'v-1');
+		// wf1 is claimed (in progress), then it is re-enqueued.
+		const wf1 = await createActiveWorkflow();
+		const wf2 = await createActiveWorkflow();
+		await repository.enqueue(wf1.id);
 		const inProgress = await repository.claimNextPendingRecord();
 		assert(inProgress);
-		await repository.enqueue('wf-1', 'v-2');
+		await repository.enqueue(wf1.id);
 
-		// A different workflow is claimable, but wf-1's new pending record is not
+		// A different workflow is claimable, but wf1's new pending record is not
 		// until its in-progress record is resolved.
-		await repository.enqueue('wf-2', 'v-1');
+		await repository.enqueue(wf2.id);
 		const claimed = await repository.claimNextPendingRecord();
-		expect(claimed?.workflowId).toBe('wf-2');
+		expect(claimed?.workflowId).toBe(wf2.id);
 		expect(await repository.claimNextPendingRecord()).toBeNull();
 
-		// Once wf-1's in-progress record completes, its pending record is claimable.
+		// Once wf1's in-progress record completes, its pending record is claimable.
 		await repository.markCompleted(inProgress.id);
 		const next = await repository.claimNextPendingRecord();
-		expect(next?.workflowId).toBe('wf-1');
-		expect(next?.publishedVersionId).toBe('v-2');
+		expect(next?.workflowId).toBe(wf1.id);
 	});
 
 	it('enqueues a fresh pending record once the previous one is no longer pending', async () => {
-		await repository.enqueue('wf-1', 'v-1');
+		const workflow = await createActiveWorkflow();
+		await repository.enqueue(workflow.id);
 		const claimed = await repository.claimNextPendingRecord();
 		assert(claimed);
 		await repository.markCompleted(claimed.id);
 
-		await repository.enqueue('wf-1', 'v-2');
+		await repository.enqueue(workflow.id);
 
 		const next = await repository.claimNextPendingRecord();
 		expect(next?.id).not.toBe(claimed.id);
-		expect(next?.publishedVersionId).toBe('v-2');
+		expect(next?.workflowId).toBe(workflow.id);
 	});
 
 	it('marks a claimed record as completed', async () => {
-		await repository.enqueue('wf-1', 'v-1');
+		const workflow = await createActiveWorkflow();
+		await repository.enqueue(workflow.id);
 		const claimed = await repository.claimNextPendingRecord();
 		assert(claimed);
 
@@ -133,7 +158,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	it('marks a claimed record as failed and records the error', async () => {
-		await repository.enqueue('wf-1', 'v-1');
+		const workflow = await createActiveWorkflow();
+		await repository.enqueue(workflow.id);
 		const claimed = await repository.claimNextPendingRecord();
 		assert(claimed);
 
@@ -145,7 +171,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 	});
 
 	it('throws when transitioning a record that is not in progress', async () => {
-		await repository.enqueue('wf-1', 'v-1');
+		const workflow = await createActiveWorkflow();
+		await repository.enqueue(workflow.id);
 		const claimed = await repository.claimNextPendingRecord();
 		assert(claimed);
 		await repository.markCompleted(claimed.id);
@@ -157,7 +184,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 	describe('returnToPending', () => {
 		it('returns a claimed record to the queue so it can be claimed again', async () => {
-			await repository.enqueue('wf-1', 'v-1');
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
 
@@ -168,27 +196,29 @@ describe('WorkflowPublicationOutboxRepository', () => {
 
 			const reclaimed = await repository.claimNextPendingRecord();
 			expect(reclaimed?.id).toBe(claimed.id);
-			expect(reclaimed?.publishedVersionId).toBe('v-1');
 		});
 
 		it('drops the claimed record when a newer pending record already supersedes it', async () => {
-			// wf-1 is claimed (in progress), then a newer version is enqueued as pending.
-			await repository.enqueue('wf-1', 'v-1');
+			// The workflow is claimed (in progress), then re-enqueued as pending.
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
-			await repository.enqueue('wf-1', 'v-2');
+			await repository.enqueue(workflow.id);
 
 			await repository.returnToPending(claimed.id);
 
 			// The in-progress row is gone; only the superseding pending record remains.
 			expect(await repository.findOneBy({ id: claimed.id })).toBeNull();
 			const next = await repository.claimNextPendingRecord();
-			expect(next?.publishedVersionId).toBe('v-2');
+			expect(next?.workflowId).toBe(workflow.id);
+			expect(next?.id).not.toBe(claimed.id);
 			expect(await repository.claimNextPendingRecord()).toBeNull();
 		});
 
 		it('is a no-op when the record is no longer in progress', async () => {
-			await repository.enqueue('wf-1', 'v-1');
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
 			await repository.markCompleted(claimed.id);
@@ -222,7 +252,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('reclaims a stale in_progress record', async () => {
-			await repository.enqueue('wf-1', 'v-1');
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
 			await backdateUpdatedAt(claimed.id);
@@ -234,7 +265,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('does not reclaim a fresh in_progress record', async () => {
-			await repository.enqueue('wf-1', 'v-1');
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
 
@@ -243,7 +275,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('bumps updatedAt on reclaim so it is not immediately reclaimable again', async () => {
-			await repository.enqueue('wf-1', 'v-1');
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
 			await backdateUpdatedAt(claimed.id);
@@ -256,22 +289,22 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('reclaims the stale in_progress only, leaving a newer pending record untouched', async () => {
-			await repository.enqueue('wf-1', 'v-1');
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
-			await repository.enqueue('wf-1', 'v-2');
+			await repository.enqueue(workflow.id);
 			await backdateUpdatedAt(claimed.id);
 
 			const reclaimed = await repository.claimNextPendingRecord();
 			expect(reclaimed?.id).toBe(claimed.id);
-			expect(reclaimed?.publishedVersionId).toBe('v-1');
 
 			// No second in_progress row was created; the pending record is untouched.
 			const inProgress = await repository.find({ where: { status: 'in_progress' } });
 			expect(inProgress).toHaveLength(1);
 			const pending = await repository.find({ where: { status: 'pending' } });
 			expect(pending).toHaveLength(1);
-			expect(pending[0].publishedVersionId).toBe('v-2');
+			expect(pending[0].id).not.toBe(claimed.id);
 		});
 	});
 
@@ -285,11 +318,9 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			);
 		};
 
-		const createTerminal = async (
-			workflowId: string,
-			outcome: 'completed' | 'failed' | 'partial',
-		) => {
-			await repository.enqueue(workflowId, 'v-1');
+		const createTerminal = async (outcome: 'completed' | 'failed' | 'partial') => {
+			const workflow = await createActiveWorkflow();
+			await repository.enqueue(workflow.id);
 			const claimed = await repository.claimNextPendingRecord();
 			assert(claimed);
 			if (outcome === 'completed') await repository.markCompleted(claimed.id);
@@ -299,9 +330,9 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		};
 
 		it('deletes completed rows past the completed retention but keeps failed/partial of the same age (split retention)', async () => {
-			const completedId = await createTerminal('wf-1', 'completed');
-			const failedId = await createTerminal('wf-2', 'failed');
-			const partialId = await createTerminal('wf-3', 'partial');
+			const completedId = await createTerminal('completed');
+			const failedId = await createTerminal('failed');
+			const partialId = await createTerminal('partial');
 			await backdateUpdatedAt(completedId);
 			await backdateUpdatedAt(failedId);
 			await backdateUpdatedAt(partialId);
@@ -317,8 +348,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('deletes failed and partial rows once they pass the failed retention', async () => {
-			const failedId = await createTerminal('wf-1', 'failed');
-			const partialId = await createTerminal('wf-2', 'partial');
+			const failedId = await createTerminal('failed');
+			const partialId = await createTerminal('partial');
 			await backdateUpdatedAt(failedId);
 			await backdateUpdatedAt(partialId);
 
@@ -330,8 +361,8 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('keeps terminal rows that are still within their retention window', async () => {
-			const completedId = await createTerminal('wf-1', 'completed');
-			const failedId = await createTerminal('wf-2', 'failed');
+			const completedId = await createTerminal('completed');
+			const failedId = await createTerminal('failed');
 
 			// Just created, so within any positive retention window.
 			const deleted = await repository.deleteTerminalOlderThan(60, 60, 100);
@@ -342,8 +373,10 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('never deletes pending or in_progress rows', async () => {
-			await repository.enqueue('wf-1', 'v-1'); // stays pending
-			await repository.enqueue('wf-2', 'v-1');
+			const wf1 = await createActiveWorkflow();
+			const wf2 = await createActiveWorkflow();
+			await repository.enqueue(wf1.id);
+			await repository.enqueue(wf2.id); // stays pending; the claim takes wf1's older record
 			const inProgress = await repository.claimNextPendingRecord();
 			assert(inProgress);
 			await backdateUpdatedAt(inProgress.id);
@@ -356,11 +389,9 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 
 		it('deletes at most batchSize rows per call and reports the count', async () => {
-			const ids: number[] = [];
 			for (let i = 0; i < 3; i++) {
-				const id = await createTerminal(`wf-${i}`, 'completed');
+				const id = await createTerminal('completed');
 				await backdateUpdatedAt(id);
-				ids.push(id);
 			}
 
 			const firstBatch = await repository.deleteTerminalOlderThan(60, 60, 2);
@@ -451,7 +482,9 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			// record is at least as fresh as reconciliation's snapshot and must win —
 			// overwriting it could roll the workflow back to a stale version.
 			const workflow = await createActiveWorkflow();
-			await repository.enqueue(workflow.id, 'v-concurrent');
+			await repository.enqueue(workflow.id);
+			// Marker version so an overwrite would be detectable.
+			await repository.update({ workflowId: workflow.id }, { publishedVersionId: 'v-concurrent' });
 
 			await repository.enqueueByWorkflowIds([workflow.id]);
 
@@ -597,6 +630,25 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			});
 			expect(pending).toHaveLength(1);
 			expect(pending[0].publishedVersionId).toBe(workflow.activeVersionId);
+		});
+
+		it('does not overwrite an existing pending record', async () => {
+			// A publish can commit a pending record mid-statement during the takeover
+			// scan; that record is fresher and must win. (The version column is
+			// vestigial now, but the DO NOTHING also stops pointless lock churn.)
+			const workflow = await createActiveWorkflow();
+			await recordTrigger(workflow, 'n1', 'in-memory');
+			await repository.enqueue(workflow.id);
+			// Marker version so an overwrite would be detectable.
+			await repository.update({ workflowId: workflow.id }, { publishedVersionId: 'v-existing' });
+
+			await repository.enqueueForLeaderHandoff();
+
+			const pending = await repository.find({
+				where: { workflowId: workflow.id, status: 'pending' },
+			});
+			expect(pending).toHaveLength(1);
+			expect(pending[0].publishedVersionId).toBe('v-existing');
 		});
 	});
 

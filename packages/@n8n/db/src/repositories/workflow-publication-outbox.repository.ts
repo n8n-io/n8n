@@ -33,62 +33,60 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Enqueue a publication for `workflowId`. If a pending record is already in
-	 * place for the same workflow, its `publishedVersionId` is updated in place,
-	 * superseding the previous requested version.
+	 * Enqueue a publication for `workflowId`. The record carries no target — it
+	 * marks the workflow as needing reconciliation, and the applier derives the
+	 * target from `workflow_entity.activeVersionId` at claim time. A pending
+	 * record already in place therefore already means "reconcile": the enqueue is
+	 * a no-op, and the applier's fresh read supersedes any earlier intent.
 	 *
-	 * A single atomic UPSERT on the partial unique index
-	 * (`workflowId` where `status = 'pending'`) guarantees at most one pending
-	 * record per workflow without an explicit transaction. Callers only need to
-	 * know the enqueue succeeded, so no row is returned.
+	 * A single atomic insert on the partial unique index (`workflowId` where
+	 * `status` is pending/in_progress) guarantees at most one pending record per
+	 * workflow without an explicit transaction. Nothing is inserted when the
+	 * workflow row no longer exists. Callers only need to know the enqueue
+	 * succeeded, so no row is returned.
 	 *
-	 * Pass `trx` to run the UPSERT inside an existing transaction, e.g. to make
-	 * the enqueue atomic with a `workflow_entity` update.
+	 * Pass `trx` to run the insert inside an existing transaction, e.g. to make
+	 * the enqueue atomic with the `workflow_entity` update it reacts to.
 	 */
-	async enqueue(
-		workflowId: string,
-		publishedVersionId: string,
-		trx?: EntityManager,
-	): Promise<void> {
+	async enqueue(workflowId: string, trx?: EntityManager): Promise<void> {
 		if (this.globalConfig.database.type === 'postgresdb') {
-			await this.enqueueWithPostgresUpsert(workflowId, publishedVersionId, trx ?? this.manager);
+			await this.enqueueWithPostgresUpsert(workflowId, trx ?? this.manager);
 			return;
 		}
 
-		await this.enqueueWithSqliteUpsert(workflowId, publishedVersionId, trx ?? this.manager);
+		await this.enqueueWithSqliteUpsert(workflowId, trx ?? this.manager);
 	}
 
-	private async enqueueWithPostgresUpsert(
-		workflowId: string,
-		publishedVersionId: string,
-		trx: EntityManager,
-	): Promise<void> {
+	private async enqueueWithPostgresUpsert(workflowId: string, trx: EntityManager): Promise<void> {
 		const tableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
 
 		// `createdAt`/`updatedAt` carry DB-level defaults, so the insert omits
-		// them; the conflict path bumps `updatedAt` explicitly.
+		// them. COALESCE only satisfies the NOT NULL column until it is dropped —
+		// the value is never read.
 		await trx.query(
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
-			 VALUES ($1, $2, '${Status.Pending}')
+			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" = $1
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
-			[workflowId, publishedVersionId],
+			 DO NOTHING`,
+			[workflowId],
 		);
 	}
 
-	private async enqueueWithSqliteUpsert(
-		workflowId: string,
-		publishedVersionId: string,
-		trx: EntityManager,
-	): Promise<void> {
+	private async enqueueWithSqliteUpsert(workflowId: string, trx: EntityManager): Promise<void> {
 		const tableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
 
 		await trx.query(
 			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
-			 VALUES (?, ?, '${Status.Pending}')
+			 SELECT w."id", COALESCE(w."activeVersionId", '${UNPUBLISH_VERSION_SENTINEL}'), '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" = ?
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
-			[workflowId, publishedVersionId],
+			 DO NOTHING`,
+			[workflowId],
 		);
 	}
 
@@ -133,7 +131,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
 			 )
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			 DO NOTHING`,
 		);
 	}
 
@@ -157,7 +155,7 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 OR NOT EXISTS (SELECT 1 FROM ${triggerStatusTableName} ts WHERE ts."workflowId" = w."id")
 			 )
 			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			 DO NOTHING`,
 		);
 	}
 

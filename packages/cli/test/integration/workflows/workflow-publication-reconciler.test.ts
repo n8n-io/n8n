@@ -109,7 +109,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		// Publish through the real pipeline so the trigger registers in memory and
 		// the reporter persists the `activated` trigger-status rows with kinds.
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 		const record = await outboxRepository.claimNextPendingRecord();
 		await consumer.processRecord(record!);
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
@@ -142,7 +142,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 
 		// Publish through the real pipeline so the reporter persists the
 		// `activated` trigger-status rows.
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 		const record = await outboxRepository.claimNextPendingRecord();
 		await consumer.processRecord(record!);
 
@@ -172,7 +172,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 		const record = await outboxRepository.claimNextPendingRecord();
 		await consumer.processRecord(record!);
 		expect(activeWorkflowTriggers.get(workflow.id)?.has(trigger.id)).toBe(true);
@@ -199,7 +199,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 		const record = await outboxRepository.claimNextPendingRecord();
 		await consumer.processRecord(record!);
 
@@ -225,14 +225,14 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 		const record = await outboxRepository.claimNextPendingRecord();
 		await consumer.processRecord(record!);
 
 		// Mid-unpublish: activeVersionId already cleared, pending record owns the
 		// teardown. Reconciliation must not race it.
 		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 
 		await reconciler.reconcile();
 
@@ -246,7 +246,7 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
-		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		await outboxRepository.enqueue(workflow.id);
 		const record = await outboxRepository.claimNextPendingRecord();
 		await consumer.processRecord(record!);
 		const registeredBefore = activeWorkflowTriggers.get(workflow.id)?.get(trigger.id);
