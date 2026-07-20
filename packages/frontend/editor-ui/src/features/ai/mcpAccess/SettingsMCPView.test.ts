@@ -6,7 +6,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { FrontendSettings } from '@n8n/api-types';
@@ -16,6 +15,13 @@ import { EXPOSE_ALL_WORKFLOWS_TO_MCP_MODAL_KEY } from '@/experiments/exposeAllWo
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
+const { hasPermissionMock } = vi.hoisted(() => ({
+	hasPermissionMock: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: hasPermissionMock,
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -42,7 +48,6 @@ vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
 
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
-let usersStore: MockedStore<typeof useUsersStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 let exposeAllWorkflowsToMcpStore: MockedStore<typeof useExposeAllWorkflowsToMcpStore>;
@@ -85,9 +90,9 @@ const enableMcpSettings = () => {
 
 describe('SettingsMCPView', () => {
 	beforeEach(() => {
+		hasPermissionMock.mockReturnValue(true);
 		pinia = createTestingPinia();
 		mcpStore = mockedStore(useMCPStore);
-		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		uiStore = mockedStore(useUIStore);
 		exposeAllWorkflowsToMcpStore = mockedStore(useExposeAllWorkflowsToMcpStore);
@@ -201,21 +206,20 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should show the callback URLs row for admins only', async () => {
-			usersStore.isAdmin = true;
+			hasPermissionMock.mockReturnValue(true);
 			const admin = createComponent({ pinia });
 			await nextTick();
 			expect(admin.getByTestId('mcp-callback-urls-row')).toBeVisible();
 			admin.unmount();
 
-			usersStore.isAdmin = false;
-			usersStore.isInstanceOwner = false;
+			hasPermissionMock.mockReturnValue(false);
 			const member = createComponent({ pinia });
 			await nextTick();
 			expect(member.queryByTestId('mcp-callback-urls-row')).not.toBeInTheDocument();
 		});
 
 		it('should show "All" when no URLs are configured and the count otherwise', async () => {
-			usersStore.isAdmin = true;
+			hasPermissionMock.mockReturnValue(true);
 			mcpStore.allowedRedirectUris = [];
 			const all = createComponent({ pinia });
 			await nextTick();
@@ -229,7 +233,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should open the dialog from the row and persist on save', async () => {
-			usersStore.isAdmin = true;
+			hasPermissionMock.mockReturnValue(true);
 			mcpStore.setAllowedRedirectUris.mockResolvedValue(undefined);
 
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
@@ -249,7 +253,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should load the redirect URIs on mount for admins', async () => {
-			usersStore.isAdmin = true;
+			hasPermissionMock.mockReturnValue(true);
 			createComponent({ pinia });
 			await nextTick();
 
@@ -259,7 +263,7 @@ describe('SettingsMCPView', () => {
 
 	describe('Toggle MCP on/off', () => {
 		beforeEach(() => {
-			usersStore.isAdmin = true;
+			hasPermissionMock.mockReturnValue(true);
 		});
 
 		it('should call setMcpAccessEnabled when turning on MCP', async () => {
@@ -326,8 +330,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should disable the enable button for non-owner/non-admin users', async () => {
-			usersStore.isInstanceOwner = false;
-			usersStore.isAdmin = false;
+			hasPermissionMock.mockReturnValue(false);
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
@@ -336,7 +339,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should disable the enable button when MCP is managed by env', async () => {
-			usersStore.isInstanceOwner = true;
+			hasPermissionMock.mockReturnValue(true);
 			settingsStore.moduleSettings = {
 				mcp: {
 					mcpAccessEnabled: false,
@@ -353,7 +356,7 @@ describe('SettingsMCPView', () => {
 
 	describe('Expose all workflows experiment', () => {
 		beforeEach(() => {
-			usersStore.isAdmin = true;
+			hasPermissionMock.mockReturnValue(true);
 			mcpStore.setMcpAccessEnabled.mockResolvedValue(true);
 		});
 
@@ -416,7 +419,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should render the notice for an instance owner when atCapacity is true', async () => {
-			usersStore.isInstanceOwner = true;
+			hasPermissionMock.mockReturnValue(true);
 			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
 
 			const { findByTestId } = createComponent({ pinia });
@@ -427,8 +430,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should NOT render the notice for a non-admin member', async () => {
-			usersStore.isInstanceOwner = false;
-			usersStore.isAdmin = false;
+			hasPermissionMock.mockReturnValue(false);
 			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -438,7 +440,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should NOT render the notice when atCapacity is false', async () => {
-			usersStore.isInstanceOwner = true;
+			hasPermissionMock.mockReturnValue(true);
 			mcpStore.instanceClientStats = { count: 1, limit: 5, atCapacity: false };
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -448,7 +450,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should fetch instance stats on mount for an admin/owner', async () => {
-			usersStore.isInstanceOwner = true;
+			hasPermissionMock.mockReturnValue(true);
 
 			createComponent({ pinia });
 			await nextTick();
@@ -457,8 +459,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should not fetch instance stats on mount for a regular member', async () => {
-			usersStore.isInstanceOwner = false;
-			usersStore.isAdmin = false;
+			hasPermissionMock.mockReturnValue(false);
 
 			createComponent({ pinia });
 			await nextTick();

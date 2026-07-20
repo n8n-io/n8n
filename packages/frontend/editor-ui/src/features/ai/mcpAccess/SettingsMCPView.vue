@@ -30,7 +30,7 @@ import {
 	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -39,15 +39,14 @@ const mcp = useMcp();
 const router = useRouter();
 
 const mcpStore = useMCPStore();
-const usersStore = useUsersStore();
 const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
 
-const isOwner = computed(() => usersStore.isInstanceOwner);
-const isAdmin = computed(() => usersStore.isAdmin);
-const canManageMcpInstance = computed(() => isOwner.value || isAdmin.value);
+const canManageMcpInstance = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
+);
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
 
 const exposedWorkflowsCount = ref(0);

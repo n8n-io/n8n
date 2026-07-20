@@ -37,8 +37,12 @@ const CLIENT_TYPE_OPTIONS: readonly McpClientTypeFilter[] = MCP_CLIENT_TYPE_FILT
 const CONNECTED_OPTIONS: readonly McpClientConnectedPeriod[] = MCP_CLIENT_CONNECTED_PERIODS;
 
 const connectedOptionLabels: Record<McpClientConnectedPeriod, string> = {
-	last7: i18n.baseText('settings.mcp.oAuthClients.filters.connected.last7Days'),
-	last30: i18n.baseText('settings.mcp.oAuthClients.filters.connected.last30Days'),
+	last7: i18n.baseText('settings.mcp.oAuthClients.filters.connected.lastXDays', {
+		interpolate: { count: 7 },
+	}),
+	last30: i18n.baseText('settings.mcp.oAuthClients.filters.connected.lastXDays', {
+		interpolate: { count: 30 },
+	}),
 	older: i18n.baseText('settings.mcp.oAuthClients.filters.connected.older'),
 };
 

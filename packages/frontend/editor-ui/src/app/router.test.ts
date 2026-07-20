@@ -7,7 +7,7 @@ import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';

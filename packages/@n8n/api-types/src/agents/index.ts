@@ -1,3 +1,4 @@
+export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';

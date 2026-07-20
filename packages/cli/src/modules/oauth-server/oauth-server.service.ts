@@ -550,14 +550,15 @@ export class OAuthServerService implements OAuthServerProvider {
 
 		// Owners and the tab totals reflect the unfiltered set, so they come from
 		// dedicated counts rather than the filtered page above.
-		const owners = listAll
-			? sortOwners(await this.userConsentRepository.findConsentOwners())
-			: undefined;
-		const totals: ConnectedOAuthClientTotals = {
-			mine: await this.userConsentRepository.countBy({ userId: user.id }),
-		};
-		if (canSeeAll) {
-			totals.all = await this.userConsentRepository.count();
+		const [consentOwners, mineCount, allCount] = await Promise.all([
+			listAll ? this.userConsentRepository.findConsentOwners() : undefined,
+			this.userConsentRepository.countBy({ userId: user.id }),
+			canSeeAll ? this.userConsentRepository.count() : undefined,
+		]);
+		const owners = consentOwners ? sortOwners(consentOwners) : undefined;
+		const totals: ConnectedOAuthClientTotals = { mine: mineCount };
+		if (allCount !== undefined) {
+			totals.all = allCount;
 		}
 
 		return { clients, count, totals, owners };
