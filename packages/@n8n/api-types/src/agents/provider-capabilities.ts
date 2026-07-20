@@ -92,13 +92,6 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: { image: true, pdf: true, audio: true },
 	},
-	xai: {
-		thinking: false,
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
 	groq: {
 		thinking: false,
 		promptCaching: false,
@@ -120,27 +113,18 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		providerTools: [],
 		attachments: NO_ATTACHMENTS,
 	},
+	xai: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	groq: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	deepseek: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	mistral: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 	openrouter: {
-		thinking: false,
+		thinking: 'reasoningEffort',
 		promptCaching: false,
 		webSearch: false,
 		providerTools: [],
-		attachments: NO_ATTACHMENTS,
 	},
-	cohere: {
-		thinking: false,
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
-	ollama: {
-		thinking: false,
-		promptCaching: false,
-		webSearch: false,
-		providerTools: [],
-		attachments: NO_ATTACHMENTS,
-	},
+	cohere: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
+	ollama: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 };
 
 /**
