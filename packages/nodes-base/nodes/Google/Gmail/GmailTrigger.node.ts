@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -277,8 +277,15 @@ export class GmailTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const staticData = this.getWorkflowStaticData('node');
 		const node = this.getNode();
+		// State is keyed by node name, so the name must be a safe object key
+		if (!isSafeObjectProperty(node.name)) {
+			throw new NodeOperationError(
+				node,
+				`The node name '${node.name}' is reserved, please rename the node`,
+			);
+		}
 		// Upgrade from v1: move root-level state under the node name once
-		if (staticData.lastTimeChecked !== undefined && !(node.name in staticData)) {
+		if (staticData.lastTimeChecked !== undefined && !Object.hasOwn(staticData, node.name)) {
 			staticData[node.name] = {
 				lastTimeChecked: staticData.lastTimeChecked,
 				possibleDuplicates: staticData.possibleDuplicates,
@@ -287,7 +294,10 @@ export class GmailTrigger implements INodeType {
 			delete staticData.possibleDuplicates;
 		}
 		const workflowStaticData = staticData as GmailWorkflowStaticDataDictionary;
-		const nodeStaticData = (workflowStaticData[node.name] ??= {});
+		if (!Object.hasOwn(workflowStaticData, node.name) || workflowStaticData[node.name] == null) {
+			workflowStaticData[node.name] = {};
+		}
+		const nodeStaticData = workflowStaticData[node.name];
 
 		const now = Math.floor(DateTime.now().toSeconds()).toString();
 
@@ -432,15 +442,28 @@ export class GmailTrigger implements INodeType {
 				qs.q = '-in:scheduled';
 			}
 
-			const messagesResponse: MessageListResponse = await googleApiRequest.call(
-				this,
-				'GET',
-				'/gmail/v1/users/me/messages',
-				{},
-				qs,
-			);
-
-			let messages: ListMessage[] = messagesResponse.messages ?? [];
+			// Drain all list pages so a backlog beyond one page lands in
+			// pendingMessageIds instead of being skipped when lastTimeChecked advances
+			let messages: ListMessage[];
+			if (shouldLimitMessages) {
+				messages = (await googleApiRequestAllItems.call(
+					this,
+					'messages',
+					'GET',
+					'/gmail/v1/users/me/messages',
+					{},
+					qs,
+				)) as ListMessage[];
+			} else {
+				const messagesResponse: MessageListResponse = await googleApiRequest.call(
+					this,
+					'GET',
+					'/gmail/v1/users/me/messages',
+					{},
+					qs,
+				);
+				messages = messagesResponse.messages ?? [];
+			}
 
 			if (!messages.length && !allFetchedMessages.length) {
 				return null;

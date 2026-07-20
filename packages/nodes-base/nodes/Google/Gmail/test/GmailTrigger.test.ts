@@ -255,6 +255,44 @@ describe('GmailTrigger', () => {
 		});
 	});
 
+	it('should reject node names that clash with built-in object properties', async () => {
+		await expect(
+			testPollingTriggerNode(GmailTrigger, {
+				node: { name: '__proto__', parameters: { simple: true } },
+			}),
+		).rejects.toThrow("The node name '__proto__' is reserved, please rename the node");
+	});
+
+	it('should migrate and store state as an own property for a node name inherited from Object.prototype', async () => {
+		const messageListResponse: MessageListResponse = {
+			messages: [createListMessage({ id: '1' })],
+			resultSizeEstimate: 1,
+		};
+		nock(baseUrl)
+			.get('/gmail/v1/users/me/labels')
+			.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+		nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, messageListResponse);
+		nock(baseUrl)
+			.get(new RegExp('/gmail/v1/users/me/messages/1?.*'))
+			.reply(200, createMessage({ id: '1', internalDate: '2000000000000' }));
+
+		const workflowStaticData: IDataObject = { lastTimeChecked: 1000000 };
+
+		const { response } = await testPollingTriggerNode(GmailTrigger, {
+			node: { name: 'toString', parameters: { simple: true } },
+			workflowStaticData,
+		});
+
+		expect(response?.[0]).toHaveLength(1);
+		expect(workflowStaticData.lastTimeChecked).toBeUndefined();
+		expect(Object.hasOwn(workflowStaticData, 'toString')).toBe(true);
+		expect(Object.getOwnPropertyDescriptor(workflowStaticData, 'toString')?.value).toEqual({
+			lastTimeChecked: 2000000000,
+			possibleDuplicates: ['1'],
+		});
+		expect(Object.prototype.toString).not.toHaveProperty('lastTimeChecked');
+	});
+
 	it('should handle duplicates and different date fields', async () => {
 		const messageListResponse: MessageListResponse = {
 			messages: [
@@ -696,6 +734,49 @@ describe('GmailTrigger', () => {
 			expect(response?.[0]).toHaveLength(2);
 			expect(response?.[0]?.[0]?.json?.id).toBe('3');
 			expect(response?.[0]?.[1]?.json?.id).toBe('2');
+		});
+
+		it('should drain all list pages so a backlog beyond the first page is kept as pending', async () => {
+			const initialTimestamp = 1000000;
+			const listPage1: MessageListResponse = {
+				messages: [createListMessage({ id: '4' }), createListMessage({ id: '3' })],
+				nextPageToken: 'page2Token',
+				resultSizeEstimate: 4,
+			};
+			const listPage2: MessageListResponse = {
+				messages: [createListMessage({ id: '2' }), createListMessage({ id: '1' })],
+				resultSizeEstimate: 4,
+			};
+
+			nock(baseUrl)
+				.get('/gmail/v1/users/me/labels')
+				.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+			nock(baseUrl).get(new RegExp('/gmail/v1/users/me/messages?.*')).reply(200, listPage1);
+			nock(baseUrl)
+				.get(new RegExp('/gmail/v1/users/me/messages?.*pageToken=page2Token.*'))
+				.reply(200, listPage2);
+			nock(baseUrl)
+				.get(new RegExp('/gmail/v1/users/me/messages/4?.*'))
+				.reply(200, createMessage({ id: '4', internalDate: '4000000000000' }));
+			nock(baseUrl)
+				.get(new RegExp('/gmail/v1/users/me/messages/3?.*'))
+				.reply(200, createMessage({ id: '3', internalDate: '3000000000000' }));
+
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
+			};
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { parameters: { simple: true, maxResults: 2 } },
+				workflowStaticData,
+			});
+
+			expect(nock.isDone()).toBe(true);
+			expect(response?.[0]).toHaveLength(2);
+			expect(response?.[0]?.[0]?.json?.id).toBe('4');
+			expect(response?.[0]?.[1]?.json?.id).toBe('3');
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['2', '1']);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(4000000000);
 		});
 
 		it('should store pending IDs and advance lastTimeChecked when more messages remain', async () => {
