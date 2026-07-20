@@ -15,7 +15,6 @@ import {
 import {
 	Delete,
 	Get,
-	GlobalScope,
 	Licensed,
 	Patch,
 	Post,
