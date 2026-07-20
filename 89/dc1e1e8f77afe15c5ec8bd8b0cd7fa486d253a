@@ -1,0 +1,67 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_b94b597fedcfae 224
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/MetricCriteria.vue
+  s_5d6be4e6bc70a6::t_0e309f34d8fc97 38-48
+  s_5d6be4e6bc70a6::t_66ae8b8a3b4e56 2,6,17,19-21,31,33,36-37,56,58,64,66,69-74,77,93-94,123-126,128-131,134-136,152-153
+  s_5d6be4e6bc70a6::t_fb1ac880f746a0 75-76,78-92
+  s_5d6be4e6bc70a6::t_cf278b20c2c9ea 127,132-133,137-151
+packages/@n8n/api-types/src/schemas/eval-collections.schema.ts
+  s_5d6be4e6bc70a6::t_1ef2e07358d9ff 61-65,67-69
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/OutputsTab.vue
+  s_5d6be4e6bc70a6::t_929fb61d40b31f 186-191
+  s_5d6be4e6bc70a6::t_ed1c494f65ed7a 2,25-27
+  s_5d6be4e6bc70a6::t_ee6532e342f209 109-120
+  s_5d6be4e6bc70a6::t_564b629c98bd59 3,6-8,24,30-41
+  s_5d6be4e6bc70a6::t_83f6d7a0e4478f 55-64
+  s_5d6be4e6bc70a6::t_d48d04e01afcf0 236,241-256
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_610d1ea73d6b89 15-17
+  s_5d6be4e6bc70a6::t_82402afdf80b6a 166
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareTabs.test.ts
+  s_5d6be4e6bc70a6::t_db5439f8ec9c98 44,53
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_a20aa88dda31b1 73-75
+  s_5d6be4e6bc70a6::t_7e697e3a294661 6
+  s_5d6be4e6bc70a6::t_1b22f1dc03bd63 168-169,177-185
+  s_5d6be4e6bc70a6::t_fc2ff8a4c95a8e 109,112-115,117,135
+  s_5d6be4e6bc70a6::t_f4a3ce1f2d1849 2
+  s_5d6be4e6bc70a6::t_4f6f9d136da96a 122-129
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.vue
+  s_5d6be4e6bc70a6::t_f78bc5d0a5c2a9 113-123,128-134
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/VersionsTable.vue
+  s_5d6be4e6bc70a6::t_b5116a8334d646 121-125,236-241
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5d6be4e6bc70a6::t_8d544844a304c4 5758
+  s_5d6be4e6bc70a6::t_db6e8e91734f17 5760
+  s_5d6be4e6bc70a6::t_42f1a6896b62a0 5759
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/OutputsTab.test.ts
+  s_5d6be4e6bc70a6::t_db5439f8ec9c98 34
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareTabs.vue
+  s_5d6be4e6bc70a6::t_4269aa86d6bbb7 25-27
+  s_5d6be4e6bc70a6::t_a2353a788b9267 100
+  s_5d6be4e6bc70a6::t_7809b944c6237b 2
+  s_5d6be4e6bc70a6::t_6fa8ca52cc632e 101
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CasesTable.test.ts
+  s_5d6be4e6bc70a6::t_db5439f8ec9c98 37,101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "89dc1e1e8f77afe15c5ec8bd8b0cd7fa486d253a",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

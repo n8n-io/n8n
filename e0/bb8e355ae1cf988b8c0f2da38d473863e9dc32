@@ -1,0 +1,24 @@
+.agents/skills/community-pr-readiness-check/reference/checks.md
+  s_0dbe1bf117bbe1::t_e08d5b4870d5a5 175,177
+  s_0dbe1bf117bbe1::t_cf4a74db0a36a0 3
+.agents/skills/community-pr-readiness-check/SKILL.md
+  s_0dbe1bf117bbe1::t_5382ddb1277cc3 172
+  s_0dbe1bf117bbe1::t_0edc05f95366c2 112
+  s_0dbe1bf117bbe1::t_14c349bdb1ba7c 42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e0bb8e355ae1cf988b8c0f2da38d473863e9dc32",
+  "prompts": {},
+  "sessions": {
+    "s_0dbe1bf117bbe1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ad44123-26ae-472f-818f-9524250e4b90",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
