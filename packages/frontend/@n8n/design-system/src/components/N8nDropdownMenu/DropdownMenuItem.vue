@@ -313,6 +313,8 @@ watch(
 </template>
 
 <style module lang="scss">
+@use '../../css/common/var';
+
 .wrapper {
 	display: contents;
 }
@@ -374,7 +376,22 @@ watch(
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
+<<<<<<< HEAD
 	z-index: 999999;
+=======
+	z-index: var.$index-popper;
+	width: fit-content;
+	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
+	max-width: var(--n8n--dropdown-menu-width);
+	max-height: min(var(--reka-dropdown-menu-content-available-height), var(--spacing--5xl));
+	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	overflow: hidden;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+>>>>>>> 051eee19 (fix(editor): Keep dropdown tooltips above menus (#34547))
 }
 
 .item-leading {
