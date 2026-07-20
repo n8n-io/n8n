@@ -4433,6 +4433,7 @@
 	"workflowReviews.publishChoice.submitForReview": "Submit for review",
 	"workflowReviews.publishChoice.publish": "Publish",
 	"workflowReviews.submitForReview.title": "Submit for review",
+	"workflowReviews.submitForReview.ariaDescription": "Enter a title and optional description for this workflow review.",
 	"workflowReviews.submitForReview.reviewTitle.label": "Review title",
 	"workflowReviews.submitForReview.description.label": "Description",
 	"workflowReviews.submitForReview.submit": "Submit",

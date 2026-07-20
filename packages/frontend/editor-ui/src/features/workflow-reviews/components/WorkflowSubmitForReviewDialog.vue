@@ -120,6 +120,7 @@ const submit = async () => {
 		:open="open"
 		size="medium"
 		:header="i18n.baseText('workflowReviews.submitForReview.title')"
+		:aria-description="i18n.baseText('workflowReviews.submitForReview.ariaDescription')"
 		@open-auto-focus="handleOpenAutoFocus"
 		@update:open="close"
 	>

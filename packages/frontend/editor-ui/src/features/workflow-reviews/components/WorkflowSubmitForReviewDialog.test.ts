@@ -50,9 +50,10 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	});
 
 	it('requires a non-empty title and cancel creates nothing', async () => {
-		const { getByTestId, emitted } = await renderDialog();
+		const { getByTestId, getByRole, emitted } = await renderDialog();
 		const titleInput = getByTestId('workflow-review-title-input');
 		const submitButton = getByTestId('workflow-review-submit-button');
+		expect(getByRole('dialog')).toHaveAttribute('aria-describedby');
 
 		await waitFor(() => expect(titleInput).toHaveFocus());
 		expect(titleInput).toHaveAttribute('maxlength', '128');
