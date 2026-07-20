@@ -1,5 +1,5 @@
 import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { convertNodeToAiTool, createAiTools } from '../ai-tools';
 
@@ -134,6 +134,47 @@ describe('ai-tools', () => {
 			expect(result.description.properties[0].name).toBe('descriptionType');
 			expect(result.description.properties[1].name).toBe('toolDescription');
 			expect(result.description.properties[2]).toEqual(operationProp);
+		});
+
+		it('should remove operations unsupported by ephemeral tool execution', () => {
+			fullNodeWrapper.description.properties = [
+				{
+					displayName: 'Message Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Send', value: 'post' },
+						{ name: 'Send and Wait', value: SEND_AND_WAIT_OPERATION },
+					],
+					default: SEND_AND_WAIT_OPERATION,
+				},
+				{
+					displayName: 'Workflow Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Dispatch', value: 'dispatch' },
+						{ name: 'Dispatch and Wait', value: 'dispatchAndWait' },
+					],
+					default: 'dispatchAndWait',
+				},
+			];
+
+			const result = convertNodeToAiTool(fullNodeWrapper);
+			const operationProperties = result.description.properties.filter(
+				(property) => property.name === 'operation',
+			);
+
+			expect(operationProperties).toMatchObject([
+				{
+					options: [{ name: 'Send', value: 'post' }],
+					default: 'post',
+				},
+				{
+					options: [{ name: 'Dispatch', value: 'dispatch' }],
+					default: 'dispatch',
+				},
+			]);
 		});
 
 		it('should handle nodes with both resource and operation properties', () => {

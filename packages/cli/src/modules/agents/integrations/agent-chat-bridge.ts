@@ -341,16 +341,16 @@ export class AgentChatBridge {
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 		thread: Thread,
-	): Promise<void> {
+	): Promise<boolean> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
 		if (!runId || !toolCallId) {
 			this.logger.warn('[AgentChatBridge] Suspended chunk missing runId or toolCallId');
-			return;
+			return false;
 		}
 
 		const cardPayload = buildSuspendCardPayload(suspendPayload);
-		if (!cardPayload) return;
+		if (!cardPayload) return false;
 
 		try {
 			const card = await this.componentMapper.toCard(
@@ -362,6 +362,7 @@ export class AgentChatBridge {
 				this.integration.type,
 			);
 			await thread.post({ card });
+			return true;
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post suspension card', {
 				agentId: this.agentId,
@@ -369,6 +370,7 @@ export class AgentChatBridge {
 				toolCallId,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			return false;
 		}
 	}
 
@@ -379,12 +381,12 @@ export class AgentChatBridge {
 	private async handleMessage(
 		chunk: Extract<StreamChunk, { type: 'message' }>,
 		thread: Thread,
-	): Promise<void> {
+	): Promise<boolean> {
 		const agentMessage: AgentMessage = chunk.message;
 
 		// AgentMessage is a union. LLM messages (Message) have a `content` array
 		// of typed content parts. Extract only text parts for display.
-		if (!('content' in agentMessage) || !Array.isArray(agentMessage.content)) return;
+		if (!('content' in agentMessage) || !Array.isArray(agentMessage.content)) return false;
 
 		const textParts = agentMessage.content
 			.filter(
@@ -395,16 +397,18 @@ export class AgentChatBridge {
 		const textToPost = textParts.join('');
 
 		// Skip messages with no displayable text (e.g. tool-call-only messages)
-		if (!textToPost.trim()) return;
+		if (!textToPost.trim()) return false;
 
 		try {
 			await thread.post(textToPost);
+			return true;
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post message chunk', {
 				agentId: this.agentId,
 				threadId: thread.id,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			return false;
 		}
 	}
 

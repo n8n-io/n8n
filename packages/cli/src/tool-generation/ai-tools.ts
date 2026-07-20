@@ -5,7 +5,9 @@ import type {
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes } from 'n8n-workflow';
+import { deepCopy, isINodePropertyOptions, NodeConnectionTypes } from 'n8n-workflow';
+
+import { isUnsupportedEphemeralNodeOperation } from '@/node-execution/node-tool-operation-support';
 
 import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils';
 
@@ -19,6 +21,22 @@ export function findLastCalloutIndex(properties: INodeProperties[]): number {
 	}
 
 	return -1;
+}
+
+function removeUnsupportedEphemeralOperations(properties: INodeProperties[]): void {
+	for (const property of properties) {
+		if (property.name !== 'operation' || !Array.isArray(property.options)) continue;
+
+		property.options = property.options.filter(
+			(option) =>
+				!isINodePropertyOptions(option) || !isUnsupportedEphemeralNodeOperation(option.value),
+		);
+
+		if (!isUnsupportedEphemeralNodeOperation(property.default)) continue;
+
+		const firstSupportedOption = property.options.find(isINodePropertyOptions);
+		if (firstSupportedOption) property.default = firstSupportedOption.value;
+	}
 }
 
 /**
@@ -35,6 +53,7 @@ export function convertNodeToAiTool<
 		item.description.outputs = [NodeConnectionTypes.AiTool];
 		item.description.displayName += ' Tool';
 		delete item.description.usableAsTool;
+		removeUnsupportedEphemeralOperations(item.description.properties);
 
 		const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
 		const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');

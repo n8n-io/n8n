@@ -81,6 +81,9 @@ through \`$json\`; use \`$fromAI\` for those fields instead.
 - Follow \`agent-builder-resource-locators\` for dynamic selector lookup,
   credentials, and \`parameterValue\` handling.
 - If a required node-tool credential is skipped, add the tool and omit only that credential slot.
+- Node tools execute inline, so never use waiting operations such as \`sendAndWait\`
+  or \`dispatchAndWait\`. When the user requests human approval, configure the
+  intended non-waiting operation and set \`requireApproval: true\` on the tool.
 
 ## Verify
 
