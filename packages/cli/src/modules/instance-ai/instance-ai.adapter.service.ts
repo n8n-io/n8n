@@ -110,6 +110,7 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
@@ -1299,12 +1300,14 @@ export class InstanceAiAdapterService {
 							const isAbort =
 								error instanceof Error &&
 								(error.name === 'AbortError' || abortSignal?.aborted === true);
-							// On timeout or abort, cancel the execution
+							// On timeout or abort, cancel the execution with the matching reason
 							if (isTimeout || isAbort) {
 								try {
 									activeExecutions.stopExecution(
 										executionId,
-										new TimeoutExecutionCancelledError(executionId),
+										isAbort
+											? new ManualExecutionCancelledError(executionId)
+											: new TimeoutExecutionCancelledError(executionId),
 									);
 								} catch {
 									// Execution may have completed between timeout/abort and cancel

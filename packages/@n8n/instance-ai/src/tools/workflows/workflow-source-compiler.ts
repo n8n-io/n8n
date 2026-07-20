@@ -1,3 +1,4 @@
+import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
@@ -246,6 +247,9 @@ async function compileTypeScriptWorkflowSource(
 			{ cwd: root, abortSignal },
 		);
 	} catch (error) {
+		// Preserve Stop/cancel so callers do not record a sandbox build failure.
+		if (isAbortError(error)) throw error;
+		if (abortSignal?.aborted) throw createAbortError(abortSignal.reason);
 		return {
 			success: false,
 			reason: 'workflow_source_sandbox_unavailable',
