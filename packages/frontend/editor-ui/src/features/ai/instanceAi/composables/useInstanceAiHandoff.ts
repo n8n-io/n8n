@@ -14,7 +14,10 @@ import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceA
 import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import {
+	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_THREAD_VIEW,
+} from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 /** The existing credential id, when known, so the agent can act on it directly. */
@@ -222,6 +225,32 @@ export function useInstanceAiHandoff() {
 	const router = useRouter();
 	const toast = useToast();
 
+	async function openAgentArtifactThread(attachment: InstanceAiAgentAttachment): Promise<boolean> {
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const threadId = uuidv4();
+			try {
+				await instanceAiStore.syncThread(threadId, attachment.projectId);
+				await instanceAiStore.updateThreadMetadata(threadId, {
+					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+						agentId: attachment.id,
+						projectId: attachment.projectId,
+						...(attachment.name ? { name: attachment.name } : {}),
+					},
+				});
+			} catch {
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return false;
+			}
+			stashPendingAgentAttachment(threadId, attachment);
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			return true;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
 	async function openThreadWithContext(
 		projectId: string,
 		context: InstanceAiHandoffContext,
@@ -304,5 +333,5 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread, openThreadWithContext };
+	return { startThread, openThreadWithContext, openAgentArtifactThread };
 }
