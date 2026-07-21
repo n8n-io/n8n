@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { AzureBlobService } from 'n8n-core';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
+import type { AzureBlobService } from '../azure-blob/azure-blob.service.ee';
 import { AzureByteStore } from '../azure-byte-store.ee';
 import { azureNotFoundError, azureThrottledError, body } from './mocks';
 
