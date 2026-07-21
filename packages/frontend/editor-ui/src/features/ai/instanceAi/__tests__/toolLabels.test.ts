@@ -8,6 +8,7 @@ vi.mock('@n8n/i18n', () => ({
 			const translations: Record<string, string> = {
 				'instanceAi.tools.read_config': 'Reading agent config',
 				'instanceAi.tools.add-integration': 'Adding integration',
+				'instanceAi.tools.build-agent': 'Building agent',
 				'instanceAi.tools.describe-nodes': 'Reading node schema',
 				'instanceAi.tools.inspect-credentials': 'Inspecting credentials',
 				'instanceAi.tools.list-workflows': 'Listing workflows',
@@ -131,6 +132,7 @@ describe('useToolLabel', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('read_config')).toBe('Reading agent config');
 		expect(getToolLabel('add-integration')).toBe('Adding integration');
+		expect(getToolLabel('build-agent')).toBe('Building agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');

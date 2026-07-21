@@ -4,14 +4,26 @@ import type {
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
 
+const BUILDER_ROLE_LABELS: Record<string, string> = {
+	'agent-builder': 'Building agent',
+	'workflow-builder': 'Building workflow',
+};
+
 /** True when the agent node is a workflow-builder or agent-builder sub-agent. */
-export function isBuilderAgent(node: InstanceAiAgentNode): boolean {
+export function isBuilderAgent(node: Pick<InstanceAiAgentNode, 'kind' | 'role'>): boolean {
 	return (
 		node.kind === 'builder' ||
 		node.kind === 'agent-builder' ||
 		node.role === 'workflow-builder' ||
 		node.role === 'agent-builder'
 	);
+}
+
+export function getBuilderRoleLabel(
+	node: Pick<InstanceAiAgentNode, 'kind' | 'role'>,
+): string | undefined {
+	if (!isBuilderAgent(node)) return undefined;
+	return BUILDER_ROLE_LABELS[node.role];
 }
 
 /** True when the node is a builder sub-agent that is currently running. */
@@ -49,10 +61,25 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 		return true;
 	}
 
+	const activeBuilderChildIds = new Set(
+		tree.children
+			.filter((child: InstanceAiAgentNode) => isActiveBuilderAgent(child))
+			.map((child: InstanceAiAgentNode) => child.agentId),
+	);
+	const hasHoistedActiveBuilderChild = tree.timeline.some(
+		(entry: InstanceAiTimelineEntry) =>
+			entry.type === 'child' && activeBuilderChildIds.has(entry.agentId),
+	);
+	const toolCallsById = Object.fromEntries(tree.toolCalls.map((tc) => [tc.toolCallId, tc]));
+
 	// Any timeline entry that isn't a hoisted active builder counts as content.
 	const childrenById: Record<string, InstanceAiAgentNode> = {};
 	for (const c of tree.children) childrenById[c.agentId] = c;
 	return tree.timeline.some((e: InstanceAiTimelineEntry) => {
+		if (e.type === 'tool-call') {
+			const toolCall = toolCallsById[e.toolCallId];
+			return !(toolCall?.toolName === 'build-agent' && hasHoistedActiveBuilderChild);
+		}
 		if (e.type !== 'child') return true;
 		const child = childrenById[e.agentId];
 		return !child || !isActiveBuilderAgent(child);
