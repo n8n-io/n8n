@@ -942,12 +942,7 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.API_SETTINGS,
 				component: SettingsApiView,
 				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['apiKey:list'],
-						},
-					},
+					middleware: ['authenticated'],
 					telemetry: {
 						pageCategory: 'settings',
 						getProperties() {

@@ -20,6 +20,7 @@ import {
 	createUser,
 	createUserShell,
 } from './shared/db/users';
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -841,5 +842,91 @@ describe('Cross-user behavior (admin scope)', () => {
 		expect(response.body.data.items).toHaveLength(1);
 		expect(response.body.data.counts.all).toBe(1);
 		expect(response.body.data.totals.all).toBe(4);
+	});
+});
+
+describe('User with a role that grants no apiKey scopes', () => {
+	let restrictedUser: User;
+	let authAgent: SuperAgentTest;
+
+	beforeEach(async () => {
+		const restrictedRole = await createCustomRoleWithScopeSlugs(['role:manageProject'], {
+			roleType: 'global',
+		});
+		restrictedUser = await createUser({
+			password: randomValidPassword(),
+			role: restrictedRole,
+		});
+		authAgent = testServer.authAgentFor(restrictedUser);
+	});
+
+	test('GET /api-keys should return own keys', async () => {
+		const ownKey = await addApiKey(restrictedUser, { scopes: ['workflow:create'] });
+
+		const response = await authAgent.get('/api-keys').expect(200);
+
+		expect(response.body.data.counts.all).toBe(1);
+		expect(response.body.data.items).toHaveLength(1);
+		expect(response.body.data.items[0].id).toBe(ownKey.id);
+	});
+
+	test("GET /api-keys should never include other users' keys", async () => {
+		await createOwnerWithApiKey();
+		await addApiKey(restrictedUser, { scopes: ['workflow:create'] });
+
+		const response = await authAgent.get('/api-keys?ownership=all').expect(200);
+
+		expect(response.body.data.items).toHaveLength(1);
+		expect(
+			response.body.data.items.every(
+				(apiKey: { userId: string }) => apiKey.userId === restrictedUser.id,
+			),
+		).toBe(true);
+		expect(response.body.data.owners).toEqual([]);
+	});
+
+	test('DELETE /api-keys/:id should revoke an own key', async () => {
+		const ownKey = await addApiKey(restrictedUser, { scopes: ['workflow:create'] });
+
+		const response = await authAgent.delete(`/api-keys/${ownKey.id}`).expect(200);
+
+		expect(response.body.data.success).toBe(true);
+
+		const remaining = await authAgent.get('/api-keys').expect(200);
+		expect(remaining.body.data.items).toHaveLength(0);
+	});
+
+	test("DELETE /api-keys/:id should 404 for another user's key", async () => {
+		const otherUser = await createOwnerWithApiKey();
+
+		await authAgent.delete(`/api-keys/${otherUser.apiKeys[0].id}`).expect(404);
+	});
+
+	test('POST /api-keys should be forbidden', async () => {
+		await authAgent
+			.post('/api-keys')
+			.send({ label: 'My API Key', expiresAt: null, scopes: ['workflow:create'] })
+			.expect(403);
+	});
+
+	test('PATCH /api-keys/:id should be forbidden even for an own key', async () => {
+		const ownKey = await addApiKey(restrictedUser, { scopes: ['workflow:create'] });
+
+		await authAgent
+			.patch(`/api-keys/${ownKey.id}`)
+			.send({ label: 'Updated label', scopes: ['workflow:create'] })
+			.expect(403);
+	});
+
+	test('POST /api-keys/:id/rotate should be forbidden', async () => {
+		const ownKey = await addApiKey(restrictedUser, { scopes: ['workflow:create'] });
+
+		await authAgent.post(`/api-keys/${ownKey.id}/rotate`).expect(403);
+	});
+
+	test('GET /api-keys/scopes should return the scopes assignable by the role', async () => {
+		const response = await authAgent.get('/api-keys/scopes').expect(200);
+
+		expect(Array.isArray(response.body.data)).toBe(true);
 	});
 });
