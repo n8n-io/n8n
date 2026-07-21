@@ -2,10 +2,15 @@
 import { computed } from 'vue';
 import { N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentFileDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
-import type { AgentJsonConfig, AgentResource, AgentSkill } from '../types';
+import type {
+	AgentJsonConfig,
+	AgentJsonVectorStoreConfig,
+	AgentResource,
+	AgentSkill,
+} from '../types';
 import type { ToolOpenTarget } from './AgentCapabilitiesSection.types';
 import AgentSessionsListView from '../views/AgentSessionsListView.vue';
 import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
@@ -13,6 +18,7 @@ import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
+import AgentVectorStoresPanel from './AgentVectorStoresPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
 import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
@@ -31,13 +37,14 @@ const props = defineProps<{
 	deletingAgentFileId?: string | null;
 	appliedSkills: Array<{ id: string; skill: AgentSkill }>;
 	connectedTriggers: string[];
-	isBuildChatStreaming: boolean;
 	canEditAgent: boolean;
 	executionsDescription: string;
 	tasksReloadKey?: number;
+	artifactMode?: boolean;
+	configValidationIssues?: AgentConfigValidationIssue[];
 }>();
 
-const childrenDisabled = computed(() => props.isBuildChatStreaming || !props.canEditAgent);
+const childrenDisabled = computed(() => !props.canEditAgent);
 
 const emit = defineEmits<{
 	'update:activeMainTab': [tab: AgentBuilderMainTab];
@@ -50,6 +57,9 @@ const emit = defineEmits<{
 	'remove-skill': [id: string];
 	'upload-files': [files: File[]];
 	'delete-file': [file: AgentFileDto];
+	'add-vector-store': [];
+	'edit-vector-store': [vectorStore: AgentJsonVectorStoreConfig];
+	'remove-vector-store': [vectorStore: AgentJsonVectorStoreConfig];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 	'toggle-task': [payload: { id: string; enabled: boolean }];
@@ -100,6 +110,7 @@ const i18n = useI18n();
 						:is-published="Boolean(agent?.activeVersionId)"
 						:task-refs="localConfig?.tasks ?? []"
 						:reload-key="tasksReloadKey"
+						:validation-issues="configValidationIssues ?? []"
 						@open-tool="emit('open-tool', $event)"
 						@open-skill="emit('open-skill', $event)"
 						@add-tool="emit('add-tool')"
@@ -134,10 +145,11 @@ const i18n = useI18n();
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
-					v-else-if="activeMainTab === 'knowledge' && knowledgeBaseEnabled"
+					v-else-if="activeMainTab === 'knowledge'"
 					data-testid="agent-knowledge-tab-content"
 				>
 					<AgentFilesPanel
+						v-if="knowledgeBaseEnabled"
 						:files="agentFiles"
 						:disabled="childrenDisabled"
 						:loading="agentFilesLoading"
@@ -148,13 +160,28 @@ const i18n = useI18n();
 						@upload-files="emit('upload-files', $event)"
 						@delete-file="emit('delete-file', $event)"
 					/>
+
+					<AgentVectorStoresPanel
+						:vector-stores="localConfig?.vectorStores ?? []"
+						:disabled="childrenDisabled"
+						data-testid="agent-vector-stores-card"
+						@connect="emit('add-vector-store')"
+						@edit="emit('edit-vector-store', $event)"
+						@remove="emit('remove-vector-store', $event)"
+					/>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
 					v-else-if="activeMainTab === 'sessions'"
 					data-testid="agent-sessions-tab-content"
 				>
-					<AgentSessionsListView :embedded="true" data-testid="agent-executions-panel" />
+					<AgentSessionsListView
+						:embedded="true"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:open-session-in-new-tab="artifactMode"
+						data-testid="agent-executions-panel"
+					/>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel

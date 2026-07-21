@@ -2,9 +2,7 @@ import type { Folder, User } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 
 import { RoleService } from '@/services/role.service';
@@ -21,6 +19,15 @@ export class FolderFinderService {
 		private readonly folderRepository: FolderRepository,
 		private readonly roleService: RoleService,
 	) {}
+
+	async findExistingFolderIds(folderIds: string[]): Promise<Set<string>> {
+		if (folderIds.length === 0) return new Set();
+		const folders = await this.folderRepository.find({
+			select: { id: true },
+			where: { id: In(folderIds) },
+		});
+		return new Set(folders.map(({ id }) => id));
+	}
 
 	async findFoldersByIdsForUser(
 		folderIds: string[],
@@ -54,6 +61,17 @@ export class FolderFinderService {
 		const allFolderIds = [...new Set([...folderIds, ...descendantIds])];
 
 		return await this.findFoldersByIdsForUser(allFolderIds, user, scopes);
+	}
+
+	/**
+	 * List all folder ids in a project
+	 */
+	async findFolderIdsInProject(projectId: string): Promise<string[]> {
+		const folders = await this.folderRepository.find({
+			where: { homeProject: { id: projectId } },
+			select: { id: true },
+		});
+		return folders.map((folder) => folder.id);
 	}
 
 	private async buildFolderReadWhere(

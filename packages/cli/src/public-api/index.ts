@@ -10,6 +10,9 @@ import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
+import { PublicApiControllerRegistry } from './public-api-controller.registry';
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
+
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
@@ -17,7 +20,7 @@ import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
-import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
+import './v1/controllers/tags.public.controller';
 
 // Renders `x-required-scope` as a badge on each operation. swagger-ui-express
 // serializes this function's source into the page, so it must be self-contained:
@@ -145,10 +148,8 @@ interface EovApiDoc {
  *
  * Why it's needed in tests: eov's default resolver `require()`s each handler module, but under
  * Vitest only the `.ts` handler sources exist on disk (no `.js`) and they're served by Vite, not
- * Node's `require` — so `require()` throws and every route 500s. (Under Jest this worked via
- * ts-jest's require hook, which Vitest has no equivalent of.) `import()` is intercepted by Vite and
- * resolves the `.ts`. Mirrors eov's `defaultResolver` lookup (`mod[id]` / `mod.default[id]` / `mod.default`).
- */
+ * Node's `require` — so `require()` throws and every route 500s.
+ * */
 async function importOperationHandlerResolver(
 	handlersPath: string,
 	// Typed as `unknown` (then narrowed) so the signature stays assignable to eov's
@@ -184,6 +185,12 @@ async function importOperationHandlerResolver(
 	}
 
 	return handler;
+}
+
+function createPublicControllerMiddleware(version: string): RequestHandler {
+	const router = express.Router({ mergeParams: true });
+	Container.get(PublicApiControllerRegistry).activate(router, version);
+	return router;
 }
 
 function createLazyValidatorMiddleware(
@@ -301,6 +308,9 @@ function createApiRouter(
 	}
 
 	apiController.get(`/${publicApiEndpoint}/${version}/openapi.yml`, (_, res) => {
+		// Public, read-only spec with no auth or sensitive data - safe to expose
+		// cross-origin for documentation playgrounds
+		res.header('Access-Control-Allow-Origin', '*');
 		res.sendFile(openApiSpecPath);
 	});
 
@@ -319,6 +329,7 @@ function createApiRouter(
 		`/${publicApiEndpoint}/${version}`,
 		express.json({ limit: payloadLimit }),
 		jsonParseErrorHandler,
+		createPublicControllerMiddleware(version),
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 

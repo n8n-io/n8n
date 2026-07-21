@@ -33,3 +33,23 @@ properties:
       minLength: 1
     example:
       - Ox8O54VQrmBrb4qL
+  includeVariableValues:
+    type: boolean
+    default: true
+    description: >-
+      Whether values of variables referenced by the exported workflows are
+      bundled into the package. When `false`, variables still travel as
+      name/type files and are listed in the package requirements, but no
+      values travel with the package.
+  missingWorkflowDependencyPolicy:
+    type: string
+    enum:
+      - fail
+      - reference-only
+      - include-in-package
+    description: >-
+      Policy for missing static sub-workflow dependencies. Currently only
+      `fail` is supported; `reference-only` and `include-in-package` are
+      reserved for upcoming export modes.
+    example: fail
+    default: fail

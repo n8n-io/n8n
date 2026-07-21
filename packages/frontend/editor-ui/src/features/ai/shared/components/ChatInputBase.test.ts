@@ -160,6 +160,22 @@ describe('ChatInputBase', () => {
 		expect(emitted().stop).toBeTruthy();
 	});
 
+	it('forwards maxLength to the textarea', () => {
+		const { getByRole } = renderComponent({
+			props: makeProps({ maxLength: 12345 }),
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('maxlength', '12345');
+	});
+
+	it('defaults to 5000 character limit when maxLength is not provided', () => {
+		const { getByRole } = renderComponent({
+			props: makeProps(),
+		});
+
+		expect(getByRole('textbox')).toHaveAttribute('maxlength', '5000');
+	});
+
 	it('should NOT add leading space when voice input starts from empty message', async () => {
 		// BUG: committedSpokenMessage.value + ' ' + spoken.trimStart()
 		// When committedSpokenMessage is '', the result starts with ' '

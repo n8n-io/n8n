@@ -40,16 +40,23 @@ import {
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { EvalTimings } from './eval-timings';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
+import {
+	extractResponsesRequestModel,
+	isOpenAiResponsesUrl,
+	normalizeOpenAiResponsesMockResponse,
+} from './openai-responses-envelope';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -88,6 +95,8 @@ export class EvalExecutionService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
 
 	async executeWithLlmMock(
@@ -288,10 +297,29 @@ export class EvalExecutionService {
 							globalContext || scenarioHints
 								? { dataDescription: globalContext, testScenario: scenarioHints }
 								: undefined,
+						outputSchemaLookup: this.loadNodesAndCredentials.createOutputSchemaLookup(),
 					}),
 			);
 
-			return normalizePinData(result as unknown as IPinData);
+			const normalized = normalizePinData(result as unknown as IPinData);
+
+			// generatePinData swallows internal failures (LLM timeout, parse error)
+			// and returns {} or a partial map instead of throwing, so the catch
+			// fallback below never fires for those. An unpinned bypass node
+			// EXECUTES for real — for AI roots the vendor SDK then makes real
+			// network calls (observed in CI: un-mocked Anthropic request →
+			// "Authorization failed"). Guarantee every bypass node is pinned,
+			// even if only with an empty item.
+			for (const nodeName of bypassNodeNames) {
+				if (!normalized[nodeName] || normalized[nodeName].length === 0) {
+					this.logger.warn(
+						`[EvalMock] Phase 1.5 produced no pin data for bypass node "${nodeName}" — pinning an empty item to prevent real execution`,
+					);
+					normalized[nodeName] = [{ json: {} }];
+				}
+			}
+
+			return normalized;
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
@@ -323,6 +351,20 @@ export class EvalExecutionService {
 		for (const node of workflowEntity.nodes) {
 			if (node.disabled || !node.parameters) continue;
 			fillSetupPendingResourceLocators(node.parameters);
+		}
+
+		// Time-based Wait nodes park the execution until a future timestamp
+		// (specificTime) or sleep away the scenario budget (timeInterval), so
+		// downstream nodes never run inside the eval window even when the built
+		// workflow is correct. Zero them — execution order and branch structure
+		// stay observable, and the verifier still sees the builder's original
+		// wait config in the workflow JSON. Webhook/form-resume waits are left
+		// untouched (they model an external event, not the passage of time).
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || node.type !== 'n8n-nodes-base.wait') continue;
+			const resume = node.parameters?.resume;
+			if (resume === 'webhook' || resume === 'form') continue;
+			node.parameters = { ...node.parameters, resume: 'timeInterval', amount: 0, unit: 'seconds' };
 		}
 
 		const workflow = this.buildWorkflow(workflowEntity);
@@ -405,7 +447,8 @@ export class EvalExecutionService {
 
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'evaluation',
-				workflowData: workflowEntity,
+				// Builder-verify runs persist staticData (e.g. dedup cursors); scenarios assume it starts empty.
+				workflowData: { ...workflowEntity, staticData: undefined },
 				userId: user.id,
 				executionData,
 				pinData,
@@ -464,7 +507,23 @@ export class EvalExecutionService {
 					});
 				}
 			}
+			await this.blankPersistedStaticData(workflowEntity.id);
 			timings.summary(this.logger);
+		}
+	}
+
+	/**
+	 * 'evaluation'-mode runs persist getWorkflowStaticData() writes back to the
+	 * workflow row — blank it after the run so scenarios leave no state behind.
+	 */
+	private async blankPersistedStaticData(workflowId: string): Promise<void> {
+		try {
+			await this.workflowStaticDataService.saveStaticDataById(workflowId, {});
+		} catch (error) {
+			this.logger.warn('[EvalMock] Failed to blank workflow staticData after run', {
+				workflowId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 
@@ -721,14 +780,35 @@ export class EvalExecutionService {
 				executionMode: 'mocked',
 			});
 			entry.executionMode = 'mocked';
-			const response = await timings.time(
+			let response = await timings.time(
 				'http-mock',
 				node.name,
 				async () => await mockHandler(requestOptions, node),
 			);
 
+			// Responses-API calls from the openAi node bypass the wire-server
+			// protocol adapters — coerce the generated body to the canonical
+			// envelope so the node's real parser accepts it.
+			if (response && response.statusCode < 400 && isOpenAiResponsesUrl(requestOptions.url)) {
+				const normalized = normalizeOpenAiResponsesMockResponse(
+					response,
+					extractResponsesRequestModel(requestOptions.body),
+				);
+				if (normalized !== response) {
+					// Triage breadcrumb: the recorded mockResponse below is the coerced
+					// body, not the generator's raw output.
+					this.logger.debug(
+						`[EvalMock] Applied Responses-envelope normalization for "${node.name}"`,
+					);
+				}
+				response = normalized;
+			}
+
 			entry.interceptedRequests.push({
-				url: requestOptions.url,
+				// Broken routing (resource/operation missing on the node type) emits a
+				// request with no URL — store a readable marker; the verifier prompt
+				// and the HTML report both key on it, and undefined crashes the report.
+				url: requestOptions.url ?? '(no URL)',
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
@@ -1156,9 +1236,17 @@ function summarizePinnedOutputs(pinData: IPinData | undefined): string | undefin
 	if (!pinData) return undefined;
 	const lines: string[] = [];
 	for (const [nodeName, items] of Object.entries(pinData)) {
+		// Guaranteed-pin placeholders ({json:{}}) are execution guards, not
+		// scenario data — presenting them to the mock LLM as authoritative
+		// facts would bias HTTP mocks toward empty data exactly in the runs
+		// where pin generation under-delivered.
+		const meaningful = items.filter(
+			(item) => Object.keys(item.json ?? {}).length > 0 || item.binary !== undefined,
+		);
+		if (meaningful.length === 0) continue;
 		let json = '';
 		try {
-			json = JSON.stringify(items);
+			json = JSON.stringify(meaningful);
 		} catch {
 			continue;
 		}

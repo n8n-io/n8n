@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.22.0",
+  "version": "0.25.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -16,6 +16,9 @@
       "node-catalog": [
         "dist/esm/node-catalog/index.d.ts"
       ],
+      "agent-config": [
+        "dist/esm/agent-config/index.d.ts"
+      ],
       "fromai-helpers": [
         "dist/esm/utils/fromai-helpers.d.ts"
       ],
@@ -24,6 +27,9 @@
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
+      ],
+      "model-discovery": [
+        "dist/esm/model-discovery/index.d.ts"
       ]
     }
   },
@@ -48,6 +54,11 @@
       "import": "./dist/esm/node-catalog/index.js",
       "require": "./dist/cjs/node-catalog/index.js"
     },
+    "./agent-config": {
+      "types": "./dist/esm/agent-config/index.d.ts",
+      "import": "./dist/esm/agent-config/index.js",
+      "require": "./dist/cjs/agent-config/index.js"
+    },
     "./fromai-helpers": {
       "types": "./dist/esm/utils/fromai-helpers.d.ts",
       "import": "./dist/esm/utils/fromai-helpers.js",
@@ -62,6 +73,11 @@
       "types": "./dist/esm/web-search/index.d.ts",
       "import": "./dist/esm/web-search/index.js",
       "require": "./dist/cjs/web-search/index.js"
+    },
+    "./model-discovery": {
+      "types": "./dist/esm/model-discovery/index.d.ts",
+      "import": "./dist/esm/model-discovery/index.js",
+      "require": "./dist/cjs/model-discovery/index.js"
     },
     "./*": "./*"
   },
@@ -96,6 +112,7 @@
     "@types/proxy-from-env": "catalog:",
     "fast-glob": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:typescript",
     "axios": "catalog:",
     "nock": "catalog:"
   },
@@ -109,6 +126,7 @@
     "@langchain/openai": "catalog:",
     "langchain": "catalog:",
     "lodash": "catalog:",
+    "@n8n/api-types": "workspace:*",
     "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",

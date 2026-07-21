@@ -102,19 +102,20 @@ describe('AgentInfoPanel', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders instructions as a document-style markdown editor', () => {
+	it('renders instructions as a contained markdown editor', () => {
 		const wrapper = mountPanel();
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props()).toMatchObject({
 			modelValue: '# Role\nHelp users.',
-			variant: 'ghost',
+			variant: 'contained',
 			showToolbar: 'never',
 			maxHeight: 'none',
-			placeholder: 'Enter instructions here',
 		});
+		expect(editor.props('placeholder')).toBeUndefined();
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('characters');
+		expect(wrapper.text()).not.toContain('Enter instructions here');
 	});
 
 	it('can show the markdown toolbar above instructions', () => {
@@ -127,11 +128,12 @@ describe('AgentInfoPanel', () => {
 		});
 	});
 
-	it('keeps the instructions placeholder available when instructions are empty', () => {
+	it('does not pass placeholder text to the instructions editor', () => {
 		const wrapper = mountPanel('');
 
 		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
 		expect(editor.props('modelValue')).toBe('');
-		expect(editor.props('placeholder')).toBe('Enter instructions here');
+		expect(editor.props('placeholder')).toBeUndefined();
+		expect(wrapper.text()).not.toContain('Enter instructions here');
 	});
 });

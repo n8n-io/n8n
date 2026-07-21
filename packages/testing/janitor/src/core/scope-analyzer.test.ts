@@ -17,7 +17,6 @@ describe('computeScope', () => {
 	it('returns full when CHANGED_FILES signal is missing (local dev)', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'jest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: null,
@@ -29,7 +28,6 @@ describe('computeScope', () => {
 	it('returns skip when no in-package files changed', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'jest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/other/src/x.ts'],
@@ -41,7 +39,6 @@ describe('computeScope', () => {
 	it('returns scoped list when only source files changed', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'jest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/src/a.ts', 'packages/cli/src/b.ts'],
@@ -53,22 +50,9 @@ describe('computeScope', () => {
 		expect(formatScope(result)).toBe('packages/cli/src/a.ts packages/cli/src/b.ts');
 	});
 
-	it('bails to full on jest.config change for jest runner', () => {
-		const rootDir = makePackageDir('packages/cli');
-		const result = computeScope({
-			runner: 'jest',
-			packageDir: 'packages/cli',
-			rootDir,
-			changedFiles: ['packages/cli/jest.config.js'],
-		});
-		expect(result.kind).toBe('full');
-		expect(formatScope(result)).toBe('RUN_FULL');
-	});
-
 	it('bails to full on package.json change', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/package.json'],
@@ -79,7 +63,6 @@ describe('computeScope', () => {
 	it('bails to full on tsconfig change', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/tsconfig.build.json'],
@@ -90,7 +73,6 @@ describe('computeScope', () => {
 	it('ignores files outside the package even when configs match', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'jest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/other/package.json'],
@@ -98,23 +80,19 @@ describe('computeScope', () => {
 		expect(result.kind).toBe('skip');
 	});
 
-	it('does NOT bail on vitest.config when runner is jest', () => {
+	it('bails to full on vitest.config change', () => {
 		const rootDir = makePackageDir('packages/cli');
 		const result = computeScope({
-			runner: 'jest',
 			packageDir: 'packages/cli',
 			rootDir,
 			changedFiles: ['packages/cli/vitest.config.ts'],
 		});
-		// vitest.config in a jest-tested package is not a runner bailout trigger.
-		// (It's unusual but the bailout is runner-specific.)
-		expect(result.kind).toBe('scoped');
+		expect(result.kind).toBe('full');
 	});
 
-	it('bails to full on vite.config change for vitest runner (vitest reads vite.config)', () => {
+	it('bails to full on vite.config change (vitest reads vite.config)', () => {
 		const rootDir = makePackageDir('packages/frontend/editor-ui');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/frontend/editor-ui',
 			rootDir,
 			changedFiles: ['packages/frontend/editor-ui/vite.config.mts'],
@@ -122,135 +100,14 @@ describe('computeScope', () => {
 		expect(result.kind).toBe('full');
 	});
 
-	it('bails to full on src/__tests__/setup.ts change for vitest runner', () => {
+	it('bails to full on src/__tests__/setup.ts change', () => {
 		const rootDir = makePackageDir('packages/frontend/editor-ui');
 		const result = computeScope({
-			runner: 'vitest',
 			packageDir: 'packages/frontend/editor-ui',
 			rootDir,
 			changedFiles: ['packages/frontend/editor-ui/src/__tests__/setup.ts'],
 		});
 		expect(result.kind).toBe('full');
-	});
-
-	it('bails to full on src/__tests__/setup.ts change for jest runner', () => {
-		const rootDir = makePackageDir('packages/nodes-base');
-		const result = computeScope({
-			runner: 'jest',
-			packageDir: 'packages/nodes-base',
-			rootDir,
-			changedFiles: ['packages/nodes-base/src/__tests__/setup.ts'],
-		});
-		expect(result.kind).toBe('full');
-	});
-
-	describe('jest integration variant', () => {
-		it('does NOT bail on entity changes for the unit variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/src/modules/foo/foo.entity.ts'],
-			});
-			expect(result.kind).toBe('scoped');
-		});
-
-		it('bails to full on entity changes for the integration variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/src/modules/foo/foo.entity.ts'],
-			});
-			expect(result.kind).toBe('full');
-		});
-
-		it('bails to full on repository changes for the integration variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/src/databases/repositories/user.repository.ts'],
-			});
-			expect(result.kind).toBe('full');
-		});
-
-		it('bails to full on migration changes for the integration variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/src/modules/foo/database/AddFoo.migration.ts'],
-			});
-			expect(result.kind).toBe('full');
-		});
-
-		it('bails to full on shared integration test fixture changes for the integration variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/test/integration/shared/workflow.ts'],
-			});
-			expect(result.kind).toBe('full');
-		});
-
-		it('bails to full on test/migration changes for the integration variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/test/migration/some-helper.ts'],
-			});
-			expect(result.kind).toBe('full');
-		});
-
-		it('bails to full on src/modules/<m>/database changes for the integration variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/src/modules/insights/database/repositories/insights.ts'],
-			});
-			expect(result.kind).toBe('full');
-		});
-
-		it('still scopes when only an ordinary src file changes under the integration variant', () => {
-			const rootDir = makePackageDir('packages/cli');
-			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
-				packageDir: 'packages/cli',
-				rootDir,
-				changedFiles: ['packages/cli/src/controllers/auth.controller.ts'],
-			});
-			expect(result.kind).toBe('scoped');
-		});
-
-		it('jest-variant=integration has no effect on the vitest runner', () => {
-			const rootDir = makePackageDir('packages/frontend/editor-ui');
-			const result = computeScope({
-				runner: 'vitest',
-				jestVariant: 'integration',
-				packageDir: 'packages/frontend/editor-ui',
-				rootDir,
-				changedFiles: ['packages/frontend/editor-ui/src/foo.entity.ts'],
-			});
-			expect(result.kind).toBe('scoped');
-		});
 	});
 
 	describe('global triggers force RUN_FULL', () => {
@@ -263,8 +120,6 @@ describe('computeScope', () => {
 		])('bails to full on %s even when nothing changed in-package', (_label, changed) => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({
-				runner: 'jest',
-				jestVariant: 'integration',
 				packageDir: 'packages/cli',
 				rootDir,
 				changedFiles: [changed],
@@ -273,10 +128,9 @@ describe('computeScope', () => {
 			expect(formatScope(result)).toBe('RUN_FULL');
 		});
 
-		it('a universal-sink change forces full for a vitest downstream too', () => {
+		it('a universal-sink change forces full for a downstream package too', () => {
 			const rootDir = makePackageDir('packages/nodes-base');
 			const result = computeScope({
-				runner: 'vitest',
 				packageDir: 'packages/nodes-base',
 				rootDir,
 				changedFiles: ['packages/workflow/src/Workflow.ts'],
@@ -287,7 +141,6 @@ describe('computeScope', () => {
 		it('does NOT treat a per-package package.json as a global trigger', () => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({
-				runner: 'jest',
 				packageDir: 'packages/cli',
 				rootDir,
 				changedFiles: ['packages/other/package.json'],
@@ -298,7 +151,6 @@ describe('computeScope', () => {
 		it('still SKIPs an unrelated cross-package change', () => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({
-				runner: 'jest',
 				packageDir: 'packages/cli',
 				rootDir,
 				changedFiles: ['packages/nodes-base/nodes/Slack/Slack.node.ts'],

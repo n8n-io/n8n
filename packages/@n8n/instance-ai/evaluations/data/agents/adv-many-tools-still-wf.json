@@ -1,0 +1,26 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: false} — seven integrations, zero branches; tool count alone must not produce an agent. Also probes the node-choice bias: an AI Agent node orchestrating the seven fixed steps would be the tool-count variant of the vocabulary prior.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "For each new signup: verify email, check against blocklist, add to Postgres, send welcome email, add to Mailchimp, notify sales in Slack, log to Segment. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"complexity": "medium",
+	"tags": ["intent-resolution", "false-friend", "tool-count"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow of fixed steps across the seven integrations and does not propose creating an n8n Agent.",
+		"The proposed design contains no orchestrating agent step or AI Agent node — each of the seven integrations is a fixed step.",
+		"The proposal does not treat the number of services as a reason for agency — the justification rests on the fixed, enumerable shape of the steps."
+	],
+	"messageBudget": 4
+}

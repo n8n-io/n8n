@@ -19,7 +19,7 @@ const getNodeType = vi.fn();
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'Message an Agent',
+	displayName: 'AI Agent',
 	hidden: true,
 });
 
@@ -114,7 +114,7 @@ describe('viewsData', () => {
 			expect(AIView([])).toMatchSnapshot();
 		});
 
-		test('should include Message an Agent node with preview tag when agents module is active', () => {
+		test('should include Message an Agent node before the agent node when agents module is active', () => {
 			const settingsStore = useSettingsStore();
 			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
@@ -125,9 +125,6 @@ describe('viewsData', () => {
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
 
 			expect(messageAgentItem).toBeDefined();
-			expect(messageAgentItem?.properties.tag).toEqual({
-				preview: true,
-			});
 
 			const agentItem = result.items.find((item) => item.key === 'agent');
 			const messageIdx = result.items.indexOf(messageAgentItem!);

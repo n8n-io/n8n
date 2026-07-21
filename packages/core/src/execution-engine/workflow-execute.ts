@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { isAxiosError } from '@n8n/backend-network';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import * as assert from 'assert/strict';
@@ -57,6 +58,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	applyDynamicCredentialsUsage,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -1681,6 +1683,17 @@ export class WorkflowExecute {
 					this.additionalData.currentNodeUsedDynamicCredentials = false;
 					this.additionalData.currentNodeAttemptedDynamicCredentials = false;
 
+					// A sub-execution that finished while this execution was waiting reported its
+					// private-credential usage on the resumed stack entry (the node re-runs disabled,
+					// so `executeWorkflow` never reports again) — restore it so the new task and
+					// `runtimeData.executedByUserId` still inherit the flags. The stash is
+					// transport-only, so consume it to keep it out of the persisted task metadata.
+					const reportedUsage = executionData.metadata?.dynamicCredentialsUsage;
+					if (reportedUsage) {
+						applyDynamicCredentialsUsage(this.additionalData, reportedUsage);
+						delete executionData.metadata?.dynamicCredentialsUsage;
+					}
+
 					const taskStartedData: ITaskStartedData = {
 						startTime: Date.now(),
 						executionIndex: this.additionalData.currentNodeExecutionIndex++,
@@ -1964,7 +1977,9 @@ export class WorkflowExecute {
 								// BaseError subclasses specify shouldReport and level
 								// so always report and let beforeSend decide
 								toReport = error;
-							} else if (error instanceof Error) {
+							} else if (error instanceof Error && !isAxiosError(error)) {
+								// Axios errors are suppressed in ErrorReporter's beforeSend via the
+								// `isAxiosError` brand, which sanitizing below would strip - so skip them here
 								// Non-BaseError errors only report their class and call frames
 								// The full error is still stored in the execution resultData
 								// Stack frames are in the format `<name>: <message>\n<call frames>`

@@ -56,6 +56,7 @@ export const defaultSettings: FrontendSettings = {
 		personalSpacePolicy: false,
 		dataRedaction: false,
 		otelCustomSpanAttributes: false,
+		workflowReviews: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -182,6 +183,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	evaluation: {
 		quota: 0,
+		collectionsEnabled: false,
 	},
 	activeModules: [],
 	canvasOnly: false,

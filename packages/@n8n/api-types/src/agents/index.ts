@@ -1,6 +1,10 @@
+export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
+export * from './agent-node-tool-operations';
+export * from './agent-skill.schema';
+export * from './inline-agent-config.schema';
 export * from './sanitize-agent-json-config';
 export * from './agent-task.schema';
 export * from './dto';
@@ -14,32 +18,15 @@ export {
 	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 } from '../agent-builder-tool-node-types';
+// ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
+// ./agent-interaction.schema (re-exported below via `export *`).
 export {
-	ASK_LLM_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_EMBEDDING_CREDENTIAL_TOOL_NAME,
-	ASK_QUESTION_TOOL_NAME,
 	APPROVAL_TOOL_NAME,
-	interactiveToolNameSchema,
-	askLlmInputSchema,
-	askLlmResumeSchema,
 	askCredentialInputSchema,
-	askCredentialResumeSchema,
-	askEmbeddingCredentialResumeSchema,
-	askQuestionOptionSchema,
-	askQuestionInputSchema,
-	askQuestionResumeSchema,
 	cancellationResumeSchema,
-	interactiveResumeDataSchema,
-	type InteractiveToolName,
-	type AskLlmInput,
-	type AskLlmResume,
 	type AskCredentialInput,
-	type AskCredentialResume,
-	type AskEmbeddingCredentialResume,
-	type AskQuestionOption,
-	type AskQuestionInput,
-	type AskQuestionResume,
 	type CancellationResumeData,
-	type InteractiveResumeData,
 } from '../agent-builder-interactive';
+export * from './agent-interaction.schema';

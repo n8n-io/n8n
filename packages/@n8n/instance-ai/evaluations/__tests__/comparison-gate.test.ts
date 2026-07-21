@@ -12,7 +12,8 @@ interface CaseSpec {
 	slug: string;
 	scenarios?: Array<{
 		name: string;
-		passes: boolean[];
+		/** `'incomplete'` = verifier returned no verdict for that run. */
+		passes: Array<boolean | 'incomplete'>;
 		failureCategory?: string;
 		reasoning?: string;
 	}>;
@@ -39,21 +40,25 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 		slugByTestCase.set(testCase, c.slug);
 
 		const scenarioAggs = (c.scenarios ?? []).map((sa) => {
-			const passCount = sa.passes.filter(Boolean).length;
+			const evaluated = sa.passes.filter((p) => p !== 'incomplete');
+			const passCount = evaluated.filter((p) => p).length;
 			const scenario = testCase.executionScenarios.find((x) => x.name === sa.name)!;
 			return {
 				scenario,
+				evaluatedCount: evaluated.length,
 				passCount,
-				passRate: totalRuns > 0 ? passCount / totalRuns : 0,
+				passRate: evaluated.length > 0 ? passCount / evaluated.length : 0,
 				passAtK: [] as number[],
 				passHatK: [] as number[],
 				runs: sa.passes.map(
 					(p): ExecutionScenarioResult => ({
 						scenario,
-						success: p,
-						score: p ? 1 : 0,
-						reasoning: p ? '' : (sa.reasoning ?? `judge: ${sa.name} failed`),
-						failureCategory: !p ? sa.failureCategory : undefined,
+						success: p === true,
+						score: p === true ? 1 : 0,
+						reasoning: p === true ? '' : (sa.reasoning ?? `judge: ${sa.name} failed`),
+						failureCategory:
+							p === 'incomplete' ? 'verification_failure' : !p ? sa.failureCategory : undefined,
+						...(p === 'incomplete' ? { incomplete: true } : {}),
 					}),
 				),
 			};
@@ -92,6 +97,11 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 			buildSuccessCount: totalRuns,
 			executionScenarios: scenarioAggs,
 			buildExpectations,
+			status:
+				scenarioAggs.some((sa) => sa.evaluatedCount > 0) ||
+				buildExpectations.some((ea) => ea.evaluatedCount > 0)
+					? ('verified' as const)
+					: ('notVerified' as const),
 		};
 	});
 	const evaluation: MultiRunEvaluation = { totalRuns, testCases };
@@ -185,6 +195,106 @@ describe('evaluateGate', () => {
 				scenarios: [{ name: 'happy', passes: [true, true, true] }],
 				expectations: [
 					{ text: 'flaky judge', verdicts: ['incomplete', 'incomplete', 'incomplete'] },
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.green).toBe(true);
+		expect(gate.units).toHaveLength(1); // only the scenario
+		expect(gate.excluded).toHaveLength(1);
+		expect(gate.excluded[0].kind).toBe('buildExpectation');
+	});
+
+	it('keeps verifier-incomplete scenario runs out of the denominator and the category tally', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'a',
+				scenarios: [
+					{
+						name: 'happy',
+						passes: [true, 'incomplete', false],
+						failureCategory: 'builder_issue',
+					},
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.green).toBe(true); // pass@k over evaluated runs
+		expect(gate.units).toHaveLength(1);
+		expect(gate.units[0].total).toBe(2);
+		expect(gate.units[0].passCount).toBe(1);
+		// The incomplete run's verification_failure label stays out of the tally.
+		expect(gate.units[0].failureCategories).toEqual({ builder_issue: 1 });
+		expect(gate.aggregate).toEqual({ passed: 1, total: 2, rate: 0.5 });
+	});
+
+	it('is NOT green when every unit is excluded (nothing was measured)', () => {
+		const { evaluation, slugByTestCase } = makeEval(2, [
+			{
+				slug: 'a',
+				scenarios: [{ name: 'happy', passes: ['incomplete', 'incomplete'] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.green).toBe(false);
+		expect(gate.units).toHaveLength(0);
+		expect(gate.failing).toHaveLength(0);
+		expect(gate.excluded).toHaveLength(1);
+	});
+
+	it('excludes a scenario whose every run is verifier-incomplete instead of failing on it', () => {
+		const { evaluation, slugByTestCase } = makeEval(2, [
+			{
+				slug: 'a',
+				scenarios: [
+					{ name: 'happy', passes: [true, true] },
+					{ name: 'edge', passes: ['incomplete', 'incomplete'] },
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.green).toBe(true);
+		expect(gate.units).toHaveLength(1); // only the evaluated scenario
+		expect(gate.excluded).toHaveLength(1);
+		expect(gate.excluded[0].kind).toBe('scenario');
+		expect(gate.excluded[0].slug).toBe('a/edge');
+	});
+
+	it('grades a scenario-less case by its outcome expectation alone, and fails it when the expectation never passes', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'agent-only',
+				expectations: [{ text: 'an agent was created', verdicts: [true, true, true] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.units).toHaveLength(1);
+		expect(gate.units[0].kind).toBe('buildExpectation');
+		expect(gate.green).toBe(true);
+
+		const { evaluation: failingEval, slugByTestCase: failingSlugs } = makeEval(3, [
+			{
+				slug: 'agent-only',
+				expectations: [{ text: 'an agent was created', verdicts: [false, false, false] }],
+			},
+		]);
+		const failingGate = evaluateGate(failingEval, { slugByTestCase: failingSlugs });
+		expect(failingGate.green).toBe(false);
+		expect(failingGate.failing).toHaveLength(1);
+	});
+
+	it('excludes expectations with no judge verdict instead of failing on them', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'a',
+				scenarios: [{ name: 'happy', passes: [true, true, true] }],
+				expectations: [
+					{ text: 'an agent was created', verdicts: ['incomplete', 'incomplete', 'incomplete'] },
 				],
 			},
 		]);
@@ -354,14 +464,20 @@ describe('formatComparisonMarkdown — gate mode', () => {
 		const gate = evaluateGate(evaluation, { slugByTestCase });
 		const pr = {
 			experimentName: 'pr',
-			scenarios: new Map([
-				['a/happy', { testCaseFile: 'a', scenarioName: 'happy', passed: 0, total: 3 }],
+			evaluationUnits: new Map([
+				[
+					'a/happy',
+					{ kind: 'scenario' as const, testCaseFile: 'a', name: 'happy', passed: 0, total: 3 },
+				],
 			]),
 		};
 		const base = {
 			experimentName: 'master',
-			scenarios: new Map([
-				['a/happy', { testCaseFile: 'a', scenarioName: 'happy', passed: 10, total: 10 }],
+			evaluationUnits: new Map([
+				[
+					'a/happy',
+					{ kind: 'scenario' as const, testCaseFile: 'a', name: 'happy', passed: 10, total: 10 },
+				],
 			]),
 		};
 		const outcome = { kind: 'ok' as const, result: compareBuckets(pr, base) };

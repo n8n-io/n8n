@@ -11,6 +11,12 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- **Secrets on the command line:** if a developer opted into anonymous dev
+  metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
+  of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
+  subcommand or baked into a flag — are dropped, and the home dir is stripped from
+  paths, but other args are sent as-is — so never put secrets in a command. Pass
+  sensitive values via environment variables, which are never captured.
 - When adding comments, keep them concise and to the point - explain the "why"
   in a line or two; don't be overly verbose. Comments should be scoped and
   relevant to the surrounding code, not just to the current task
@@ -22,6 +28,9 @@ frontend, and extensible node-based workflow engine.
   suggested by Linear, **unless it is a security fix** (see Security Fix
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
+- **Developing v3 features:** land normal feature work on `master` behind an
+  opt-in flag; introduce breaking changes only on the `3.x` branch. See
+  [.github/DEVELOPING_V3.md](.github/DEVELOPING_V3.md).
 
 ## Agent Skills and Claude Code Plugin
 
@@ -184,6 +193,41 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
     failed assertion) that developers need to fix.
 - Import from appropriate error classes in each package
 
+### Persistence layer & the TypeORM boundary
+
+TypeORM (`@n8n/typeorm`) must stay in the **persistence layer** — the `@n8n/db`
+package or a backend module's own `database/` folder (entity/repository files).
+Business logic — services, controllers, handlers, commands, factories — must not
+import from `@n8n/typeorm` (including `@n8n/typeorm/...` subpaths). In
+`packages/cli` this is enforced by the `misplaced-n8n-typeorm-import` lint rule;
+a new import (or an inline `eslint-disable` of the rule) fails CI.
+
+- **Pattern:** when a query needs operators (`In`, `IsNull`, `LessThan`,
+  `FindOptionsWhere`, …), put it behind a **use-case-named repository method**
+  that takes plain parameters and returns domain-shaped values — not a generic
+  `find(options)` passthrough.
+- **Transactions:** transaction orchestration belongs in the persistence layer.
+  Don't reach for `.manager` / `.manager.transaction(...)` or
+  `createQueryBuilder(...)` in business logic. Use the sanctioned primitive in
+  `@n8n/db`: inject the abstract `TransactionRunner` and wrap the unit of work in
+  `txRunner.run(ctx, async (ctx) => …)`. The callback receives an
+  `OperationContext` carrying the active transaction; thread that `ctx` into the
+  repository methods you call. `run` **requires** a context — pass an empty `{}`
+  at the operation entry point, and reuse the one you were handed everywhere
+  below it (a context that already carries a transaction is joined, not nested).
+  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
+  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
+  driver type to business logic. See `oauth-token.service.ts` +
+  `oauth-*-token.repository.ts` for a worked example.
+- **Anti-patterns reviewers reject** — they hide the dependency instead of
+  removing it:
+  - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
+  - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
+    (`@n8n/db` re-exports several operators/types, but this relabels the
+    dependency rather than removing it).
+  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
+    operator import — trades a visible leak for an invisible one.
+
 ### Frontend Development
 - Refer to `packages/frontend/AGENTS.md`
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
@@ -261,6 +305,18 @@ titles, test descriptions, and Linear URLs.
 - **Code comments:** Do not describe the attack scenario in comments.
 - **Linear references:** Never include the URL slug
   (e.g. `.../N8N-1234/fix-ssrf-vulnerability`).
+
+### Customer Confidentiality
+
+**This is a public repository.** Never mention customer names in any
+public-facing artifact — not all customers have agreed to be named publicly,
+and naming them can reveal security-relevant details about their setup.
+
+This applies to PR titles and descriptions, branch names, commit messages,
+code, code comments, test names and test data, and fixtures. When implementing
+a customer request, describe the use case neutrally (e.g. "a customer with a
+large multi-main setup", not the company name) and use generic placeholder
+names (e.g. `Acme Corp`) in tests and examples.
 
 ## Github Guidelines
 - When creating a PR, use the conventions in

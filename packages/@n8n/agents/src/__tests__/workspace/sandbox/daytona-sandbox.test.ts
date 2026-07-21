@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 
 // Mock @daytona/sdk so we can drive sandbox creation, token refresh, and
-// sandbox refetch behavior from Jest without touching the network.
+// sandbox refetch behavior from Vitest without touching the network.
 
 interface MockSandbox {
 	id: string;
@@ -536,6 +536,34 @@ describe('DaytonaSandbox (remote sandbox gone during refetch)', () => {
 		queuedCreateResults.push(new Error('create failed'));
 
 		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toThrow(/create failed/i);
+	});
+
+	it('executeCommand() rejects without starting work when already aborted', async () => {
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+		const controller = new AbortController();
+		controller.abort();
+
+		await expect(
+			sandbox.executeCommand('echo', ['hi'], { abortSignal: controller.signal }),
+		).rejects.toMatchObject({ name: 'AbortError' });
+		expect(clientLog).toHaveLength(0);
+	});
+
+	it('executeCommand() does not recover from AbortError', async () => {
+		const failing = makeMockSandbox('sb-abort', 'started');
+		const abortError = new Error('This operation was aborted');
+		abortError.name = 'AbortError';
+		failing.process.executeCommand = vi.fn().mockRejectedValue(abortError);
+		queuedGetResults.push(failing);
+
+		const sandbox = new DaytonaSandbox({ name: 'thread-1', apiKey: 'key' });
+
+		await expect(sandbox.executeCommand('echo', ['hi'])).rejects.toMatchObject({
+			name: 'AbortError',
+		});
+		expect(clientLog.every((c) => c.create.mock.calls.length === 0)).toBe(true);
+		// Only the initial start get — no isRecoverable probe get after AbortError.
+		expect(clientLog.reduce((n, c) => n + c.get.mock.calls.length, 0)).toBe(1);
 	});
 
 	it('DaytonaFilesystem reuses the same recovery when the remote was deleted', async () => {

@@ -1,5 +1,5 @@
 import type { RuntimeSkill } from '@n8n/agents';
-import { ASK_QUESTION_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
+import { ASK_QUESTIONS_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
@@ -16,20 +16,25 @@ export function mcpSkill(): RuntimeSkill {
 		description:
 			'Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent.',
 		recommendedTools: [
-			'search_mcp_servers',
+			'resolve_integration',
+			'ask_questions',
 			'ask_credential',
 			'verify_mcp_server',
 			'read_config',
 			'patch_config',
 		],
 		allowedTools: [
+			'resolve_integration',
 			'search_mcp_servers',
+			'search_nodes',
+			'get_node_types',
 			'ask_credential',
 			'verify_mcp_server',
-			'ask_question',
+			'ask_questions',
 			'read_config',
 			'patch_config',
 			'write_config',
+			'load_skill',
 		],
 		instructions: `\
 ## Purpose
@@ -41,30 +46,57 @@ connected MCP server.
 
 ## Use when:
 
-- The user asks for an external integration and you need to discover/connect an MCP server for it.
-- The user asks to edit the target agent's MCP servers.
-- The users wants to add a custom MCP server.
+- \`resolve_integration\` returned \`kind: "mcp"\`.
+- The user explicitly asks to add or edit an MCP server.
+- The user provides or asks to configure a custom MCP server.
 
 ## Workflow
 
 ### Discovery and setup
 
-Follow these steps in order when adding an MCP server:
+For a generic external-service request, \`resolve_integration\` must select the
+integration type before this skill is loaded. If no resolver result is
+available yet, call \`resolve_integration\` with queries matching the requested
+service. Resolve one requested service per call; use \`queries\` only for
+alternative search terms for that service.
 
-1. Search: call \`search_mcp_servers\` with queries matching the requested
-   integration (for example \`["github"]\`, \`["slack"]\`).
-   The result includes \`name\`, \`url\`, \`transport\`, \`authentication\`,
-   \`credentialType\`, \`tools\`, and optional \`metadata\`.
-2. Credential: for registry results, call \`ask_credential\` with the returned
-   \`credentialType\`. Never invent credential IDs.
-3. Verify: call \`verify_mcp_server\` with \`name\`, \`url\`, \`transport\`,
-   \`authentication\`, and (if applicable) \`credential\`.
-4. Write config: call \`read_config\`, then \`patch_config\` to add the entry
-   to \`mcpServers[]\` using the patch pattern below.
+- If it returns \`kind: "node"\` for a generic service request, load
+  \`agent-builder-node-tools\` and continue with the returned node results. Stop
+  this MCP workflow.
+- If it returns \`kind: "node"\` but the user explicitly requested an MCP server,
+  do not silently substitute a node tool. Continue with manual MCP setup by
+  asking for the URL and transport/authentication decision through
+  \`${ASK_QUESTIONS_TOOL_NAME}\`.
+- \`resolve_integration\` returns \`{ kind: "mcp", results: [...] }\` for MCP
+  matches. Never read server fields from the wrapper; select a result first:
+  - If \`results[]\` contains one entry, use it as \`selectedResult\`.
+  - If the request uniquely identifies one entry by \`name\` or \`title\`, use
+    that entry as \`selectedResult\`.
+  - If multiple candidates remain, call \`ask_questions\` with the candidate
+    titles and descriptions; never choose by array order. Use the chosen entry
+    as \`selectedResult\`. If \`ask_questions\` returns \`{ answered: false }\`,
+    stop MCP setup without selecting a server, asking for credentials, verifying
+    a connection, or mutating config. Do not re-present the question.
+- Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
+  \`tools\`, and optional \`metadata\` only from \`selectedResult\`.
 
-If \`search_mcp_servers\` returns no matches and the user provides a custom
-server URL, skip the search result mapping and continue with manual
-transport/authentication plus credential selection.
+Follow these steps for the selected MCP result:
+
+1. Credential: call \`ask_credential\` with a short \`purpose\`, using
+   \`selectedResult.credentialType\` as \`credentialType\`. Never invent
+   credential IDs.
+2. Verify: call \`verify_mcp_server\` with the selected result's \`name\`, \`url\`,
+   \`transport\`, and \`authentication\`, plus the returned \`credentialId\` as
+   \`credential\` when authentication is required.
+3. Capability check: confirm the verified tool names and descriptions cover the
+   capability the user requested.
+4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
+   \`mcpServers[]\` using the patch pattern below.
+
+If verification succeeds but the tools do not cover the requested capability
+for a generic service request, load \`agent-builder-node-tools\`, call
+\`search_nodes\` with the same service queries, and continue with node setup. Do
+not add the MCP server merely because its registry entry matched.
 
 Full schema reference:
 
@@ -80,8 +112,6 @@ ${mcpServerSchemaText}
   \`credentialType: "httpMultipleHeadersAuth"\`.
 - For \`mcpOAuth2Api\`, call \`ask_credential\` with
   \`credentialType: "mcpOAuth2Api"\`.
-- Never invent credential IDs. If the user declines, omit the server entirely
-  rather than persisting a stub.
 
 ### Testing the connection
 
@@ -96,14 +126,29 @@ Before writing to config, call \`verify_mcp_server\` with server \`name\`,
 - If verification fails, explain the error and ask the user to check the URL
   or credentials before proceeding.
 
+### Incomplete setup
+
+The user can skip the credential prompt, the URL question, or both. Never
+invent a credential ID or a placeholder URL to fill the gap, and never abort
+the server addition — always persist what is known and let the user finish
+setup later:
+
+- Credential skipped (\`ask_credential\` returned \`{ skipped: true }\`): omit
+  only the \`credential\` field.
+- URL skipped: persist \`url: ""\`.
+- Either case: skip \`verify_mcp_server\` (there is nothing to authenticate or
+  connect to), then \`read_config\` and \`patch_config\` the entry, preserving
+  every other known field — \`name\`, \`transport\`, \`authentication\`, an
+  already-selected credential, and registry \`metadata\`.
+
 ### Selecting credentials
 
 When using a registry-backed server, always use the \`credentialType\` returned
-by \`search_mcp_servers\`.
+by \`selectedResult\`.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
-Auth, or None) via \`${ASK_QUESTION_TOOL_NAME}\`. Then map to:
+Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
 
 - \`bearerAuth\` -> \`ask_credential\` with \`credentialType: "httpBearerAuth"\`
 - \`headerAuth\` -> \`ask_credential\` with \`credentialType: "httpHeaderAuth"\`
@@ -121,10 +166,11 @@ Auth, or None) via \`${ASK_QUESTION_TOOL_NAME}\`. Then map to:
 ## Gotchas
 
 - Server \`name\` must be unique across \`mcpServers\` within an agent.
-- Never invent credential IDs. If the user declines, omit the server entirely.
 - Never fabricate \`metadata.nodeTypeName\`.
-- When \`search_mcp_servers\` returns \`metadata.nodeTypeName\`, include
-  \`metadata: { nodeTypeName: <result.nodeTypeName> }\` in the entry so the UI
-  can render the correct server form.`,
+- When \`selectedResult\` includes \`metadata.nodeTypeName\`, include
+  \`metadata: { nodeTypeName: <selectedResult.metadata.nodeTypeName> }\` in the
+  entry so the UI can render the correct server form.
+- A registry match proves server availability, not support for the requested
+  capability; use the verified live tool list for that decision.`,
 	};
 }

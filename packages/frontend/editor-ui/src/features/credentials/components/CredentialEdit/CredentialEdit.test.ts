@@ -14,7 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
-import { within, waitFor } from '@testing-library/vue';
+import { within, waitFor, screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
 import type { Scope } from '@n8n/permissions';
@@ -53,6 +53,18 @@ vi.mock('@/features/resolvers/composables/usePrivateCredentials', async () => {
 	const { ref } = await vi.importActual<typeof import('vue')>('vue');
 	return { usePrivateCredentials: () => ({ isEnabled: ref(true) }) };
 });
+
+// N8nDialog (reka-ui) doesn't render its portalled content in jsdom, so stub the
+// type-to-confirm dialog with a plain element that surfaces its title + message.
+vi.mock('./TypeToConfirmDialog.vue', () => ({
+	default: {
+		name: 'TypeToConfirmDialog',
+		props: ['open', 'title', 'message', 'confirmLabel', 'confirmKeyword', 'loading'],
+		emits: ['confirm', 'update:open'],
+		template:
+			'<div v-if="open" data-test-id="credential-type-to-confirm-dialog">{{ title }} {{ message }}</div>',
+	},
+}));
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -1416,9 +1428,8 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 		});
 
-		describe('switching a connected private credential to static', () => {
-			test('shows the confirmation modal when the current user just connected, even if the server count is stale', async () => {
-				confirmMock.mockResolvedValue('confirm');
+		describe('switching a connected end-user credential to Fixed', () => {
+			test('shows the type-to-confirm dialog with a pluralized person count when the current user just connected, even if the server count is stale', async () => {
 				const pinia = createPiniaForBannerTest();
 				// connectedByMe reflects the in-session connection; connectedUserCount is the
 				// stale server value (0) that does not yet include the current user.
@@ -1426,6 +1437,7 @@ describe('CredentialEdit', () => {
 					isResolvable: true,
 					connectedByMe: true,
 					connectedUserCount: 0,
+					scopes: ['credential:update', 'credential:createEndUser'],
 				});
 
 				const { getByTestId } = renderComponent({
@@ -1441,17 +1453,21 @@ describe('CredentialEdit', () => {
 
 				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
-				await retry(() => expect(confirmMock).toHaveBeenCalled());
-				expect(confirmMock.mock.calls[0][0]).toContain('1 user(s)');
+				await waitFor(() =>
+					expect(screen.getByTestId('credential-type-to-confirm-dialog')).toBeInTheDocument(),
+				);
+				expect(screen.getByTestId('credential-type-to-confirm-dialog')).toHaveTextContent(
+					'1 person will lose their connection',
+				);
 			});
 
-			test('does not show the confirmation modal when no users are connected', async () => {
-				confirmMock.mockResolvedValue('confirm');
+			test('does not show the confirmation dialog when no users are connected', async () => {
 				const pinia = createPiniaForBannerTest();
 				const credentialsStore = setupOAuthCredential({
 					isResolvable: true,
 					connectedByMe: false,
 					connectedUserCount: 0,
+					scopes: ['credential:update', 'credential:createEndUser'],
 				});
 
 				const { getByTestId } = renderComponent({
@@ -1467,7 +1483,7 @@ describe('CredentialEdit', () => {
 
 				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
-				expect(confirmMock).not.toHaveBeenCalled();
+				expect(screen.queryByTestId('credential-type-to-confirm-dialog')).not.toBeInTheDocument();
 			});
 		});
 
@@ -1482,6 +1498,7 @@ describe('CredentialEdit', () => {
 					isResolvable: false,
 					connectedByMe: true,
 					oauthTokenData: false,
+					scopes: ['credential:update', 'credential:createEndUser'],
 				});
 
 				const { queryByTestId, getByTestId } = renderComponent({

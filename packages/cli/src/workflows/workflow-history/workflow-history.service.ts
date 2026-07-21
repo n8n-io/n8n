@@ -8,9 +8,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -180,6 +178,7 @@ export class WorkflowHistoryService {
 		autosaved = false,
 		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
+		versionMetadata?: { name?: string; description?: string },
 	) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
@@ -203,6 +202,8 @@ export class WorkflowHistoryService {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved,
+				...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
+				...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
 			});
 		} catch (e) {
 			const error = ensureError(e);

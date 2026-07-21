@@ -8,6 +8,7 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
+import type { VectorStore } from './vector-store';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
@@ -26,6 +27,7 @@ import {
 	failedDelegatedChildSuspendOutput,
 	generateResultToDelegateSubAgentOutput,
 	getInlineDelegateSubAgentToolOptions,
+	isDelegateSubAgentTool,
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
@@ -256,6 +258,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		this.tools.push(...builtTools);
 		return this;
+	}
+
+	/** Attach a vector store as a search tool. Accepts a VectorStore builder. */
+	vectorStore(
+		store: VectorStore,
+		options?: { name?: string; description?: string; filterableKeys?: Record<string, string> },
+	): this {
+		return this.tool(store.asTool(options));
 	}
 
 	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */
@@ -720,6 +730,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 	}
 
+	/**
+	 * Durable-log RFC (resilience phase): re-drive a run from a `running`-status
+	 * step checkpoint after a process crash. There is no pending tool call to
+	 * settle — the loop re-enters at the next model call. See
+	 * AgentRuntime.crashResume for `contextNotes` semantics.
+	 */
+	async crashResume(
+		options: { runId: string; contextNotes?: string[] } & ExecutionOptions,
+	): Promise<StreamResult> {
+		const config = await this.ensureBuilt();
+		const active = this.createRuntime(config, options.runId);
+		try {
+			const result = await active.runtime.crashResume(options);
+			return { ...result, stream: this.trackStreamRuntime(result.stream, active) };
+		} catch (error) {
+			await this.cleanupRuntime(active);
+			throw error;
+		}
+	}
+
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
 	approve(method: 'stream', options: ResumeOptions & ExecutionOptions): Promise<StreamResult>;
 	async approve(
@@ -1139,7 +1169,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private assertReservedSdkBuiltInToolName(tool: BuiltTool): void {
 		if (!SDK_RESERVED_BUILTIN_TOOL_NAMES.has(tool.name)) return;
-		if (isSdkOwnedBuiltInTool(tool)) return;
+		if (isDelegateSubAgentTool(tool)) {
+			if (tool.name === DELEGATE_SUB_AGENT_TOOL_NAME) return;
+		} else if (isSdkOwnedBuiltInTool(tool)) {
+			return;
+		}
 
 		throw new Error(`Tool name "${tool.name}" is reserved for SDK built-in tools`);
 	}
@@ -1210,7 +1244,7 @@ export function filterInlineSubAgentTools<T extends { readonly name: string }>(
 	hostBlockedTools?: string[],
 ): T[] {
 	const blocked = buildInlineSubAgentBlockedToolNames(hostBlockedTools);
-	return tools.filter((tool) => !blocked.has(tool.name));
+	return tools.filter((tool) => !blocked.has(tool.name) && !isDelegateSubAgentTool(tool));
 }
 
 function findDuplicateToolNames(tools: BuiltTool[]): string[] {

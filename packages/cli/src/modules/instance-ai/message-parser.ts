@@ -1,4 +1,4 @@
-import { getRenderHint } from '@n8n/api-types';
+import { getRenderHint, normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -11,7 +11,8 @@ import { z } from 'zod';
 
 import {
 	cleanStoredUserMessage,
-	extractEditorContextWorkflowAttachments,
+	extractAgentPreviewHandoffContext,
+	extractEditorContextResourceAttachments,
 } from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];
@@ -162,7 +163,24 @@ function extractToolInvocations(content: unknown): StoredToolInvocation[] {
 	return [];
 }
 
-function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCallState {
+/**
+ * Coarse per-row timing for reconstructed tool calls: the interval from the
+ * previous stored message to this one brackets everything the response did.
+ * Real per-call timestamps only exist in run snapshots; this approximation
+ * lets a snapshot-less reload still show "Thought for Xs" (derived from
+ * min-start/max-end across a thinking block) instead of a bare fallback.
+ * Known coarseness: every call in a row shares the bracket, and an HITL pause
+ * between rows counts as thinking time.
+ */
+interface RowTiming {
+	startedAt: string;
+	completedAt: string;
+}
+
+function buildToolCallState(
+	invocation: StoredToolInvocation,
+	timing?: RowTiming,
+): InstanceAiToolCallState {
 	const isCompleted = invocation.state === 'result';
 	return {
 		toolCallId: invocation.toolCallId,
@@ -172,38 +190,57 @@ function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCal
 		error: isCompleted ? invocation.error : undefined,
 		isLoading: !isCompleted,
 		renderHint: getRenderHint(invocation.toolName),
+		...(timing ? { startedAt: timing.startedAt } : {}),
+		...(timing && isCompleted ? { completedAt: timing.completedAt } : {}),
 	};
 }
 
 /**
- * Build a chronological timeline from native parts (preserves tool-call vs text ordering).
- * Falls back to tool-calls-first heuristic when parts aren't available.
+ * Build a chronological timeline from native parts (preserves reasoning vs
+ * tool-call vs text ordering). Falls back to a reasoning-first,
+ * tool-calls-next heuristic when parts aren't available.
+ *
+ * `responseId` is a synthetic per-message id: each stored assistant row is one
+ * LLM response, and the frontend needs response grouping to tell intermediate
+ * narration (trace content follows in the same response) from final answers.
+ * Without it, a reconstructed timeline renders every narration text outside
+ * the thinking blocks, splitting them.
  */
 function buildTimeline(
 	textContent: string,
+	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
+	responseId?: string,
 ): InstanceAiTimelineEntry[] {
+	const responseRef = responseId ? { responseId } : {};
+
 	// If parts are available, use their ordering (chronologically accurate)
 	if (parts?.length) {
 		const timeline: InstanceAiTimelineEntry[] = [];
 		for (const part of parts) {
 			if (part.type === 'text' && part.text) {
-				timeline.push({ type: 'text', content: part.text });
+				timeline.push({ type: 'text', content: part.text, ...responseRef });
+			} else if (part.type === 'reasoning' && part.text) {
+				timeline.push({ type: 'reasoning', content: part.text, ...responseRef });
 			} else if (part.type === 'tool-call' && part.toolCallId) {
-				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId });
+				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId, ...responseRef });
 			}
 		}
 		return timeline;
 	}
 
-	// No parts — heuristic: tool calls first, then text (most common agent pattern)
+	// No parts — heuristic: reasoning first, then tool calls, then text
+	// (most common agent pattern)
 	const timeline: InstanceAiTimelineEntry[] = [];
+	if (reasoning) {
+		timeline.push({ type: 'reasoning', content: reasoning, ...responseRef });
+	}
 	for (const tc of toolCalls) {
-		timeline.push({ type: 'tool-call', toolCallId: tc.toolCallId });
+		timeline.push({ type: 'tool-call', toolCallId: tc.toolCallId, ...responseRef });
 	}
 	if (textContent) {
-		timeline.push({ type: 'text', content: textContent });
+		timeline.push({ type: 'text', content: textContent, ...responseRef });
 	}
 	return timeline;
 }
@@ -225,6 +262,7 @@ function buildFlatAgentTree(
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
 	status: InstanceAiAgentNode['status'] = 'completed',
+	responseId?: string,
 ): InstanceAiAgentNode {
 	const resolvedStatus = status === 'active' ? 'completed' : status;
 	const settledToolCalls =
@@ -239,7 +277,7 @@ function buildFlatAgentTree(
 		reasoning,
 		toolCalls: settledToolCalls,
 		children: [],
-		timeline: buildTimeline(textContent, settledToolCalls, parts),
+		timeline: buildTimeline(textContent, reasoning, settledToolCalls, parts, responseId),
 	};
 }
 
@@ -326,6 +364,13 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 // ---------------------------------------------------------------------------
 
 /**
+ * Durable-log instrumentation: counts assistant messages that rendered from
+ * the message-derived fallback ladder instead of a renderable snapshot tree.
+ * Forwarded to the metrics pipeline via DurableLogMetrics.notifyParserFallbacks.
+ */
+export const messageParserStats = { fallbackActivations: 0 };
+
+/**
  * Converts persisted native agent messages into rich InstanceAiMessage objects
  * with agent trees (from snapshots or reconstructed flat trees).
  */
@@ -410,9 +455,10 @@ export function parseStoredMessages(
 			const content = cleanStoredUserMessage(text);
 			if (content === null) continue;
 
-			// Rebuild the editor hand-off's workflow attachments so the UI can
-			// re-surface them (chip + artifact) after a reload.
-			const attachments = extractEditorContextWorkflowAttachments(text);
+			// Rebuild the editor hand-off's resource attachments (workflow/agent) so
+			// the UI can re-surface them (chip + artifact) after a reload.
+			const attachments = extractEditorContextResourceAttachments(text);
+			const context = extractAgentPreviewHandoffContext(text);
 
 			messages.push({
 				id: msg.id,
@@ -422,6 +468,7 @@ export function parseStoredMessages(
 				reasoning: '',
 				isStreaming: false,
 				...(attachments.length > 0 ? { attachments } : {}),
+				...(context ? { context } : {}),
 			});
 			continue;
 		}
@@ -429,7 +476,14 @@ export function parseStoredMessages(
 		if (msg.role === 'assistant') {
 			const reasoning = extractReasoningFromContent(msg.content);
 			const invocations = extractToolInvocations(msg.content);
-			const toolCalls = invocations.map(buildToolCallState);
+			const prevMessage = messageIndex > 0 ? conversationMessages[messageIndex - 1] : undefined;
+			const timing: RowTiming | undefined = prevMessage
+				? {
+						startedAt: prevMessage.createdAt.toISOString(),
+						completedAt: msg.createdAt.toISOString(),
+					}
+				: undefined;
+			const toolCalls = invocations.map((invocation) => buildToolCallState(invocation, timing));
 			const parts = extractParts(msg.content);
 
 			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
@@ -437,9 +491,21 @@ export function parseStoredMessages(
 			// Use the native runId from the snapshot (matches SSE events),
 			// falling back to the user-message ID if no snapshot exists.
 			const runId = snapshot?.runId ?? lastUserMessageId ?? msg.id;
+			// The message id doubles as the synthetic responseId: one stored
+			// assistant row = one LLM response, and unlike `runId` (which falls
+			// back to the user-message id shared by the whole turn) it is unique
+			// per row, so response grouping survives the flat-tree merge.
 			const messageFlatTree =
-				toolCalls.length > 0 || text
-					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts, snapshot?.tree.status)
+				toolCalls.length > 0 || text || reasoning
+					? buildFlatAgentTree(
+							runId,
+							text,
+							reasoning,
+							toolCalls,
+							parts,
+							snapshot?.tree.status,
+							msg.id,
+						)
 					: undefined;
 			// Carry the cancellation cause onto the fallback tree so a stopped run is
 			// still attributable (user/timeout/shutdown) after the snapshot was lost.
@@ -454,6 +520,7 @@ export function parseStoredMessages(
 			// empty one.
 			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
 			const agentTree = snapshotIsRenderable ? snapshot.tree : messageFlatTree;
+			if (!snapshotIsRenderable && messageFlatTree) messageParserStats.fallbackActivations++;
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,
@@ -539,6 +606,10 @@ export function parseStoredMessages(
 	}
 	for (let i = messages.length - 1; i >= 0; i--) {
 		if (toRemove.has(i)) messages.splice(i, 1);
+	}
+
+	for (const msg of messages) {
+		if (msg.agentTree) normalizeAgentTree(msg.agentTree);
 	}
 
 	return messages;

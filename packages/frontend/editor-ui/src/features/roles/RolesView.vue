@@ -12,7 +12,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InstanceRolesView from './instance/InstanceRolesView.vue';
 import ProjectRolesView from './project/ProjectRolesView.vue';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 
 type RolesTab = 'instance' | 'project';
 const DEFAULT_TAB: RolesTab = 'instance';
@@ -38,6 +38,12 @@ function addRole() {
 		name: activeTab.value === 'project' ? VIEWS.PROJECT_NEW_ROLE : VIEWS.INSTANCE_NEW_ROLE,
 	});
 }
+
+// Reflect the active tab in the button, mirroring the resource-scoped labels used
+// on the workflows and credentials lists.
+const addRoleLabel = computed(() =>
+	i18n.baseText(activeTab.value === 'project' ? 'roles.addRole.project' : 'roles.addRole.instance'),
+);
 
 const tabOptions = computed<Array<TabOptions<RolesTab>>>(() =>
 	canManageInstanceRoles.value
@@ -97,12 +103,12 @@ onMounted(async () => {
 				icon="plus"
 				@click="addRole"
 			>
-				{{ i18n.baseText('roles.addRole') }}
+				{{ addRoleLabel }}
 			</N8nButton>
 		</div>
 
 		<InstanceRolesView v-if="activeTab === 'instance' && canManageInstanceRoles" />
-		<ProjectRolesView v-else embedded />
+		<ProjectRolesView v-else />
 	</div>
 </template>
 

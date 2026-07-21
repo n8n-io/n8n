@@ -1,0 +1,16 @@
+{
+	"description": "Gold: out-of-scope — not every message is a build request; users ask questions and investigate before building. The behavioral proof of an out-of-scope classification is that no build path is triggered at all: the agent answers directly, creates nothing, and loads no build skills. Whether intent-recognition itself loads is left unasserted.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "What can you build?"
+		}
+	],
+	"complexity": "simple",
+	"tags": ["intent-resolution", "meta", "over-trigger-guard"],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent answers the question directly by describing the kinds of automations it can build, and does not create a workflow or an n8n Agent (via the `build-agent` tool) or start any build activity.",
+		"The agent does not load the workflow-builder skill and does not call `build-agent` or any other build tools in response to the question."
+	]
+}

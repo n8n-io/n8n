@@ -459,7 +459,7 @@ export class SamlService {
 
 	private async broadcastReloadSAMLConfigurationCommand(): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			await Container.get(Publisher).publishCommand({ command: 'reload-saml-config' });
 		}
 	}
@@ -564,12 +564,23 @@ export class SamlService {
 				throw new InvalidSamlMetadataError();
 			}
 		}
-		this.getIdentityProviderInstance(true);
+		if (this._samlPreferences.metadata) {
+			this.getIdentityProviderInstance(true);
+		} else {
+			// Metadata was cleared — drop the cached IdP so a later configure can recreate it.
+			this.identityProviderInstance = undefined;
+		}
 	}
 
 	async loadPreferencesWithoutValidation(prefs: Partial<SamlPreferences>) {
+		await this.applySamlPreferenceFields(prefs);
+		this.applyIdpMetadataPreferences(prefs);
+		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
+		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
+	}
+
+	private async applySamlPreferenceFields(prefs: Partial<SamlPreferences>) {
 		this._samlPreferences.loginBinding = prefs.loginBinding ?? this._samlPreferences.loginBinding;
-		this._samlPreferences.metadata = prefs.metadata ?? this._samlPreferences.metadata;
 		this._samlPreferences.mapping = prefs.mapping ?? this._samlPreferences.mapping;
 		this._samlPreferences.ignoreSSL = prefs.ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		this._samlPreferences.acsBinding = prefs.acsBinding ?? this._samlPreferences.acsBinding;
@@ -581,12 +592,14 @@ export class SamlService {
 			prefs.wantAssertionsSigned ?? this._samlPreferences.wantAssertionsSigned;
 		this._samlPreferences.wantMessageSigned =
 			prefs.wantMessageSigned ?? this._samlPreferences.wantMessageSigned;
+
 		if (prefs.signingCertificate === '') {
 			this._samlPreferences.signingCertificate = undefined;
 		} else {
 			this._samlPreferences.signingCertificate =
 				prefs.signingCertificate ?? this._samlPreferences.signingCertificate;
 		}
+
 		if (
 			prefs.signingPrivateKey !== undefined &&
 			prefs.signingPrivateKey !== CREDENTIAL_BLANKING_VALUE
@@ -604,15 +617,22 @@ export class SamlService {
 				this._samlPreferences.signingPrivateKey = prefs.signingPrivateKey;
 			}
 		}
-		if (prefs.metadataUrl) {
-			this._samlPreferences.metadataUrl = prefs.metadataUrl;
-		} else if (prefs.metadata) {
-			// remove metadataUrl if metadata is set directly
-			this._samlPreferences.metadataUrl = undefined;
+	}
+
+	/**
+	 * Apply IdP metadata sources. `undefined` leaves the field unchanged; `''` clears it
+	 * (PUT replacement). Providing XML without a URL also clears the URL alternate.
+	 */
+	private applyIdpMetadataPreferences(prefs: Partial<SamlPreferences>) {
+		if (prefs.metadata !== undefined) {
 			this._samlPreferences.metadata = prefs.metadata;
 		}
-		await setSamlLoginEnabled(prefs.loginEnabled ?? isSamlLoginEnabled());
-		setSamlLoginLabel(prefs.loginLabel ?? getSamlLoginLabel());
+		if (prefs.metadataUrl !== undefined) {
+			this._samlPreferences.metadataUrl = prefs.metadataUrl || undefined;
+		}
+		if (prefs.metadata && !prefs.metadataUrl) {
+			this._samlPreferences.metadataUrl = undefined;
+		}
 	}
 
 	async loadFromDbAndApplySamlPreferences(

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
-import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
+import { N8nCallout, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -18,39 +18,34 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		mode?: 'panel' | 'inline';
-		endpoint?: 'build' | 'chat';
-		initialMessage?: string;
 		continueSessionId?: string;
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
 		canEditAgent?: boolean;
+		canSendToAssistant?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 	}>(),
 	{
 		visible: true,
 		mode: 'panel',
-		endpoint: 'chat',
-		initialMessage: undefined,
 		continueSessionId: undefined,
 		canEditAgent: true,
+		canSendToAssistant: false,
 		beforeSend: undefined,
 		inputDraft: undefined,
 	},
 );
 
 const emit = defineEmits<{
-	codeUpdated: [];
-	codeDelta: [delta: string];
-	configUpdated: [];
-	buildDone: [];
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
+	'send-to-assistant': [];
 }>();
 
 const locale = useI18n();
@@ -83,30 +78,35 @@ const {
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
-	endpoint: toRef(props, 'endpoint'),
 	continueSessionId: toRef(props, 'continueSessionId'),
-	onCodeUpdated: () => emit('codeUpdated'),
-	onCodeDelta: (d) => emit('codeDelta', d),
-	onConfigUpdated: () => emit('configUpdated'),
-	onBuildDone: () => emit('buildDone'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) emit('continue-loaded', count);
 	},
 });
 
+const RUNTIME_ISSUE_PATH_PREFIXES = [
+	{ prefix: 'tools.', key: 'agents.chat.misconfigured.missing.tools' },
+	{ prefix: 'mcpServers.', key: 'agents.chat.misconfigured.missing.mcpServers' },
+	{ prefix: 'subAgents.agents.', key: 'agents.chat.misconfigured.missing.subAgents.agents' },
+] as const;
+
 function humaniseMissingField(field: string): string {
-	// `skill:<id>` is a parameterised token — render it through a single i18n
-	// entry so a new id doesn't require a translations change.
 	if (field.startsWith('skill:')) {
 		return locale.baseText('agents.chat.misconfigured.missing.skill', {
 			interpolate: { id: field.slice('skill:'.length) },
 		});
 	}
-	// Map backend-emitted field ids onto i18n keys. Unknown fields fall back to
-	// their raw id so a new backend-side value still renders something useful.
-	const key = `agents.chat.misconfigured.missing.${field}`;
-	const translated = locale.baseText(key as never);
-	return translated === key ? field : translated;
+	const exactKey = `agents.chat.misconfigured.missing.${field}`;
+	const exactTranslation = locale.baseText(exactKey as never);
+	if (exactTranslation !== exactKey) {
+		return exactTranslation;
+	}
+	for (const { prefix, key } of RUNTIME_ISSUE_PATH_PREFIXES) {
+		if (field.startsWith(prefix)) {
+			return locale.baseText(key);
+		}
+	}
+	return field;
 }
 
 const missingFields = computed(() => {
@@ -124,38 +124,20 @@ const areConfigurationActionsDisabled = computed(
 	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
 );
 
-const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
-
 const chatPlaceholder = computed(() =>
-	isBuilderReadOnly.value
-		? locale.baseText('agents.builder.readonly.placeholder')
-		: hasOpenApproval.value
-			? locale.baseText('agents.chat.approval.inputPlaceholder')
-			: hasOpenInteractiveQuestion.value
-				? locale.baseText('agents.chat.answerQuestionPlaceholder')
-				: locale.baseText('agents.chat.input.placeholder'),
+	hasOpenApproval.value
+		? locale.baseText('agents.chat.approval.inputPlaceholder')
+		: hasOpenInteractiveQuestion.value
+			? locale.baseText('agents.chat.answerQuestionPlaceholder')
+			: locale.baseText('agents.chat.input.placeholder'),
 );
-
-function onOpenBuild() {
-	dismissFatalError();
-	emit('open-build');
-}
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (
-		!text ||
-		isStreaming.value ||
-		isPreparingToSend.value ||
-		isBuilderReadOnly.value ||
-		hasOpenApproval.value
-	)
-		return;
+	if (!text || isStreaming.value || isPreparingToSend.value || hasOpenApproval.value) return;
 
-	// When there is an open interactive question, the user's message cancels
-	// the suspended tool and steers the agent in a new direction.
 	if (hasOpenInteractiveQuestion.value) {
 		inputText.value = '';
 		await cancelAndSteer(text);
@@ -166,7 +148,6 @@ async function onSubmit() {
 	try {
 		await props.beforeSend?.();
 	} catch {
-		// Autosave errors are surfaced by the caller that owns the flush.
 		isPreparingToSend.value = false;
 		return;
 	}
@@ -180,7 +161,6 @@ async function onSubmit() {
 		);
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
-			mode: props.endpoint === 'build' ? 'build' : 'test',
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
@@ -199,52 +179,10 @@ function sendMessageFromOutside(message: string) {
 
 defineExpose({ sendMessageFromOutside });
 
-// Capture the seed message locally so later clearing of `props.initialMessage`
-// by the parent (which does so on `nextTick` to prevent the same prompt
-// bleeding into the other chat panel) can't race the `onMounted` guard below.
-const seedMessage = props.initialMessage;
-
-// Seed the initial message synchronously during setup (not onMounted) so the
-// user bubble is in `messages` before Vue performs the first render. Without
-// this, the panel renders once with an empty message list and THEN the user
-// message appears — visible as a 1-frame flash of the blank/centered layout.
-//
-// `sendMessage` is an async function but the push to `messages` happens
-// before any await, so calling it here runs the sync prefix (push + set
-// `isStreaming = true` inside streamFromEndpoint) before setup returns. The
-// fetch itself continues to run async in the background.
-async function sendSeedMessage(message: string): Promise<void> {
-	try {
-		await props.beforeSend?.();
-		const sending = sendMessage(message);
-		emit('initial-consumed');
-		await sending;
-	} catch {
-		// Autosave errors are surfaced by the caller that owns the flush.
-	}
-}
-
-// Skip the seed when the build chat is read-only
-const consumesSeed = !!seedMessage && !isBuilderReadOnly.value;
-if (consumesSeed) {
-	void sendSeedMessage(seedMessage as string);
-}
-
 onMounted(() => {
-	// When we actually seeded a message, there's no prior thread to load —
-	// the agent was just created in this panel and the history endpoint
-	// would 404. Otherwise (including the read-only suppression path) load
-	// whatever history exists so the panel shows real content instead of a
-	// misleading "describe your agent" empty state.
-	if (consumesSeed) {
-		return;
-	}
 	void loadHistory();
 });
 
-// Abort any in-flight stream when the panel unmounts (e.g. route change,
-// chat mode reset). Without this the fetch keeps running and its reader
-// accumulates bytes until the browser gc's it.
 onBeforeUnmount(() => {
 	stopGenerating();
 });
@@ -258,18 +196,10 @@ onBeforeUnmount(() => {
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
 				</span>
 				<span v-if="missingFields" :class="$style.errorBannerDetail">
-					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
+					{{ locale.baseText('agents.chat.misconfigured.issuesPrefix') }} {{ missingFields }}
 				</span>
 			</div>
 			<template #trailingContent>
-				<N8nButton
-					variant="outline"
-					size="xsmall"
-					data-testid="agent-misconfigured-open-build"
-					@click="onOpenBuild"
-				>
-					{{ locale.baseText('agents.chat.misconfigured.openBuild') }}
-				</N8nButton>
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
@@ -281,23 +211,17 @@ onBeforeUnmount(() => {
 			</template>
 		</N8nCallout>
 
-		<!--
-			Suppress the centered empty state when we have an `initialMessage` to
-			seed. Without this, the panel briefly renders the empty view before
-			the seedMessage push (during setup) lands in `messages` — visible as
-			a flicker of the centered layout under the mode transition.
-		-->
-		<AgentChatEmptyState
-			v-if="messages.length === 0 && !isStreaming && !initialMessage"
-			:endpoint="endpoint"
-		/>
+		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
 			:messaging-state="messagingState"
 			:project-id="projectId"
 			:agent-id="agentId"
+			:session-id="continueSessionId"
+			:can-send-to-assistant="canSendToAssistant"
 			@resume="resume"
+			@send-to-assistant="emit('send-to-assistant')"
 		/>
 
 		<div :class="$style.inputArea">
@@ -307,17 +231,10 @@ onBeforeUnmount(() => {
 				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
 				:can-submit="
-					!hasOpenApproval &&
-					!isStreaming &&
-					!isPreparingToSend &&
-					!isBuilderReadOnly &&
-					inputText.trim().length > 0
+					!hasOpenApproval && !isStreaming && !isPreparingToSend && inputText.trim().length > 0
 				"
 				:disabled="
-					isBuilderReadOnly ||
-					hasOpenApproval ||
-					isPreparingToSend ||
-					(isStreaming && messagingState !== 'receiving')
+					hasOpenApproval || isPreparingToSend || (isStreaming && messagingState !== 'receiving')
 				"
 				data-testid="chat-input"
 				@submit="onSubmit"

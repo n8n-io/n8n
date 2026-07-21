@@ -5,8 +5,9 @@ import type { WorkflowListItem } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	LOADING_INDICATOR_TIMEOUT,
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
@@ -16,6 +17,7 @@ import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue'
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
+import RevokeOAuthClientConfirmModal from '@/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue';
 import {
 	N8nHeading,
 	N8nNotice,
@@ -26,15 +28,15 @@ import {
 	N8nLink,
 	N8nInputLabel,
 	N8nInput,
-	N8nCallout,
-	N8nPreviewTag,
 } from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '@/app/constants';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { useExposeAllWorkflowsToMcpOffer } from '@/experiments/exposeAllWorkflowsToMcp/composables/useExposeAllWorkflowsToMcpOffer';
 
 type MCPTabs = 'workflows' | 'oauth' | 'settings';
 
@@ -45,15 +47,16 @@ const mcp = useMcp();
 const telemetry = useTelemetry();
 
 const mcpStore = useMCPStore();
-const usersStore = useUsersStore();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
 
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
 
-const isOwner = computed(() => usersStore.isInstanceOwner);
-const isAdmin = computed(() => usersStore.isAdmin);
-const canManageMcpInstance = computed(() => isOwner.value || isAdmin.value);
+const canManageMcpInstance = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'mcp:manage' } }),
+);
 
 const tabs = computed<Array<TabOptions<MCPTabs>>>(() => {
 	const base: Array<TabOptions<MCPTabs>> = [
@@ -86,14 +89,16 @@ const workflowsTableState = ref<TableOptions>({
 const workflowsTableItemsPerPage = ref(workflowsTableState.value.itemsPerPage);
 
 const oAuthClientsLoading = ref(false);
-const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
+const revokeClient = ref<OAuthClientResponseDto | null>(null);
+const revoking = ref(false);
 
 const redirectUrisInput = ref('');
 const redirectUrisError = ref('');
 const redirectUrisLoading = ref(false);
-const redirectUriWarningDismissed = ref(false);
 
 const canToggleMCP = computed(() => canManageMcpInstance.value && !mcpStore.mcpManagedByEnv);
+
+const canEditRedirectUris = computed(() => canManageMcpInstance.value);
 
 const canSeeInstanceStats = canManageMcpInstance;
 
@@ -109,14 +114,6 @@ const instanceCapacityNoticeContent = computed(() => {
 	});
 });
 
-const showRedirectUriWarning = computed(
-	() =>
-		canManageMcpInstance.value &&
-		mcpStore.mcpAccessEnabled &&
-		mcpStore.allowedRedirectUris.length === 0 &&
-		!redirectUriWarningDismissed.value,
-);
-
 const showConnectWorkflowsButton = computed(() => {
 	return selectedTab.value === 'workflows' && availableWorkflowsTotal.value > 0;
 });
@@ -125,7 +122,7 @@ const onTabSelected = async (tab: MCPTabs) => {
 	selectedTab.value = tab;
 	if (tab === 'workflows' && availableWorkflows.value.length === 0) {
 		await fetchAvailableWorkflows();
-	} else if (tab === 'oauth' && connectedOAuthClients.value.length === 0) {
+	} else if (tab === 'oauth' && mcpStore.oauthClients.length === 0) {
 		await fetchoAuthCLients();
 		telemetry.track('User clicked connected clients tab');
 	} else if (tab === 'settings' && mcpStore.allowedRedirectUris.length === 0) {
@@ -144,6 +141,15 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 			workflowsLoading.value = false;
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
+		if (enabled && updated) {
+			// Best-effort offer; must not keep the toggle in its loading state.
+			// The popover only opens when the offer modal doesn't, so they never stack.
+			void offerToExposeAllWorkflows(refreshWorkflowsFromFirstPage).then((offered) => {
+				if (!offered) {
+					mcpStore.openConnectPopover();
+				}
+			});
+		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
@@ -152,18 +158,54 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	}
 };
 
+const showMcpAccessUpdatedToast = (count: number, enabled: boolean) => {
+	toast.showMessage({
+		type: 'success',
+		title: i18n.baseText(
+			enabled
+				? 'settings.mcp.workflows.enableAccess.success.title'
+				: 'settings.mcp.workflows.removeAccess.success.title',
+			{
+				adjustToNumber: count,
+				interpolate: { count: String(count) },
+			},
+		),
+	});
+};
+
 const onToggleWorkflowMCPAccess = async (workflowId: string, isEnabled: boolean) => {
 	try {
 		await mcpStore.toggleWorkflowMcpAccess(workflowId, isEnabled);
 		if (isEnabled) {
-			workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
-			await fetchAvailableWorkflows();
+			await refreshWorkflowsFromFirstPage();
 		} else {
+			showMcpAccessUpdatedToast(1, false);
 			await fetchAvailableWorkflows();
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 		throw error;
+	}
+};
+
+const onBulkEnableWorkflowsMCPAccess = async (workflowIds: string[]) => {
+	try {
+		const response = await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, true);
+		showMcpAccessUpdatedToast(response.updatedCount, true);
+		await refreshWorkflowsFromFirstPage();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
+		throw error;
+	}
+};
+
+const onBulkRemoveWorkflowsMCPAccess = async (workflowIds: string[]) => {
+	try {
+		const response = await mcpStore.toggleWorkflowsMcpAccess({ workflowIds }, false);
+		showMcpAccessUpdatedToast(response.updatedCount, false);
+		await fetchAvailableWorkflows();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowSettings.toggleMCP.error.title'));
 	}
 };
 
@@ -226,6 +268,11 @@ const fetchAvailableWorkflows = async () => {
 	}
 };
 
+const refreshWorkflowsFromFirstPage = async () => {
+	workflowsTableState.value = { ...workflowsTableState.value, page: 0 };
+	await fetchAvailableWorkflows();
+};
+
 const onRefreshWorkflows = async () => {
 	await fetchAvailableWorkflows();
 };
@@ -240,8 +287,7 @@ const onWorkflowsTableUpdate = async (options: TableOptions) => {
 const fetchoAuthCLients = async () => {
 	try {
 		oAuthClientsLoading.value = true;
-		const clients = await mcpStore.getAllOAuthClients();
-		connectedOAuthClients.value = clients ?? [];
+		await mcpStore.getAllOAuthClients();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
@@ -251,10 +297,48 @@ const fetchoAuthCLients = async () => {
 	}
 };
 
-const revokeClientAccess = async (client: OAuthClientResponseDto) => {
+const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 	try {
-		await mcpStore.removeOAuthClient(client.id);
-		connectedOAuthClients.value = connectedOAuthClients.value.filter((c) => c.id !== client.id);
+		oAuthClientsLoading.value = true;
+		await mcpStore.setOAuthClientsOwnership(ownership);
+		if (ownership === 'all') {
+			telemetry.track('User viewed all MCP clients');
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	} finally {
+		setTimeout(() => {
+			oAuthClientsLoading.value = false;
+		}, LOADING_INDICATOR_TIMEOUT);
+	}
+};
+
+const withClientsErrorToast = async (fn: () => Promise<void>) => {
+	try {
+		await fn();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
+	}
+};
+
+const onClientsFiltersChange = async (filters: OAuthClientFilters) =>
+	await withClientsErrorToast(() => mcpStore.setOAuthClientsFilters(filters));
+
+const onClientsOptionsChange = async (options: { page: number; itemsPerPage: number }) =>
+	await withClientsErrorToast(() =>
+		mcpStore.setOAuthClientsPagination(options.page, options.itemsPerPage),
+	);
+
+const onRevokeRequest = (client: OAuthClientResponseDto) => {
+	revokeClient.value = client;
+};
+
+const onRevokeConfirm = async () => {
+	const client = revokeClient.value;
+	if (!client) return;
+	try {
+		revoking.value = true;
+		await mcpStore.removeOAuthClient(client.id, client.owner?.id);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
@@ -264,6 +348,9 @@ const revokeClientAccess = async (client: OAuthClientResponseDto) => {
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.oAuthClients.revoke.error'));
+	} finally {
+		revoking.value = false;
+		revokeClient.value = null;
 	}
 };
 
@@ -271,9 +358,7 @@ const openConnectWorkflowsModal = () => {
 	uiStore.openModalWithData({
 		name: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 		data: {
-			onEnableMcpAccess: async (workflowId: string) => {
-				await onToggleWorkflowMCPAccess(workflowId, true);
-			},
+			onEnableMcpAccess: onBulkEnableWorkflowsMCPAccess,
 		},
 	});
 	telemetry.track('User clicked connect workflows from mcp settings');
@@ -379,12 +464,7 @@ onMounted(async () => {
 	<div :class="$style.container">
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
 			<div :class="$style.headings">
-				<div :class="$style['heading-row']">
-					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-					<N8nTooltip :content="i18n.baseText('settings.mcp.preview.tooltip')">
-						<N8nPreviewTag size="medium" />
-					</N8nTooltip>
-				</div>
+				<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
 				<div v-show="mcpStore.mcpAccessEnabled" data-test-id="mcp-settings-description">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.mcp.description') }}.
@@ -408,23 +488,6 @@ onMounted(async () => {
 				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
-		<N8nCallout
-			v-if="showRedirectUriWarning"
-			theme="warning"
-			:class="$style['redirect-uri-warning']"
-			data-test-id="mcp-redirect-uri-warning"
-		>
-			{{ i18n.baseText('settings.mcp.allowedRedirectUris.warning') }}
-			<template #trailingContent>
-				<N8nButton
-					icon="x"
-					variant="ghost"
-					size="small"
-					iconOnly
-					@click="redirectUriWarningDismissed = true"
-				/>
-			</template>
-		</N8nCallout>
 		<MCPEmptyState
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
@@ -475,6 +538,7 @@ onMounted(async () => {
 					:total-count="availableWorkflowsTotal"
 					:loading="workflowsLoading"
 					@remove-mcp-access="(workflow) => onToggleWorkflowMCPAccess(workflow.id, false)"
+					@bulk-remove-mcp-access="onBulkRemoveWorkflowsMCPAccess"
 					@connect-workflows="openConnectWorkflowsModal"
 					@update-description="onUpdateDescription"
 					@update:options="onWorkflowsTableUpdate"
@@ -483,9 +547,13 @@ onMounted(async () => {
 				<OAuthClientsTable
 					v-else-if="selectedTab === 'oauth'"
 					:data-test-id="'mcp-oauth-clients-table'"
-					:clients="connectedOAuthClients"
+					:clients="mcpStore.oauthClients"
+					:scope-tools="mcpStore.oauthClientScopeTools"
 					:loading="oAuthClientsLoading"
-					@revoke-client="revokeClientAccess"
+					@revoke-client="onRevokeRequest"
+					@update:ownership="onOwnershipChange"
+					@update:filters="onClientsFiltersChange"
+					@update:options="onClientsOptionsChange"
 					@refresh="onTableRefresh"
 				/>
 				<section
@@ -503,7 +571,7 @@ onMounted(async () => {
 							type="textarea"
 							:rows="6"
 							:placeholder="i18n.baseText('settings.mcp.allowedRedirectUris.placeholder')"
-							:disabled="!canToggleMCP"
+							:disabled="!canEditRedirectUris"
 							data-test-id="mcp-redirect-uris-input"
 						/>
 					</N8nInputLabel>
@@ -514,7 +582,7 @@ onMounted(async () => {
 						<N8nButton
 							:label="i18n.baseText('settings.mcp.allowedRedirectUris.save')"
 							:loading="redirectUrisLoading"
-							:disabled="!canToggleMCP"
+							:disabled="!canEditRedirectUris"
 							size="small"
 							data-test-id="mcp-redirect-uris-save-button"
 							@click="saveRedirectUris"
@@ -523,6 +591,18 @@ onMounted(async () => {
 				</section>
 			</main>
 		</div>
+
+		<RevokeOAuthClientConfirmModal
+			:client="revokeClient"
+			:open="!!revokeClient"
+			:loading="revoking"
+			:revoking-for-other="
+				!!revokeClient?.owner && revokeClient.owner.id !== usersStore.currentUser?.id
+			"
+			@confirm="onRevokeConfirm"
+			@cancel="revokeClient = null"
+			@update:open="revokeClient = null"
+		/>
 	</div>
 </template>
 
@@ -550,13 +630,6 @@ onMounted(async () => {
 	min-height: 60px;
 }
 
-.heading-row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	margin-bottom: var(--spacing--5xs);
-}
-
 .tabs-header {
 	display: flex;
 	justify-content: space-between;
@@ -566,10 +639,6 @@ onMounted(async () => {
 .actions {
 	display: flex;
 	gap: var(--spacing--2xs);
-}
-
-.redirect-uri-warning {
-	margin-bottom: var(--spacing--sm);
 }
 
 .oauth-settings-content {

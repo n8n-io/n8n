@@ -4,13 +4,11 @@ import type { NotificationHandle } from 'element-plus';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
 	useSelectionValidation,
 	type GroupValidationResult,
 } from '@/app/composables/useSelectionValidation';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@/app/composables/useToast';
 import {
 	createWorkflowDocumentId,
@@ -18,7 +16,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { RemoveNodeGroupCommand } from '@/app/models/history';
+import { deleteGroupWithHistory } from '@/features/workflows/canvas/nodeGroups.utils';
 import { useCanvasNodeGroupTelemetry } from './useCanvasNodeGroupTelemetry';
 
 type ConnectionChangeAction = 'add' | 'remove';
@@ -58,12 +56,8 @@ const FALLBACK_MESSAGE_KEY: BaseTextKey = 'canvas.nodeGroup.connectionChangeBloc
 
 export function useCanvasNodeGroupOperationGuards() {
 	const workflowsStore = useWorkflowsStore();
-	const posthogStore = usePostHog();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
-	const isCanvasNodeGroupingEnabled = computed(() =>
-		posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
 	);
 
 	const historyStore = useHistoryStore();
@@ -196,9 +190,7 @@ export function useCanvasNodeGroupOperationGuards() {
 				onClick: (event: MouseEvent) => {
 					event.preventDefault();
 					event.stopPropagation();
-					const snapshot = { ...group, nodeIds: [...group.nodeIds] };
-					workflowDocumentStore.value.deleteGroup(group.id);
-					historyStore.pushCommandToUndo(new RemoveNodeGroupCommand(snapshot, Date.now()));
+					deleteGroupWithHistory(group, workflowDocumentStore.value, historyStore);
 					groupTelemetry.trackUngrouped(group, 'update-blocked-toast');
 					notification?.close();
 				},
@@ -297,8 +289,6 @@ export function useCanvasNodeGroupOperationGuards() {
 		allowAutoExtend?: boolean;
 		blockedTitleKey?: BaseTextKey;
 	}): NodeGroupConnectionGuardResult {
-		if (!isCanvasNodeGroupingEnabled.value) return { outcome: 'proceed' };
-
 		const affectedGroups = getAffectedNodeGroups(nodeIds);
 		if (affectedGroups.length === 0) return { outcome: 'proceed' };
 
@@ -366,8 +356,6 @@ export function useCanvasNodeGroupOperationGuards() {
 		connectionsToAdd: Array<[IConnection, IConnection]>;
 		connectionsBySourceNode: IConnections;
 	}): boolean {
-		if (!isCanvasNodeGroupingEnabled.value) return true;
-
 		const previousGroup = workflowDocumentStore.value.getGroupForNode(previousNodeId);
 		if (!previousGroup) return true;
 

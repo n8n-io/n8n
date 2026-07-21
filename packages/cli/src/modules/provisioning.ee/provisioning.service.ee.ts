@@ -14,6 +14,7 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { GLOBAL_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { Not, In } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
@@ -68,7 +69,7 @@ export class ProvisioningService {
 			return;
 		}
 
-		const globalOwnerRoleSlug = 'global:owner';
+		const globalOwnerRoleSlug = GLOBAL_OWNER_ROLE_SLUG;
 
 		if (typeof roleSlug !== 'string') {
 			this.logger.warn(
@@ -96,6 +97,14 @@ export class ProvisioningService {
 		if (dbRole.roleType !== 'global') {
 			this.logger.warn(
 				`Skipping instance role provisioning. Role ${roleSlug} is not a global role`,
+				{ userId: user.id, roleSlug },
+			);
+			return;
+		}
+
+		if (dbRole.slug === globalOwnerRoleSlug && user.role.slug !== globalOwnerRoleSlug) {
+			this.logger.warn(
+				`Skipping instance role provisioning. Cannot assign owner role: ${globalOwnerRoleSlug} to user: ${user.id}`,
 				{ userId: user.id, roleSlug },
 			);
 			return;
@@ -552,10 +561,17 @@ export class ProvisioningService {
 			return;
 		}
 
-		const globalOwnerRoleSlug = 'global:owner';
-		if (user.role.slug === globalOwnerRoleSlug && dbRole.slug !== globalOwnerRoleSlug) {
+		if (dbRole.slug === GLOBAL_OWNER_ROLE_SLUG && user.role.slug !== GLOBAL_OWNER_ROLE_SLUG) {
+			this.logger.warn(
+				`Skipping instance role provisioning. Cannot assign owner role: ${GLOBAL_OWNER_ROLE_SLUG} to user: ${user.id}`,
+				{ userId: user.id, roleSlug: GLOBAL_OWNER_ROLE_SLUG },
+			);
+			return;
+		}
+
+		if (user.role.slug === GLOBAL_OWNER_ROLE_SLUG && dbRole.slug !== GLOBAL_OWNER_ROLE_SLUG) {
 			const otherOwners = await this.userRepository.count({
-				where: { role: { slug: globalOwnerRoleSlug }, id: Not(user.id) },
+				where: { role: { slug: GLOBAL_OWNER_ROLE_SLUG }, id: Not(user.id) },
 			});
 			if (otherOwners === 0) {
 				this.logger.warn(
