@@ -17,6 +17,7 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
 
@@ -385,6 +386,35 @@ describe('CredentialsController', () => {
 				{ includeInstanceCredentials: true },
 			);
 		});
+
+		it.each([{ isGlobal: true }, { isResolvable: true }])(
+			'should reject converting an instance credential with %o',
+			async (flag) => {
+				const instanceCredential = mock<CredentialsEntity>({
+					...existingCredential,
+					availability: 'instance',
+					shared: [],
+				});
+				const ownerReq = {
+					user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+					params: { credentialId },
+					body: {
+						name: 'Updated Credential',
+						type: 'apiKey',
+						data: { apiKey: 'updated-key' },
+						isGlobal: false,
+						isResolvable: false,
+						...flag,
+					},
+				} as unknown as CredentialRequest.Update;
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+
+				await expect(credentialsController.updateCredentials(ownerReq)).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(updateSpy).not.toHaveBeenCalled();
+			},
+		);
 
 		it('should reject changing the type of an instance credential', async () => {
 			const instanceCredential = mock<CredentialsEntity>({

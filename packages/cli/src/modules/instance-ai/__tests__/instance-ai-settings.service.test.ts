@@ -19,7 +19,12 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
-import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import {
+	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+	InstanceAiSettingsService,
+} from '../instance-ai-settings.service';
 
 describe('InstanceAiSettingsService', () => {
 	const globalConfig = mock<{
@@ -140,17 +145,17 @@ describe('InstanceAiSettingsService', () => {
 			});
 
 			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
-				'instance-ai:sandbox:daytona',
+				INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 				'daytona-cred',
 				transactionManager,
 			);
 			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
-				'instance-ai:sandbox:n8n',
+				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 				'sandbox-cred',
 				transactionManager,
 			);
 			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
-				'instance-ai:search',
+				INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 				'search-cred',
 				transactionManager,
 			);
@@ -166,7 +171,7 @@ describe('InstanceAiSettingsService', () => {
 			await service.updateAdminSettings({ searchCredentialId: null });
 
 			expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
-				'instance-ai:search',
+				INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 				transactionManager,
 			);
 		});
@@ -309,7 +314,7 @@ describe('InstanceAiSettingsService', () => {
 				'Invalid instance credential',
 			);
 			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
-				'instance-ai:model',
+				expect.objectContaining({ id: 'instance-ai:model' }),
 				'cred-1',
 				transactionManager,
 			);
@@ -344,7 +349,9 @@ describe('InstanceAiSettingsService', () => {
 			);
 
 			expect(result).toEqual({ id: 'openai/gpt-4.1', url: '', apiKey: 'admin-key' });
-			expect(instanceCredentialBroker.resolveForUse).toHaveBeenCalledWith('instance-ai:model');
+			expect(instanceCredentialBroker.resolveForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:model' }),
+			);
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({ value: expect.not.stringContaining('modelCredentialId') }),
@@ -593,11 +600,9 @@ describe('InstanceAiSettingsService', () => {
 				'instance-ai:sandbox:n8n': 'sandbox-cred',
 				'instance-ai:search': 'search-cred',
 			};
-			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(
-				async (credentialUseId) => {
-					return assignments[credentialUseId] ?? null;
-				},
-			);
+			instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (credentialUse) => {
+				return assignments[credentialUse.id] ?? null;
+			});
 
 			await expect(service.getAdminSettings()).resolves.toMatchObject({
 				daytonaCredentialId: 'daytona-cred',

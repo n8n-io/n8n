@@ -1,6 +1,6 @@
 import { ApplicationError as ErrorsApplicationError } from '@n8n/errors';
 
-const { ApplicationError } = await vi.importActual<typeof import('../src')>('n8n-workflow');
+import { ApplicationError } from '../src';
 
 // This file is the compatibility boundary, exempt from the `no-application-error` lint rule.
 describe('ApplicationError compatibility shim', () => {

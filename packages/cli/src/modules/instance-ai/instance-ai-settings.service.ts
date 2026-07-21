@@ -15,7 +15,6 @@ import { DbLock, DbLockService, Settings, SettingsRepository, UserRepository } f
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
-import type { EntityManager } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
@@ -24,6 +23,7 @@ import { CredentialsFinderService } from '@/credentials/credentials-finder.servi
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	InstanceCredentialBroker,
+	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
@@ -39,6 +39,9 @@ import {
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
 type UserInstanceAiPreferences = NonNullable<IUserSettings['instanceAi']>;
+type CredentialTransactionManager = NonNullable<
+	Parameters<InstanceCredentialBroker['clearForUse']>[1]
+>;
 
 export interface InstanceAiSandboxStatus {
 	enabled: boolean;
@@ -185,16 +188,16 @@ export class InstanceAiSettingsService {
 				? [null, null, null, null]
 				: await Promise.all([
 						this.instanceCredentialBroker.getAssignedCredentialId(
-							INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+							INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 						),
 						this.instanceCredentialBroker.getAssignedCredentialId(
-							INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
+							INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 						),
 						this.instanceCredentialBroker.getAssignedCredentialId(
-							INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
+							INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 						),
 						this.instanceCredentialBroker.getAssignedCredentialId(
-							INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
+							INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 						),
 					]);
 		const [modelCredentialId, daytonaCredentialId, n8nSandboxCredentialId, searchCredentialId] =
@@ -249,29 +252,29 @@ export class InstanceAiSettingsService {
 				this.validateAdminSettingsUpdate(settingsUpdate, current);
 				if (modelCredentialId === null) {
 					await this.instanceCredentialBroker.clearForUse(
-						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 						transactionManager,
 					);
 				} else if (modelCredentialId !== undefined) {
 					const credential = await this.instanceCredentialBroker.assignForUse(
-						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 						modelCredentialId,
 						transactionManager,
 					);
 					this.ensureCredentialMatchesConfiguredModel(credential.type);
 				}
 				await this.updateCredentialAssignment(
-					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id,
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 					daytonaCredentialId,
 					transactionManager,
 				);
 				await this.updateCredentialAssignment(
-					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 					n8nSandboxCredentialId,
 					transactionManager,
 				);
 				await this.updateCredentialAssignment(
-					INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id,
+					INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 					searchCredentialId,
 					transactionManager,
 				);
@@ -363,7 +366,7 @@ export class InstanceAiSettingsService {
 	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const instanceCredentials = await this.instanceCredentialBroker.listForUse(
-			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 		);
 		return instanceCredentials.map((c) => ({
 			id: c.id,
@@ -377,9 +380,9 @@ export class InstanceAiSettingsService {
 	async listInstanceServiceCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const credentials = await Promise.all([
-			this.instanceCredentialBroker.listForUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY.id),
-			this.instanceCredentialBroker.listForUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id),
-			this.instanceCredentialBroker.listForUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY.id),
+			this.instanceCredentialBroker.listForUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY),
+			this.instanceCredentialBroker.listForUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY),
+			this.instanceCredentialBroker.listForUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY),
 		]);
 		return credentials.flat().map((c) => ({
 			id: c.id,
@@ -478,11 +481,11 @@ export class InstanceAiSettingsService {
 
 	/** Resolve a service's instance credential; null means fall back to environment configuration. */
 	private async resolveServiceCredential(
-		policy: { id: string },
+		policy: InstanceCredentialUse,
 		service: string,
 	): Promise<ResolvedInstanceCredential | null> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
-		return await this.instanceCredentialBroker.resolveForUse(policy.id).catch((error: unknown) => {
+		return await this.instanceCredentialBroker.resolveForUse(policy).catch((error: unknown) => {
 			this.warnCredentialFallback(service, policy.id, ensureError(error).message);
 			return null;
 		});
@@ -677,16 +680,16 @@ export class InstanceAiSettingsService {
 	];
 
 	private async updateCredentialAssignment(
-		credentialUseId: string,
+		credentialUse: InstanceCredentialUse,
 		credentialId: string | null | undefined,
-		transactionManager: EntityManager,
+		transactionManager: CredentialTransactionManager,
 	): Promise<void> {
 		if (credentialId === undefined) return;
 		if (credentialId === null) {
-			await this.instanceCredentialBroker.clearForUse(credentialUseId, transactionManager);
+			await this.instanceCredentialBroker.clearForUse(credentialUse, transactionManager);
 		} else {
 			await this.instanceCredentialBroker.assignForUse(
-				credentialUseId,
+				credentialUse,
 				credentialId,
 				transactionManager,
 			);
@@ -838,7 +841,7 @@ export class InstanceAiSettingsService {
 	}
 
 	private async readPersistedAdminSettings(
-		transactionManager?: EntityManager,
+		transactionManager?: CredentialTransactionManager,
 	): Promise<PersistedAdminSettings> {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY, transactionManager);
 		if (!row) return {};
@@ -870,7 +873,7 @@ export class InstanceAiSettingsService {
 
 	private async persistAdminSettings(
 		value: PersistedAdminSettings,
-		transactionManager: EntityManager,
+		transactionManager: CredentialTransactionManager,
 	): Promise<void> {
 		await transactionManager.upsert(
 			Settings,

@@ -6,11 +6,12 @@ describe('InstanceAiErrorReporterService', () => {
 	function createService(): {
 		service: InstanceAiErrorReporterService;
 		errorReporter: { error: Mock };
-		logger: { error: Mock };
+		logger: { error: Mock; info: Mock };
 	} {
 		const errorReporter = { error: vi.fn() };
-		const logger: { error: Mock; scoped: Mock } = {
+		const logger: { error: Mock; info: Mock; scoped: Mock } = {
 			error: vi.fn(),
+			info: vi.fn(),
 			scoped: vi.fn(),
 		};
 		logger.scoped.mockReturnValue(logger);
@@ -78,7 +79,44 @@ describe('InstanceAiErrorReporterService', () => {
 				userId: 'user-1',
 				projectId: 'project-1',
 			},
+			shouldIsolate: true,
 		});
+	});
+
+	it('logs at info level instead of reporting for quota-exhausted errors', () => {
+		const { service, errorReporter, logger } = createService();
+		const error = Object.assign(new Error('Have reached end of quota'), {
+			errorCode: 'quota_exhausted',
+		});
+
+		service.beginRun('r');
+		service.report(error, {
+			component: 'instance-ai-run',
+			threadId: 't',
+			runId: 'r',
+		});
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.info).toHaveBeenCalledWith(
+			'Instance AI quota exhausted in instance-ai-run',
+			expect.objectContaining({ threadId: 't', runId: 'r' }),
+		);
+	});
+
+	it('withBoundary rethrows quota-exhausted errors without reporting to Sentry', async () => {
+		const { service, errorReporter } = createService();
+		const error = Object.assign(new Error('Have reached end of quota'), {
+			errorCode: 'quota_exhausted',
+		});
+
+		await expect(
+			service.withBoundary('instance-ai-sandbox-setup', { threadId: 't', runId: 'r' }, async () => {
+				throw error;
+			}),
+		).rejects.toBe(error);
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
 	it('drops per-run dedup state after endRun', () => {

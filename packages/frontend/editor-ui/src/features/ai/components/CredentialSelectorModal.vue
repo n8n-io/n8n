@@ -23,6 +23,7 @@ const props = defineProps<{
 		hideCreateNew?: boolean;
 		source?: string;
 		pickerDataTestId?: string;
+		appendToBody?: boolean;
 	};
 }>();
 
@@ -102,6 +103,7 @@ function onCancel() {
 		:center="true"
 		max-width="460px"
 		min-height="250px"
+		:append-to-body="data.appendToBody"
 	>
 		<template #header>
 			<div :class="$style.header">
@@ -130,6 +132,7 @@ function onCancel() {
 						:hide-create-new="data.hideCreateNew ?? true"
 						:data-testid="data.pickerDataTestId"
 						teleported
+						:credential-modal-append-to-body="data.appendToBody"
 						@credential-selected="onCredentialSelect"
 						@credential-deselected="onCredentialDeselect"
 						@credential-deleted="onDeleteCredential"
