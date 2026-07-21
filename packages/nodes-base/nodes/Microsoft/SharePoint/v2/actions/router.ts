@@ -1,4 +1,9 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import * as file from './file';
 import * as item from './item';
@@ -74,10 +79,16 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					);
 			}
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
-				{ itemData: { item: i } },
-			);
+			// A binary-carrying result is already a full execution item —
+			// returnJsonArray would nest it under `json` — so it only gets the
+			// pairedItem stamp. Graph replies never carry a top-level `binary` key.
+			const asItems =
+				typeof responseData === 'object' && responseData !== null && 'binary' in responseData
+					? [responseData as INodeExecutionData]
+					: this.helpers.returnJsonArray(responseData as IDataObject);
+			const executionData = this.helpers.constructExecutionMetaData(asItems, {
+				itemData: { item: i },
+			});
 
 			returnData.push(...executionData);
 		} catch (error) {

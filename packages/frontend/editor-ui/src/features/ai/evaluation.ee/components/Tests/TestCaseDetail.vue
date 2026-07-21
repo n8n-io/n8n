@@ -13,7 +13,8 @@ import {
 } from '@n8n/design-system';
 import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
-import { DEBOUNCE_TIME, getDebounceTime, MODAL_CONFIRM } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, MODAL_CONFIRM } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
