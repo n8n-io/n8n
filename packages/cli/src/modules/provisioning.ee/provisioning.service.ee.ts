@@ -733,9 +733,22 @@ export class ProvisioningService {
 		instanceRoleClaim: unknown,
 	): Promise<void> {
 		if (await this.isExpressionMappingEnabled()) {
-			// The default condition only applies while instance rules exist — the
-			// same managed-scope predicate used when applying resolved roles.
-			if (!(await this.hasRoleMappingRulesOfType('instance'))) return;
+			// With no instance rules the default condition alone decides. Block is an
+			// access policy and applies whenever configured; a role-valued default
+			// is still only assigned while the scope is managed (rules exist), so
+			// it cannot stomp manually-assigned roles.
+			if (!(await this.hasRoleMappingRulesOfType('instance'))) {
+				const { defaultInstanceRole } = await this.getConfig();
+				if (defaultInstanceRole === BLOCK_ACCESS_ASSIGNMENT) {
+					this.logger.warn('SSO login blocked by role mapping', {
+						provider: context.$provider,
+						matchedRuleId: null,
+						isFallback: true,
+					});
+					throw new ForbiddenError('Access denied by SSO role mapping configuration');
+				}
+				return;
+			}
 
 			const config = await this.buildRoleMappingConfig();
 			const resolved = await this.roleResolverService.resolveRoles(
@@ -768,6 +781,9 @@ export class ProvisioningService {
 
 	private async isAssignableGlobalRole(roleSlug: unknown): Promise<boolean> {
 		if (typeof roleSlug !== 'string' || roleSlug.length === 0) return false;
+		// Provisioning can never assign owner, so an owner claim does not count
+		// as a role assignment and cannot bypass a Block default condition.
+		if (roleSlug === GLOBAL_OWNER_ROLE_SLUG) return false;
 		const role = await this.roleRepository.findOne({ where: { slug: roleSlug } });
 		return role?.roleType === 'global';
 	}

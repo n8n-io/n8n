@@ -500,11 +500,44 @@ describe('ProvisioningService', () => {
 				);
 			});
 
-			it('should allow without resolving when no instance rules exist', async () => {
+			it('should allow without resolving when no instance rules exist and no default condition is set', async () => {
 				roleMappingRuleRepository.count.mockResolvedValue(0);
 
 				await provisioningService.assertSsoLoginAllowed(context, undefined);
 
+				expect(roleResolverService.resolveRoles).not.toHaveBeenCalled();
+			});
+
+			it('should throw when no instance rules exist and the default condition is block access', async () => {
+				// @ts-expect-error - provisioningConfig is private and only accessible within the class
+				provisioningService.provisioningConfig = {
+					...provisioningConfigDto,
+					scopesProvisionInstanceRole: false,
+					scopesProvisionProjectRoles: false,
+					scopesUseExpressionMapping: true,
+					defaultInstanceRole: BLOCK_ACCESS_ASSIGNMENT,
+				};
+				roleMappingRuleRepository.count.mockResolvedValue(0);
+
+				await expect(provisioningService.assertSsoLoginAllowed(context, undefined)).rejects.toThrow(
+					ForbiddenError,
+				);
+			});
+
+			it('should allow when no instance rules exist and the default condition is a role', async () => {
+				// @ts-expect-error - provisioningConfig is private and only accessible within the class
+				provisioningService.provisioningConfig = {
+					...provisioningConfigDto,
+					scopesProvisionInstanceRole: false,
+					scopesProvisionProjectRoles: false,
+					scopesUseExpressionMapping: true,
+					defaultInstanceRole: 'global:admin',
+				};
+				roleMappingRuleRepository.count.mockResolvedValue(0);
+
+				await expect(
+					provisioningService.assertSsoLoginAllowed(context, undefined),
+				).resolves.toBeUndefined();
 				expect(roleResolverService.resolveRoles).not.toHaveBeenCalled();
 			});
 		});
@@ -541,6 +574,15 @@ describe('ProvisioningService', () => {
 				await expect(
 					provisioningService.assertSsoLoginAllowed(context, 'global:admin'),
 				).resolves.toBeUndefined();
+			});
+
+			it('should throw when the claim is the owner role, which provisioning never assigns', async () => {
+				setDirectClaimConfig(BLOCK_ACCESS_ASSIGNMENT);
+
+				await expect(
+					provisioningService.assertSsoLoginAllowed(context, 'global:owner'),
+				).rejects.toThrow(ForbiddenError);
+				expect(roleRepository.findOne).not.toHaveBeenCalled();
 			});
 
 			it('should allow a missing claim when the default condition is a role', async () => {
