@@ -199,6 +199,8 @@ export class N8nPackagesService {
 			requirements: requirements.dataTables,
 			writer,
 			// Routes project-owned data tables into their project namespace; others stay top-level.
+			// The auto-add export project targets are a superset of the project targets from the project export result.
+			// that's why they take precedence when both are present.
 			projectTargetsById:
 				autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById,
 		});
