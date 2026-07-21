@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogFooter,
-	N8nDropdownMenu,
-	N8nIcon,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
-	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { INSTANCE_SEARCH_CREDENTIAL_TYPES } from '../../constants';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { INSTANCE_SEARCH_CREDENTIAL_TYPES } from '../../constants';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
-import { useInstanceCredentialDialog } from '../../composables/useInstanceCredentialDialog';
+import ConnectionFields from './ConnectionFields.vue';
 
 const open = defineModel<boolean>('open', { required: true });
 
@@ -23,52 +22,98 @@ const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
 
-const searchCredentialTypes: readonly string[] = INSTANCE_SEARCH_CREDENTIAL_TYPES;
-const credentials = computed(() =>
-	store.serviceCredentials.filter((credential) => searchCredentialTypes.includes(credential.type)),
-);
+provideWorkflowDocumentStore();
 
-const { credentialId, openCreate, openEdit } = useInstanceCredentialDialog({
-	open,
-	current: () => store.settings?.searchCredentialId ?? '',
-	hydrate: () => {},
-	credentials: () => credentials.value,
-	refresh: async () => await store.refreshCredentials(),
-});
+const selectedType = ref('');
+const fieldsData = ref<ICredentialDataDecryptedObject>({});
+const isLoading = ref(false);
+
+let hydratedType = '';
+let hydratedData: ICredentialDataDecryptedObject = {};
+let hydratedSnapshot = '';
+
+const assignedId = computed(() => store.settings?.searchCredentialId ?? null);
+const assignedType = computed(() =>
+	assignedId.value
+		? (store.serviceCredentials.find((credential) => credential.id === assignedId.value)?.type ??
+			'')
+		: '',
+);
 
 function credentialTypeLabel(type: string) {
 	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
 }
 
-const createItems: Array<DropdownMenuItemProps<string>> = [
-	{
-		id: 'braveSearchApi',
-		label: i18n.baseText('settings.n8nAgent.searchCredential.createBrave'),
-	},
-	{
-		id: 'searXngApi',
-		label: i18n.baseText('settings.n8nAgent.searchCredential.createSearxng'),
-	},
-];
+const providerOptions = computed(() =>
+	INSTANCE_SEARCH_CREDENTIAL_TYPES.map((type) => ({
+		value: type,
+		label: credentialTypeLabel(type),
+	})),
+);
 
-const isChanged = computed(() => credentialId.value !== (store.settings?.searchCredentialId ?? ''));
+function snapshot() {
+	return JSON.stringify({ t: selectedType.value, d: fieldsData.value });
+}
+
+async function hydrate() {
+	selectedType.value = assignedType.value;
+	fieldsData.value = {};
+	if (assignedId.value) {
+		isLoading.value = true;
+		try {
+			const credential = await credentialsStore.getCredentialData({ id: assignedId.value });
+			fieldsData.value = (
+				credential && 'data' in credential ? (credential.data ?? {}) : {}
+			) as ICredentialDataDecryptedObject;
+		} catch {
+			fieldsData.value = {};
+		} finally {
+			isLoading.value = false;
+		}
+	}
+	hydratedType = selectedType.value;
+	hydratedData = { ...fieldsData.value };
+	hydratedSnapshot = snapshot();
+}
+
+watch(
+	open,
+	async (isOpen) => {
+		if (isOpen) await hydrate();
+	},
+	{ immediate: true },
+);
+
+function selectType(nextType: string) {
+	if (nextType === selectedType.value) return;
+	selectedType.value = nextType;
+	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
+}
+
+function setFieldValue(name: string, value: unknown) {
+	fieldsData.value = { ...fieldsData.value, [name]: value } as ICredentialDataDecryptedObject;
+}
 
 const noneLabel = computed(() =>
 	store.settings?.searchEnvConfigured
 		? i18n.baseText('settings.n8nAgent.modelCredential.none')
 		: i18n.baseText('settings.n8nAgent.modelCredential.noneNoEnv'),
 );
-const canRemove = computed(() => Boolean(store.settings?.searchCredentialId));
+
+const readOnly = computed(() => !store.canManageInstanceCredentials);
+const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 
 async function handleSave() {
-	store.setField('searchCredentialId', credentialId.value || null);
-	if (!(await store.save())) return;
-	open.value = false;
-}
-
-async function handleRemove() {
-	store.setField('searchCredentialId', null);
-	if (!(await store.save())) return;
+	if (isChanged.value) {
+		store.setField(
+			'searchConnection',
+			selectedType.value
+				? { type: selectedType.value, data: { ...toRaw(fieldsData.value) } }
+				: null,
+		);
+		if (!(await store.save())) return;
+		void store.refreshCredentials();
+	}
 	open.value = false;
 }
 </script>
@@ -83,64 +128,34 @@ async function handleRemove() {
 	>
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('settings.n8nAgent.searchCredential.label')">
-				<div :class="$style.credentialControls">
-					<N8nSelect
-						:class="$style.credentialSelect"
-						:model-value="credentialId"
-						size="medium"
-						:disabled="store.isSaving"
-						:placeholder="i18n.baseText('settings.n8nAgent.searchCredential.placeholder')"
-						data-test-id="n8n-agent-search-credential-select"
-						@update:model-value="credentialId = String($event ?? '')"
-					>
-						<N8nOption value="" :label="noneLabel" />
-						<N8nOption
-							v-for="credential in credentials"
-							:key="credential.id"
-							:value="credential.id"
-							:label="`${credential.name} · ${credentialTypeLabel(credential.type)}`"
-						/>
-					</N8nSelect>
-
-					<N8nButton
-						v-if="credentialId && store.canManageInstanceCredentials"
-						variant="outline"
-						size="medium"
-						:label="i18n.baseText('settings.n8nAgent.credentials.edit')"
-						:disabled="store.isSaving"
-						data-test-id="n8n-agent-search-credential-edit"
-						@click="openEdit"
+				<N8nSelect
+					:model-value="selectedType"
+					size="medium"
+					:disabled="store.isSaving || readOnly"
+					:placeholder="i18n.baseText('settings.n8nAgent.searchCredential.placeholder')"
+					data-test-id="n8n-agent-search-provider-select"
+					@update:model-value="selectType(String($event ?? ''))"
+				>
+					<N8nOption value="" :label="noneLabel" />
+					<N8nOption
+						v-for="option in providerOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
 					/>
-
-					<N8nDropdownMenu
-						v-if="store.canManageInstanceCredentials"
-						:items="createItems"
-						placement="bottom-end"
-						data-test-id="n8n-agent-search-credential-create"
-						@select="openCreate"
-					>
-						<template #trigger>
-							<N8nButton variant="outline" size="medium" :disabled="store.isSaving">
-								{{ i18n.baseText('settings.n8nAgent.modelCredential.createNew') }}
-								<N8nIcon icon="chevron-down" size="small" />
-							</N8nButton>
-						</template>
-					</N8nDropdownMenu>
-				</div>
+				</N8nSelect>
 			</N8nInputLabel>
+
+			<ConnectionFields
+				v-if="selectedType && !isLoading"
+				:credential-type="selectedType"
+				:data="fieldsData"
+				data-test-id="n8n-agent-search-connection-fields"
+				@update="setFieldValue"
+			/>
 		</div>
 
 		<N8nDialogFooter>
-			<N8nButton
-				v-if="canRemove"
-				:class="$style.removeButton"
-				variant="ghost"
-				size="medium"
-				:label="i18n.baseText('settings.n8nAgent.searchDialog.remove')"
-				:disabled="store.isSaving"
-				data-test-id="n8n-agent-search-dialog-remove"
-				@click="handleRemove"
-			/>
 			<N8nButton
 				variant="outline"
 				size="medium"
@@ -151,7 +166,7 @@ async function handleRemove() {
 				variant="solid"
 				size="medium"
 				:label="i18n.baseText('generic.save')"
-				:disabled="store.isSaving || !isChanged"
+				:disabled="store.isSaving || isLoading || readOnly || !isChanged"
 				data-test-id="n8n-agent-search-dialog-save"
 				@click="handleSave"
 			/>
@@ -165,22 +180,5 @@ async function handleRemove() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	margin: var(--spacing--sm) 0;
-}
-
-.credentialControls {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.credentialSelect {
-	flex: 1 1 100%;
-	min-width: 0;
-}
-
-.removeButton {
-	margin-right: auto;
-	color: var(--text-color--danger);
 }
 </style>

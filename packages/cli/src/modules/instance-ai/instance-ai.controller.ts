@@ -674,11 +674,11 @@ export class InstanceAiController {
 	@Put('/settings')
 	@GlobalScope('instanceAi:manage')
 	async updateAdminSettings(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		const result = await this.settingsService.updateAdminSettings(payload);
+		const result = await this.settingsService.updateAdminSettings(payload, req.user);
 		await this.applyAdminSettingsSideEffects(result);
 		await this.publisher.publishCommand({ command: 'reload-instance-ai-settings' });
 

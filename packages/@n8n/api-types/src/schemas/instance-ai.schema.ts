@@ -1429,6 +1429,16 @@ export interface InstanceAiAdminSettingsResponse {
 	browserUseEnabled: boolean;
 }
 
+/**
+ * Inline provider-connection payload: the credential type plus its field
+ * values. `null` clears the connection (and falls back to env config).
+ */
+export const instanceAiConnectionSchema = z.object({
+	type: z.string().min(1),
+	data: z.record(z.string(), z.unknown()),
+});
+export type InstanceAiConnectionUpdate = z.infer<typeof instanceAiConnectionSchema>;
+
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
@@ -1442,6 +1452,9 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	modelCredentialId: z.string().nullable().optional(),
+	modelConnection: instanceAiConnectionSchema.nullable().optional(),
+	sandboxConnection: instanceAiConnectionSchema.nullable().optional(),
+	searchConnection: instanceAiConnectionSchema.nullable().optional(),
 	modelName: z.string().trim().min(1).nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),

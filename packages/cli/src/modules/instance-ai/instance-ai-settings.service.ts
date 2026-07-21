@@ -1,7 +1,10 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
+import { hasGlobalScope } from '@n8n/permissions';
 import type {
+	CreateCredentialDto,
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiConnectionUpdate,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
@@ -26,6 +29,7 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
@@ -227,6 +231,7 @@ export class InstanceAiSettingsService {
 
 	async updateAdminSettings(
 		update: InstanceAiAdminSettingsUpdateRequest,
+		user?: User,
 	): Promise<InstanceAiAdminSettingsResponse> {
 		this.rejectManagedFields(
 			update,
@@ -241,13 +246,57 @@ export class InstanceAiSettingsService {
 			);
 			this.rejectManagedFields(update, ['modelName', 'sandboxProvider'], this.deploymentLabel());
 		}
-		const {
+		let {
+			// eslint-disable-next-line prefer-const
 			modelCredentialId,
 			daytonaCredentialId,
 			n8nSandboxCredentialId,
 			searchCredentialId,
+			modelConnection,
+			sandboxConnection,
+			searchConnection,
 			...settingsUpdate
 		} = update;
+		this.rejectConnectionConflicts(update);
+
+		const replacedCredentialIds: string[] = [];
+		if (
+			modelConnection !== undefined ||
+			sandboxConnection !== undefined ||
+			searchConnection !== undefined
+		) {
+			if (!user || !hasGlobalScope(user, 'credential:manageInstance')) {
+				throw new ForbiddenError('You do not have permission to manage provider connections');
+			}
+			if (modelConnection !== undefined) {
+				modelCredentialId = await this.upsertConnection(
+					user,
+					INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+					'AI Assistant model',
+					modelConnection,
+					replacedCredentialIds,
+				);
+			}
+			if (searchConnection !== undefined) {
+				searchCredentialId = await this.upsertConnection(
+					user,
+					INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+					'AI Assistant web search',
+					searchConnection,
+					replacedCredentialIds,
+				);
+			}
+			if (sandboxConnection !== undefined) {
+				const sandbox = await this.upsertSandboxConnection(
+					user,
+					sandboxConnection,
+					replacedCredentialIds,
+				);
+				daytonaCredentialId = sandbox.daytonaCredentialId;
+				n8nSandboxCredentialId = sandbox.n8nSandboxCredentialId;
+				if (sandbox.sandboxProvider) settingsUpdate.sandboxProvider = sandbox.sandboxProvider;
+			}
+		}
 		const { previous, next } = await this.dbLockService.withLockContext(
 			DbLock.INSTANCE_AI_SETTINGS,
 			async (ctx) => {
@@ -322,8 +371,194 @@ export class InstanceAiSettingsService {
 		);
 		this.applyAdminSettings(next);
 		this.emitSettingsUpdated(previous, next);
+		if (user && replacedCredentialIds.length > 0) {
+			await this.deleteReplacedCredentials(user, replacedCredentialIds);
+		}
 
 		return await this.getAdminSettings();
+	}
+
+	/** Connection payloads and raw credential-id fields are mutually exclusive per use. */
+	private rejectConnectionConflicts(update: InstanceAiAdminSettingsUpdateRequest): void {
+		const conflicts: Array<[string, string, boolean]> = [
+			['modelConnection', 'modelCredentialId', update.modelCredentialId !== undefined],
+			['sandboxConnection', 'daytonaCredentialId', update.daytonaCredentialId !== undefined],
+			['sandboxConnection', 'n8nSandboxCredentialId', update.n8nSandboxCredentialId !== undefined],
+			['searchConnection', 'searchCredentialId', update.searchCredentialId !== undefined],
+		];
+		for (const [connectionField, idField, idPresent] of conflicts) {
+			const connectionPresent = (update as Record<string, unknown>)[connectionField] !== undefined;
+			if (connectionPresent && idPresent) {
+				throw new UnprocessableRequestError(
+					`Cannot combine ${connectionField} with ${idField} in one update`,
+				);
+			}
+		}
+	}
+
+	/**
+	 * Creates or replaces the single credential behind a connection. Returns the
+	 * credential id to assign (null clears). A replaced credential is deleted
+	 * after the settings transaction commits, once its assignment is re-pointed.
+	 */
+	private async upsertConnection(
+		user: User,
+		policy: InstanceCredentialUse,
+		name: string,
+		connection: InstanceAiConnectionUpdate | null,
+		replacedCredentialIds: string[],
+	): Promise<string | null> {
+		const current = await this.instanceCredentialBroker
+			.resolveForUse(policy)
+			.catch(() => null as ResolvedInstanceCredential | null);
+
+		if (connection === null) {
+			if (current) replacedCredentialIds.push(current.id);
+			return null;
+		}
+
+		if (!policy.credentialTypes.includes(connection.type)) {
+			throw new UnprocessableRequestError(
+				`Connection type "${connection.type}" is not supported for "${policy.id}"`,
+			);
+		}
+
+		const data = connection.data as ICredentialDataDecryptedObject;
+		if (current && current.type === connection.type) {
+			const entity = await this.credentialsFinderService.findCredentialForUser(
+				current.id,
+				user,
+				['credential:update'],
+				{ includeInstanceCredentials: true },
+			);
+			if (!entity) {
+				throw new ForbiddenError('You do not have permission to update this provider connection');
+			}
+			const prepared = await this.credentialsService.prepareUpdateData(
+				user,
+				{ name: entity.name, type: entity.type, data },
+				entity,
+			);
+			const encrypted = await this.credentialsService.createEncryptedData({
+				id: entity.id,
+				name: prepared.name,
+				type: prepared.type,
+				data: prepared.data as unknown as ICredentialDataDecryptedObject,
+			});
+			await this.credentialsService.update(
+				entity.id,
+				encrypted,
+				prepared.data as unknown as ICredentialDataDecryptedObject,
+			);
+			return entity.id;
+		}
+
+		const dto: CreateCredentialDto = {
+			name,
+			type: connection.type,
+			data: connection.data,
+			availability: 'instance',
+		};
+		const created = await this.credentialsService.createUnmanagedCredential(dto, user);
+		if (current) replacedCredentialIds.push(current.id);
+		return created.id;
+	}
+
+	/** The sandbox connection type picks the provider; the other slot is cleared. */
+	private async upsertSandboxConnection(
+		user: User,
+		connection: InstanceAiConnectionUpdate | null,
+		replacedCredentialIds: string[],
+	): Promise<{
+		daytonaCredentialId: string | null;
+		n8nSandboxCredentialId: string | null;
+		sandboxProvider?: InstanceAiSandboxProvider;
+	}> {
+		const name = 'AI Assistant sandbox';
+		if (connection === null) {
+			return {
+				daytonaCredentialId: await this.upsertConnection(
+					user,
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+					name,
+					null,
+					replacedCredentialIds,
+				),
+				n8nSandboxCredentialId: await this.upsertConnection(
+					user,
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+					name,
+					null,
+					replacedCredentialIds,
+				),
+			};
+		}
+		if (connection.type === 'daytonaApi') {
+			return {
+				daytonaCredentialId: await this.upsertConnection(
+					user,
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+					name,
+					connection,
+					replacedCredentialIds,
+				),
+				n8nSandboxCredentialId: await this.upsertConnection(
+					user,
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+					name,
+					null,
+					replacedCredentialIds,
+				),
+				sandboxProvider: 'daytona',
+			};
+		}
+		if (connection.type === 'httpHeaderAuth') {
+			const headerName =
+				typeof connection.data.name === 'string' ? connection.data.name.trim().toLowerCase() : '';
+			if (headerName !== 'x-api-key') {
+				throw new UnprocessableRequestError(
+					`The credential's header name must be "x-api-key" but is "${headerName || '(empty)'}"`,
+				);
+			}
+			return {
+				n8nSandboxCredentialId: await this.upsertConnection(
+					user,
+					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+					name,
+					connection,
+					replacedCredentialIds,
+				),
+				daytonaCredentialId: await this.upsertConnection(
+					user,
+					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+					name,
+					null,
+					replacedCredentialIds,
+				),
+				sandboxProvider: 'n8n-sandbox',
+			};
+		}
+		throw new UnprocessableRequestError(
+			`Connection type "${connection.type}" is not supported for the sandbox`,
+		);
+	}
+
+	/** Best-effort: the replaced credential is already unassigned; an orphan is invisible but logged. */
+	private async deleteReplacedCredentials(user: User, credentialIds: string[]): Promise<void> {
+		for (const credentialId of credentialIds) {
+			try {
+				await this.credentialsService.delete(user, credentialId, {
+					includeInstanceCredentials: true,
+				});
+			} catch (error) {
+				Container.get(Logger)
+					.scoped('instance-ai')
+					.warn('Failed to delete a replaced provider connection credential', {
+						credentialId,
+						error: ensureError(error).message,
+					});
+			}
+		}
 	}
 
 	async reloadFromDb(): Promise<void> {
@@ -698,6 +933,9 @@ export class InstanceAiSettingsService {
 		'daytonaCredentialId',
 		'n8nSandboxCredentialId',
 		'searchCredentialId',
+		'modelConnection',
+		'sandboxConnection',
+		'searchConnection',
 	];
 
 	/** User preference fields sourced from environment variables only. */

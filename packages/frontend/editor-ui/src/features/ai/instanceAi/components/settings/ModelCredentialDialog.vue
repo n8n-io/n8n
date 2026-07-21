@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import {
 	N8nButton,
 	N8nDialog,
@@ -7,20 +8,18 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
-	N8nDropdownMenu,
-	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { INSTANCE_MODEL_CREDENTIAL_TYPES } from '../../constants';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { INSTANCE_MODEL_CREDENTIAL_TYPES } from '../../constants';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
-import { useInstanceCredentialDialog } from '../../composables/useInstanceCredentialDialog';
+import ConnectionFields from './ConnectionFields.vue';
 
 const open = defineModel<boolean>('open', { required: true });
 
@@ -32,25 +31,68 @@ const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
 
-const modelName = ref('');
+provideWorkflowDocumentStore();
 
-const { credentialId, openCreate, openEdit } = useInstanceCredentialDialog({
+const selectedType = ref('');
+const fieldsData = ref<ICredentialDataDecryptedObject>({});
+const modelName = ref('');
+const isLoading = ref(false);
+
+let hydratedType = '';
+let hydratedData: ICredentialDataDecryptedObject = {};
+let hydratedSnapshot = '';
+
+const assignedId = computed(() => store.settings?.modelCredentialId ?? null);
+const assignedType = computed(() =>
+	assignedId.value
+		? (store.instanceModelCredentials.find((credential) => credential.id === assignedId.value)
+				?.type ?? '')
+		: '',
+);
+
+function snapshot() {
+	return JSON.stringify({ t: selectedType.value, d: fieldsData.value, m: modelName.value.trim() });
+}
+
+async function hydrate() {
+	modelName.value = store.settings?.modelName ?? '';
+	selectedType.value = assignedType.value;
+	fieldsData.value = {};
+	if (assignedId.value) {
+		isLoading.value = true;
+		try {
+			const credential = await credentialsStore.getCredentialData({ id: assignedId.value });
+			fieldsData.value = (
+				credential && 'data' in credential ? (credential.data ?? {}) : {}
+			) as ICredentialDataDecryptedObject;
+		} catch {
+			fieldsData.value = {};
+		} finally {
+			isLoading.value = false;
+		}
+	}
+	hydratedType = selectedType.value;
+	hydratedData = { ...fieldsData.value };
+	hydratedSnapshot = snapshot();
+}
+
+watch(
 	open,
-	current: () => store.settings?.modelCredentialId ?? '',
-	hydrate: () => {
-		modelName.value = store.settings?.modelName ?? '';
+	async (isOpen) => {
+		if (isOpen) await hydrate();
 	},
-	credentials: () => store.instanceModelCredentials,
-	refresh: async () => await store.refreshInstanceModelCredentials(),
-	onCreated: (credential) => selectCredential(credential.id),
-});
+	{ immediate: true },
+);
 
 function credentialTypeLabel(type: string) {
 	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
 }
 
-const createItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
-	INSTANCE_MODEL_CREDENTIAL_TYPES.map((type) => ({ id: type, label: credentialTypeLabel(type) })),
+const providerOptions = computed(() =>
+	INSTANCE_MODEL_CREDENTIAL_TYPES.map((type) => ({
+		value: type,
+		label: credentialTypeLabel(type),
+	})),
 );
 
 const noneLabel = computed(() =>
@@ -59,33 +101,41 @@ const noneLabel = computed(() =>
 		: i18n.baseText('settings.n8nAgent.modelCredential.noneNoEnv'),
 );
 
-const credentialTypeById = (id: string) =>
-	store.instanceModelCredentials.find((credential) => credential.id === id)?.type;
-
-function selectCredential(nextId: string) {
-	const previousType = credentialId.value ? credentialTypeById(credentialId.value) : undefined;
-	const nextType = nextId ? credentialTypeById(nextId) : undefined;
-	if (nextType === undefined || previousType !== nextType) modelName.value = '';
-	credentialId.value = nextId;
+function selectType(nextType: string) {
+	if (nextType === selectedType.value) return;
+	selectedType.value = nextType;
+	// Switching providers starts from a clean slate; only the hydrated provider keeps its values.
+	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
+	if (nextType !== hydratedType) modelName.value = '';
 }
 
-const isComplete = computed(() => !credentialId.value || modelName.value.trim().length > 0);
-const isChanged = computed(
-	() =>
-		credentialId.value !== (store.settings?.modelCredentialId ?? '') ||
-		modelName.value.trim() !== (store.settings?.modelName ?? ''),
-);
+function setFieldValue(name: string, value: unknown) {
+	fieldsData.value = { ...fieldsData.value, [name]: value } as ICredentialDataDecryptedObject;
+}
+
+const readOnly = computed(() => !store.canManageInstanceCredentials);
+const isComplete = computed(() => !selectedType.value || modelName.value.trim().length > 0);
+const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 const primaryDisabled = computed(() => {
-	if (store.isSaving || !isComplete.value) return true;
-	if (props.setup) return !isChanged.value && !credentialId.value;
+	if (store.isSaving || isLoading.value || readOnly.value || !isComplete.value) return true;
+	if (props.setup) return !isChanged.value && !selectedType.value;
 	return !isChanged.value;
 });
 
 async function handlePrimary() {
 	if (isChanged.value) {
-		store.setField('modelCredentialId', credentialId.value || null);
-		store.setField('modelName', credentialId.value ? modelName.value.trim() : null);
+		if (!selectedType.value) {
+			store.setField('modelConnection', null);
+			store.setField('modelName', undefined);
+		} else {
+			store.setField('modelConnection', {
+				type: selectedType.value,
+				data: { ...toRaw(fieldsData.value) },
+			});
+			store.setField('modelName', modelName.value.trim());
+		}
 		if (!(await store.save())) return;
+		void store.refreshInstanceModelCredentials();
 	}
 	open.value = false;
 	emit('saved');
@@ -123,60 +173,40 @@ const description = computed(() =>
 
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('settings.n8nAgent.modelCredential.field')">
-				<div :class="$style.credentialControls">
-					<N8nSelect
-						:class="$style.credentialSelect"
-						:model-value="credentialId"
-						size="medium"
-						:disabled="store.isSaving"
-						:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
-						data-test-id="n8n-agent-model-credential-select"
-						@update:model-value="selectCredential(String($event ?? ''))"
-					>
-						<N8nOption v-if="!setup" value="" :label="noneLabel" />
-						<N8nOption
-							v-for="credential in store.instanceModelCredentials"
-							:key="credential.id"
-							:value="credential.id"
-							:label="`${credential.name} · ${credentialTypeLabel(credential.type)}`"
-						/>
-					</N8nSelect>
-
-					<N8nButton
-						v-if="credentialId && store.canManageInstanceCredentials"
-						variant="outline"
-						size="medium"
-						:label="i18n.baseText('settings.n8nAgent.credentials.edit')"
-						:disabled="store.isSaving"
-						data-test-id="n8n-agent-model-credential-edit"
-						@click="openEdit"
+				<N8nSelect
+					:model-value="selectedType"
+					size="medium"
+					:disabled="store.isSaving || readOnly"
+					:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
+					data-test-id="n8n-agent-model-provider-select"
+					@update:model-value="selectType(String($event ?? ''))"
+				>
+					<N8nOption v-if="!setup" value="" :label="noneLabel" />
+					<N8nOption
+						v-for="option in providerOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
 					/>
-
-					<N8nDropdownMenu
-						v-if="store.canManageInstanceCredentials"
-						:items="createItems"
-						placement="bottom-end"
-						data-test-id="n8n-agent-model-credential-create"
-						@select="openCreate"
-					>
-						<template #trigger>
-							<N8nButton variant="outline" size="medium" :disabled="store.isSaving">
-								{{ i18n.baseText('settings.n8nAgent.modelCredential.createNew') }}
-								<N8nIcon icon="chevron-down" size="small" />
-							</N8nButton>
-						</template>
-					</N8nDropdownMenu>
-				</div>
+				</N8nSelect>
 			</N8nInputLabel>
 
+			<ConnectionFields
+				v-if="selectedType && !isLoading"
+				:credential-type="selectedType"
+				:data="fieldsData"
+				data-test-id="n8n-agent-model-connection-fields"
+				@update="setFieldValue"
+			/>
+
 			<N8nInputLabel
-				v-if="credentialId"
+				v-if="selectedType"
 				:label="i18n.baseText('settings.n8nAgent.modelName.label')"
 			>
 				<N8nInput
 					:model-value="modelName"
 					size="medium"
-					:disabled="store.isSaving"
+					:disabled="store.isSaving || readOnly"
 					autocomplete="off"
 					:spellcheck="false"
 					:placeholder="i18n.baseText('settings.n8nAgent.modelName.placeholder')"
@@ -218,18 +248,6 @@ const description = computed(() =>
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	margin-top: var(--spacing--sm);
-}
-
-.credentialControls {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.credentialSelect {
-	flex: 1 1 100%;
-	min-width: 0;
 }
 
 .footnote {

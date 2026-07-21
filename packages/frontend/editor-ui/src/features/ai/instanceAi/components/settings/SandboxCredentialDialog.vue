@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import {
 	N8nButton,
 	N8nDialog,
@@ -7,14 +8,20 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nInput,
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
-import { useInstanceCredentialDialog } from '../../composables/useInstanceCredentialDialog';
+import ConnectionFields from './ConnectionFields.vue';
+
+const DAYTONA_DEFAULT_API_URL = 'https://app.daytona.io/api';
+const N8N_SANDBOX_HEADER = 'x-api-key';
 
 const open = defineModel<boolean>('open', { required: true });
 
@@ -24,57 +31,135 @@ const emit = defineEmits<{ saved: []; back: [] }>();
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
+const credentialsStore = useCredentialsStore();
 
-const savedProvider = computed(() => store.settings?.sandboxProvider ?? 'n8n-sandbox');
-const selectedProvider = ref<'daytona' | 'n8n-sandbox'>(savedProvider.value);
+provideWorkflowDocumentStore();
+
+type SandboxSelection = '' | 'daytona' | 'n8n-sandbox';
+
+const selectedProvider = ref<SandboxSelection>('');
+const fieldsData = ref<ICredentialDataDecryptedObject>({});
+const apiKeyValue = ref('');
+const isLoading = ref(false);
+
+let hydratedProvider: SandboxSelection = '';
+let hydratedData: ICredentialDataDecryptedObject = {};
+let hydratedSnapshot = '';
+
+const assignedProvider = computed<SandboxSelection>(() => {
+	if (store.settings?.daytonaCredentialId) return 'daytona';
+	if (store.settings?.n8nSandboxCredentialId) return 'n8n-sandbox';
+	return '';
+});
+const assignedId = computed(() =>
+	assignedProvider.value === 'daytona'
+		? (store.settings?.daytonaCredentialId ?? null)
+		: assignedProvider.value === 'n8n-sandbox'
+			? (store.settings?.n8nSandboxCredentialId ?? null)
+			: null,
+);
+
 const providerOptions = [
 	{ value: 'daytona', label: 'Daytona' },
 	{ value: 'n8n-sandbox', label: 'n8n Sandbox Service' },
 ] as const;
-const credentialType = computed(() =>
-	selectedProvider.value === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth',
-);
-const credentialField = computed(() =>
-	selectedProvider.value === 'daytona'
-		? ('daytonaCredentialId' as const)
-		: ('n8nSandboxCredentialId' as const),
-);
-const credentials = computed(() =>
-	store.serviceCredentials.filter((credential) => credential.type === credentialType.value),
-);
 
-const { credentialId, openCreate, openEdit } = useInstanceCredentialDialog({
+function snapshot() {
+	return JSON.stringify({
+		p: selectedProvider.value,
+		d: fieldsData.value,
+		k: apiKeyValue.value,
+	});
+}
+
+function freshData(provider: SandboxSelection): ICredentialDataDecryptedObject {
+	return provider === 'daytona' ? { apiUrl: DAYTONA_DEFAULT_API_URL } : {};
+}
+
+async function hydrate() {
+	selectedProvider.value =
+		assignedProvider.value ||
+		(store.settings?.sandboxEnvConfigured ? '' : (store.settings?.sandboxProvider ?? ''));
+	fieldsData.value = freshData(selectedProvider.value);
+	apiKeyValue.value = '';
+	if (assignedId.value) {
+		isLoading.value = true;
+		try {
+			const credential = await credentialsStore.getCredentialData({ id: assignedId.value });
+			const data = (
+				credential && 'data' in credential ? (credential.data ?? {}) : {}
+			) as ICredentialDataDecryptedObject;
+			if (assignedProvider.value === 'n8n-sandbox') {
+				apiKeyValue.value = typeof data.value === 'string' ? data.value : '';
+			} else {
+				fieldsData.value = data;
+			}
+		} catch {
+			fieldsData.value = freshData(selectedProvider.value);
+		} finally {
+			isLoading.value = false;
+		}
+	}
+	hydratedProvider = selectedProvider.value;
+	hydratedData = { ...fieldsData.value };
+	hydratedSnapshot = snapshot();
+}
+
+watch(
 	open,
-	current: () => store.settings?.[credentialField.value] ?? '',
-	hydrate: () => {
-		selectedProvider.value = savedProvider.value;
+	async (isOpen) => {
+		if (isOpen) await hydrate();
 	},
-	credentials: () => credentials.value,
-	refresh: async () => await store.refreshCredentials(),
-});
-
-watch(selectedProvider, () => {
-	credentialId.value = store.settings?.[credentialField.value] ?? '';
-});
-
-const isChanged = computed(
-	() =>
-		selectedProvider.value !== savedProvider.value ||
-		credentialId.value !== (store.settings?.[credentialField.value] ?? ''),
+	{ immediate: true },
 );
+
+function selectProvider(next: SandboxSelection) {
+	if (next === selectedProvider.value) return;
+	selectedProvider.value = next;
+	// Switching providers starts clean; only the hydrated provider keeps its values.
+	fieldsData.value = next === hydratedProvider ? { ...hydratedData } : freshData(next);
+	if (next !== hydratedProvider) apiKeyValue.value = '';
+}
+
+function setFieldValue(name: string, value: unknown) {
+	fieldsData.value = { ...fieldsData.value, [name]: value } as ICredentialDataDecryptedObject;
+}
 
 const noneLabel = computed(() =>
-	selectedProvider.value === savedProvider.value && store.settings?.sandboxEnvConfigured
+	store.settings?.sandboxEnvConfigured
 		? i18n.baseText('settings.n8nAgent.modelCredential.none')
 		: i18n.baseText('settings.n8nAgent.modelCredential.noneNoEnv'),
 );
 
+const readOnly = computed(() => !store.canManageInstanceCredentials);
+const isComplete = computed(() =>
+	selectedProvider.value === 'n8n-sandbox' ? apiKeyValue.value.trim().length > 0 : true,
+);
+const isChanged = computed(() => snapshot() !== hydratedSnapshot);
+const saveDisabled = computed(() => {
+	if (store.isSaving || isLoading.value || readOnly.value || !isComplete.value) return true;
+	if (props.setup) return !isChanged.value && !selectedProvider.value;
+	return !isChanged.value;
+});
+
 async function handleSave() {
-	if (selectedProvider.value !== savedProvider.value) {
-		store.setField('sandboxProvider', selectedProvider.value);
+	if (isChanged.value) {
+		if (!selectedProvider.value) {
+			store.setField('sandboxConnection', null);
+		} else if (selectedProvider.value === 'daytona') {
+			store.setField('sandboxConnection', {
+				type: 'daytonaApi',
+				data: { ...toRaw(fieldsData.value) },
+			});
+		} else {
+			store.setField('sandboxConnection', {
+				type: 'httpHeaderAuth',
+				data: { name: N8N_SANDBOX_HEADER, value: apiKeyValue.value.trim() },
+			});
+		}
+		if (!(await store.save())) return;
+		void store.refreshCredentials();
 	}
-	store.setField(credentialField.value, credentialId.value || null);
-	if (!(await store.save())) return;
 	open.value = false;
 	emit('saved');
 }
@@ -116,10 +201,11 @@ const title = computed(() =>
 				<N8nSelect
 					:model-value="selectedProvider"
 					size="medium"
-					:disabled="store.isSaving"
+					:disabled="store.isSaving || readOnly"
 					data-test-id="n8n-agent-sandbox-provider-select"
-					@update:model-value="selectedProvider = $event"
+					@update:model-value="selectProvider(($event ?? '') as SandboxSelection)"
 				>
+					<N8nOption v-if="!setup" value="" :label="noneLabel" />
 					<N8nOption
 						v-for="option in providerOptions"
 						:key="option.value"
@@ -132,55 +218,27 @@ const title = computed(() =>
 				</N8nText>
 			</N8nInputLabel>
 
-			<N8nInputLabel :label="i18n.baseText('settings.n8nAgent.sandboxCredential.label')">
-				<div :class="$style.credentialControls">
-					<N8nSelect
-						:class="$style.credentialSelect"
-						:model-value="credentialId"
-						size="medium"
-						:disabled="store.isSaving"
-						:placeholder="i18n.baseText('settings.n8nAgent.sandboxCredential.placeholder')"
-						data-test-id="n8n-agent-sandbox-credential-select"
-						@update:model-value="credentialId = String($event ?? '')"
-					>
-						<N8nOption v-if="!setup" value="" :label="noneLabel" />
-						<N8nOption
-							v-for="credential in credentials"
-							:key="credential.id"
-							:value="credential.id"
-							:label="credential.name"
-						/>
-					</N8nSelect>
+			<ConnectionFields
+				v-if="selectedProvider === 'daytona' && !isLoading"
+				credential-type="daytonaApi"
+				:data="fieldsData"
+				data-test-id="n8n-agent-sandbox-connection-fields"
+				@update="setFieldValue"
+			/>
 
-					<N8nButton
-						v-if="credentialId && store.canManageInstanceCredentials"
-						variant="outline"
-						size="medium"
-						:label="i18n.baseText('settings.n8nAgent.credentials.edit')"
-						:disabled="store.isSaving"
-						data-test-id="n8n-agent-sandbox-credential-edit"
-						@click="openEdit"
-					/>
-
-					<N8nButton
-						v-if="store.canManageInstanceCredentials"
-						variant="outline"
-						size="medium"
-						:label="i18n.baseText('settings.n8nAgent.modelCredential.createNew')"
-						:disabled="store.isSaving"
-						data-test-id="n8n-agent-sandbox-credential-create"
-						@click="openCreate(credentialType)"
-					/>
-				</div>
-				<N8nText
-					v-if="selectedProvider === 'n8n-sandbox'"
-					tag="p"
-					:class="$style.credentialHint"
-					size="small"
-					color="text-light"
-				>
-					{{ i18n.baseText('settings.n8nAgent.sandboxCredential.n8nHeaderHint') }}
-				</N8nText>
+			<N8nInputLabel
+				v-if="selectedProvider === 'n8n-sandbox'"
+				:label="i18n.baseText('settings.n8nAgent.sandboxCredential.apiKey')"
+			>
+				<N8nInput
+					:model-value="apiKeyValue"
+					type="password"
+					size="medium"
+					:disabled="store.isSaving || readOnly"
+					autocomplete="off"
+					data-test-id="n8n-agent-sandbox-api-key-input"
+					@update:model-value="apiKeyValue = String($event)"
+				/>
 			</N8nInputLabel>
 		</div>
 
@@ -204,7 +262,7 @@ const title = computed(() =>
 				variant="solid"
 				size="medium"
 				:label="i18n.baseText('generic.save')"
-				:disabled="store.isSaving || !isChanged || (setup && !credentialId)"
+				:disabled="saveDisabled"
 				data-test-id="n8n-agent-sandbox-dialog-save"
 				@click="handleSave"
 			/>
@@ -220,24 +278,8 @@ const title = computed(() =>
 	margin: var(--spacing--sm) 0;
 }
 
-.credentialControls {
-	display: flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
-}
-
-.credentialSelect {
-	flex: 1 1 100%;
-	min-width: 0;
-}
-
 .providerHint {
 	margin: var(--spacing--4xs) 0 0;
-}
-
-.credentialHint {
-	margin: var(--spacing--2xs) 0 0;
 }
 
 .step {

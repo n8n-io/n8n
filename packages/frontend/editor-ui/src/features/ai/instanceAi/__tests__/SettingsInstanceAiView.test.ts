@@ -149,49 +149,50 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('Model credential dialog', () => {
-		it('hides credential mutation controls without the provider connection scope', async () => {
+		it('disables editing without the provider connection scope', async () => {
 			vi.mocked(hasPermission).mockImplementation(
 				(_permissionNames, options) => options?.rbac?.scope !== 'credential:manageInstance',
 			);
+			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
+				data: {},
+			} as never);
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi', provider: 'openai' },
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
 				],
 			});
 
-			const { getByTestId, queryByTestId } = renderModelDialog({ props: { open: true } });
-			await nextTick();
+			const { getByTestId } = renderModelDialog({ props: { open: true } });
 
-			expect(getByTestId('n8n-agent-model-credential-select')).toBeVisible();
-			expect(queryByTestId('n8n-agent-model-credential-edit')).not.toBeInTheDocument();
-			expect(queryByTestId('n8n-agent-model-credential-create')).not.toBeInTheDocument();
+			await waitFor(() =>
+				expect(
+					getByTestId('n8n-agent-model-provider-select').querySelector('input'),
+				).toBeDisabled(),
+			);
+			expect(getByTestId('n8n-agent-model-dialog-save')).toBeDisabled();
 		});
 
-		it('stages a provider switch and only saves once a model name is committed', async () => {
+		it('stages an inline connection and only saves once a model name is committed', async () => {
+			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
+				data: { apiKey: '__blank' },
+			} as never);
 			store.$patch({
-				settings: {
-					...store.settings!,
-					modelCredentialId: 'openai-id',
-					modelName: 'gpt-4o',
-				},
+				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi', provider: 'openai' },
-					{
-						id: 'anthropic-id',
-						name: 'Anthropic production',
-						type: 'anthropicApi',
-						provider: 'anthropic',
-					},
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
 				],
 			});
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
-			const { getByTestId, getByText } = renderModelDialog({ props: { open: true } });
-			await nextTick();
+			const { getByTestId, findByTestId, findByText } = renderModelDialog({
+				props: { open: true },
+			});
 
-			const select = getByTestId('n8n-agent-model-credential-select');
+			const select = await findByTestId('n8n-agent-model-provider-select');
+			await waitFor(() => expect(select.querySelector('input')!.value).toBe('OpenAI'));
+
 			await fireEvent.click(select.querySelector('input')!);
-			await fireEvent.click(getByText('Anthropic production · Anthropic'));
+			await fireEvent.click(await findByText('Anthropic'));
 
 			const saveButton = getByTestId('n8n-agent-model-dialog-save');
 			expect(saveButton).toBeDisabled();
@@ -206,7 +207,7 @@ describe('SettingsInstanceAiView', () => {
 			await fireEvent.click(saveButton);
 
 			expect(store.draft).toMatchObject({
-				modelCredentialId: 'anthropic-id',
+				modelConnection: { type: 'anthropicApi' },
 				modelName: 'claude-sonnet-4',
 			});
 			expect(save).toHaveBeenCalledOnce();
@@ -219,44 +220,73 @@ describe('SettingsInstanceAiView', () => {
 				settings: { ...store.settings!, sandboxEnvConfigured: true },
 			});
 			const { getByTestId } = renderSandboxDialog({ props: { open: true } });
-			await nextTick();
 
-			const input = getByTestId('n8n-agent-sandbox-credential-select').querySelector('input')!;
-			expect(input.value).toBe('settings.n8nAgent.modelCredential.none');
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-sandbox-provider-select').querySelector('input')!.value).toBe(
+					'settings.n8nAgent.modelCredential.none',
+				),
+			);
 		});
 
-		it('defaults the provider from settings and stages a provider switch on save', async () => {
-			store.$patch({
-				serviceCredentials: [
-					{ id: 'daytona-id', name: 'Daytona key', type: 'daytonaApi', provider: 'daytona' },
-					{ id: 'header-id', name: 'Sandbox header', type: 'httpHeaderAuth', provider: 'n8n' },
-				],
-			});
+		it('defaults the provider from settings and stages an inline Daytona connection', async () => {
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
-			const { getByTestId, findByText } = renderSandboxDialog({ props: { open: true } });
-			await nextTick();
+			const { getByTestId, findByTestId, findByText } = renderSandboxDialog({
+				props: { open: true },
+			});
 
-			const providerSelect = getByTestId('n8n-agent-sandbox-provider-select');
-			expect(providerSelect.querySelector('input')!.value).toBe('n8n Sandbox Service');
+			const providerSelect = await findByTestId('n8n-agent-sandbox-provider-select');
+			await waitFor(() =>
+				expect(providerSelect.querySelector('input')!.value).toBe('n8n Sandbox Service'),
+			);
 
 			await fireEvent.click(providerSelect.querySelector('input')!);
 			await fireEvent.click(await findByText('Daytona'));
 
-			const credentialSelect = getByTestId('n8n-agent-sandbox-credential-select');
-			await fireEvent.click(credentialSelect.querySelector('input')!);
-			await fireEvent.click(await findByText('Daytona key'));
-
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
 
 			expect(store.draft).toMatchObject({
-				sandboxProvider: 'daytona',
-				daytonaCredentialId: 'daytona-id',
+				sandboxConnection: {
+					type: 'daytonaApi',
+					data: { apiUrl: 'https://app.daytona.io/api' },
+				},
+			});
+			expect(save).toHaveBeenCalledOnce();
+		});
+
+		it('stages an n8n sandbox API key as an x-api-key header connection', async () => {
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId } = renderSandboxDialog({ props: { open: true } });
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-sandbox-provider-select').querySelector('input')!.value).toBe(
+					'n8n Sandbox Service',
+				),
+			);
+
+			const saveButton = getByTestId('n8n-agent-sandbox-dialog-save');
+			expect(saveButton).toBeDisabled();
+
+			const keyField = getByTestId('n8n-agent-sandbox-api-key-input');
+			const keyInput =
+				keyField.tagName === 'INPUT'
+					? (keyField as HTMLInputElement)
+					: keyField.querySelector('input')!;
+			await fireEvent.update(keyInput, 'sk-test');
+			await fireEvent.click(saveButton);
+
+			expect(store.draft).toMatchObject({
+				sandboxConnection: {
+					type: 'httpHeaderAuth',
+					data: { name: 'x-api-key', value: 'sk-test' },
+				},
 			});
 			expect(save).toHaveBeenCalledOnce();
 		});
 	});
 
 	describe('setup chain', () => {
+		type ConnectionDraft = { type: string } | null | undefined;
+
 		beforeEach(() => {
 			vi.mocked(fetchInstanceModelCredentials).mockResolvedValue([
 				{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi', provider: 'openai' },
@@ -266,9 +296,44 @@ describe('SettingsInstanceAiView', () => {
 					{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi', provider: 'openai' },
 				],
 			});
+			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
+				data: {},
+			} as never);
+			vi.spyOn(store, 'refreshInstanceModelCredentials').mockResolvedValue(undefined);
+			vi.spyOn(store, 'refreshCredentials').mockResolvedValue(undefined);
+			// Mimics the backend: connection payloads become credential assignments.
 			vi.spyOn(store, 'save').mockImplementation(async () => {
+				const draft = { ...store.draft } as Record<string, unknown>;
+				const patch: Record<string, unknown> = {};
+				for (const [key, value] of Object.entries(draft)) {
+					if (!['modelConnection', 'sandboxConnection', 'searchConnection'].includes(key)) {
+						patch[key] = value;
+					}
+				}
+				const model = draft.modelConnection as ConnectionDraft;
+				if (model !== undefined) {
+					patch.modelCredentialId = model ? 'created-model-cred' : null;
+					if (model && !store.instanceModelCredentials.some((c) => c.id === 'created-model-cred')) {
+						store.instanceModelCredentials.push({
+							id: 'created-model-cred',
+							name: 'AI Assistant model',
+							type: model.type,
+							provider: 'openai',
+						});
+					}
+				}
+				const sandbox = draft.sandboxConnection as ConnectionDraft;
+				if (sandbox !== undefined) {
+					patch.daytonaCredentialId =
+						sandbox?.type === 'daytonaApi' ? 'created-daytona-cred' : null;
+					patch.n8nSandboxCredentialId =
+						sandbox?.type === 'httpHeaderAuth' ? 'created-n8n-cred' : null;
+					if (sandbox) {
+						patch.sandboxProvider = sandbox.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox';
+					}
+				}
 				store.$patch({
-					settings: { ...store.settings!, ...store.draft },
+					settings: { ...store.settings!, ...patch },
 				});
 				for (const key of Object.keys(store.draft)) {
 					delete (store.draft as Record<string, unknown>)[key];
@@ -282,9 +347,9 @@ describe('SettingsInstanceAiView', () => {
 			getByTestId: (id: string) => HTMLElement,
 			findByText: (text: string) => Promise<HTMLElement>,
 		) {
-			const select = await findByTestId('n8n-agent-model-credential-select');
+			const select = await findByTestId('n8n-agent-model-provider-select');
 			await fireEvent.click(select.querySelector('input')!);
-			await fireEvent.click(await findByText('OpenAI account · OpenAI'));
+			await fireEvent.click(await findByText('OpenAI'));
 			const modelNameField = getByTestId('n8n-agent-model-name-input');
 			const modelNameInput =
 				modelNameField.tagName === 'INPUT'
@@ -317,7 +382,7 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-model-dialog-step')).toBeVisible());
 
 			const continueButton = getByTestId('n8n-agent-model-dialog-save');
-			expect(continueButton).not.toBeDisabled();
+			await waitFor(() => expect(continueButton).not.toBeDisabled());
 			await fireEvent.click(continueButton);
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
 		});
@@ -330,7 +395,7 @@ describe('SettingsInstanceAiView', () => {
 
 			await fireEvent.click(getByTestId('n8n-agent-model-add'));
 
-			expect(await findByTestId('n8n-agent-model-credential-select')).toBeVisible();
+			expect(await findByTestId('n8n-agent-model-provider-select')).toBeVisible();
 			expect(queryByTestId('n8n-agent-model-dialog-step')).toBeNull();
 		});
 
@@ -342,7 +407,7 @@ describe('SettingsInstanceAiView', () => {
 
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-add'));
 
-			expect(await findByTestId('n8n-agent-sandbox-credential-select')).toBeVisible();
+			expect(await findByTestId('n8n-agent-sandbox-provider-select')).toBeVisible();
 			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
 			expect(queryByTestId('n8n-agent-sandbox-dialog-back')).toBeNull();
 		});
