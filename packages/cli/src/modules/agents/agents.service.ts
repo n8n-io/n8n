@@ -36,7 +36,11 @@ export class AgentsService {
 		private readonly eventService: EventService,
 	) {}
 
-	async create(projectId: string, name: string): Promise<Agent> {
+	async create(
+		projectId: string,
+		name: string,
+		{ availableInMCP = false }: { availableInMCP?: boolean } = {},
+	): Promise<Agent> {
 		const defaultConfig: AgentJsonConfig = {
 			name,
 			model: '',
@@ -50,6 +54,7 @@ export class AgentsService {
 			projectId,
 			schema: defaultConfig,
 			versionId: uuid(),
+			availableInMCP,
 		});
 
 		const saved = await this.agentRepository.save(agent);

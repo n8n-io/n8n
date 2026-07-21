@@ -273,19 +273,32 @@ export class McpAgentToolsService {
 		private readonly urlService: UrlService,
 	) {}
 
-	registerTools(server: McpServer, user: User): void {
-		this.register(server, this.searchAgentsTool(user));
-		this.register(server, this.getAgentTool(user));
-		this.register(server, this.createAgentTool(user));
-		this.register(server, this.mutateAgentTool(user));
-		this.register(server, this.validateAgentTool(user));
-		this.register(server, this.publishAgentTool(user));
-		this.register(server, this.unpublishAgentTool(user));
-		this.register(server, this.deleteAgentTool(user));
-		this.register(server, this.discoverAssetsTool(user));
-		this.register(server, this.verifyMcpServerTool(user));
-		this.register(server, this.updateIntegrationTool(user));
-		this.register(server, this.referenceTool(user));
+	/**
+	 * `allowedToolNames` carries the OAuth grant's scope-derived allow-list
+	 * (undefined means a non-scope-bearing credential with full access).
+	 */
+	registerTools(server: McpServer, user: User, allowedToolNames?: Set<string>): void {
+		const registerIfAllowed = <Input extends z.ZodRawShape>(tool: ToolDefinition<Input>): void => {
+			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
+			this.register(server, tool);
+		};
+
+		registerIfAllowed(this.searchAgentsTool(user));
+		registerIfAllowed(this.getAgentTool(user));
+		registerIfAllowed(this.createAgentTool(user));
+		registerIfAllowed(this.mutateAgentTool(user));
+		registerIfAllowed(this.validateAgentTool(user));
+		registerIfAllowed(this.publishAgentTool(user));
+		registerIfAllowed(this.unpublishAgentTool(user));
+		registerIfAllowed(this.deleteAgentTool(user));
+		registerIfAllowed(this.discoverAssetsTool(user));
+		registerIfAllowed(this.verifyMcpServerTool(user));
+		registerIfAllowed(this.updateIntegrationTool(user));
+		registerIfAllowed(this.referenceTool(user));
+
+		// The reference resource complements get_agent_builder_reference, so it
+		// follows that tool's scope gate.
+		if (allowedToolNames && !allowedToolNames.has('get_agent_builder_reference')) return;
 
 		server.resource(
 			'agent-builder-reference',
@@ -315,7 +328,7 @@ export class McpAgentToolsService {
 			name: 'search_agents',
 			config: {
 				description:
-					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents.',
+					'Search Agents the current user can access. Use publishedOnly and excludeAgentId to discover saved sub-agents. Other agent tools only operate on agents with availableInMCP: true.',
 				inputSchema: searchAgentsInput,
 				annotations: {
 					title: 'Search Agents',
@@ -341,6 +354,7 @@ export class McpAgentToolsService {
 							name: agent.name,
 							projectId: agent.projectId,
 							published: agent.activeVersionId !== null,
+							availableInMCP: agent.availableInMCP,
 							updatedAt: agent.updatedAt.toISOString(),
 						}));
 					return { ok: true, data, count: data.length };
@@ -366,6 +380,7 @@ export class McpAgentToolsService {
 			handler: async ({ projectId, agentId }) =>
 				await this.run(user, 'get_agent', { projectId, agentId }, async () => {
 					await this.assertScope(user, projectId, 'agent:read');
+					await this.assertAvailableInMcp(agentId, projectId);
 					return { ok: true, ...(await this.getAgentSnapshot(user, projectId, agentId)) };
 				}),
 		};
@@ -397,7 +412,10 @@ export class McpAgentToolsService {
 						}
 					}
 
-					const agent = await this.agentsService.create(projectId, name);
+					// Agents created over MCP stay operable over MCP.
+					const agent = await this.agentsService.create(projectId, name, {
+						availableInMCP: true,
+					});
 					let configHash: string | null;
 					let versionId = agent.versionId;
 					try {
@@ -457,6 +475,7 @@ export class McpAgentToolsService {
 					{ projectId: input.projectId, agentId: input.agentId, type: input.operation.type },
 					async () => {
 						await this.assertScope(user, input.projectId, 'agent:update');
+						await this.assertAvailableInMcp(input.agentId, input.projectId);
 						const config = await this.agentConfigService.getConfig(input.agentId, input.projectId);
 						const configHash = getAgentConfigHash(config);
 						if (configHash !== input.baseConfigHash) {
@@ -502,6 +521,7 @@ export class McpAgentToolsService {
 			handler: async ({ projectId, agentId }) =>
 				await this.run(user, 'validate_agent', { projectId, agentId }, async () => {
 					await this.assertScope(user, projectId, 'agent:read');
+					await this.assertAvailableInMcp(agentId, projectId);
 					return {
 						ok: true,
 						...(await this.validateAgent(user, projectId, agentId)),
@@ -529,6 +549,7 @@ export class McpAgentToolsService {
 			handler: async ({ projectId, agentId }) =>
 				await this.run(user, 'publish_agent', { projectId, agentId }, async () => {
 					await this.assertScope(user, projectId, 'agent:publish');
+					await this.assertAvailableInMcp(agentId, projectId);
 					const validation = await this.validateAgent(user, projectId, agentId);
 					if (!validation.valid) {
 						throw new UserError(
@@ -565,6 +586,7 @@ export class McpAgentToolsService {
 			handler: async ({ projectId, agentId }) =>
 				await this.run(user, 'unpublish_agent', { projectId, agentId }, async () => {
 					await this.assertScope(user, projectId, 'agent:unpublish');
+					await this.assertAvailableInMcp(agentId, projectId);
 					const agent = await this.agentPublishService.unpublishAgent(agentId, projectId);
 					return {
 						ok: true,
@@ -594,6 +616,7 @@ export class McpAgentToolsService {
 			handler: async ({ projectId, agentId }) =>
 				await this.run(user, 'delete_agent', { projectId, agentId }, async () => {
 					await this.assertScope(user, projectId, 'agent:delete');
+					await this.assertAvailableInMcp(agentId, projectId);
 					const deleted = await this.agentsService.delete(agentId, projectId);
 					if (!deleted) throw new UserError(`Agent "${agentId}" not found`);
 					return { ok: true, deleted: true, agentId };
@@ -779,6 +802,22 @@ export class McpAgentToolsService {
 	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		return agent;
+	}
+
+	/**
+	 * Mirrors the per-workflow `availableInMCP` guard in `getMcpWorkflow`: MCP
+	 * tools may only operate on agents explicitly made available in MCP.
+	 * `search_agents` intentionally still sees every accessible agent so
+	 * clients can tell the user what exists.
+	 */
+	private async assertAvailableInMcp(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.getAgentOrThrow(agentId, projectId);
+		if (!agent.availableInMCP) {
+			throw new UserError(
+				'Agent is not available in MCP. Enable MCP access from the agents list, or from the MCP settings page.',
+			);
+		}
 		return agent;
 	}
 
@@ -1045,7 +1084,7 @@ export class McpAgentToolsService {
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
 		await this.assertScope(user, input.projectId, 'agent:update');
-		const agent = await this.getAgentOrThrow(input.agentId, input.projectId);
+		const agent = await this.assertAvailableInMcp(input.agentId, input.projectId);
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(input, agent)
 			: await this.connectIntegration(user, input, agent);

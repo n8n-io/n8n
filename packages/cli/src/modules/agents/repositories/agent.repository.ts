@@ -43,6 +43,11 @@ export class AgentRepository extends Repository<Agent> {
 		if (filter?.query) {
 			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${filter.query}%` });
 		}
+		if (filter?.availableInMCP !== undefined) {
+			query.andWhere('agent.availableInMCP = :availableInMCP', {
+				availableInMCP: filter.availableInMCP,
+			});
+		}
 	}
 
 	private applySorting(
@@ -87,6 +92,26 @@ export class AgentRepository extends Repository<Agent> {
 			select: ['id', 'activeVersionId'],
 			where: { id: In(ids), projectId },
 		});
+	}
+
+	/**
+	 * Lean rows for resolving an MCP-availability bulk toggle: enough to check
+	 * per-project permissions and skip agents already in the requested state.
+	 */
+	async findMcpAvailabilityCandidates(
+		where: { ids: string[] } | { projectIds: string[] },
+	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
+		const criteria = 'ids' in where ? { id: In(where.ids) } : { projectId: In(where.projectIds) };
+		if (('ids' in where ? where.ids : where.projectIds).length === 0) return [];
+		return await this.find({
+			select: ['id', 'projectId', 'availableInMCP'],
+			where: criteria,
+		});
+	}
+
+	async setAvailableInMCP(agentIds: string[], availableInMCP: boolean): Promise<void> {
+		if (agentIds.length === 0) return;
+		await this.update({ id: In(agentIds) }, { availableInMCP });
 	}
 
 	async findPublished(): Promise<Agent[]> {

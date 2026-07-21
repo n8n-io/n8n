@@ -35,6 +35,10 @@ export class Agent extends WithTimestampsAndStringId {
 	@JsonColumn({ default: '{}' })
 	skills: Record<string, AgentSkill>;
 
+	/** Whether MCP clients granted agent scopes may operate on this agent. */
+	@Column({ default: false })
+	availableInMCP: boolean;
+
 	/** UUID identifying the current draft; bumped on the first config save after each publish. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	versionId: string | null;

@@ -432,7 +432,7 @@ export class McpService {
 
 		if (agentsEnabled) {
 			const { McpAgentToolsService } = await import('./tools/agents/agent-tools.service.js');
-			Container.get(McpAgentToolsService).registerTools(server, user);
+			Container.get(McpAgentToolsService).registerTools(server, user, allowedToolNames);
 		}
 
 		return server;

@@ -21,6 +21,8 @@ export const MCP_INSTANCE_SCOPES = [
 	'workflow:write',
 	'workflow:execute',
 	'execution:read',
+	'agent:read',
+	'agent:write',
 	'credential:read',
 	'dataTable:read',
 	'dataTable:write',

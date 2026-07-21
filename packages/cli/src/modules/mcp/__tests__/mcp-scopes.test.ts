@@ -44,7 +44,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
+import { AGENT_TOOLS, BUILDER_TOOLS, getAllowedToolNames, TOOLS_BY_SCOPE } from '../mcp-scopes';
 import { McpService } from '../mcp.service';
 
 const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
@@ -139,8 +139,20 @@ describe('McpService scope enforcement', () => {
 		const server = await buildService().getServer(user, false);
 		const registered = getRegisteredToolNames(server);
 
-		const unregistered = [...ALL_MAPPED_TOOLS].filter((name) => !registered.has(name));
+		// Agent tools require the agents module (inactive here); their own
+		// drift guard lives in agent-tools.service.test.ts.
+		const unregistered = [...ALL_MAPPED_TOOLS].filter(
+			(name) => !registered.has(name) && !AGENT_TOOLS.has(name),
+		);
 		expect(unregistered).toEqual([]);
+	});
+
+	it('AGENT_TOOLS matches the agent scope map entries (drift guard)', () => {
+		const mappedAgentTools = new Set([
+			...TOOLS_BY_SCOPE['agent:read'],
+			...TOOLS_BY_SCOPE['agent:write'],
+		]);
+		expect(new Set(AGENT_TOOLS)).toEqual(mappedAgentTools);
 	});
 
 	it('BUILDER_TOOLS matches the tools gated behind the builder flag (drift guard)', async () => {
