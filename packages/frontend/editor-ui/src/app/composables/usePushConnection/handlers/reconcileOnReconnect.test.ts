@@ -95,6 +95,24 @@ function makeFinishedExecution(executionId: string): IExecutionResponse {
 	};
 }
 
+function makeWaitingExecution(executionId: string): IExecutionResponse {
+	const data = createRunExecutionData({ resultData: { runData: {} } });
+	// A run parked into wait server-side carries `waitTill` on its run data; the
+	// reconciliation routes this through the wait branch (mirrors the push path).
+	data.waitTill = new Date('2999-01-01T00:00:00.000Z');
+	return {
+		id: executionId,
+		workflowId,
+		finished: false,
+		mode: 'manual',
+		status: 'waiting',
+		startedAt: new Date(),
+		createdAt: new Date(),
+		workflowData: mock<IWorkflowDb>({ id: workflowId, nodes: [], connections: {} }),
+		data,
+	};
+}
+
 describe('reconcileExecutionStateOnReconnect', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -118,9 +136,33 @@ describe('reconcileExecutionStateOnReconnect', () => {
 
 		expect(getActiveExecutionsMock).toHaveBeenCalledWith(expect.anything(), {
 			workflowId,
-			status: ['new', 'running', 'waiting'],
+			status: ['new', 'running'],
 		});
 		// State reconciled to server truth: spinner cleared, final run displayed.
+		expect(executionStateStore.isWorkflowRunning).toBe(false);
+		expect(executionStateStore.activeExecutionId).toBeUndefined();
+		expect(executionStateStore.displayedExecutionId).toBe(executionId);
+	});
+
+	it('clears the stranded spinner when the tracked run parked into wait while disconnected', async () => {
+		const executionId = 'exec-parked-offline';
+		const executionStateStore = startRunningExecution(executionId);
+		expect(executionStateStore.isWorkflowRunning).toBe(true);
+
+		// `waiting` runs are excluded from the active-status query, so the server
+		// does not return the parked run — its `waitTill` push was dropped.
+		getActiveExecutionsMock.mockResolvedValue([]);
+		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockResolvedValue(
+			makeWaitingExecution(executionId),
+		);
+
+		await reconcileExecutionStateOnReconnect(options);
+
+		expect(getActiveExecutionsMock).toHaveBeenCalledWith(expect.anything(), {
+			workflowId,
+			status: ['new', 'running'],
+		});
+		// Reconciled to the wait state: spinner cleared, wait execution displayed.
 		expect(executionStateStore.isWorkflowRunning).toBe(false);
 		expect(executionStateStore.activeExecutionId).toBeUndefined();
 		expect(executionStateStore.displayedExecutionId).toBe(executionId);
