@@ -5355,6 +5355,42 @@ describe('useCanvasOperations', () => {
 			);
 		});
 
+		it('re-evaluates credential issues after importing non-trigger nodes', async () => {
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes: nodes as INodeUi[],
+						connections,
+					}),
+			);
+
+			const updateNodesCredentialsIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodesCredentialsIssues: updateNodesCredentialsIssuesSpy,
+			}));
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(
+				{
+					nodes: [
+						createTestNode({
+							id: 'imported-1',
+							name: 'Imported Node',
+							type: SET_NODE_TYPE,
+							typeVersion: 1,
+							position: [100, 100],
+						}),
+					],
+					connections: {},
+				},
+				'file',
+			);
+
+			await waitFor(() => expect(updateNodesCredentialsIssuesSpy).toHaveBeenCalled());
+		});
+
 		it('should track telemetry when trackEvents is true (default)', async () => {
 			const telemetry = useTelemetry();
 

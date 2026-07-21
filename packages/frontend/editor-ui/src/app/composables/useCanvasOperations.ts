@@ -3039,6 +3039,17 @@ export function useCanvasOperations() {
 				{ setStateDirty, trackHistory },
 			);
 
+			// Imported nodes can carry credentials by name or stale ids.
+			// Re-match and re-evaluate credential issues after all nodes are on canvas,
+			// so imported workflows don't show transient missing-credential warnings.
+			for (const importedNode of importResult.nodes ?? []) {
+				const currentNode = workflowDocumentStore.value.getNodeById(importedNode.id);
+				if (currentNode) {
+					nodeHelpers.matchCredentials(currentNode);
+				}
+			}
+			nodeHelpers.updateNodesCredentialsIssues();
+
 			if (ownsImportBulk) {
 				historyStore.stopRecordingUndo();
 			}
