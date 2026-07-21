@@ -175,9 +175,11 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('stages an inline connection and only saves once a model name is committed', async () => {
-			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
+			const credentialsStore = useCredentialsStore();
+			vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
 				data: { apiKey: '__blank' },
 			} as never);
+			const testCredential = vi.spyOn(credentialsStore, 'testCredential');
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
@@ -212,6 +214,47 @@ describe('SettingsInstanceAiView', () => {
 				modelName: 'claude-sonnet-4',
 			});
 			expect(save).toHaveBeenCalledOnce();
+			expect(testCredential).not.toHaveBeenCalled();
+		});
+
+		it('keeps the dialog open when the saved credential fails its test', async () => {
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([
+				{
+					name: 'openAiApi',
+					displayName: 'OpenAI',
+					properties: [],
+					test: { request: { url: '/models' } },
+				},
+			] satisfies ICredentialType[]);
+			vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
+				data: { apiKey: '__blank' },
+			} as never);
+			const testCredential = vi.spyOn(credentialsStore, 'testCredential').mockResolvedValue({
+				status: 'Error',
+				message: 'Invalid API key',
+			});
+			store.$patch({
+				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
+				instanceModelCredentials: [
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+				],
+			});
+			vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { findByTestId, getByTestId } = renderModelDialog({ props: { open: true } });
+
+			const modelNameField = await findByTestId('n8n-agent-model-name-input');
+			const modelNameInput =
+				modelNameField.tagName === 'INPUT'
+					? (modelNameField as HTMLInputElement)
+					: modelNameField.querySelector('input')!;
+			await fireEvent.update(modelNameInput, 'gpt-4.1');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+			expect(await findByTestId('n8n-agent-model-credential-test-error')).toBeVisible();
+			expect(testCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'openai-id', type: 'openAiApi' }),
+			);
 		});
 	});
 
@@ -431,6 +474,59 @@ describe('SettingsInstanceAiView', () => {
 			await fireEvent.click(getByTestId('n8n-agent-enable-button'));
 
 			expect(persistEnabled).toHaveBeenCalledWith(true);
+		});
+
+		it('retests a configured model credential before enabling', async () => {
+			const disabledSettings = {
+				...store.settings!,
+				enabled: false,
+				modelCredentialId: 'openai-id',
+				modelName: 'gpt-4o',
+				sandboxEnvConfigured: true,
+			};
+			store.$patch({
+				settings: disabledSettings,
+				instanceModelCredentials: [
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+				],
+			});
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([
+				{
+					name: 'openAiApi',
+					displayName: 'OpenAI',
+					properties: [],
+					test: { request: { url: '/models' } },
+				},
+			] satisfies ICredentialType[]);
+			vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
+				data: { apiKey: '__blank' },
+			} as never);
+			const testCredential = vi
+				.spyOn(credentialsStore, 'testCredential')
+				.mockImplementationOnce(async ({ id }) => {
+					credentialsStore.credentialTestResults.set(id, 'error');
+					return { status: 'Error', message: 'Invalid API key' };
+				})
+				.mockImplementationOnce(async ({ id }) => {
+					credentialsStore.credentialTestResults.set(id, 'success');
+					return { status: 'OK', message: 'Connection successful' };
+				});
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			const { findByTestId, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-button'));
+
+			expect(await findByTestId('n8n-agent-model-credential-test-error')).toBeVisible();
+			expect(persistEnabled).not.toHaveBeenCalled();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
+			expect(testCredential).toHaveBeenCalledTimes(2);
 		});
 
 		it('lets the user go back to step one and continue without changes', async () => {

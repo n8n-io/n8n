@@ -16,9 +16,11 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
+import Banner from '@/app/components/Banner.vue';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { INSTANCE_MODEL_CREDENTIAL_TYPES } from '../../constants';
+import { useInstanceCredentialTest } from '../../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import ConnectionFields from './ConnectionFields.vue';
 
@@ -31,6 +33,8 @@ const emit = defineEmits<{ saved: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
+const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
+	useInstanceCredentialTest();
 
 provideWorkflowDocumentStore();
 
@@ -75,6 +79,7 @@ async function hydrate() {
 	hydratedType = selectedType.value;
 	hydratedData = { ...fieldsData.value };
 	hydratedSnapshot = snapshot();
+	restoreStoredError(assignedId.value);
 }
 
 watch(
@@ -104,6 +109,7 @@ const noneLabel = computed(() =>
 
 function selectType(nextType: string) {
 	if (nextType === selectedType.value) return;
+	credentialTestError.value = '';
 	selectedType.value = nextType;
 	// Switching providers starts from a clean slate; only the hydrated provider keeps its values.
 	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
@@ -118,9 +124,16 @@ const readOnly = computed(() => !store.canManageInstanceCredentials);
 const isComplete = computed(() => !selectedType.value || modelName.value.trim().length > 0);
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 const primaryDisabled = computed(() => {
-	if (store.isSaving || isLoading.value || readOnly.value || !isComplete.value) return true;
+	if (
+		store.isSaving ||
+		isTestingCredential.value ||
+		isLoading.value ||
+		readOnly.value ||
+		!isComplete.value
+	)
+		return true;
 	if (props.setup) return !isChanged.value && !selectedType.value;
-	return !isChanged.value;
+	return !isChanged.value && !credentialTestError.value;
 });
 
 async function handlePrimary() {
@@ -136,8 +149,20 @@ async function handlePrimary() {
 			store.setField('modelName', modelName.value.trim());
 		}
 		if (!(await store.save())) return;
-		void store.refreshInstanceModelCredentials();
 	}
+	const credentialId = store.settings?.modelCredentialId;
+	if (
+		selectedType.value &&
+		credentialId &&
+		!(await testCredential({
+			id: credentialId,
+			name: 'AI Assistant model',
+			type: selectedType.value,
+			data: { ...toRaw(fieldsData.value) },
+		}))
+	)
+		return;
+	void store.refreshInstanceModelCredentials();
 	open.value = false;
 	emit('saved');
 }
@@ -220,6 +245,13 @@ const description = computed(() =>
 		<N8nText :class="$style.footnote" size="small" color="text-light" tag="p">
 			{{ i18n.baseText('settings.n8nAgent.modelDialog.footnote') }}
 		</N8nText>
+		<Banner
+			v-if="credentialTestError"
+			theme="danger"
+			:message="i18n.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
+			:details="credentialTestError"
+			data-test-id="n8n-agent-model-credential-test-error"
+		/>
 
 		<N8nDialogFooter>
 			<N8nButton
@@ -233,8 +265,13 @@ const description = computed(() =>
 				variant="solid"
 				size="medium"
 				:label="
-					setup ? i18n.baseText('settings.n8nAgent.setup.continue') : i18n.baseText('generic.save')
+					credentialTestError
+						? i18n.baseText('credentialEdit.credentialConfig.retry')
+						: setup
+							? i18n.baseText('settings.n8nAgent.setup.continue')
+							: i18n.baseText('generic.save')
 				"
+				:loading="isTestingCredential"
 				:disabled="primaryDisabled"
 				data-test-id="n8n-agent-model-dialog-save"
 				@click="handlePrimary"

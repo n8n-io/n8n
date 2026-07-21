@@ -16,8 +16,10 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
+import Banner from '@/app/components/Banner.vue';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useInstanceCredentialTest } from '../../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import ConnectionFields from './ConnectionFields.vue';
 
@@ -33,6 +35,8 @@ const emit = defineEmits<{ saved: []; back: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
+const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
+	useInstanceCredentialTest();
 
 provideWorkflowDocumentStore();
 
@@ -104,6 +108,7 @@ async function hydrate() {
 	hydratedProvider = selectedProvider.value;
 	hydratedData = { ...fieldsData.value };
 	hydratedSnapshot = snapshot();
+	restoreStoredError(assignedId.value);
 }
 
 watch(
@@ -116,6 +121,7 @@ watch(
 
 function selectProvider(next: SandboxSelection) {
 	if (next === selectedProvider.value) return;
+	credentialTestError.value = '';
 	selectedProvider.value = next;
 	// Switching providers starts clean; only the hydrated provider keeps its values.
 	fieldsData.value = next === hydratedProvider ? { ...hydratedData } : freshData(next);
@@ -138,9 +144,16 @@ const isComplete = computed(() =>
 );
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 const saveDisabled = computed(() => {
-	if (store.isSaving || isLoading.value || readOnly.value || !isComplete.value) return true;
+	if (
+		store.isSaving ||
+		isTestingCredential.value ||
+		isLoading.value ||
+		readOnly.value ||
+		!isComplete.value
+	)
+		return true;
 	if (props.setup) return !isChanged.value && !selectedProvider.value;
-	return !isChanged.value;
+	return !isChanged.value && !credentialTestError.value;
 });
 
 async function handleSave() {
@@ -159,8 +172,26 @@ async function handleSave() {
 			});
 		}
 		if (!(await store.save())) return;
-		void store.refreshCredentials();
 	}
+	const credentialId =
+		selectedProvider.value === 'daytona'
+			? store.settings?.daytonaCredentialId
+			: store.settings?.n8nSandboxCredentialId;
+	if (
+		selectedProvider.value &&
+		credentialId &&
+		!(await testCredential({
+			id: credentialId,
+			name: 'AI Assistant sandbox',
+			type: selectedProvider.value === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth',
+			data:
+				selectedProvider.value === 'daytona'
+					? { ...toRaw(fieldsData.value) }
+					: { name: N8N_SANDBOX_HEADER, value: apiKeyValue.value.trim() },
+		}))
+	)
+		return;
+	void store.refreshCredentials();
 	open.value = false;
 	emit('saved');
 }
@@ -242,6 +273,13 @@ const title = computed(() =>
 				/>
 			</N8nInputLabel>
 		</div>
+		<Banner
+			v-if="credentialTestError"
+			theme="danger"
+			:message="i18n.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
+			:details="credentialTestError"
+			data-test-id="n8n-agent-sandbox-credential-test-error"
+		/>
 
 		<N8nDialogFooter>
 			<N8nButton
@@ -262,7 +300,12 @@ const title = computed(() =>
 			<N8nButton
 				variant="solid"
 				size="medium"
-				:label="i18n.baseText('generic.save')"
+				:label="
+					credentialTestError
+						? i18n.baseText('credentialEdit.credentialConfig.retry')
+						: i18n.baseText('generic.save')
+				"
+				:loading="isTestingCredential"
 				:disabled="saveDisabled"
 				data-test-id="n8n-agent-sandbox-dialog-save"
 				@click="handleSave"

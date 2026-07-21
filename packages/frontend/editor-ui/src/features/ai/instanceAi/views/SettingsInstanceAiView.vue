@@ -32,6 +32,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import ModelCredentialDialog from '../components/settings/ModelCredentialDialog.vue';
 import SandboxCredentialDialog from '../components/settings/SandboxCredentialDialog.vue';
@@ -44,6 +45,7 @@ const router = useRouter();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
+const { isTestingCredential, testSavedCredential } = useInstanceCredentialTest();
 
 const { isFeatureEnabled: isMcpConnectionsExperimentEnabled } =
 	useInstanceAiMcpConnectionsExperiment();
@@ -311,14 +313,51 @@ onMounted(() => {
 });
 
 async function handleEnable() {
-	if (!showCredentialsRows.value || (isModelConfigured.value && isSandboxConfigured.value)) {
+	if (!showCredentialsRows.value) {
 		await store.persistEnabled(true);
 		return;
 	}
 
 	enableAfterSetup.value = true;
-	if (!isModelConfigured.value) openModelSetup();
-	else if (!isSandboxConfigured.value) openSandboxDialog();
+	if (!isModelConfigured.value) {
+		openModelSetup();
+		return;
+	}
+
+	const modelCredentialId = store.settings?.modelCredentialId;
+	if (
+		modelCredentialId &&
+		(!modelCredential.value ||
+			!(await testSavedCredential(
+				modelCredentialId,
+				modelCredential.value.name,
+				modelCredential.value.type,
+			)))
+	) {
+		openModelSetup();
+		return;
+	}
+
+	if (!isSandboxConfigured.value) {
+		openSandboxDialog();
+		return;
+	}
+
+	if (sandboxCredentialId.value) {
+		const isDaytona = store.settings?.sandboxProvider === 'daytona';
+		if (
+			!(await testSavedCredential(
+				sandboxCredentialId.value,
+				'AI Assistant sandbox',
+				isDaytona ? 'daytonaApi' : 'httpHeaderAuth',
+			))
+		) {
+			openSandboxDialog();
+			return;
+		}
+	}
+
+	await finishSetup();
 }
 
 async function handleStatusAction(action: string) {
@@ -381,6 +420,7 @@ function openAiUsageSettings() {
 			:heading="i18n.baseText('settings.n8nAgent.empty.title')"
 			:description="i18n.baseText('settings.n8nAgent.empty.description')"
 			:button-text="isAdmin ? i18n.baseText('settings.n8nAgent.empty.enable') : undefined"
+			:button-disabled="store.isSaving || isTestingCredential"
 			button-variant="solid"
 			@click:button="handleEnable"
 		>
@@ -404,7 +444,7 @@ function openAiUsageSettings() {
 								variant="solid"
 								size="medium"
 								:label="i18n.baseText('settings.n8nAgent.status.enable')"
-								:disabled="store.isSaving"
+								:disabled="store.isSaving || isTestingCredential"
 								data-test-id="n8n-agent-enable-button"
 								@click="handleEnable"
 							/>

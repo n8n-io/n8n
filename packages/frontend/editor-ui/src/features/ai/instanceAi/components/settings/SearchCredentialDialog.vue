@@ -11,9 +11,11 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
+import Banner from '@/app/components/Banner.vue';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { INSTANCE_SEARCH_CREDENTIAL_TYPES } from '../../constants';
+import { useInstanceCredentialTest } from '../../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import ConnectionFields from './ConnectionFields.vue';
 
@@ -22,6 +24,8 @@ const open = defineModel<boolean>('open', { required: true });
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
+const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
+	useInstanceCredentialTest();
 
 provideWorkflowDocumentStore();
 
@@ -75,6 +79,7 @@ async function hydrate() {
 	hydratedType = selectedType.value;
 	hydratedData = { ...fieldsData.value };
 	hydratedSnapshot = snapshot();
+	restoreStoredError(assignedId.value);
 }
 
 watch(
@@ -87,6 +92,7 @@ watch(
 
 function selectType(nextType: string) {
 	if (nextType === selectedType.value) return;
+	credentialTestError.value = '';
 	selectedType.value = nextType;
 	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
 }
@@ -113,8 +119,20 @@ async function handleSave() {
 				: null,
 		);
 		if (!(await store.save())) return;
-		void store.refreshCredentials();
 	}
+	const credentialId = store.settings?.searchCredentialId;
+	if (
+		selectedType.value &&
+		credentialId &&
+		!(await testCredential({
+			id: credentialId,
+			name: 'AI Assistant web search',
+			type: selectedType.value,
+			data: { ...toRaw(fieldsData.value) },
+		}))
+	)
+		return;
+	void store.refreshCredentials();
 	open.value = false;
 }
 </script>
@@ -155,6 +173,13 @@ async function handleSave() {
 				@update="setFieldValue"
 			/>
 		</div>
+		<Banner
+			v-if="credentialTestError"
+			theme="danger"
+			:message="i18n.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
+			:details="credentialTestError"
+			data-test-id="n8n-agent-search-credential-test-error"
+		/>
 
 		<N8nDialogFooter>
 			<N8nButton
@@ -166,8 +191,19 @@ async function handleSave() {
 			<N8nButton
 				variant="solid"
 				size="medium"
-				:label="i18n.baseText('generic.save')"
-				:disabled="store.isSaving || isLoading || readOnly || !isChanged"
+				:label="
+					credentialTestError
+						? i18n.baseText('credentialEdit.credentialConfig.retry')
+						: i18n.baseText('generic.save')
+				"
+				:loading="isTestingCredential"
+				:disabled="
+					store.isSaving ||
+					isTestingCredential ||
+					isLoading ||
+					readOnly ||
+					(!isChanged && !credentialTestError)
+				"
 				data-test-id="n8n-agent-search-dialog-save"
 				@click="handleSave"
 			/>
