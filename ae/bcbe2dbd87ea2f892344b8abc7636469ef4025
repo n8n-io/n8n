@@ -1,9 +1,4 @@
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
-  s_278cbb65f99049::t_7c31e0b4aac9eb 231-233
-  s_278cbb65f99049::t_a9f09c4d7ee747 242,244
-  s_278cbb65f99049::t_01a8a07f6a1040 229-230
-  s_278cbb65f99049::t_2c9a35b6a57a23 259
-  s_278cbb65f99049::t_090fa7384d09c9 503
   s_278cbb65f99049::t_1004403ccef234 767,771
   s_278cbb65f99049::t_8f25dec16e340b 262
 ---
@@ -13,6 +8,9 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
   "base_commit_sha": "aebcbe2dbd87ea2f892344b8abc7636469ef4025",
   "prompts": {},
   "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
     "h_9c8f56e3400786": {
       "author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
