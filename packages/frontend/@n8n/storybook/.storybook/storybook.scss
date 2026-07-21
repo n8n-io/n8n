@@ -11,13 +11,8 @@
 	margin: var(--spacing--5xs);
 }
 
-body,
-body.sb-show-main {
+body {
 	padding: 0 !important;
-}
-
-#storybook-root {
-	background: transparent !important;
 }
 
 .story {
