@@ -2916,6 +2916,8 @@
 	"roles.create.validation.nameMinLength": "Enter a name of at least {min} characters",
 	"roles.instance.action.update.success": "Role updated successfully",
 	"roles.instance.action.update.error": "Error updating role",
+	"roles.instance.action.update.title": "Update permissions for this role?",
+	"roles.instance.action.update.text": "This role is currently assigned to <b>{count} user</b>. Saving will immediately update the permissions this user has. | This role is currently assigned to <b>{count} users</b>. Saving will immediately update the permissions these users have.",
 	"roles.instance.assignments.memberColumn": "Member",
 	"roles.instance.assignments.roleColumn": "Instance role",
 	"roles.instance.assignments.emptyState": "No users have this role yet.",
