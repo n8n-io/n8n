@@ -18,14 +18,6 @@
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
-    "s_44a98ba2784a12": {
-      "agent_id": {
-        "tool": "cursor",
-        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
-        "model": "default"
-      },
-      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
-    },
     "s_60c9025b151770": {
       "agent_id": {
         "tool": "claude",
@@ -41,14 +33,6 @@
         "model": "claude-opus-4-8"
       },
       "human_author": null
-    },
-    "s_b3f23ab76a494c": {
-      "agent_id": {
-        "tool": "codex",
-        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
-        "model": "gpt-5.6-sol"
-      },
-      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
