@@ -60,10 +60,11 @@ const SECRET_VALUE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
 	{ pattern: /\bya29\.[0-9A-Za-z_-]{20,}\b/g, replacement: REDACTED }, // Google OAuth access tokens
 	{ pattern: /\bbearer\s+[A-Za-z0-9._~+/-]{20,}=*/gi, replacement: REDACTED },
 	// Prose-form assignments a key-based redactor can't see inside content
-	// text (`api_key=…`, `password: …`). Keeps the key, scrubs the value.
+	// text (`api_key=…`, `API key: …`, `password: …`). Keeps the key, scrubs
+	// the value; multi-word key names accept space/underscore/hyphen.
 	{
 		pattern:
-			/\b(api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|password|passwd)\b(["']?\s*[=:]\s*["']?)[^\s"',;]{6,}/gi,
+			/\b(api[\s_-]?key|access[\s_-]?token|refresh[\s_-]?token|client[\s_-]?secret|secret|password|passwd)\b(["']?\s*[=:]\s*["']?)[^\s"',;]{6,}/gi,
 		replacement: `$1$2${REDACTED}`,
 	},
 ];

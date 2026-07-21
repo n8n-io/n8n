@@ -39,6 +39,7 @@ describe('redactSecretValuePatterns', () => {
 			/abcdefghijklmnop/,
 		],
 		['a prose api_key assignment', 'set api_key=supersecretvalue and retry', /supersecretvalue/],
+		['a spaced API key phrase', 'my Notion API key: ntn9x8y7z6w5v4 thanks', /ntn9x8y7z6w5v4/],
 		['a prose password assignment', 'password: hunter22222 works', /hunter22222/],
 		['a JSON-in-string secret', 'config is {"client_secret": "abc123def456"}', /abc123def456/],
 	])('scrubs %s', (_name, input, leaked) => {
