@@ -1,0 +1,64 @@
+{
+	"@n8n/ai-utilities": [
+		"@langchain/core",
+		"zod"
+	],
+	"@n8n/ai-workflow-builder": [
+		"@langchain/core",
+		"zod"
+	],
+	"@n8n/backend-network": [
+		"form-data",
+		"zod"
+	],
+	"@n8n/computer-use": [
+		"zod"
+	],
+	"@n8n/config": [
+		"zod"
+	],
+	"@n8n/db": [
+		"zod"
+	],
+	"@n8n/expression-runtime": [
+		"zod"
+	],
+	"@n8n/extension-sdk": [
+		"zod"
+	],
+	"@n8n/instance-ai": [
+		"zod"
+	],
+	"@n8n/mcp-apps": [
+		"zod"
+	],
+	"@n8n/mcp-browser": [
+		"zod"
+	],
+	"@n8n/n8n-nodes-langchain": [
+		"@langchain/core",
+		"form-data",
+		"zod"
+	],
+	"@n8n/permissions": [
+		"zod"
+	],
+	"@n8n/syslog-client": [
+		"zod"
+	],
+	"@n8n/workflow-sdk": [
+		"zod"
+	],
+	"n8n-core": [
+		"@langchain/core",
+		"form-data"
+	],
+	"n8n-nodes-base": [
+		"@langchain/core",
+		"form-data",
+		"zod"
+	],
+	"n8n-workflow": [
+		"form-data"
+	]
+}

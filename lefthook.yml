@@ -32,9 +32,9 @@ pre-commit:
       skip:
         - merge
         - rebase
-    zod_peer_deps_check:
-      glob: 'packages/{@n8n/api-types,workflow,core,@n8n/agents}/package.json'
-      run: node scripts/check-zod-peer-deps.mjs
+    single_instance_peers_check:
+      glob: '**/package.json'
+      run: node scripts/check-single-instance-peers.mjs
       skip:
         - merge
         - rebase
