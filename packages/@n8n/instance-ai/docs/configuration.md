@@ -2,7 +2,8 @@
 
 ## Environment Variables
 
-All Instance AI configuration is done via environment variables.
+Environment variables define Instance AI defaults and fallbacks. On direct self-hosted
+deployments, admins can override the model credential and model name in Instance AI settings.
 
 ### Core
 
@@ -121,6 +122,31 @@ and explicit `key=value`/JSON secret fields, not arbitrary opaque strings, to
 avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
 and `address`, but those have no detection pattern yet — setting them has no
 effect (they were deferred as too false-positive-prone for free-form prose).
+
+## Instance credentials
+
+Admin-selected credentials for Instance AI (model, sandbox, search) are **instance
+credentials**: regular credential rows with `availability: 'instance'`, managed only
+by owners/admins (global scope `credential:manageInstance`) and never usable in the
+workflow canvas. Instance AI resolves them server-side through the
+`InstanceCredentialBroker` under these credential use IDs:
+
+| Credential use ID | Credential types |
+|-------------------|------------------|
+| `instance-ai:model` | LLM provider credentials (`openAiApi`, `anthropicApi`, ...) |
+| `instance-ai:sandbox:daytona` | `daytonaApi` |
+| `instance-ai:sandbox:n8n` | `httpHeaderAuth` (header name must be `x-api-key`) |
+| `instance-ai:search` | `braveSearchApi`, `searXngApi` |
+
+The environment variables above remain the fallback when no credential is selected.
+The broker stores each selection in `instance_credential_assignment`. Its foreign key
+prevents deletion until the assignment is cleared. The model name remains in Instance
+AI settings. The effective model name resolves as the instance setting, then the
+per-user preference, then `N8N_INSTANCE_AI_MODEL`. On cloud and proxy-managed
+deployments these values are managed externally and the API rejects them.
+
+To integrate another instance-level feature with the broker, see
+[instance credentials](../../../cli/src/credentials/instance-credentials.md).
 
 ## Enabling / Disabling
 

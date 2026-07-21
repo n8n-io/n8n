@@ -1040,18 +1040,18 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('listModelCredentials', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('listModelCredentials')).toEqual({
-				scope: 'instanceAi:message',
+	describe('listServiceCredentials', () => {
+		it('should require instanceAi:manage scope', () => {
+			expect(scopeOf('listServiceCredentials')).toEqual({
+				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});
 		});
 	});
 
-	describe('listServiceCredentials', () => {
+	describe('listInstanceModelCredentials', () => {
 		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('listServiceCredentials')).toEqual({
+			expect(scopeOf('listInstanceModelCredentials')).toEqual({
 				scope: 'instanceAi:manage',
 				globalOnly: true,
 			});

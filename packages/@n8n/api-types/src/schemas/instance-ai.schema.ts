@@ -1414,16 +1414,17 @@ export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAi
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
 	permissions: InstanceAiPermissions;
-	mcpServers: string;
 	mcpAccessEnabled: boolean;
 	sandboxEnabled: boolean;
 	sandboxProvider: InstanceAiSandboxProvider;
-	sandboxImage: string;
-	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	modelCredentialId: string | null;
+	modelName: string | null;
+	modelEnvConfigured: boolean;
+	sandboxEnvConfigured: boolean;
+	searchEnvConfigured: boolean;
 	localGatewayDisabled: boolean;
 	browserUseEnabled: boolean;
 }
@@ -1441,6 +1442,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	modelCredentialId: z.string().nullable().optional(),
+	modelName: z.string().trim().min(1).nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 	browserUseEnabled: z.boolean().optional(),
 }) {}
