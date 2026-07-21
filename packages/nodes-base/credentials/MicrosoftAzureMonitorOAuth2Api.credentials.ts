@@ -118,11 +118,14 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 				'Scopes that should be enabled. Use <code>{resource}</code> as a placeholder that will be replaced with the Resource value.',
 		},
 		{
+			// The untouched prefill counts as "use the defaults" so toggling custom
+			// scopes on without edits stays a no-op under the Authorization Code
+			// grant too, where the default scope is deliberately empty
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{(($self["customScopes"] && $self["enabledScopes"]) ? $self["enabledScopes"] : ($self["grantType"] === "clientCredentials" ? "{resource}/.default" : "")).replace(/\\{resource\\}/g, $self["resource"])}}',
+				'={{(($self["customScopes"] && $self["enabledScopes"] && $self["enabledScopes"] !== "{resource}/.default") ? $self["enabledScopes"] : ($self["grantType"] === "clientCredentials" ? "{resource}/.default" : "")).replace(/\\{resource\\}/g, $self["resource"])}}',
 		},
 		{
 			displayName: 'Authentication',
