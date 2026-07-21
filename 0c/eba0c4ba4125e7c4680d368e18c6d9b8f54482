@@ -1,0 +1,110 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewStatusSync.ts
+  s_b34abcbd386402::t_24b4292bed3e97 1-11,13-21,23-30,36-43,45-46,48-50,52-56,58-60
+  s_e0d6b46d5a1cd6::t_c81c77616ab3e3 31-35,44,47,51
+  s_e0d6b46d5a1cd6::t_e196f351177dc7 12
+  s_b34abcbd386402::t_4ea527af620494 22
+  s_b34abcbd386402::t_cfcd132e94eb8c 57
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_b34abcbd386402::t_1c438986b38dae 529-557
+  s_b34abcbd386402::t_6e9e651eaf8905 203-204
+  s_94fa4ed7d7b038::t_ba46ed08836d87 228-229
+  s_b34abcbd386402::t_44fb5c4d699e98 83
+  s_b34abcbd386402::t_bb1f01e4eedee4 25,32-35
+  s_b34abcbd386402::t_3211510b55e36f 558-559
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_b34abcbd386402::t_c224e550ecf7e2 8,20,29-30,43
+  s_b34abcbd386402::t_973fb5ea005143 107-108,116-117
+  s_94fa4ed7d7b038::t_16e816b1f011f0 54-55
+  s_b34abcbd386402::t_af3b788f27acf8 79-80,95
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue
+  s_b34abcbd386402::t_5f6185aae32256 36,49,58-62
+  s_b34abcbd386402::t_f3d22933afbab9 7,15-17,20-24
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewRequiredToggle.test.ts
+  s_b34abcbd386402::t_3b3299a3d9fcaa 12,15-17
+  s_b34abcbd386402::t_2e0ac133caf0d3 106-107,111-115,122-125,127-148,150-161
+  s_b34abcbd386402::t_e4182464ddfed0 108-110,116-121
+  s_b34abcbd386402::t_dc9878bfdf29bf 126,149
+  s_b34abcbd386402::t_2f1c323b374b71 6-7,11
+  s_6638f09b589e97::t_17e1ef4d104334 18,162-165
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewStatusSync.test.ts
+  s_b34abcbd386402::t_580233be25b07a 40
+  s_b34abcbd386402::t_a726500e2f8c4c 1-39,41-67,69-70,75-116,118-125,127-174
+  s_b34abcbd386402::t_f619928cac5756 68
+  s_b34abcbd386402::t_ada1c191fa7c9b 71-74
+  s_e0d6b46d5a1cd6::t_8ae130818dd733 117
+  s_e0d6b46d5a1cd6::t_8777d63396adcc 126
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b34abcbd386402::t_f88b437a50481a 4379
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.ts
+  s_b34abcbd386402::t_c65fc974c92a84 5
+  s_b34abcbd386402::t_0a213d7d8a6e97 1-4,6-16,24,28-29,33,38,41-47,50-51,53-57,59-61,66-72,82
+  s_b34abcbd386402::t_76965219875589 34-37,48,52
+  s_b34abcbd386402::t_deb945a61cf2ab 39-40,49,58,62-65
+  s_b34abcbd386402::t_7357f101878346 73-81
+  s_b34abcbd386402::t_0329c67ea2c29f 17-23
+  s_e0d6b46d5a1cd6::t_17c2dd1353b0d1 31
+  h_9c8f56e3400786 25-27,30,32
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_b34abcbd386402::t_6f12f1fad31f7a 38
+  s_b34abcbd386402::t_c9a197fb11ecd1 17
+  s_b34abcbd386402::t_3ae8378e367c22 98,103-104
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_94fa4ed7d7b038::t_68ec38eb0d38db 3
+  s_b34abcbd386402::t_7a44088edd698a 17-18,20-26
+  s_94fa4ed7d7b038::t_6e4f5e0e8674de 1-2,4-5,32-33
+  s_94fa4ed7d7b038::t_3011dbbd079efb 19
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_b34abcbd386402::t_f734c70d761acc 97,100-102
+  s_b34abcbd386402::t_5f76aa7d690ca8 59-60
+  s_b34abcbd386402::t_87c86684791160 83
+  s_b34abcbd386402::t_e942bf4683169c 270-273
+  s_b34abcbd386402::t_f65d763798858f 103
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewStatus.store.test.ts
+  s_b34abcbd386402::t_674eeeb742d79b 87-131
+  s_b34abcbd386402::t_5a3475819703ac 1-86,132-175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0ceba0c4ba4125e7c4680d368e18c6d9b8f54482",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6638f09b589e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5e3f01e-f690-4590-9a30-a5e2bd26c393",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_94fa4ed7d7b038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6d271a69-d48a-40c6-b6a3-5630b148db23",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_b34abcbd386402": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4dc6fdb7-ff5f-45a8-98bf-0345038d38d6",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_e0d6b46d5a1cd6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9bef762-10a3-4006-8b74-acefd3594aab",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
