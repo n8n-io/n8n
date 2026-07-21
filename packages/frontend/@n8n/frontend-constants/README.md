@@ -22,12 +22,15 @@ multiple front-end packages need without depending on the `editor-ui` app.
 
 ## Design notes
 
-Constants are declared as `as const` objects with a derived string-literal union
-type — never as `const enum`. A `const enum` becomes an *ambient* const enum in
-this package's emitted declarations, which downstream packages compiled with
-`isolatedModules: true` cannot read (TypeScript error TS2748). The `as const`
-form emits a real runtime value plus a portable union type, so it is safe to
-consume across the package boundary.
+Enum-like constants are declared as a plain `enum` — never as a `const enum`. A
+`const enum` becomes an *ambient* const enum in this package's emitted
+declarations, which downstream packages compiled with `isolatedModules: true`
+cannot read (TypeScript error TS2748). A plain `enum` emits a regular
+`declare enum` backed by a real runtime object, so it is safe to consume from
+`dist` across the package boundary, and it preserves the nominal enum-member
+types the rest of the front end relies on (so relocating a value such as `VIEWS`
+here is behavior-preserving). The repo lint default prefers `const enum`, so the
+`no-restricted-syntax` rule is relaxed for these files in `eslint.config.mjs`.
 
 ## Contributing
 
