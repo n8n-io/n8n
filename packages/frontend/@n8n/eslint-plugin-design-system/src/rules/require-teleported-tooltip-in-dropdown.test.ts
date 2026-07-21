@@ -27,6 +27,10 @@ ruleTester.run('require-teleported-tooltip-in-dropdown', RequireTeleportedToolti
 		},
 		{
 			filename: 'Component.vue',
+			code: vue('<N8nDropdownMenu><N8nTooltip teleported="" /></N8nDropdownMenu>'),
+		},
+		{
+			filename: 'Component.vue',
 			code: vue('<N8nDropdownMenu><N8nTooltip teleported="true" /></N8nDropdownMenu>'),
 		},
 		{
