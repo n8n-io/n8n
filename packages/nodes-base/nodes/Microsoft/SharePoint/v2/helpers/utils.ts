@@ -5,6 +5,30 @@ import { NodeOperationError } from 'n8n-workflow';
 export const LIST_SIMPLIFY_SELECT =
 	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
 
+/** v1's item Simplify $select list — the trimmed top-level fields v2 keeps for an item Get. */
+export const ITEM_SIMPLIFY_SELECT = 'id,createdDateTime,lastModifiedDateTime,webUrl';
+
+/**
+ * Validates and trims a value used verbatim as a URL path segment (a list or
+ * item ID/title). Rejects empty, `.` and `..` — each would change the request
+ * shape (`/items/` → the collection, `/items/.` → the collection, `/items/..`
+ * → the parent list) instead of addressing one resource.
+ */
+export function assertPathSegment(node: INode, value: string, paramName: string): string {
+	const trimmed = value.trim();
+	if (trimmed === '') {
+		throw new NodeOperationError(node, `The '${paramName}' parameter is empty`, {
+			description: `Set the ${paramName.toLowerCase()} and try again.`,
+		});
+	}
+	if (trimmed === '.' || trimmed === '..') {
+		throw new NodeOperationError(node, `The '${paramName}' value '${trimmed}' is not valid`, {
+			description: `Set a specific ${paramName.toLowerCase()} and try again.`,
+		});
+	}
+	return trimmed;
+}
+
 /** Shape shared by every Graph collection reply a listSearch method here consumes. */
 export type GraphSearchReply<T> = { '@odata.nextLink'?: string; value?: T[] };
 
