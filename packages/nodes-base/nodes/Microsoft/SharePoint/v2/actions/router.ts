@@ -1,5 +1,6 @@
 import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
+import * as file from './file';
 import * as list from './list';
 import type { MicrosoftSharePointType } from './node.type';
 
@@ -23,6 +24,19 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (sharePointTypeData.resource) {
+				case 'file':
+					if (!(sharePointTypeData.operation in file)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not supported!`,
+						);
+					}
+					responseData = await file[sharePointTypeData.operation].execute.call(
+						this,
+						i,
+						siteIdCache,
+					);
+					break;
 				case 'list':
 					if (!(sharePointTypeData.operation in list)) {
 						throw new NodeOperationError(

@@ -88,7 +88,7 @@ interface CreateSnapshotParams {
 }
 
 interface FakeSnapshotApi {
-	get: Mock<(...args: [string]) => Promise<{ name: string }>>;
+	get: Mock<(...args: [string]) => Promise<{ name: string; state: string; errorReason?: string }>>;
 	create: Mock<(...args: [CreateSnapshotParams, unknown?]) => Promise<{ name: string }>>;
 }
 
@@ -135,7 +135,9 @@ function createRuntimeSkillSource(skillsHash: string): RuntimeSkillSource {
 function makeFakeDaytona(): FakeDaytona {
 	return {
 		snapshot: {
-			get: vi.fn<(...args: [string]) => Promise<{ name: string }>>(),
+			get: vi
+				.fn<(...args: [string]) => Promise<{ name: string; state: string; errorReason?: string }>>()
+				.mockResolvedValue({ name: SNAPSHOT_NAME, state: 'active' }),
 			create: vi.fn<(...args: [CreateSnapshotParams, unknown?]) => Promise<{ name: string }>>(),
 		},
 	};
@@ -260,6 +262,7 @@ describe('SnapshotManager.createSnapshot', () => {
 
 		expect(result).toBe(SNAPSHOT_NAME);
 		expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
+		expect(daytona.snapshot.get).toHaveBeenCalledWith(SNAPSHOT_NAME);
 		const callArgs = daytona.snapshot.create.mock.calls[0][0];
 		expect(callArgs.name).toBe(SNAPSHOT_NAME);
 		expect(callArgs.image).toBeDefined();
@@ -285,6 +288,43 @@ describe('SnapshotManager.createSnapshot', () => {
 		const result = await manager.createSnapshot(daytona as never);
 
 		expect(result).toBe(SNAPSHOT_NAME);
+	});
+
+	it('throws when the created snapshot is in a failed state', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		daytona.snapshot.create.mockResolvedValue({ name: SNAPSHOT_NAME });
+		daytona.snapshot.get.mockResolvedValue({
+			name: SNAPSHOT_NAME,
+			state: 'build_failed',
+			errorReason: 'npm install exited 1',
+		});
+
+		await expect(manager.createSnapshot(daytona as never)).rejects.toThrow(
+			`Versioned Daytona snapshot "${SNAPSHOT_NAME}" exists but is unusable (state: build_failed, reason: npm install exited 1)`,
+		);
+	});
+
+	it('waits for an existing snapshot that is still building', async () => {
+		const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		const daytona = makeFakeDaytona();
+		daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
+		daytona.snapshot.get
+			.mockResolvedValueOnce({ name: SNAPSHOT_NAME, state: 'building' })
+			.mockResolvedValue({ name: SNAPSHOT_NAME, state: 'active' });
+
+		// Warm the image cache before faking timers; staging does real fs work.
+		await manager.ensureImage();
+		vi.useFakeTimers();
+		try {
+			const promise = manager.createSnapshot(daytona as never);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toBe(SNAPSHOT_NAME);
+			expect(daytona.snapshot.get).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('throws on transient errors', async () => {

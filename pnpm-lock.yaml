@@ -4894,6 +4894,9 @@ importers:
       '@n8n/composables':
         specifier: workspace:*
         version: link:../composables
+      '@n8n/frontend-utils':
+        specifier: workspace:*
+        version: link:../frontend-utils
       '@n8n/utils':
         specifier: workspace:*
         version: link:../../../@n8n/utils
