@@ -185,13 +185,17 @@ export class N8nPackagesService {
 			new Set(allWorkflowsInPackage.map(({ id }) => id)),
 		);
 
+		// The auto-add's projectTargetsById is a superset of the project targets from the project export result
+		// that's why it takes precedence when both are present.
+		const projectTargetsById =
+			autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById;
+
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,
 			requirements: requirements.credentials,
 			writer,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
-			projectTargetsById:
-				autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById,
+			projectTargetsById,
 		});
 
 		const dataTableExportResult = await this.dataTableExporter.export({
@@ -199,10 +203,7 @@ export class N8nPackagesService {
 			requirements: requirements.dataTables,
 			writer,
 			// Routes project-owned data tables into their project namespace; others stay top-level.
-			// The auto-add export project targets are a superset of the project targets from the project export result.
-			// that's why they take precedence when both are present.
-			projectTargetsById:
-				autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById,
+			projectTargetsById,
 		});
 
 		const workflowRequirementExportResult = this.workflowRequirementExporter.export({
@@ -215,8 +216,7 @@ export class N8nPackagesService {
 			requirements: requirements.variables,
 			writer,
 			includeVariableValues,
-			projectTargetsById:
-				autoAddExportResult?.projectTargetsById ?? projectExportResult?.projectTargetsById,
+			projectTargetsById,
 		});
 
 		const manifestRequirements = this.buildManifestRequirements({
