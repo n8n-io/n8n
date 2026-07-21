@@ -91,6 +91,13 @@ export class StaticWorkflowDependencyResolver {
 		return originsByWorkflowId;
 	}
 
+	/**
+	 * BFS: copy each workflow's origins onto the static sub-workflows it
+	 * references. A child is re-queued only when its origin set grows (e.g. a
+	 * second path adds `folder` after it already had `top-level`), so richer
+	 * placement context reaches transitive dependents. `Set.add` is a no-op when
+	 * the id is already queued; the live map is read on dequeue.
+	 */
 	private propagateOrigins(
 		originsByWorkflowId: Map<string, Set<WorkflowDependencyOrigin>>,
 		requirements: WorkflowSubWorkflowRequirement[],
@@ -103,30 +110,33 @@ export class StaticWorkflowDependencyResolver {
 			requirementsByWorkflowId.set(requirement.workflowId, current);
 		}
 
-		const pendingWorkflowIds = [...originsByWorkflowId.keys()];
-		const processedOriginKeysByWorkflowId = new Map<string, string>();
+		const pending = new Set(originsByWorkflowId.keys());
 
-		while (pendingWorkflowIds.length > 0) {
-			const workflowId = pendingWorkflowIds.shift()!;
+		while (pending.size > 0) {
+			const workflowId = pending.values().next().value!;
+			pending.delete(workflowId);
+
 			const origins = originsByWorkflowId.get(workflowId);
+
+			// in principle this should never happen.
 			if (!origins) continue;
 
-			const originKey = this.originKey(origins);
-			if (processedOriginKeysByWorkflowId.get(workflowId) === originKey) continue;
-			processedOriginKeysByWorkflowId.set(workflowId, originKey);
+			for (const { referencedWorkflowId } of requirementsByWorkflowId.get(workflowId) ?? []) {
+				const childOrigins =
+					originsByWorkflowId.get(referencedWorkflowId) ?? new Set<WorkflowDependencyOrigin>();
 
-			for (const requirement of requirementsByWorkflowId.get(workflowId) ?? []) {
-				const nextOrigins =
-					originsByWorkflowId.get(requirement.referencedWorkflowId) ??
-					new Set<WorkflowDependencyOrigin>();
-				const previousOriginKey = this.originKey(nextOrigins);
+				// merge parent origins into child origins, so that the child inherits the parent's origins.
+				let changed = false;
 				for (const origin of origins) {
-					nextOrigins.add(origin);
+					if (!childOrigins.has(origin)) {
+						childOrigins.add(origin);
+						changed = true;
+					}
 				}
-				originsByWorkflowId.set(requirement.referencedWorkflowId, nextOrigins);
+				originsByWorkflowId.set(referencedWorkflowId, childOrigins);
 
-				if (this.originKey(nextOrigins) !== previousOriginKey) {
-					pendingWorkflowIds.push(requirement.referencedWorkflowId);
+				if (changed) {
+					pending.add(referencedWorkflowId);
 				}
 			}
 		}
@@ -207,10 +217,6 @@ export class StaticWorkflowDependencyResolver {
 		if (origins?.has('project')) return 'project';
 		if (origins?.has('folder')) return 'folder';
 		return 'top-level';
-	}
-
-	private originKey(origins: Set<WorkflowDependencyOrigin>): string {
-		return [...origins].sort().join('|');
 	}
 
 	private async findExportableWorkflows(
