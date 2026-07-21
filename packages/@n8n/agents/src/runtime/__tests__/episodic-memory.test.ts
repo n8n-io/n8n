@@ -7,6 +7,7 @@ import type {
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySourceForEntry,
 } from '../../types';
+import { isZodSchema, zodToJsonSchema } from '../../utils/zod';
 import {
 	createMemoryTool,
 	getEpisodicMemoryScope,
@@ -164,6 +165,45 @@ describe('rankEpisodicMemoryEntries', () => {
 });
 
 describe('createMemoryTool', () => {
+	it('exposes a provider-compatible object input schema', () => {
+		const tool = createMemoryTool({
+			memory: new InMemoryMemory(),
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+
+		expect(zodToJsonSchema(tool.inputSchema)).toMatchObject({
+			type: 'object',
+			properties: {
+				operation: { type: 'string' },
+				query: { type: 'string' },
+				content: { type: 'string' },
+			},
+		});
+	});
+
+	it('requires the input field for the selected memory operation', () => {
+		const tool = createMemoryTool({
+			memory: new InMemoryMemory(),
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+		});
+		if (!isZodSchema(tool.inputSchema)) throw new Error('Expected a Zod input schema');
+
+		expect(
+			tool.inputSchema.safeParse({ operation: 'recall', query: 'prior decisions' }).success,
+		).toBe(true);
+		expect(tool.inputSchema.safeParse({ operation: 'record', content: 'Use pnpm.' }).success).toBe(
+			true,
+		);
+		expect(tool.inputSchema.safeParse({ operation: 'recall', content: 'Use pnpm.' }).success).toBe(
+			false,
+		);
+		expect(
+			tool.inputSchema.safeParse({ operation: 'record', query: 'prior decisions' }).success,
+		).toBe(false);
+	});
+
 	it('exposes one memory tool with guidance for deliberate record and recall', () => {
 		const memory = new InMemoryMemory();
 		const tool = createMemoryTool({

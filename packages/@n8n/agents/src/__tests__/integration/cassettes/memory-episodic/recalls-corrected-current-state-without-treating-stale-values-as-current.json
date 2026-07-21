@@ -28,38 +28,27 @@
 					"name": "memory",
 					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"anyOf": [
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "recall"
-									},
-									"query": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "query"],
-								"additionalProperties": false
+						"type": "object",
+						"properties": {
+							"operation": {
+								"type": "string",
+								"enum": ["recall", "record"],
+								"description": "The memory operation to perform."
 							},
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "record"
-									},
-									"content": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "content"],
-								"additionalProperties": false
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The prior context to find. Required when operation is \"recall\"."
+							},
+							"content": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The durable information to save. Required when operation is \"record\"."
 							}
-						],
+						},
+						"required": ["operation"],
+						"additionalProperties": false,
+						"description": "Use recall with query, or record with content.",
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -418,38 +407,27 @@
 					"name": "memory",
 					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"anyOf": [
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "recall"
-									},
-									"query": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "query"],
-								"additionalProperties": false
+						"type": "object",
+						"properties": {
+							"operation": {
+								"type": "string",
+								"enum": ["recall", "record"],
+								"description": "The memory operation to perform."
 							},
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "record"
-									},
-									"content": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "content"],
-								"additionalProperties": false
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The prior context to find. Required when operation is \"recall\"."
+							},
+							"content": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The durable information to save. Required when operation is \"record\"."
 							}
-						],
+						},
+						"required": ["operation"],
+						"additionalProperties": false,
+						"description": "Use recall with query, or record with content.",
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -583,38 +561,27 @@
 					"name": "memory",
 					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"anyOf": [
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "recall"
-									},
-									"query": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "query"],
-								"additionalProperties": false
+						"type": "object",
+						"properties": {
+							"operation": {
+								"type": "string",
+								"enum": ["recall", "record"],
+								"description": "The memory operation to perform."
 							},
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "record"
-									},
-									"content": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "content"],
-								"additionalProperties": false
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The prior context to find. Required when operation is \"recall\"."
+							},
+							"content": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The durable information to save. Required when operation is \"record\"."
 							}
-						],
+						},
+						"required": ["operation"],
+						"additionalProperties": false,
+						"description": "Use recall with query, or record with content.",
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -1013,38 +980,27 @@
 					"name": "memory",
 					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"anyOf": [
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "recall"
-									},
-									"query": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "query"],
-								"additionalProperties": false
+						"type": "object",
+						"properties": {
+							"operation": {
+								"type": "string",
+								"enum": ["recall", "record"],
+								"description": "The memory operation to perform."
 							},
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "record"
-									},
-									"content": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "content"],
-								"additionalProperties": false
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The prior context to find. Required when operation is \"recall\"."
+							},
+							"content": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The durable information to save. Required when operation is \"record\"."
 							}
-						],
+						},
+						"required": ["operation"],
+						"additionalProperties": false,
+						"description": "Use recall with query, or record with content.",
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -1182,38 +1138,27 @@
 					"name": "memory",
 					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"anyOf": [
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "recall"
-									},
-									"query": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "query"],
-								"additionalProperties": false
+						"type": "object",
+						"properties": {
+							"operation": {
+								"type": "string",
+								"enum": ["recall", "record"],
+								"description": "The memory operation to perform."
 							},
-							{
-								"type": "object",
-								"properties": {
-									"operation": {
-										"type": "string",
-										"const": "record"
-									},
-									"content": {
-										"type": "string",
-										"minLength": 1
-									}
-								},
-								"required": ["operation", "content"],
-								"additionalProperties": false
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The prior context to find. Required when operation is \"recall\"."
+							},
+							"content": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The durable information to save. Required when operation is \"record\"."
 							}
-						],
+						},
+						"required": ["operation"],
+						"additionalProperties": false,
+						"description": "Use recall with query, or record with content.",
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}

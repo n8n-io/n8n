@@ -39,16 +39,42 @@ const MEMORY_RECORD_LOCK_TTL_MS = 30_000;
 const MEMORY_RECORD_LOCK_WAIT_MS = 10_000;
 const MEMORY_RECORD_LOCK_RETRY_MS = 100;
 
-const MemoryInputSchema = z.discriminatedUnion('operation', [
-	z.object({
-		operation: z.literal('recall'),
-		query: z.string().min(1),
-	}),
-	z.object({
-		operation: z.literal('record'),
-		content: z.string().min(1),
-	}),
-]);
+const MemoryInputSchema = z
+	.object({
+		operation: z.enum(['recall', 'record']).describe('The memory operation to perform.'),
+		query: z
+			.string()
+			.min(1)
+			.optional()
+			.describe('The prior context to find. Required when operation is "recall".'),
+		content: z
+			.string()
+			.min(1)
+			.optional()
+			.describe('The durable information to save. Required when operation is "record".'),
+	})
+	.superRefine((input, ctx) => {
+		if (input.operation === 'recall' && !input.query) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'Query is required for the recall operation.',
+				path: ['query'],
+			});
+		}
+		if (input.operation === 'record' && !input.content) {
+			ctx.addIssue({
+				code: 'custom',
+				message: 'Content is required for the record operation.',
+				path: ['content'],
+			});
+		}
+	})
+	.transform((input) =>
+		input.operation === 'recall'
+			? { operation: input.operation, query: input.query ?? '' }
+			: { operation: input.operation, content: input.content ?? '' },
+	)
+	.describe('Use recall with query, or record with content.');
 
 const RecallMemoryOutputSchema = z.object({
 	entries: z.array(
