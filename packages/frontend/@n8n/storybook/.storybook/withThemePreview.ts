@@ -17,10 +17,20 @@ function panelMinHeight(value: unknown): string | undefined {
 	return undefined;
 }
 
+function themePreviewMinHeight(parameters: Record<string, unknown>): unknown {
+	const themePreview = parameters.themePreview;
+	if (typeof themePreview !== 'object' || themePreview === null || !('minHeight' in themePreview)) {
+		return undefined;
+	}
+	return themePreview.minHeight;
+}
+
+function isTheme(value: string | undefined): value is Theme {
+	return value === 'light' || value === 'dark';
+}
+
 export const withThemePreview: Decorator = (story, context) => {
-	const minHeight = panelMinHeight(
-		(context.parameters.themePreview as { minHeight?: number | string } | undefined)?.minHeight,
-	);
+	const minHeight = panelMinHeight(themePreviewMinHeight(context.parameters));
 
 	return {
 		components: { storyComponent: story() },
@@ -36,8 +46,12 @@ export const withThemePreview: Decorator = (story, context) => {
 		},
 		methods: {
 			onPanelInteract(event: Event) {
-				const theme = (event.currentTarget as HTMLElement).dataset.theme;
-				if (theme === 'light' || theme === 'dark') {
+				const target = event.currentTarget;
+				if (!(target instanceof HTMLElement)) {
+					return;
+				}
+				const theme = target.dataset.theme;
+				if (isTheme(theme)) {
 					applyBodyTheme(theme);
 				}
 			},
