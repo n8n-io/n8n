@@ -1,7 +1,10 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
 
+import { searchDriveItems } from '../helpers/driveItemSearch';
 import { resolveSiteId } from '../site';
-import { microsoftApiRequest } from '../transport';
+
+/** Hide gate: file fields stay hidden until a folder is chosen. */
+export const untilFolderSelected = { folder: [''] };
 
 export const folderRLC: INodeProperties = {
 	displayName: 'Parent Folder',
@@ -32,16 +35,10 @@ export const folderRLC: INodeProperties = {
 	],
 };
 
-type FolderSearchReply = {
-	'@odata.nextLink'?: string;
-	value?: Array<{ id?: string; name?: string; folder?: unknown }>;
-};
-
-// A drive page can yield nothing to show (files-only, or no filter match); those pages are
-// walked here in one call — the editor would otherwise re-request per empty page — capped
-// so a single dropdown request can't crawl an arbitrarily large drive
-const SEARCH_PAGE_LIMIT = 10;
-
+/**
+ * Lists the folders of the chosen site's default document library. The typed
+ * filter is applied to the fetched results, walking further pages when needed.
+ */
 export async function getFolders(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -49,43 +46,16 @@ export async function getFolders(
 ): Promise<INodeListSearchResult> {
 	const siteId = paginationToken ? '' : await resolveSiteId.call(this, 0);
 
-	const filterLower = filter?.toLowerCase();
-	const results: INodeListSearchResult['results'] = [];
-	let nextToken = paginationToken;
-	let pagesLeft = SEARCH_PAGE_LIMIT;
-
-	do {
-		const response = nextToken
-			? ((await microsoftApiRequest.call(this, 'GET', '', {}, {}, nextToken)) as FolderSearchReply)
-			: ((await microsoftApiRequest.call(
-					this,
-					'GET',
-					`/v1.0/sites/${encodeURIComponent(siteId)}/drive/items`,
-					{},
-					{
-						$select: 'id,name,folder',
-						// Graph rejects this enumeration without a $filter but ignores this
-						// one, so it must stay; the reply is re-checked below
-						$filter: 'folder ne null',
-					},
-				)) as FolderSearchReply);
-
-		for (const item of response.value ?? []) {
-			if (!item.id || !item.folder) continue;
-			if (filterLower && !(item.name ?? '').toLowerCase().includes(filterLower)) continue;
-			results.push({
-				name: item.name ?? String(item.id),
-				value: String(item.id),
-			});
-		}
-
-		nextToken = response['@odata.nextLink'];
-		pagesLeft -= 1;
-	} while (
-		nextToken !== undefined &&
-		pagesLeft > 0 &&
-		(filterLower !== undefined || results.length === 0)
-	);
-
-	return { results, paginationToken: nextToken };
+	return await searchDriveItems.call(this, {
+		endpoint: `/v1.0/sites/${encodeURIComponent(siteId)}/drive/items`,
+		qs: {
+			$select: 'id,name,folder',
+			// `folder` isn't a documented filterable property, so the reply is
+			// re-checked by `keep`; when honored this just trims the payload
+			$filter: 'folder ne null',
+		},
+		keep: (item) => Boolean(item.folder),
+		filter,
+		paginationToken,
+	});
 }
