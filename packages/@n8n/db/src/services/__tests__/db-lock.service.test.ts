@@ -67,14 +67,19 @@ describe('DbLockService', () => {
 			expect(mockTx.query).toHaveBeenCalledWith('SELECT pg_advisory_xact_lock($1)', [1001]);
 		});
 
+		// A Postgres lock_timeout surfaces with SQLSTATE 55P03 (lock_not_available).
+		// TypeORM exposes the driver's SQLSTATE at `driverError.code`.
+		const makeLockTimeoutError = (message = 'canceling statement due to lock timeout') =>
+			new QueryFailedError(
+				'SELECT pg_advisory_xact_lock($1)',
+				[1001],
+				Object.assign(new Error(message), { code: '55P03' }),
+			);
+
 		it('should throw OperationalError when lock timeout is exceeded', async () => {
 			databaseConfig.type = 'postgresdb';
 			const fn = vi.fn();
-			const timeoutError = new QueryFailedError(
-				'SELECT pg_advisory_xact_lock($1)',
-				[1001],
-				new Error('canceling statement due to lock timeout'),
-			);
+			const timeoutError = makeLockTimeoutError();
 
 			// First call succeeds (SET LOCAL), second call throws (advisory lock)
 			mockTx.query.mockResolvedValueOnce(undefined).mockRejectedValueOnce(timeoutError);
@@ -88,17 +93,52 @@ describe('DbLockService', () => {
 		it('should include timeout details in OperationalError message', async () => {
 			databaseConfig.type = 'postgresdb';
 			const fn = vi.fn();
-			const timeoutError = new QueryFailedError(
-				'SELECT pg_advisory_xact_lock($1)',
-				[1001],
-				new Error('canceling statement due to lock timeout'),
-			);
+			const timeoutError = makeLockTimeoutError();
 
 			mockTx.query.mockResolvedValueOnce(undefined).mockRejectedValueOnce(timeoutError);
 
 			await expect(service.withLock(1001, fn, { timeoutMs: 5000 })).rejects.toThrow(
 				/Timed out waiting for DbLock 1001 after 5000ms/,
 			);
+		});
+
+		// Load-bearing: classification is by SQLSTATE 55P03, not message text.
+		// Postgres localizes messages via `lc_messages`, so a localized timeout
+		// message contains none of the English words but must still be wrapped.
+		// If the guard reverted to `message.includes('lock timeout')`, this fails.
+		it('should classify a localized (non-English) lock timeout by its SQLSTATE code', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn();
+			const localizedTimeout = makeLockTimeoutError(
+				'Abbruch der Anweisung wegen Zeitüberschreitung der Sperre',
+			);
+
+			mockTx.query.mockResolvedValueOnce(undefined).mockRejectedValueOnce(localizedTimeout);
+
+			await expect(service.withLock(1001, fn, { timeoutMs: 5000 })).rejects.toThrow(
+				/Timed out waiting for DbLock 1001 after 5000ms/,
+			);
+			expect(fn).not.toHaveBeenCalled();
+		});
+
+		// Load-bearing in the other direction: a different error whose message
+		// merely contains "lock timeout" must NOT be misclassified as a timeout.
+		it('should not wrap a non-55P03 error whose message mentions lock timeout', async () => {
+			databaseConfig.type = 'postgresdb';
+			const fn = vi.fn();
+			const otherError = new QueryFailedError(
+				'SELECT pg_advisory_xact_lock($1)',
+				[1001],
+				Object.assign(new Error('failed to apply lock timeout setting'), { code: '42601' }),
+			);
+
+			mockTx.query.mockResolvedValueOnce(undefined).mockRejectedValueOnce(otherError);
+
+			const thrown = await service.withLock(1001, fn, { timeoutMs: 5000 }).catch((e: unknown) => e);
+
+			expect(thrown).toBe(otherError);
+			expect(thrown).not.toBeInstanceOf(OperationalError);
+			expect(fn).not.toHaveBeenCalled();
 		});
 
 		it('should propagate non-timeout errors unchanged', async () => {

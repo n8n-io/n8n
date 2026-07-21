@@ -20,6 +20,19 @@ export const enum DbLock {
 type ReleaseFn = () => void;
 
 /**
+ * Whether `error` is a Postgres lock-timeout (SQLSTATE `55P03`,
+ * `lock_not_available`). Classified by the driver's SQLSTATE code rather than
+ * the message text: Postgres localizes error messages via `lc_messages`, so a
+ * substring match on the human-readable message misses non-English servers.
+ */
+function isLockTimeoutError(error: unknown): error is QueryFailedError {
+	if (!(error instanceof QueryFailedError)) return false;
+	const driverError: unknown = error.driverError;
+	if (typeof driverError !== 'object' || driverError === null) return false;
+	return 'code' in driverError && driverError.code === '55P03';
+}
+
+/**
  * Opaque ownership token created on lock acquisition. The release function
  * captures this token and only releases if it still matches `held`, which
  * prevents a stale release (from acquisition A) from corrupting a later
@@ -120,7 +133,7 @@ export class DbLockService {
 			try {
 				await tx.query('SELECT pg_advisory_xact_lock($1)', [lockId]);
 			} catch (error) {
-				if (error instanceof QueryFailedError && error.message.includes('lock timeout')) {
+				if (isLockTimeoutError(error)) {
 					throw new OperationalError(
 						`Timed out waiting for DbLock ${lockId} after ${options?.timeoutMs}ms`,
 						{ cause: error },
