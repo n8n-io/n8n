@@ -37,6 +37,13 @@ export interface CreateSnapshotOptions {
 
 const DAYTONA_WORKSPACE_BAKE_ROOT = '/tmp/n8n-workspace-bake';
 const SNAPSHOT_WORKSPACE_LAYOUT_DIRS = ['src', 'chunks', 'node-types'] as const;
+const SNAPSHOT_BUILDING_STATES = new Set(['building', 'pending', 'pulling']);
+const SNAPSHOT_VERIFY_POLL_MS = 5_000;
+const DEFAULT_SNAPSHOT_VERIFY_TIMEOUT_S = 1_800;
+
+async function sleep(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
 function isAlreadyExistsError(error: unknown): error is TDaytonaError {
 	const { DaytonaError } = loadDaytona();
 	if (!(error instanceof DaytonaError)) return false;
@@ -127,14 +134,55 @@ export class SnapshotManager {
 
 		try {
 			await daytona.snapshot.create({ name, image: await this.ensureImage() }, options);
-			this.logger.info('Created versioned Daytona snapshot', { name });
-			return name;
+			this.logger.info('Created versioned Daytona snapshot; verifying it is usable', { name });
 		} catch (error) {
 			if (isAlreadyExistsError(error)) {
-				this.logger.info('Versioned Daytona snapshot already exists', { name });
-				return name;
+				this.logger.info('Versioned Daytona snapshot already exists; verifying it is usable', {
+					name,
+				});
+			} else {
+				throw error;
 			}
-			throw error;
+		}
+
+		await this.verifySnapshot(daytona, name, options?.timeout);
+		return name;
+	}
+
+	/**
+	 * Verify that the snapshot is actually usable. A snapshot build can finish in
+	 * `error`/`build_failed` state; returning before it is active would let a release
+	 * ship without a working snapshot. Waits out in-progress builds, throws on any
+	 * unusable state.
+	 */
+	private async verifySnapshot(
+		daytona: Daytona,
+		name: string,
+		timeoutS = DEFAULT_SNAPSHOT_VERIFY_TIMEOUT_S,
+	): Promise<void> {
+		const deadline = Date.now() + timeoutS * 1000;
+		for (;;) {
+			const snapshot = await daytona.snapshot.get(name);
+			if (snapshot.state === 'active') {
+				this.logger.info('Versioned Daytona snapshot is active', { name });
+				return;
+			}
+			if (!SNAPSHOT_BUILDING_STATES.has(snapshot.state)) {
+				const reason = snapshot.errorReason ? `, reason: ${snapshot.errorReason}` : '';
+				throw new Error(
+					`Versioned Daytona snapshot "${name}" exists but is unusable (state: ${snapshot.state}${reason})`,
+				);
+			}
+			if (Date.now() >= deadline) {
+				throw new Error(
+					`Timed out waiting for existing Daytona snapshot "${name}" to become active (state: ${snapshot.state})`,
+				);
+			}
+			this.logger.info('Waiting for existing Daytona snapshot to finish building', {
+				name,
+				state: snapshot.state,
+			});
+			await sleep(SNAPSHOT_VERIFY_POLL_MS);
 		}
 	}
 

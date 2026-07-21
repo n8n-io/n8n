@@ -17,7 +17,8 @@ import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import {

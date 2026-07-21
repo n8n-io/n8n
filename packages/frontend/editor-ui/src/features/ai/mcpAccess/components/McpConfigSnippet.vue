@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { N8nButton, N8nMarkdown, N8nTooltip } from '@n8n/design-system';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 

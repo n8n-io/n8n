@@ -66,4 +66,34 @@ describe('cleanupBuild', () => {
 		expect(mocks.deleteDataTable).toHaveBeenCalledWith('project-1', 'DT1');
 		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
 	});
+
+	it('deletes the built agent of an agent-anchored build', async () => {
+		const { client, mocks } = makeClient({ deleteAgent: vi.fn().mockResolvedValue(undefined) });
+		const build = { ...makeBuild(), artifactRefs: [{ type: 'agent' as const, id: 'agent-1' }] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteAgent).toHaveBeenCalledWith('project-1', 'agent-1');
+	});
+
+	it('reports not clean when the agent deletion fails, so the caller can retry', async () => {
+		const { client, mocks } = makeClient({
+			deleteAgent: vi.fn().mockRejectedValue(new Error('HTTP 502')),
+		});
+		const build = { ...makeBuild(), artifactRefs: [{ type: 'agent' as const, id: 'agent-1' }] };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		// The remaining artifacts are still cleaned up.
+		expect(mocks.deleteDataTable).toHaveBeenCalledWith('project-1', 'DT1');
+		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
+	});
+
+	it('never calls deleteAgent for a build without an agent ref', async () => {
+		const { client, mocks } = makeClient({ deleteAgent: vi.fn() });
+
+		await expect(cleanupBuild(client, makeBuild(), silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteAgent).not.toHaveBeenCalled();
+	});
 });
