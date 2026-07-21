@@ -18,7 +18,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import type { CredentialsEntity } from './credentials-entity';
+import type { CredentialAvailability, CredentialsEntity } from './credentials-entity';
 import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
@@ -103,6 +103,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	isGlobal?: boolean;
 	isResolvable?: boolean;
 	isManaged?: boolean;
+	availability?: CredentialAvailability;
 }
 
 export interface IExecutionResponse extends IExecutionBase {

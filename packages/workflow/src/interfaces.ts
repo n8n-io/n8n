@@ -172,6 +172,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	sharedWithProjects?: ProjectSharingData[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	availability?: 'workflow' | 'instance';
 }
 
 export interface ICredentialsEncrypted {
