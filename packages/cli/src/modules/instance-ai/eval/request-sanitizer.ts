@@ -50,15 +50,22 @@ const REDACTED = '<redacted>';
  * pasted into message content. Conservative on purpose: distinctive prefixes
  * plus length floors, so prose never matches.
  */
-const SECRET_VALUE_PATTERNS: RegExp[] = [
-	/\bsk-[A-Za-z0-9_-]{20,}\b/g, // OpenAI / Anthropic
-	/\bxox[a-z]-[A-Za-z0-9-]{10,}\b/g, // Slack
-	/\bgh[pousr]_[A-Za-z0-9]{20,}\b/g, // GitHub tokens
-	/\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, // GitHub fine-grained PATs
-	/\bAKIA[0-9A-Z]{16}\b/g, // AWS access key ids
-	/\bAIza[0-9A-Za-z_-]{35}\b/g, // Google API keys
-	/\bya29\.[0-9A-Za-z_-]{20,}\b/g, // Google OAuth access tokens
-	/\bBearer\s+[A-Za-z0-9._~+/-]{20,}=*/g,
+const SECRET_VALUE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+	{ pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/g, replacement: REDACTED }, // OpenAI / Anthropic
+	{ pattern: /\bxox[a-z]-[A-Za-z0-9-]{10,}\b/g, replacement: REDACTED }, // Slack
+	{ pattern: /\bgh[pousr]_[A-Za-z0-9]{20,}\b/g, replacement: REDACTED }, // GitHub tokens
+	{ pattern: /\bgithub_pat_[A-Za-z0-9_]{20,}\b/g, replacement: REDACTED }, // GitHub fine-grained PATs
+	{ pattern: /\bAKIA[0-9A-Z]{16}\b/g, replacement: REDACTED }, // AWS access key ids
+	{ pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g, replacement: REDACTED }, // Google API keys
+	{ pattern: /\bya29\.[0-9A-Za-z_-]{20,}\b/g, replacement: REDACTED }, // Google OAuth access tokens
+	{ pattern: /\bbearer\s+[A-Za-z0-9._~+/-]{20,}=*/gi, replacement: REDACTED },
+	// Prose-form assignments a key-based redactor can't see inside content
+	// text (`api_key=…`, `password: …`). Keeps the key, scrubs the value.
+	{
+		pattern:
+			/\b(api[_-]?key|apikey|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|password|passwd)\b(["']?\s*[=:]\s*["']?)[^\s"',;]{6,}/gi,
+		replacement: `$1$2${REDACTED}`,
+	},
 ];
 
 // ---------------------------------------------------------------------------
@@ -98,8 +105,8 @@ export function redactSecretKeys(value: unknown): unknown {
 /** Redact well-known secret VALUE shapes anywhere in a text blob. */
 export function redactSecretValuePatterns(text: string): string {
 	let result = text;
-	for (const pattern of SECRET_VALUE_PATTERNS) {
-		result = result.replace(pattern, REDACTED);
+	for (const { pattern, replacement } of SECRET_VALUE_PATTERNS) {
+		result = result.replace(pattern, replacement);
 	}
 	return result;
 }
