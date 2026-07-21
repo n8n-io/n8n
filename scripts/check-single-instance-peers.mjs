@@ -29,7 +29,12 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CURATED_LIBS, PIN_ONLY_LIBS, HOST_PACKAGES, FRONTEND_GLOBS } from './single-instance-libs.mjs';
+import {
+	CURATED_LIBS,
+	PIN_ONLY_LIBS,
+	HOST_PACKAGES,
+	FRONTEND_GLOBS,
+} from './single-instance-libs.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASELINE_FILE = join(root, 'scripts', 'single-instance-peers-baseline.json');
@@ -105,9 +110,15 @@ export function diffBaseline(current, baseline) {
 }
 
 function writeBaseline(current) {
-	const sorted = Object.fromEntries(Object.keys(current).sort().map((k) => [k, current[k]]));
+	const sorted = Object.fromEntries(
+		Object.keys(current)
+			.sort()
+			.map((k) => [k, current[k]]),
+	);
 	writeFileSync(BASELINE_FILE, `${JSON.stringify(sorted, null, '\t')}\n`);
-	console.log(`Wrote baseline with ${Object.keys(sorted).length} package(s) to ${relative(root, BASELINE_FILE)}`);
+	console.log(
+		`Wrote baseline with ${Object.keys(sorted).length} package(s) to ${relative(root, BASELINE_FILE)}`,
+	);
 }
 
 function main() {
@@ -131,33 +142,49 @@ function main() {
 		console.error('');
 		console.error('ERROR: single-instance libraries must be peerDependencies, not dependencies.');
 		console.error('');
-		console.error('A plain dependency lets `npm install` create a second physical copy, which breaks');
-		console.error('cross-package composition / instanceof and crashes at boot (regressed in 2.28.0).');
+		console.error(
+			'A plain dependency lets `npm install` create a second physical copy, which breaks',
+		);
+		console.error(
+			'cross-package composition / instanceof and crashes at boot (regressed in 2.28.0).',
+		);
 		console.error('');
 		for (const { name, lib } of failures) {
-			console.error(`  - ${name}: "${lib}" is in "dependencies"; move it to "peerDependencies" (+ devDependencies via catalog:).`);
+			console.error(
+				`  - ${name}: "${lib}" is in "dependencies"; move it to "peerDependencies" (+ devDependencies via catalog:).`,
+			);
 		}
 		console.error('');
-		console.error('If this is an intentional, already-tracked case, it must be in the baseline; run --write only when adding a NEW sanctioned exception (not to silence a regression).');
+		console.error(
+			'If this is an intentional, already-tracked case, it must be in the baseline; run --write only when adding a NEW sanctioned exception (not to silence a regression).',
+		);
 		console.error('');
 		process.exit(1);
 	}
 
 	console.log('');
-	console.log(`OK: no un-baselined single-instance dependency-shape violations (${reported.length} tracked).`);
+	console.log(
+		`OK: no un-baselined single-instance dependency-shape violations (${reported.length} tracked).`,
+	);
 }
 
 if (process.argv.includes('--self-test')) {
 	// deps-declared curated lib in a normal package -> violation
 	const v1 = violationsFor('pkg-a', 'packages/@n8n/pkg-a', { dependencies: { zod: 'catalog:' } });
 	// peer-declared -> no violation
-	const v2 = violationsFor('pkg-b', 'packages/@n8n/pkg-b', { peerDependencies: { zod: 'catalog:' } });
+	const v2 = violationsFor('pkg-b', 'packages/@n8n/pkg-b', {
+		peerDependencies: { zod: 'catalog:' },
+	});
 	// host exempt
 	const v3 = violationsFor('n8n', 'packages/cli', { dependencies: { zod: 'catalog:' } });
 	// frontend exempt
-	const v4 = violationsFor('n8n-editor-ui', 'packages/frontend/editor-ui', { dependencies: { zod: 'catalog:' } });
+	const v4 = violationsFor('n8n-editor-ui', 'packages/frontend/editor-ui', {
+		dependencies: { zod: 'catalog:' },
+	});
 	// pin-only lib exempt
-	const v5 = violationsFor('pkg-c', 'packages/@n8n/pkg-c', { dependencies: { 'reflect-metadata': 'catalog:' } });
+	const v5 = violationsFor('pkg-c', 'packages/@n8n/pkg-c', {
+		dependencies: { 'reflect-metadata': 'catalog:' },
+	});
 	// baseline diff: baselined -> report, un-baselined -> fail
 	const { reported, failures } = diffBaseline(
 		{ 'pkg-a': ['zod'], 'pkg-new': ['form-data'] },
@@ -165,13 +192,16 @@ if (process.argv.includes('--self-test')) {
 	);
 
 	const ok =
-		v1.length === 1 && v1[0] === 'zod' &&
+		v1.length === 1 &&
+		v1[0] === 'zod' &&
 		v2.length === 0 &&
 		v3.length === 0 &&
 		v4.length === 0 &&
 		v5.length === 0 &&
-		reported.length === 1 && reported[0].name === 'pkg-a' &&
-		failures.length === 1 && failures[0].name === 'pkg-new';
+		reported.length === 1 &&
+		reported[0].name === 'pkg-a' &&
+		failures.length === 1 &&
+		failures[0].name === 'pkg-new';
 
 	if (ok) {
 		console.log('self-test passed');

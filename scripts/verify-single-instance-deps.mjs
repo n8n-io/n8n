@@ -155,7 +155,9 @@ function main() {
 		process.exit(failures.length > 0 ? 1 : 0);
 	}
 
-	console.log(`\nSingle-instance dependency verifier — root: ${root}${strict ? ' (strict)' : ''}\n`);
+	console.log(
+		`\nSingle-instance dependency verifier — root: ${root}${strict ? ' (strict)' : ''}\n`,
+	);
 
 	for (const lib of CURATED_LIBS) {
 		const copies = found.has(lib) ? distinctCopies(found.get(lib)) : [];

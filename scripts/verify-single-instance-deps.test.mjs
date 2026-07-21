@@ -69,10 +69,7 @@ describe('closure verifier', () => {
 
 	it('fails on the allowlisted lib too when --strict (allowlist ignored)', () => {
 		const { failures } = analyze(collectCopies(join(ROOT, 'planted')), { strict: true });
-		assert.deepEqual(
-			failures.map((f) => f.name).sort(),
-			['@langchain/core', 'zod'],
-		);
+		assert.deepEqual(failures.map((f) => f.name).sort(), ['@langchain/core', 'zod']);
 	});
 
 	it('passes a clean tree with a single copy of each curated lib', () => {

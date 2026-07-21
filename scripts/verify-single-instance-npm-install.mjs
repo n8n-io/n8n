@@ -20,7 +20,15 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	readdirSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -53,7 +61,10 @@ function loadWorkspace() {
 function changedPackages(baseRef, byName) {
 	let out;
 	try {
-		out = execFileSync('git', ['diff', '--name-only', `${baseRef}`, 'HEAD'], { cwd: root, encoding: 'utf8' });
+		out = execFileSync('git', ['diff', '--name-only', `${baseRef}`, 'HEAD'], {
+			cwd: root,
+			encoding: 'utf8',
+		});
 	} catch {
 		console.error(`Could not diff against "${baseRef}"; skipping scoped check.`);
 		return [];
@@ -63,7 +74,8 @@ function changedPackages(baseRef, byName) {
 	for (const file of out.split('\n').filter(Boolean)) {
 		let best = null;
 		for (const [name, prefix] of dirs) {
-			if (file.startsWith(prefix) && (!best || prefix.length > best.prefix.length)) best = { name, prefix };
+			if (file.startsWith(prefix) && (!best || prefix.length > best.prefix.length))
+				best = { name, prefix };
 		}
 		if (best) hit.add(best.name);
 	}
@@ -107,7 +119,9 @@ function main() {
 		targets = args.filter((a) => !a.startsWith('--'));
 	}
 	if (targets.length === 0) {
-		console.error('Usage: verify-single-instance-npm-install.mjs (--all | --changed=<ref> | <pkgName>...)');
+		console.error(
+			'Usage: verify-single-instance-npm-install.mjs (--all | --changed=<ref> | <pkgName>...)',
+		);
 		process.exit(2);
 	}
 	const unknown = targets.filter((t) => !byName.has(t));
@@ -143,28 +157,40 @@ function main() {
 	const deps = Object.fromEntries(targets.map((n) => [n, `file:${tarballByName[n]}`]));
 	writeFileSync(
 		join(scratch, 'package.json'),
-		JSON.stringify({ name: 'single-instance-scratch', private: true, dependencies: deps, overrides }, null, 2),
+		JSON.stringify(
+			{ name: 'single-instance-scratch', private: true, dependencies: deps, overrides },
+			null,
+			2,
+		),
 	);
 
 	console.log('Installing into scratch dir with npm...');
-	execFileSync('npm', ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--no-package-lock'], {
-		cwd: scratch,
-		stdio: ['ignore', 'inherit', 'inherit'],
-	});
+	execFileSync(
+		'npm',
+		['install', '--no-audit', '--no-fund', '--ignore-scripts', '--no-package-lock'],
+		{
+			cwd: scratch,
+			stdio: ['ignore', 'inherit', 'inherit'],
+		},
+	);
 
 	const { duplicates, failures } = analyze(collectCopies(scratch));
 
 	console.log(`\nnpm-install closure — scratch: ${relative(root, scratch) || scratch}\n`);
 	for (const d of duplicates) {
 		const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : 'FAIL') : 'dup (report)';
-		console.log(`  ${d.name}: ${tag} — ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`);
+		console.log(
+			`  ${d.name}: ${tag} — ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
+		);
 	}
 
 	if (failures.length === 0) rmSync(work, { recursive: true, force: true });
 	else console.log(`\nScratch install kept for inspection: ${scratch}`);
 
 	if (failures.length > 0) {
-		console.error(`\nFAIL: ${failures.length} curated library duplicate(s) in the npm-install graph.`);
+		console.error(
+			`\nFAIL: ${failures.length} curated library duplicate(s) in the npm-install graph.`,
+		);
 		process.exit(1);
 	}
 	console.log('\nOK: no curated duplicates in the npm-install graph.');
