@@ -8,6 +8,7 @@ import { computed, onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
+import type { NewCredentialsModal } from '@/Interface';
 
 import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -27,6 +28,11 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 
 const searchQuery = ref('');
+
+const presetAvailability = computed<NewCredentialsModal['availability']>(() => {
+	const data = uiStore.modalsById[CREDENTIAL_SELECT_MODAL_KEY]?.data;
+	return data?.availability === 'instance' ? 'instance' : undefined;
+});
 
 onMounted(async () => {
 	try {
@@ -76,6 +82,7 @@ function openCredentialType() {
 		undefined,
 		{
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			availability: presetAvailability.value,
 		},
 	);
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { IUpdateInformation } from '@/Interface';
+import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
 
 import type {
@@ -255,10 +255,21 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
+const presetAvailability = computed<NewCredentialsModal['availability']>(() => {
+	if (props.mode !== 'new') return undefined;
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.availability : undefined;
+});
+
 const appendToBody = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
+
+const isInstanceCredential = computed(
+	() =>
+		presetAvailability.value === 'instance' || currentCredential.value?.availability === 'instance',
+);
 
 const sidebarItems = computed(() => {
 	const menuItems: IMenuItem[] = [
@@ -267,11 +278,15 @@ const sidebarItems = computed(() => {
 			label: i18n.baseText('credentialEdit.credentialEdit.connection'),
 			position: 'top',
 		},
-		{
-			id: 'sharing',
-			label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
-			position: 'top',
-		},
+		...(isInstanceCredential.value
+			? []
+			: [
+					{
+						id: 'sharing',
+						label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
+						position: 'top',
+					} satisfies IMenuItem,
+				]),
 		{
 			id: 'details',
 			label: i18n.baseText('credentialEdit.credentialEdit.details'),
@@ -647,6 +662,9 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
+		if (presetAvailability.value) {
+			credentialDetails.availability = presetAvailability.value;
+		}
 		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
@@ -1361,7 +1379,7 @@ const { width } = useElementSize(credNameRef);
 							:credential-permissions="credentialPermissions"
 							:mode="mode"
 							:selected-credential="selectedCredential"
-							:is-private-credentials-enabled="isPrivateCredentialsEnabled"
+							:is-private-credentials-enabled="isPrivateCredentialsEnabled && !isInstanceCredential"
 							:is-resolvable="isResolvable"
 							:connected-by-me="connectedByMe"
 							:is-new-credential="isNewCredential"
