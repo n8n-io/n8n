@@ -84,7 +84,23 @@ vi.mock('@/features/settings/users/users.store', () => ({
 	}),
 }));
 
-import { TRIAL_INTRO_SEEN_CALLOUT, TRIAL_INTRO_UPGRADE_SOURCE } from '../constants';
+let mockIsAnyModalOpen = false;
+const mockOpenModal = vi.fn();
+
+vi.mock('@/app/stores/ui.store', () => ({
+	useUIStore: () => ({
+		get isAnyModalOpen() {
+			return mockIsAnyModalOpen;
+		},
+		openModal: mockOpenModal,
+	}),
+}));
+
+import {
+	TRIAL_INTRO_MODAL_KEY,
+	TRIAL_INTRO_SEEN_CALLOUT,
+	TRIAL_INTRO_UPGRADE_SOURCE,
+} from '../constants';
 import { useTrialIntroModalStore } from './trialIntroModal.store';
 
 describe('trialIntroModal store', () => {
@@ -100,6 +116,7 @@ describe('trialIntroModal store', () => {
 		mockIsCalloutDismissed.mockReset();
 		mockIsCalloutDismissed.mockReturnValue(false);
 		mockSetCalloutDismissed.mockClear();
+		mockOpenModal.mockClear();
 
 		mockIsCloudDeployment = true;
 		mockUserIsTrialing = true;
@@ -109,6 +126,7 @@ describe('trialIntroModal store', () => {
 		mockCurrentPlanData = null;
 		mockIsInstanceOwner = true;
 		mockCurrentUser = { settings: { dismissedCallouts: {} } };
+		mockIsAnyModalOpen = false;
 
 		mockGetVariant.mockReturnValue(TRIAL_INTRO_MODAL_EXPERIMENT.variant);
 
@@ -269,6 +287,30 @@ describe('trialIntroModal store', () => {
 			vi.mocked(updateCurrentUserSettings).mockRejectedValueOnce(new Error('network error'));
 
 			await expect(store.markSeen()).resolves.toBeUndefined();
+			expect(mockSetCalloutDismissed).toHaveBeenCalledWith(TRIAL_INTRO_SEEN_CALLOUT);
+		});
+	});
+
+	describe('openIfEligible', () => {
+		it('returns false and does not open the modal when shouldShowModal is false', () => {
+			mockIsInstanceOwner = false;
+
+			expect(store.openIfEligible()).toBe(false);
+			expect(mockOpenModal).not.toHaveBeenCalled();
+			expect(mockSetCalloutDismissed).not.toHaveBeenCalled();
+		});
+
+		it('returns false and does not open the modal when another modal is already open', () => {
+			mockIsAnyModalOpen = true;
+
+			expect(store.openIfEligible()).toBe(false);
+			expect(mockOpenModal).not.toHaveBeenCalled();
+			expect(mockSetCalloutDismissed).not.toHaveBeenCalled();
+		});
+
+		it('opens the modal, marks it seen, and returns true when eligible and the modal stack is empty', () => {
+			expect(store.openIfEligible()).toBe(true);
+			expect(mockOpenModal).toHaveBeenCalledWith(TRIAL_INTRO_MODAL_KEY);
 			expect(mockSetCalloutDismissed).toHaveBeenCalledWith(TRIAL_INTRO_SEEN_CALLOUT);
 		});
 	});

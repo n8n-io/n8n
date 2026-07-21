@@ -3,6 +3,7 @@ import { TRIAL_INTRO_MODAL_EXPERIMENT } from '@/app/constants/experiments';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -10,7 +11,11 @@ import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed } from 'vue';
-import { TRIAL_INTRO_SEEN_CALLOUT, TRIAL_INTRO_UPGRADE_SOURCE } from '../constants';
+import {
+	TRIAL_INTRO_MODAL_KEY,
+	TRIAL_INTRO_SEEN_CALLOUT,
+	TRIAL_INTRO_UPGRADE_SOURCE,
+} from '../constants';
 
 export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO_MODAL, () => {
 	const posthogStore = usePostHog();
@@ -19,6 +24,7 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 	const cloudPlanStore = useCloudPlanStore();
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
+	const uiStore = useUIStore();
 
 	const currentVariant = computed(() => posthogStore.getVariant(TRIAL_INTRO_MODAL_EXPERIMENT.name));
 
@@ -58,6 +64,14 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 		} catch {}
 	};
 
+	function openIfEligible() {
+		if (!shouldShowModal.value) return false;
+		if (uiStore.isAnyModalOpen) return false;
+		uiStore.openModal(TRIAL_INTRO_MODAL_KEY);
+		void markSeen();
+		return true;
+	}
+
 	const trackModalViewed = (step: 1 | 2) => {
 		telemetry.track(
 			'User viewed trial welcome modal',
@@ -81,6 +95,7 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 		starterOffer,
 		offerCurrency,
 		markSeen,
+		openIfEligible,
 		trackModalViewed,
 		buildUpgradeReturnPath,
 	};

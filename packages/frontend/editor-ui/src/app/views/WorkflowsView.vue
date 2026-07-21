@@ -48,6 +48,7 @@ import TemplateRecommendationV2 from '@/experiments/templateRecoV2/components/Te
 import TemplateRecommendationV3 from '@/experiments/personalizedTemplatesV3/components/TemplateRecommendationV3.vue';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import EmptyStateLayout from '@/app/components/layouts/EmptyStateLayout.vue';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
@@ -94,7 +95,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 import {
@@ -736,6 +737,8 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 
 	void usersStore.showPersonalizationSurvey();
+
+	void nextTick(() => useTrialIntroModalStore().openIfEligible());
 
 	// ResourcesListLayout's own onMounted fetch can't run while chrome is
 	// deferred (it isn't mounted), so trigger it here or the skeleton never resolves.

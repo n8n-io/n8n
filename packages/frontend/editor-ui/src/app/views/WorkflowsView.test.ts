@@ -22,6 +22,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -464,6 +465,17 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 
 			await sourceControl.pullWorkfolder(true, 'none');
+		});
+	});
+
+	describe('trial intro modal', () => {
+		it('calls openIfEligible after mount', async () => {
+			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
+
+			renderComponent({ pinia });
+			await waitAllPromises();
+
+			expect(trialIntroModalStore.openIfEligible).toHaveBeenCalled();
 		});
 	});
 });
