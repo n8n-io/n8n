@@ -21,13 +21,17 @@ import {
 	createEmptyRunExecutionData,
 	DATA_TABLE_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
-	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
+
+import {
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from './node-tool-operation-support';
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
@@ -57,9 +61,6 @@ export interface NodeExecutionResult {
 	data: INodeExecutionData[];
 	error?: string;
 }
-
-// send and wait requires persistent workflows to handle the wait logic
-const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
 
 /**
  * Node types that must never run as an agent tool, regardless of RBAC —
@@ -255,8 +256,8 @@ export class EphemeralNodeExecutor {
 
 		const operation = nodeParameters.operation;
 
-		if (operation && typeof operation === 'string' && OPERATION_BLACKLIST.includes(operation)) {
-			throw new UserError(`The "${operation}" is not supported for agent tool execution.`, {
+		if (isUnsupportedEphemeralNodeOperation(operation)) {
+			throw new UserError(unsupportedEphemeralNodeOperationMessage(operation), {
 				extra: { nodeType, operation },
 			});
 		}
