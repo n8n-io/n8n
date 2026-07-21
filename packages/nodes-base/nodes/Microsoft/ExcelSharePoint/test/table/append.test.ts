@@ -160,6 +160,51 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 		);
 	});
 
+	it('sends index 0 so the row is inserted as the first row', async () => {
+		setParams({ ...baseParams, options: { index: 0 } });
+		ctx.getInputData.mockReturnValue([{ json: { Name: 'Frank' } }]);
+		mockColumnsAndSession();
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'POST',
+			`${TABLE_ENDPOINT}/rows/add`,
+			expect.objectContaining({ index: 0 }),
+			{},
+			undefined,
+			SESSION_HEADER,
+		);
+	});
+
+	it('pairs each appended row with the input item that produced it', async () => {
+		setParams(baseParams);
+		ctx.getInputData.mockReturnValue([
+			{ json: { Name: 'Frank', Email: 'frank@example.com' } },
+			{ json: { Name: 'Dana' } },
+		]);
+		apiRequestAllItems.mockResolvedValue([{ name: 'Name' }, { name: 'Email' }]);
+		apiRequest.mockImplementation(async (_method: string, resource: string) => {
+			if (resource.endsWith('/createSession')) return { id: 'session-1' };
+			if (resource.endsWith('/rows/add')) {
+				return {
+					index: 3,
+					values: [
+						['Frank', 'frank@example.com'],
+						['Dana', null],
+					],
+				};
+			}
+			return {};
+		});
+
+		const result = await node.execute.call(ctx);
+
+		expect(result[0].map((entry) => entry.pairedItem)).toEqual([{ item: 0 }, { item: 1 }]);
+		expect(result[0][0].json).toEqual({ Name: 'Frank', Email: 'frank@example.com' });
+		expect(result[0][1].json).toEqual({ Name: 'Dana', Email: null });
+	});
+
 	it('closes the session and keeps the run alive when the write fails under continue-on-fail', async () => {
 		setParams(baseParams);
 		ctx.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);

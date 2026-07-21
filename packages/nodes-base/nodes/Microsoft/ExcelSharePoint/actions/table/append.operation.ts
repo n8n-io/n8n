@@ -202,7 +202,8 @@ export async function execute(
 			dataProperty?: string;
 		};
 		const body: IDataObject = { values };
-		if (options.index) {
+		// 0 is a valid position (insert as first row); only an unset option means append at the end
+		if (options.index !== undefined) {
 			body.index = options.index;
 		}
 
@@ -221,13 +222,23 @@ export async function execute(
 				),
 		);
 
-		returnData.push(
-			...prepareOutput.call(this, this.getNode(), responseData, {
-				columnsRow,
-				dataProperty: options.dataProperty ?? 'data',
-				rawData: options.rawData ?? false,
-			}),
-		);
+		const output = prepareOutput.call(this, this.getNode(), responseData, {
+			columnsRow,
+			dataProperty: options.dataProperty ?? 'data',
+			rawData: options.rawData ?? false,
+		});
+
+		if (!options.rawData) {
+			// prepareOutput pairs by sheet-row position, which is offset by the prepended header
+			// row; appended rows map 1:1 to the input items that produced them (clamped for
+			// dataMode 'raw', where rows come from a JSON parameter instead of input items)
+			const lastItem = items.length - 1;
+			for (const [rowIndex, entry] of output.entries()) {
+				entry.pairedItem = { item: Math.min(rowIndex, lastItem) };
+			}
+		}
+
+		returnData.push(...output);
 	} catch (error) {
 		if (!this.continueOnFail()) throw error;
 		const message = error instanceof Error ? error.message : String(error);
