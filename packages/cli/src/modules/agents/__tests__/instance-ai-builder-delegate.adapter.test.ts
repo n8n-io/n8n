@@ -410,6 +410,15 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
+		it('requires Preview markdown links instead of forbidding them', () => {
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).not.toContain('not visible in this chat');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('[Preview]');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('relative path');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('Do not invent absolute URLs');
+		});
+	});
+
 	describe('deleteBuilderSessions', () => {
 		it('deletes messages and thread state for every builder session of the instance thread, scoped per target agent', async () => {
 			const { service, n8nMemory, agentThreadRepository } = setup();
