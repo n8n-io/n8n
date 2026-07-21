@@ -19,10 +19,9 @@
  * scratch tree — NOT the dev `.pnpm` store, which over-reports latent
  * peer-context entries that are never co-loaded.
  *
- *   node scripts/single-instance/verify-single-instance-deps.mjs <installRoot> [--strict] [--json]
+ *   node scripts/single-instance/verify-single-instance-deps.mjs <installRoot> [--json]
  *
- * `--strict` ignores the allowlist (fail on any curated duplicate); `--json`
- * prints a machine-readable report instead of the human summary.
+ * `--json` prints a machine-readable report instead of the human summary.
  */
 
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
@@ -59,36 +58,31 @@ export function collectCopies(root) {
 		found.get(name).push({ realPath: real, version: pj.version, foundAt: dir });
 	};
 
-	const walk = (nmDir) => {
-		let entries;
+	const readEntries = (dir) => {
 		try {
-			entries = readdirSync(nmDir, { withFileTypes: true });
+			return readdirSync(dir, { withFileTypes: true });
 		} catch {
-			return;
+			return [];
 		}
-		for (const e of entries) {
+	};
+
+	// pnpm virtual store: each `<name>@<key>` entry holds the real package under its own node_modules.
+	const walkPnpmStore = (storeDir) => {
+		for (const entry of readEntries(storeDir)) walk(join(storeDir, entry.name, 'node_modules'));
+	};
+
+	const walk = (nmDir) => {
+		for (const e of readEntries(nmDir)) {
 			const name = e.name;
 			if (name === '.bin') continue;
 			const full = join(nmDir, name);
 			if (name === '.pnpm') {
-				// pnpm virtual store: each entry has its own node_modules with the real pkg
-				let stores;
-				try {
-					stores = readdirSync(full, { withFileTypes: true });
-				} catch {
-					continue;
-				}
-				for (const s of stores) walk(join(full, s.name, 'node_modules'));
+				walkPnpmStore(full);
 			} else if (name.startsWith('.')) {
 				continue;
 			} else if (name.startsWith('@')) {
-				let scoped;
-				try {
-					scoped = readdirSync(full, { withFileTypes: true });
-				} catch {
-					continue;
-				}
-				for (const s of scoped) recordAndRecurse(`${name}/${s.name}`, join(full, s.name));
+				for (const s of readEntries(full))
+					recordAndRecurse(`${name}/${s.name}`, join(full, s.name));
 			} else {
 				recordAndRecurse(name, full);
 			}
@@ -125,13 +119,13 @@ function distinctCopies(copies) {
  * `duplicates` = every package with >1 physical copy (report). `failures` = the
  * curated subset that is not allowlisted (hard-fail).
  */
-export function analyze(found, { strict = false, allowlist = EXPECTED_DUPLICATES } = {}) {
+export function analyze(found, { allowlist = EXPECTED_DUPLICATES } = {}) {
 	const duplicates = [];
 	for (const [name, copies] of found) {
 		const distinct = distinctCopies(copies);
 		if (distinct.length <= 1) continue;
 		const isCurated = CURATED_LIBS.includes(name);
-		const allowed = !strict && Object.hasOwn(allowlist, name);
+		const allowed = Object.hasOwn(allowlist, name);
 		duplicates.push({ name, isCurated, allowed, copies: distinct });
 	}
 	const failures = duplicates.filter((d) => d.isCurated && !d.allowed);
@@ -140,19 +134,18 @@ export function analyze(found, { strict = false, allowlist = EXPECTED_DUPLICATES
 
 function main() {
 	const args = process.argv.slice(2);
-	const strict = args.includes('--strict');
 	const asJson = args.includes('--json');
 	const root = args.find((a) => !a.startsWith('--')) ?? process.cwd();
 
 	const found = collectCopies(root);
-	const { duplicates, failures } = analyze(found, { strict });
+	const { duplicates, failures } = analyze(found);
 
 	if (asJson) {
-		console.log(JSON.stringify({ root, strict, duplicates, failures }, null, 2));
+		console.log(JSON.stringify({ root, duplicates, failures }, null, 2));
 		process.exit(failures.length > 0 ? 1 : 0);
 	}
 
-	console.log(`\nSingle-instance dependency verifier — root: ${root}${strict ? ' (strict)' : ''}`);
+	console.log(`\nSingle-instance dependency verifier — root: ${root}`);
 
 	// The enforced verdict: each curated library, with full paths when duplicated.
 	const curatedDups = new Map(duplicates.filter((d) => d.isCurated).map((d) => [d.name, d]));

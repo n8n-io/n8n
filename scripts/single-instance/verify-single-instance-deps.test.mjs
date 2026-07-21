@@ -74,14 +74,6 @@ describe('closure verifier', () => {
 		assert.ok(!failures.some((f) => f.name === 'lodash'));
 	});
 
-	it('ignores the allowlist under --strict', () => {
-		const { failures } = analyze(planted, {
-			strict: true,
-			allowlist: { '@langchain/core': 'test-only allowlist entry' },
-		});
-		assert.deepEqual(failures.map((f) => f.name).sort(), ['@langchain/core', 'zod']);
-	});
-
 	it('passes a clean tree with a single copy of each curated lib', () => {
 		const { duplicates, failures } = analyze(clean);
 		assert.equal(duplicates.length, 0);
