@@ -165,6 +165,35 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it('should reject an n8n sandbox credential whose header name is not x-api-key', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'sandbox-cred',
+				name: 'Sandbox header',
+				type: 'httpHeaderAuth',
+				data: { name: 'Authorization', value: 'secret' },
+			});
+
+			await expect(
+				service.updateAdminSettings({ n8nSandboxCredentialId: 'sandbox-cred' }),
+			).rejects.toThrow(/x-api-key/);
+		});
+
+		it('should accept an n8n sandbox credential with the x-api-key header', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'sandbox-cred',
+				name: 'Sandbox header',
+				type: 'httpHeaderAuth',
+				data: { name: 'X-Api-Key', value: 'secret' },
+			});
+
+			await expect(
+				service.updateAdminSettings({ n8nSandboxCredentialId: 'sandbox-cred' }),
+			).resolves.toBeDefined();
+		});
+
 		it('should clear a service credential assignment', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 
@@ -181,6 +210,23 @@ describe('InstanceAiSettingsService', () => {
 
 			await expect(service.updateAdminSettings({ mcpServers: '[]' })).rejects.toThrow(
 				UnprocessableRequestError,
+			);
+			await expect(service.updateAdminSettings({ sandboxProvider: 'daytona' })).rejects.toThrow(
+				UnprocessableRequestError,
+			);
+		});
+
+		it('should persist a sandbox provider override on self-hosted', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
+			globalConfig.instanceAi.sandboxProvider = 'n8n-sandbox';
+
+			await expect(
+				service.updateAdminSettings({ sandboxProvider: 'daytona' }),
+			).resolves.toMatchObject({ sandboxProvider: 'daytona' });
+			expect(settingsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({ value: expect.stringContaining('"sandboxProvider":"daytona"') }),
+				['key'],
 			);
 		});
 
@@ -990,6 +1036,9 @@ describe('InstanceAiSettingsService', () => {
 
 			it('should reject sandbox fields on cloud', async () => {
 				await expect(service.updateAdminSettings({ sandboxEnabled: true })).rejects.toThrow(
+					UnprocessableRequestError,
+				);
+				await expect(service.updateAdminSettings({ sandboxProvider: 'daytona' })).rejects.toThrow(
 					UnprocessableRequestError,
 				);
 			});

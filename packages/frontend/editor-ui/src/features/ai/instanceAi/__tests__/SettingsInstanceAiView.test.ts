@@ -7,6 +7,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ModelCredentialDialog from '../components/settings/ModelCredentialDialog.vue';
+import SandboxCredentialDialog from '../components/settings/SandboxCredentialDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -87,6 +88,7 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
 const renderModelDialog = createComponentRenderer(ModelCredentialDialog);
+const renderSandboxDialog = createComponentRenderer(SandboxCredentialDialog);
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
@@ -206,6 +208,49 @@ describe('SettingsInstanceAiView', () => {
 			expect(store.draft).toMatchObject({
 				modelCredentialId: 'anthropic-id',
 				modelName: 'claude-sonnet-4',
+			});
+			expect(save).toHaveBeenCalledOnce();
+		});
+	});
+
+	describe('Sandbox credential dialog', () => {
+		it('preselects the environment option when the sandbox is env-configured', async () => {
+			store.$patch({
+				settings: { ...store.settings!, sandboxEnvConfigured: true },
+			});
+			const { getByTestId } = renderSandboxDialog({ props: { open: true } });
+			await nextTick();
+
+			const input = getByTestId('n8n-agent-sandbox-credential-select').querySelector('input')!;
+			expect(input.value).toBe('settings.n8nAgent.modelCredential.none');
+		});
+
+		it('defaults the provider from settings and stages a provider switch on save', async () => {
+			store.$patch({
+				serviceCredentials: [
+					{ id: 'daytona-id', name: 'Daytona key', type: 'daytonaApi', provider: 'daytona' },
+					{ id: 'header-id', name: 'Sandbox header', type: 'httpHeaderAuth', provider: 'n8n' },
+				],
+			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, findByText } = renderSandboxDialog({ props: { open: true } });
+			await nextTick();
+
+			const providerSelect = getByTestId('n8n-agent-sandbox-provider-select');
+			expect(providerSelect.querySelector('input')!.value).toBe('n8n Sandbox Service');
+
+			await fireEvent.click(providerSelect.querySelector('input')!);
+			await fireEvent.click(await findByText('Daytona'));
+
+			const credentialSelect = getByTestId('n8n-agent-sandbox-credential-select');
+			await fireEvent.click(credentialSelect.querySelector('input')!);
+			await fireEvent.click(await findByText('Daytona key'));
+
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
+
+			expect(store.draft).toMatchObject({
+				sandboxProvider: 'daytona',
+				daytonaCredentialId: 'daytona-id',
 			});
 			expect(save).toHaveBeenCalledOnce();
 		});

@@ -796,6 +796,10 @@ const createToastMessagingForNewCredentials = (project?: Project | null) => {
 	let toastTitle = i18n.baseText('credentials.create.personal.toast.title');
 	let toastText = '';
 
+	if (isInstanceCredential.value) {
+		return { title: i18n.baseText('credentials.create.instance.toast.title'), message: '' };
+	}
+
 	if (
 		projectsStore.currentProject &&
 		projectsStore.currentProject.id !== projectsStore.personalProject?.id

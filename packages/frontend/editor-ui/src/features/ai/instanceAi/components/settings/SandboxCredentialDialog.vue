@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nDialog,
@@ -25,15 +25,17 @@ const emit = defineEmits<{ saved: []; back: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 
-const sandboxProvider = computed(() => store.settings?.sandboxProvider ?? 'n8n-sandbox');
-const providerLabel = computed(() =>
-	sandboxProvider.value === 'daytona' ? 'Daytona' : 'n8n Sandbox Service',
-);
+const savedProvider = computed(() => store.settings?.sandboxProvider ?? 'n8n-sandbox');
+const selectedProvider = ref<'daytona' | 'n8n-sandbox'>(savedProvider.value);
+const providerOptions = [
+	{ value: 'daytona', label: 'Daytona' },
+	{ value: 'n8n-sandbox', label: 'n8n Sandbox Service' },
+] as const;
 const credentialType = computed(() =>
-	sandboxProvider.value === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth',
+	selectedProvider.value === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth',
 );
 const credentialField = computed(() =>
-	sandboxProvider.value === 'daytona'
+	selectedProvider.value === 'daytona'
 		? ('daytonaCredentialId' as const)
 		: ('n8nSandboxCredentialId' as const),
 );
@@ -44,22 +46,33 @@ const credentials = computed(() =>
 const { credentialId, openCreate, openEdit } = useInstanceCredentialDialog({
 	open,
 	current: () => store.settings?.[credentialField.value] ?? '',
-	hydrate: () => {},
+	hydrate: () => {
+		selectedProvider.value = savedProvider.value;
+	},
 	credentials: () => credentials.value,
 	refresh: async () => await store.refreshCredentials(),
 });
 
+watch(selectedProvider, () => {
+	credentialId.value = store.settings?.[credentialField.value] ?? '';
+});
+
 const isChanged = computed(
-	() => credentialId.value !== (store.settings?.[credentialField.value] ?? ''),
+	() =>
+		selectedProvider.value !== savedProvider.value ||
+		credentialId.value !== (store.settings?.[credentialField.value] ?? ''),
 );
 
 const noneLabel = computed(() =>
-	store.settings?.sandboxEnvConfigured
+	selectedProvider.value === savedProvider.value && store.settings?.sandboxEnvConfigured
 		? i18n.baseText('settings.n8nAgent.modelCredential.none')
 		: i18n.baseText('settings.n8nAgent.modelCredential.noneNoEnv'),
 );
 
 async function handleSave() {
+	if (selectedProvider.value !== savedProvider.value) {
+		store.setField('sandboxProvider', selectedProvider.value);
+	}
 	store.setField(credentialField.value, credentialId.value || null);
 	if (!(await store.save())) return;
 	open.value = false;
@@ -100,9 +113,20 @@ const title = computed(() =>
 
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('settings.n8nAgent.sandboxDialog.provider')">
-				<N8nText tag="p" :class="$style.providerValue" size="medium" color="text-dark">
-					{{ providerLabel }}
-				</N8nText>
+				<N8nSelect
+					:model-value="selectedProvider"
+					size="medium"
+					:disabled="store.isSaving"
+					data-test-id="n8n-agent-sandbox-provider-select"
+					@update:model-value="selectedProvider = $event"
+				>
+					<N8nOption
+						v-for="option in providerOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
 				<N8nText tag="p" :class="$style.providerHint" size="small" color="text-light">
 					{{ i18n.baseText('settings.n8nAgent.sandboxDialog.providerHint') }}
 				</N8nText>
@@ -149,7 +173,7 @@ const title = computed(() =>
 					/>
 				</div>
 				<N8nText
-					v-if="sandboxProvider === 'n8n-sandbox'"
+					v-if="selectedProvider === 'n8n-sandbox'"
 					tag="p"
 					:class="$style.credentialHint"
 					size="small"
@@ -180,7 +204,7 @@ const title = computed(() =>
 				variant="solid"
 				size="medium"
 				:label="i18n.baseText('generic.save')"
-				:disabled="store.isSaving || !isChanged"
+				:disabled="store.isSaving || !isChanged || (setup && !credentialId)"
 				data-test-id="n8n-agent-sandbox-dialog-save"
 				@click="handleSave"
 			/>
@@ -206,10 +230,6 @@ const title = computed(() =>
 .credentialSelect {
 	flex: 1 1 100%;
 	min-width: 0;
-}
-
-.providerValue {
-	margin: 0;
 }
 
 .providerHint {

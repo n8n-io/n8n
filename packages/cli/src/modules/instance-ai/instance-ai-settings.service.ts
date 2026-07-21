@@ -12,7 +12,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { CredentialsEntity, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -239,7 +239,7 @@ export class InstanceAiSettingsService {
 				InstanceAiSettingsService.INSTANCE_CREDENTIAL_FIELDS,
 				this.deploymentLabel(),
 			);
-			this.rejectManagedFields(update, ['modelName'], this.deploymentLabel());
+			this.rejectManagedFields(update, ['modelName', 'sandboxProvider'], this.deploymentLabel());
 		}
 		const {
 			modelCredentialId,
@@ -307,6 +307,9 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 					n8nSandboxCredentialId,
 				);
+				if (typeof n8nSandboxCredentialId === 'string') {
+					await this.validateN8nSandboxCredential(ctx);
+				}
 				await updateCredentialAssignment(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY, searchCredentialId);
 				await this.settingsRepository.upsertByKey(
 					ADMIN_SETTINGS_KEY,
@@ -492,6 +495,22 @@ export class InstanceAiSettingsService {
 		return envConfig;
 	}
 
+	/** The sandbox client sends the key as `x-api-key`; any other header silently fails at runtime. */
+	private async validateN8nSandboxCredential(ctx: OperationContext): Promise<void> {
+		const resolved = await this.instanceCredentialBroker.resolveForUse(
+			INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+			ctx,
+		);
+		if (!resolved) return;
+		const headerName =
+			typeof resolved.data.name === 'string' ? resolved.data.name.trim().toLowerCase() : '';
+		if (headerName !== 'x-api-key') {
+			throw new UnprocessableRequestError(
+				`The credential's header name must be "x-api-key" but is "${headerName || '(empty)'}"`,
+			);
+		}
+	}
+
 	private async resolveServiceCredential(
 		policy: InstanceCredentialUse,
 		service: string,
@@ -664,12 +683,12 @@ export class InstanceAiSettingsService {
 
 	/**
 	 * Admin fields sourced from environment variables only. Direct self-hosted
-	 * deployments may update instance credential assignments and the model name.
+	 * deployments may update instance credential assignments, the model name,
+	 * and the sandbox provider (env value acts as the default).
 	 */
 	private static readonly MANAGED_ADMIN_FIELDS: readonly string[] = [
 		'mcpServers',
 		'sandboxEnabled',
-		'sandboxProvider',
 		'sandboxImage',
 		'sandboxTimeout',
 	];
