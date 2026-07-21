@@ -506,9 +506,7 @@ export class EvalAgentExecutionService {
 			toolCalls: partial
 				? [...partial.toolLedger.entries()].map(([tool, interceptedRequests]) => ({
 						tool,
-						kind: interceptedRequests.some((request) => request.nodeType?.startsWith('mcp:'))
-							? ('mcp' as const)
-							: ('other' as const),
+						kind: salvagedToolKind(interceptedRequests),
 						mocked: interceptedRequests.length > 0,
 						interceptedRequests,
 					}))
@@ -587,6 +585,22 @@ export function pruneConfigForEval(original: AgentJsonConfig): {
  * tools, `sanitizeToolName` for workflow tools, the stored descriptor name
  * for custom tools.
  */
+/**
+ * Best-effort kind for a salvaged ledger entry on the failure path, where the
+ * summary map is gone: MCP and web-search entries are self-describing via
+ * nodeType; anything else with a nodeType came through the node/workflow
+ * engine seam.
+ */
+function salvagedToolKind(
+	interceptedRequests: InstanceAiEvalInterceptedRequest[],
+): InstanceAiEvalAgentToolCallRecord['kind'] {
+	const nodeType = interceptedRequests.find((request) => request.nodeType)?.nodeType;
+	if (!nodeType) return 'other';
+	if (nodeType.startsWith('mcp:')) return 'mcp';
+	if (nodeType === 'web-search:fallback') return 'other';
+	return 'node';
+}
+
 export function summarizeTools(
 	config: AgentJsonConfig,
 	customTools: NonNullable<AgentEntity['tools']>,

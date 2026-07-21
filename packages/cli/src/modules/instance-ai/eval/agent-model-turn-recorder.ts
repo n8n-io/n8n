@@ -1,8 +1,8 @@
 import type { FetchFn } from '@n8n/agents';
 import type { InstanceAiEvalAgentModelTurnRecord } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { jsonParse } from 'n8n-workflow';
 
+import { resolveUrl } from './mock-utils';
 import { redactSecretKeys, redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 
 // ---------------------------------------------------------------------------
@@ -24,12 +24,6 @@ export interface AgentModelTurnRecorder {
 	flush(): Promise<void>;
 }
 
-function resolveUrl(input: Parameters<FetchFn>[0]): string {
-	if (typeof input === 'string') return input;
-	if (input instanceof URL) return input.toString();
-	return input.url;
-}
-
 function providerFromUrl(url: string): string | undefined {
 	try {
 		const host = new URL(url).hostname;
@@ -43,18 +37,37 @@ function providerFromUrl(url: string): string | undefined {
 	}
 }
 
+// `jsonParse` treats an explicit undefined fallback as absent and throws.
+function tryParseJson(text: string): unknown {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Redact a text blob with the same rigor as structured bodies: key-based
+ * redaction when it parses as JSON, value-shape scrubbing either way.
+ */
+function recordableText(text: string, maxChars: number): string {
+	const parsed = tryParseJson(text);
+	const serialized = parsed === undefined ? text : JSON.stringify(redactSecretKeys(parsed));
+	return truncateForLlm(redactSecretValuePatterns(serialized), maxChars);
+}
+
 function recordableRequestBody(body: unknown): unknown {
 	if (typeof body !== 'string') {
 		return body === undefined || body === null ? undefined : '[non-string request body]';
 	}
-	const parsed = jsonParse<unknown>(body, { fallbackValue: undefined });
+	const parsed = tryParseJson(body);
 	if (parsed === undefined)
 		return truncateForLlm(redactSecretValuePatterns(body), MAX_RECORDED_REQUEST_CHARS);
 	// Key-based redaction can't see a secret pasted INSIDE message content —
 	// scrub well-known value shapes off the serialized form too.
 	const serialized = redactSecretValuePatterns(JSON.stringify(redactSecretKeys(parsed)));
 	if (serialized.length <= MAX_RECORDED_REQUEST_CHARS) {
-		return jsonParse<unknown>(serialized, { fallbackValue: serialized });
+		return tryParseJson(serialized) ?? serialized;
 	}
 	// Truncating serialized JSON usually breaks parseability — keep the
 	// truncated string (redacted content survives) rather than dropping it.
@@ -106,21 +119,18 @@ export function createAgentModelTurnRecorder(
 				teed
 					.text()
 					.then((text) => {
-						turn.responseBody = truncateForLlm(
-							redactSecretValuePatterns(text),
-							MAX_RECORDED_RESPONSE_CHARS,
-						);
+						turn.responseBody = recordableText(text, MAX_RECORDED_RESPONSE_CHARS);
 					})
 					.catch((error: unknown) => {
 						logger.debug('[EvalAgentMock] Model turn tee failed', {
-							url,
+							url: stripQuery(url),
 							error: error instanceof Error ? error.message : String(error),
 						});
 					}),
 			);
 		} catch (error) {
 			logger.debug('[EvalAgentMock] Model response clone failed', {
-				url,
+				url: stripQuery(url),
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}

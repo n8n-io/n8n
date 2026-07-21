@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 
 import { buildDateAnchors } from './date-anchors';
-import { generateJson } from './mcp-mock-fetch';
+import { generateJson } from './mock-utils';
 
 // ---------------------------------------------------------------------------
 // Mock for the agent runtime's fallback `web_search` tool (the Brave/SearXNG

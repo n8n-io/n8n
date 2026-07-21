@@ -439,11 +439,7 @@ export async function runWorkflowTestCase(
 		const scenariosPromise = runWithConcurrency(
 			agentScenarios,
 			async (scenario) => {
-				if ((scenario.seedDataTables?.length ?? 0) > 0) {
-					logger.warn(
-						`    [${scenario.name}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
-					);
-				}
+				warnAgentSeedDataTablesIgnored(logger, scenario.name, scenario.seedDataTables);
 				for (let attempt = 1; ; attempt++) {
 					try {
 						return await executeAgentScenario(
@@ -1611,6 +1607,19 @@ async function runScenario(
 
 /** Shared routing rule for both eval paths: an agent ref marks the case
  *  agent-anchored — the agent, not any co-built helper workflow, is the target. */
+/** Agent scenarios don't seed data-table rows (tables exist but stay empty) — shared warning for both orchestration paths. */
+export function warnAgentSeedDataTablesIgnored(
+	logger: EvalLogger,
+	scenarioName: string,
+	seedDataTables: unknown[] | undefined,
+): void {
+	if ((seedDataTables?.length ?? 0) > 0) {
+		logger.warn(
+			`    [${scenarioName}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
+		);
+	}
+}
+
 export function findAgentArtifactRef(
 	artifactRefs: ArtifactRef[] | undefined,
 ): ArtifactRef | undefined {
@@ -2118,12 +2127,13 @@ function buildAgentScenarioContextBlock(
 	// Looping agents can rack up dozens of calls — elide the middle so the
 	// verifier prompt stays bounded (start + end carry the decisive activity).
 	const MAX_RENDERED_CALLS = 30;
+	const TAIL_CALLS = 8;
 	const MAX_RENDERED_REQUESTS_PER_CALL = 5;
 	const allCalls = evalResult.toolCalls.map((call, index) => ({ call, ordinal: index + 1 }));
 	const renderedCalls =
 		allCalls.length <= MAX_RENDERED_CALLS
 			? allCalls
-			: [...allCalls.slice(0, MAX_RENDERED_CALLS - 8), ...allCalls.slice(-8)];
+			: [...allCalls.slice(0, MAX_RENDERED_CALLS - TAIL_CALLS), ...allCalls.slice(-TAIL_CALLS)];
 	const elidedCallCount = allCalls.length - renderedCalls.length;
 	if (evalResult.toolCalls.length === 0) {
 		sections.push('**Tool calls:** none — the agent made no tool calls in this run.', '');
@@ -2131,7 +2141,7 @@ function buildAgentScenarioContextBlock(
 		sections.push(`## Tool calls (${String(evalResult.toolCalls.length)})`, '');
 		if (elidedCallCount > 0) {
 			sections.push(
-				`_Showing the first ${String(MAX_RENDERED_CALLS - 8)} and last 8 calls; ${String(elidedCallCount)} middle calls elided._`,
+				`_Showing the first ${String(MAX_RENDERED_CALLS - TAIL_CALLS)} and last ${String(TAIL_CALLS)} calls; ${String(elidedCallCount)} middle calls elided._`,
 				'',
 			);
 		}

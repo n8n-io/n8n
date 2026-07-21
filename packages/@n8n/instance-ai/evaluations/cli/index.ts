@@ -81,6 +81,7 @@ import {
 	runWithConcurrency,
 	workflowExpectedForCase,
 	type BuildResult,
+	warnAgentSeedDataTablesIgnored,
 } from '../harness/runner';
 import {
 	classifyScenarioExecutionError,
@@ -1155,14 +1156,13 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		// workflow branch below (retry loop, framework_issue guard, output shape).
 		if (agentRunnable && agentRef) {
 			// Dataset rows don't carry seedDataTables — check the authored scenario.
-			const declaredSeedTables = testCaseByFileSlug
-				.get(inputs.testCaseFile)
-				?.executionScenarios?.find((s) => s.name === scenario.name)?.seedDataTables;
-			if ((declaredSeedTables?.length ?? 0) > 0) {
-				logger.warn(
-					`    [${scenario.name}] seedDataTables are not seeded on the agent execution path — tables exist but stay empty`,
-				);
-			}
+			warnAgentSeedDataTablesIgnored(
+				logger,
+				scenario.name,
+				testCaseByFileSlug
+					.get(inputs.testCaseFile)
+					?.executionScenarios?.find((s) => s.name === scenario.name)?.seedDataTables,
+			);
 			const agentExecStart = Date.now();
 			const agentContext =
 				(await agentContextByKey.get(cacheKey)) ?? '(agent configuration could not be fetched)';

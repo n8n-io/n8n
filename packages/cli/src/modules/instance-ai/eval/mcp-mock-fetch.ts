@@ -1,9 +1,9 @@
 import type { FetchFn } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
-import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
 import { buildDateAnchors } from './date-anchors';
+import { generateJson, resolveUrl } from './mock-utils';
 
 // ---------------------------------------------------------------------------
 // Mock MCP server, served straight through the agent runtime's injectable MCP
@@ -59,8 +59,6 @@ interface McpMockTool {
 	inputSchema: Record<string, unknown>;
 }
 
-const GENERATOR_TIMEOUT_MS = 120_000;
-const MAX_GENERATOR_ATTEMPTS = 2;
 const MAX_PRIOR_CALL_CONTEXT_CHARS = 2_000;
 const MOCK_SESSION_ID = 'eval-mock-session';
 
@@ -82,39 +80,6 @@ RULES:
 3. Stay consistent with the Global context and with the PRIOR CALLS listed (same entities, ids, and dates across calls).
 4. Every date you emit derives from the "## Date anchors" block, never from training data.
 5. Return ONLY valid JSON: { "text": "<the tool result as the server would render it>" } or { "isError": true, "text": "<error message>" }.`;
-
-function fenceStrip(raw: string): string {
-	return raw.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```\s*$/i, '');
-}
-
-export async function generateJson<T>(
-	agentName: string,
-	instructions: string,
-	userPrompt: string,
-	validate: (parsed: unknown) => T | undefined,
-	logger: Logger,
-): Promise<T | undefined> {
-	for (let attempt = 1; attempt <= MAX_GENERATOR_ATTEMPTS; attempt++) {
-		try {
-			const agent = createEvalAgent(agentName, { instructions });
-			const result = await agent.generate(userPrompt, {
-				providerOptions: { anthropic: { maxTokens: 4096 } },
-				abortSignal: AbortSignal.timeout(GENERATOR_TIMEOUT_MS),
-			});
-			const parsed = jsonParse<unknown>(fenceStrip(extractText(result)), {
-				fallbackValue: undefined,
-			});
-			const validated = validate(parsed);
-			if (validated !== undefined) return validated;
-			logger.warn(`[EvalMock] ${agentName} attempt ${attempt} returned an unusable shape`);
-		} catch (error) {
-			logger.warn(
-				`[EvalMock] ${agentName} attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		}
-	}
-	return undefined;
-}
 
 function validateToolsList(parsed: unknown): McpMockTool[] | undefined {
 	if (parsed === null || typeof parsed !== 'object') return undefined;
@@ -161,12 +126,6 @@ function jsonRpcError(id: unknown, code: number, message: string): Response {
 		status: 200,
 		headers: { 'content-type': 'application/json' },
 	});
-}
-
-function resolveUrl(input: Parameters<FetchFn>[0]): string {
-	if (typeof input === 'string') return input;
-	if (input instanceof URL) return input.toString();
-	return input.url;
 }
 
 export function createMcpMockFetch(options: McpMockFetchOptions): FetchFn {

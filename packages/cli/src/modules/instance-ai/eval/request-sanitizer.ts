@@ -59,6 +59,11 @@ const SECRET_VALUE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
 	{ pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g, replacement: REDACTED }, // Google API keys
 	{ pattern: /\bya29\.[0-9A-Za-z_-]{20,}\b/g, replacement: REDACTED }, // Google OAuth access tokens
 	{ pattern: /\bbearer\s+[A-Za-z0-9._~+/-]{20,}=*/gi, replacement: REDACTED },
+	// Bare JWTs (three dot-separated base64url segments, header always eyJ…)
+	{
+		pattern: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\b/g,
+		replacement: REDACTED,
+	},
 	// Prose-form assignments a key-based redactor can't see inside content
 	// text (`api_key=…`, `API key: …`, `password: …`). Keeps the key, scrubs
 	// the value; multi-word key names accept space/underscore/hyphen.
