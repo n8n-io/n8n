@@ -258,7 +258,7 @@ export const McpServerConfigSchema = z
 			})
 			.optional()
 			.describe(
-				'Server-generated metadata. Do not set this manually, only copy from search_mcp_servers result if present',
+				'Server-generated metadata. Do not set this manually; only copy it from an MCP discovery result when present',
 			),
 		toolFilter: z
 			.discriminatedUnion('mode', [

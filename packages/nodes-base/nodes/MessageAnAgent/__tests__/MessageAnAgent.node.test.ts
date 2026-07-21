@@ -245,6 +245,27 @@ describe('MessageAnAgent Node', () => {
 			},
 		};
 
+		it('uses inline defaults when legacy advanced values are still saved', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }, { json: {} }]);
+			mockParams({
+				agentSource: 'inline',
+				inlineAgent,
+				'advanced.invokeMode': 'perItem',
+				advanced: { allowOtherNodesData: true },
+			});
+			executeFunctions.executeAgent.mockResolvedValue({ ...mockAgentResult, session: null });
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledTimes(1);
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ inputDataScope: 'all', exposeWorkflowData: false }),
+				'Hello agent',
+				'exec-123',
+				0,
+			);
+		});
+
 		it('passes the inline definition and never resolves its embedded expressions', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockParams({ agentSource: 'inline', inlineAgent });

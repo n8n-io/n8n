@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.31.0",
+  "version": "2.32.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -149,6 +149,7 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-network": "workspace:*",
+    "@n8n/blob-storage": "workspace:*",
     "@n8n/chat-hub": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",

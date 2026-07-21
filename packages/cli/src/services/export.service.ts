@@ -1,7 +1,6 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { DataSource } from '@n8n/typeorm';
 import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
