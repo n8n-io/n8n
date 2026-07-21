@@ -66,9 +66,15 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 			.filter((child: InstanceAiAgentNode) => isActiveBuilderAgent(child))
 			.map((child: InstanceAiAgentNode) => child.agentId),
 	);
-	const hasHoistedActiveBuilderChild = tree.timeline.some(
-		(entry: InstanceAiTimelineEntry) =>
-			entry.type === 'child' && activeBuilderChildIds.has(entry.agentId),
+	const activeBuilderChildResponseIds = new Set(
+		tree.timeline
+			.filter(
+				(entry): entry is Extract<InstanceAiTimelineEntry, { type: 'child' }> =>
+					entry.type === 'child' &&
+					entry.responseId !== undefined &&
+					activeBuilderChildIds.has(entry.agentId),
+			)
+			.map((entry) => entry.responseId),
 	);
 	const toolCallsById = Object.fromEntries(tree.toolCalls.map((tc) => [tc.toolCallId, tc]));
 
@@ -78,7 +84,11 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 	return tree.timeline.some((e: InstanceAiTimelineEntry) => {
 		if (e.type === 'tool-call') {
 			const toolCall = toolCallsById[e.toolCallId];
-			return !(toolCall?.toolName === 'build-agent' && hasHoistedActiveBuilderChild);
+			return !(
+				toolCall?.toolName === 'build-agent' &&
+				e.responseId !== undefined &&
+				activeBuilderChildResponseIds.has(e.responseId)
+			);
 		}
 		if (e.type !== 'child') return true;
 		const child = childrenById[e.agentId];
