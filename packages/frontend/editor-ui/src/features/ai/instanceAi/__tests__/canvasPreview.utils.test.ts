@@ -8,6 +8,7 @@ import {
 	getLatestDeletedDataTableId,
 	getLatestWorkflowUpdateResult,
 	getLatestAgentArtifactResult,
+	getLatestAgentConfigMutation,
 	getExecutionResultsByWorkflow,
 	isAgentEditingWorkflow,
 	isAgentEditingAgent,
@@ -460,6 +461,109 @@ describe('getLatestAgentArtifactResult', () => {
 		});
 
 		expect(getLatestAgentArtifactResult(orchestrator)).toBeUndefined();
+	});
+});
+
+describe('getLatestAgentConfigMutation', () => {
+	test('finds a resolved patch_config on an agent-builder child, using its targetResource', () => {
+		const builderChild = makeAgentNode({
+			agentId: 'builder-child',
+			kind: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-patch',
+					toolName: 'patch_config',
+					isLoading: false,
+					result: { ok: true },
+				}),
+			],
+		});
+		const orchestrator = makeAgentNode({ children: [builderChild] });
+
+		expect(getLatestAgentConfigMutation(orchestrator)).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-patch',
+		});
+	});
+
+	test('ignores in-flight calls and failed results', () => {
+		const inFlight = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [makeToolCall({ toolName: 'write_config', isLoading: true })],
+		});
+		expect(getLatestAgentConfigMutation(inFlight)).toBeUndefined();
+
+		const failed = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({ toolName: 'write_config', isLoading: false, result: { ok: false } }),
+			],
+		});
+		expect(getLatestAgentConfigMutation(failed)).toBeUndefined();
+	});
+
+	test('ignores non-mutation tools', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({ toolName: 'read_config', isLoading: false, result: { ok: true } }),
+				makeToolCall({ toolName: 'write_todos', isLoading: false, result: { status: 'ok' } }),
+				makeToolCall({
+					toolName: 'create_skills',
+					isLoading: false,
+					result: { ok: true, skills: [] },
+				}),
+			],
+		});
+		expect(getLatestAgentConfigMutation(node)).toBeUndefined();
+	});
+
+	test('matches a resolved configure_channel via result.connected', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-channel',
+					toolName: 'configure_channel',
+					isLoading: false,
+					result: { connected: true },
+				}),
+			],
+		});
+		expect(getLatestAgentConfigMutation(node)).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-channel',
+		});
+	});
+
+	test('returns the latest mutation when several exist, and uses fallbackTarget when no targetResource is in the tree', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-write',
+					toolName: 'write_config',
+					isLoading: false,
+					result: { ok: true },
+				}),
+				makeToolCall({
+					toolCallId: 'tc-patch',
+					toolName: 'patch_config',
+					isLoading: false,
+					result: { ok: true },
+				}),
+			],
+		});
+
+		expect(
+			getLatestAgentConfigMutation(node, { agentId: 'agent-1', projectId: 'project-1' }),
+		).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-patch',
+		});
 	});
 });
 

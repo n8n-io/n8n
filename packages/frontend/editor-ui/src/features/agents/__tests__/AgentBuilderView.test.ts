@@ -1200,6 +1200,38 @@ describe('AgentBuilderView — three-column shell', () => {
 		});
 	});
 
+	it('disables editing when artifactEditingLocked is true even with edit permission', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+				artifactEditingLocked: true,
+			},
+		});
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			false,
+		);
+	});
+
+	it('keeps editing enabled when artifactEditingLocked is false', async () => {
+		const wrapper = await renderView({
+			props: {
+				artifactMode: true,
+				artifactProjectId: 'p2',
+				artifactAgentId: 'a2',
+				artifactRefreshKey: 0,
+				artifactEditingLocked: false,
+			},
+		});
+
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('canEditAgent')).toBe(
+			true,
+		);
+	});
+
 	it('keeps artifact mode tab switching out of the route query', async () => {
 		const wrapper = await renderView({
 			props: {

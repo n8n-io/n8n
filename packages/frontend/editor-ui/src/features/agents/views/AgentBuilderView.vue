@@ -81,12 +81,15 @@ const props = withDefaults(
 		artifactProjectId?: string;
 		artifactAgentId?: string;
 		artifactRefreshKey?: number;
+		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
+		artifactEditingLocked?: boolean;
 	}>(),
 	{
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
 		artifactRefreshKey: 0,
+		artifactEditingLocked: false,
 	},
 );
 
@@ -134,6 +137,11 @@ const agentId = computed(
 const isFavorite = computed(() => favoritesStore.isFavorite(agentId.value, 'agent'));
 
 const { canUpdate: canEditAgent, canDelete: canDeleteAgent } = useAgentPermissions(projectId);
+// Combines permission with the artifact-mode build lock: while the AI is
+// actively building/mutating this agent, editing is disabled even for a user
+// who otherwise has permission — mirrors the workflow artifact's read-only
+// lock during a build.
+const effectiveCanEditAgent = computed(() => canEditAgent.value && !props.artifactEditingLocked);
 
 const isVersionHistoryOpen = ref(false);
 
@@ -803,7 +811,7 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = 
 }
 
 function persistMissingPersonalisationGradient() {
-	if (!canEditAgent.value) return;
+	if (!effectiveCanEditAgent.value) return;
 	if (!localConfig.value) return;
 
 	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
@@ -896,7 +904,7 @@ const headerActions = computed(() => {
 		},
 	];
 
-	if (canEditAgent.value) {
+	if (effectiveCanEditAgent.value) {
 		actions.push({
 			id: 'import-json',
 			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
@@ -953,7 +961,7 @@ async function exportAgentJson() {
 }
 
 function openImportJsonModal() {
-	if (!canEditAgent.value) return;
+	if (!effectiveCanEditAgent.value) return;
 
 	uiStore.openModalWithData({
 		name: AGENT_JSON_IMPORT_MODAL_KEY,
@@ -1284,6 +1292,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 			:before-revert-to-published="settleAutosave"
 			:is-version-history-open="isVersionHistoryOpen"
 			:artifact-mode="isArtifactMode"
+			:editing-locked="props.artifactEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
 			:before-publish="refreshValidationBeforePublish"
 			@header-action="onHeaderAction"
@@ -1356,7 +1365,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					:deleting-agent-file-id="deletingAgentFileId"
 					:applied-skills="appliedSkills"
 					:connected-triggers="connectedTriggers"
-					:can-edit-agent="canEditAgent"
+					:can-edit-agent="effectiveCanEditAgent"
 					:tasks-reload-key="tasksReloadKey"
 					:main-tab-options="mainTabOptions"
 					:executions-description="executionsDescription"

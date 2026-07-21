@@ -251,7 +251,7 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 </script>
 
 <template>
-	<div :class="[$style.subAgentsPanel, disabled && $style.disabled]" :aria-disabled="disabled">
+	<div :class="$style.subAgentsPanel" :aria-disabled="disabled">
 		<div :class="$style.settingRow">
 			<div :class="$style.settingLabel">
 				<N8nText step="sm" bold :class="shared.dataEntryLabel">
@@ -359,11 +359,6 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.subAgentsPanel.disabled {
-	pointer-events: none;
-	opacity: 0.6;
 }
 
 .settingRow {

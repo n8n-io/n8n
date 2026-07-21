@@ -1,4 +1,5 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 export interface ExecutionResult {
 	executionId: string;
@@ -478,6 +479,78 @@ export function getLatestAgentArtifactResult(
 	fallbackTarget?: AgentArtifactTarget,
 ): AgentArtifactResult | undefined {
 	return walkAgentArtifact(node, fallbackTarget).result;
+}
+
+/** Builder tool calls whose success means the persisted agent changed in a panel-visible way. */
+const AGENT_CONFIG_MUTATION_TOOLS = new Set([
+	'write_config',
+	'patch_config',
+	'create_tasks',
+	'publish_agent',
+	'unpublish_agent',
+	'configure_channel',
+]);
+
+export interface AgentConfigMutationResult {
+	agentId: string;
+	projectId?: string;
+	/** Unique per mutation — a later mutation in the same build re-fires watchers. */
+	toolCallId: string;
+}
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the latest
+ * RESOLVED config-mutating builder tool call, resolved to its target agent.
+ * Used to refresh the agent preview immediately after every persisted
+ * change, rather than waiting for a suspension or the turn to complete.
+ * `create_skills` is deliberately excluded — it stores skill bodies without
+ * attaching them, so nothing panel-visible changes until the follow-up patch.
+ */
+export function getLatestAgentConfigMutation(
+	node: InstanceAiAgentNode,
+	fallbackTarget?: AgentArtifactTarget,
+): AgentConfigMutationResult | undefined {
+	return walkAgentConfigMutation(node, fallbackTarget).result;
+}
+
+interface AgentConfigMutationWalk {
+	result?: AgentConfigMutationResult;
+	target?: AgentArtifactTarget;
+}
+
+function walkAgentConfigMutation(
+	node: InstanceAiAgentNode,
+	fallbackTarget: AgentArtifactTarget | undefined,
+): AgentConfigMutationWalk {
+	const ownTarget = getAgentTarget(node);
+	const target = ownTarget ?? fallbackTarget;
+
+	let childTarget: AgentArtifactTarget | undefined;
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childWalk = walkAgentConfigMutation(node.children[i], target);
+		if (childWalk.result) return childWalk;
+		if (childTarget === undefined) childTarget = childWalk.target;
+	}
+
+	const callTarget = ownTarget ?? childTarget ?? fallbackTarget;
+
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (
+			!tc.isLoading &&
+			AGENT_CONFIG_MUTATION_TOOLS.has(tc.toolName) &&
+			isRecord(tc.result) &&
+			(tc.result.ok === true || tc.result.connected === true) &&
+			callTarget
+		) {
+			return {
+				result: { ...callTarget, toolCallId: tc.toolCallId },
+				target: callTarget,
+			};
+		}
+	}
+
+	return { target: callTarget };
 }
 
 /**

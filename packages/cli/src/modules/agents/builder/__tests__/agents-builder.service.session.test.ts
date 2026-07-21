@@ -116,6 +116,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		return { model, options, kind: 'reflect' };
 	}
 
+	function createPlannerTodosTool(): BuiltTool {
+		return { name: 'write_todos', description: 'planner todos tool' } as BuiltTool;
+	}
+
 	return {
 		streamCalls,
 		instructionsCalls,
@@ -131,6 +135,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		MockMemory,
 		createObservationLogObserveFn,
 		createObservationLogReflectFn,
+		createPlannerTodosTool,
 	};
 });
 
@@ -139,6 +144,7 @@ vi.mock('@n8n/agents', () => ({
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
 	createObservationLogReflectFn: agentsSdkMocks.createObservationLogReflectFn,
+	createPlannerTodosTool: agentsSdkMocks.createPlannerTodosTool,
 }));
 
 // Avoid a real `models.dev` catalog fetch — irrelevant to thread isolation and

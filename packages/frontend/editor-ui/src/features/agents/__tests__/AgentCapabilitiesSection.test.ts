@@ -638,15 +638,78 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.emitted('tasks-changed')).toEqual([[]]);
 	});
 
-	it('hides the add-tool and add-skill buttons when disabled (read-only host)', async () => {
+	it('disables the add-tool and add-skill buttons when disabled (read-only host)', async () => {
 		const wrapper = mountSection([]);
 		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
+		).toBeUndefined();
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
+		).toBeUndefined();
 
 		await wrapper.setProps({ disabled: true });
 
-		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
+		).toBeDefined();
+	});
+
+	it('renders no wrapper overlay and keeps chips visible but disabled when disabled (read-only host)', async () => {
+		const wrapper = mountSection(
+			[],
+			{},
+			configWithMcpServers([
+				{
+					name: 'github',
+					url: 'https://mcp.github.com',
+					transport: 'streamableHttp',
+					authentication: 'none',
+				},
+			]),
+			[],
+			[],
+			{
+				skills: [
+					{
+						id: 'skill-1',
+						skill: { name: 'Refund policy', description: '', instructions: '' },
+					},
+				],
+			},
+		);
+		await flushPromises();
+
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-section"]').attributes('inert'),
+		).toBeUndefined();
+
+		await wrapper.setProps({ disabled: true });
+
+		// No wrapper-level dim/inert overlay.
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-section"]').attributes('inert'),
+		).toBeUndefined();
+
+		// Chips stay visible but individually disabled, and clicking them is a no-op.
+		const toolChip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
+		const skillChip = wrapper.find('[data-testid="agent-capabilities-skill-row"]');
+		expect(toolChip.exists()).toBe(true);
+		expect(skillChip.exists()).toBe(true);
+		expect(toolChip.attributes('disabled')).toBeDefined();
+		expect(skillChip.attributes('disabled')).toBeDefined();
+
+		await toolChip.trigger('click');
+		await skillChip.trigger('click');
+
+		expect(wrapper.emitted('open-tool')).toBeUndefined();
+		expect(wrapper.emitted('open-skill')).toBeUndefined();
 	});
 
 	describe('channel modal', () => {

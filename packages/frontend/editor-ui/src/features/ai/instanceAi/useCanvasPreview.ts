@@ -7,7 +7,7 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
-	getLatestAgentArtifactResult,
+	getLatestAgentConfigMutation,
 	getLatestAgentBuilderTarget,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
@@ -268,7 +268,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// Mirrors the workflow-builder spawn-open above. The builder node id is
 	// stable per target agent (`agent-builder:<id>`), so this opens once per
 	// target per thread — later spawns for the same agent intentionally don't
-	// re-yank the view. Doesn't bump agentRefreshKey — the artifact-result
+	// re-yank the view. Doesn't bump agentRefreshKey — the config-mutation
 	// watch below owns refreshes.
 
 	const latestAgentBuilderTarget = computed(() => {
@@ -404,13 +404,18 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		}
 	});
 
-	// --- Auto-open / refresh agent preview when AI creates or mutates an agent ---
+	// --- Refresh agent preview on every persisted builder config mutation ---
+	// The agent panel opens at builder-spawn time (see latestAgentBuilderTarget
+	// above); this is the single trigger that keeps it in sync afterwards —
+	// every successful write_config/patch_config/create_tasks/publish_agent/
+	// unpublish_agent/configure_channel refreshes it immediately, whether that
+	// happens mid-build, right before a suspension, or at turn completion.
 
-	const latestAgentArtifactResult = computed(() => {
+	const latestAgentConfigMutation = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
 			if (msg.agentTree) {
-				const result = getLatestAgentArtifactResult(msg.agentTree, activeAgentTarget.value);
+				const result = getLatestAgentConfigMutation(msg.agentTree, activeAgentTarget.value);
 				if (result) return result;
 			}
 		}
@@ -418,20 +423,11 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	});
 
 	watch(
-		() => latestAgentArtifactResult.value?.toolCallId,
+		() => latestAgentConfigMutation.value?.toolCallId,
 		(toolCallId) => {
-			if (!toolCallId || !latestAgentArtifactResult.value) return;
+			if (!toolCallId || !latestAgentConfigMutation.value) return;
 			if (thread.isHydratingThread) return;
-
-			const targetId = latestAgentArtifactResult.value.agentId;
-			if (latestAgentArtifactResult.value.kind === 'created') {
-				activeTabId.value = targetId;
-				isPreviewOpen.value = true;
-				agentRefreshKey.value++;
-				return;
-			}
-
-			if (activeTabId.value === targetId) {
+			if (activeTabId.value === latestAgentConfigMutation.value.agentId) {
 				agentRefreshKey.value++;
 			}
 		},

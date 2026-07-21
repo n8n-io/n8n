@@ -757,160 +757,77 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
+	});
 
-		test('auto-opens agent artifact when build-agent creates a new agent', async () => {
-			const ctx = setup();
-			ctx.thread.isStreaming = true;
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-child',
-								role: 'agent-builder',
-								kind: 'builder',
-								targetResource: {
-									type: 'agent',
-									id: 'agent-1',
-									projectId: 'project-1',
-									name: 'SEO Auditor',
-								},
-							}),
-						],
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-create-agent',
-								toolName: 'build-agent',
-								args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
-								result: { ok: true, builderReply: 'Created the agent.' },
-							}),
-						],
+	describe('refresh agent preview on config mutation', () => {
+		// Target + tool call live directly on the node (no agent-builder child) so
+		// this fixture exercises only the mutation-refresh watcher, not the
+		// separate spawn-open watcher (which switches tabs whenever a fresh
+		// agent-builder child appears, regardless of the active tab).
+		function makeAgentConfigMutationTree(toolCallId: string, toolName = 'patch_config') {
+			return makeAgentNode({
+				targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+				toolCalls: [
+					makeToolCall({
+						toolCallId,
+						toolName,
+						isLoading: false,
+						result: { ok: true },
 					}),
-				}),
-			];
-			await nextTick();
+				],
+			});
+		}
 
-			expect(ctx.activeAgentId.value).toBe('agent-1');
-			expect(ctx.activeAgentProjectId.value).toBe('project-1');
-			expect(ctx.isPreviewVisible.value).toBe(true);
-		});
-
-		test('does not auto-open agent artifact while hydrating', async () => {
-			const ctx = setup();
-			ctx.thread.isHydratingThread = true;
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						children: [
-							makeAgentNode({
-								agentId: 'agent-builder-child',
-								role: 'agent-builder',
-								kind: 'builder',
-								targetResource: {
-									type: 'agent',
-									id: 'agent-1',
-									projectId: 'project-1',
-									name: 'SEO Auditor',
-								},
-							}),
-						],
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-create-agent',
-								toolName: 'build-agent',
-								args: { message: 'build me an SEO auditor', name: 'SEO Auditor' },
-								result: { ok: true, builderReply: 'Created the agent.' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.activeAgentId.value).toBeNull();
-			expect(ctx.isPreviewVisible.value).toBe(false);
-		});
-
-		test('increments agentRefreshKey when active agent is mutated', async () => {
+		test('increments agentRefreshKey when a config mutation resolves while the target agent tab is active', async () => {
 			const ctx = setup();
 			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
 			ctx.openAgentPreview('agent-1', 'project-1');
 			const initialKey = ctx.agentRefreshKey.value;
 
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build-agent',
-								toolName: 'build-agent',
-								args: { message: 'add a skill' },
-								result: { ok: true, configUpdated: true },
-							}),
-						],
-					}),
-				}),
-			];
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
 			await nextTick();
 
 			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
-			expect(ctx.activeAgentId.value).toBe('agent-1');
 		});
 
-		test('increments agentRefreshKey for active agent mutations without targetResource', async () => {
+		test('does not increment agentRefreshKey when a different tab is active, and not while hydrating', async () => {
 			const ctx = setup();
 			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			ctx.openAgentPreview('agent-1', 'project-1');
+			registerAgent(ctx.thread, 'agent-2', 'Other Agent', 'project-1');
+			ctx.openAgentPreview('agent-2', 'project-1');
 			const initialKey = ctx.agentRefreshKey.value;
 
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build-agent',
-								toolName: 'build-agent',
-								args: { message: 'add a skill' },
-								result: { ok: true, configUpdated: true },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
-			expect(ctx.activeAgentId.value).toBe('agent-1');
-		});
-
-		test('does not open or refresh on a reply-only turn (no name, no configUpdated)', async () => {
-			const ctx = setup();
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			ctx.openAgentPreview('agent-1', 'project-1');
-			const initialKey = ctx.agentRefreshKey.value;
-
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build-agent-reply',
-								toolName: 'build-agent',
-								args: { message: 'what does this agent do?' },
-								result: { ok: true, builderReply: 'It triages your inbox.' },
-							}),
-						],
-					}),
-				}),
-			];
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
 			await nextTick();
 
 			expect(ctx.agentRefreshKey.value).toBe(initialKey);
+			expect(ctx.activeTabId.value).toBe('agent-2');
+
+			ctx.openAgentPreview('agent-1', 'project-1');
+			ctx.thread.isHydratingThread = true;
+			const keyBeforeHydration = ctx.agentRefreshKey.value;
+
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2') })];
+			await nextTick();
+
+			expect(ctx.agentRefreshKey.value).toBe(keyBeforeHydration);
+		});
+
+		test('increments agentRefreshKey again for a second mutation with a new toolCallId', async () => {
+			const ctx = setup();
+			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
+			ctx.openAgentPreview('agent-1', 'project-1');
+			const initialKey = ctx.agentRefreshKey.value;
+
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
+			await nextTick();
+			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
+
+			ctx.thread.messages = [
+				makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2', 'write_config') }),
+			];
+			await nextTick();
+			expect(ctx.agentRefreshKey.value).toBe(initialKey + 2);
 		});
 	});
 
