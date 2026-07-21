@@ -187,6 +187,7 @@ export {
 } from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
+export { RoleDeleteQueryDto } from './roles/role-delete-query.dto';
 export {
 	RoleAssignmentsResponseDto,
 	type RoleProjectAssignment,
@@ -290,6 +291,8 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';

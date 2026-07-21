@@ -6,6 +6,7 @@
  */
 export {
 	capitalizeFirstLetter,
+	escapeHtml,
 	getBannerRowHeight,
 	getScrollbarWidth,
 	isEventTargetContainedBy,

@@ -283,6 +283,33 @@ describe('NodeExecutionContext', () => {
 			expect(resolved).toBeUndefined();
 		});
 
+		it('builds mock credentials for an unconfigured node whenever the eval handler is set, regardless of mode', async () => {
+			// Agent-tool eval runs execute in 'internal' mode (and their
+			// workflow-tool sub-executions in 'chat'/'manual') — handler presence,
+			// not mode, is the bypass discriminator.
+			const testNode = mock<INode>({ type: 'n8n-nodes-base.slack' });
+			testNode.credentials = undefined;
+
+			const getDecrypted = vi.fn().mockResolvedValue({ token: '<api-key>' });
+			const evalAdditionalData = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mock({ getDecrypted }),
+				evalLlmMockHandler: vi.fn(),
+			});
+
+			const internalContext = new TestContext(workflow, testNode, evalAdditionalData, 'internal');
+
+			await expect(internalContext['_getCredentials']('slackApi')).resolves.toEqual({
+				token: '<api-key>',
+			});
+			expect(getDecrypted).toHaveBeenCalledWith(
+				evalAdditionalData,
+				{ id: null, name: 'slackApi' },
+				'slackApi',
+				'internal',
+				undefined,
+			);
+		});
+
 		it('refuses to decrypt a restricted credential for a node not in supportedNodes', async () => {
 			const credentialDetails = { id: 'cred-r1', name: 'Restricted creds' };
 			const httpNode = mock<INode>({ type: 'n8n-nodes-base.httpRequest' });

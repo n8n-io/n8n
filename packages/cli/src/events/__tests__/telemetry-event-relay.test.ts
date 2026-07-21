@@ -2235,6 +2235,7 @@ describe('TelemetryEventRelay', () => {
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingPolicy: 'do-nothing',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2259,6 +2260,11 @@ describe('TelemetryEventRelay', () => {
 						created: 1,
 						requirements: 2,
 					},
+					variables: {
+						matched: 1,
+						missing: 1,
+						requirements: 2,
+					},
 				},
 			};
 
@@ -2274,6 +2280,7 @@ describe('TelemetryEventRelay', () => {
 				data_table_matching_mode: 'by-id',
 				data_table_missing_mode: 'create',
 				data_table_schema_conflict_policy: 'keep-existing',
+				variable_missing_policy: 'do-nothing',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
@@ -2283,6 +2290,9 @@ describe('TelemetryEventRelay', () => {
 				data_tables_matched: 1,
 				data_tables_created: 1,
 				data_tables_required: 2,
+				variables_matched: 1,
+				variables_missing: 1,
+				variables_required: 2,
 			});
 		});
 
