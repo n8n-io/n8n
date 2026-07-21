@@ -1,5 +1,5 @@
 import type { IRestApiContext } from '../types';
-import { get, post } from '../utils';
+import { get, makeRestApiRequest, post } from '../utils';
 
 export declare namespace Cloud {
 	export interface PlanData {
@@ -80,7 +80,6 @@ export declare namespace Cloud {
 		information?: {
 			[key: string]: string | string[];
 		};
-		upgradeOffer?: UpgradeOffer;
 	};
 }
 
@@ -100,6 +99,12 @@ export async function getCurrentUsage(context: IRestApiContext): Promise<Instanc
 
 export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.UserAccount> {
 	return await get(context.baseUrl, '/cloud/proxy/user/me');
+}
+
+export async function getUpgradeOffer(
+	context: IRestApiContext,
+): Promise<Cloud.UpgradeOffer | Record<string, never>> {
+	return await makeRestApiRequest(context, 'POST', '/cloud/proxy/upgrade-offer');
 }
 
 export async function sendConfirmationEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {

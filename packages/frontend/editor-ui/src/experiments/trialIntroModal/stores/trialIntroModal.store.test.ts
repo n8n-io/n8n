@@ -1,5 +1,6 @@
 import { EXPERIMENTS_TO_TRACK, TRIAL_INTRO_MODAL_EXPERIMENT } from '@/app/constants/experiments';
 import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
+import { getUpgradeOffer } from '@n8n/rest-api-client/api/cloudPlans';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
 import { createPinia, setActivePinia } from 'pinia';
@@ -31,6 +32,10 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
 }));
 
+vi.mock('@n8n/rest-api-client/api/cloudPlans', () => ({
+	getUpgradeOffer: vi.fn(),
+}));
+
 let mockIsCloudDeployment = false;
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: () => ({
@@ -43,7 +48,6 @@ vi.mock('@/app/stores/settings.store', () => ({
 let mockUserIsTrialing = false;
 let mockTrialExpired = false;
 let mockTrialDaysLeft = -1;
-let mockCurrentUserCloudInfo: Cloud.UserAccount | null = null;
 let mockCurrentPlanData: Cloud.PlanData | null = null;
 
 vi.mock('@/app/stores/cloudPlan.store', () => ({
@@ -56,9 +60,6 @@ vi.mock('@/app/stores/cloudPlan.store', () => ({
 		},
 		get trialDaysLeft() {
 			return mockTrialDaysLeft;
-		},
-		get currentUserCloudInfo() {
-			return mockCurrentUserCloudInfo;
 		},
 		get currentPlanData() {
 			return mockCurrentPlanData;
@@ -113,6 +114,8 @@ describe('trialIntroModal store', () => {
 		mockGetVariant.mockReset();
 		vi.mocked(updateCurrentUserSettings).mockReset();
 		vi.mocked(updateCurrentUserSettings).mockResolvedValue({});
+		vi.mocked(getUpgradeOffer).mockReset();
+		vi.mocked(getUpgradeOffer).mockResolvedValue({});
 		mockIsCalloutDismissed.mockReset();
 		mockIsCalloutDismissed.mockReturnValue(false);
 		mockSetCalloutDismissed.mockClear();
@@ -122,7 +125,6 @@ describe('trialIntroModal store', () => {
 		mockUserIsTrialing = true;
 		mockTrialExpired = false;
 		mockTrialDaysLeft = 5;
-		mockCurrentUserCloudInfo = null;
 		mockCurrentPlanData = null;
 		mockIsInstanceOwner = true;
 		mockCurrentUser = { settings: { dismissedCallouts: {} } };
@@ -203,18 +205,15 @@ describe('trialIntroModal store', () => {
 	});
 
 	describe('starterOffer', () => {
-		it('exposes the upgrade offer from cloud user info', () => {
-			mockCurrentUserCloudInfo = {
-				confirmed: true,
-				username: 'user',
-				email: 'user@example.com',
-				upgradeOffer: {
-					slug: 'starter',
-					displayName: 'Starter',
-					quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
-					currency: { code: 'USD', symbol: '$', position: 'prefix' },
-				},
-			};
+		it('exposes the upgrade offer fetched from the dedicated endpoint', async () => {
+			vi.mocked(getUpgradeOffer).mockResolvedValue({
+				slug: 'starter',
+				displayName: 'Starter',
+				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
+				currency: { code: 'USD', symbol: '$', position: 'prefix' },
+			});
+
+			await store.fetchUpgradeOfferOnce();
 
 			expect(store.starterOffer).toEqual({
 				slug: 'starter',
@@ -230,18 +229,15 @@ describe('trialIntroModal store', () => {
 	});
 
 	describe('offerCurrency', () => {
-		it('reflects the upgrade offer currency', () => {
-			mockCurrentUserCloudInfo = {
-				confirmed: true,
-				username: 'user',
-				email: 'user@example.com',
-				upgradeOffer: {
-					slug: 'starter',
-					displayName: 'Starter',
-					quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
-					currency: { code: 'EUR', symbol: '€', position: 'suffix' },
-				},
-			};
+		it('reflects the upgrade offer currency', async () => {
+			vi.mocked(getUpgradeOffer).mockResolvedValue({
+				slug: 'starter',
+				displayName: 'Starter',
+				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
+				currency: { code: 'EUR', symbol: '€', position: 'suffix' },
+			});
+
+			await store.fetchUpgradeOfferOnce();
 
 			expect(store.offerCurrency).toEqual({ code: 'EUR', symbol: '€', position: 'suffix' });
 		});
@@ -274,6 +270,60 @@ describe('trialIntroModal store', () => {
 		});
 	});
 
+	describe('fetchUpgradeOfferOnce', () => {
+		it('stores a valid offer', async () => {
+			vi.mocked(getUpgradeOffer).mockResolvedValue({
+				slug: 'starter',
+				displayName: 'Starter',
+				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
+			});
+
+			await store.fetchUpgradeOfferOnce();
+
+			expect(store.starterOffer).toEqual({
+				slug: 'starter',
+				displayName: 'Starter',
+				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
+			});
+		});
+
+		it('leaves starterOffer undefined when the endpoint returns no offer', async () => {
+			await store.fetchUpgradeOfferOnce();
+
+			expect(getUpgradeOffer).toHaveBeenCalledWith(restApiContextMock);
+			expect(store.starterOffer).toBeUndefined();
+		});
+
+		it('does not re-request when called again, in flight or after resolving', async () => {
+			let resolveRequest: (value: Cloud.UpgradeOffer | Record<string, never>) => void = () => {};
+			vi.mocked(getUpgradeOffer).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						resolveRequest = resolve;
+					}),
+			);
+
+			const firstCall = store.fetchUpgradeOfferOnce();
+			const secondCall = store.fetchUpgradeOfferOnce();
+			resolveRequest({
+				slug: 'starter',
+				displayName: 'Starter',
+				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
+			});
+			await Promise.all([firstCall, secondCall]);
+			await store.fetchUpgradeOfferOnce();
+
+			expect(getUpgradeOffer).toHaveBeenCalledTimes(1);
+		});
+
+		it('swallows a rejected request and leaves the offer undefined', async () => {
+			vi.mocked(getUpgradeOffer).mockRejectedValueOnce(new Error('network error'));
+
+			await expect(store.fetchUpgradeOfferOnce()).resolves.toBeUndefined();
+			expect(store.starterOffer).toBeUndefined();
+		});
+	});
+
 	describe('openIfEligible', () => {
 		it('returns false and does not open the modal when shouldShowModal is false', () => {
 			mockIsInstanceOwner = false;
@@ -281,6 +331,7 @@ describe('trialIntroModal store', () => {
 			expect(store.openIfEligible()).toBe(false);
 			expect(mockOpenModal).not.toHaveBeenCalled();
 			expect(mockSetCalloutDismissed).not.toHaveBeenCalled();
+			expect(getUpgradeOffer).not.toHaveBeenCalled();
 		});
 
 		it('returns false and does not open the modal when another modal is already open', () => {
@@ -289,17 +340,19 @@ describe('trialIntroModal store', () => {
 			expect(store.openIfEligible()).toBe(false);
 			expect(mockOpenModal).not.toHaveBeenCalled();
 			expect(mockSetCalloutDismissed).not.toHaveBeenCalled();
+			expect(getUpgradeOffer).not.toHaveBeenCalled();
 		});
 
-		it('opens the modal, marks it seen, and returns true when eligible and the modal stack is empty', () => {
+		it('opens the modal, marks it seen, fetches the upgrade offer, and returns true when eligible and the modal stack is empty', () => {
 			expect(store.openIfEligible()).toBe(true);
 			expect(mockOpenModal).toHaveBeenCalledWith(TRIAL_INTRO_MODAL_KEY);
 			expect(mockSetCalloutDismissed).toHaveBeenCalledWith(TRIAL_INTRO_SEEN_CALLOUT);
+			expect(getUpgradeOffer).toHaveBeenCalledWith(restApiContextMock);
 		});
 	});
 
 	describe('trackModalViewed', () => {
-		it('tracks the feature flag payload alongside trial and offer context', () => {
+		it('tracks the feature flag payload alongside trial and offer context', async () => {
 			mockTrialDaysLeft = 7;
 			mockCurrentPlanData = {
 				planId: 1,
@@ -312,18 +365,14 @@ describe('trialIntroModal store', () => {
 				metadata: { version: 'v1', group: 'trial', slug: 'trial-1' },
 				licenseFeatures: { 'quota:instanceAiCredits': 500 },
 			};
-			mockCurrentUserCloudInfo = {
-				confirmed: true,
-				username: 'user',
-				email: 'user@example.com',
-				upgradeOffer: {
-					slug: 'starter',
-					displayName: 'Starter',
-					quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
-					currency: { code: 'USD', symbol: '$', position: 'prefix' },
-					prices: { monthly: 10, yearlyPerMonth: 8, yearlyTotal: 96, discountPct: 20 },
-				},
-			};
+			vi.mocked(getUpgradeOffer).mockResolvedValue({
+				slug: 'starter',
+				displayName: 'Starter',
+				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
+				currency: { code: 'USD', symbol: '$', position: 'prefix' },
+				prices: { monthly: 10, yearlyPerMonth: 8, yearlyTotal: 96, discountPct: 20 },
+			});
+			await store.fetchUpgradeOfferOnce();
 
 			store.trackModalViewed(1);
 

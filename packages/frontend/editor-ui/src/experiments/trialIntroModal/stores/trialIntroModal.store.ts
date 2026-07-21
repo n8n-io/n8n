@@ -6,16 +6,24 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
+import { getUpgradeOffer } from '@n8n/rest-api-client/api/cloudPlans';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	TRIAL_INTRO_MODAL_KEY,
 	TRIAL_INTRO_SEEN_CALLOUT,
 	TRIAL_INTRO_UPGRADE_SOURCE,
 } from '../constants';
+
+function isUpgradeOffer(
+	response: Cloud.UpgradeOffer | Record<string, never>,
+): response is Cloud.UpgradeOffer {
+	return 'slug' in response && Boolean(response.slug);
+}
 
 export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO_MODAL, () => {
 	const posthogStore = usePostHog();
@@ -43,7 +51,10 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 
 	const shouldShowModal = computed(() => isVariantEnabled.value && isEligible.value);
 
-	const starterOffer = computed(() => cloudPlanStore.currentUserCloudInfo?.upgradeOffer);
+	const upgradeOffer = ref<Cloud.UpgradeOffer | undefined>();
+	const hasFetchedUpgradeOffer = ref(false);
+
+	const starterOffer = computed(() => upgradeOffer.value);
 
 	const offerCurrency = computed(() => starterOffer.value?.currency);
 
@@ -60,11 +71,24 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 		} catch {}
 	};
 
+	const fetchUpgradeOfferOnce = async (): Promise<void> => {
+		if (hasFetchedUpgradeOffer.value) return;
+		hasFetchedUpgradeOffer.value = true;
+
+		try {
+			const response = await getUpgradeOffer(rootStore.restApiContext);
+			if (isUpgradeOffer(response)) {
+				upgradeOffer.value = response;
+			}
+		} catch {}
+	};
+
 	function openIfEligible() {
 		if (!shouldShowModal.value) return false;
 		if (uiStore.isAnyModalOpen) return false;
 		uiStore.openModal(TRIAL_INTRO_MODAL_KEY);
 		void markSeen();
+		void fetchUpgradeOfferOnce();
 		return true;
 	}
 
@@ -92,6 +116,7 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 		offerCurrency,
 		markSeen,
 		openIfEligible,
+		fetchUpgradeOfferOnce,
 		trackModalViewed,
 		buildUpgradeReturnPath,
 	};
