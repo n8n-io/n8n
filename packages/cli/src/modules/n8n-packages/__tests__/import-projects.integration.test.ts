@@ -6,15 +6,18 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	VariablesRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createOwner } from '@test-integration/db/users';
+import { createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -465,6 +468,52 @@ describe('project shell import', () => {
 		]);
 		expect(result.workflows.find((w) => w.sourceWorkflowId === 'WF')?.projectId).toBe('P1');
 		expect(await findProject('P1')).not.toBeNull();
+	});
+
+	describe('variable resolution', () => {
+		afterEach(async () => {
+			const seeded = await Container.get(VariablesRepository).find();
+			if (seeded.length > 0) {
+				await Container.get(VariablesService).deleteByIds(seeded.map(({ id }) => id));
+			}
+		});
+
+		it('reports variable resolution across projects, deduplicating shared names', async () => {
+			await createVariable('GLOBAL_URL', 'https://global.example.com');
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+					{
+						target: 'projects/stilton',
+						project: serializedProject({ id: 'P2', name: 'stilton' }),
+					},
+				],
+				workflows: [
+					{
+						target: 'projects/brie/workflows/wfa',
+						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+					},
+					{
+						target: 'projects/stilton/workflows/wfb',
+						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+					},
+				],
+				manifestExtras: {
+					requirements: {
+						variables: [
+							{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
+							{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
+						],
+					},
+				},
+			});
+
+			const result = await importProjects(owner, packageBuffer);
+
+			expect(result.variables).toEqual({ matched: ['GLOBAL_URL'], missing: ['ABSENT_VAR'] });
+			// do-nothing policy does not create variables
+			expect(await Container.get(VariablesRepository).count()).toBe(1);
+		});
 	});
 
 	it('emits a single n8n-package-imported event aggregating every project in the package', async () => {

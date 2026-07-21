@@ -88,6 +88,8 @@ export class ProjectPackageImporter {
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
 		const stubbed: string[] = [];
+		const variablesMatched = new Set<string>();
+		const variablesMissing = new Set<string>();
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan } of planned) {
@@ -97,6 +99,8 @@ export class ProjectPackageImporter {
 			scopedBindings.push(imported.bindings);
 			matched.push(...imported.credentialResult.matched);
 			stubbed.push(...imported.credentialResult.stubbed);
+			imported.variablePlan.matched.forEach((name) => variablesMatched.add(name));
+			imported.variablePlan.missing.forEach((name) => variablesMissing.add(name));
 			scopes.push({
 				context: plan.input.context,
 				imported,
@@ -115,6 +119,7 @@ export class ProjectPackageImporter {
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
 			credentials: { matched, stubbed },
+			variables: { matched: [...variablesMatched], missing: [...variablesMissing] },
 		});
 	}
 
