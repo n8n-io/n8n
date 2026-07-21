@@ -9,17 +9,6 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
-import type { WorkflowRequest } from '../../../types';
-import {
-	publicApiScope,
-	projectScope,
-	validCursor,
-} from '../../shared/middlewares/global.middleware';
-
-import { encodeNextCursor } from '../../shared/services/pagination.service';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
-
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -29,6 +18,16 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
+import type { WorkflowRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import {
+	publicApiScope,
+	projectScope,
+	validCursor,
+} from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 const handleError = (error: unknown) => {
 	if (error instanceof FolderNotFoundError) {
