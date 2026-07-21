@@ -27,6 +27,8 @@ import type {
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { useExecutingNode } from '@/app/composables/useExecutingNode';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import * as workflowsApi from '@/app/api/workflows';
 import {
 	createExecutionDataId,
 	disposeExecutionDataStore,
@@ -886,6 +888,56 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			clearPopupWindowState();
 		}
 
+		/**
+		 * Reconciles the executing-node spinner against ground truth from the
+		 * live-status endpoint after a push reconnect or a tab-visibility regain
+		 * (CAT-2895 Option B). Under tab suspension or a dropped push, a terminal
+		 * `nodeExecuteAfter` or a superseding `nodeExecuteBefore` can be lost,
+		 * leaving a stale or wrong spinner; this restores the truth.
+		 *
+		 *  - `running`  -> set the executing node(s) from `nodes` and seed
+		 *                  `latestSequenceNumber` so a late/replayed push event
+		 *                  can't resurrect a superseded spinner.
+		 *  - `finished` -> clear the spinner (the run genuinely completed).
+		 *  - `unknown`  -> keep current state, never clear. Covers a 404 and the
+		 *                  multi-main case (run held by another main), where
+		 *                  clearing could hide a still-running node. A fetch error
+		 *                  is treated the same way — never clear on uncertainty.
+		 *
+		 * No-op unless a real execution id is active. Re-checks the active id after
+		 * the await so ground truth for a superseded run is never applied to a new
+		 * one.
+		 */
+		async function reconcileExecutingNodeState() {
+			const executionId = activeExecutionId.value;
+			if (typeof executionId !== 'string') return;
+
+			let status;
+			try {
+				status = await workflowsApi.getExecutionLiveStatus(
+					useRootStore().restApiContext,
+					executionId,
+				);
+			} catch {
+				// Treat any failure (incl. 404) like `unknown`: keep state, never clear.
+				return;
+			}
+
+			// A run may have superseded this one while the request was in flight.
+			if (activeExecutionId.value !== executionId) return;
+
+			switch (status.state) {
+				case 'running':
+					executingNode.reconcileExecutingNodes(status.nodes, status.sequenceNumber);
+					break;
+				case 'finished':
+					executingNode.clearNodeExecutionQueue();
+					break;
+				case 'unknown':
+					break;
+			}
+		}
+
 		return {
 			documentId,
 			workflowId,
@@ -956,6 +1008,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			renameActiveExecutionNode,
 			resetExecutionState,
 			markExecutionAsStopped,
+			reconcileExecutingNodeState,
 			// Events
 			onWorkflowExecutionStateChange: onWorkflowExecutionStateChange.on,
 		};

@@ -72,10 +72,21 @@
 
 @mixin status-running-animation {
 	animation: border-rotate 1.5s linear infinite;
+
+	// The colored running border is the status signal; only the rotation is
+	// decorative. Freezing the animation holds the conic gradient at its initial
+	// angle, so the border stays visible while the motion stops.
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @mixin status-waiting-animation {
 	animation: border-rotate 4.5s linear infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 // @keyframes names are scoped per CSS module, so every module that uses the

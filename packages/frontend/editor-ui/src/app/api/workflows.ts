@@ -12,7 +12,7 @@ import type {
 } from '@/features/execution/executions/executions.types';
 import { DEFAULT_NEW_WORKFLOW_NAME, DEFAULT_SETTINGS } from '@/app/constants';
 import { isEmpty } from '@/app/utils/typesUtils';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionLiveStatus, ExecutionRedactionQueryDto } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ExecutionFilters,
@@ -143,6 +143,19 @@ export async function getExecutionData(
 		'GET',
 		`/executions/${executionId}`,
 		queryParams,
+	);
+}
+
+/**
+ * Live state of an execution (running node(s) + latest sequence number, or a
+ * finished/unknown marker), used to reconcile executing-node state after a push
+ * reconnect or tab-visibility regain (CAT-2895 Option B).
+ */
+export async function getExecutionLiveStatus(context: IRestApiContext, executionId: string) {
+	return await makeRestApiRequest<ExecutionLiveStatus>(
+		context,
+		'GET',
+		`/executions/${executionId}/live-status`,
 	);
 }
 

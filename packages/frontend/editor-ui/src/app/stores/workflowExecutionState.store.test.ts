@@ -31,6 +31,12 @@ import {
 	type ExecutionSummary,
 } from 'n8n-workflow';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
+import * as workflowsApi from '@/app/api/workflows';
+
+vi.mock('@/app/api/workflows', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/api/workflows')>()),
+	getExecutionLiveStatus: vi.fn(),
+}));
 
 function makeExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
 	return createTestWorkflowExecutionResponse({
@@ -1486,6 +1492,124 @@ describe('workflowExecutionState.store', () => {
 			// The canvas projection sees exactly one running node.
 			expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
 			expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+		});
+	});
+
+	// CAT-2895 Option B: after a push reconnect or a tab-visibility regain, the
+	// spinner is reconciled against ground truth from the live-status endpoint so
+	// a dropped node event can no longer leave a stale, wrong, or orphaned
+	// spinner. Driven through the store; the endpoint is mocked.
+	describe('reconcileExecutingNodeState', () => {
+		function addNode(
+			documentStore: ReturnType<typeof useWorkflowDocumentStore>,
+			id: string,
+			name: string,
+		) {
+			documentStore.addNode({
+				id,
+				name,
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			});
+		}
+
+		beforeEach(() => {
+			vi.mocked(workflowsApi.getExecutionLiveStatus).mockReset();
+		});
+
+		it('restores the correct running node after a dropped nodeExecuteAfter, then clears on genuine completion', async () => {
+			const id = createWorkflowDocumentId('wf-reconcile-after');
+			const store = useWorkflowExecutionStateStore(id);
+			store.setActiveExecutionId('exec-1');
+			// Node A's terminal `nodeExecuteAfter` was dropped, so its spinner is
+			// stuck even though Node B is the node actually running now.
+			store.executingNode.addExecutingNode('Node A', 0);
+
+			vi.mocked(workflowsApi.getExecutionLiveStatus).mockResolvedValue({
+				state: 'running',
+				nodes: ['Node B'],
+				sequenceNumber: 5,
+			});
+			await store.reconcileExecutingNodeState();
+
+			expect(store.executingNode.executingNode).toEqual(['Node B']);
+			expect(store.executingNode.isNodeExecuting('Node A')).toBe(false);
+
+			// The run then genuinely completes: the spinner clears, not left stale.
+			vi.mocked(workflowsApi.getExecutionLiveStatus).mockResolvedValue({ state: 'finished' });
+			await store.reconcileExecutingNodeState();
+
+			expect(store.executingNode.executingNode).toEqual([]);
+		});
+
+		it('reconciles to the node actually executing after a dropped nodeExecuteBefore, and seeds the sequence so a replayed stale event cannot resurrect it', async () => {
+			const id = createWorkflowDocumentId('wf-reconcile-before');
+			const store = useWorkflowExecutionStateStore(id);
+			store.setActiveExecutionId('exec-1');
+			// Node B's `nodeExecuteBefore` was dropped, so the spinner still shows the
+			// stale previous node (Node A).
+			store.executingNode.addExecutingNode('Node A', 0);
+
+			vi.mocked(workflowsApi.getExecutionLiveStatus).mockResolvedValue({
+				state: 'running',
+				nodes: ['Node B'],
+				sequenceNumber: 5,
+			});
+			await store.reconcileExecutingNodeState();
+
+			expect(store.executingNode.executingNode).toEqual(['Node B']);
+
+			// A late/replayed push for the superseded Node A (seq 0 <= seeded 5) must
+			// be ignored — the seed prevents it from resurrecting the old spinner.
+			store.executingNode.addExecutingNode('Node A', 0);
+			expect(store.executingNode.executingNode).toEqual(['Node B']);
+		});
+
+		it('shows both a parent and its sub-node after reconcile (agent + sub-node, no regression of scope-awareness)', async () => {
+			const id = createWorkflowDocumentId('wf-reconcile-nested');
+			const documentStore = useWorkflowDocumentStore(id);
+			const store = useWorkflowExecutionStateStore(id);
+			addNode(documentStore, 'agent-id', 'Agent');
+			addNode(documentStore, 'sub-id', 'Sub Model');
+			store.setActiveExecutionId('exec-1');
+
+			vi.mocked(workflowsApi.getExecutionLiveStatus).mockResolvedValue({
+				state: 'running',
+				nodes: ['Agent', 'Sub Model'],
+				sequenceNumber: 7,
+			});
+			await store.reconcileExecutingNodeState();
+
+			expect(store.executingNode.isNodeExecuting('Agent')).toBe(true);
+			expect(store.executingNode.isNodeExecuting('Sub Model')).toBe(true);
+			// The canvas projection sees both as running (the legitimately-nested pair).
+			expect(store.executionRunningByNodeId.get('agent-id')?.value).toBe(true);
+			expect(store.executionRunningByNodeId.get('sub-id')?.value).toBe(true);
+		});
+
+		it('keeps current state on unknown / 404 / fetch error (multi-main safety — never clears)', async () => {
+			const id = createWorkflowDocumentId('wf-reconcile-unknown');
+			const store = useWorkflowExecutionStateStore(id);
+			store.setActiveExecutionId('exec-1');
+			store.executingNode.addExecutingNode('Node A', 0);
+
+			// `unknown` (incl. a 404 from a main that does not hold the run): keep state.
+			vi.mocked(workflowsApi.getExecutionLiveStatus).mockResolvedValue({ state: 'unknown' });
+			await store.reconcileExecutingNodeState();
+			expect(store.executingNode.executingNode).toEqual(['Node A']);
+
+			// A fetch failure is treated the same way — never clear on uncertainty.
+			vi.mocked(workflowsApi.getExecutionLiveStatus).mockRejectedValue(new Error('network'));
+			await store.reconcileExecutingNodeState();
+			expect(store.executingNode.executingNode).toEqual(['Node A']);
+		});
+
+		it('is a no-op when no real execution is active (never calls the endpoint)', async () => {
+			const store = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-reconcile-idle'));
+			await store.reconcileExecutingNodeState();
+			expect(workflowsApi.getExecutionLiveStatus).not.toHaveBeenCalled();
 		});
 	});
 
