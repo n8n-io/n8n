@@ -3,8 +3,6 @@ import { nanoid } from 'nanoid';
 
 import { test, expect } from '../../../fixtures/base';
 
-const HEARTBEAT = 'n8n|heartbeat';
-const HEARTBEAT_ACK = 'n8n|heartbeat-ack';
 const QUESTION = 'What is your name?';
 
 test.use({ capability: { webhooks: 1, workers: 1 } });
@@ -43,8 +41,14 @@ function openChatSocket(wsUrl: string) {
 
 	socket.addEventListener('message', (event) => {
 		const message = String(event.data);
-		if (message === HEARTBEAT) {
-			socket.send(HEARTBEAT_ACK);
+		let parsed: { type?: string } | undefined;
+		try {
+			parsed = JSON.parse(message) as { type?: string };
+		} catch {
+			parsed = undefined;
+		}
+		if (parsed?.type === 'heartbeat') {
+			socket.send(JSON.stringify({ type: 'heartbeat-ack' }));
 			return;
 		}
 		received.push(message);

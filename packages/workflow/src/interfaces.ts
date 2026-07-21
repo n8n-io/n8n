@@ -1670,8 +1670,14 @@ export interface IPairedItemData {
 }
 
 export const ChatNodeMessageType = {
+	MESSAGE: 'message',
 	WITH_BUTTONS: 'with-buttons',
 } as const;
+
+export type ChatNodeMessageRegular = {
+	type: typeof ChatNodeMessageType.MESSAGE;
+	text: string;
+};
 
 export type ChatNodeMessageButtonType = 'primary' | 'secondary';
 
