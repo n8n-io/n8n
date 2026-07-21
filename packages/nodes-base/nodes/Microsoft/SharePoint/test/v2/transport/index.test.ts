@@ -489,6 +489,26 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			);
 		});
 
+		it('should let fixed safe Graph wording through the Service Principal sanitizer', async () => {
+			setParams({ authentication: SERVICE_PRINCIPAL_AUTH, resource: 'item', operation: 'create' });
+			mockRequestWithAuthentication.mockRejectedValue({
+				statusCode: 400,
+				error: {
+					error: {
+						code: 'invalidRequest',
+						message: 'One or more fields with unique constraints already has the provided value.',
+					},
+				},
+			});
+
+			await expect(
+				microsoftApiRequest.call(ctx, 'POST', '/v1.0/sites/s/lists/l/items'),
+			).rejects.toMatchObject({
+				message:
+					'Microsoft Graph rejected the request (HTTP 400): One or more fields with unique constraints already has the provided value.',
+			});
+		});
+
 		it('should pin httpCode "404" on the delegated not-found rewrite', async () => {
 			// resolveSiteId keys on httpCode === '404' — this anchor must not drift
 			setParams({ authentication: 'microsoftOAuth2Api', resource: 'list', operation: 'get' });

@@ -153,6 +153,15 @@ describe('Microsoft SharePoint v2 — Item: Create', () => {
 		);
 	});
 
+	it('creates the item with server defaults when the mapper value is its shipped default null', async () => {
+		setParams({ ...baseParams, 'columns.value': null });
+		apiRequest.mockResolvedValue({ id: '1' });
+
+		await node.execute.call(ctx);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', ITEMS_URL, { fields: {} }, {}, undefined, {});
+	});
+
 	it('rejects when no List has been chosen yet', async () => {
 		setParams({ ...baseParams, list: '' });
 
@@ -172,6 +181,24 @@ describe('Microsoft SharePoint v2 — Item: Create', () => {
 
 		await expect(node.execute.call(ctx)).rejects.toMatchObject({
 			message: 'One or more fields with unique constraints already has the provided value.',
+			description: "Double-check the value(s) in 'Columns' and try again",
+		});
+	});
+
+	it('adds the hint when the app-only sanitizer wraps the unique-value error', async () => {
+		setParams({ ...baseParams, 'columns.value': { Title: 'Duplicate' } });
+		apiRequest.mockRejectedValue(
+			new NodeApiError(
+				mock<INode>(),
+				{ message: 'invalidRequest' },
+				{
+					message:
+						'Microsoft Graph rejected the request (HTTP 400): One or more fields with unique constraints already has the provided value.',
+				},
+			),
+		);
+
+		await expect(node.execute.call(ctx)).rejects.toMatchObject({
 			description: "Double-check the value(s) in 'Columns' and try again",
 		});
 	});

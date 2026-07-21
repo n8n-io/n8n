@@ -94,7 +94,9 @@ export async function execute(
 			Object.entries(this.getInputData()[i].json).filter(([key]) => knownColumns.has(key)),
 		);
 	} else {
-		value = this.getNodeParameter('columns.value', i, {}) as IDataObject;
+		// The mapper's shipped default is { value: null } and the {} fallback only
+		// covers undefined — coalesce so v1's create-with-server-defaults survives
+		value = (this.getNodeParameter('columns.value', i, {}) ?? {}) as IDataObject;
 	}
 
 	const { fields, hasHyperlink } = buildItemFields(value, schema);
