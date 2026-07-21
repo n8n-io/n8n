@@ -63,7 +63,7 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
 	if (provider === 'openai') {
-		// Pin medium (GPT-5.6 Sol default) via AI SDK `reasoningEffort`.
+		// Pin medium for GPT-5.6 family (sol/terra/luna) via AI SDK `reasoningEffort`.
 		agent.thinking('openai', { reasoningEffort: 'medium' });
 		return;
 	}
