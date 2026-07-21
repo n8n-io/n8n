@@ -199,6 +199,19 @@ post:
                 column or a type mismatch always rejects. Both policies are
                 non-destructive — the matched target table is never altered, and
                 package columns are never added to it.
+            variableMissingPolicy:
+              type: string
+              enum:
+                - do-nothing
+              default: do-nothing
+              description: >
+                Controls what happens when a variable referenced by the package's
+                workflows is absent from the target project and the global scope
+                (lookup order: project, then global). `do-nothing` (default)
+                imports the workflows without creating the missing variable and
+                lists its name under `variables.missing` in the response so the
+                caller can fill it in afterwards. Additional policies will be
+                added in follow-up work.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -213,6 +226,7 @@ post:
               - projects
               - bindings
               - credentials
+              - variables
             properties:
               package:
                 type: object
@@ -399,6 +413,31 @@ post:
                     description: >
                       Source credential ids for which empty placeholder
                       credentials were created in the target project.
+              variables:
+                type: object
+                description: >
+                  Variable names from the package requirements, grouped by whether
+                  they resolved in the target project (or globally) or remain
+                  unresolved. Names only — values never travel in the response.
+                required:
+                  - matched
+                  - missing
+                properties:
+                  matched:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names that already exist in the target project or
+                      at the global level (project first, then global).
+                  missing:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names with no match in the lookup scope. Under
+                      `variableMissingPolicy=do-nothing` these are warnings —
+                      the import still succeeds and nothing is created.
               bindings:
                 type: object
                 description: >

@@ -232,6 +232,10 @@ describe('POST /n8n-packages/import', () => {
 				matched: [],
 				stubbed: [],
 			},
+			variables: {
+				matched: [],
+				missing: [],
+			},
 		});
 
 		expect(response.body.workflows[0].localId).not.toBe('wf-http-source');
@@ -253,6 +257,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
+			.field('variableMissingPolicy', 'do-nothing')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);

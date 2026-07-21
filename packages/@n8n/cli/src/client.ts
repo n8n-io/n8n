@@ -23,6 +23,7 @@ export interface ImportPackageFields {
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
+	variableMissingPolicy?: string;
 }
 
 export interface ExportPackageFields {

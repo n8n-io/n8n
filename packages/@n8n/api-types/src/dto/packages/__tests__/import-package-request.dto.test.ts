@@ -20,6 +20,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingPolicy: 'do-nothing',
 			});
 		}
 	});
@@ -44,6 +45,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingPolicy: 'do-nothing',
 			});
 		}
 	});
@@ -70,6 +72,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingPolicy: 'do-nothing',
 			});
 		}
 	});
@@ -95,6 +98,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingPolicy: 'do-nothing',
 			});
 		}
 	});
@@ -319,5 +323,35 @@ describe('ImportPackageRequestDto', () => {
 		{ name: 'unknown workflowConflictPolicy', request: { workflowConflictPolicy: 'overwrite' } },
 	])('rejects $name', ({ request }) => {
 		expect(ImportPackageRequestDto.safeParse(request).success).toBe(false);
+	});
+
+	describe('variableMissingPolicy', () => {
+		it('defaults variableMissingPolicy to do-nothing when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.variableMissingPolicy).toBe('do-nothing');
+			}
+		});
+
+		it('accepts do-nothing as a variableMissingPolicy value', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				variableMissingPolicy: 'do-nothing',
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.variableMissingPolicy).toBe('do-nothing');
+			}
+		});
+
+		it('rejects unsupported variableMissingPolicy values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					variableMissingPolicy: 'create-stub',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
 	});
 });

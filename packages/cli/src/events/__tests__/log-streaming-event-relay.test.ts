@@ -76,6 +76,7 @@ describe('LogStreamingEventRelay', () => {
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingPolicy: 'do-nothing',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -99,6 +100,11 @@ describe('LogStreamingEventRelay', () => {
 					dataTables: {
 						matched: 0,
 						created: 1,
+						requirements: 1,
+					},
+					variables: {
+						matched: 0,
+						missing: 1,
 						requirements: 1,
 					},
 				},
@@ -127,6 +133,7 @@ describe('LogStreamingEventRelay', () => {
 						dataTableMatchingMode: 'by-id',
 						dataTableMissingMode: 'create',
 						dataTableSchemaConflictPolicy: 'keep-existing',
+						variableMissingPolicy: 'do-nothing',
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',

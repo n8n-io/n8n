@@ -2,6 +2,7 @@ import type { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
+import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { WorkflowImportOutcome } from '../entities/workflow/workflow-import.types';
 import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
 import type { ImportOrchestrationResult } from './import-orchestrator';
@@ -12,6 +13,7 @@ export interface PackageImportScope {
 	imported: ImportOrchestrationResult;
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
+	variableRequest: VariableImportRequest;
 }
 
 export function emitPackageImportedEvent(
@@ -52,6 +54,14 @@ export function emitPackageImportedEvent(
 		0,
 	);
 
+	const variablePlans = scopes.map(({ imported }) => imported.variablePlan);
+	const variableRequirements = scopes.reduce(
+		(total, { variableRequest }) => total + (variableRequest.requirements?.length ?? 0),
+		0,
+	);
+	const variablesMatched = variablePlans.reduce((total, plan) => total + plan.matched.length, 0);
+	const variablesMissing = variablePlans.reduce((total, plan) => total + plan.missing.length, 0);
+
 	const folderId = scopes.length === 1 ? scopes[0].context.folderId : null;
 
 	eventService.emit('n8n-package-imported', {
@@ -69,6 +79,7 @@ export function emitPackageImportedEvent(
 			dataTableMatchingMode: request.dataTableMatchingMode,
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
+			variableMissingPolicy: request.variableMissingPolicy,
 		},
 		packageSourceId: manifest.sourceId,
 		packageVersion: manifest.packageFormatVersion,
@@ -92,6 +103,11 @@ export function emitPackageImportedEvent(
 				matched: dataTablesMatched,
 				created: dataTablesCreated,
 				requirements: dataTableRequirements,
+			},
+			variables: {
+				matched: variablesMatched,
+				missing: variablesMissing,
+				requirements: variableRequirements,
 			},
 		},
 	});
