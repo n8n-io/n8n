@@ -143,6 +143,7 @@ function emitScopes(scopes: S[]) {
 type ScopeModeOption = {
 	value: ScopeSelectionMode;
 	label: string;
+	description: string;
 	'data-test-id': string;
 };
 
@@ -150,19 +151,28 @@ const modeOptions = computed<ScopeModeOption[]>(() => [
 	{
 		value: 'all',
 		label: baseText('all'),
+		description: baseText('allDescription'),
 		'data-test-id': 'scopes-mode-all',
 	},
 	{
 		value: 'readOnly',
 		label: baseText('readOnly'),
+		description: baseText('readOnlyDescription'),
 		'data-test-id': 'scopes-mode-read-only',
 	},
 	{
 		value: 'custom',
 		label: baseText('custom'),
+		description: baseText('customDescription'),
 		'data-test-id': 'scopes-mode-custom',
 	},
 ]);
+
+function onModeCardClick(value: ScopeSelectionMode) {
+	if (props.disabled || value === mode.value) return;
+	mode.value = value;
+	onModeChange(value);
+}
 
 function onModeChange(newMode: string | undefined) {
 	if (newMode === undefined) {
@@ -258,12 +268,27 @@ function toggleScope(scope: S, checked: boolean) {
 		<N8nInputLabel :label="baseText('label')" color="text-dark">
 			<N8nRadioGroup
 				v-model="mode"
+				orientation="vertical"
 				:disabled="disabled"
 				:aria-label="baseText('label')"
 				data-test-id="scopes-mode-radio"
+				:class="$style.modes"
 				@update:model-value="onModeChange"
 			>
-				<N8nRadioGroupItem v-for="option in modeOptions" :key="option.value" v-bind="option" />
+				<div
+					v-for="option in modeOptions"
+					:key="option.value"
+					:class="[$style.modeCard, mode === option.value && $style.modeCardActive]"
+					@click="onModeCardClick(option.value)"
+				>
+					<N8nRadioGroupItem
+						:value="option.value"
+						:label="option.label"
+						:description="option.description"
+						:disabled="disabled"
+						:data-test-id="option['data-test-id']"
+					/>
+				</div>
 			</N8nRadioGroup>
 		</N8nInputLabel>
 
@@ -396,6 +421,25 @@ function toggleScope(scope: S, checked: boolean) {
 </template>
 
 <style module lang="scss">
+.modes {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: var(--spacing--xs);
+	margin-top: var(--spacing--xs);
+}
+
+.modeCard {
+	padding: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	cursor: pointer;
+}
+
+.modeCardActive {
+	background: var(--color--background--light-2);
+	border-color: var(--color--foreground--shade-1);
+}
+
 .customSection {
 	display: flex;
 	flex-direction: column;

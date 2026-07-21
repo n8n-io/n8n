@@ -171,10 +171,10 @@ describe('MCPAccessTokenPopoverTab', () => {
 			await vi.runAllTimersAsync();
 
 			await waitFor(() => {
-				expect(getByTestId('mcp-json-copy-button')).toBeVisible();
+				expect(getByTestId('mcp-config-snippet-copy')).toBeVisible();
 			});
 
-			const copyButton = getByTestId('mcp-json-copy-button');
+			const copyButton = getByTestId('mcp-config-snippet-copy');
 
 			await user.click(copyButton);
 

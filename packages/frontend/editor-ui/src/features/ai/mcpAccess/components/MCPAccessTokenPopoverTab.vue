@@ -2,14 +2,14 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useClipboard } from '@n8n/composables/useClipboard';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
 	LOADING_INDICATOR_TIMEOUT,
 	MCP_TOOLTIP_DELAY,
 } from '@/features/ai/mcpAccess/mcp.constants';
-import { N8nLoading, N8nTooltip, N8nButton, N8nMarkdown, N8nNotice } from '@n8n/design-system';
-import ConnectionParameter from '@/features/ai/mcpAccess/components/header/connectPopover/ConnectionParameter.vue';
+import { N8nLoading, N8nTooltip, N8nButton, N8nNotice } from '@n8n/design-system';
+import ConnectionParameter from '@/features/ai/mcpAccess/components/ConnectionParameter.vue';
+import McpConfigSnippet from '@/features/ai/mcpAccess/components/McpConfigSnippet.vue';
 
 type Props = {
 	serverUrl: string;
@@ -29,12 +29,9 @@ const loadingApiKey = ref(true);
 const keyRotating = ref(false);
 const apiKey = computed(() => mcpStore.currentUserMCPKey);
 
-const { copy, copied, isSupported } = useClipboard();
-
-// mcp.json value that's to be copied
+// mcp.json value that's to be copied / rendered as the config snippet
 const connectionString = computed(() => {
-	return `
-{
+	return `{
   "mcpServers": {
     "n8n-mcp": {
       "type": "http",
@@ -44,17 +41,11 @@ const connectionString = computed(() => {
       }
     }
   }
-}
-`;
+}`;
 });
 
 const isKeyRedacted = computed(() => {
 	return apiKey.value?.apiKey?.includes('******') ?? false;
-});
-
-// formatted code block for markdown component
-const connectionCode = computed(() => {
-	return `\`\`\`json${connectionString.value}\`\`\``;
 });
 
 const apiKeyText = computed(() => {
@@ -90,9 +81,8 @@ const rotateKey = async () => {
 	}
 };
 
-const handleConnectionStringCopy = async () => {
-	await copy(connectionString.value);
-	emit('copy', 'mcpJson', connectionString.value);
+const handleConnectionStringCopy = (value: string) => {
+	emit('copy', 'mcpJson', value);
 };
 
 const handleUrlCopy = (url: string) => {
@@ -156,25 +146,14 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.mcp.access.token.notice') }}
 			</N8nNotice>
 			<div :class="$style['json-container']" data-test-id="mcp-access-token-json">
-				<label :class="$style.label" for="mcp-json">
+				<label :class="$style.label">
 					{{ i18n.baseText('settings.mcp.connectPopover.jsonConfig') }}
 				</label>
-				<N8nMarkdown id="mcp-json" :content="connectionCode"></N8nMarkdown>
-				<N8nTooltip
-					:disabled="!isSupported"
-					:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
-					:show-after="MCP_TOOLTIP_DELAY"
-				>
-					<N8nButton
-						v-if="isSupported && !loadingApiKey && !keyRotating"
-						variant="subtle"
-						iconOnly
-						:icon="copied ? 'check' : 'copy'"
-						:class="$style['copy-json-button']"
-						data-test-id="mcp-json-copy-button"
-						@click="handleConnectionStringCopy"
-					/>
-				</N8nTooltip>
+				<McpConfigSnippet
+					:value="connectionString"
+					:disabled="keyRotating"
+					@copy="handleConnectionStringCopy"
+				/>
 			</div>
 		</div>
 	</div>
@@ -213,7 +192,6 @@ onMounted(async () => {
 
 .json-container {
 	flex-grow: 1;
-	position: relative;
 	margin-top: var(--spacing--sm);
 
 	.label {
@@ -221,41 +199,6 @@ onMounted(async () => {
 		font-size: var(--font-size--sm);
 		color: var(--color--text--shade-1);
 		margin-bottom: var(--spacing--4xs);
-	}
-
-	:global(.n8n-markdown) {
-		width: 100%;
-	}
-
-	code {
-		color: var(--color--text) !important;
-		font-size: var(--font-size--2xs);
-		padding: var(--spacing--2xs) !important;
-		tab-size: 1;
-		background: none !important;
-		border: var(--border);
-		border-radius: var(--radius);
-	}
-
-	&:hover {
-		.copy-json-button {
-			display: flex;
-		}
-	}
-}
-
-.copy-json-button {
-	position: absolute;
-	top: var(--spacing--lg);
-	right: var(--spacing--3xs);
-	display: none;
-	border: none;
-	outline: none;
-
-	&:hover {
-		border: none;
-		outline: none;
-		background: none;
 	}
 }
 </style>
