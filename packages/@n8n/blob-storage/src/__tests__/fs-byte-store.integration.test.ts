@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
-
-import { mockInstance } from '@n8n/backend-test-utils';
-import { Container } from '@n8n/di';
-import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -10,23 +5,19 @@ import { join } from 'node:path';
 
 import { FsByteStore } from '../fs-byte-store';
 
-vi.unmock('node:fs/promises');
-
 let store: FsByteStore;
 let storagePath: string;
-let errorReporter: ErrorReporter;
+const reportError = vi.fn();
 
 const body = Buffer.from('hello-bytes', 'utf-8');
 
 beforeAll(async () => {
 	storagePath = await mkdtemp(join(tmpdir(), 'n8n-fs-byte-store-test-'));
-	mockInstance(StorageConfig, { storagePath });
-	errorReporter = mockInstance(ErrorReporter);
-	store = Container.get(FsByteStore);
+	store = new FsByteStore({ storagePath, reportError });
 });
 
 beforeEach(async () => {
-	vi.mocked(errorReporter.error).mockClear();
+	reportError.mockClear();
 	for (const entry of await fs.readdir(storagePath)) {
 		await rm(join(storagePath, entry), { recursive: true, force: true });
 	}
@@ -43,7 +34,7 @@ afterAll(async () => {
 describe('init', () => {
 	it('creates the storage dir if absent', async () => {
 		const customPath = join(storagePath, 'custom-init');
-		const custom = new FsByteStore({ storagePath: customPath } as StorageConfig, errorReporter);
+		const custom = new FsByteStore({ storagePath: customPath, reportError });
 
 		await custom.init();
 
