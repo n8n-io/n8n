@@ -1,29 +1,34 @@
+import { Table, TableIndex } from '@n8n/typeorm';
 import type { MigrationInterface, QueryRunner } from '@n8n/typeorm';
+
+const TABLE = 'workflow_execution';
 
 export class CreateWorkflowExecution1778529600000 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(`
-			CREATE TABLE workflow_execution (
-				id varchar PRIMARY KEY,
-				workflow_id varchar NOT NULL,
-				status varchar(32) NOT NULL,
-				mode varchar(32) NOT NULL,
-				graph jsonb NOT NULL,
-				trigger_payload jsonb,
-				created_at timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-				updated_at timestamptz(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-				finished_at timestamptz(3)
-			)
-		`);
-		await queryRunner.query(
-			'CREATE INDEX idx_workflow_execution_workflow_id ON workflow_execution (workflow_id)',
+		await queryRunner.createTable(
+			new Table({
+				name: TABLE,
+				columns: [
+					{ name: 'id', type: 'varchar', isPrimary: true },
+					{ name: 'workflow_id', type: 'varchar' },
+					{ name: 'status', type: 'varchar', length: '32' },
+					{ name: 'mode', type: 'varchar', length: '32' },
+					{ name: 'graph', type: 'jsonb' },
+					{ name: 'trigger_payload', type: 'jsonb', isNullable: true },
+					{ name: 'created_at', type: 'timestamptz', precision: 3, default: 'CURRENT_TIMESTAMP(3)' },
+					{ name: 'updated_at', type: 'timestamptz', precision: 3, default: 'CURRENT_TIMESTAMP(3)' },
+					{ name: 'finished_at', type: 'timestamptz', precision: 3, isNullable: true },
+				],
+			}),
 		);
-		await queryRunner.query(
-			'CREATE INDEX idx_workflow_execution_status ON workflow_execution (status)',
-		);
+
+		await queryRunner.createIndices(TABLE, [
+			new TableIndex({ name: 'idx_workflow_execution_workflow_id', columnNames: ['workflow_id'] }),
+			new TableIndex({ name: 'idx_workflow_execution_status', columnNames: ['status'] }),
+		]);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query('DROP TABLE workflow_execution');
+		await queryRunner.dropTable(TABLE);
 	}
 }

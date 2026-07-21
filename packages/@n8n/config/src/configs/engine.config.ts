@@ -14,6 +14,8 @@ export class EngineConfig {
 	 * Postgres connection URL for the engine's data plane. When unset, the
 	 * engine boots in healthcheck-only mode and workflow execution endpoints
 	 * are not mounted.
+	 *
+	 * This is in development and not ready for use.
 	 */
 	@Env('N8N_ENGINE_DATABASE_URL')
 	databaseUrl: string = '';
