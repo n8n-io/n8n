@@ -6,6 +6,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
+import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
@@ -158,6 +159,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly telemetry: Telemetry,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
+		private readonly externalHooks: ExternalHooks,
 	) {}
 
 	/**
@@ -324,6 +326,7 @@ export class AgentExecutionOrchestratorService {
 		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, integrationType } = config;
+		await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		// No `user` (see ExecuteForChatPublishedConfig): this is the shared,
 		// project-scoped runtime — every caller of this published agent through
@@ -359,6 +362,7 @@ export class AgentExecutionOrchestratorService {
 		config: ExecuteForTaskPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, taskId, taskVersionId } = config;
+		await this.externalHooks.run('agent.preExecute', [agentId]);
 
 		// No `user` (see ExecuteForTaskPublishedConfig): cron-fired, no human to
 		// attach — same shared, project-scoped runtime for every tick.

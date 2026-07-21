@@ -24,7 +24,15 @@ export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
 export const REQUIRED_PERMISSIONS: Readonly<
 	Record<string, { delegated: string; application: string }>
 > = Object.freeze({
+	'file:upload': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
 	'list:get': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'list:getAll': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
@@ -151,7 +159,7 @@ export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-	body: IDataObject = {},
+	body: IDataObject | Buffer = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
@@ -202,4 +210,40 @@ export async function microsoftApiRequest(
 			? servicePrincipalApiError.call(this, error)
 			: delegatedApiError.call(this, error);
 	}
+}
+
+export async function microsoftApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	limit?: number,
+): Promise<IDataObject[]> {
+	const returnData: IDataObject[] = [];
+	let uri: string | undefined;
+
+	do {
+		// A next-page link is a complete address (already carries $select/$top/
+		// $skiptoken) — qs only applies to the first, endpoint-built request.
+		const responseData = await microsoftApiRequest.call(
+			this,
+			method,
+			endpoint,
+			body,
+			uri ? {} : qs,
+			uri,
+		);
+		returnData.push.apply(
+			returnData,
+			(responseData[propertyName] as IDataObject[] | undefined) ?? [],
+		);
+		uri = responseData['@odata.nextLink'] as string | undefined;
+	} while (uri !== undefined && (limit === undefined || returnData.length < limit));
+
+	// Math.max guards a negative limit (only reachable via an expression — the
+	// UI's minValue:1 blocks it): slice(0, -5) means "drop the last 5", not
+	// "return none", which would otherwise silently hand back the wrong window.
+	return limit === undefined ? returnData : returnData.slice(0, Math.max(0, limit));
 }

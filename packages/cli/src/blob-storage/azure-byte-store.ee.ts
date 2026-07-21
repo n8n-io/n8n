@@ -1,6 +1,6 @@
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import chunk from 'lodash/chunk';
-import type { AzureBlobService } from 'n8n-core';
+import type { AzureBlobService } from '@n8n/blob-storage';
 
 import type { ByteStore, ByteStoreKey } from './types';
 

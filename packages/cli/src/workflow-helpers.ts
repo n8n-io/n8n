@@ -204,8 +204,8 @@ function nodeGroupValidationError(
 /**
  * Validates nodeGroups.
  *
- * Basic checks (always run): unique group IDs, unique group names, all referenced
- * node IDs exist, and each node belongs to at most one group.
+ * Basic checks (always run): unique group IDs, unique group names, at least one
+ * member, all referenced node IDs exist, and each node belongs to at most one group.
  *
  * Full checks (run only when `getNodeType` is non-null): each group must satisfy
  * the same grouping rules the canvas enforces — no triggers, a single connected
@@ -244,6 +244,10 @@ export function validateWorkflowNodeGroups(
 			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
 		}
 		seenGroupNames.add(group.name);
+
+		if (group.nodeIds.length === 0) {
+			throw new BadRequestError(`Group "${group.name}" has no members.`);
+		}
 
 		for (const nodeId of group.nodeIds) {
 			// All referenced nodes must exist
