@@ -12,10 +12,13 @@ export { GlobalScope, ProjectScope } from './scoped';
 export type {
 	AccessScope,
 	ApiKeyScopeRequirement,
+	Arg,
 	Controller,
 	CorsOptions,
+	HandlerName,
 	Method,
 	ResponseDtoClass,
+	RouteMetadata,
 	StaticRouterMetadata,
 } from './types';
 export {

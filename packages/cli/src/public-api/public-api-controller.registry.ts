@@ -1,15 +1,14 @@
-import type { ZodClass } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { resolveRouteArgs } from '@/public-api/public-api-route-resolver';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
@@ -60,35 +59,23 @@ export class PublicApiControllerRegistry {
 		);
 
 		for (const [handlerName, route] of metadata.routes) {
-			const argTypes = Reflect.getMetadata(
-				'design:paramtypes',
-				controller,
-				handlerName,
-			) as unknown[];
+			// Resolved once per route at activation time (not per request) — also means a
+			// controller with a `@Body`/`@Query` arg missing its Zod DTO fails at startup rather
+			// than on first request.
+			const resolvedArgs = resolveRouteArgs(controllerClass, handlerName, route.args);
 
 			const handler = async (req: Request, res: Response) => {
 				const args: unknown[] = [req, res];
-				for (let index = 0; index < route.args.length; index++) {
-					const arg = route.args[index];
-					if (!arg) continue;
+				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
 						args.push(req.params[arg.key]);
-					} else if (arg.type === 'body' || arg.type === 'query') {
-						const paramType = argTypes[index] as ZodClass | undefined;
-						if (paramType && 'safeParse' in paramType) {
-							const output = paramType.safeParse(req[arg.type]);
-							if (output.success) {
-								args.push(output.data);
-							} else {
-								throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
-							}
-						} else {
-							throw new UnexpectedError(
-								`Public API route ${controllerClass.name}.${handlerName} is missing a Zod DTO for @${arg.type}`,
-							);
-						}
 					} else {
-						throw new UnexpectedError(`Unknown arg type: ${String(arg.type)}`);
+						const output = arg.dto.safeParse(req[arg.type]);
+						if (output.success) {
+							args.push(output.data);
+						} else {
+							throw new BadRequestError(output.error.errors[0]?.message ?? 'Invalid request');
+						}
 					}
 				}
 

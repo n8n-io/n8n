@@ -8,7 +8,8 @@ import type { Controller, ResponseDtoClass } from './types';
  *
  * PublicApiControllerRegistry `.parse()`s the handler return value through this
  * schema before sending, stripping undeclared/internal fields. The same schema
- * will feed OpenAPI response generation once API-39 lands (shape is provisional).
+ * feeds the generated OpenAPI response (see `resolvePublicApiRoutes` in
+ * `packages/cli/src/public-api/public-api-route-resolver.ts`).
  *
  * @example
  * ```ts

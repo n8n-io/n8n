@@ -108,37 +108,51 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			const operation = pathValue[method];
 			if (!isRecord(operation)) continue;
 
-			const operationId = operation['x-eov-operation-id'];
-			const handlerPath = operation['x-eov-operation-handler'];
-			if (typeof operationId !== 'string' || typeof handlerPath !== 'string') continue;
+			const eovOperationId = operation['x-eov-operation-id'];
+			const eovHandlerPath = operation['x-eov-operation-handler'];
+			const isEovRouted = typeof eovOperationId === 'string' && typeof eovHandlerPath === 'string';
+
+			// Decorator-routed operations (@PublicApiController) carry no x-eov-* fields — they're
+			// not eov-routed at all — but do carry a plain `operationId` and `x-required-scope`,
+			// generated straight from decorator metadata (see openapi-gen/decorator-routes.ts).
+			const operationId = isEovRouted ? eovOperationId : operation.operationId;
+			if (typeof operationId !== 'string') continue;
 
 			const tags = Array.isArray(operation.tags) ? operation.tags : [];
 			const tag = typeof tags[0] === 'string' ? tags[0] : 'Other';
 
-			let handlerModule = handlerCache.get(handlerPath);
-			if (!handlerModule) {
-				try {
-					// The `.js` extension is required: under NodeNext, `await import()` is emitted
-					// as a native dynamic import, which (unlike `require`) does no extension guessing.
-					// The spec's handler paths are extensionless, so append it here.
-					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
-					const imported: unknown = await import(fullHandlerPath);
-					if (!isRecord(imported)) continue;
-					// Handlers use `export = xHandlers`, which surfaces as `.default`
-					// under both tsc's CJS downleveling and Vitest's Vite interop.
-					const loaded = isRecord(imported.default) ? imported.default : imported;
-					if (!isRecord(loaded)) continue;
-					handlerModule = loaded;
-					handlerCache.set(handlerPath, handlerModule);
-				} catch {
-					continue;
-				}
-			}
+			let scope: ApiKeyScope | null = null;
 
-			const middlewareChain = handlerModule[operationId];
-			const scope = Array.isArray(middlewareChain)
-				? extractScopeFromHandler(middlewareChain)
-				: null;
+			if (isEovRouted) {
+				let handlerModule = handlerCache.get(eovHandlerPath);
+				if (!handlerModule) {
+					try {
+						// The `.js` extension is required: under NodeNext, `await import()` is emitted
+						// as a native dynamic import, which (unlike `require`) does no extension guessing.
+						// The spec's handler paths are extensionless, so append it here.
+						const fullHandlerPath = path.join(publicApiRoot, `${eovHandlerPath}.js`);
+						const imported: unknown = await import(fullHandlerPath);
+						if (!isRecord(imported)) continue;
+						// Handlers use `export = xHandlers`, which surfaces as `.default`
+						// under both tsc's CJS downleveling and Vitest's Vite interop.
+						const loaded = isRecord(imported.default) ? imported.default : imported;
+						if (!isRecord(loaded)) continue;
+						handlerModule = loaded;
+						handlerCache.set(eovHandlerPath, handlerModule);
+					} catch {
+						continue;
+					}
+				}
+
+				const middlewareChain = handlerModule[operationId];
+				scope = Array.isArray(middlewareChain) ? extractScopeFromHandler(middlewareChain) : null;
+			} else {
+				const requiredScope = operation['x-required-scope'];
+				scope =
+					typeof requiredScope === 'string' && requiredScope !== 'none'
+						? (requiredScope as ApiKeyScope)
+						: null;
+			}
 
 			const requestSchema = extractRequestSchema(operation);
 

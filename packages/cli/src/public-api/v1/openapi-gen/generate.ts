@@ -7,6 +7,7 @@ import type { ZodType } from 'zod';
 
 import { createDataTableRequestSchema } from './data-tables.schemas';
 import { dataTablesRoutes } from './data-tables.path';
+import { getDecoratorGeneratedOperations } from './decorator-routes';
 
 interface GeneratedPath {
 	/** Where to write the generated fragment, relative to the `v1` directory. */
@@ -75,6 +76,31 @@ export function generatePathYaml(pathKey: string, routes: RouteConfig[]): string
 }
 
 /**
+ * Generates a single HTTP-method operation (not a whole path item) as a standalone YAML fragment,
+ * for a hand-written path file to `$ref` at the operation level — e.g. `tags.yml`'s `get:` key
+ * pointing at this instead of the whole `/tags` path item, while its `post:` key stays hand-written
+ * next to it. This is how a path with some methods still eov-routed and others decorator-routed
+ * coexists in one bundled document: unlike `data-tables`, where every method under `/data-tables`
+ * is generated, `/tags`' `get` is decorator-routed and generated while its `post` is not.
+ */
+export function generateOperationYaml(
+	pathKey: string,
+	method: RouteConfig['method'],
+	config: RouteConfig,
+): string {
+	const registry = new OpenAPIRegistry();
+	registry.registerPath(config);
+
+	const document = new OpenApiGeneratorV3(registry.definitions).generateDocument({
+		openapi: '3.0.0',
+		info: { title: 'throwaway', version: '0.0.0' },
+	});
+
+	const operation = document.paths?.[pathKey]?.[method];
+	return stringify(operation, { aliasDuplicateObjects: false, singleQuote: true });
+}
+
+/**
  * Generates a single named component schema as a standalone YAML fragment. Unlike
  * `generatePathYaml`, this schema isn't referenced by any route in its own throwaway registry —
  * it has to be registered explicitly via `registry.register(ref, schema)`, or `generateComponents`
@@ -95,7 +121,9 @@ export function generateSchemaYaml(schema: ZodType, ref: string): string {
  * `v1` directory) and freshly-rendered `content`. Both the build (`generateDocs`, which writes
  * these to disk) and the drift guard (`__tests__/generated-spec-drift.test.ts`, which asserts the
  * committed files still match) iterate this, so adding a resource to `GENERATED_PATHS`/
- * `GENERATED_SCHEMAS` automatically extends both.
+ * `GENERATED_SCHEMAS` automatically extends both. Decorator-routed operations
+ * (`getDecoratorGeneratedOperations`) need no such manual registration — they're discovered by
+ * scanning `@PublicApiController` classes, not listed here.
  */
 export function getGeneratedArtifacts(): Array<{ outputPath: string; content: string }> {
 	return [
@@ -107,12 +135,18 @@ export function getGeneratedArtifacts(): Array<{ outputPath: string; content: st
 			outputPath,
 			content: generateSchemaYaml(schema, ref),
 		})),
+		...getDecoratorGeneratedOperations().map(({ outputPath, pathKey, method, config }) => ({
+			outputPath,
+			content: generateOperationYaml(pathKey, method, config),
+		})),
 	];
 }
 
 /**
- * Regenerates every path/schema in `GENERATED_PATHS`/`GENERATED_SCHEMAS` and writes it under
- * `v1Dir`.
+ * Regenerates every path/schema/operation and writes it under `v1Dir`. Creates parent directories
+ * as needed — decorator-routed operations may target a resource whose `spec/` folder doesn't exist
+ * yet (a brand-new endpoint, never hand-written), unlike `GENERATED_PATHS`/`GENERATED_SCHEMAS`,
+ * which always target folders that already exist from the hand-written spec they supersede.
  *
  * `v1Dir` must be `<package>/src/public-api/v1` specifically — `redocly bundle` (see
  * `scripts/build.mjs`'s `bundleOpenApiSpecs`) always resolves `openapi.yml`'s `$ref`s against the
@@ -124,6 +158,8 @@ export function getGeneratedArtifacts(): Array<{ outputPath: string; content: st
  */
 export function generateDocs(v1Dir: string): void {
 	for (const { outputPath, content } of getGeneratedArtifacts()) {
-		fs.writeFileSync(path.join(v1Dir, outputPath), content);
+		const fullPath = path.join(v1Dir, outputPath);
+		fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+		fs.writeFileSync(fullPath, content);
 	}
 }

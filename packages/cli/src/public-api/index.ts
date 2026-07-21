@@ -20,7 +20,7 @@ import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
-import './v1/controllers/tags.public.controller';
+import './v1/controllers';
 
 // Renders `x-required-scope` as a badge on each operation. swagger-ui-express
 // serializes this function's source into the page, so it must be self-contained:
