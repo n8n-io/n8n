@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_f0fa69094a2a3f::t_29e4df230124d7 16,193-214,216-244,326,330-335
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_f0fa69094a2a3f::t_754a0794c3bb57 116,535,552
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_f0fa69094a2a3f::t_a87cf0e6e0a2c6 6-7,132-135,143-160,162-167,170-211,213-226,230-271,275-277
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b202059c782a572e43a7a6c56d1f61fe69785877",
+  "prompts": {},
+  "sessions": {
+    "s_f0fa69094a2a3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_f0fa69094a2a3f",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}
