@@ -57,6 +57,7 @@ const meta: Meta<typeof N8nFloatingWindow> = {
 			>
 				<n8n-floating-window
 					v-bind="args"
+					style="position: absolute;"
 					@close="onClose"
 					@resize="onResize"
 					@move="onMove"
