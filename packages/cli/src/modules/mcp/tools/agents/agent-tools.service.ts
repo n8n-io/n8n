@@ -556,7 +556,7 @@ export class McpAgentToolsService {
 							`Agent is not runnable: ${[...validation.errors, ...validation.missing].join(', ')}`,
 						);
 					}
-					const agent = await this.agentPublishService.publishAgent(agentId, projectId, user);
+					const { agent } = await this.agentPublishService.publishAgent(agentId, projectId, user);
 					return {
 						ok: true,
 						agentId,
@@ -1153,7 +1153,7 @@ export class McpAgentToolsService {
 		await this.integrationPersistenceService.saveCredentialIntegration(agent, parsed.data, {
 			broadcast: false,
 		});
-		const publishedAgent = await this.agentPublishService.publishAgent(
+		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
 			input.agentId,
 			input.projectId,
 			user,

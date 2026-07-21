@@ -782,9 +782,9 @@ describe('McpAgentToolsService', () => {
 
 		it('publishes a valid agent', async () => {
 			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
-			agentPublishService.publishAgent.mockResolvedValue(
-				agentEntity({ versionId: 'v2', activeVersionId: 'v2' }),
-			);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: agentEntity({ versionId: 'v2', activeVersionId: 'v2' }),
+			});
 
 			const result = await callTool('publish_agent', {
 				projectId: 'project-1',
