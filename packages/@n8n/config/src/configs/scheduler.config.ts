@@ -253,15 +253,11 @@ export class SchedulerConfig {
 	triggerNodeMode: 'legacy' | 'new' = 'legacy';
 
 	/**
-	 * How many times a scheduled run may be attempted before it is dead-lettered.
-	 * Defaults to 5. Must be greater than 0.
-	 *
-	 * Counted against every `running` reclaim, including one where the previous
-	 * attempt's lease simply expired before its handler ever started (a crash or
-	 * a missed tick, not a handler failure) as well as one where the handler ran
-	 * and errored. At 1 (the schema's own floor), a single such reclaim already
-	 * exhausts the budget and the occurrence is dead-lettered without its handler
-	 * ever having run once.
+	 * How many times a scheduled run may be reclaimed (for example after a crash)
+	 * or retried on error before it's given up on and dead-lettered. Defaults to
+	 * 5. Raise it on infrastructure prone to instance restarts or transient
+	 * errors, so a single crash doesn't drop a run; lower it to dead-letter and
+	 * move on sooner. Must be greater than 0.
 	 */
 	@Env('N8N_SCHEDULER_MAX_ATTEMPTS', positiveIntSchema)
 	maxAttempts: number = 5;
