@@ -293,6 +293,7 @@ export {
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
 
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
+export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';
