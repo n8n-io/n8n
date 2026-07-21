@@ -380,13 +380,18 @@ describe('isDisplayableConfirmationRequest', () => {
 
 describe('instance-ai launch schema', () => {
 	it('requires a known source', () => {
-		expect(() => new InstanceAiEnsureThreadRequest({ projectId: 'project-1' })).toThrow();
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+				} as unknown as ConstructorParameters<typeof InstanceAiEnsureThreadRequest>[0]),
+		).toThrow();
 		expect(
 			() =>
 				new InstanceAiEnsureThreadRequest({
 					projectId: 'project-1',
 					source: 'totally-made-up',
-				}),
+				} as unknown as ConstructorParameters<typeof InstanceAiEnsureThreadRequest>[0]),
 		).toThrow();
 	});
 
