@@ -7,7 +7,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
-import { REGULAR_NODE_CREATOR_VIEW } from '@/app/constants';
+import { REGULAR_NODE_CREATOR_VIEW, DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
 
@@ -275,6 +275,88 @@ describe('NodesListPanel', () => {
 			expect(screen.queryByText('Node 1')).toBeInTheDocument();
 
 			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
+		});
+	});
+
+	// Reproduces ADO-5590 (GH #33955): typing in the node-creator search field
+	// runs the fuzzy filter on every keystroke with no debounce, so rapid typing
+	// re-filters and re-renders on each character. AgentsMode debounces its
+	// search (see AgentsMode.vue), but the regular node search does not.
+	describe('should debounce search', () => {
+		const searchNodes = [
+			...[...Array(8).keys()].map(
+				(n) =>
+					mockSimplifiedNodeType({
+						name: `Trigger Node ${n}`,
+						displayName: `Trigger Node ${n}`,
+						group: ['trigger'],
+					}) as INodeTypeDescription,
+			),
+			mockSimplifiedNodeType({
+				name: 'Zephyr',
+				displayName: 'Zephyr',
+				group: ['trigger'],
+			}) as INodeTypeDescription,
+		];
+
+		const wrapperComponent = defineComponent({
+			components: {
+				NodesListPanel,
+			},
+			props: {
+				nodeTypes: {
+					type: Array as PropType<INodeTypeDescription[]>,
+					required: true,
+				},
+			},
+			setup(props) {
+				const { setMergeNodes } = useNodeCreatorStore();
+
+				watch(
+					() => props.nodeTypes,
+					(nodeTypes: INodeTypeDescription[]) => {
+						setMergeNodes([...nodeTypes]);
+					},
+					{ immediate: true },
+				);
+			},
+			template: '<NodesListPanel @nodeTypeSelected="e => $emit(\'nodeTypeSelected\', e)" />',
+		});
+
+		it('should not filter results until the search debounce window elapses', async () => {
+			vi.useFakeTimers();
+			try {
+				const renderComponent = createComponentRenderer(wrapperComponent, {
+					pinia: createPinia(),
+					props: {
+						nodeTypes: searchNodes,
+					},
+				});
+				renderComponent();
+				await nextTick();
+
+				screen.getByText('On app event').click();
+				await nextTick();
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+
+				await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
+					target: { value: 'Zephyr' },
+				});
+				await nextTick();
+
+				// The keystroke should be debounced: filtering must not run yet, so the
+				// full, unfiltered list is still shown immediately after typing.
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+
+				// Once the debounce window elapses, the search runs and filters.
+				await vi.advanceTimersByTimeAsync(getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH) + 1);
+				await nextTick();
+
+				expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+				expect(screen.queryByText('Zephyr')).toBeInTheDocument();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 
