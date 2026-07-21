@@ -195,6 +195,17 @@ describe('AgentChatBridge — consumeStream', () => {
 		output: { ok: true },
 		isError: false,
 	};
+	const integrationActionSuspension: StreamChunk = {
+		type: 'tool-call-suspended',
+		runId: 'run-1',
+		toolCallId: 'tool-1',
+		toolName: 'slack',
+		suspendPayload: {
+			type: 'integration_action',
+			action: 'send_channel_message',
+			integrationConnectionId: 'slack:cred-1',
+		},
+	};
 
 	/** Build a bridge for the integration, fire a mention that streams the given chunks, and return the thread. */
 	async function runMention(
@@ -509,6 +520,16 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
+		it('does not post a fallback for a cardless integration action suspension', async () => {
+			const thread = await runMention(bufferedIntegration, [
+				integrationActionSuspension,
+				finishChunk,
+			]);
+
+			expect(componentMapper.toCard).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
 		it('does not post an error when a failed tool call is retried successfully', async () => {
 			const thread = await runMention(bufferedIntegration, [
 				erroredToolResult,
@@ -684,6 +705,16 @@ describe('AgentChatBridge — consumeStream', () => {
 		it('does not post an error for a successful streamed tool-only run', async () => {
 			const thread = await runMention(streamingIntegration, [successfulToolResult, finishChunk]);
 
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post a fallback for a streamed cardless integration action suspension', async () => {
+			const thread = await runMention(streamingIntegration, [
+				integrationActionSuspension,
+				finishChunk,
+			]);
+
+			expect(componentMapper.toCard).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 

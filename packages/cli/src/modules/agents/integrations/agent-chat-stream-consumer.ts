@@ -8,11 +8,16 @@ import { type TextEndFn, type TextYieldFn } from './types';
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
 type MessageChunk = Extract<StreamChunk, { type: 'message' }>;
 
+export type SuspensionHandlingResult = 'posted' | 'skipped' | 'failed';
+
 interface AgentChatStreamConsumerOptions {
 	disableStreaming: boolean;
 	logger: Logger;
 	postErrorToThread: (thread: Thread<unknown, unknown> | null, error: unknown) => Promise<void>;
-	handleSuspension: (chunk: SuspendedChunk, thread: Thread<unknown, unknown>) => Promise<boolean>;
+	handleSuspension: (
+		chunk: SuspendedChunk,
+		thread: Thread<unknown, unknown>,
+	) => Promise<SuspensionHandlingResult>;
 	handleMessage: (chunk: MessageChunk, thread: Thread<unknown, unknown>) => Promise<boolean>;
 }
 
@@ -167,9 +172,9 @@ export class AgentChatStreamConsumer {
 					}
 					case 'tool-call-suspended': {
 						await responseLifecycle.startDiscreteResponse();
-						const posted = await this.options.handleSuspension(chunk, thread);
-						responseState.hasVisibleResponse ||= posted;
-						if (!posted) {
+						const result = await this.options.handleSuspension(chunk, thread);
+						responseState.hasVisibleResponse ||= result === 'posted';
+						if (result === 'failed') {
 							responseState.fallbackSource = 'suspension';
 							responseState.fallbackError = new Error('Failed to post tool approval request');
 						}
@@ -294,9 +299,9 @@ export class AgentChatStreamConsumer {
 					case 'tool-call-suspended': {
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
-						const posted = await this.options.handleSuspension(chunk, thread);
-						responseState.hasVisibleResponse ||= posted;
-						if (!posted) {
+						const result = await this.options.handleSuspension(chunk, thread);
+						responseState.hasVisibleResponse ||= result === 'posted';
+						if (result === 'failed') {
 							responseState.fallbackSource = 'suspension';
 							responseState.fallbackError = new Error('Failed to post tool approval request');
 						}

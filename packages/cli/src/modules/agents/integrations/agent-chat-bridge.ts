@@ -13,7 +13,10 @@ import type {
 import { ChatIntegrationRegistry, onceStatusHandle } from './agent-chat-integration';
 import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
-import { AgentChatStreamConsumer } from './agent-chat-stream-consumer';
+import {
+	AgentChatStreamConsumer,
+	type SuspensionHandlingResult,
+} from './agent-chat-stream-consumer';
 import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
@@ -341,16 +344,16 @@ export class AgentChatBridge {
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 		thread: Thread,
-	): Promise<boolean> {
+	): Promise<SuspensionHandlingResult> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
 		if (!runId || !toolCallId) {
 			this.logger.warn('[AgentChatBridge] Suspended chunk missing runId or toolCallId');
-			return false;
+			return 'failed';
 		}
 
 		const cardPayload = buildSuspendCardPayload(suspendPayload);
-		if (!cardPayload) return false;
+		if (!cardPayload) return 'skipped';
 
 		try {
 			const card = await this.componentMapper.toCard(
@@ -362,7 +365,7 @@ export class AgentChatBridge {
 				this.integration.type,
 			);
 			await thread.post({ card });
-			return true;
+			return 'posted';
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post suspension card', {
 				agentId: this.agentId,
@@ -370,7 +373,7 @@ export class AgentChatBridge {
 				toolCallId,
 				error: error instanceof Error ? error.message : String(error),
 			});
-			return false;
+			return 'failed';
 		}
 	}
 
