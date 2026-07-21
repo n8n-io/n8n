@@ -187,6 +187,7 @@ export {
 } from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
+export { RoleDeleteQueryDto } from './roles/role-delete-query.dto';
 export {
 	RoleAssignmentsResponseDto,
 	type RoleProjectAssignment,

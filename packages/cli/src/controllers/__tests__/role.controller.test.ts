@@ -69,12 +69,24 @@ describe('RoleController', () => {
 					slug: 'custom-editor',
 				} as Role);
 
-				await controller.deleteRole(request, mock(), 'custom-editor');
+				await controller.deleteRole(request, mock(), 'custom-editor', mock());
 
 				expect(eventService.emit).toHaveBeenCalledWith('custom-role-deleted', {
 					userId: '123',
 					roleSlug: 'custom-editor',
 				});
+			});
+
+			it('should pass the reassignment role through to the service', async () => {
+				const request = managerRequest();
+				roleService.getRole.mockResolvedValue({ roleType: 'global' } as Role);
+				roleService.removeCustomRole.mockResolvedValue({ slug: 'custom-editor' } as Role);
+
+				await controller.deleteRole(request, mock(), 'custom-editor', {
+					reassignRoleSlug: 'global:member',
+				});
+
+				expect(roleService.removeCustomRole).toHaveBeenCalledWith('custom-editor', 'global:member');
 			});
 		});
 	});
