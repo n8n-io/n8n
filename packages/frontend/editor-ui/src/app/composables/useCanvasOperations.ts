@@ -134,6 +134,7 @@ import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
+import { runWhenIdle } from '@/app/utils/idleUtils';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -2966,8 +2967,11 @@ export function useCanvasOperations() {
 
 			removeUnknownCredentials(workflowData);
 
-			try {
-				if (trackEvents) {
+			if (trackEvents) {
+				// Building the node-graph payload walks the entire imported workflow, which
+				// is expensive on large workflows — keep it off the interaction path.
+				// `runWhenIdle` also swallows errors: if telemetry fails, don't throw.
+				runWhenIdle(() => {
 					const nodeGraph = JSON.stringify(
 						TelemetryHelpers.generateNodesGraph(
 							workflowData as IWorkflowBase,
@@ -3000,9 +3004,7 @@ export function useCanvasOperations() {
 							node_graph_string: nodeGraph,
 						});
 					}
-				}
-			} catch {
-				// If telemetry fails, don't throw an error
+				});
 			}
 
 			// Fix the node position as it could be totally offscreen

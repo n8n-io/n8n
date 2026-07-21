@@ -50,6 +50,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/app/utils/typesUtils';
+import { runWhenIdle } from '@/app/utils/idleUtils';
 import { useI18n } from '@n8n/i18n';
 import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
@@ -636,20 +637,24 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function runEntireWorkflow(source: 'node' | 'main', triggerNode?: string) {
-		const workflowData = workflowDocumentStore.value.serialize();
-		const telemetryPayload = {
-			workflow_id: workflowDocumentStore.value.workflowId,
-			node_graph_string: JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-					{ isCloudDeployment: settingsStore.isCloudDeployment },
-				).nodeGraph,
-			),
-			button_type: source,
-		};
-		telemetry.track('User clicked execute workflow button', telemetryPayload);
-		void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
+		// Building the node-graph payload serializes and walks the entire workflow,
+		// which is expensive on large workflows — keep it off the interaction path.
+		runWhenIdle(() => {
+			const workflowData = workflowDocumentStore.value.serialize();
+			const telemetryPayload = {
+				workflow_id: workflowDocumentStore.value.workflowId,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						workflowHelpers.getNodeTypes(),
+						{ isCloudDeployment: settingsStore.isCloudDeployment },
+					).nodeGraph,
+				),
+				button_type: source,
+			};
+			telemetry.track('User clicked execute workflow button', telemetryPayload);
+			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
+		});
 
 		let resolvedTriggerNode = triggerNode ?? workflowExecutionState.value.selectedTriggerNodeName;
 

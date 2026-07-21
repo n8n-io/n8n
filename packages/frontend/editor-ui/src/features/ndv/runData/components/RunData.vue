@@ -31,6 +31,8 @@ import {
 	CORE_NODES_CATEGORY,
 	DATA_EDITING_DOCS_URL,
 	DATA_PINNING_DOCS_URL,
+	DEBOUNCE_TIME,
+	getDebounceTime,
 	HTML_NODE_TYPE,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
@@ -72,7 +74,7 @@ import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
 import { useRoute, useRouter } from 'vue-router';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { asyncComputed } from '@vueuse/core';
+import { asyncComputed, useDebounceFn } from '@vueuse/core';
 import ViewSubExecution from '@/features/execution/executions/components/ViewSubExecution.vue';
 import RunDataItemCount from './RunDataItemCount.vue';
 import RunDataDisplayModeSelect from './RunDataDisplayModeSelect.vue';
@@ -1152,8 +1154,9 @@ function unlinkRun() {
 	emit('unlinkRun');
 }
 
-function onCurrentPageChange(value: number) {
-	currentPage.value = value;
+// Debounced so rapidly paging through items emits a single event with the
+// final state instead of one event per click.
+const trackCurrentPageChange = useDebounceFn(() => {
 	telemetry.track('User changed ndv page', {
 		node_type: activeNode.value?.type,
 		workflow_id: workflowId.value,
@@ -1163,6 +1166,11 @@ function onCurrentPageChange(value: number) {
 		page_size: pageSize.value,
 		items_total: dataCount.value,
 	});
+}, getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK));
+
+function onCurrentPageChange(value: number) {
+	currentPage.value = value;
+	void trackCurrentPageChange();
 }
 
 function resetCurrentPageIfTooFar() {
@@ -1172,11 +1180,9 @@ function resetCurrentPageIfTooFar() {
 	}
 }
 
-function onPageSizeChange(newPageSize: number) {
-	pageSize.value = newPageSize;
-
-	resetCurrentPageIfTooFar();
-
+// Debounced so rapidly switching page sizes emits a single event with the
+// final state instead of one event per change.
+const trackPageSizeChange = useDebounceFn(() => {
 	telemetry.track('User changed ndv page size', {
 		node_type: activeNode.value?.type,
 		workflow_id: workflowId.value,
@@ -1186,6 +1192,14 @@ function onPageSizeChange(newPageSize: number) {
 		page_size: pageSize.value,
 		items_total: dataCount.value,
 	});
+}, getDebounceTime(DEBOUNCE_TIME.TELEMETRY.TRACK));
+
+function onPageSizeChange(newPageSize: number) {
+	pageSize.value = newPageSize;
+
+	resetCurrentPageIfTooFar();
+
+	void trackPageSizeChange();
 }
 
 function onDisplayModeChange(newDisplayMode: IRunDataDisplayMode) {

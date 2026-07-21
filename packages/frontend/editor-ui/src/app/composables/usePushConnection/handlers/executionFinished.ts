@@ -34,6 +34,7 @@ import {
 	getExecutionErrorToastConfiguration,
 } from '@/features/execution/executions/executions.utils';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { runWhenIdle } from '@/app/utils/idleUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -368,37 +369,41 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 	) {
 		const error = runExecutionData.resultData.error as ExpressionError;
 
-		const workflowData = workflowDocumentStore.serialize();
-		const eventData: IDataObject = {
-			caused_by_credential: false,
-			error_message: error.description,
-			error_title: error.message,
-			error_type: error.context.type,
-			node_graph_string: JSON.stringify(
-				TelemetryHelpers.generateNodesGraph(
-					workflowData as IWorkflowBase,
-					workflowHelpers.getNodeTypes(),
-				).nodeGraph,
-			),
-			workflow_id: workflowDocumentStore.workflowId,
-		};
+		// Building the node-graph payload serializes and walks the entire workflow,
+		// which is expensive on large workflows — keep it off the execution hot path.
+		runWhenIdle(() => {
+			const workflowData = workflowDocumentStore.serialize();
+			const eventData: IDataObject = {
+				caused_by_credential: false,
+				error_message: error.description,
+				error_title: error.message,
+				error_type: error.context.type,
+				node_graph_string: JSON.stringify(
+					TelemetryHelpers.generateNodesGraph(
+						workflowData as IWorkflowBase,
+						workflowHelpers.getNodeTypes(),
+					).nodeGraph,
+				),
+				workflow_id: workflowDocumentStore.workflowId,
+			};
 
-		if (
-			error.context.nodeCause &&
-			['paired_item_no_info', 'paired_item_invalid_info'].includes(error.context.type as string)
-		) {
-			const node = workflowDocumentStore.getNodeByName(error.context.nodeCause as string);
+			if (
+				error.context.nodeCause &&
+				['paired_item_no_info', 'paired_item_invalid_info'].includes(error.context.type as string)
+			) {
+				const node = workflowDocumentStore.getNodeByName(error.context.nodeCause as string);
 
-			if (node) {
-				eventData.is_pinned = !!workflowDocumentStore.pinnedDataByNodeName?.[node.name];
-				eventData.mode = node.parameters.mode;
-				eventData.node_type = node.type;
-				eventData.operation = node.parameters.operation;
-				eventData.resource = node.parameters.resource;
+				if (node) {
+					eventData.is_pinned = !!workflowDocumentStore.pinnedDataByNodeName?.[node.name];
+					eventData.mode = node.parameters.mode;
+					eventData.node_type = node.type;
+					eventData.operation = node.parameters.operation;
+					eventData.resource = node.parameters.resource;
+				}
 			}
-		}
 
-		telemetry.track('Instance FE emitted paired item error', eventData);
+			telemetry.track('Instance FE emitted paired item error', eventData);
+		});
 	}
 
 	if (execution.status === 'canceled') {
