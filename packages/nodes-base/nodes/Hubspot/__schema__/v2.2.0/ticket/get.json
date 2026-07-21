@@ -66,6 +66,12 @@
                                     "sourceUpstreamDeployable": {
                                         "type": "string"
                                     },
+                                    "sourceVid": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        }
+                                    },
                                     "timestamp": {
                                         "type": "integer"
                                     },
@@ -86,5 +92,5 @@
             }
         }
     },
-    "version": 2
+    "version": 3
 }

@@ -69,6 +69,9 @@
         "clicked": {
             "type": "boolean"
         },
+        "content_categories": {
+            "type": "null"
+        },
         "contest_mode": {
             "type": "boolean"
         },
@@ -122,6 +125,9 @@
         },
         "is_video": {
             "type": "boolean"
+        },
+        "likes": {
+            "type": "null"
         },
         "link_flair_richtext": {
             "type": "array",
@@ -311,5 +317,5 @@
             "type": "boolean"
         }
     },
-    "version": 5
+    "version": 6
 }

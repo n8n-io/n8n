@@ -30,6 +30,22 @@
             "items": {
                 "type": "object",
                 "properties": {
+                    "credentials": {
+                        "type": "object",
+                        "properties": {
+                            "telegramApi": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -44,6 +60,14 @@
                             },
                             "operation": {
                                 "type": "string"
+                            },
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "systemMessage": {
+                                        "type": "string"
+                                    }
+                                }
                             }
                         }
                     },
@@ -92,5 +116,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

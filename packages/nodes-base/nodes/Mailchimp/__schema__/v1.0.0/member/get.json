@@ -45,6 +45,38 @@
         "id": {
             "type": "string"
         },
+        "interests": {
+            "type": "object",
+            "properties": {
+                "211bc1d448": {
+                    "type": "boolean"
+                },
+                "2d2f542c28": {
+                    "type": "boolean"
+                },
+                "3adc04fe0e": {
+                    "type": "boolean"
+                },
+                "4bb527d78f": {
+                    "type": "boolean"
+                },
+                "6673b2b8ab": {
+                    "type": "boolean"
+                },
+                "7cefc343d1": {
+                    "type": "boolean"
+                },
+                "832a145ba8": {
+                    "type": "boolean"
+                },
+                "8779471490": {
+                    "type": "boolean"
+                },
+                "d188c5b60f": {
+                    "type": "boolean"
+                }
+            }
+        },
         "ip_opt": {
             "type": "string"
         },
@@ -98,6 +130,96 @@
                 "LNAME": {
                     "type": "string"
                 },
+                "MMERGE10": {
+                    "type": "string"
+                },
+                "MMERGE11": {
+                    "type": "string"
+                },
+                "MMERGE12": {
+                    "type": "string"
+                },
+                "MMERGE13": {
+                    "type": "string"
+                },
+                "MMERGE14": {
+                    "type": "string"
+                },
+                "MMERGE15": {
+                    "type": "string"
+                },
+                "MMERGE16": {
+                    "type": "string"
+                },
+                "MMERGE17": {
+                    "type": "string"
+                },
+                "MMERGE18": {
+                    "type": "string"
+                },
+                "MMERGE19": {
+                    "type": "string"
+                },
+                "MMERGE20": {
+                    "type": "string"
+                },
+                "MMERGE21": {
+                    "type": "string"
+                },
+                "MMERGE22": {
+                    "type": "string"
+                },
+                "MMERGE23": {
+                    "type": "string"
+                },
+                "MMERGE24": {
+                    "type": "string"
+                },
+                "MMERGE25": {
+                    "type": "string"
+                },
+                "MMERGE26": {
+                    "type": "string"
+                },
+                "MMERGE27": {
+                    "type": "string"
+                },
+                "MMERGE28": {
+                    "type": "string"
+                },
+                "MMERGE29": {
+                    "type": "string"
+                },
+                "MMERGE3": {
+                    "type": "string"
+                },
+                "MMERGE30": {
+                    "type": "string"
+                },
+                "MMERGE31": {
+                    "type": "string"
+                },
+                "MMERGE32": {
+                    "type": "string"
+                },
+                "MMERGE33": {
+                    "type": "string"
+                },
+                "MMERGE4": {
+                    "type": "string"
+                },
+                "MMERGE5": {
+                    "type": "string"
+                },
+                "MMERGE6": {
+                    "type": "string"
+                },
+                "MMERGE7": {
+                    "type": "string"
+                },
+                "MMERGE8": {
+                    "type": "string"
+                },
                 "PHONE": {
                     "type": "string"
                 }
@@ -114,6 +236,25 @@
         },
         "source": {
             "type": "string"
+        },
+        "stats": {
+            "type": "object",
+            "properties": {
+                "ecommerce_data": {
+                    "type": "object",
+                    "properties": {
+                        "currency_code": {
+                            "type": "string"
+                        },
+                        "number_of_orders": {
+                            "type": "integer"
+                        },
+                        "total_revenue": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
         },
         "status": {
             "type": "string"
@@ -151,5 +292,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }
