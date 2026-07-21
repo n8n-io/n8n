@@ -38,7 +38,6 @@ import type {
 	ComboboxSizes,
 	ComboboxSlots,
 } from './Combobox.types';
-import ComboboxArrowKeyLoop from './ComboboxArrowKeyLoop.vue';
 import N8nComboboxItem from './ComboboxItem.vue';
 
 defineOptions({ inheritAttrs: false });
@@ -226,7 +225,6 @@ function onInput(event: Event) {
 		:model-value="props.modelValue"
 		:open-on-focus="true"
 	>
-		<ComboboxArrowKeyLoop />
 		<ComboboxAnchor
 			ref="anchor"
 			data-test-id="combobox"
