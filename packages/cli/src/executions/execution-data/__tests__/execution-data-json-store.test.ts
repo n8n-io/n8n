@@ -4,7 +4,7 @@
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { FsByteStore } from '@/blob-storage/fs-byte-store';
+import type { ExecutionDataFsByteStore } from '../execution-data-json-store';
 
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
 import { ExecutionDataJsonStore } from '../execution-data-json-store';
@@ -12,12 +12,12 @@ import { ExecutionDataWriteError } from '../execution-data-write.error';
 import { createExecutionRef } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
-let fsByteStore: ReturnType<typeof mock<FsByteStore>>;
+let fsByteStore: ReturnType<typeof mock<ExecutionDataFsByteStore>>;
 let errorReporter: ReturnType<typeof mock<ErrorReporter>>;
 let store: ExecutionDataJsonStore;
 
 beforeEach(() => {
-	fsByteStore = mock<FsByteStore>();
+	fsByteStore = mock<ExecutionDataFsByteStore>();
 	errorReporter = mock<ErrorReporter>();
 	store = new ExecutionDataJsonStore(fsByteStore, errorReporter);
 });
