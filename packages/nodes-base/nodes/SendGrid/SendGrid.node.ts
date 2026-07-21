@@ -23,7 +23,7 @@ export class SendGrid implements INodeType {
 		name: 'sendGrid',
 		icon: 'file:sendGrid.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1,2],
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		description: 'Consume SendGrid API',
 		defaults: {
@@ -130,6 +130,7 @@ export class SendGrid implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const nodeVersion = this.getNode().typeVersion;
 		const items = this.getInputData();
 		const length = items.length;
 		const qs: IDataObject = {};
@@ -531,7 +532,14 @@ export class SendGrid implements INodeType {
 							enableSandbox: boolean;
 							sendAt: string;
 							headers: { details: Array<{ key: string; value: string }> };
-							attachments: string;
+							// Keeping `string` type for backwards compatibility
+							attachments: string | {
+								data: {
+									property: string;
+									disposition: 'attachment' | 'inline';
+									contentId: string;
+								}[];
+							};
 							categories: string;
 							ipPoolName: string;
 							replyToEmail: string;
@@ -582,23 +590,50 @@ export class SendGrid implements INodeType {
 							];
 						}
 
-						if (attachments) {
-							const attachmentsToSend = [];
-							const binaryProperties = attachments.split(',').map((p) => p.trim());
+						if (nodeVersion === 1) {
+							// Backwards compatibility for node version 1
+							if (attachments) {
+								const attachmentsToSend = [];
+								const binaryProperties = (attachments as string).split(',').map((p) => p.trim());
 
-							for (const property of binaryProperties) {
-								const binaryData = this.helpers.assertBinaryData(i, property);
-								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
+								for (const property of binaryProperties) {
+									const binaryData = this.helpers.assertBinaryData(i, property);
+									const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
 
-								attachmentsToSend.push({
-									content: dataBuffer.toString('base64'),
-									filename: binaryData.fileName || 'unknown',
-									type: binaryData.mimeType,
-								});
+									attachmentsToSend.push({
+										content: dataBuffer.toString('base64'),
+										filename: binaryData.fileName || 'unknown',
+										type: binaryData.mimeType,
+									});
+								}
+
+								if (attachmentsToSend.length) {
+									body.attachments = attachmentsToSend;
+								}
 							}
+						} else {
+							// New way for node version 2 and onward
+							if ((attachments as any)?.data) {
+								const { data } = (attachments as any);
+								const attachmentsToSend = [];
 
-							if (attachmentsToSend.length) {
-								body.attachments = attachmentsToSend;
+								for (const ai in data) {
+									const { property, disposition, contentId } = data[ai];
+									const binaryData = this.helpers.assertBinaryData(i, property);
+									const dataBuffer = await this.helpers.getBinaryDataBuffer(i, property);
+
+									attachmentsToSend.push({
+										content: dataBuffer.toString('base64'),
+										filename: binaryData.fileName || 'unknown',
+										type: binaryData.mimeType,
+										disposition,
+										content_id: contentId || `attachment${ai}`,
+									});
+								}
+
+								if (attachmentsToSend.length) {
+									body.attachments = attachmentsToSend;
+								}
 							}
 						}
 
