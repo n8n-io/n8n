@@ -103,6 +103,52 @@ describe('useExecutingNode composable', () => {
 		});
 	});
 
+	describe('reconcileExecutingNodes (reconnect / visibility ground-truth)', () => {
+		it('replaces the shown node(s) with ground truth in a single assignment', () => {
+			const { executingNode, addExecutingNode, reconcileExecutingNodes, lastAddedExecutingNode } =
+				useExecutingNode();
+
+			// A stale spinner is up (nodeA), but ground truth says nodeB is running.
+			addExecutingNode('nodeA', 0);
+			reconcileExecutingNodes(['nodeB'], 5);
+
+			expect(executingNode.value).toEqual(['nodeB']);
+			expect(lastAddedExecutingNode.value).toBe('nodeB');
+		});
+
+		it('holds a legitimately-nested parent + sub-node pair', () => {
+			const { executingNode, reconcileExecutingNodes, isNodeExecuting } = useExecutingNode();
+
+			reconcileExecutingNodes(['Agent', 'Sub Model'], 7);
+
+			expect(executingNode.value).toEqual(['Agent', 'Sub Model']);
+			expect(isNodeExecuting('Agent')).toBe(true);
+			expect(isNodeExecuting('Sub Model')).toBe(true);
+		});
+
+		it('seeds the sequence baseline so a replayed lower-sequence event is ignored afterwards', () => {
+			const { executingNode, addExecutingNode, reconcileExecutingNodes } = useExecutingNode();
+
+			reconcileExecutingNodes(['nodeB'], 5);
+			// A late/replayed push for the superseded nodeA (seq 5 <= 5) is ignored.
+			addExecutingNode('nodeA', 5);
+
+			expect(executingNode.value).toEqual(['nodeB']);
+		});
+
+		it('clears the spinner when ground truth reports no node in flight', () => {
+			const { executingNode, addExecutingNode, reconcileExecutingNodes, lastAddedExecutingNode } =
+				useExecutingNode();
+
+			addExecutingNode('nodeA', 0);
+			// Run is active but momentarily between nodes (empty `nodes`).
+			reconcileExecutingNodes([], 3);
+
+			expect(executingNode.value).toEqual([]);
+			expect(lastAddedExecutingNode.value).toBeNull();
+		});
+	});
+
 	it('tracks the last node that started executing', () => {
 		const { lastAddedExecutingNode, addExecutingNode } = useExecutingNode();
 		addExecutingNode('nodeA', 0);

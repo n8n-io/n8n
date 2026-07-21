@@ -11,10 +11,13 @@ import { ref } from 'vue';
  * ignored, so a stale node can never overwrite the current one or leave several
  * spinners running at once.
  *
- * `executingNode` stays an array for its consumers' sake, but now holds at most
- * one entry. The counter restarts at 0 per run — and mid-run on a wait-node
- * resume — so a fresh event is also accepted whenever nothing is currently
- * shown, not only when it beats the last sequence number.
+ * `executingNode` stays an array for its consumers' sake. During live push it
+ * holds at most one entry; the counter restarts at 0 per run — and mid-run on a
+ * wait-node resume — so a fresh event is also accepted whenever nothing is
+ * currently shown, not only when it beats the last sequence number. On a
+ * reconnect/visibility reconcile (`reconcileExecutingNodes`) it is set from
+ * ground truth and may hold more than one entry — a parent node plus a sub-node
+ * executing inside it.
  */
 export function useExecutingNode() {
 	const executingNode = ref<string[]>([]);
@@ -42,6 +45,25 @@ export function useExecutingNode() {
 		}
 	}
 
+	/**
+	 * Replaces the shown executing node(s) with ground truth from the live-status
+	 * endpoint (push reconnect / tab-visibility regain — CAT-2895 Option B).
+	 *
+	 * Unlike `addExecutingNode`, this is not sequence-gated: ground truth always
+	 * wins. It seeds `latestSequenceNumber` from the endpoint so a late or
+	 * replayed push event carrying a lower number can't resurrect a superseded
+	 * spinner afterwards. The `nodes` array is written in a single assignment so
+	 * the stale→reconciled swap is one paint (no clear-then-set flicker), and it
+	 * may legitimately hold more than one entry — a parent node plus a sub-node
+	 * executing inside it. An empty array clears the spinner (the run is active
+	 * but momentarily between nodes).
+	 */
+	function reconcileExecutingNodes(nodes: string[], sequenceNumber: number) {
+		executingNode.value = nodes;
+		lastAddedExecutingNode.value = nodes.at(-1) ?? null;
+		latestSequenceNumber = sequenceNumber;
+	}
+
 	function clearNodeExecutionQueue() {
 		executingNode.value = [];
 		lastAddedExecutingNode.value = null;
@@ -57,6 +79,7 @@ export function useExecutingNode() {
 		lastAddedExecutingNode,
 		addExecutingNode,
 		removeExecutingNode,
+		reconcileExecutingNodes,
 		isNodeExecuting,
 		clearNodeExecutionQueue,
 	};
