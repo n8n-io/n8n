@@ -214,7 +214,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: project.id,
 					usedByWorkflows: [child.id],
 				},
 			]);

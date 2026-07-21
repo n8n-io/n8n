@@ -1,11 +1,4 @@
-import type {
-	Folder,
-	Project,
-	SharedWorkflow,
-	SharedWorkflowRepository,
-	User,
-	WorkflowEntity,
-} from '@n8n/db';
+import type { Folder, Project, SharedWorkflowRepository, User, WorkflowEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { FolderFinderService } from '@/services/folder-finder.service';
@@ -72,12 +65,10 @@ function makeResolver(options: {
 	projectService.findExistingProjectIds.mockResolvedValue(new Set());
 
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	// The resolver keys the returned rows into a map by workflowId, so returning
-	// every configured owner row (ignoring the `In(...)` filter) is equivalent.
-	sharedWorkflowRepository.find.mockResolvedValue(
-		Object.entries(options.owners ?? {}).map(
-			([workflowId, project]) => ({ workflowId, project }) as SharedWorkflow,
-		),
+	// The resolver looks up owner projects keyed by workflowId, so returning every
+	// configured owner (ignoring the requested id filter) is equivalent.
+	sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+		new Map(Object.entries(options.owners ?? {})),
 	);
 
 	const resolver = new StaticWorkflowDependencyResolver(

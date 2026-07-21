@@ -1,7 +1,6 @@
 import type { Folder, Project, User, WorkflowEntity } from '@n8n/db';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -151,7 +150,9 @@ export class StaticWorkflowDependencyResolver {
 
 		const workflows = await this.findExportableWorkflows(options.user, options.workflowIds);
 		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
-		const ownersByWorkflowId = await this.findOwnerProjects(options.workflowIds);
+		const ownersByWorkflowId = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(
+			options.workflowIds,
+		);
 		const placementsByWorkflowId = new Map(
 			options.workflowIds.map((workflowId) => [
 				workflowId,
@@ -238,15 +239,6 @@ export class StaticWorkflowDependencyResolver {
 		);
 
 		return workflows;
-	}
-
-	private async findOwnerProjects(workflowIds: string[]): Promise<Map<string, Project>> {
-		const ownerRows = await this.sharedWorkflowRepository.find({
-			where: { workflowId: In(workflowIds), role: 'workflow:owner' },
-			relations: { project: true },
-		});
-
-		return new Map(ownerRows.map(({ workflowId, project }) => [workflowId, project]));
 	}
 
 	private async findAccessibleFolderChains(
