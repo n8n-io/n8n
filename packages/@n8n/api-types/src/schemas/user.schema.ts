@@ -52,3 +52,4 @@ export const usersListSchema = z.object({
 
 export type User = z.infer<typeof userDetailSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;
+export type UserProject = z.infer<typeof userProjectSchema>;
