@@ -102,10 +102,44 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 			],
 		},
 		{
+			displayName: 'Custom Scopes',
+			name: 'customScopes',
+			type: 'boolean',
+			default: false,
+			description: 'Define custom scopes',
+		},
+		{
+			displayName:
+				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly.',
+			name: 'customScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+		},
+		{
+			// The default scope is built from Subdomain and Region, so it can't prefill this field
+			displayName: 'Enabled Scopes',
+			name: 'enabledScopes',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+			default: '',
+			placeholder: 'e.g. openid offline_access https://organization.crm.dynamics.com/.default',
+			description: 'Scopes that should be enabled',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '=openid offline_access https://{{$self.subdomain}}.{{$self.region}}/.default',
+			default:
+				'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access https://" + $self["subdomain"] + "." + $self["region"] + "/.default"}}',
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',
