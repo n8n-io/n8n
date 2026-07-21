@@ -131,7 +131,7 @@ const getFormTriggerDetails = (formTriggers: INode[]): string => {
 			(node, index) => `
 				<trigger ${index + 1}>
 				\t - Node name: ${node.name}
-				\t - Form fields: ${JSON.stringify(node.parameters.formFields ?? 'N/A')}
+				\t - Form fields: ${JSON.stringify(node.parameters?.formFields ?? 'N/A')}
 				</trigger ${index + 1}>`,
 		)
 		.join('\n\n');
@@ -194,10 +194,10 @@ const collectWebhookNodeDetails = async (
 	workflowId: string,
 	testBaseUrl: string = baseUrl,
 ): Promise<WebhookNodeDetails> => {
-	const pathParam = typeof node.parameters.path === 'string' ? node.parameters.path : '';
-	const isFullPath = node.parameters.isFullPath === true;
+const pathParam = typeof node.parameters?.path === 'string' ? node.parameters.path : '';
+const isFullPath = node.parameters?.isFullPath === true;
 	const httpMethod =
-		typeof node.parameters.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
+		typeof node.parameters?.httpMethod === 'string' ? node.parameters.httpMethod : 'GET';
 
 	return {
 		nodeName: node.name,
@@ -261,7 +261,7 @@ const resolveCredentialRequirement = async (
 	credentialsService: CredentialsService,
 ): Promise<WebhookCredentialRequirement> => {
 	const authType =
-		typeof node.parameters.authentication === 'string' ? node.parameters.authentication : undefined;
+		typeof node.parameters?.authentication === 'string' ? node.parameters.authentication : undefined;
 
 	switch (authType) {
 		case 'basicAuth':
@@ -322,7 +322,7 @@ const getJWTAuthVariant = async (
 
 const getResponseModeDescription = (node: INode): string => {
 	const responseMode =
-		typeof node.parameters.responseMode === 'string' ? node.parameters.responseMode : undefined;
+		typeof node.parameters?.responseMode === 'string' ? node.parameters.responseMode : undefined;
 
 	if (responseMode === 'responseNode') {
 		return 'Webhook is configured to respond using "Respond to Webhook" node.';
@@ -330,7 +330,7 @@ const getResponseModeDescription = (node: INode): string => {
 
 	if (responseMode === 'lastNode') {
 		const responseData =
-			typeof node.parameters.responseData === 'string' ? node.parameters.responseData : undefined;
+			typeof node.parameters?.responseData === 'string' ? node.parameters.responseData : undefined;
 		const base = 'Webhook is configured to respond when the last node is executed. ';
 		switch (responseData) {
 			case 'allEntries':
