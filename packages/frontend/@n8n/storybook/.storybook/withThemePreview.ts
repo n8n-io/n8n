@@ -17,14 +17,6 @@ function panelMinHeight(value: unknown): string | undefined {
 	return undefined;
 }
 
-/**
- * Portalled overlays render under `document.body`, outside the themed panels.
- * Mirror the active panel's theme onto `body` so those overlays pick up the
- * correct CSS variables.
- *
- * Opt into taller panels per story with:
- * `parameters: { themePreview: { minHeight: 480 } }`
- */
 export const withThemePreview: Decorator = (story, context) => {
 	const minHeight = panelMinHeight(
 		(context.parameters.themePreview as { minHeight?: number | string } | undefined)?.minHeight,
