@@ -43,7 +43,7 @@ const headers = ref<Array<TableHeader<Item>>>([
 	{
 		title: i18n.baseText('settings.users.table.header.user'),
 		key: 'name',
-		width: 400,
+		width: 300,
 		value(row) {
 			return {
 				...row,

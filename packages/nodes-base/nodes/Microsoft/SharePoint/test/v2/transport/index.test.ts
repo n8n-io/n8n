@@ -531,4 +531,26 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			expect(getSharePointCredentialType.call(ctx)).toBe('microsoftOAuth2Api');
 		});
 	});
+
+	describe('binary bodies', () => {
+		it('passes a Buffer body through raw, with the caller Content-Type winning', async () => {
+			setParams({ authentication: 'microsoftOAuth2Api' });
+			const payload = Buffer.from('binary-bytes');
+
+			await microsoftApiRequest.call(
+				ctx,
+				'PUT',
+				'/v1.0/sites/s/drive/items/f:/a.png:/content',
+				payload,
+				{},
+				undefined,
+				{ 'Content-Type': 'image/png' },
+			);
+
+			const options = mockRequestOAuth2.mock.calls[0][1];
+			expect(options.body).toBe(payload);
+			expect(options.headers['Content-Type']).toBe('image/png');
+			expect(options.json).toBe(true);
+		});
+	});
 });

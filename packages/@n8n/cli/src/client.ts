@@ -16,6 +16,7 @@ export interface ImportPackageFields {
 	credentialMissingMode?: string;
 	bindings?: string;
 	workflowConflictPolicy: string;
+	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	missingNodeTypeMode?: string;
 	folderConflictPolicy?: string;

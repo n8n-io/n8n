@@ -1,5 +1,11 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeOperationError,
+} from 'n8n-workflow';
 
+import * as file from './file';
 import * as list from './list';
 import type { MicrosoftSharePointType } from './node.type';
 
@@ -23,6 +29,19 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (sharePointTypeData.resource) {
+				case 'file':
+					if (!(sharePointTypeData.operation in file)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The operation "${operation}" is not supported!`,
+						);
+					}
+					responseData = await file[sharePointTypeData.operation].execute.call(
+						this,
+						i,
+						siteIdCache,
+					);
+					break;
 				case 'list':
 					if (!(sharePointTypeData.operation in list)) {
 						throw new NodeOperationError(
@@ -46,10 +65,16 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					);
 			}
 
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
-				{ itemData: { item: i } },
-			);
+			// A binary-carrying result is already a full execution item —
+			// returnJsonArray would nest it under `json` — so it only gets the
+			// pairedItem stamp. Graph replies never carry a top-level `binary` key.
+			const asItems =
+				typeof responseData === 'object' && responseData !== null && 'binary' in responseData
+					? [responseData as INodeExecutionData]
+					: this.helpers.returnJsonArray(responseData as IDataObject);
+			const executionData = this.helpers.constructExecutionMetaData(asItems, {
+				itemData: { item: i },
+			});
 
 			returnData.push(...executionData);
 		} catch (error) {

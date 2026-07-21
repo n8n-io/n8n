@@ -118,16 +118,19 @@ export function createIntegrationContextTool(params: {
 			const toolInput = input as RawContextToolInput;
 			if (toolInput.queries !== undefined) {
 				const results = await Promise.all(
-					toolInput.queries.map(async (operation) => ({
-						query: operation.query,
-						result: await executeContextToolOperation({
-							operation,
-							descriptor,
-							messageContextStore,
-							queryExecutor,
-							persistence: ctx.persistence,
-						}),
-					})),
+					toolInput.queries.map(async (rawOperation) => {
+						const operation = toSingleContextOperation(rawOperation);
+						return {
+							query: operation.query,
+							result: await executeContextToolOperation({
+								operation,
+								descriptor,
+								messageContextStore,
+								queryExecutor,
+								persistence: ctx.persistence,
+							}),
+						};
+					}),
 				);
 
 				return { ok: true, results };
