@@ -1,4 +1,5 @@
 import type { CreateEvaluationCollectionPayload } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type {
 	EvaluationCollection,
 	EvaluationCollectionRepository,
@@ -108,6 +109,7 @@ describe('EvaluationCollectionService', () => {
 	let workflowHistoryService: Mocked<WorkflowHistoryService>;
 	let testRunnerService: Mocked<TestRunnerService>;
 	let telemetry: Mocked<Telemetry>;
+	let logger: Mocked<Logger>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
@@ -118,6 +120,7 @@ describe('EvaluationCollectionService', () => {
 		workflowHistoryService = mock<WorkflowHistoryService>();
 		testRunnerService = mock<TestRunnerService>();
 		telemetry = mock<Telemetry>();
+		logger = mock<Logger>();
 
 		// Async no-op cleanup paths used by rerun rollback.
 		collectionRepo.removeRunsFromCollection.mockResolvedValue(undefined);
@@ -132,6 +135,7 @@ describe('EvaluationCollectionService', () => {
 			workflowHistoryService,
 			testRunnerService,
 			telemetry,
+			logger,
 		);
 
 		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(makeConfig());
@@ -496,6 +500,70 @@ describe('EvaluationCollectionService', () => {
 			// A failed re-run never busts the insights cache — the collection is
 			// unchanged, so the cached envelope is still valid.
 			expect(collectionRepo.updateInsightsCache).not.toHaveBeenCalled();
+		});
+
+		it('rolls back the fresh attempt when the old-run unlink fails, restoring the pre-rerun state', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-old-a', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-old-b', workflowVersionId: 'wfv-b', status: 'completed' }),
+				],
+			});
+			testRunnerService.startTestRun
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-a', status: 'new' }),
+					finished: Promise.resolve(),
+				})
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-b', status: 'new' }),
+					finished: Promise.resolve(),
+				});
+			// Both fresh runs start, then the old-run unlink fails; the rollback
+			// unlink (fresh ids) still succeeds.
+			collectionRepo.removeRunsFromCollection.mockImplementation(async (_id, ids) => {
+				if (ids.includes('tr-old-a')) throw new Error('unlink old failed');
+			});
+
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(
+				'unlink old failed',
+			);
+
+			// Fresh runs are cancelled + unlinked; the old runs stay linked (their
+			// atomic unlink threw before changing anything); cache is not busted.
+			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-a');
+			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-b');
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', [
+				'tr-new-a',
+				'tr-new-b',
+			]);
+			expect(collectionRepo.updateInsightsCache).not.toHaveBeenCalled();
+		});
+
+		it('logs when the rollback unlink itself fails, still throwing the original error', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-old-a', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-old-b', workflowVersionId: 'wfv-b', status: 'completed' }),
+				],
+			});
+			testRunnerService.startTestRun
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-a', status: 'new' }),
+					finished: Promise.resolve(),
+				})
+				.mockRejectedValueOnce(new Error('start failed'));
+			collectionRepo.removeRunsFromCollection.mockRejectedValue(new Error('cleanup failed'));
+
+			// The original start error surfaces, not the cleanup error.
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow('start failed');
+
+			// The rollback failure is reported rather than silently swallowed.
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.stringContaining('mixed run set'),
+				expect.objectContaining({ collectionId: 'col-1' }),
+			);
 		});
 	});
 

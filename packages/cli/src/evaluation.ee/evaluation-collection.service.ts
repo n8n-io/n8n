@@ -9,6 +9,7 @@ import type {
 	UpdateEvaluationCollectionPayload,
 } from '@n8n/api-types';
 import { metricScalesFromConfig, normalizeMetricScore } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
@@ -60,6 +61,7 @@ export class EvaluationCollectionService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
+		private readonly logger: Logger,
 	) {}
 
 	async createCollection(
@@ -250,29 +252,36 @@ export class EvaluationCollectionService {
 					}),
 				);
 			}
+
+			// Replace the old runs with the fresh attempt in one atomic unlink. Kept
+			// inside the try so a failure here rolls the whole attempt back too; the
+			// unlink is all-or-nothing, so a failure leaves the old runs untouched.
+			await this.collectionRepo.removeRunsFromCollection(
+				collection.id,
+				runs.map((run) => run.id),
+			);
 		} catch (error) {
-			// Roll back the fresh runs this call started: cancel them so they stop
-			// consuming compute and can't later bust the collection's insights cache
-			// (the runner reads the run's collectionId captured at start), then
-			// unlink them atomically. Old runs stay linked as the collection's valid
-			// state. Best-effort — the original error is what surfaces.
+			// Restore the pre-rerun state (only the old runs linked): cancel the fresh
+			// runs so they stop consuming compute and can't bust the insights cache
+			// (the runner reads the collectionId captured at start), then unlink them.
+			// The old runs are still linked — their unlink is atomic, so a failure
+			// left them untouched.
 			for (const runId of runsStartedIds) {
 				await this.testRunnerService.cancelTestRun(runId).catch(() => {});
 			}
-			await this.collectionRepo
-				.removeRunsFromCollection(collection.id, runsStartedIds)
-				.catch(() => {});
+			try {
+				await this.collectionRepo.removeRunsFromCollection(collection.id, runsStartedIds);
+			} catch (cleanupError) {
+				// The rollback unlink itself failed — the collection may now hold both
+				// the old and fresh runs. Surface it so the inconsistency isn't silent;
+				// still throw the original error, which is the actionable cause.
+				this.logger.error(
+					'Failed to roll back eval collection re-run; collection may contain a mixed run set',
+					{ collectionId: collection.id, error: cleanupError },
+				);
+			}
 			throw error;
 		}
-
-		// Replace the old runs with the fresh attempt in one atomic unlink, so a
-		// partial failure can't leave both attempts linked (duplicate versions).
-		// Reached only after every fresh run started; the new runs have distinct
-		// ids, so only the old ones detach.
-		await this.collectionRepo.removeRunsFromCollection(
-			collection.id,
-			runs.map((run) => run.id),
-		);
 
 		// Membership changed — the cached insights envelope is now stale.
 		await this.collectionRepo.updateInsightsCache(collection.id, null);
