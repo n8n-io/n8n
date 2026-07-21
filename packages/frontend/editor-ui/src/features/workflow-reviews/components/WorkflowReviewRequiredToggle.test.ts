@@ -143,7 +143,7 @@ describe('WorkflowReviewRequiredToggle', () => {
 				'checked',
 			);
 			expect(
-				getByText('This workflow has an open review, so a review is required before publishing.'),
+				getByText('Review is required while this workflow has an open review.'),
 			).toBeInTheDocument();
 		});
 
