@@ -84,7 +84,7 @@ describe('reviewStatus.store', () => {
 		expect(store.hasOpenReview('workflow-1')).toBe(true);
 	});
 
-	it('applies an older successful response when a newer request failed transiently', async () => {
+	it('discards an older successful response even when a newer request failed transiently', async () => {
 		const store = useWorkflowReviewStatusStore();
 
 		let resolveFirst!: (value: WorkflowReviewRequestList) => void;
@@ -99,12 +99,13 @@ describe('reviewStatus.store', () => {
 		await store.fetchStatus('workflow-1');
 		expect(store.hasOpenReview('workflow-1')).toBe(false);
 
-		// The newer request failed without an outcome, so the older success
-		// is still the best information available and must be applied.
+		// Latest-wins: only the most recent fetch may write, so the older
+		// success is dropped and the status stays unknown until the next sync.
 		resolveFirst(listOf(openReview));
 		await firstFetch;
 
-		expect(store.hasOpenReview('workflow-1')).toBe(true);
+		expect(store.hasOpenReview('workflow-1')).toBe(false);
+		expect(store.openReviewByWorkflowId).not.toHaveProperty('workflow-1');
 	});
 
 	it('does not let an older success overwrite a newer 404 that cleared the status', async () => {

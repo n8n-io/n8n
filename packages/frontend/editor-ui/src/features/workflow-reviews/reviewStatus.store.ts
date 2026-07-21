@@ -14,13 +14,8 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 	const rootStore = useRootStore();
 
 	const openReviewByWorkflowId = ref<Record<string, WorkflowReviewRequestSummary | null>>({});
-	// Monotonic per-workflow counters: `started` numbers each fetch, `applied`
-	// records the newest fetch whose outcome was written. Comparing against
-	// `applied` (not `started`) means a stale response can't clobber a newer
-	// result, while a newer fetch failing transiently doesn't discard an older
-	// in-flight success.
-	const startedSequenceByWorkflowId: Record<string, number> = {};
-	const appliedSequenceByWorkflowId: Record<string, number> = {};
+	// Latest-wins: only the most recently started fetch may write its outcome.
+	const latestSequenceByWorkflowId: Record<string, number> = {};
 
 	const openReviewRequest = (workflowId: string): WorkflowReviewRequestSummary | null => {
 		return openReviewByWorkflowId.value[workflowId] ?? null;
@@ -31,13 +26,13 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 		return openReviewRequest(workflowId) !== null;
 	};
 
-	/** True when a newer fetch has already written its outcome. */
+	/** True when a newer fetch has started since this one. */
 	const isStale = (workflowId: string, sequence: number): boolean =>
-		sequence <= (appliedSequenceByWorkflowId[workflowId] ?? 0);
+		sequence !== latestSequenceByWorkflowId[workflowId];
 
 	const fetchStatus = async (workflowId: string): Promise<void> => {
-		const sequence = (startedSequenceByWorkflowId[workflowId] ?? 0) + 1;
-		startedSequenceByWorkflowId[workflowId] = sequence;
+		const sequence = (latestSequenceByWorkflowId[workflowId] ?? 0) + 1;
+		latestSequenceByWorkflowId[workflowId] = sequence;
 
 		try {
 			const { data } = await fetchWorkflowReviewRequests(rootStore.restApiContext, {
@@ -46,7 +41,6 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 				take: 1,
 			});
 			if (isStale(workflowId, sequence)) return;
-			appliedSequenceByWorkflowId[workflowId] = sequence;
 			openReviewByWorkflowId.value[workflowId] = data[0] ?? null;
 		} catch (error) {
 			if (isStale(workflowId, sequence)) return;
@@ -55,14 +49,12 @@ export const useWorkflowReviewStatusStore = defineStore('workflowReviewStatus', 
 				(error.httpStatusCode === 404 || error.httpStatusCode === 403)
 			) {
 				// Access or feature revoked — fall back to the local preference.
-				appliedSequenceByWorkflowId[workflowId] = sequence;
 				delete openReviewByWorkflowId.value[workflowId];
 				return;
 			}
-			// Transient error: keep the last known status and don't advance the
-			// applied sequence, so an older in-flight success may still land.
-			// This is a background sync; unknown status degrades to local-pref
-			// behavior and the backend remains the real gate.
+			// Transient error: keep the last known status. This is a background
+			// sync; unknown status degrades to local-pref behavior and the
+			// backend remains the real gate.
 		}
 	};
 
