@@ -1,0 +1,29 @@
+packages/cli/src/public-api/v1/openapi-gen/data-tables.schemas.ts
+  s_8a5f40e5e2eb51::t_e16a34479ea186 1-6
+packages/cli/package.json
+  s_8a5f40e5e2eb51::t_a896b6aa7bc556 68
+.github/workflows/util-sync-api-docs.yml
+  s_8a5f40e5e2eb51::t_f50ba630812e85 18-20
+  s_8a5f40e5e2eb51::t_38c4002d20b40e 50
+  s_8a5f40e5e2eb51::t_3c44305a5b05ea 118
+.github/WORKFLOWS.md
+  s_8a5f40e5e2eb51::t_ff21b3056a4bc3 182
+pnpm-lock.yaml
+  s_8a5f40e5e2eb51::t_3b57c519dd5316 4320-4322
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6090fdda0106ad9bb87e0e20a45589610776b8d5",
+  "prompts": {},
+  "sessions": {
+    "s_8a5f40e5e2eb51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1cd44bb-2879-436a-acaf-550e55ab3187",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

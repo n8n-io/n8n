@@ -1,0 +1,23 @@
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_8a5f40e5e2eb51::t_e4727c00b48f5b 188
+packages/cli/package.json
+  s_8a5f40e5e2eb51::t_ef82d1303df41c 131
+pnpm-lock.yaml
+  s_8a5f40e5e2eb51::t_8c973fbe22542b 3869-3871
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "aa46934aaf2e752a81a62a76e5e4c4db7240cb3f",
+  "prompts": {},
+  "sessions": {
+    "s_8a5f40e5e2eb51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1cd44bb-2879-436a-acaf-550e55ab3187",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

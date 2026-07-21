@@ -1,0 +1,149 @@
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  s_60c9025b151770::t_f7b4630bf8bf6d 2,13-22,29-30
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  s_60c9025b151770::t_1916428f831677 1-4,6-19,22-30,32-35
+  s_2a235a6e9347be::t_d664c830aa7f1c 5,20-21,31
+packages/cli/test/integration/shared/types.ts
+  s_60c9025b151770::t_bc8f2e8a1ae3d0 55,70-71
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_60c9025b151770::t_f47620be23b460 1-13,18-39,41-46,48-50,54-57,61-64,66-73,79-108
+  s_2a235a6e9347be::t_800b92cfc074ab 14-17,40,47,51-53,58-60,65,74-78
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_60c9025b151770::t_a4789809c277c5 36
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_2a235a6e9347be::t_583ae2aa6bbb4b 6-7
+  s_60c9025b151770::t_06db1c98cc7bf7 1-5,8-16
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_60c9025b151770::t_2448a48f4744df 16
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
+  s_2a235a6e9347be::t_d664c830aa7f1c 19,23-24,26-29,31
+  s_60c9025b151770::t_dd91bf959b2356 1-18,20-22,25,30,32-39
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_2a235a6e9347be::t_2f37f299fc095c 345,347-348
+  s_2a235a6e9347be::t_493341e5e43666 346
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_60c9025b151770::t_1b89b2320e2bd7 2,5,18-31,44-45,51-69
+  s_60c9025b151770::t_b2234c8e7a704f 70
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_2a235a6e9347be::t_583ae2aa6bbb4b 171,177-190
+  h_9c8f56e3400786 81
+  s_2a235a6e9347be::t_d664c830aa7f1c 397
+  s_60c9025b151770::t_bb9cfd15536241 1-80,82-170,172-176,191-396,398-403
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_9006126844c8d5::t_53a7b1c755ec03 86
+  s_9006126844c8d5::t_235bdd463aba3d 51
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_2a235a6e9347be::t_693e2c4baad9ba 1-11,13-14
+  s_2a235a6e9347be::t_5791dc7a463a1a 12
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_2a235a6e9347be::t_a1657bd79d44c0 125,134,144,155
+  h_9c8f56e3400786 75,114
+  s_60c9025b151770::t_8a8655a46f6611 1-16,21-68,70-74,76-113,115-116,118-124,126-129,131-133,135-139,141-143,145-150,152-154,156-167,170-176
+  s_2a235a6e9347be::t_800b92cfc074ab 17-20,69,117,130,140,151,168-169
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_60c9025b151770::t_078acc951d9093 64
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_60c9025b151770::t_65875a2109bd21 2,13-28
+  s_60c9025b151770::t_5dbf4355e9a432 29-30
+packages/@n8n/api-types/src/dto/index.ts
+  s_2a235a6e9347be::t_6802c7ddb45108 289-290
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_2a235a6e9347be::t_800b92cfc074ab 19-21
+  s_60c9025b151770::t_4dc13844903a23 1-18,22-23
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 10,66
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 79
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 78
+docs/generated/postgres-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,837,1151
+docs/generated/sqlite-schema/README.md
+  s_44a98ba2784a12::t_16f911908620c5 65,97,824,1138
+packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
+  ai_agent 1-31
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+packages/@n8n/db/src/migrations/common/1784000000049-AddScheduledTaskDispatchedAt.ts
+  ai_agent 1-35
+docs/generated/sqlite-schema/scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 93
+docs/generated/sqlite-schema/scheduled_task.md
+  s_44a98ba2784a12::t_16f911908620c5 9,21,65
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_893c5ef8fdc256 217-218,217-218
+  s_44a98ba2784a12::t_daa8f45a138448 437-438,437-438
+  s_44a98ba2784a12::t_d446b22a984aa3 216,216
+  s_44a98ba2784a12::t_29c7d74109de94 436,436
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_44a98ba2784a12::t_16f911908620c5 92
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_44a98ba2784a12::t_16f911908620c5 73
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,20,57
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_51812c9029fdb3 455-456,455-456
+  s_44a98ba2784a12::t_d25d8416783ebe 225-226,225-226
+  s_44a98ba2784a12::t_50f198fd2246d1 224,224
+  s_44a98ba2784a12::t_6a70a4b32b68f9 454,454
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_44a98ba2784a12::t_16f911908620c5 9,49
+packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
+  ai_agent 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "dee6545f727e6ddc3611bdc5cc8f6f3d82b1465f",
+  "prompts": {},
+  "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_9006126844c8d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b699ae-12d0-405b-9a78-fb4840686602",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
