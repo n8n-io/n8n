@@ -313,7 +313,9 @@ describe('project package export — with folders / workflows', () => {
 			entries.find((e) => e.name === `${credentialEntry.target}/credential.json`),
 		).toBeDefined();
 		expect(manifest.requirements).toEqual({
-			nodeTypes: expect.any(Array),
+			nodeTypes: [
+				{ type: 'n8n-nodes-base.httpRequest', typeVersion: 1, usedByWorkflows: [workflow.id] },
+			],
 			credentials: [
 				{
 					id: credential.id,
