@@ -147,14 +147,13 @@ export function useWorkflowExtraction() {
 		const groups: IWorkflowGroup[] = [];
 
 		for (const group of workflowDocumentStore.value.allGroups) {
-			const memberIds = new Set(group.nodeIds);
 			const fullyContained = group.nodeIds.every((id) => extractedIds.has(id));
 
 			if (!fullyContained) {
 				continue;
 			}
 
-			const hasExtraOutsideGroup = extractedNodes.some((node) => !memberIds.has(node.id));
+			const hasExtraOutsideGroup = extractedIds.size > group.nodeIds.length;
 			if (!hasExtraOutsideGroup) {
 				continue;
 			}
