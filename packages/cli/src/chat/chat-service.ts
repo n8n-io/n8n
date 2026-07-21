@@ -5,7 +5,15 @@ import { Service } from '@n8n/di';
 import { timingSafeEqual } from 'crypto';
 import { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { jsonParse, UnexpectedError, CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE } from 'n8n-workflow';
+import {
+	jsonParse,
+	UnexpectedError,
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	ChatNodeMessageType,
+	type ChatNodeMessageRegular,
+	type ChatNodeMessageWithButtons,
+} from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 
@@ -29,17 +37,39 @@ const HEARTBEAT_INTERVAL = 30 * 1000;
 const HEARTBEAT_TIMEOUT = 60 * 1000;
 
 /**
- * let frontend know that no user input is expected
+ * Every frame sent over the socket is JSON with a `type` discriminator, so the
+ * frontend never has to guess whether a payload is a plain string or a
+ * structured message (e.g. one that renders buttons).
  */
-const N8N_CONTINUE = 'n8n|continue';
-/**
- * send message for heartbeat check
- */
-const N8N_HEARTBEAT = 'n8n|heartbeat';
-/**
- * frontend did acknowledge the heartbeat
- */
-const N8N_HEARTBEAT_ACK = 'n8n|heartbeat-ack';
+const ServerFrameType = {
+	HEARTBEAT: 'heartbeat',
+	/** no user input is expected */
+	CONTINUE: 'continue',
+	ERROR: 'error',
+} as const;
+
+/** frontend acknowledges the heartbeat */
+const CLIENT_HEARTBEAT_ACK = 'heartbeat-ack';
+
+type ServerFrame =
+	| { type: typeof ServerFrameType.HEARTBEAT }
+	| { type: typeof ServerFrameType.CONTINUE }
+	| { type: typeof ServerFrameType.ERROR; message: string }
+	| ChatNodeMessageRegular
+	| ChatNodeMessageWithButtons;
+
+function sendFrame(ws: Pick<WebSocket, 'send'>, frame: ServerFrame) {
+	ws.send(JSON.stringify(frame));
+}
+
+function isHeartbeatAck(parsed: unknown): boolean {
+	return (
+		typeof parsed === 'object' &&
+		parsed !== null &&
+		'type' in parsed &&
+		parsed.type === CLIENT_HEARTBEAT_ACK
+	);
+}
 
 function closeConnection(ws: WebSocket) {
 	if (ws.readyState !== WebSocket.OPEN) return;
@@ -89,7 +119,7 @@ export class ChatService {
 		const execution = await this.executionManager.findExecution(executionId);
 
 		if (!execution) {
-			ws.send('Connection rejected');
+			sendFrame(ws, { type: ServerFrameType.ERROR, message: 'Connection rejected' });
 			ws.close(1008);
 			return;
 		}
@@ -100,7 +130,7 @@ export class ChatService {
 			const storedBuf = Buffer.from(execution.data.resumeToken);
 			if (!token || tokenBuf.length !== storedBuf.length || !timingSafeEqual(tokenBuf, storedBuf)) {
 				// Same generic message as missing execution — do not leak which check failed
-				ws.send('Connection rejected');
+				sendFrame(ws, { type: ServerFrameType.ERROR, message: 'Connection rejected' });
 				ws.close(1008);
 				return;
 			}
@@ -140,7 +170,7 @@ export class ChatService {
 
 		this.sessions.set(key, session);
 
-		ws.send(N8N_HEARTBEAT);
+		sendFrame(ws, { type: ServerFrameType.HEARTBEAT });
 	}
 
 	private async processWaitingExecution(
@@ -148,19 +178,19 @@ export class ChatService {
 		session: Session,
 		sessionKey: string,
 	) {
-		let message = getMessage(execution);
-		if (typeof message === 'object') {
-			message = JSON.stringify(message);
-		}
+		const message = getMessage(execution);
 
 		if (message === undefined) return;
 
-		session.connection.send(message);
+		const frame =
+			typeof message === 'string' ? { type: ChatNodeMessageType.MESSAGE, text: message } : message;
+
+		sendFrame(session.connection, frame);
 
 		const lastNode = getLastNodeExecuted(execution);
 
 		if (lastNode && shouldResumeImmediately(lastNode)) {
-			session.connection.send(N8N_CONTINUE);
+			sendFrame(session.connection, { type: ServerFrameType.CONTINUE });
 			const data: ChatMessage = {
 				action: 'sendMessage',
 				chatInput: getLastNodeMessage(execution, lastNode),
@@ -182,7 +212,7 @@ export class ChatService {
 		const lastNode = getLastNodeExecuted(execution);
 
 		if (execution.status === 'waiting' && lastNode?.name !== session.nodeWaitingForChatResponse) {
-			session.connection.send(N8N_CONTINUE);
+			sendFrame(session.connection, { type: ServerFrameType.CONTINUE });
 			session.nodeWaitingForChatResponse = undefined;
 		}
 	}
@@ -241,16 +271,22 @@ export class ChatService {
 
 				if (!session) return;
 
-				const message = this.stringifyRawData(data);
+				let parsed: unknown;
+				try {
+					parsed = jsonParse(this.stringifyRawData(data));
+				} catch {
+					// Ignore frames that aren't valid JSON
+					return;
+				}
 
-				if (message === N8N_HEARTBEAT_ACK) {
+				if (isHeartbeatAck(parsed)) {
 					session.lastHeartbeat = Date.now();
 					return;
 				}
 
 				const executionId = session.executionId;
 				if (await this.shouldResumeOnMessage(executionId)) {
-					await this.resumeExecution(executionId, this.parseChatMessage(message), sessionKey);
+					await this.resumeExecution(executionId, this.parseChatMessage(parsed), sessionKey);
 					session.nodeWaitingForChatResponse = undefined;
 				}
 			} catch (e) {
@@ -285,7 +321,7 @@ export class ChatService {
 				// chat response it means that the execution was resumed by a
 				// form, so we send a continue message to the frontend to let it
 				// know that no user message is expected
-				session.connection.send(N8N_CONTINUE);
+				sendFrame(session.connection, { type: ServerFrameType.CONTINUE });
 				session.nodeWaitingForChatResponse = undefined;
 			}
 
@@ -310,9 +346,9 @@ export class ChatService {
 		if (sessionKey) this.sessions.delete(sessionKey);
 	}
 
-	private parseChatMessage(message: string): ChatMessage {
+	private parseChatMessage(parsed: unknown): ChatMessage {
 		try {
-			const parsedMessage = chatMessageSchema.parse(jsonParse(message));
+			const parsedMessage = chatMessageSchema.parse(parsed);
 
 			if (parsedMessage.files) {
 				parsedMessage.files = parsedMessage.files.map((file) => ({
@@ -344,7 +380,7 @@ export class ChatService {
 					this.cleanupSession(session, key);
 				} else {
 					try {
-						session.connection.send(N8N_HEARTBEAT);
+						sendFrame(session.connection, { type: ServerFrameType.HEARTBEAT });
 					} catch (e) {
 						this.cleanupSession(session, key);
 						const error = ensureError(e);
