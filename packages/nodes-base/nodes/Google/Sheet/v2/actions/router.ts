@@ -33,20 +33,32 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			let sheetName = '';
 
 			if (operation !== 'create') {
-				const sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
-					extractValue: true,
-				}) as string;
-				const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
-					mode: ResourceLocator;
-				};
+				// For "read" operation with "All Sheets" mode, skip sheet lookup
+				const sheetSelectionMode =
+					operation === 'read'
+						? (this.getNodeParameter('sheetSelectionMode', 0, 'single') as string)
+						: 'single';
 
-				const result = await googleSheet.spreadsheetGetSheet(
-					this.getNode(),
-					sheetMode,
-					sheetWithinDocument,
-				);
-				sheetId = result.sheetId.toString();
-				sheetName = result.title;
+				if (sheetSelectionMode === 'all') {
+					// Pass empty values - execute function will handle "All Sheets" mode
+					sheetId = '';
+					sheetName = '';
+				} else {
+					const sheetWithinDocument = this.getNodeParameter('sheetName', 0, undefined, {
+						extractValue: true,
+					}) as string;
+					const { mode: sheetMode } = this.getNodeParameter('sheetName', 0) as {
+						mode: ResourceLocator;
+					};
+
+					const result = await googleSheet.spreadsheetGetSheet(
+						this.getNode(),
+						sheetMode,
+						sheetWithinDocument,
+					);
+					sheetId = result.sheetId.toString();
+					sheetName = result.title;
+				}
 			}
 
 			switch (operation) {

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
@@ -74,6 +75,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['read'],
+				sheetSelectionMode: ['single'],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -88,6 +90,7 @@ export const description: SheetProperties = [
 				'@version': [{ _cnd: { lt: 4.3 } }],
 				resource: ['sheet'],
 				operation: ['read'],
+				sheetSelectionMode: ['single'],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -101,6 +104,7 @@ export const description: SheetProperties = [
 				'@version': [{ _cnd: { gte: 4.3 } }],
 				resource: ['sheet'],
 				operation: ['read'],
+				sheetSelectionMode: ['single'],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -117,9 +121,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['read'],
-			},
-			hide: {
-				...untilSheetSelected,
+				sheetSelectionMode: ['single', 'all'],
 			},
 		},
 		options: [
@@ -172,6 +174,60 @@ export async function execute(
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
+	const sheetSelectionMode = this.getNodeParameter('sheetSelectionMode', 0, 'single') as string;
+
+	// Handle "All Sheets" mode
+	if (sheetSelectionMode === 'all') {
+		const returnData: INodeExecutionData[] = [];
+
+		// Fetch all sheets from the spreadsheet
+		const spreadsheet = await sheet.spreadsheetGetSheets();
+		const sheets = spreadsheet.sheets.map(
+			(s: { properties: { title: string } }) => s.properties.title,
+		);
+
+		// Loop through each sheet and fetch rows
+		for (const currentSheetName of sheets) {
+			const items = this.getInputData();
+			const nodeVersion = this.getNode().typeVersion;
+
+			try {
+				// Fetch rows for this sheet
+				const rows = await readSheet.call(
+					this,
+					sheet,
+					currentSheetName,
+					0,
+					[],
+					nodeVersion,
+					items,
+				);
+
+				// Skip empty sheets
+				if (rows.length === 0) continue;
+
+				// Inject _sheetName into each row
+				for (const row of rows) {
+					returnData.push({
+						json: {
+							...row.json,
+							_sheetName: currentSheetName,
+						},
+						pairedItem: row.pairedItem,
+					});
+				}
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Failed to fetch rows from sheet "${currentSheetName}": ${error.message}`,
+				);
+			}
+		}
+
+		return returnData;
+	}
+
+	// Handle "Single Sheet" mode - existing logic
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
 	let length = 1;
