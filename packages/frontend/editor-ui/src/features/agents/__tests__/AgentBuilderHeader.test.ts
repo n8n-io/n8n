@@ -108,7 +108,15 @@ const globalStubs = {
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
-		props: ['agent', 'projectId', 'agentId', 'isSaving', 'beforeRevertToPublished'],
+		props: [
+			'agent',
+			'projectId',
+			'agentId',
+			'isSaving',
+			'beforeRevertToPublished',
+			'configValidationStatus',
+			'beforePublish',
+		],
 		emits: ['published', 'unpublished', 'reverted'],
 	},
 };
@@ -122,6 +130,8 @@ function mountHeader(
 		artifactMode: boolean;
 		currentSessionTitle: string;
 		sessionOptions: Array<{ id: string; label: string }>;
+		configValidationStatus: 'valid' | 'invalid' | null;
+		beforePublish: () => Promise<boolean>;
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
@@ -135,6 +145,8 @@ function mountHeader(
 			artifactMode: overrides.artifactMode,
 			currentSessionTitle: overrides.currentSessionTitle,
 			sessionOptions: overrides.sessionOptions,
+			configValidationStatus: overrides.configValidationStatus,
+			beforePublish: overrides.beforePublish,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -284,6 +296,13 @@ describe('AgentBuilderHeader', () => {
 		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
 
 		expect(previewButton.attributes('href')).toBe('/projects/p1/agents/a1/preview');
+	});
+
+	it('does not expose a preview href in artifact mode', () => {
+		const wrapper = mountHeader({ artifactMode: true });
+		const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
+
+		expect(previewButton.attributes('href')).toBeUndefined();
 	});
 
 	it('disables preview with a tooltip when the agent is not runnable', async () => {

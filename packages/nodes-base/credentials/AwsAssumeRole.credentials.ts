@@ -35,7 +35,7 @@ export class AwsAssumeRole implements ICredentialType {
 			type: 'boolean',
 			default: false,
 			displayOptions: {
-				hideOnCloud: true,
+				showOnDeployment: 'hosted',
 			},
 		},
 		{

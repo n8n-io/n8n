@@ -42,8 +42,9 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 ### Gotchas
 
 - Use \`resolve_llm\` only for the target agent's main model credential.
-- Use \`ask_credential\` for node tools and integrations. For Episodic Memory,
-  load \`agent-builder-memory\` and use \`ask_embedding_credential\` instead.
+- Use \`ask_credential\` for node tools, MCP servers, and fallback web-search credentials.
+  Never use it for chat-channel credentials. For Episodic Memory, load
+  \`agent-builder-memory\` and use \`ask_embedding_credential\` instead.
 - For OpenRouter, \`provider\` is \`"openrouter"\`; the model can be a routed id such as \`anthropic/...\`.
 - Do not recommend current, best, latest, or fallback model IDs from memory when the recommendation catalog is unavailable.
 
