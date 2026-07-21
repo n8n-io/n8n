@@ -47,6 +47,7 @@ export async function searxngSearch(
 		headers: {
 			Accept: 'application/json',
 		},
+		...(options.abortSignal ? { signal: options.abortSignal } : {}),
 	});
 
 	if (!response.ok) {

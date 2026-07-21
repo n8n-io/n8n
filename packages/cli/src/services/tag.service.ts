@@ -102,6 +102,19 @@ export class TagService {
 		}) as Promise<GetAllResult<T>>);
 	}
 
+	async getPaginated({ offset, limit }: { offset: number; limit: number }): Promise<{
+		data: TagEntity[];
+		count: number;
+	}> {
+		const [data, count] = await this.tagRepository.findAndCount({
+			skip: offset,
+			take: limit,
+			select: ['id', 'name', 'createdAt', 'updatedAt'],
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+		return { data, count };
+	}
+
 	async getById(id: string) {
 		return await this.tagRepository.findOneOrFail({
 			where: { id },

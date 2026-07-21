@@ -75,6 +75,19 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		this.abortSignal?.addEventListener('abort', fn);
 	}
 
+	onExecutionFinish(handler: () => unknown) {
+		this.additionalData.hooks?.addHandler('workflowExecuteAfter', async (fullRunData) => {
+			if (fullRunData.status === 'waiting') return;
+			try {
+				await handler();
+			} catch (error) {
+				this.logger.warn(`Execution-finish handler of node "${this.node.name}" failed`, {
+					error,
+				});
+			}
+		});
+	}
+
 	getExecuteData() {
 		return this.executeData;
 	}
