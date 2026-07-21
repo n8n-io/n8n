@@ -19,7 +19,7 @@ import { getMcpClientCatalog } from '@/features/ai/mcpAccess/mcp.clients.catalog
 import type { McpClientSetup } from '@/features/ai/mcpAccess/mcp.clients.catalog';
 import ConnectionParameter from '@/features/ai/mcpAccess/components/ConnectionParameter.vue';
 import McpConfigSnippet from '@/features/ai/mcpAccess/components/McpConfigSnippet.vue';
-import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/MCPAccessTokenPopoverTab.vue';
+import McpAccessTokenTab from '@/features/ai/mcpAccess/components/McpAccessTokenTab.vue';
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -75,7 +75,8 @@ const clientMenuItems = computed<Array<DropdownMenuItemProps<string, MenuItemDat
 });
 
 const onSelectClient = (id: string) => {
-	if (id.startsWith('header:')) return;
+	const item = clientMenuItems.value.find((menuItem) => menuItem.id === id);
+	if (item?.data?.kind !== 'client') return;
 	activeClientId.value = id;
 	telemetry.track('User selected MCP client in connect dialog', { client: id });
 };
@@ -294,7 +295,7 @@ const serverUrlDescription = computed(() =>
 					<N8nSettingsRow
 						layout="vertical"
 						:show-divider="false"
-						:title="i18n.baseText('settings.mcp.connectPopover.serverUrl')"
+						:title="i18n.baseText('settings.mcp.connectDialog.serverUrl')"
 						:description="serverUrlDescription"
 					>
 						<template #action>
@@ -336,7 +337,7 @@ const serverUrlDescription = computed(() =>
 					<N8nSettingsRow
 						layout="vertical"
 						:show-divider="false"
-						:title="i18n.baseText('settings.mcp.connectPopover.serverUrl')"
+						:title="i18n.baseText('settings.mcp.connectDialog.serverUrl')"
 						:description="serverUrlDescription"
 					>
 						<template #action>
@@ -367,7 +368,7 @@ const serverUrlDescription = computed(() =>
 			</N8nSettingsRowGroup>
 
 			<div v-else :class="$style['token-setup']" data-test-id="mcp-connect-token-setup">
-				<MCPAccessTokenPopoverTab :server-url="serverUrl" @copy="handleTokenTabCopy" />
+				<McpAccessTokenTab :server-url="serverUrl" @copied="handleTokenTabCopy" />
 			</div>
 		</div>
 	</N8nDialog>

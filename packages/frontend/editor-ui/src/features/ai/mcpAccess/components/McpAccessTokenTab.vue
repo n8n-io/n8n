@@ -18,7 +18,7 @@ type Props = {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	copy: [type: 'serverUrl' | 'accessToken' | 'mcpJson', value: string];
+	copied: [type: 'serverUrl' | 'accessToken' | 'mcpJson', value: string];
 }>();
 
 const i18n = useI18n();
@@ -82,16 +82,16 @@ const rotateKey = async () => {
 };
 
 const handleConnectionStringCopy = (value: string) => {
-	emit('copy', 'mcpJson', value);
+	emit('copied', 'mcpJson', value);
 };
 
 const handleUrlCopy = (url: string) => {
-	emit('copy', 'serverUrl', url);
+	emit('copied', 'serverUrl', url);
 };
 
 const handleAccessTokenCopy = () => {
 	if (apiKey.value?.apiKey) {
-		emit('copy', 'accessToken', apiKey.value.apiKey);
+		emit('copied', 'accessToken', apiKey.value.apiKey);
 	}
 };
 
@@ -105,10 +105,10 @@ onMounted(async () => {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="mcp-access-token-popover-tab">
+	<div :class="$style.container" data-test-id="mcp-access-token-tab">
 		<ConnectionParameter
 			id="oauth-server-url"
-			:label="i18n.baseText('settings.mcp.connectPopover.serverUrl')"
+			:label="i18n.baseText('settings.mcp.connectDialog.serverUrl')"
 			:value="props.serverUrl"
 			@copy="handleUrlCopy"
 		/>
@@ -122,7 +122,7 @@ onMounted(async () => {
 				id="access-token"
 				:value="apiKey.apiKey"
 				:value-loading="keyRotating"
-				:label="i18n.baseText('settings.mcp.connectPopover.tab.accessToken')"
+				:label="i18n.baseText('settings.mcp.connectDialog.tab.accessToken')"
 				:info-tip="i18n.baseText('settings.mcp.instructions.apiKey.tip')"
 				:allow-copy="!isKeyRedacted"
 				@copy="handleAccessTokenCopy"
@@ -147,7 +147,7 @@ onMounted(async () => {
 			</N8nNotice>
 			<div :class="$style['json-container']" data-test-id="mcp-access-token-json">
 				<label :class="$style.label">
-					{{ i18n.baseText('settings.mcp.connectPopover.jsonConfig') }}
+					{{ i18n.baseText('settings.mcp.connectDialog.jsonConfig') }}
 				</label>
 				<McpConfigSnippet
 					:value="connectionString"

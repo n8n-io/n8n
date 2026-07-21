@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import MCPAccessTokenPopoverTab from './MCPAccessTokenPopoverTab.vue';
+import McpAccessTokenTab from './McpAccessTokenTab.vue';
 
 const mockCopy = vi.fn();
 const mockCopied = { value: false };
@@ -46,11 +46,11 @@ vi.mock('./ConnectionParameter.vue', () => ({
 	},
 }));
 
-const renderComponent = createComponentRenderer(MCPAccessTokenPopoverTab, {
+const renderComponent = createComponentRenderer(McpAccessTokenTab, {
 	pinia: createTestingPinia(),
 });
 
-describe('MCPAccessTokenPopoverTab', () => {
+describe('McpAccessTokenTab', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		mockCurrentUserMCPKey = { apiKey: 'test-api-key-12345' };
@@ -72,7 +72,7 @@ describe('MCPAccessTokenPopoverTab', () => {
 				},
 			});
 
-			expect(getByTestId('mcp-access-token-popover-tab')).toBeVisible();
+			expect(getByTestId('mcp-access-token-tab')).toBeVisible();
 			const serverUrlParam = getByTestId('connection-parameter-oauth-server-url');
 			expect(serverUrlParam).toBeVisible();
 			expect(
@@ -115,7 +115,7 @@ describe('MCPAccessTokenPopoverTab', () => {
 	});
 
 	describe('Events', () => {
-		it('should emit copy event with serverUrl type when server URL is copied', async () => {
+		it('should emit copied event with serverUrl type when server URL is copied', async () => {
 			const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 			const serverUrl = 'http://localhost:5678/mcp';
 			const { getByTestId, emitted } = renderComponent({
@@ -131,11 +131,11 @@ describe('MCPAccessTokenPopoverTab', () => {
 
 			await user.click(copyButton);
 
-			expect(emitted().copy).toBeTruthy();
-			expect(emitted().copy[0]).toEqual(['serverUrl', serverUrl]);
+			expect(emitted().copied).toBeTruthy();
+			expect(emitted().copied[0]).toEqual(['serverUrl', serverUrl]);
 		});
 
-		it('should emit copy event with accessToken type when access token is copied', async () => {
+		it('should emit copied event with accessToken type when access token is copied', async () => {
 			const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 			const { getByTestId, emitted } = renderComponent({
 				props: {
@@ -156,11 +156,11 @@ describe('MCPAccessTokenPopoverTab', () => {
 
 			await user.click(copyButton);
 
-			expect(emitted().copy).toBeTruthy();
-			expect(emitted().copy[0]).toEqual(['accessToken', 'test-api-key-12345']);
+			expect(emitted().copied).toBeTruthy();
+			expect(emitted().copied[0]).toEqual(['accessToken', 'test-api-key-12345']);
 		});
 
-		it('should emit copy event with mcpJson type when JSON config is copied', async () => {
+		it('should emit copied event with mcpJson type when JSON config is copied', async () => {
 			const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 			const { getByTestId, emitted } = renderComponent({
 				props: {
@@ -178,8 +178,8 @@ describe('MCPAccessTokenPopoverTab', () => {
 
 			await user.click(copyButton);
 
-			expect(emitted().copy).toBeTruthy();
-			const copyEvent = emitted().copy[0];
+			expect(emitted().copied).toBeTruthy();
+			const copyEvent = emitted().copied[0];
 			expect(Array.isArray(copyEvent)).toBe(true);
 			if (Array.isArray(copyEvent)) {
 				expect(copyEvent[0]).toEqual('mcpJson');

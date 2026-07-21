@@ -63,23 +63,12 @@ const showMcpAccessUpdatedToast = (count: number, enabled: boolean) => {
 const fetchAvailableWorkflows = async () => {
 	workflowsLoading.value = true;
 	try {
-		const response = await mcpStore.fetchWorkflowsAvailableForMCP(
+		const response = await mcpStore.fetchWorkflowsAvailableForMCPPage(
 			workflowsTableState.value.page + 1,
 			workflowsTableState.value.itemsPerPage,
 		);
-		if (response.data.length === 0 && response.count > 0 && workflowsTableState.value.page > 0) {
-			const maxPage = Math.max(
-				0,
-				Math.ceil(response.count / workflowsTableState.value.itemsPerPage) - 1,
-			);
-			workflowsTableState.value = { ...workflowsTableState.value, page: maxPage };
-			const clampedResponse = await mcpStore.fetchWorkflowsAvailableForMCP(
-				workflowsTableState.value.page + 1,
-				workflowsTableState.value.itemsPerPage,
-			);
-			availableWorkflows.value = clampedResponse.data;
-			availableWorkflowsTotal.value = clampedResponse.count;
-			return;
+		if (response.page !== workflowsTableState.value.page + 1) {
+			workflowsTableState.value = { ...workflowsTableState.value, page: response.page - 1 };
 		}
 		availableWorkflows.value = response.data;
 		availableWorkflowsTotal.value = response.count;
@@ -234,9 +223,9 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* The settings shell pads the page top (70.5px); pull the column up a step. */
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
-	margin-top: calc(-1 * var(--spacing--lg));
+	padding-top: 0;
 }
 
 /* Pin the back action to the top-left of the settings area (the shell's

@@ -340,7 +340,7 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nButton
-						class="revoke-action"
+						:class="$style['revoke-action']"
 						variant="outline"
 						size="small"
 						data-test-id="mcp-oauth-client-revoke-button"
@@ -441,30 +441,24 @@ function onRevoke(item: OAuthClientResponseDto) {
 	min-height: 250px;
 }
 
-/* Fixed layout so the flexible access column gets a real width, fills the row,
-   and truncates its summary instead of overflowing into "Connected on". */
-.table :global(table) {
-	table-layout: fixed;
-}
-
 /* The whole row opens the details modal, so hint it with a pointer... */
 .table :global(tbody tr) {
 	cursor: pointer;
 }
 
 /* ...and keep the revoke button out of the way until the row is hovered/focused. */
-.table :global(tbody tr .revoke-action) {
+.table :global(tbody tr) .revoke-action {
 	opacity: 0;
 	transition: opacity var(--duration--snappy) var(--easing--ease-out);
 }
 
-.table :global(tbody tr:hover .revoke-action),
-.table :global(tbody tr:focus-within .revoke-action) {
+.table :global(tbody tr:hover) .revoke-action,
+.table :global(tbody tr:focus-within) .revoke-action {
 	opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.table :global(tbody tr .revoke-action) {
+	.table :global(tbody tr) .revoke-action {
 		transition: none;
 	}
 }
