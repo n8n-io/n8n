@@ -193,7 +193,7 @@ defineExpose({
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
 				:class="ui.class"
 				placement="right"
-				:teleported="item.data?.descriptionTooltipTeleported ?? true"
+				teleported
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
