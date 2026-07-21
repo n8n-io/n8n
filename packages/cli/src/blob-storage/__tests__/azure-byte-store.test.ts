@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { AzureBlobService } from 'n8n-core';
+import type { AzureBlobService } from '@n8n/blob-storage';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 

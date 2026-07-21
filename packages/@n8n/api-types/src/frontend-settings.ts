@@ -380,6 +380,8 @@ export type FrontendModuleSettings = {
 		 * proxy is available.
 		 */
 		knowledgeBaseEnabled: boolean;
+		/** Whether the AI Assistant proxy is available to the agents module. */
+		proxyEnabled: boolean;
 	};
 };
 
