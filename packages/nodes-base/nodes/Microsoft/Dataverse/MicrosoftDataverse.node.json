@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://github.com/microsoft/n8n-nodes-microsoft-dataverse?tab=readme-ov-file#credentials"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://github.com/microsoft/n8n-nodes-microsoft-dataverse?tab=readme-ov-file"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftdataverse/"
 			}
 		]
 	}
