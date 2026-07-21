@@ -54,7 +54,13 @@ export function recurrenceCheck(
 	const lastExecution = recurrenceRules[index] ?? undefined;
 
 	const momentTz = moment.tz(timezone);
-	if (typeInterval === 'hours') {
+	if (typeInterval === 'minutes') {
+		const minute = momentTz.minute();
+		if (lastExecution === undefined || (minute - lastExecution + 60) % 60 >= intervalSize) {
+			recurrenceRules[index] = minute;
+			return true;
+		}
+	} else if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
 		if (lastExecution === undefined || (hour - lastExecution + 24) % 24 >= intervalSize) {
 			recurrenceRules[index] = hour;
@@ -116,7 +122,11 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 	if (interval.field === 'seconds') return `*/${interval.secondsInterval} * * * * *`;
 
 	const second = stableInt(nodeKey, 'second', 0, 60);
-	if (interval.field === 'minutes') return `${second} */${interval.minutesInterval} * * * *`;
+	if (interval.field === 'minutes') {
+		const minutes = interval.minutesInterval;
+		if (60 % minutes === 0) return `${second} */${minutes} * * * *`;
+		return `${second} * * * * *`;
+	}
 
 	const minute = interval.triggerAtMinute ?? stableInt(nodeKey, 'minute', 0, 60);
 	if (interval.field === 'hours') {
@@ -174,6 +184,18 @@ export const toCronSource = (interval: ScheduleInterval): CronSource => {
 
 export function intervalToRecurrence(interval: ScheduleInterval, index: number) {
 	let recurrence: IRecurrenceRule = { activated: false };
+
+	if (interval.field === 'minutes') {
+		const { minutesInterval } = interval;
+		if (60 % minutesInterval !== 0) {
+			recurrence = {
+				activated: true,
+				index,
+				intervalSize: minutesInterval,
+				typeInterval: 'minutes',
+			};
+		}
+	}
 
 	if (interval.field === 'hours') {
 		const { hoursInterval } = interval;

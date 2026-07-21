@@ -5,6 +5,7 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 import { ScheduleTrigger } from '../ScheduleTrigger.node';
 
 describe('ScheduleTrigger', () => {
+	const MINUTE = 60 * 1000;
 	const HOUR = 60 * 60 * 1000;
 	const mockDate = new Date('2023-12-28 12:34:56.789Z');
 	const timezone = 'Europe/Berlin';
@@ -100,6 +101,27 @@ describe('ScheduleTrigger', () => {
 
 			vi.advanceTimersByTime(HOUR);
 			expect(emit).toHaveBeenCalledTimes(3);
+		});
+
+		it('should emit every 50 elapsed minutes instead of clock-aligned minute slots', async () => {
+			jest.setSystemTime(new Date('2023-12-28 12:49:56.789Z'));
+
+			const { emit } = await testTriggerNode(ScheduleTrigger, {
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 50 }] } } },
+				workflowStaticData: { recurrenceRules: [] },
+			});
+
+			expect(emit).not.toHaveBeenCalled();
+
+			jest.advanceTimersByTime(MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(10 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(1);
+
+			jest.advanceTimersByTime(40 * MINUTE);
+			expect(emit).toHaveBeenCalledTimes(2);
 		});
 
 		it('should emit every 18 hours when triggerAtMinute is explicitly set to 0', async () => {
