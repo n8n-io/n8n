@@ -1,0 +1,105 @@
+{
+	"name": "slack replies test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
+			"name": "When clicking ‘Execute workflow’",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"resource": "channel",
+				"operation": "replies",
+				"channelId": {
+					"__rl": true,
+					"value": "C08514ZPKB8",
+					"mode": "list",
+					"cachedResultName": "test-002"
+				},
+				"ts": "1734322597.935429",
+				"returnAll": false,
+				"limit": 100,
+				"filters": {
+					"inclusive": true
+				}
+			},
+			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [1040, 360],
+			"webhookId": "04c5e584-45f4-48d0-bcd2-0ecacecb0f53",
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "06652908-6b8e-443a-9508-ab229b011b73",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"type": "message",
+					"text": "Original message",
+					"ts": "1734322597.935429"
+				}
+			},
+			{
+				"json": {
+					"type": "message",
+					"text": "Reply 1",
+					"ts": "1734322600.000001",
+					"thread_ts": "1734322597.935429"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "6b7102c7-d3c5-4b88-b67d-4ee6ae51b581",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "be251a83c052a9862eeac953816fbb1464f89dfbf79d7ac490a8e336a8cc8bfd"
+	},
+	"id": "qJdEfiBgYLdfYOTs",
+	"tags": []
+}
