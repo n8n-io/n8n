@@ -568,6 +568,12 @@ export class AgentsBuilderToolsService {
 			buildAskCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				listIntegrationCredentialIds: async () => {
+					const agent = await this.agentsService.findById(agentId, projectId);
+					return (agent?.integrations ?? [])
+						.map((integration) => integration.credentialId)
+						.filter((credentialId) => credentialId.length > 0);
+				},
 			}),
 			buildAskEmbeddingCredentialTool({
 				credentialProvider,

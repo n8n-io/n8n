@@ -442,29 +442,74 @@ The full development mode (`pnpm dev`) runs multiple processes in parallel:
 
 ### Community PR Guidelines
 
-#### **1. Change Request/Comment**
+We read and review every pull request by hand. These guidelines keep that sustainable, and they help you avoid building something we cannot accept. The fastest route to a merge is to agree on the change with us before you write code.
+
+Our golden rule: a contribution should be worth more to the project than the time it takes us to review it.
+
+#### **1. Start With an Issue or Forum Topic**
+
+- **Ask before you start:**
+  - If you want to work on an existing issue, comment to ask first and wait for a team member to respond before you pick it up. This avoids two people, including us, building the same fix at the same time.
+- **Bug fixes:**
+  - An issue must already exist that describes the problem and gives clear steps to reproduce it. If there is no issue, [open one](https://github.com/n8n-io/n8n/issues/new/choose) first.
+  - Bug-fix PRs with no linked issue will be returned so we can confirm and track the problem.
+- **Features and enhancements:**
+  - Open a topic on the [n8n community forum](https://community.n8n.io/) first so we can discuss it before you build. This protects your time: we will tell you early whether we will accept the idea, and we will guide you on how we would want it handled.
+  - Feature PRs that arrive with no prior discussion will be closed with a pointer to the forum.
+- **Refactoring or opinion-based changes:**
+  - Open an issue or forum topic first with a detailed rationale: what you want to change, why, and the concrete benefit. We do not merge "I prefer it this way" changes without that reasoning.
+- **Core changes:**
+  - Contact n8n before starting any change under [/packages/core](/packages/core), as noted in the directory structure.
+- **Identity, access, and credentials:**
+  - The n8n team handles changes to identity and access management and to the credentials system. These control how users sign in, what they reach, and how credentials get stored and used. A mistake here risks exposing sensitive data or locking users out, so we keep these in-house. If you spot a bug or have an idea, open an issue or forum topic to flag it and we will take it from there.
+- **High-impact nodes:**
+  - The n8n team handles changes to the most widely used nodes, including HTTP Request, Code, Webhook Trigger, Form Trigger, and Schedule. A small change to one of these can break workflows for a large number of users, so we keep these in-house. If you spot a bug or have an idea for one of them, open an issue or forum topic to flag it and we will take it from there.
+
+#### **2. Change Request/Comment**
 
 Please address the requested changes or provide feedback within 14 days. If there is no response or updates to the pull request during this time, it will be automatically closed. The PR can be reopened once the requested changes are applied.
 
-#### **2. General Requirements**
+#### **3. General Requirements**
 
+- **Describe Your Change:**
+  - Every PR needs a clear description of what you changed, why, and why you took this approach over the alternatives. Link the issue or forum topic. Write the description in your own words. A PR with no real description will be closed.
+  - Where possible try to include a short video or screenshots. This is useful if you are working on a feature or updating a node.
 - **Follow the Style Guide:**
   - Ensure your code adheres to n8n's coding standards and conventions (e.g., formatting, naming, indentation). Use linting tools where applicable.
 - **TypeScript Compliance:**
-  - Do not use `ts-ignore` .
+  - Do not use `ts-ignore` or `ts-expect-error` to silence the compiler.
   - Ensure code adheres to TypeScript rules.
 - **Avoid Repetitive Code:**
   - Reuse existing components, parameters, and logic wherever possible instead of redefining or duplicating them.
+  - Before writing a constant or helper, check whether one already exists. For nodes, throw `NodeOperationError`/`NodeApiError` (from `n8n-workflow`) rather than raw errors, and use `jsonParse` (from `n8n-workflow`) instead of bare `JSON.parse`. More generally, `@n8n/constants` and `@n8n/utils` hold many reusable helpers — e.g. `Time` from `@n8n/constants` for time-unit math (`5 * Time.minutes.toMilliseconds` instead of `5 * 60 * 1000`).
   - For nodes: Use the same parameter across multiple operations rather than defining a new parameter for each operation (if applicable).
 - **Testing Requirements:**
   - PRs **must include tests**:
     - Unit tests
+    - Integration tests (if applicable)
     - Workflow tests for nodes (example [here](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes/Switch/V3/test))
     - UI tests (if applicable)
+    - Detailed steps under the "How to test" section of the PR template to cover how to manually test the feature or bug fix.
+  - For a **bug fix**, include at least one regression test that **fails against the latest `master`** without your change and passes with it. Tell us in the description how to see it fail, so we can verify the fix actually fixes something.
 - **Typos:**
   - Use a spell-checking tool, such as [**Code Spell Checker**](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker), to avoid typos.
+- **Verify that your PR contains only your intended changes:**
+  - Before opening or requesting review, check the *Files Changed* tab and confirm that all modifications are related to your fix/feature. If you see unrelated file changes, commits from other authors, or a large number of unexpected commits, rebase or recreate your branch against the current `master` branch and clean up the history before submitting.
 
-#### **3. PR Specific Requirements**
+#### **4. Using AI Tools**
+
+We use AI tools ourselves and we welcome AI-assisted contributions. The problem is not the tool. The problem is code the author cannot stand behind.
+
+- **Understand and own your code:**
+  - You must understand every line you submit and be able to explain what it does and how it fits the rest of the system, without the AI. If you cannot, do not open the PR yet.
+- **Write the description in your own words:**
+  - Write your PR description, issue, and forum posts in your own words. Do not paste raw model output.
+- **Same gates apply:**
+  - AI-assisted features and refactors still need an accepted issue or forum topic first, the same as any other change.
+- **Disclosure:**
+  - We encourage you to note in the PR if AI tools did a meaningful part of the work, and which tools. It helps us calibrate review and it is not held against you.
+
+#### **5. PR Specific Requirements**
 
 - **Small PRs Only:**
   - Focus on a single feature or fix per PR.
@@ -472,14 +517,24 @@ Please address the requested changes or provide feedback within 14 days. If ther
   - Follow [n8n's PR Title Conventions](https://github.com/n8n-io/n8n/blob/master/.github/pull_request_title_conventions.md#L36).
 - **New Nodes:**
   - PRs that introduce new nodes will be **auto-closed** unless they are explicitly requested by the n8n team and aligned with an agreed project scope. However, you can still explore [building your own nodes](https://docs.n8n.io/integrations/creating-nodes/overview/), as n8n offers the flexibility to create your own custom nodes.
+- **Existing Nodes:**
+  - If you are making changes to existing nodes that changes functionality, output data or anything that could cause existing workflows to change refer to our [node version guidelines](https://docs.n8n.io/connect/create-nodes/build-your-node/reference/versioning) to minimise impact.
 - **Typo-Only PRs:**
-  - Typos are not sufficient justification for a PR and will be rejected.
+  - Typos are not sufficient justification for a PR and will be rejected. Fold typo fixes into a larger, related change.
 
-#### **4. Workflow Summary for Non-Compliant PRs**
+#### **6. Workflow Summary for Non-Compliant PRs**
 
+- **No Linked Issue or Discussion:** Bug-fix PRs with no issue, and feature PRs with no forum topic, will be returned or closed per section 1.
 - **No Tests:** If tests are not provided, the PR will be auto-closed after **14 days**.
-- **Non-Small PRs:** Large or multifaceted PRs will be returned for segmentation.
+- **Keep PRs small and focused.** Each PR should add no more than 1000 lines and cover one logical change. Larger or multifaceted PRs will be returned for segmentation.
 - **New Nodes/Typo PRs:** Automatically rejected if not aligned with project scope or guidelines.
+- **Low-Value or Automated PRs:** We close these, and may block accounts that repeat them. This covers:
+  - Whitespace, formatting, or reordering changes with no functional reason.
+  - Mass find-and-replace or renames submitted with no rationale.
+  - Dependency bumps with no explanation of why the bump is needed.
+  - README badges, comment tweaks, or restating the obvious.
+  - PRs whose main purpose is to earn a contribution credit, a mention, or event points. Hacktoberfest and similar events do not change the quality bar.
+  - Bulk or scripted submissions across many files or repositories.
 
 ---
 

@@ -7,6 +7,8 @@ import { microsoftApiRequest } from '../transport';
 /** Hide gate copied from v1: the list field stays hidden until a site is chosen. */
 export const untilSiteSelected = { site: [''] };
 
+export const untilListSelected = { list: [''] };
+
 // Colocated with getLists/resolveSiteId, mirroring how siteRLC lives next to
 // getSites/resolveSiteId in v2/site/index.ts, rather than a separate registry.
 export const listRLC: INodeProperties = {
