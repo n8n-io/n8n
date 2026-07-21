@@ -3,7 +3,6 @@
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist",
-		// Production builds consume @n8n/telemetry from its built package output.
 		"paths": {
 			"@/*": ["./src/*"],
 			"@test/*": ["./test/shared/*"],
