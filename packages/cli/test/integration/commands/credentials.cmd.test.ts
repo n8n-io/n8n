@@ -9,7 +9,11 @@ import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
+import {
+	createCredentials,
+	getAllCredentials,
+	getAllSharedCredentials,
+} from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
 
 type CredentialFixture = {
@@ -423,6 +427,39 @@ test('`import:credential --projectId ...` should fail if the credential already 
 			}),
 		],
 	});
+});
+
+test('import:credentials should preserve the availability of existing instance credentials', async () => {
+	await createOwner();
+	await createCredentials({
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'aws',
+		data: 'encrypted',
+		availability: 'instance',
+	});
+
+	await command.run(['--input=./test/integration/commands/import-credentials/credentials.json']);
+
+	await expect(getAllCredentials()).resolves.toEqual([
+		expect.objectContaining({ id: '123', availability: 'instance' }),
+	]);
+	await expect(getAllSharedCredentials()).resolves.toEqual([]);
+});
+
+test('import:credentials should reject changing an existing provider connection type', async () => {
+	await createOwner();
+	await createCredentials({
+		id: '123',
+		name: 'instance-model-cred',
+		type: 'apiKey',
+		data: 'encrypted',
+		availability: 'instance',
+	});
+
+	await expect(
+		command.run(['--input=./test/integration/commands/import-credentials/credentials.json']),
+	).rejects.toThrow('Provider connection type cannot be changed');
 });
 
 test('`import:credential --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {

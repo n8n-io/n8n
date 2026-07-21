@@ -232,10 +232,20 @@ export class CredentialsController {
 
 		if (
 			credential.availability === 'instance' &&
+			body.type !== undefined &&
+			body.type !== credential.type
+		) {
+			throw new BadRequestError(
+				'Provider connection type cannot be changed. Create a new connection instead.',
+			);
+		}
+
+		if (
+			credential.availability === 'instance' &&
 			(body.isGlobal === true || body.isResolvable === true)
 		) {
 			throw new BadRequestError(
-				'Instance credentials cannot be globally shared or converted to end-user credentials',
+				'Provider connections cannot be globally shared or converted to end-user credentials',
 			);
 		}
 

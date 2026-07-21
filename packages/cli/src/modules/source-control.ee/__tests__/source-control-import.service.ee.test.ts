@@ -1760,6 +1760,46 @@ describe('SourceControlImportService', () => {
 			expect(sharedCredentialsRepository.delete).toHaveBeenCalledWith({ credentialsId: 'cred1' });
 		});
 
+		it('should reject changing an existing provider connection type', async () => {
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'credential',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			fsReadFile.mockResolvedValue(
+				JSON.stringify({
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'httpHeaderAuth',
+					data: {},
+					ownedBy: null,
+				}),
+			);
+			credentialsRepository.find.mockResolvedValue([
+				{
+					id: 'cred1',
+					name: 'Instance Credential',
+					type: 'oauth2Api',
+					data: undefined,
+					availability: 'instance',
+				} as any,
+			]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+
+			await expect(service.importCredentialsFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
+				'Provider connection type cannot be changed',
+			);
+			expect(credentialsRepository.upsert).not.toHaveBeenCalled();
+		});
+
 		it('should keep an existing workflow credential in workflows when a remote file declares instance', async () => {
 			const candidates: SourceControlledFile[] = [
 				{
@@ -1839,7 +1879,7 @@ describe('SourceControlImportService', () => {
 			sharedCredentialsRepository.find.mockResolvedValue([]);
 
 			await expect(service.importCredentialsFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
-				'Instance credentials cannot be global or dynamically resolved',
+				'Provider connections cannot be global or dynamically resolved',
 			);
 			expect(credentialsRepository.upsert).not.toHaveBeenCalled();
 		});
@@ -1869,11 +1909,11 @@ describe('SourceControlImportService', () => {
 			credentialsRepository.find.mockResolvedValue([]);
 			sharedCredentialsRepository.find.mockResolvedValue([]);
 			credentialsService.validateInstanceCredentialData.mockImplementation(() => {
-				throw new Error('Instance credentials cannot reference project-scoped external secrets');
+				throw new Error('Provider connections cannot reference project-scoped external secrets');
 			});
 
 			await expect(service.importCredentialsFromWorkFolder(candidates, mockUserId)).rejects.toThrow(
-				'Instance credentials cannot reference project-scoped external secrets',
+				'Provider connections cannot reference project-scoped external secrets',
 			);
 			expect(credentialsRepositoryManager.transaction).not.toHaveBeenCalled();
 		});
