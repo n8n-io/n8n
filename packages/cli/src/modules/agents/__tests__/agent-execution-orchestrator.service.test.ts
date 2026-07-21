@@ -641,6 +641,40 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 	});
 
+	it('skips the suspended-run lookup on resume when tracing is disabled', async () => {
+		const {
+			service,
+			checkpointStorage,
+			runtimeCacheService,
+			executionService,
+			agentRunTracingService,
+		} = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+		Object.defineProperty(agentRunTracingService, 'enabled', { value: false });
+		checkpointStorage.getStatus.mockResolvedValueOnce({
+			status: 'active',
+			checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+		} as never);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+
+		await collect(
+			service.resumeForChat({
+				agentId,
+				projectId,
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				resumeData: { value: 'yes' },
+				integrationType: 'slack',
+			}),
+		);
+
+		expect(executionService.findLatestSuspendedRun).not.toHaveBeenCalled();
+		expect(agentRunTracingService.build).toHaveBeenCalledWith(
+			expect.objectContaining({ source: 'unknown' }),
+		);
+	});
+
 	it('records resumed chat executions as suspended when they suspend again', async () => {
 		const { service, checkpointStorage, runtimeCacheService, executionService } = makeService();
 		const runtime = makeRuntime([

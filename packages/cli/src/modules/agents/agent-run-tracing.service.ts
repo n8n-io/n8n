@@ -50,6 +50,11 @@ function isWorkflowTracingMetadata(
 export class AgentRunTracingService {
 	constructor(private readonly agentsConfig: AgentsConfig) {}
 
+	/** Whether agent tracing is enabled — lets callers skip tracing-only work (e.g. a DB lookup) upfront. */
+	get enabled(): boolean {
+		return this.agentsConfig.tracingEnabled;
+	}
+
 	/**
 	 * Returns undefined when agent tracing is disabled — callers omit
 	 * `ExecutionOptions.telemetry` entirely in that case, indistinguishable
@@ -88,8 +93,9 @@ export class AgentRunTracingService {
 }
 
 /** Format an agent snapshot's model as `provider/name`, or undefined if either is missing. */
-export function modelIdFromSnapshot(model: { provider: string | null; name: string | null }):
-	| string
-	| undefined {
+export function modelIdFromSnapshot(model: {
+	provider: string | null;
+	name: string | null;
+}): string | undefined {
 	return model.provider && model.name ? `${model.provider}/${model.name}` : undefined;
 }

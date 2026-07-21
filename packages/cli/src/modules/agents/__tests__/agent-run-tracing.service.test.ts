@@ -20,6 +20,15 @@ describe('AgentRunTracingService', () => {
 		source: 'slack',
 	};
 
+	it('exposes whether tracing is enabled via the `enabled` getter', () => {
+		expect(new AgentRunTracingService(mock<AgentsConfig>({ tracingEnabled: true })).enabled).toBe(
+			true,
+		);
+		expect(new AgentRunTracingService(mock<AgentsConfig>({ tracingEnabled: false })).enabled).toBe(
+			false,
+		);
+	});
+
 	it('returns undefined when agent tracing is disabled, without touching the tracer', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: false });
 		const service = new AgentRunTracingService(agentsConfig);

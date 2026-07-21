@@ -237,8 +237,12 @@ export class AgentExecutionOrchestratorService {
 		try {
 			// A resume request carries no `source` of its own — recover it from
 			// the suspended run being resumed so tracing stays consistent across
-			// the suspend/resume cycle.
-			const suspendedExecution = await this.agentExecutionService.findLatestSuspendedRun(threadId);
+			// the suspend/resume cycle. Skipped entirely when tracing is disabled,
+			// since `build()` would discard the result anyway.
+			const suspendedExecution = this.agentRunTracingService.enabled
+				? await this.agentExecutionService.findLatestSuspendedRun(threadId)
+				: undefined;
+
 			const tracing = await this.agentRunTracingService.build({
 				agentId,
 				projectId,
