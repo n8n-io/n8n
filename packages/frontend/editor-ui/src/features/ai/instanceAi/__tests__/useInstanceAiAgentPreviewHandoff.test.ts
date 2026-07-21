@@ -53,6 +53,11 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 				agentId: 'agent-1',
 				threadId: 'thread-1',
 			},
+			{
+				source: 'agent_preview',
+				origin: 'internal',
+				sourceContext: { agentId: 'agent-1', previewThreadId: 'thread-1' },
+			},
 			{ newTab: true },
 		);
 		expect(trackMock).toHaveBeenCalledWith('Instance AI opened from agent preview', {

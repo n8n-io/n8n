@@ -1170,14 +1170,23 @@ describe('AgentBuilderView — three-column shell', () => {
 		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		await flushPromises();
 
-		expect(startInstanceAiThread).toHaveBeenCalledWith('p1', '', [
+		expect(startInstanceAiThread).toHaveBeenCalledWith(
+			'p1',
+			'',
 			{
-				type: 'agent',
-				id: 'a1',
-				name: 'Agent One',
-				projectId: 'p1',
+				source: 'agent_builder_page',
+				origin: 'internal',
+				sourceContext: { agentId: 'a1' },
 			},
-		]);
+			[
+				{
+					type: 'agent',
+					id: 'a1',
+					name: 'Agent One',
+					projectId: 'p1',
+				},
+			],
+		);
 	});
 
 	it('renders artifact mode with the editor and without the build chat', async () => {

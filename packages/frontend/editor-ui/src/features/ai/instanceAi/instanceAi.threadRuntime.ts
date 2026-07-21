@@ -1041,10 +1041,12 @@ export function createThreadRuntime(
 	}
 
 	function trackUserMessageSent(isFirstMessage: boolean): void {
+		const actionSource = hooks.getThreadMetadata?.(threadId)?.source;
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
+			action_source: typeof actionSource === 'string' ? actionSource : 'unknown',
 		});
 	}
 

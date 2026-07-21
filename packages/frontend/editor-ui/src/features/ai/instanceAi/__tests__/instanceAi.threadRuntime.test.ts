@@ -992,11 +992,32 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			thread_id: activeThreadId,
 			instance_id: 'instance-1',
 			is_first_message: true,
+			action_source: 'unknown',
 		});
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(2, 'User sent builder message', {
 			thread_id: activeThreadId,
 			instance_id: 'instance-1',
 			is_first_message: false,
+			action_source: 'unknown',
+		});
+	});
+
+	test('sendMessage includes action_source from thread metadata', async () => {
+		const hooks = {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+			getThreadMetadata: () => ({ source: 'canvas_action_button' }),
+		} satisfies Parameters<typeof createThreadRuntime>[1];
+		const runtime = createThreadRuntime(activeThreadId, hooks);
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		await runtime.sendMessage('hello');
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith('User sent builder message', {
+			thread_id: activeThreadId,
+			instance_id: 'instance-1',
+			is_first_message: true,
+			action_source: 'canvas_action_button',
 		});
 	});
 

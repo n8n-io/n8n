@@ -689,7 +689,10 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-split-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
 			'thread-placeholder',
 			PERSONAL_PROJECT_ID,
@@ -813,7 +816,10 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
 			'thread-placeholder',
 			PERSONAL_PROJECT_ID,
@@ -841,7 +847,10 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', redirectedProjectId);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', redirectedProjectId, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 	});
 
 	it('falls back to the personal project when the ?projectId= query is cleared', async () => {
@@ -858,7 +867,10 @@ describe('InstanceAiEmptyView', () => {
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
 
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID);
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 	});
 
 	it('shows a toast and stays on the empty view when syncThread rejects', async () => {

@@ -330,7 +330,11 @@ export class ApiHelpers {
 	async createInstanceAiThread(projectId?: string): Promise<InstanceAiThreadInfo> {
 		const resolvedProjectId = projectId ?? (await this.projects.getMyPersonalProject()).id;
 		const response = await this.request.post('/rest/instance-ai/threads', {
-			data: { projectId: resolvedProjectId },
+			data: {
+				projectId: resolvedProjectId,
+				source: 'playwright',
+				origin: 'internal',
+			},
 		});
 		if (!response.ok()) {
 			throw new TestError(

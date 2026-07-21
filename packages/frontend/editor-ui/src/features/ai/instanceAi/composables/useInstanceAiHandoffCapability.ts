@@ -119,6 +119,14 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 		await startThread(
 			projectId,
 			openingMessage,
+			{
+				source,
+				origin: 'internal',
+				sourceContext: {
+					workflowId,
+					...(executionId ? { executionId } : {}),
+				},
+			},
 			[attachment],
 			(threadId) => {
 				instanceAiStore.getOrCreateRuntime(threadId, projectId).setPendingHandoff({
@@ -164,7 +172,7 @@ export function useInstanceAiHandoffCapability(): InstanceAiEditorCapability {
 			await router.push({ name: INSTANCE_AI_VIEW });
 			return false;
 		}
-		await startThread(projectId, question, undefined, undefined, {
+		await startThread(projectId, question, { source, origin: 'internal' }, undefined, undefined, {
 			newTab: true,
 			context: buildInstanceAiCredentialHandoffContext(credential),
 		});

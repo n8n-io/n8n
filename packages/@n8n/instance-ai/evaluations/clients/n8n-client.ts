@@ -189,13 +189,18 @@ export class N8nClient {
 
 	/**
 	 * Ensure a conversation thread exists before sending chat messages.
-	 * POST /rest/instance-ai/threads body: { threadId, projectId }
+	 * POST /rest/instance-ai/threads body: { threadId, projectId, source }
 	 */
 	async ensureThread(threadId: string, projectId?: string): Promise<void> {
 		const resolvedProjectId = projectId ?? (await this.getPersonalProjectId());
 		await this.fetch('/rest/instance-ai/threads', {
 			method: 'POST',
-			body: { threadId, projectId: resolvedProjectId },
+			body: {
+				threadId,
+				projectId: resolvedProjectId,
+				source: 'evals',
+				origin: 'internal',
+			},
 		});
 	}
 

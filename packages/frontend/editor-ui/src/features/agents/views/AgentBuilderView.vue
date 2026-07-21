@@ -710,14 +710,23 @@ async function onOpenInstanceAi() {
 		workflow_id: null,
 		execution_id: null,
 	});
-	await startInstanceAiThread(projectId.value, '', [
+	await startInstanceAiThread(
+		projectId.value,
+		'',
 		{
-			type: 'agent',
-			id: agentId.value,
-			name: agent.value?.name,
-			projectId: projectId.value,
+			source: 'agent_builder_page',
+			origin: 'internal',
+			sourceContext: { agentId: agentId.value },
 		},
-	]);
+		[
+			{
+				type: 'agent',
+				id: agentId.value,
+				name: agent.value?.name,
+				projectId: projectId.value,
+			},
+		],
+	);
 }
 
 function normalizeAgentMemoryConfig(config: AgentJsonConfig): AgentJsonConfig {

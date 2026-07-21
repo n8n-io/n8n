@@ -39,6 +39,11 @@ export function useInstanceAiAgentPreviewHandoff() {
 				agentIcon,
 				sessionTitle,
 			}),
+			{
+				source: 'agent_preview',
+				origin: 'internal',
+				sourceContext: { agentId, previewThreadId: threadId },
+			},
 			{ newTab: true },
 		);
 		if (!opened) return;

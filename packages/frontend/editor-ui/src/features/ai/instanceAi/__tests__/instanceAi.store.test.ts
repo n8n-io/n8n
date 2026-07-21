@@ -123,11 +123,15 @@ describe('useInstanceAiStore - runtime registry', () => {
 				resourceId: 'user-1',
 				createdAt: '2026-01-01T00:00:00.000Z',
 				updatedAt: '2026-01-02T00:00:00.000Z',
+				metadata: { source: 'assistant_page', origin: 'internal' },
 			},
 			created: true,
 		});
 
-		await store.syncThread('thread-1', 'project-1');
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 
 		expect(store.threads).toEqual([
 			{
@@ -135,13 +139,17 @@ describe('useInstanceAiStore - runtime registry', () => {
 				title: 'Thread title',
 				createdAt: '2026-01-01T00:00:00.000Z',
 				updatedAt: '2026-01-02T00:00:00.000Z',
+				metadata: { source: 'assistant_page', origin: 'internal' },
 			},
 		]);
 	});
 
 	it('deleteThread deletes persisted threads and disposes their runtime', async () => {
 		const store = useInstanceAiStore();
-		await store.syncThread('thread-1', 'project-1');
+		await store.syncThread('thread-1', 'project-1', {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 		const runtime = store.getOrCreateRuntime('thread-1');
 		const disposeSpy = vi.spyOn(runtime, 'dispose');
 

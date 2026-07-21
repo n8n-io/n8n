@@ -474,7 +474,10 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
-		await store.syncThread(threadId, selectedProject.value);
+		await store.syncThread(threadId, selectedProject.value, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
 	} catch {
 		isStartingThread.value = false;
 		toast.showError(new Error('Failed to start a new thread. Try again.'), 'Send failed');

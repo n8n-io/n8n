@@ -9,8 +9,7 @@ import {
 	instanceAiEventSchema,
 	isDisplayableConfirmationRequest,
 	InstanceAiEnsureThreadRequest,
-	normalizeInstanceAiThreadSource,
-	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
 	parseDomainAccessGrants,
@@ -380,15 +379,23 @@ describe('isDisplayableConfirmationRequest', () => {
 });
 
 describe('instance-ai launch schema', () => {
-	it('normalizes a known source', () => {
-		expect(normalizeInstanceAiThreadSource('template-view')).toBe('template-view');
+	it('requires a known source', () => {
+		expect(() => new InstanceAiEnsureThreadRequest({ projectId: 'project-1' })).toThrow();
+		expect(
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+					source: 'totally-made-up',
+				}),
+		).toThrow();
 	});
 
-	it('falls back for an unknown source', () => {
-		expect(normalizeInstanceAiThreadSource('totally-made-up')).toBe(
-			INSTANCE_AI_THREAD_SOURCE_FALLBACK,
-		);
-		expect(normalizeInstanceAiThreadSource(undefined)).toBe(INSTANCE_AI_THREAD_SOURCE_FALLBACK);
+	it.each(INSTANCE_AI_THREAD_SOURCES)('accepts taxonomy source %s', (source) => {
+		const parsed = new InstanceAiEnsureThreadRequest({
+			projectId: 'project-1',
+			source,
+		});
+		expect(parsed.source).toBe(source);
 	});
 
 	it('parses an ensure-thread request with launch fields', () => {
@@ -399,13 +406,19 @@ describe('instance-ai launch schema', () => {
 			sourceContext: { templateId: '42' },
 		});
 		expect(parsed.origin).toBe('external');
+		expect(parsed.source).toBe('website-template');
 		expect(parsed.sourceContext).toEqual({ templateId: '42' });
 	});
 
 	it('rejects an oversized sourceContext', () => {
 		const big = { blob: 'x'.repeat(3000) };
 		expect(
-			() => new InstanceAiEnsureThreadRequest({ projectId: 'project-1', sourceContext: big }),
+			() =>
+				new InstanceAiEnsureThreadRequest({
+					projectId: 'project-1',
+					source: 'assistant_page',
+					sourceContext: big,
+				}),
 		).toThrow();
 	});
 });
