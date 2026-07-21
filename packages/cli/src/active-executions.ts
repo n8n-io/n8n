@@ -151,6 +151,10 @@ export class ActiveExecutions {
 			status: executionStatus,
 			responsePromise: resumingExecution?.responsePromise,
 			httpResponse: executionData.httpResponse ?? undefined,
+			// Live node tracking resets per segment — a resume rebuilds the push
+			// hooks and restarts the sequence counter at 0 (CAT-2895).
+			runningNodes: new Set<string>(),
+			latestNodeExecuteSequenceNumber: -1,
 		};
 		this.activeExecutions[executionId] = execution;
 
@@ -310,6 +314,51 @@ export class ActiveExecutions {
 
 	getStatus(executionId: string): ExecutionStatus {
 		return this.getExecutionOrFail(executionId).status;
+	}
+
+	/**
+	 * Record that a node started executing (CAT-2895). Called from the push hook,
+	 * so the reconnect-reconcile endpoint can report which node(s) are in flight.
+	 * No-op if this process does not hold the execution.
+	 */
+	reportNodeExecuteBefore(executionId: string, nodeName: string, sequenceNumber: number): void {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) return;
+		execution.runningNodes.add(nodeName);
+		execution.latestNodeExecuteSequenceNumber = Math.max(
+			execution.latestNodeExecuteSequenceNumber,
+			sequenceNumber,
+		);
+	}
+
+	/**
+	 * Record that a node finished executing (CAT-2895). Counterpart to
+	 * {@link reportNodeExecuteBefore}. No-op if this process does not hold the
+	 * execution.
+	 */
+	reportNodeExecuteAfter(executionId: string, nodeName: string, sequenceNumber: number): void {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) return;
+		execution.runningNodes.delete(nodeName);
+		execution.latestNodeExecuteSequenceNumber = Math.max(
+			execution.latestNodeExecuteSequenceNumber,
+			sequenceNumber,
+		);
+	}
+
+	/**
+	 * Live in-flight node state for the reconnect-reconcile endpoint (CAT-2895),
+	 * or `undefined` if this process does not hold the execution.
+	 */
+	getNodeExecutionState(
+		executionId: string,
+	): { nodes: string[]; sequenceNumber: number } | undefined {
+		const execution = this.activeExecutions[executionId];
+		if (!execution) return undefined;
+		return {
+			nodes: [...execution.runningNodes],
+			sequenceNumber: execution.latestNodeExecuteSequenceNumber,
+		};
 	}
 
 	setResponseMode(executionId: string, responseMode: WebhookResponseMode): void {

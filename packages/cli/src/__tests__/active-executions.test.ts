@@ -543,4 +543,78 @@ describe('ActiveExecutions', () => {
 			);
 		});
 	});
+
+	describe('node execution state tracking (CAT-2895)', () => {
+		test('starts with no in-flight nodes and a sentinel sequence number', async () => {
+			const executionId = await activeExecutions.add(executionData);
+
+			expect(activeExecutions.getNodeExecutionState(executionId)).toEqual({
+				nodes: [],
+				sequenceNumber: -1,
+			});
+		});
+
+		test('tracks in-flight nodes and the latest sequence number', async () => {
+			const executionId = await activeExecutions.add(executionData);
+
+			activeExecutions.reportNodeExecuteBefore(executionId, 'Agent', 0);
+			expect(activeExecutions.getNodeExecutionState(executionId)).toEqual({
+				nodes: ['Agent'],
+				sequenceNumber: 0,
+			});
+
+			// A sub-node executing inside a still-running parent: both are in flight.
+			activeExecutions.reportNodeExecuteBefore(executionId, 'Model', 1);
+			expect(activeExecutions.getNodeExecutionState(executionId)).toEqual({
+				nodes: ['Agent', 'Model'],
+				sequenceNumber: 1,
+			});
+
+			activeExecutions.reportNodeExecuteAfter(executionId, 'Model', 2);
+			expect(activeExecutions.getNodeExecutionState(executionId)).toEqual({
+				nodes: ['Agent'],
+				sequenceNumber: 2,
+			});
+
+			activeExecutions.reportNodeExecuteAfter(executionId, 'Agent', 3);
+			expect(activeExecutions.getNodeExecutionState(executionId)).toEqual({
+				nodes: [],
+				sequenceNumber: 3,
+			});
+		});
+
+		test('keeps the highest sequence number seen', async () => {
+			const executionId = await activeExecutions.add(executionData);
+
+			activeExecutions.reportNodeExecuteBefore(executionId, 'A', 5);
+			activeExecutions.reportNodeExecuteBefore(executionId, 'B', 2);
+
+			expect(activeExecutions.getNodeExecutionState(executionId)?.sequenceNumber).toBe(5);
+		});
+
+		test('returns undefined for an execution this process does not hold', () => {
+			expect(activeExecutions.getNodeExecutionState('does-not-exist')).toBeUndefined();
+		});
+
+		test('report methods are a no-op for an unknown execution', () => {
+			expect(() =>
+				activeExecutions.reportNodeExecuteBefore('does-not-exist', 'A', 0),
+			).not.toThrow();
+			expect(() => activeExecutions.reportNodeExecuteAfter('does-not-exist', 'A', 1)).not.toThrow();
+		});
+
+		test('resets tracking per segment when a waiting execution resumes', async () => {
+			const executionId = await activeExecutions.add(executionData);
+			activeExecutions.reportNodeExecuteBefore(executionId, 'A', 4);
+			activeExecutions.setStatus(executionId, 'waiting');
+
+			// Resuming rebuilds the execution entry with a fresh counter.
+			await activeExecutions.add(executionData, executionId);
+
+			expect(activeExecutions.getNodeExecutionState(executionId)).toEqual({
+				nodes: [],
+				sequenceNumber: -1,
+			});
+		});
+	});
 });

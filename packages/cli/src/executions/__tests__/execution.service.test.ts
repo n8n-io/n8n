@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
+	IExecutionBase,
 	IExecutionDb,
 	IExecutionResponse,
 	ExecutionRepository,
@@ -854,6 +855,62 @@ describe('ExecutionService', () => {
 			const result = await executionService.getExecutedVersions(workflowId);
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('getLiveStatus', () => {
+		const accessibleWorkflowIds = ['wf-1'];
+
+		it('returns running with in-flight nodes and the latest sequence number', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(
+				mock<IExecutionBase>({ status: 'running' }),
+			);
+			activeExecutions.getNodeExecutionState.mockReturnValue({
+				nodes: ['Agent', 'Model'],
+				sequenceNumber: 4,
+			});
+
+			const result = await executionService.getLiveStatus('123', accessibleWorkflowIds);
+
+			expect(result).toEqual({ state: 'running', nodes: ['Agent', 'Model'], sequenceNumber: 4 });
+			expect(executionRepository.findIfAccessible).toHaveBeenCalledWith(
+				'123',
+				accessibleWorkflowIds,
+			);
+		});
+
+		it('returns finished for a terminal persisted status not held by this main', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(
+				mock<IExecutionBase>({ status: 'success' }),
+			);
+			activeExecutions.getNodeExecutionState.mockReturnValue(undefined);
+
+			const result = await executionService.getLiveStatus('123', accessibleWorkflowIds);
+
+			expect(result).toEqual({ state: 'finished' });
+		});
+
+		it('returns unknown for a non-terminal execution this main does not hold (single-main scope)', async () => {
+			// Running per the shared DB, but absent from this main's ActiveExecutions:
+			// in queue mode it is executing on another main. The single-main v1 seam
+			// does not perform a cross-main lookup — it reports unknown so the editor
+			// keeps its current state rather than clearing the spinner.
+			executionRepository.findIfAccessible.mockResolvedValue(
+				mock<IExecutionBase>({ status: 'running' }),
+			);
+			activeExecutions.getNodeExecutionState.mockReturnValue(undefined);
+
+			const result = await executionService.getLiveStatus('123', accessibleWorkflowIds);
+
+			expect(result).toEqual({ state: 'unknown' });
+		});
+
+		it('throws NotFoundError for an absent or inaccessible execution', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(undefined);
+
+			await expect(executionService.getLiveStatus('123', accessibleWorkflowIds)).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 });

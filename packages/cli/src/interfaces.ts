@@ -142,6 +142,18 @@ export interface IExecutingWorkflowData {
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
+	/**
+	 * Nodes with an open `nodeExecuteBefore` (started, not yet finished), so the
+	 * reconnect-reconcile endpoint can report what is executing right now
+	 * (CAT-2895). Populated only when the run pushes to an editor session; reset
+	 * per segment, so a waiting-execution resume starts empty.
+	 */
+	runningNodes: Set<string>;
+	/**
+	 * Latest node-event sequence number emitted this segment, mirroring the push
+	 * `sequenceNumber`. `-1` until the first node event fires.
+	 */
+	latestNodeExecuteSequenceNumber: number;
 }
 
 export interface IActiveDirectorySettings {

@@ -1,4 +1,4 @@
-import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
+import { ExecutionRedactionQueryDtoSchema, type ExecutionLiveStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -200,6 +200,49 @@ export class ExecutionService {
 			data: stringify(processedExecution.data),
 			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
 		};
+	}
+
+	/**
+	 * Live state of an execution for the editor's reconnect-reconcile seam
+	 * (CAT-2895 Option B). Resolves from this main's in-memory `ActiveExecutions`
+	 * (authoritative for a run executing here) plus the persisted status.
+	 *
+	 * Single-main scope: an execution this main does not hold is reported as
+	 * `unknown` rather than `finished`, so the editor keeps its current state
+	 * instead of clearing the spinner on a state we cannot confirm. In queue mode
+	 * a run may execute on another main, whose in-flight node state is not visible
+	 * here — see N8N-20 for the multi-main follow-up.
+	 */
+	async getLiveStatus(
+		executionId: string,
+		accessibleWorkflowIds: string[],
+	): Promise<ExecutionLiveStatus> {
+		// Access boundary: not found / not accessible is a 404, same as `findOne`.
+		const execution = await this.executionRepository.findIfAccessible(
+			executionId,
+			accessibleWorkflowIds,
+		);
+		if (!execution) throw new NotFoundError('Execution not found');
+
+		// Held by this main → authoritative in-flight node state.
+		const liveState = this.activeExecutions.getNodeExecutionState(executionId);
+		if (liveState) {
+			return {
+				state: 'running',
+				nodes: liveState.nodes,
+				sequenceNumber: liveState.sequenceNumber,
+			};
+		}
+
+		// Not held here. `finished` only when the persisted status is terminal;
+		// otherwise `unknown` — the run is executing elsewhere (queue mode) and we
+		// must not guess a node or report it as finished.
+		const terminalStatuses: ExecutionStatus[] = ['success', 'error', 'crashed', 'canceled'];
+		if (terminalStatuses.includes(execution.status)) {
+			return { state: 'finished' };
+		}
+
+		return { state: 'unknown' };
 	}
 
 	async getLastSuccessfulExecution(

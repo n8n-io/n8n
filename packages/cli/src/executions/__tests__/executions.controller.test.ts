@@ -31,6 +31,36 @@ describe('ExecutionsController', () => {
 		});
 	});
 
+	describe('getLiveStatus', () => {
+		it('should 400 when execution id is not a number', async () => {
+			const req = mock<ExecutionRequest.GetLiveStatus>({ params: { id: 'test' } });
+
+			await expect(executionsController.getLiveStatus(req)).rejects.toThrow(BadRequestError);
+		});
+
+		it('should 404 when the user has no accessible workflows', async () => {
+			const req = mock<ExecutionRequest.GetLiveStatus>({ params: { id: '123' } });
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await expect(executionsController.getLiveStatus(req)).rejects.toThrow(NotFoundError);
+		});
+
+		it('should delegate to the execution service with the accessible workflow ids', async () => {
+			const req = mock<ExecutionRequest.GetLiveStatus>({ params: { id: '123' } });
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			executionService.getLiveStatus.mockResolvedValue({
+				state: 'running',
+				nodes: ['Agent'],
+				sequenceNumber: 2,
+			});
+
+			const result = await executionsController.getLiveStatus(req);
+
+			expect(result).toEqual({ state: 'running', nodes: ['Agent'], sequenceNumber: 2 });
+			expect(executionService.getLiveStatus).toHaveBeenCalledWith('123', ['wf-1']);
+		});
+	});
+
 	describe('getMany', () => {
 		const NO_EXECUTIONS = {
 			count: 0,

@@ -97,6 +97,24 @@ export class ExecutionsController {
 			: await this.executionService.findOne(req, workflowIds);
 	}
 
+	/**
+	 * Live state of an execution (running node(s) + latest sequence number, or a
+	 * finished/unknown marker) so the editor can reconcile executing-node state
+	 * after a push reconnect or tab-visibility regain (CAT-2895 Option B).
+	 */
+	@Get('/:id/live-status')
+	async getLiveStatus(req: ExecutionRequest.GetLiveStatus) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		return await this.executionService.getLiveStatus(req.params.id, workflowIds);
+	}
+
 	@Post('/:id/stop')
 	async stop(req: ExecutionRequest.Stop) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');

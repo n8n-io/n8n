@@ -23,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
@@ -267,6 +268,7 @@ function hookFunctionsPush(
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
+	const activeExecutions = Container.get(ActiveExecutions);
 	const redactionProxy = Container.get(ExecutionRedactionServiceProxy);
 	const userRepository = Container.get(UserRepository);
 
@@ -299,13 +301,18 @@ function hookFunctionsPush(
 			workflowId: this.workflowData.id,
 		});
 
+		const sequenceNumber = nodeEventSequence++;
 		pushInstance.send(
 			{
 				type: 'nodeExecuteBefore',
-				data: { executionId, nodeName, sequenceNumber: nodeEventSequence++, data },
+				data: { executionId, nodeName, sequenceNumber, data },
 			},
 			pushRef,
 		);
+
+		// Mirror the pushed node state into ActiveExecutions so the
+		// reconnect-reconcile endpoint can report in-flight nodes (CAT-2895).
+		activeExecutions.reportNodeExecuteBefore(executionId, nodeName, sequenceNumber);
 	});
 	hooks.addHandler('nodeExecuteAfter', async function (nodeName, data, executionData) {
 		const { executionId } = this;
@@ -319,19 +326,23 @@ function hookFunctionsPush(
 		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
 		const { data: _, ...taskData } = data;
 
+		const sequenceNumber = nodeEventSequence++;
 		pushInstance.send(
 			{
 				type: 'nodeExecuteAfter',
 				data: {
 					executionId,
 					nodeName,
-					sequenceNumber: nodeEventSequence++,
+					sequenceNumber,
 					itemCountByConnectionType,
 					data: taskData,
 				},
 			},
 			pushRef,
 		);
+
+		// Mirror the pushed node state into ActiveExecutions (CAT-2895).
+		activeExecutions.reportNodeExecuteAfter(executionId, nodeName, sequenceNumber);
 
 		// Fail-closed redaction: if user cannot be resolved, skip the data push
 		// entirely rather than sending unredacted data to the client.
