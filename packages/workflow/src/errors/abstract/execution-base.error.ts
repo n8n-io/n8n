@@ -7,11 +7,6 @@ interface ExecutionBaseErrorOptions extends BaseErrorOptions {
 }
 
 export abstract class ExecutionBaseError extends BaseError {
-	// `BaseError.description` is readonly, but subclasses (e.g. NodeApiError,
-	// ExpressionError) reassign it, so redeclare it as writable here. `declare`
-	// avoids re-initializing the field and clobbering the value set by `super`.
-	declare description: string | null | undefined;
-
 	override cause?: Error;
 
 	errorResponse?: JsonObject;
