@@ -1,8 +1,10 @@
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { Telemetry } from '@/app/plugins/telemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { defineTelemetryEvents } from '@n8n/telemetry';
 import merge from 'lodash/merge';
 import { createPinia, setActivePinia } from 'pinia';
+import { z } from 'zod/v4';
 
 let telemetry: Telemetry;
 
@@ -226,6 +228,54 @@ describe('telemetry', () => {
 			);
 
 			vi.unstubAllGlobals();
+		});
+	});
+
+	describe('track function with registry entries', () => {
+		const TEST_TELEMETRY = defineTelemetryEvents({
+			USER_TESTED_REGISTRY_ENTRY: {
+				name: 'User tested registry entry',
+				description: 'Fires when the registry entry pipeline is exercised in tests.',
+				properties: z.object({ workflow_id: z.string() }),
+			},
+		});
+
+		it('should emit the entry name and properties through the standard pipeline', () => {
+			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+
+			telemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, { workflow_id: 'wf-1' });
+
+			expect(trackFunction).toHaveBeenCalledTimes(1);
+			expect(trackFunction).toHaveBeenCalledWith(
+				'User tested registry entry',
+				{
+					workflow_id: 'wf-1',
+					version_cli: MOCK_VERSION_CLI,
+				},
+				{ context: { ip: '0.0.0.0' } },
+			);
+		});
+
+		it('should warn and still emit when properties do not match the schema', () => {
+			const trackFunction = vi.spyOn(window.rudderanalytics, 'track');
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			expect(() =>
+				telemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, {
+					workflow_id: 123 as unknown as string,
+				}),
+			).not.toThrow();
+
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('"User tested registry entry" failed schema validation'),
+			);
+			expect(trackFunction).toHaveBeenCalledWith(
+				'User tested registry entry',
+				expect.objectContaining({ workflow_id: 123 }),
+				{ context: { ip: '0.0.0.0' } },
+			);
+
+			warnSpy.mockRestore();
 		});
 	});
 

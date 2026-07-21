@@ -1,5 +1,8 @@
 import type { Plugin } from 'vue';
 import type { ITelemetrySettings } from '@n8n/api-types';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+import { getEventValidationError } from '@n8n/telemetry';
+import { POSTHOG_EVENTS_BLACKLIST } from '@n8n/telemetry';
 import type { ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 
@@ -10,12 +13,15 @@ import {
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
 	TELEGRAM_NODE_TYPE,
-	POSTHOG_EVENTS_BLACKLIST,
 } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { usePostHog } from '@/app/stores/posthog.store';
+
+const POSTHOG_BLACKLISTED_EVENT_NAMES = new Set(
+	POSTHOG_EVENTS_BLACKLIST.map((blacklisted) => blacklisted.name),
+);
 
 export type TelemetryIdentifyOptions = {
 	instanceId: string;
@@ -101,8 +107,17 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+	track(event: string, properties?: ITelemetryTrackProperties): void;
+	track(event: string | TelemetryEventDef, properties?: ITelemetryTrackProperties) {
 		if (!this.rudderStack) return;
+
+		const eventName = typeof event === 'string' ? event : event.name;
+
+		if (typeof event !== 'string') {
+			const validationError = getEventValidationError(event, properties);
+			if (validationError) console.warn(validationError);
+		}
 
 		const posthogSessionId = window.posthog?.get_session_id?.();
 
@@ -112,15 +127,15 @@ export class Telemetry {
 			posthog_session_id: posthogSessionId,
 		};
 
-		this.rudderStack.track(event, updatedProperties, {
+		this.rudderStack.track(eventName, updatedProperties, {
 			context: {
 				// provide a fake IP address to instruct RudderStack to not use the user's IP address
 				ip: '0.0.0.0',
 			},
 		});
 
-		if (!POSTHOG_EVENTS_BLACKLIST.includes(event)) {
-			usePostHog().capture(event, updatedProperties);
+		if (!POSTHOG_BLACKLISTED_EVENT_NAMES.has(eventName)) {
+			usePostHog().capture(eventName, updatedProperties);
 		}
 	}
 

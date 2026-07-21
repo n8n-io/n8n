@@ -9,6 +9,9 @@
 		"lib": ["es2023", "dom"],
 		"types": ["node", "vitest/globals", "vite/client"],
 		"paths": {
+			// Direct cli checks should not require @n8n/telemetry to be built first.
+			"@n8n/telemetry": ["../@n8n/telemetry/src/index.ts"],
+			"@n8n/telemetry/*": ["../@n8n/telemetry/src/*"],
 			"@/*": ["./src/*"],
 			"@test/*": ["./test/shared/*"],
 			"@test-integration/*": ["./test/integration/shared/*"]

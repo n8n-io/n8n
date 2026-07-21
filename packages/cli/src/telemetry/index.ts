@@ -9,6 +9,8 @@ import {
 } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { InferTelemetryProps, TelemetryEventDef } from '@n8n/telemetry';
+import { getEventValidationError } from '@n8n/telemetry';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import type { AxiosRequestConfig } from 'axios';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -558,9 +560,18 @@ export class Telemetry {
 		this.userCloudId = userCloudId;
 	}
 
-	track(eventName: string, properties: ITelemetryTrackProperties = {}) {
+	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
+	track(eventName: string, properties?: ITelemetryTrackProperties): void;
+	track(event: string | TelemetryEventDef, properties: ITelemetryTrackProperties = {}) {
 		if (!this.rudderStack) {
 			return;
+		}
+
+		const eventName = typeof event === 'string' ? event : event.name;
+
+		if (typeof event !== 'string') {
+			const validationError = getEventValidationError(event, properties);
+			if (validationError) this.logger.warn(validationError);
 		}
 
 		const { instanceId } = this.instanceSettings;
