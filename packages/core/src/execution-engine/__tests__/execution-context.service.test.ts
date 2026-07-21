@@ -445,6 +445,63 @@ describe('ExecutionContextService', () => {
 		});
 	});
 
+	describe('augmentSubExecutionContext()', () => {
+		const startItem: IExecuteData = {
+			node: { name: 'Execute Workflow Trigger', parameters: {} } as INode,
+			data: { main: [[{ json: { fromParent: true } }]] },
+			source: null,
+		};
+
+		it('returns the inherited context untouched (no round-trip) when no global hooks exist', async () => {
+			mockRegistry.getGlobalHooks.mockReturnValue([]);
+			const inherited: IExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'trigger',
+				credentials: 'inherited-encrypted-creds',
+			};
+
+			const result = await service.augmentSubExecutionContext(mockWorkflow, startItem, inherited);
+
+			expect(result).toBe(inherited);
+			expect(mockCipher.decryptV2).not.toHaveBeenCalled();
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+		});
+
+		it('runs global hooks with no trigger items, merges contextUpdate, and ignores returned items', async () => {
+			const globalHook = mock<IContextEstablishmentHook>();
+			globalHook.execute.mockResolvedValue({
+				// Items a hook returns must not leak into a sub-execution.
+				triggerItems: [{ json: { stripped: true } }],
+				contextUpdate: { redaction: { version: 2, production: true, manual: true } },
+			});
+			mockRegistry.getGlobalHooks.mockReturnValue([globalHook]);
+			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
+
+			const inherited: IExecutionContext = {
+				version: 1,
+				establishedAt: 100,
+				source: 'trigger',
+				redaction: { version: 2, production: false, manual: false },
+			};
+
+			const result = await service.augmentSubExecutionContext(mockWorkflow, startItem, inherited);
+
+			expect(globalHook.execute).toHaveBeenCalledWith(
+				expect.objectContaining({
+					triggerNode: startItem.node,
+					workflow: mockWorkflow,
+					triggerItems: null,
+					context: expect.objectContaining({
+						redaction: { version: 2, production: false, manual: false },
+					}),
+					options: {},
+				}),
+			);
+			expect(result.redaction).toEqual({ version: 2, production: true, manual: true });
+		});
+	});
+
 	describe('augmentExecutionContextWithHooks()', () => {
 		const createMockStartItem = (
 			contextEstablishmentHooks?: unknown,

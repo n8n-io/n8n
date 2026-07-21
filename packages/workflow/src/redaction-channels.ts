@@ -1,3 +1,4 @@
+import type { IRedactionSetting } from './execution-context';
 import type { WorkflowSettings } from './interfaces';
 
 /**
@@ -41,4 +42,18 @@ export function channelsToPolicy({
 	if (production) return 'non-manual';
 	if (manual) return 'all';
 	return 'none';
+}
+
+/**
+ * Reads the per-channel redaction from a captured snapshot, normalizing the V1
+ * (single policy enum) and V2 (per-channel booleans) shapes. An absent snapshot
+ * means nothing is redacted.
+ */
+export function redactionSettingToChannels(
+	redaction: IRedactionSetting | undefined,
+): RedactionChannels {
+	if (!redaction) return { production: false, manual: false };
+	if (redaction.version === 2)
+		return { production: redaction.production, manual: redaction.manual };
+	return policyToChannels(redaction.policy);
 }
