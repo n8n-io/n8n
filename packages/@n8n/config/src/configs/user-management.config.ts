@@ -49,6 +49,25 @@ class SmtpConfig {
 }
 
 @Config
+class MicrosoftGraphConfig {
+	/** Microsoft Entra application (client) ID */
+	@Env('MICROSOFT_GRAPH_CLIENT_ID')
+	clientId: string = '';
+
+	/** Microsoft Entra application client secret */
+	@Env('MICROSOFT_GRAPH_CLIENT_SECRET')
+	clientSecret: string = '';
+
+	/** Microsoft Entra directory (tenant) ID */
+	@Env('MICROSOFT_GRAPH_TENANT_ID')
+	tenantId: string = '';
+
+	/** Mailbox to send from (UPN or object ID); required for app-only sendMail */
+	@Env('MICROSOFT_GRAPH_SENDER')
+	sender: string = '';
+}
+
+@Config
 export class TemplateConfig {
 	/** Overrides default HTML template for inviting new people (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_INVITE')
@@ -87,17 +106,20 @@ export class TemplateConfig {
 	'mcp-client-revoked': string = '';
 }
 
-const emailModeSchema = z.enum(['', 'smtp']);
+const emailModeSchema = z.enum(['', 'smtp', 'microsoftGraph']);
 type EmailMode = z.infer<typeof emailModeSchema>;
 
 @Config
 class EmailConfig {
-	/** Email delivery method: `smtp` or empty (disabled). */
+	/** Email delivery method: `smtp`, `microsoftGraph`, or empty (disabled). */
 	@Env('N8N_EMAIL_MODE', emailModeSchema)
 	mode: EmailMode = 'smtp';
 
 	@Nested
 	smtp: SmtpConfig;
+
+	@Nested
+	microsoftGraph: MicrosoftGraphConfig;
 
 	@Nested
 	template: TemplateConfig;
