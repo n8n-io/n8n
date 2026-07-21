@@ -5,6 +5,8 @@ import {
 	N8nLink,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nSettingsRow,
+	N8nSettingsRowGroup,
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
@@ -159,14 +161,16 @@ const sortedInstanceResults = computed(() => {
 				/>
 			</div>
 
-			<div v-if="isLoading" :class="$style.CardContainer">
-				<div v-for="i in 4" :key="i" :class="$style.Card">
-					<div>
+			<N8nSettingsRowGroup v-if="isLoading">
+				<N8nSettingsRow v-for="i in 4" :key="i">
+					<template #info>
 						<N8nLoading variant="p" :rows="3" :class="$style.PLoading"></N8nLoading>
-					</div>
-					<N8nLoading variant="button"></N8nLoading>
-				</div>
-			</div>
+					</template>
+					<template #action>
+						<N8nLoading variant="button"></N8nLoading>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
 			<template v-else-if="currentTab === 'workflow-issues'">
 				<template v-if="state?.report.workflowResults.length === 0">
 					<EmptyTab>
@@ -180,9 +184,9 @@ const sortedInstanceResults = computed(() => {
 						}}</template>
 					</EmptyTab>
 				</template>
-				<div v-else :class="$style.CardContainer">
-					<div v-for="issue in sortedWorkflowResults" :key="issue.ruleId" :class="$style.Card">
-						<div>
+				<N8nSettingsRowGroup v-else>
+					<N8nSettingsRow v-for="issue in sortedWorkflowResults" :key="issue.ruleId">
+						<template #info>
 							<div :class="$style.CardTitleContainer">
 								<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
 								<N8nTooltip
@@ -209,23 +213,28 @@ const sortedInstanceResults = computed(() => {
 									↗
 								</N8nLink>
 							</N8nText>
-						</div>
-						<N8nLink
-							:class="$style.NoLineBreak"
-							theme="text"
-							:to="{ name: VIEWS.MIGRATION_RULE_REPORT, params: { migrationRuleId: issue.ruleId } }"
-						>
-							<span :class="$style.NoLineBreak">
-								{{
-									i18n.baseText('settings.migrationReport.workflowsCount', {
-										interpolate: { count: issue.nbAffectedWorkflows },
-									})
-								}}
-								<N8nIcon icon="chevron-right" :size="24" />
-							</span>
-						</N8nLink>
-					</div>
-				</div>
+						</template>
+						<template #action>
+							<N8nLink
+								:class="$style.NoLineBreak"
+								theme="text"
+								:to="{
+									name: VIEWS.MIGRATION_RULE_REPORT,
+									params: { migrationRuleId: issue.ruleId },
+								}"
+							>
+								<span :class="$style.NoLineBreak">
+									{{
+										i18n.baseText('settings.migrationReport.workflowsCount', {
+											interpolate: { count: issue.nbAffectedWorkflows },
+										})
+									}}
+									<N8nIcon icon="chevron-right" :size="24" />
+								</span>
+							</N8nLink>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
 			</template>
 			<template v-else-if="currentTab === 'instance-issues'">
 				<template v-if="state?.report.instanceResults.length === 0">
@@ -240,9 +249,9 @@ const sortedInstanceResults = computed(() => {
 						}}</template>
 					</EmptyTab>
 				</template>
-				<div v-else :class="$style.CardContainer">
-					<div v-for="issue in sortedInstanceResults" :key="issue.ruleId" :class="$style.Card">
-						<div>
+				<N8nSettingsRowGroup v-else>
+					<N8nSettingsRow v-for="issue in sortedInstanceResults" :key="issue.ruleId">
+						<template #info>
 							<div :class="$style.CardTitleContainer">
 								<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
 								<N8nTooltip
@@ -269,45 +278,15 @@ const sortedInstanceResults = computed(() => {
 									↗
 								</N8nLink>
 							</N8nText>
-						</div>
-					</div>
-				</div>
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
 			</template>
 		</div>
 	</N8nSettingsLayout>
 </template>
 
 <style module>
-.CardContainer {
-	border: var(--border);
-	border-radius: var(--radius);
-
-	.Card {
-		&:first-child {
-			border-top-left-radius: inherit;
-			border-top-right-radius: inherit;
-		}
-
-		&:last-child {
-			border-bottom-left-radius: inherit;
-			border-bottom-right-radius: inherit;
-		}
-
-		&:not(:last-child) {
-			border-bottom: var(--border);
-		}
-	}
-}
-
-.Card {
-	padding: var(--spacing--sm) var(--spacing--md);
-	display: grid;
-	grid-template-columns: 4fr 1fr;
-	align-items: center;
-	gap: var(--spacing--md);
-	background-color: var(--color--background--light-3);
-}
-
 .CardTitleContainer {
 	display: flex;
 	align-items: center;
@@ -327,15 +306,6 @@ const sortedInstanceResults = computed(() => {
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: var(--spacing--sm);
-}
-
-.NoIssuesContainer {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	text-align: center;
-	padding: var(--spacing--4xl) 0;
 }
 
 .PLoading {
