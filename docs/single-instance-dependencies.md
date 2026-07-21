@@ -71,8 +71,7 @@ by a complementary check — `runWorkspaceDedupCheck` in
 `file:`-injected workspace package (e.g. `n8n-core`) is materialized more than once in
 the docker image. The two are deliberately split by domain (third-party vs workspace) and
 each keeps its own migration-window allowlist (`EXPECTED_DUPLICATES` here,
-`KNOWN_DUPLICATED` there); both track symptoms of the same langchain/langsmith
-peer-context split. When investigating "is anything else duplicated?", read both.
+`KNOWN_DUPLICATED` there). When investigating "is anything else duplicated?", read both.
 
 ## Report-first rollout (no breaking changes on master)
 
@@ -87,9 +86,7 @@ separate `3.x`-branch effort. Until then the checks run report-first:
   baseline shrinks to empty as the peer migration lands.
 - **Verifier allowlist** (`EXPECTED_DUPLICATES`) — a migration-window escape hatch for a
   known, not-yet-fixable curated duplicate: the verifier reports it without failing until
-  it is remediated. Currently **empty** — the `@langchain/core` peer-context split it once
-  held was collapsed by aligning a shared peer dependency's version, so every curated
-  library now resolves to a single copy.
+  it is remediated. Currently **empty** — every curated library resolves to a single copy.
 
 ## Published peer ranges
 
@@ -116,9 +113,9 @@ is the breaking-change path — do it on `3.x`, and remove the package from the 
 baseline.
 
 **A duplicate originates from a third-party dependency we don't own.** The catalog and
-peer rules only govern our own manifests, so they cannot fix this — e.g. `@langchain/core`
-was split when a transitive optional peer resolved two ways (fixed by aligning that peer's
-version across the workspace). Options, in order of preference:
+peer rules only govern our own manifests, so they cannot fix this (a transitive optional
+peer that resolves two ways splits the package into two peer-context copies). Options, in
+order of preference:
 
 1. **Host-level `pnpm.overrides`** in the root `package.json` to force a single version
    or resolution. Works when the duplication is a version conflict.

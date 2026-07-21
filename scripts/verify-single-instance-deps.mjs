@@ -30,13 +30,10 @@ import { join } from 'node:path';
 import { CURATED_LIBS } from './single-instance-libs.mjs';
 
 /**
- * Deliberately-tolerated duplicates (migration window). Each entry MUST document
- * why it is tolerated and what removes it. Remove an entry once the duplicate is
- * remediated so a regression re-fails.
- *
- * Currently empty: the `@langchain/core` peer-context split was collapsed by
- * aligning a shared peer dependency's version across the workspace, so all curated
- * libraries now resolve to a single copy in the production closure.
+ * Migration-window allowlist: curated duplicates that are known and deliberately
+ * tolerated. Each entry MUST document why it is tolerated and what removes it; remove
+ * an entry once the duplicate is remediated so a regression re-fails. Empty means every
+ * curated library must resolve to a single physical copy.
  */
 export const EXPECTED_DUPLICATES = {};
 
