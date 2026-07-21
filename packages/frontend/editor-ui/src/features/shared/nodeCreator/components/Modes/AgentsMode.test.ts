@@ -61,7 +61,7 @@ const render = createComponentRenderer(AgentsMode);
 
 function pushAgentsViewStack() {
 	useViewStacks().pushViewStack({
-		title: 'Message an n8n Agent',
+		title: 'AI Agent',
 		hasSearch: true,
 		mode: 'agents',
 		items: [],

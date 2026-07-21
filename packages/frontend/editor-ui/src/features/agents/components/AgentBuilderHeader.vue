@@ -38,6 +38,8 @@ const props = defineProps<{
 	beforeRevertToPublished?: () => Promise<void> | void;
 	isVersionHistoryOpen?: boolean;
 	artifactMode?: boolean;
+	configValidationStatus?: 'valid' | 'invalid' | null;
+	beforePublish?: () => Promise<boolean>;
 }>();
 
 const emit = defineEmits<{
@@ -223,6 +225,8 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				:agent-id="agentId"
 				:is-saving="saveStatus === 'saving'"
 				:before-revert-to-published="beforeRevertToPublished"
+				:config-validation-status="configValidationStatus"
+				:before-publish="beforePublish"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
 				@reverted="(a: AgentResource) => emit('reverted', a)"
