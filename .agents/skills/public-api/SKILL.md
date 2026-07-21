@@ -46,6 +46,7 @@ Reference: `v1/controllers/tags.public.controller.ts` (`GET /tags`).
      @Get('/')
      @ApiKeyScope('tag:list')
      @ApiResponse(TagListPublicDto)
+     @ApiDescription('Retrieve all tags from your instance.')
      async getTags(_req, _res, @Query q: ListTagsQueryDto) { /* call service */ }
    }
    ```
@@ -53,6 +54,9 @@ Reference: `v1/controllers/tags.public.controller.ts` (`GET /tags`).
    - `@ApiKeyScope` — string, or `{ anyOf }` / `{ allOf }` (no bare arrays).
    - `@ApiResponse(Dto)` — registry `.parse()`s the return value (strips
      undeclared fields) and its schema feeds the generated OpenAPI response.
+   - `@ApiDescription('...')` (optional) — feeds the generated operation's
+     `description`. There's no `@ApiSummary` yet; add one the same way if a
+     route needs it.
    - Delegate to the same service as the internal REST controller.
 3. **Side-effect import** the controller from `packages/cli/src/public-api/v1/controllers/index.ts`
    (not from `public-api/index.ts` directly — that barrel is what both the

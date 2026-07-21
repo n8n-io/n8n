@@ -1,6 +1,13 @@
 import { ListTagsQueryDto, TagListPublicDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ApiKeyScope, ApiResponse, Get, PublicApiController, Query } from '@n8n/decorators';
+import {
+	ApiDescription,
+	ApiKeyScope,
+	ApiResponse,
+	Get,
+	PublicApiController,
+	Query,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -14,6 +21,7 @@ export class TagsPublicController {
 	@Get('/')
 	@ApiKeyScope('tag:list')
 	@ApiResponse(TagListPublicDto)
+	@ApiDescription('Retrieve all tags from your instance.')
 	async getTags(
 		_req: AuthenticatedRequest,
 		_res: Response,

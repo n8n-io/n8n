@@ -1,6 +1,7 @@
 operationId: getTags
 tags:
   - Tags
+description: Retrieve all tags from your instance.
 x-required-scope: tag:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml

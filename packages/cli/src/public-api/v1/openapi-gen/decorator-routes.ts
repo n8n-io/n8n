@@ -143,6 +143,7 @@ export function getDecoratorGeneratedOperations(): GeneratedDecoratorOperation[]
 			path: pathKey,
 			operationId: route.handlerName,
 			tags: [capitalize(resource)],
+			...(route.description ? { description: route.description } : {}),
 			...(route.apiKeyScope
 				? { 'x-required-scope': scopeRequirementToString(route.apiKeyScope) }
 				: {}),
