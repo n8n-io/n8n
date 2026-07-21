@@ -85,9 +85,11 @@ separate `3.x`-branch effort. Until then the checks run report-first:
   and reported, not failed. A package **not** in the baseline that adds a curated
   dependency (a regression, e.g. moving `zod` back to `dependencies`) hard-fails. The
   baseline shrinks to empty as the peer migration lands.
-- **Verifier allowlist** — the currently-live `@langchain/core` peer-context duplicate
-  is allowlisted (`EXPECTED_DUPLICATES`) so the verifier reports it without failing,
-  until it is remediated.
+- **Verifier allowlist** (`EXPECTED_DUPLICATES`) — a migration-window escape hatch for a
+  known, not-yet-fixable curated duplicate: the verifier reports it without failing until
+  it is remediated. Currently **empty** — the `@langchain/core` peer-context split it once
+  held was collapsed by aligning a shared peer dependency's version, so every curated
+  library now resolves to a single copy.
 
 ## Published peer ranges
 
@@ -114,9 +116,9 @@ is the breaking-change path — do it on `3.x`, and remove the package from the 
 baseline.
 
 **A duplicate originates from a third-party dependency we don't own.** The catalog and
-peer rules only govern our own manifests, so they cannot fix this — and this is the
-currently-live `@langchain/core` case (a transitive optional peer of `langsmith`
-instances it twice). Options, in order of preference:
+peer rules only govern our own manifests, so they cannot fix this — e.g. `@langchain/core`
+was split when a transitive optional peer resolved two ways (fixed by aligning that peer's
+version across the workspace). Options, in order of preference:
 
 1. **Host-level `pnpm.overrides`** in the root `package.json` to force a single version
    or resolution. Works when the duplication is a version conflict.

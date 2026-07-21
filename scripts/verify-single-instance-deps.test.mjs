@@ -4,7 +4,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { collectCopies, analyze, EXPECTED_DUPLICATES } from './verify-single-instance-deps.mjs';
+import { collectCopies, analyze } from './verify-single-instance-deps.mjs';
 
 // Build a planted install tree on disk so the test exercises the real filesystem
 // walk (collectCopies), not just the pure analyze() core. `node_modules` dirs are
@@ -44,20 +44,19 @@ before(() => {
 after(() => rmSync(ROOT, { recursive: true, force: true }));
 
 describe('closure verifier', () => {
-	it('fails on a planted duplicate of a non-allowlisted curated lib', () => {
+	it('fails on planted duplicates of non-allowlisted curated libs', () => {
 		const { failures } = analyze(collectCopies(join(ROOT, 'planted')));
-		assert.deepEqual(
-			failures.map((f) => f.name),
-			['zod'],
-		);
+		assert.deepEqual(failures.map((f) => f.name).sort(), ['@langchain/core', 'zod']);
 	});
 
 	it('reports but does not fail on an allowlisted curated duplicate', () => {
-		assert.ok(Object.hasOwn(EXPECTED_DUPLICATES, '@langchain/core'));
-		const { duplicates, failures } = analyze(collectCopies(join(ROOT, 'planted')));
+		const { duplicates, failures } = analyze(collectCopies(join(ROOT, 'planted')), {
+			allowlist: { '@langchain/core': 'test-only allowlist entry' },
+		});
 		const langchain = duplicates.find((d) => d.name === '@langchain/core');
 		assert.ok(langchain?.allowed, '@langchain/core should be allowlisted');
 		assert.ok(!failures.some((f) => f.name === '@langchain/core'));
+		assert.ok(failures.some((f) => f.name === 'zod'));
 	});
 
 	it('reports non-curated duplicates without failing on them', () => {
@@ -67,8 +66,11 @@ describe('closure verifier', () => {
 		assert.ok(!failures.some((f) => f.name === 'lodash'));
 	});
 
-	it('fails on the allowlisted lib too when --strict (allowlist ignored)', () => {
-		const { failures } = analyze(collectCopies(join(ROOT, 'planted')), { strict: true });
+	it('ignores the allowlist under --strict', () => {
+		const { failures } = analyze(collectCopies(join(ROOT, 'planted')), {
+			strict: true,
+			allowlist: { '@langchain/core': 'test-only allowlist entry' },
+		});
 		assert.deepEqual(failures.map((f) => f.name).sort(), ['@langchain/core', 'zod']);
 	});
 

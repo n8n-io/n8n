@@ -33,12 +33,12 @@ import { CURATED_LIBS } from './single-instance-libs.mjs';
  * Deliberately-tolerated duplicates (migration window). Each entry MUST document
  * why it is tolerated and what removes it. Remove an entry once the duplicate is
  * remediated so a regression re-fails.
+ *
+ * Currently empty: the `@langchain/core` peer-context split was collapsed by
+ * aligning a shared peer dependency's version across the workspace, so all curated
+ * libraries now resolve to a single copy in the production closure.
  */
-export const EXPECTED_DUPLICATES = {
-	'@langchain/core':
-		'Live pnpm peer-context instancing via langsmith optional OpenTelemetry peers. ' +
-		'Cannot be fixed at the manifest layer; pending host-level dedupe/override remediation.',
-};
+export const EXPECTED_DUPLICATES = {};
 
 /**
  * Walk `<root>/node_modules` (incl. nested and the pnpm `.pnpm` store) and return
@@ -128,13 +128,13 @@ function distinctCopies(copies) {
  * `duplicates` = every package with >1 physical copy (report). `failures` = the
  * curated subset that is not allowlisted (hard-fail).
  */
-export function analyze(found, { strict = false } = {}) {
+export function analyze(found, { strict = false, allowlist = EXPECTED_DUPLICATES } = {}) {
 	const duplicates = [];
 	for (const [name, copies] of found) {
 		const distinct = distinctCopies(copies);
 		if (distinct.length <= 1) continue;
 		const isCurated = CURATED_LIBS.includes(name);
-		const allowed = !strict && Object.hasOwn(EXPECTED_DUPLICATES, name);
+		const allowed = !strict && Object.hasOwn(allowlist, name);
 		duplicates.push({ name, isCurated, allowed, copies: distinct });
 	}
 	const failures = duplicates.filter((d) => d.isCurated && !d.allowed);
