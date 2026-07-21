@@ -21,7 +21,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
@@ -39,21 +39,21 @@ function loadWorkspace() {
 	return byName;
 }
 
-/** Map changed files (vs a git ref) to the publishable workspace packages they belong to. */
-function changedPackages(baseRef, byName) {
-	let out;
-	try {
-		out = execFileSync('git', ['diff', '--name-only', `${baseRef}`, 'HEAD'], {
-			cwd: root,
-			encoding: 'utf8',
-		});
-	} catch {
-		console.error(`Could not diff against "${baseRef}"; skipping scoped check.`);
-		return [];
-	}
-	const dirs = [...byName.entries()].map(([name, { dir }]) => [name, `${relative(root, dir)}/`]);
+/** Package dirs as forward-slash, trailing-slash prefixes (matches git's path output on any OS). */
+function packageDirPrefixes(byName) {
+	return [...byName.entries()].map(([name, { dir }]) => [
+		name,
+		`${relative(root, dir).split(sep).join('/')}/`,
+	]);
+}
+
+/**
+ * Pure core: map changed file paths to the owning workspace package by longest matching
+ * dir prefix. `dirs` is `[name, 'rel/dir/']` pairs; `files` are git's forward-slash paths.
+ */
+export function matchChangedFiles(files, dirs) {
 	const hit = new Set();
-	for (const file of out.split('\n').filter(Boolean)) {
+	for (const file of files) {
 		let best = null;
 		for (const [name, prefix] of dirs) {
 			if (file.startsWith(prefix) && (!best || prefix.length > best.prefix.length))
@@ -64,8 +64,31 @@ function changedPackages(baseRef, byName) {
 	return [...hit];
 }
 
+/** Map changed files (vs a git ref) to the publishable workspace packages they belong to. */
+function changedPackages(baseRef, byName) {
+	if (!baseRef || /^0+$/.test(baseRef)) {
+		console.error('No base commit (first push / force-push); skipping scoped check.');
+		return [];
+	}
+	if (baseRef.startsWith('-')) {
+		console.error(`Refusing suspicious --changed ref "${baseRef}".`);
+		return [];
+	}
+	let out;
+	try {
+		out = execFileSync('git', ['diff', '--name-only', baseRef, 'HEAD'], {
+			cwd: root,
+			encoding: 'utf8',
+		});
+	} catch {
+		console.error(`Could not diff against "${baseRef}"; skipping scoped check.`);
+		return [];
+	}
+	return matchChangedFiles(out.split('\n').filter(Boolean), packageDirPrefixes(byName));
+}
+
 /** BFS the workspace-internal dependency closure of the given target names. */
-function closureOf(targets, byName) {
+export function closureOf(targets, byName) {
 	const seen = new Set();
 	const queue = [...targets];
 	while (queue.length > 0) {

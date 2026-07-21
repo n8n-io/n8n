@@ -28,7 +28,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -82,7 +82,8 @@ function collectState() {
 	for (const { dir, pkg } of loadWorkspaceManifests(join(root, 'packages'))) {
 		const name = pkg.name;
 		if (!name) continue;
-		const relDir = relative(root, dir);
+		// Forward slashes so the FRONTEND_PATH_PREFIXES match works on Windows too.
+		const relDir = relative(root, dir).split(sep).join('/');
 		const deps = violationsFor(name, relDir, pkg);
 		const peers = peersFor(name, relDir, pkg);
 		if (deps.length > 0) dependencies[name] = deps.sort();
