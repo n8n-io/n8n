@@ -438,10 +438,11 @@ export function parseFromExpression(
 	if (parameterType === 'json' && typeof currentParameterValue === 'string') {
 		return currentParameterValue ? currentParameterValue.replace(/^=+/, '') : null;
 	}
-  
-  // Fall back to default when the expression can't resolve (e.g. $fromAI() -> null); `??` keeps a real `false`/`0`.
+
+	// Fall back to default when the expression can't resolve (e.g. $fromAI() -> null); `??` keeps a real `false`/`0`.
 	if (['number', 'boolean'].includes(parameterType)) {
 		return evaluatedExpressionValue ?? defaultValue;
+	}
 
 	if (typeof evaluatedExpressionValue !== 'undefined') {
 		return evaluatedExpressionValue;
