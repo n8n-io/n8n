@@ -1,66 +1,80 @@
-import type { IExecuteFunctions, INodeParameterResourceLocator } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { microsoftApiRequest } from '../transport';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 /** v1's Simplify $select list — the exact trimmed fields v2 keeps returning; Get Many reuses it. */
 export const LIST_SIMPLIFY_SELECT =
 	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
 
-// One URL lookup per distinct site URL per execution — without this, a
-// multi-item run doubles its Graph request volume and risks 429 throttling.
-const siteIdCache = new WeakMap<IExecuteFunctions, Map<string, string>>();
+/** Shape shared by every Graph collection reply a listSearch method here consumes. */
+export type GraphSearchReply<T> = { '@odata.nextLink'?: string; value?: T[] };
+
+/** Characters SharePoint forbids in file names; Graph rejects them with a misleading 400. */
+export const SHAREPOINT_ILLEGAL_FILE_NAME_CHARS = ['"', '*', ':', '<', '>', '?', '/', '\\', '|'];
+
+/** Graph's cap for a single-request `PUT …:/content` upload; larger files need an upload session. */
+export const MAX_SIMPLE_UPLOAD_BYTES = 250 * 1024 * 1024;
+
+export function validateSharePointFileName(
+	node: INode,
+	fileName: string | undefined,
+	itemIndex: number,
+): asserts fileName is string {
+	if (fileName === undefined || fileName.trim() === '') {
+		throw new NodeOperationError(node, 'File name must be set!', { itemIndex });
+	}
+
+	const illegalChars = SHAREPOINT_ILLEGAL_FILE_NAME_CHARS.filter((char) => fileName.includes(char));
+	if (illegalChars.length > 0) {
+		throw new NodeOperationError(
+			node,
+			`The file name "${fileName}" contains characters that SharePoint doesn't allow: ${illegalChars.join(' ')}`,
+			{
+				itemIndex,
+				description:
+					`SharePoint file names can't contain any of these characters: ${SHAREPOINT_ILLEGAL_FILE_NAME_CHARS.join(' ')}. Remove them from the file name and try again.` +
+					(illegalChars.includes(':')
+						? " If you're inserting a timestamp, use a colon-free format such as {{ $now.toFormat('yyyy-MM-dd_HH-mm-ss') }}."
+						: ''),
+			},
+		);
+	}
+}
 
 /**
- * Resolves the `site` resource locator to a Graph site ID; URL mode costs one
- * lookup via Graph path addressing. TEMPORARY: the site-selection follow-up
- * replaces this wholesale — keep all site-resolution logic here.
+ * Asserts the input binary exists, enforces the simple-upload size cap, and
+ * returns the payload with its content type. Out-of-process binary data is
+ * size-checked from its metadata — oversized files are rejected without ever
+ * being read.
  */
-export async function resolveSiteId(this: IExecuteFunctions, itemIndex: number): Promise<string> {
-	const site = this.getNodeParameter('site', itemIndex) as INodeParameterResourceLocator;
-	const value = String(site.value ?? '').trim();
-	if (site.mode !== 'url') {
-		return value;
-	}
+export async function getUploadBufferWithinCap(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+	binaryPropertyName: string,
+): Promise<{ body: Buffer; contentType: string }> {
+	const binaryData = ctx.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 
-	let parsed: URL;
-	try {
-		parsed = new URL(value);
-	} catch {
-		throw new NodeOperationError(this.getNode(), 'The site URL is not valid', {
-			description: 'Paste the full site address, e.g. https://contoso.sharepoint.com/sites/mysite',
-		});
+	let body: Buffer | undefined;
+	let fileSize: number;
+	if (binaryData.id) {
+		({ fileSize } = await ctx.helpers.getBinaryMetadata(binaryData.id));
+	} else {
+		body = Buffer.from(binaryData.data, BINARY_ENCODING);
+		fileSize = body.byteLength;
 	}
-	const path = parsed.pathname.replace(/\/+$/, '');
-	const endpoint =
-		path === '' ? `/v1.0/sites/${parsed.hostname}` : `/v1.0/sites/${parsed.hostname}:${path}`;
-
-	let cache = siteIdCache.get(this);
-	if (!cache) {
-		cache = new Map();
-		siteIdCache.set(this, cache);
-	}
-	const cached = cache.get(endpoint);
-	if (cached !== undefined) {
-		return cached;
-	}
-
-	let response;
-	try {
-		response = await microsoftApiRequest.call(this, 'GET', endpoint, {}, { $select: 'id' });
-	} catch (error) {
-		// Attribute a failed lookup to the Site field — the transport's generic
-		// 404 mapping would otherwise blame the operation's resource (the list).
-		if (error instanceof NodeApiError && error.httpCode === '404') {
-			throw new NodeOperationError(this.getNode(), 'Site not found', {
+	if (fileSize > MAX_SIMPLE_UPLOAD_BYTES) {
+		// Ceil so a just-over-the-cap file never reads as "250 MB is larger than 250 MB"
+		const sizeMb = Math.ceil(fileSize / (1024 * 1024));
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The file is ${sizeMb} MB, which is larger than the 250 MB limit for SharePoint uploads`,
+			{
+				itemIndex,
 				description:
-					"Check the value in the 'Site' parameter — the URL must point to an existing SharePoint site.",
-			});
-		}
-		throw error;
+					'Files over 250 MB need to be uploaded in pieces, which this operation does not support yet.',
+			},
+		);
 	}
 
-	const siteId = String(response.id);
-	cache.set(endpoint, siteId);
-	return siteId;
+	body ??= await ctx.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
+	return { body, contentType: binaryData.mimeType ?? 'application/octet-stream' };
 }

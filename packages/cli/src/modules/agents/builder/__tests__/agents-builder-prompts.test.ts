@@ -1,13 +1,20 @@
 import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api-types';
 
 import {
+	FEW_SHOT_FLOWS_SECTION,
 	INTERACTIVE_TOOLS_SECTION,
 	READ_CONFIG_FRESHNESS_SECTION,
 	WORKFLOW_SECTION,
 	buildBuilderPrompt,
 } from '../agents-builder-prompts';
 import { getConfigMutationPrompt } from '../prompts/config-mutation.prompt';
+import { getLlmSelectionPrompt } from '../prompts/llm-selection.prompt';
+import { TOOLS_PROMPT } from '../prompts/tools.prompt';
 import { getBuilderRuntimeSkills } from '../skills';
+
+function normalizeWhitespace(value: string | undefined): string {
+	return value?.replace(/\s+/g, ' ').trim() ?? '';
+}
 
 describe('builder prompt stability', () => {
 	it('omits stale agent state while retaining config freshness guidance', () => {
@@ -166,6 +173,12 @@ describe('agents builder integrations prompt', () => {
 describe('chat-channel credential guidance', () => {
 	it('mandates configure_channel and forbids ask_credential for chat-channel credentials', () => {
 		expect(INTERACTIVE_TOOLS_SECTION).toContain(
+			'`ask_credential` for node-tool, MCP-server, and fallback web-search credentials',
+		);
+		expect(normalizeWhitespace(INTERACTIVE_TOOLS_SECTION)).toContain(
+			"anything that isn't a node-tool credential, MCP-server credential, fallback web-search credential, or channel choice",
+		);
+		expect(INTERACTIVE_TOOLS_SECTION).toContain(
 			'NEVER use it for a chat-channel\n  credential — use `configure_channel` instead.',
 		);
 		expect(INTERACTIVE_TOOLS_SECTION).toContain(
@@ -177,6 +190,14 @@ describe('chat-channel credential guidance', () => {
 		);
 		expect(integrationsSkill?.instructions).toContain(
 			'ALWAYS use `configure_channel` for chat-channel\n  credentials — never `ask_credential`',
+		);
+
+		const llmSelectionPrompt = getLlmSelectionPrompt(null);
+		expect(llmSelectionPrompt).toContain(
+			'Use `ask_credential` for node tools, MCP servers, and fallback web-search credentials.',
+		);
+		expect(llmSelectionPrompt).not.toContain(
+			'Use `ask_credential` for node tools and integrations.',
 		);
 	});
 
@@ -206,6 +227,72 @@ describe('chat-channel credential guidance', () => {
 		expect(getConfigMutationPrompt()).toContain(
 			'Omitting `integrations` preserves existing channels.',
 		);
+	});
+});
+
+describe('external integration routing guidance', () => {
+	it('routes chat and trigger surfaces before resolving callable services', () => {
+		const toolsPrompt = normalizeWhitespace(TOOLS_PROMPT);
+
+		expect(toolsPrompt).toContain(
+			"first decide whether it is the target agent's chat or trigger surface",
+		);
+		expect(toolsPrompt).toContain(
+			'Do not call `resolve_integration` for chat/trigger integrations.',
+		);
+		expect(toolsPrompt).toContain(
+			'For each requested non-chat callable service, call `resolve_integration` separately',
+		);
+
+		const slackFlow = normalizeWhitespace(
+			FEW_SHOT_FLOWS_SECTION.split('### New agent: "Use Anthropic via OpenRouter"')[0],
+		);
+		expect(slackFlow).toContain('`list_integration_types()`');
+		expect(slackFlow).toContain('`configure_channel({ integrationType: "slack" })`');
+		expect(slackFlow).not.toContain('`resolve_integration`');
+	});
+
+	it('selects an MCP candidate before credential and verification', () => {
+		const mcpSkill = getBuilderRuntimeSkills().find((skill) => skill.id === 'agent-builder-mcp');
+		const mcpInstructions = normalizeWhitespace(mcpSkill?.instructions);
+
+		expect(mcpInstructions).toContain(
+			'`resolve_integration` returns `{ kind: "mcp", results: [...] }`',
+		);
+		expect(mcpInstructions).toContain('Never read server fields from the wrapper');
+		expect(mcpInstructions).toContain('never choose by array order');
+		expect(mcpInstructions).toContain('call `ask_questions` with the candidate');
+		expect(mcpInstructions).toContain('`selectedResult.credentialType`');
+		expect(mcpInstructions).toContain('returned `credentialId` as `credential`');
+		expect(mcpInstructions).toContain(
+			'If `ask_questions` returns `{ answered: false }`, stop MCP setup',
+		);
+		expect(mcpSkill?.recommendedTools).toContain('ask_questions');
+
+		const notionFlow = normalizeWhitespace(
+			FEW_SHOT_FLOWS_SECTION.split('### Add MCP integration:')[1]?.split(
+				'### Ambiguous request:',
+			)[0],
+		);
+		expect(notionFlow).toContain('select one entry from `results[]`');
+		expect(notionFlow).toContain('`selectedResult.credentialType`');
+		expect(notionFlow).toContain('`credentialId` as `credential`');
+	});
+
+	it('stops after channel setup and mutates config only for the non-chat branch', () => {
+		const ambiguousFlow = normalizeWhitespace(
+			FEW_SHOT_FLOWS_SECTION.split('### Ambiguous request:')[1]?.split(
+				'### Publish after build:',
+			)[0],
+		);
+
+		expect(ambiguousFlow).toContain('After `configure_channel` returns, stop this flow');
+		expect(ambiguousFlow).toContain('In this non-chat branch only, `read_config()`');
+
+		const chatBranch = ambiguousFlow.split('If it is a chat integration')[1]?.split('Otherwise')[0];
+		expect(chatBranch).not.toContain('`read_config`');
+		expect(chatBranch).not.toContain('`patch_config`');
+		expect(chatBranch).not.toContain('`write_config`');
 	});
 });
 

@@ -75,6 +75,7 @@ export { ListProjectsQueryDto } from './project/list-projects-query.dto';
 export { SamlAcsDto } from './saml/saml-acs.dto';
 export { SamlPreferences } from './saml/saml-preferences.dto';
 export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
+export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
 
@@ -129,6 +130,8 @@ export { GetResourceDependenciesDto } from './workflows/get-resource-dependencie
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
+export { ListTagsQueryDto } from './tag/list-tags-query.dto';
+export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -184,6 +187,7 @@ export {
 } from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
+export { RoleDeleteQueryDto } from './roles/role-delete-query.dto';
 export {
 	RoleAssignmentsResponseDto,
 	type RoleProjectAssignment,
@@ -239,7 +243,9 @@ export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
+	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
+	DeleteOAuthClientQueryDto,
 	DeleteOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';

@@ -10,7 +10,6 @@ export const packageCredentialRequirementSchema = z.object({
 export const packageDataTableRequirementSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),
-	sourceProjectId: z.string().min(1),
 	usedByWorkflows: z.array(z.string().min(1)).min(1),
 });
 

@@ -2,9 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { z } from 'zod';
