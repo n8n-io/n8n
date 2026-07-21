@@ -134,7 +134,7 @@ describe('project package export', () => {
 		}
 	});
 
-	it('blocks project exports when a static sub-workflow is outside the package', async () => {
+	it('blocks project exports when a workflow dependency is outside the package', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('Project A', owner);
 		const projectB = await createTeamProject('Project B', owner);
@@ -149,7 +149,7 @@ describe('project package export', () => {
 		});
 
 		await expect(service.exportPackage({ user: owner, projectIds: [projectA.id] })).rejects.toThrow(
-			'sub-workflow dependency not included in the package',
+			'workflow dependency not included in the package',
 		);
 	});
 
@@ -167,7 +167,9 @@ describe('project package export', () => {
 		const { manifest } = await exportProjects(owner, [projectA.id, projectB.id]);
 
 		expect(manifest.workflows!.map(({ id }) => id).sort()).toEqual([parent.id, child.id].sort());
-		expect(manifest.requirements).toBeUndefined();
+		expect(manifest.requirements?.workflows).toEqual([
+			{ id: child.id, name: child.name, usedByWorkflows: [parent.id] },
+		]);
 	});
 
 	it('exports the owner personal project', async () => {

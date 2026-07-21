@@ -1,6 +1,5 @@
 import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -11,6 +10,7 @@ import {
 	validateNodeCredentials,
 	isNodeConnected,
 	isTriggerLikeNode,
+	isTriggerNode,
 	classifyTriggerIdentity,
 } from 'n8n-workflow';
 import type {
@@ -407,7 +407,12 @@ export class WorkflowValidationService {
 		for (const node of nodes) {
 			if (node.disabled) continue;
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			if (!nodeType || !isTriggerLikeNode(nodeType)) continue;
+			// Only real workflow entry-points count. `isTriggerLikeNode` keys on a `webhook`/
+			// `poll`/`trigger` method, which also matches "Send and Wait for Response" action
+			// nodes (and their AI-tool variants) — those carry a HITL webhook but are not
+			// triggers, and would wrongly poison the identity check. `isTriggerNode` keys on
+			// the node group, which only true triggers declare.
+			if (!nodeType?.description || !isTriggerNode(nodeType.description)) continue;
 
 			hasTrigger = true;
 			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(

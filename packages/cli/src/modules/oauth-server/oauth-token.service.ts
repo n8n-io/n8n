@@ -3,9 +3,8 @@ import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { UserRepository, withTransaction } from '@n8n/db';
+import { TransactionRunner, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { MoreThanOrEqual } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -18,8 +17,6 @@ import type {
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
-import { AccessToken } from './database/entities/oauth-access-token.entity';
-import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
@@ -44,6 +41,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	getAccessTokenExpirySeconds(): number {
@@ -93,20 +91,18 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		userId: string,
 		scopes: string[],
 	): Promise<void> {
-		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
-			await transactionManager.insert(this.accessTokenRepository.target, {
-				token: accessToken,
-				clientId,
-				userId,
-			});
-
-			await transactionManager.insert(this.refreshTokenRepository.target, {
-				token: refreshToken,
-				clientId,
-				userId,
-				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
-				scope: scopes,
-			});
+		await this.txRunner.run({}, async (ctx) => {
+			await this.accessTokenRepository.insertToken({ token: accessToken, clientId, userId }, ctx);
+			await this.refreshTokenRepository.insertToken(
+				{
+					token: refreshToken,
+					clientId,
+					userId,
+					expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+					scope: scopes,
+				},
+				ctx,
+			);
 		});
 	}
 
@@ -115,15 +111,14 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		clientId: string,
 		resource?: string,
 	): Promise<OAuthTokens> {
-		return await withTransaction(this.refreshTokenRepository.manager, undefined, async (trx) => {
+		return await this.txRunner.run({}, async (ctx) => {
 			const now = Date.now();
 
-			const refreshTokenRecord = await trx.findOne(RefreshToken, {
-				where: {
-					token: refreshToken,
-					clientId,
-				},
-			});
+			const refreshTokenRecord = await this.refreshTokenRepository.findByToken(
+				refreshToken,
+				clientId,
+				ctx,
+			);
 
 			// InvalidGrantError so the SDK token handler responds 400 invalid_grant (RFC 6749 §5.2)
 			// instead of 500 server_error, letting clients fall back to re-authorization.
@@ -131,13 +126,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				throw new InvalidGrantError('Invalid refresh token');
 			}
 
-			const result = await trx.delete(RefreshToken, {
-				token: refreshToken,
+			const numAffected = await this.refreshTokenRepository.deleteValidByToken(
+				refreshToken,
 				clientId,
-				expiresAt: MoreThanOrEqual(now),
-			});
-
-			const numAffected = result.affected ?? 0;
+				now,
+				ctx,
+			);
 			if (numAffected < 1) {
 				throw new InvalidGrantError('Invalid refresh token');
 			}
@@ -151,19 +145,21 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				scopes,
 			);
 
-			await trx.insert(AccessToken, {
-				token: accessToken,
-				clientId,
-				userId: refreshTokenRecord.userId,
-			});
+			await this.accessTokenRepository.insertToken(
+				{ token: accessToken, clientId, userId: refreshTokenRecord.userId },
+				ctx,
+			);
 
-			await trx.insert(RefreshToken, {
-				token: newRefreshToken,
-				clientId,
-				userId: refreshTokenRecord.userId,
-				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
-				scope: scopes,
-			});
+			await this.refreshTokenRepository.insertToken(
+				{
+					token: newRefreshToken,
+					clientId,
+					userId: refreshTokenRecord.userId,
+					expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
+					scope: scopes,
+				},
+				ctx,
+			);
 
 			this.logger.info('Refresh token rotated and new access token issued', {
 				clientId,

@@ -213,6 +213,9 @@ describe('builder model recommendations', () => {
 		expect(skill?.instructions).toContain('$fromAI');
 		expect(skill?.instructions).toContain('$now.toISO()');
 		expect(skill?.instructions).toContain('$today');
+		expect(skill?.instructions).toContain('sendAndWait');
+		expect(skill?.instructions).toContain('dispatchAndWait');
+		expect(skill?.instructions).toContain('requireApproval: true');
 	});
 
 	it('registers only optional builder runtime skills', () => {
@@ -233,9 +236,11 @@ describe('builder model recommendations', () => {
 		expect(skillsById.has('agent-builder-research')).toBe(false);
 
 		const integrations = skillsById.get('agent-builder-integrations');
-		expect(integrations?.description).toContain('chat integration/trigger versus a node tool');
-		expect(integrations?.instructions).toContain('Integration vs Node Tool Decision');
-		expect(integrations?.instructions).toContain('Linear node tools');
+		expect(integrations?.description).toContain(
+			'chat integration/trigger versus an MCP, node, or workflow tool',
+		);
+		expect(integrations?.instructions).toContain('Integration vs Callable Tool Decision');
+		expect(integrations?.instructions).toContain('Linear callable tools');
 
 		const resourceLocators = skillsById.get('agent-builder-resource-locators');
 		expect(resourceLocators?.description).toContain('stable dynamic selector fields');

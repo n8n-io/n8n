@@ -1,7 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.21.0",
+  "version": "1.22.0",
   "files": [
     "dist"
   ],
@@ -30,8 +30,7 @@
   "dependencies": {
     "@vueuse/core": "catalog:frontend",
     "lodash": "catalog:",
-    "vue": "catalog:frontend",
-    "xss": "catalog:"
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",

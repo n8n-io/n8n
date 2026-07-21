@@ -6,7 +6,7 @@ import { useToast } from '@/app/composables/useToast';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
-import type { UserManagementAuthenticationMethod } from '@/Interface';
+import type { AuthenticationMethod } from '@n8n/api-types';
 import {
 	registerModuleModals,
 	registerModuleProjectTabs,
@@ -18,7 +18,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
@@ -73,8 +73,7 @@ export async function initializeCore() {
 	}
 
 	ssoStore.initialize({
-		authenticationMethod: settingsStore.userManagement
-			.authenticationMethod as UserManagementAuthenticationMethod,
+		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
 		managedByEnv: settingsStore.settings.sso.managedByEnv,
 		config: settingsStore.settings.sso,
 		features: {
@@ -248,7 +247,7 @@ function registerAuthenticationHooks() {
 		// Without this, navigating to SSO settings after login shows an empty redirect URL.
 		ssoStore.initialize({
 			authenticationMethod: settingsStore.userManagement
-				.authenticationMethod as UserManagementAuthenticationMethod,
+				.authenticationMethod as AuthenticationMethod,
 			managedByEnv: settingsStore.settings.sso.managedByEnv,
 			config: settingsStore.settings.sso,
 			features: {
