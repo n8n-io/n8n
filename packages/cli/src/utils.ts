@@ -20,6 +20,15 @@ export function stripToolSuffix(nodeType: string): string {
 	return nodeType.replace(/HitlTool$/, '').replace(/Tool$/, '');
 }
 
+/**
+ * Whether the given resolved node (version) can back the synthetic tool name.
+ * HITL tools have no capability requirement; regular tools need the base node
+ * version to declare `usableAsTool`.
+ */
+export function satisfiesToolCapability(syntheticToolName: string, nodeType: INodeType): boolean {
+	return syntheticToolName.endsWith('HitlTool') || !!nodeType.description.usableAsTool;
+}
+
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 	return function (nodes: INode[]) {
 		const executeWorkflowTriggerNode = nodes.find(

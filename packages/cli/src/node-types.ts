@@ -12,7 +12,7 @@ import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
-import { shouldAssignExecuteMethod, stripToolSuffix } from './utils';
+import { satisfiesToolCapability, shouldAssignExecuteMethod, stripToolSuffix } from './utils';
 
 @Service()
 export class NodeTypes implements INodeTypes {
@@ -115,10 +115,9 @@ export class NodeTypes implements INodeTypes {
 			return loadedNodes[origType].type as INodeType;
 		}
 
-		// Check if this is an HITL tool (ends with 'HitlTool')
 		const isHitlTool = origType.endsWith('HitlTool');
 
-		if (!isHitlTool && !versionedNodeType.description.usableAsTool) {
+		if (!satisfiesToolCapability(origType, versionedNodeType)) {
 			throw new UserError('Node cannot be used as a tool', { extra: { nodeType: baseName } });
 		}
 
@@ -161,19 +160,18 @@ export class NodeTypes implements INodeTypes {
 		// such failure into "unknown type" instead of failing the caller.
 		try {
 			const { baseName, isSyntheticTool } = this.resolveBaseName(nodeTypeName);
-			const requiresToolCapability = isSyntheticTool && !nodeTypeName.endsWith('HitlTool');
 
 			const { type } = this.loadNodesAndCredentials.getNode(baseName);
 
 			if ('nodeVersions' in type) {
 				return Object.entries(type.nodeVersions)
 					.filter(
-						([, versioned]) => !requiresToolCapability || !!versioned.description.usableAsTool,
+						([, versioned]) => !isSyntheticTool || satisfiesToolCapability(nodeTypeName, versioned),
 					)
 					.map(([version]) => Number(version));
 			}
 
-			if (requiresToolCapability && !type.description.usableAsTool) return [];
+			if (isSyntheticTool && !satisfiesToolCapability(nodeTypeName, type)) return [];
 
 			const { version } = type.description;
 			return Array.isArray(version) ? [...version] : [version];
