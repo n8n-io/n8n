@@ -74,6 +74,7 @@ describe('ExecutionContextService', () => {
 		mockRegistry = {
 			getHookByName: vi.fn(),
 			getGlobalHooks: vi.fn().mockReturnValue([]),
+			getSubExecutionHooks: vi.fn().mockReturnValue([]),
 		} as unknown as Mocked<ExecutionContextHookRegistry>;
 
 		mockCipher = {
@@ -452,8 +453,8 @@ describe('ExecutionContextService', () => {
 			source: null,
 		};
 
-		it('returns the inherited context untouched (no round-trip) when no global hooks exist', async () => {
-			mockRegistry.getGlobalHooks.mockReturnValue([]);
+		it('returns the inherited context untouched (no round-trip) when no sub-execution hooks exist', async () => {
+			mockRegistry.getSubExecutionHooks.mockReturnValue([]);
 			const inherited: IExecutionContext = {
 				version: 1,
 				establishedAt: 100,
@@ -468,14 +469,14 @@ describe('ExecutionContextService', () => {
 			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
 		});
 
-		it('runs global hooks with no trigger items, merges contextUpdate, and ignores returned items', async () => {
-			const globalHook = mock<IContextEstablishmentHook>();
-			globalHook.execute.mockResolvedValue({
+		it('runs sub-execution hooks with no trigger items, merges contextUpdate, and ignores returned items', async () => {
+			const subExecutionHook = mock<IContextEstablishmentHook>();
+			subExecutionHook.execute.mockResolvedValue({
 				// Items a hook returns must not leak into a sub-execution.
 				triggerItems: [{ json: { stripped: true } }],
 				contextUpdate: { redaction: { version: 2, production: true, manual: true } },
 			});
-			mockRegistry.getGlobalHooks.mockReturnValue([globalHook]);
+			mockRegistry.getSubExecutionHooks.mockReturnValue([subExecutionHook]);
 			mockCipher.encryptV2.mockImplementation(async (data: unknown) => JSON.stringify(data));
 
 			const inherited: IExecutionContext = {
@@ -487,7 +488,7 @@ describe('ExecutionContextService', () => {
 
 			const result = await service.augmentSubExecutionContext(mockWorkflow, startItem, inherited);
 
-			expect(globalHook.execute).toHaveBeenCalledWith(
+			expect(subExecutionHook.execute).toHaveBeenCalledWith(
 				expect.objectContaining({
 					triggerNode: startItem.node,
 					workflow: mockWorkflow,

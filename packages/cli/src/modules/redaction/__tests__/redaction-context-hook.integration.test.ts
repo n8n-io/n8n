@@ -67,6 +67,8 @@ describe('RedactionContextHook integration with establishExecutionContext', () =
 
 		const hookRegistry = mock<ExecutionContextHookRegistry>();
 		hookRegistry.getGlobalHooks.mockReturnValue([hook]);
+		// The redaction hook opts into re-running for sub-workflow executions too.
+		hookRegistry.getSubExecutionHooks.mockReturnValue([hook]);
 
 		const executionContextService = new ExecutionContextService(
 			mock(),

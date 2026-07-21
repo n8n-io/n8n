@@ -11,6 +11,9 @@ import { InstanceRedactionEnforcementService } from './instance-redaction-enforc
 
 @ContextEstablishmentHook({
 	alwaysExecute: true,
+	// Also re-run for sub-workflows so a child's own execution record captures its
+	// own redaction policy, merged with the inherited parent snapshot (see execute()).
+	runForSubExecution: true,
 })
 export class RedactionContextHook implements IContextEstablishmentHook {
 	constructor(
