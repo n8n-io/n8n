@@ -39,6 +39,7 @@ body.sb-show-main {
 	background: var(--background--surface);
 	color: var(--text-color);
 	border-radius: var(--radius--lg);
+	overflow: auto;
 
 	&[data-theme='light'] {
 		border: var(--border);
