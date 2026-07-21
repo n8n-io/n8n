@@ -352,6 +352,42 @@ describe('InstanceAiSettingsService', () => {
 			);
 		});
 
+		it('falls back to the user credential when the admin credential data is incomplete', async () => {
+			instanceCredentialBroker.assignForUse.mockResolvedValue({
+				id: 'admin-credential',
+				name: 'Admin model',
+				type: 'openAiApi',
+			});
+			await service.updateAdminSettings({ modelCredentialId: 'admin-credential' });
+			instanceCredentialBroker.resolveForUse.mockResolvedValue({
+				id: 'admin-credential',
+				name: 'Admin model',
+				type: 'openAiApi',
+				data: {},
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'user-credential', type: 'openAiApi' }),
+			);
+			credentialsService.decrypt.mockResolvedValue({ apiKey: 'user-key' });
+
+			await expect(
+				service.resolveModelConfig(
+					mock<User>({
+						settings: {
+							instanceAi: { credentialId: 'user-credential', modelName: 'gpt-user' },
+						},
+					}),
+				),
+			).resolves.toEqual({ id: 'openai/gpt-user', url: '', apiKey: 'user-key' });
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not resolve the configured model credential; using environment fallback',
+				{
+					credentialUseId: 'instance-ai:model',
+					error: 'Credential data is incomplete',
+				},
+			);
+		});
+
 		it('reads the configured model credential from the broker', async () => {
 			instanceCredentialBroker.getAssignedCredentialId.mockResolvedValue('cred-1');
 

@@ -594,7 +594,15 @@ export class InstanceAiSettingsService {
 		);
 		if (!resolved) return null;
 
-		return this.buildModelConfig(resolved.type, resolved.data, modelName);
+		const config = this.buildModelConfig(resolved.type, resolved.data, modelName);
+		if (!config) {
+			this.warnCredentialFallback(
+				'model',
+				INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+				'Credential data is incomplete',
+			);
+		}
+		return config;
 	}
 
 	private ensureCredentialMatchesConfiguredModel(credentialType: string): void {
@@ -641,7 +649,7 @@ export class InstanceAiSettingsService {
 			return { id, url: '', apiKey };
 		}
 
-		return id;
+		return null;
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────
