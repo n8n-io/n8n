@@ -105,6 +105,13 @@ describe('MigrationRules', () => {
 	});
 
 	describe('initial rendering and loading', () => {
+		it('should set the document title', () => {
+			document.title = '';
+			renderComponent();
+
+			expect(document.title).toContain('Migration Report');
+		});
+
 		it('should render correctly and load data on mount', async () => {
 			renderComponent();
 
