@@ -141,11 +141,8 @@ jobs:
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
 
-  # Full npm-install duplication check across all publishable packages, as a
-  # release-prep signal: root overrides don't travel in published tarballs, so a
-  # curated library can resolve to a second copy on `npm install n8n`. Heavy (packs
-  # every publishable package + installs the full graph); runs in parallel and is
-  # non-blocking initially — promote to a hard gate after it proves stable.
+  # Full npm-install duplication check (packs every publishable package). Heavy;
+  # runs in parallel, non-blocking for now.
   verify-single-instance-npm-full:
     name: Verify single-instance deps (npm-install, full)
     runs-on: ubuntu-latest

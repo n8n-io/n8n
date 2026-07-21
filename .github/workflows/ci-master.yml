@@ -49,10 +49,8 @@ jobs:
     with:
       ref: ${{ github.sha }}
 
-  # Scoped npm-install duplication check for changed publishable packages. The pnpm
-  # dev graph and `pnpm deploy` closure hide duplicates the `npm install` graph would
-  # expose (root overrides don't travel in tarballs). Non-blocking initially; promote
-  # to a hard gate after it proves stable.
+  # npm-install exposes curated-lib duplicates the pnpm dev/deploy graph hides (root
+  # overrides don't travel in tarballs). Scoped to changed packages; non-blocking for now.
   verify-single-instance-npm:
     name: Verify single-instance deps (npm-install)
     runs-on: ubuntu-latest
