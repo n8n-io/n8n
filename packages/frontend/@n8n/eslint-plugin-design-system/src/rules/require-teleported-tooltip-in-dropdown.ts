@@ -35,7 +35,9 @@ const isTeleportedAttribute = (attribute: VAttribute | VDirective) => {
 
 const guaranteesTeleportation = (attribute: VAttribute | VDirective) => {
 	if (!attribute.directive) {
-		return attribute.value === null || attribute.value.value === 'true';
+		return (
+			attribute.value === null || attribute.value.value === '' || attribute.value.value === 'true'
+		);
 	}
 
 	const expression = attribute.value?.expression;
