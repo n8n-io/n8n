@@ -198,17 +198,10 @@ function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-const TRACE_TEXT_CAP = 2000;
-
-/** Bound free text destined for trace inputs/outputs; returns undefined for non-strings and empty strings. */
-function boundTraceText(value: unknown): string | undefined {
-	if (typeof value !== 'string' || value.length === 0) return undefined;
-	return value.length > TRACE_TEXT_CAP ? `${value.slice(0, TRACE_TEXT_CAP)}…` : value;
-}
-
 /** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
 function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
-	const message = boundTraceText(suspension?.suspendPayload.message);
+	const rawMessage = suspension?.suspendPayload.message;
+	const message = typeof rawMessage === 'string' && rawMessage ? rawMessage : undefined;
 	return {
 		status: 'suspended',
 		runId,
@@ -4548,21 +4541,10 @@ export class InstanceAiService {
 				toolCallId,
 				approved: data.approved,
 				resumeFields: Object.keys(resumeData),
-				...(boundTraceText(data.userInput) ? { userInput: boundTraceText(data.userInput) } : {}),
+				...(data.userInput ? { userInput: data.userInput } : {}),
 				...(data.action ? { action: data.action } : {}),
 				...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-				...(data.answers
-					? {
-							answers: data.answers.map((answer) => ({
-								questionId: answer.questionId,
-								selectedOptions: answer.selectedOptions,
-								...(boundTraceText(answer.customText)
-									? { customText: boundTraceText(answer.customText) }
-									: {}),
-								...(answer.skipped !== undefined ? { skipped: answer.skipped } : {}),
-							})),
-						}
-					: {}),
+				...(data.answers ? { answers: data.answers } : {}),
 			},
 			resumeReason: 'approval',
 			metadata: {

@@ -2478,25 +2478,6 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		expect(options.input).not.toHaveProperty('credentials');
 		expect((options.input as { resumeFields: string[] }).resumeFields).toContain('credentials');
 	});
-
-	it('truncates long free-text resume input for tracing', async () => {
-		const service = createSuspendedRunResumeService();
-		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1', disabled: false } as User);
-		const longUserInput = 'x'.repeat(3000);
-
-		await service.resumeSuspendedRun('user-1', 'req-1', {
-			approved: true,
-			userInput: longUserInput,
-		});
-
-		const [options] = service.tracing.createOrchestratorResumeTraceContext.mock.calls[0] as [
-			{ input: { userInput: string } },
-		];
-		expect(options.input.userInput).toHaveLength(2001);
-		expect(options.input.userInput.endsWith('…')).toBe(true);
-		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
-		expect(resumeDataArg).toMatchObject({ userInput: longUserInput });
-	});
 });
 
 describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
