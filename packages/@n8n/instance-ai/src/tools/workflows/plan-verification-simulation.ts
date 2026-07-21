@@ -22,6 +22,7 @@ import {
 } from './generate-simulation-fixtures.service';
 import { isMockableTriggerNodeType, isTriggerNodeType } from './workflow-json-utils';
 import type { Logger } from '../../logger';
+import type { ModelConfig } from '../../types';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
 export interface PlanVerificationSimulationInput {
@@ -37,6 +38,8 @@ export interface PlanVerificationSimulationInput {
 	workflowId: string;
 	/** Node output `__schema__` lookup used to shape generated fixtures. */
 	outputSchemaLookup?: OutputSchemaLookup;
+	/** Host-resolved model used when no eval model API key is configured in the environment. */
+	fallbackModelConfig?: ModelConfig;
 	logger?: Logger;
 }
 
@@ -255,13 +258,18 @@ export async function planVerificationSimulation({
 	declaredOutputFixtures,
 	workflowId,
 	outputSchemaLookup,
+	fallbackModelConfig,
 	logger,
 }: PlanVerificationSimulationInput): Promise<VerificationSimulationPlan> {
 	let nodeSimulationPlan: NodeSimulationVerdict[] | undefined;
 	let simulationFixtures: SimulationFixtures | undefined;
 	const declaredFixtures = nonEmptyDeclaredFixtures(declaredOutputFixtures);
 	try {
-		nodeSimulationPlan = await classifyNodesForSimulation({ workflow, mockedNodeNames });
+		nodeSimulationPlan = await classifyNodesForSimulation({
+			workflow,
+			mockedNodeNames,
+			fallbackModelConfig,
+		});
 		nodeSimulationPlan = withDeclaredOutputVerdicts(nodeSimulationPlan, declaredFixtures);
 		nodeSimulationPlan = withSimulatedTriggerVerdicts(nodeSimulationPlan, workflow);
 		nodeSimulationPlan = withSimulatedCredentiallessAiRootVerdicts(
@@ -280,6 +288,8 @@ export async function planVerificationSimulation({
 							workflow,
 							plan: planNeedingGeneratedFixtures,
 							outputSchemaLookup,
+							fallbackModelConfig,
+							logger,
 						})
 					: {};
 			const fixtures = { ...generatedFixtures, ...declaredFixtures };

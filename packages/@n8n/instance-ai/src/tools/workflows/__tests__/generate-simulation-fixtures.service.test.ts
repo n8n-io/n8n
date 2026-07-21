@@ -120,6 +120,42 @@ describe('generateSimulationFixtures', () => {
 		expect(result).toEqual({ A: [{}] });
 	});
 
+	it('warns on generation failure so the empty-fixture degrade is visible', async () => {
+		mockCreateEvalAgent.mockImplementation(() => {
+			throw new Error('Missing API key');
+		});
+		const warn = vi.fn();
+		const logger = { info: vi.fn(), warn, error: vi.fn(), debug: vi.fn() };
+		const result = await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			logger,
+		});
+		expect(result).toEqual({ A: [{}] });
+		expect(warn).toHaveBeenCalledWith(
+			expect.stringContaining('fixture generation failed'),
+			expect.objectContaining({ reason: 'generation_failed', nodeCount: 1 }),
+		);
+	});
+
+	it('forwards the fallback model config to the LLM call', async () => {
+		setupAgentMock(JSON.stringify({ A: [{ json: { ok: true } }] }));
+		const fallbackModelConfig = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+		await generateSimulationFixtures({
+			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
+			plan: [simulateVerdict('A')],
+			fallbackModelConfig,
+		});
+		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
+			'verification-simulation-fixtures',
+			expect.objectContaining({ fallbackModelConfig }),
+		);
+	});
+
 	it('strips markdown fences around the JSON output', async () => {
 		setupAgentMock('```json\n{"A":[{"json":{"ok":true}}]}\n```');
 		const result = await generateSimulationFixtures({

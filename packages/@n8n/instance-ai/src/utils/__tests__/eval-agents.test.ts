@@ -81,4 +81,43 @@ describe('eval agent model config', () => {
 			reasoningEffort: 'high',
 		});
 	});
+
+	it('throws without env keys or a fallback model config', () => {
+		expect(() => createEvalAgent('test-agent', { instructions: 'Do the task.' })).toThrow(
+			/Missing API key/,
+		);
+	});
+
+	it('uses the fallback model config when no env API key is configured', () => {
+		const fallbackModelConfig = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+
+		createEvalAgent('test-agent', {
+			instructions: 'Do the task.',
+			fallbackModelConfig,
+		});
+
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith(fallbackModelConfig);
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+		});
+	});
+
+	it('prefers env-based model resolution over the fallback', () => {
+		process.env.N8N_AI_ANTHROPIC_KEY = 'env-key';
+
+		createEvalAgent('test-agent', {
+			instructions: 'Do the task.',
+			fallbackModelConfig: { id: 'anthropic/claude-opus-4-8' as const, url: '', apiKey: 'jwt' },
+		});
+
+		expect(mockAgentInstances[0]?.model).toHaveBeenCalledWith({
+			id: 'anthropic/claude-sonnet-4-6',
+			apiKey: 'env-key',
+			url: undefined,
+		});
+	});
 });

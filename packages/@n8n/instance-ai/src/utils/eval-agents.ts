@@ -1,6 +1,6 @@
 /** Shared agent factory + helpers for eval LLM calls (hint generation, mock responses, pin data). */
 
-import { Agent, Tool, type GenerateResult } from '@n8n/agents';
+import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
 
@@ -100,20 +100,34 @@ const CACHE_PROVIDER_OPTS = {
 	providerOptions: EPHEMERAL_CACHE,
 };
 
+/**
+ * Env-based tiered model when configured, otherwise the caller's fallback.
+ * Deployments where the model is managed outside the environment (e.g. the
+ * cloud AI service proxy) have no eval API key, so without a fallback every
+ * in-product eval call would fail before reaching the LLM.
+ */
+function resolveAgentModel(model?: string, fallbackModelConfig?: ModelConfig): ModelConfig {
+	try {
+		const { modelId, apiKey, url } = resolveEvalModelConfig(model);
+		return { id: modelId, apiKey, url };
+	} catch (error) {
+		if (fallbackModelConfig) return fallbackModelConfig;
+		throw error;
+	}
+}
+
 export function createEvalAgent(
 	name: string,
 	options: {
 		model?: string;
 		instructions: string;
 		cache?: boolean;
+		/** Host-resolved model used when no eval model API key is configured in the environment. */
+		fallbackModelConfig?: ModelConfig;
 	},
 ): Agent {
-	const { modelId, apiKey, url } = resolveEvalModelConfig(options.model);
-	const agent = new Agent(name).model({
-		id: modelId,
-		apiKey,
-		url,
-	});
+	const model = resolveAgentModel(options.model, options.fallbackModelConfig);
+	const agent = new Agent(name).model(model);
 
 	if (options.cache) {
 		agent.instructions(options.instructions, CACHE_PROVIDER_OPTS);
@@ -121,7 +135,7 @@ export function createEvalAgent(
 		agent.instructions(options.instructions);
 	}
 
-	applyAgentThinking(agent, modelId);
+	applyAgentThinking(agent, model);
 
 	return agent;
 }
