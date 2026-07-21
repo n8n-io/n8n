@@ -68,7 +68,7 @@ const trialPlan: Cloud.PlanData = {
 	licenseFeatures: { 'quota:instanceAiCredits': 800 },
 };
 
-const starterOffer: Cloud.UpgradeOfferPlan = {
+const starterOffer: Cloud.UpgradeOffer = {
 	slug: 'starter',
 	displayName: 'Starter',
 	quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 2300 },

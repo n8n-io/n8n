@@ -203,25 +203,16 @@ describe('trialIntroModal store', () => {
 	});
 
 	describe('starterOffer', () => {
-		it('picks the plan with slug starter', () => {
+		it('exposes the upgrade offer from cloud user info', () => {
 			mockCurrentUserCloudInfo = {
 				confirmed: true,
 				username: 'user',
 				email: 'user@example.com',
 				upgradeOffer: {
+					slug: 'starter',
+					displayName: 'Starter',
+					quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 					currency: { code: 'USD', symbol: '$', position: 'prefix' },
-					plans: [
-						{
-							slug: 'pro-1',
-							displayName: 'Pro',
-							quotas: { monthlyExecutionsLimit: 1000, instanceAiCredits: 100 },
-						},
-						{
-							slug: 'starter',
-							displayName: 'Starter',
-							quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
-						},
-					],
 				},
 			};
 
@@ -229,18 +220,8 @@ describe('trialIntroModal store', () => {
 				slug: 'starter',
 				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
+				currency: { code: 'USD', symbol: '$', position: 'prefix' },
 			});
-		});
-
-		it('is undefined when there is no starter plan on offer', () => {
-			mockCurrentUserCloudInfo = {
-				confirmed: true,
-				username: 'user',
-				email: 'user@example.com',
-				upgradeOffer: { plans: [] },
-			};
-
-			expect(store.starterOffer).toBeUndefined();
 		});
 
 		it('is undefined without an upgrade offer', () => {
@@ -255,8 +236,10 @@ describe('trialIntroModal store', () => {
 				username: 'user',
 				email: 'user@example.com',
 				upgradeOffer: {
+					slug: 'starter',
+					displayName: 'Starter',
+					quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 					currency: { code: 'EUR', symbol: '€', position: 'suffix' },
-					plans: [],
 				},
 			};
 
@@ -334,15 +317,11 @@ describe('trialIntroModal store', () => {
 				username: 'user',
 				email: 'user@example.com',
 				upgradeOffer: {
+					slug: 'starter',
+					displayName: 'Starter',
+					quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 					currency: { code: 'USD', symbol: '$', position: 'prefix' },
-					plans: [
-						{
-							slug: 'starter',
-							displayName: 'Starter',
-							quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
-							prices: { monthly: 10, yearlyPerMonth: 8, yearlyTotal: 96, discountPct: 20 },
-						},
-					],
+					prices: { monthly: 10, yearlyPerMonth: 8, yearlyTotal: 96, discountPct: 20 },
 				},
 			};
 

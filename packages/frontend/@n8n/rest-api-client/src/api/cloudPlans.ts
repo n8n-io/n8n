@@ -57,21 +57,17 @@ export declare namespace Cloud {
 		forceShow?: boolean; // Override localStorage dismissal
 	}
 
-	export interface UpgradeOfferPlan {
+	export interface UpgradeOffer {
 		slug: string;
 		displayName: string;
 		quotas: { monthlyExecutionsLimit: number; instanceAiCredits: number };
+		currency?: { code: string; symbol: string; position: 'prefix' | 'suffix' };
 		prices?: {
 			monthly: number;
 			yearlyPerMonth: number;
 			yearlyTotal: number;
 			discountPct: number;
 		};
-	}
-
-	export interface UpgradeOffer {
-		currency?: { code: string; symbol: string; position: 'prefix' | 'suffix' };
-		plans: UpgradeOfferPlan[];
 	}
 
 	export type UserAccount = {

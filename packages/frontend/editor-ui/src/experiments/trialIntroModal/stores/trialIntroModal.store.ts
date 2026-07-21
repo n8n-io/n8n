@@ -43,13 +43,9 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 
 	const shouldShowModal = computed(() => isVariantEnabled.value && isEligible.value);
 
-	const starterOffer = computed(() =>
-		cloudPlanStore.currentUserCloudInfo?.upgradeOffer?.plans.find(
-			(plan) => plan.slug === 'starter',
-		),
-	);
+	const starterOffer = computed(() => cloudPlanStore.currentUserCloudInfo?.upgradeOffer);
 
-	const offerCurrency = computed(() => cloudPlanStore.currentUserCloudInfo?.upgradeOffer?.currency);
+	const offerCurrency = computed(() => starterOffer.value?.currency);
 
 	const markSeen = async () => {
 		usersStore.setCalloutDismissed(TRIAL_INTRO_SEEN_CALLOUT);
