@@ -6,6 +6,10 @@ import N8nMarkdown from './Markdown.vue';
 
 describe('components', () => {
 	describe('N8nMarkdown', () => {
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
 		it('should render unchecked checkboxes', () => {
 			const wrapper = render(N8nMarkdown, {
 				global: {
@@ -49,6 +53,42 @@ describe('components', () => {
 			expect(wrapper.html()).toContain(
 				'<p><img src="https://example.com/image.png&quot;> foo=&quot;" alt="alt text"></p>',
 			);
+		});
+
+		it('should render static image urls at root deployments', () => {
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content: '![alt text](/static/example.png)\n',
+				},
+			});
+
+			const image = wrapper.container.querySelector('img');
+			expect(image?.getAttribute('src')).toBe('/static/example.png');
+		});
+
+		it('should render static image urls under the configured base path', () => {
+			vi.stubGlobal('BASE_PATH', '/n8n/');
+
+			const wrapper = render(N8nMarkdown, {
+				global: {
+					directives: {
+						n8nHtml,
+					},
+				},
+				props: {
+					content:
+						'![base path image](/n8n/static/example.png)\n![root image](/static/example.png)\n',
+				},
+			});
+
+			const html = wrapper.html();
+			expect(html).toContain('src="/n8n/static/example.png"');
+			expect(html).not.toContain('src="/static/example.png"');
 		});
 
 		it('should render checked checkboxes', () => {
