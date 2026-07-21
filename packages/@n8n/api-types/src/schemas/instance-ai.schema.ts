@@ -1609,6 +1609,80 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	pinNodes: z.array(z.string().min(1)).max(50).optional(),
 }) {}
 
+// ---------------------------------------------------------------------------
+// Eval agent execution — run a built first-class Agent for one scenario turn.
+// Tool-side HTTP is mocked at the wire (same layer as workflow eval); the
+// agent's own model call runs for real and is recorded, not mocked.
+// ---------------------------------------------------------------------------
+
+export interface InstanceAiEvalAgentToolCallRecord {
+	/** Sanitized tool name — matches what the model called. */
+	tool: string;
+	/** Where the tool executes. 'other' covers built-ins (skills, todos, environment). */
+	kind: 'node' | 'workflow' | 'custom' | 'mcp' | 'other';
+	input?: unknown;
+	output?: unknown;
+	/** Tool-level failure. Unlike workflow node errors, this does NOT flip run `success` — agents may recover. */
+	error?: string;
+	/** True when at least one outbound HTTP request behind this call was served by the mock layer. */
+	mocked: boolean;
+	interceptedRequests: InstanceAiEvalInterceptedRequest[];
+	/** True when the call required approval and eval auto-approved it. */
+	autoApproved?: boolean;
+}
+
+/** One recorded (passthrough) call to the agent's real model provider. Bodies are redacted and truncated. */
+export interface InstanceAiEvalAgentModelTurnRecord {
+	url: string;
+	provider?: string;
+	status?: number;
+	durationMs?: number;
+	streamed: boolean;
+	requestBody?: unknown;
+	responseBody?: unknown;
+	error?: string;
+}
+
+/** Phase-1 output for agent scenarios: the opening user message plays the role trigger pin data plays for workflows. */
+export interface InstanceAiEvalAgentScenarioSeed {
+	openingMessage: string;
+	globalContext: string;
+	/** Per-tool data hints, keyed by sanitized tool name. */
+	toolHints: Record<string, string>;
+	warnings: string[];
+}
+
+/** A config feature the eval runtime pruned before the run (not yet mockable). */
+export interface InstanceAiEvalAgentSkippedFeature {
+	feature: string;
+	reason: string;
+}
+
+export interface InstanceAiEvalAgentExecutionResult {
+	runId: string;
+	/** The run completed without framework/model errors. Tool-level errors live on toolCalls[].error. */
+	success: boolean;
+	errors: string[];
+	/** The agent's final assistant text for the turn. */
+	finalText: string;
+	model?: string;
+	finishReason?: string;
+	toolCalls: InstanceAiEvalAgentToolCallRecord[];
+	modelTurns: InstanceAiEvalAgentModelTurnRecord[];
+	usage?: { inputTokens?: number; outputTokens?: number };
+	seed: InstanceAiEvalAgentScenarioSeed;
+	skippedFeatures: InstanceAiEvalAgentSkippedFeature[];
+	mockedCredentials: InstanceAiEvalMockedCredential[];
+}
+
+export class InstanceAiEvalAgentExecutionRequest extends Z.class({
+	/** Project the agent lives in (agent routes are project-scoped). */
+	projectId: z.string().min(1),
+	scenarioHints: z.string().max(2000).optional(),
+	/** Overall run budget. Server default applies when omitted. */
+	timeoutMs: z.number().int().min(30_000).max(900_000).optional(),
+}) {}
+
 export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	threadId: z.string().uuid(),
 	/**

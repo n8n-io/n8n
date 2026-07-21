@@ -5,6 +5,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
+	NodeHelpers,
 	UserError,
 	deepCopy,
 } from 'n8n-workflow';
@@ -12,10 +13,14 @@ import type {
 	IConnection,
 	IConnections,
 	INode,
+	INodeParameterResourceLocator,
 	INodeParameters,
+	INodeTypeDescription,
 	IWorkflowBase,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+
+import { NodeTypes } from '@/node-types';
 
 import { isCoercibleBooleanExpression } from '../evaluation-config-validator';
 import { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
@@ -40,7 +45,10 @@ type UserTriggerEdge = {
 
 @Service()
 export class WorkflowCompilerService {
-	constructor(private readonly providerRegistry: LlmJudgeProviderRegistry) {}
+	constructor(
+		private readonly providerRegistry: LlmJudgeProviderRegistry,
+		private readonly nodeTypes: NodeTypes,
+	) {}
 
 	compile(workflow: IWorkflowBase, config: EvaluationConfig): IWorkflowBase {
 		this.assertNoReservedNames(workflow);
@@ -352,20 +360,70 @@ export class WorkflowCompilerService {
 		metricY: number,
 	): INode[] {
 		if (metric.type !== 'llm_judge') return [];
+		const { typeVersion, model } = this.resolveChatModelShape(
+			metric.config.provider,
+			metric.config.model,
+		);
 		return [
 			{
 				id: nanoid(),
 				name: `__eval_model_${metric.id}`,
 				type: metric.config.provider,
-				typeVersion: 1,
+				typeVersion,
 				position: [metricX, metricY + MODEL_OFFSET_Y],
 				credentials: this.credentialsForProvider(
 					metric.config.provider,
 					metric.config.credentialId,
 				),
-				parameters: { model: metric.config.model },
+				parameters: { model },
 			},
 		];
+	}
+
+	/**
+	 * Shapes the judge's chat-model sub-node to the provider node's current definition
+	 * instead of pinning it to a legacy version: uses the node's default `typeVersion`
+	 * and emits `model` as a resource locator when that version's `model` property
+	 * expects one (a plain string otherwise). Falls back to the legacy v1 + string form
+	 * if the node type can't be introspected, so judging keeps working.
+	 */
+	private resolveChatModelShape(
+		provider: string,
+		modelId: string,
+	): { typeVersion: number; model: string | INodeParameterResourceLocator } {
+		const legacyShape = { typeVersion: 1, model: modelId };
+		try {
+			const description = this.nodeTypes.getByNameAndVersion(provider).description;
+			const typeVersion = Array.isArray(description.version)
+				? (description.defaultVersion ?? Math.max(...description.version))
+				: description.version;
+			if (!Number.isFinite(typeVersion)) return legacyShape;
+
+			return {
+				typeVersion,
+				model: this.modelExpectsResourceLocator(description, typeVersion)
+					? { __rl: true, mode: 'list', value: modelId, cachedResultName: modelId }
+					: modelId,
+			};
+		} catch {
+			return legacyShape;
+		}
+	}
+
+	/**
+	 * Whether the `model` property shown at `typeVersion` is a resource locator. Chat-model
+	 * nodes gate several `model` variants by `@version`, so pick the one that displays at
+	 * this version and read its declared type.
+	 */
+	private modelExpectsResourceLocator(
+		description: INodeTypeDescription,
+		typeVersion: number,
+	): boolean {
+		const modelProp = description.properties.find(
+			(p) =>
+				p.name === 'model' && NodeHelpers.displayParameter({}, p, { typeVersion }, description),
+		);
+		return modelProp?.type === 'resourceLocator';
 	}
 
 	private credentialsForProvider(provider: string, credentialId: string) {

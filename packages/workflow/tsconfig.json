@@ -5,7 +5,6 @@
 		"noUncheckedIndexedAccess": false,
 		"types": ["vite/client", "vitest/globals"],
 		"paths": {
-			"n8n-workflow": ["./src/index.ts"],
 			"esprima-next": ["./node_modules/esprima-next/dist/esm/esprima"]
 		}
 	},
