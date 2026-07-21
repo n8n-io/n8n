@@ -16,6 +16,9 @@ export const itemRLC: INodeProperties = {
 	required: true,
 	default: { mode: 'list', value: '' },
 	description: 'The item to operate on',
+	typeOptions: {
+		loadOptionsDependsOn: ['site.value', 'list.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
