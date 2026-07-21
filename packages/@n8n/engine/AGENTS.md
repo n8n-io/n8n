@@ -25,10 +25,10 @@ a deployable engine worker) without touching core logic.
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
 - **Ports** — interfaces the core depends on: `AdmittanceService`, `WorkQueue`,
-  and (intended) an execution store. Handed in at construction.
+  and `ExecutionStore`. Handed in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
-  migrations, the Postgres `DataSource`), `queue/` (in-memory default). The
-  Postgres/ORM coupling lives *here only*.
+  migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
+  (in-memory default). The Postgres/ORM coupling lives *here only*.
 - **Serving infra** — `server/` (express), `serve.ts` (standalone entrypoint),
   Dockerfile. First candidate to be extracted later.
 - **Composition roots** — `serve.ts` (standalone) and, in integrated mode,
@@ -37,9 +37,9 @@ a deployable engine worker) without touching core logic.
 
 ## Rules that keep the seams extractable
 
-- Core modules (`graph`, `execution`, `admittance`) don't import `express` or
-  `pg`, and don't construct a `DataSource`. Persistence, queue, and HTTP are
-  injected.
+- Core modules (`graph`, `execution`, `admittance`) don't import `express`,
+  `pg`, or `@n8n/typeorm`, and don't construct a `DataSource`. Persistence,
+  queue, and HTTP are injected.
 - `@n8n/typeorm` / `pg` stay confined to `database/`.
 - `@n8n/config` + `@n8n/di` are used only at the serving/composition layer (for
   `EngineConfig`), never in core logic. (The blueprint flags `@n8n/config` as
@@ -56,8 +56,5 @@ a deployable engine worker) without touching core logic.
 
 ## Known deviations — the seams to clean up on decomposition
 
-- `StartExecutionService` depends on a TypeORM `Repository`, not a persistence
-  port. Turning that into an execution-store port is the main step toward a
-  storage-agnostic core (design §2.2's "abstract data store").
 - `DataSource` construction currently lives in `database/`; it is really a
   composition-root concern.

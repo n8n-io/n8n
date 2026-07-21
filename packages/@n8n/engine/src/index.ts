@@ -25,5 +25,10 @@ export type {
 	WorkQueueMessage,
 } from './queue';
 
-export { createDataSource } from './database';
-export type { ExecutionMode, ExecutionStatus } from './database';
+export { createDataSource, TypeOrmExecutionStore } from './database';
+export type {
+	ExecutionMode,
+	ExecutionStatus,
+	ExecutionStore,
+	NewExecutionRecord,
+} from './database';

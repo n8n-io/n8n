@@ -2,7 +2,7 @@ import type { DataSource } from '@n8n/typeorm';
 import express, { type Application } from 'express';
 
 import type { AdmittanceService } from '../admittance';
-import { WorkflowExecution } from '../database';
+import { TypeOrmExecutionStore, WorkflowExecution } from '../database';
 import { StartExecutionService } from '../execution/start-execution.service';
 import type { WorkQueue } from '../queue';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
@@ -27,8 +27,14 @@ export function createEngineServer(deps?: EngineServerDeps): { app: Application 
 	});
 
 	if (deps) {
-		const repo = deps.dataSource.getRepository(WorkflowExecution);
-		const startExecution = new StartExecutionService(deps.admittance, repo, deps.workQueue);
+		const executionStore = new TypeOrmExecutionStore(
+			deps.dataSource.getRepository(WorkflowExecution),
+		);
+		const startExecution = new StartExecutionService(
+			deps.admittance,
+			executionStore,
+			deps.workQueue,
+		);
 		app.use('/api/workflow-executions', createWorkflowExecutionsRouter(startExecution));
 	}
 
