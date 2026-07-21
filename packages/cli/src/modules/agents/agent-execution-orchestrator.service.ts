@@ -260,7 +260,7 @@ export class AgentExecutionOrchestratorService {
 			// or fail while streaming. Don't repeat the original user message — the
 			// pre-suspension execution already has it.
 			const messageRecord = recorder.getMessageRecord();
-			try {
+			const persist = async () => {
 				const executionId = await this.agentExecutionService.recordMessage({
 					threadId,
 					agentId,
@@ -275,12 +275,22 @@ export class AgentExecutionOrchestratorService {
 					},
 				});
 				onExecutionRecorded?.(executionId);
-			} catch (error) {
+			};
+			const logPersistFailure = (error: unknown) => {
 				this.logger.warn('Failed to record resumed agent execution', {
 					agentId,
 					threadId,
 					error: error instanceof Error ? error.message : String(error),
 				});
+			};
+			if (onExecutionRecorded) {
+				try {
+					await persist();
+				} catch (error) {
+					logPersistFailure(error);
+				}
+			} else {
+				void persist().catch(logPersistFailure);
 			}
 		}
 	}
@@ -481,7 +491,7 @@ export class AgentExecutionOrchestratorService {
 			// Always record — even if suspended or failed, the pre-suspension/error
 			// response text and tool calls are valuable.
 			const messageRecord = recorder.getMessageRecord();
-			try {
+			const persist = async () => {
 				const executionId = await this.agentExecutionService.recordMessage({
 					threadId,
 					agentId,
@@ -496,12 +506,22 @@ export class AgentExecutionOrchestratorService {
 					telemetry,
 				});
 				onExecutionRecorded?.(executionId);
-			} catch (error) {
+			};
+			const logPersistFailure = (error: unknown) => {
 				this.logger.warn('Failed to record agent execution', {
 					agentId,
 					threadId,
 					error: error instanceof Error ? error.message : String(error),
 				});
+			};
+			if (onExecutionRecorded) {
+				try {
+					await persist();
+				} catch (error) {
+					logPersistFailure(error);
+				}
+			} else {
+				void persist().catch(logPersistFailure);
 			}
 		}
 	}

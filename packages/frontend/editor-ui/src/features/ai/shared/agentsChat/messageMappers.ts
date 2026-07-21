@@ -89,7 +89,7 @@ export function findOpenInteractive(
 }
 
 /** Persisted chat message ids are `{executionId}:user|assistant`. */
-export function executionIdFromPersistedMessageId(id: string): string | undefined {
+function executionIdFromPersistedMessageId(id: string): string | undefined {
 	const match = /^(.*):(user|assistant)$/.exec(id);
 	return match?.[1];
 }

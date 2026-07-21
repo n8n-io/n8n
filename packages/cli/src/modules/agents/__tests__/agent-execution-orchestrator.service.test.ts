@@ -186,6 +186,25 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(onExecutionRecorded).toHaveBeenCalledWith('execution-1');
 	});
 
+	it('still records the message when onExecutionRecorded is omitted', async () => {
+		const { service, executionService } = makeService();
+		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
+
+		await collect(
+			service.streamChatResponse({
+				agentInstance: runtime.agent,
+				toolRegistry: runtime.toolRegistry,
+				agentId,
+				userId,
+				message: 'hello',
+				memory: { threadId: 'thread-1', resourceId: 'resource-1' },
+				projectId,
+			}),
+		);
+
+		expect(executionService.recordMessage).toHaveBeenCalled();
+	});
+
 	it('executes in-app chat against the draft runtime', async () => {
 		const { service, runtimeCacheService, executionService, integrationMessageContextService } =
 			makeService();
