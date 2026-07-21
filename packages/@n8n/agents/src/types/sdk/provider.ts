@@ -63,7 +63,7 @@ export interface GoogleThinkingConfig {
 
 export interface XaiThinkingConfig {
 	/** Reasoning effort level. */
-	reasoningEffort?: 'low' | 'high';
+	reasoningEffort?: 'low' | 'medium' | 'high';
 }
 
 /**
