@@ -99,6 +99,25 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
+	it('openai: forwards GPT-5.6 Sol compatible reasoningEffort values', () => {
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'medium' },
+				'openai/gpt-5.6-sol',
+			),
+		).toEqual({
+			openai: { reasoningEffort: 'medium', reasoningSummary: null },
+		});
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.(
+				{ reasoningEffort: 'xhigh' },
+				'openai/gpt-5.6-sol',
+			),
+		).toEqual({
+			openai: { reasoningEffort: 'xhigh', reasoningSummary: null },
+		});
+	});
+
 	it('google: forwards thinkingBudget and thinkingLevel when set', () => {
 		expect(
 			getProviderQuirks('google').thinkingToProviderOptions?.(
