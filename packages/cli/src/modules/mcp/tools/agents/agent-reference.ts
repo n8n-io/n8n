@@ -40,6 +40,8 @@ creating either one.
 ## Build sequence
 
 1. Use search_projects to identify the project, or search_agents and get_agent for an existing Agent.
+   By-ID tools (get_agent, mutate_agent, validate_agent, publish_agent, delete_agent,
+   update_agent_integration) accept an agentId alone; projectId is optional and resolved from it.
 2. Use discover_agent_assets plus list_credentials, search_nodes, get_node_types, and
    explore_node_resources to ground model, tool, workflow, integration, and credential choices.
 3. For a new Agent, call create_agent with the initial config after discovering its assets. The
@@ -65,20 +67,26 @@ answer before calling publish_agent or connecting an integration.
 
 ## mutate_agent operations
 
-- config.replace: Replace the editable Agent JSON configuration with value.config. Must not include
+Pass a single \`operation\` object whose \`type\` selects the mutation. Each operation's fields sit
+directly on that object — there is no \`value\` wrapper. For example:
+
+\`\`\`json
+{ "type": "config.patch", "patch": [{ "op": "add", "path": "/tools/-", "value": { "type": "workflow", "workflow": "My Workflow", "name": "my_tool" } }] }
+\`\`\`
+
+- config.replace: Set \`config\` to the complete editable Agent JSON configuration. Must not include
   integrations; use update_agent_integration for those.
-- config.patch: Apply value.patch as RFC 6902 operations. Supported operations are add, remove,
-  replace, move, copy, and test. Paths under /integrations are rejected; use
-  update_agent_integration for those.
-- skill.upsert: Create and attach a skill when value.skillId is absent, or replace an existing skill
-  body when it is present. Pass the complete skill body.
-- skill.delete: Delete a skill body and remove its config reference.
-- task.upsert: Create and attach a scheduled task when value.taskId is absent, or replace an existing
-  task body when present. enabled controls the task config reference.
-- task.delete: Delete a task body and remove its config reference.
-- customTool.upsert: Compile, validate, store, and attach a custom TypeScript tool. The source must
-  export default new Tool('tool_name') and may import only runtime-supported packages.
-- customTool.delete: Delete a custom tool body and remove its config reference.
+- config.patch: Set \`patch\` to an array of RFC 6902 operations (add, remove, replace, move, copy,
+  test). Paths under /integrations are rejected; use update_agent_integration for those.
+- skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create and attach a new
+  skill, or pass it to replace an existing skill body.
+- skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
+- task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
+  scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
+- task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
+- customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
+  The source must export default new Tool('tool_name') and may import only runtime-supported packages.
+- customTool.delete: Set \`toolId\` to the custom tool to delete; its config reference is removed.
 
 Every mutation requires baseConfigHash from get_agent or the previous successful mutation. Mutation
 responses contain only the next configHash and the affected resource ID, not the full Agent. On a

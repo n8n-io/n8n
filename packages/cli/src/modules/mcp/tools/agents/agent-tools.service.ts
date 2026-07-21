@@ -86,7 +86,11 @@ const httpUrlSchema = z
 	.refine((value) => /^https?:\/\//i.test(value), { message: 'Must be a valid HTTP(S) URL' });
 
 const agentIdentityShape = {
-	projectId: z.string().min(1).describe('Project containing the Agent'),
+	projectId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe('Project containing the Agent. Optional; resolved from agentId when omitted.'),
 	agentId: z.string().min(1).describe('Agent ID'),
 } satisfies z.ZodRawShape;
 
@@ -363,8 +367,9 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'get_agent', { projectId, agentId }, async () => {
+			handler: async ({ projectId: projectIdArg, agentId }) =>
+				await this.run(user, 'get_agent', { projectId: projectIdArg, agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
 					await this.assertScope(user, projectId, 'agent:read');
 					return { ok: true, ...(await this.getAgentSnapshot(user, projectId, agentId)) };
 				}),
@@ -440,7 +445,7 @@ export class McpAgentToolsService {
 			name: 'mutate_agent',
 			config: {
 				description:
-					'Apply one config, skill, task, or custom-tool mutation to an Agent draft. Returns the next configHash for subsequent mutations.',
+					'Apply one config, skill, task, or custom-tool mutation to an Agent draft. The operation fields sit directly on the operation object (no value wrapper), e.g. { "type": "config.patch", "patch": [...] }. Returns the next configHash for subsequent mutations.',
 				inputSchema: mutateAgentInput,
 				annotations: {
 					title: 'Mutate Agent',
@@ -456,8 +461,9 @@ export class McpAgentToolsService {
 					'mutate_agent',
 					{ projectId: input.projectId, agentId: input.agentId, type: input.operation.type },
 					async () => {
-						await this.assertScope(user, input.projectId, 'agent:update');
-						const config = await this.agentConfigService.getConfig(input.agentId, input.projectId);
+						const projectId = await this.resolveProjectId(user, input.agentId, input.projectId);
+						await this.assertScope(user, projectId, 'agent:update');
+						const config = await this.agentConfigService.getConfig(input.agentId, projectId);
 						const configHash = getAgentConfigHash(config);
 						if (configHash !== input.baseConfigHash) {
 							return {
@@ -469,14 +475,19 @@ export class McpAgentToolsService {
 							};
 						}
 
-						const { resource, config: newConfig } = await this.applyMutation(user, input, config);
+						const { resource, config: newConfig } = await this.applyMutation(
+							user,
+							input,
+							config,
+							projectId,
+						);
 						return {
 							ok: true,
 							agentId: input.agentId,
 							operation: input.operation.type,
 							configHash: newConfig
 								? getAgentConfigHash(newConfig)
-								: await this.fetchConfigHash(input.projectId, input.agentId),
+								: await this.fetchConfigHash(projectId, input.agentId),
 							...(resource ? { resource } : {}),
 						};
 					},
@@ -499,8 +510,9 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'validate_agent', { projectId, agentId }, async () => {
+			handler: async ({ projectId: projectIdArg, agentId }) =>
+				await this.run(user, 'validate_agent', { projectId: projectIdArg, agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
 					await this.assertScope(user, projectId, 'agent:read');
 					return {
 						ok: true,
@@ -526,8 +538,9 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'publish_agent', { projectId, agentId }, async () => {
+			handler: async ({ projectId: projectIdArg, agentId }) =>
+				await this.run(user, 'publish_agent', { projectId: projectIdArg, agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
 					await this.assertScope(user, projectId, 'agent:publish');
 					const validation = await this.validateAgent(user, projectId, agentId);
 					if (!validation.valid) {
@@ -562,8 +575,9 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'unpublish_agent', { projectId, agentId }, async () => {
+			handler: async ({ projectId: projectIdArg, agentId }) =>
+				await this.run(user, 'unpublish_agent', { projectId: projectIdArg, agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
 					await this.assertScope(user, projectId, 'agent:unpublish');
 					const agent = await this.agentPublishService.unpublishAgent(agentId, projectId);
 					return {
@@ -591,8 +605,9 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'delete_agent', { projectId, agentId }, async () => {
+			handler: async ({ projectId: projectIdArg, agentId }) =>
+				await this.run(user, 'delete_agent', { projectId: projectIdArg, agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
 					await this.assertScope(user, projectId, 'agent:delete');
 					const deleted = await this.agentsService.delete(agentId, projectId);
 					if (!deleted) throw new UserError(`Agent "${agentId}" not found`);
@@ -802,8 +817,9 @@ export class McpAgentToolsService {
 		user: User,
 		input: MutateAgentInput,
 		config: AgentJsonConfig,
+		projectId: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
-		const { projectId, agentId, operation } = input;
+		const { agentId, operation } = input;
 		switch (operation.type) {
 			case 'config.replace': {
 				if (operation.config.integrations !== undefined) {
@@ -1044,14 +1060,19 @@ export class McpAgentToolsService {
 	}
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
-		await this.assertScope(user, input.projectId, 'agent:update');
-		const agent = await this.getAgentOrThrow(input.agentId, input.projectId);
+		const projectId = await this.resolveProjectId(user, input.agentId, input.projectId);
+		await this.assertScope(user, projectId, 'agent:update');
+		const agent = await this.getAgentOrThrow(input.agentId, projectId);
 		return input.action === 'disconnect'
-			? await this.disconnectIntegration(input, agent)
-			: await this.connectIntegration(user, input, agent);
+			? await this.disconnectIntegration(input, agent, projectId)
+			: await this.connectIntegration(user, input, agent, projectId);
 	}
 
-	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
+	private async disconnectIntegration(
+		input: UpdateIntegrationInput,
+		agent: Agent,
+		projectId: string,
+	) {
 		const persisted = (agent.integrations ?? []).find(
 			(item) => item.type === input.type && item.credentialId === input.credentialId,
 		);
@@ -1084,11 +1105,16 @@ export class McpAgentToolsService {
 			connected: false,
 			published: agent.activeVersionId !== null,
 			activeVersionId: agent.activeVersionId,
-			configHash: await this.fetchConfigHash(input.projectId, input.agentId),
+			configHash: await this.fetchConfigHash(projectId, input.agentId),
 		};
 	}
 
-	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
+	private async connectIntegration(
+		user: User,
+		input: UpdateIntegrationInput,
+		agent: Agent,
+		projectId: string,
+	) {
 		const candidate = {
 			type: input.type,
 			credentialId: input.credentialId,
@@ -1101,7 +1127,7 @@ export class McpAgentToolsService {
 		}
 
 		const credential = await this.requireAccessibleCredential(
-			this.credentialProvider(user, input.projectId),
+			this.credentialProvider(user, projectId),
 			input.credentialId,
 		);
 		const implementation = this.chatIntegrationRegistry.require(parsed.data.type);
@@ -1116,12 +1142,12 @@ export class McpAgentToolsService {
 		});
 		const publishedAgent = await this.agentPublishService.publishAgent(
 			input.agentId,
-			input.projectId,
+			projectId,
 			user,
 			undefined,
 			{ syncIntegrations: false },
 		);
-		await this.chatIntegrationService.connect(input.agentId, parsed.data, input.projectId);
+		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			input.agentId,
 			parsed.data,
@@ -1134,7 +1160,7 @@ export class McpAgentToolsService {
 			connected: true,
 			published: true,
 			activeVersionId: publishedAgent.activeVersionId,
-			configHash: await this.fetchConfigHash(input.projectId, input.agentId),
+			configHash: await this.fetchConfigHash(projectId, input.agentId),
 		};
 	}
 
@@ -1149,6 +1175,18 @@ export class McpAgentToolsService {
 		const credential = (await credentialProvider.list()).find((item) => item.id === credentialId);
 		if (!credential) throw new UserError('Credential not found or not accessible');
 		return credential;
+	}
+
+	/**
+	 * Resolves the project a by-ID tool should act on. Clients that already hold
+	 * the projectId pass it through; otherwise it is derived from the agentId,
+	 * scoped to the projects the user can access.
+	 */
+	private async resolveProjectId(user: User, agentId: string, projectId?: string): Promise<string> {
+		if (projectId) return projectId;
+		const agent = await this.agentsService.findByIdForUser(agentId, user.id);
+		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		return agent.projectId;
 	}
 
 	private async assertScope(user: User, projectId: string, scope: Scope): Promise<void> {

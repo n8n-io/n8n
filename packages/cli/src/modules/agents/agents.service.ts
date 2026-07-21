@@ -159,6 +159,22 @@ export class AgentsService {
 		});
 	}
 
+	/**
+	 * Resolves an agent by ID within the projects the user can access. Agent IDs
+	 * are globally unique, so this lets callers address an agent without knowing
+	 * its project up front.
+	 */
+	async findByIdForUser(agentId: string, userId: string): Promise<Agent | null> {
+		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+		const projectIds = projectRelations.map((pr) => pr.projectId);
+
+		if (projectIds.length === 0) return null;
+
+		return await this.agentRepository.findOne({
+			where: { id: agentId, projectId: In(projectIds) },
+		});
+	}
+
 	async findByUserPaginated(
 		userId: string,
 		options: ListAgentsQueryDto,

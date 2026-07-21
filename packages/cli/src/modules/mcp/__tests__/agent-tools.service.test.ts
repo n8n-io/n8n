@@ -793,6 +793,68 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
+	describe('projectId resolution', () => {
+		beforeEach(() => {
+			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentSkillsService.listSkills.mockResolvedValue([] as never);
+			agentTaskService.list.mockResolvedValue([] as never);
+		});
+
+		it('resolves the project from agentId when projectId is omitted', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
+			agentsService.findById.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
+
+			const result = await callTool('get_agent', { agentId: 'agent-1' });
+
+			expect(agentsService.findByIdForUser).toHaveBeenCalledWith('agent-1', 'user-1');
+			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-9',
+			});
+			expect(result.structuredContent).toMatchObject({ ok: true });
+		});
+
+		it('skips resolution when projectId is supplied', async () => {
+			agentsService.findById.mockResolvedValue(agentEntity());
+
+			await callTool('get_agent', { projectId: 'project-1', agentId: 'agent-1' });
+
+			expect(agentsService.findByIdForUser).not.toHaveBeenCalled();
+		});
+
+		it('returns an error when the agentId resolves to no accessible agent', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(null);
+
+			const result = await callTool('get_agent', { agentId: 'ghost' });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ error: 'Agent "ghost" not found' });
+		});
+
+		it('applies a mutation against the resolved project when projectId is omitted', async () => {
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
+			agentConfigService.getConfig.mockResolvedValue(baseConfig);
+			agentConfigService.updateConfig.mockResolvedValue({
+				config: baseConfig,
+				updatedAt: 'now',
+				versionId: 'v2',
+			});
+
+			const result = await callTool('mutate_agent', {
+				agentId: 'agent-1',
+				baseConfigHash: getAgentConfigHash(baseConfig),
+				operation: { type: 'config.replace', config: { name: 'My Agent' } },
+			});
+
+			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
+				'agent-1',
+				'project-9',
+				{ name: 'My Agent' },
+				user,
+			);
+			expect(result.structuredContent).toMatchObject({ ok: true });
+		});
+	});
+
 	describe('update_agent_integration disconnect', () => {
 		const input = {
 			projectId: 'project-1',
