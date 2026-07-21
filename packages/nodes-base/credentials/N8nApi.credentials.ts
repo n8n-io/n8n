@@ -43,7 +43,7 @@ export class N8nApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.baseUrl }}',
-			url: '/workflows?limit=5',
+			url: '/credentials/schema/n8nApi',
 		},
 	};
 }
