@@ -2,10 +2,11 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * Enumerate every workspace package under `packagesDir`, returning
- * `{ dir, manifestPath, pkg }` for each `package.json` found. Skips
- * `node_modules`, `dist` and dotfile directories. Shared so every
- * single-instance check agrees on exactly which packages "the workspace" is.
+ * Enumerate workspace packages under `packagesDir`, returning `{ dir, manifestPath, pkg }`
+ * for each. A directory that contains a `package.json` is treated as a package and its
+ * subtree is NOT descended — workspace packages are not nested inside one another, and
+ * descending would pick up non-member manifests (e.g. `node-cli`'s scaffolding templates).
+ * Skips `node_modules`, `dist` and dotfile directories.
  */
 export function loadWorkspaceManifests(packagesDir) {
 	const out = [];
@@ -19,8 +20,9 @@ export function loadWorkspaceManifests(packagesDir) {
 			const manifestPath = join(full, 'package.json');
 			if (existsSync(manifestPath)) {
 				out.push({ dir: full, manifestPath, pkg: JSON.parse(readFileSync(manifestPath, 'utf8')) });
+			} else {
+				walk(full);
 			}
-			walk(full);
 		}
 	};
 	walk(packagesDir);

@@ -130,6 +130,7 @@ function main() {
 			stdio: ['ignore', 'ignore', 'inherit'],
 		});
 		const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
+		if (!produced) throw new Error(`pnpm pack produced no tarball for ${name}`);
 		tarballByName[name] = join(tarballs, produced);
 	}
 
@@ -178,4 +179,6 @@ function main() {
 	console.log('\nOK: no curated duplicates in the npm-install graph.');
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) {
+	main();
+}

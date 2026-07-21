@@ -83,7 +83,9 @@ separate `3.x`-branch effort. Until then the checks run report-first:
   are recorded in [`scripts/single-instance-peers-baseline.json`](../scripts/single-instance-peers-baseline.json)
   and reported, not failed. A package **not** in the baseline that adds a curated
   dependency (a regression, e.g. moving `zod` back to `dependencies`) hard-fails. The
-  baseline shrinks to empty as the peer migration lands.
+  baseline shrinks to empty as the peer migration lands. The same file also locks in
+  `requiredPeers` — packages already declaring a curated lib as a peerDependency — and
+  hard-fails if one is later dropped.
 - **Verifier allowlist** (`EXPECTED_DUPLICATES`) — a migration-window escape hatch for a
   known, not-yet-fixable curated duplicate: the verifier reports it without failing until
   it is remediated. Currently **empty** — every curated library resolves to a single copy.
