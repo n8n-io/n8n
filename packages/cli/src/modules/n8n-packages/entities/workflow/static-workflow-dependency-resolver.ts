@@ -15,7 +15,7 @@ import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 export type WorkflowDependencyOrigin = 'top-level' | 'folder' | 'project';
 
-export interface ExportedWorkflowDependencySeed {
+interface ExportedWorkflowDependencySeed {
 	workflowId: string;
 	origin: WorkflowDependencyOrigin;
 }
@@ -42,11 +42,18 @@ export class StaticWorkflowDependencyResolver {
 
 	async resolve(options: {
 		user: User;
-		seeds: ExportedWorkflowDependencySeed[];
 		requirements: WorkflowSubWorkflowRequirement[];
+		topLevelWorkflowIds: string[];
+		folderWorkflowIds: string[];
+		projectWorkflowIds: string[];
 	}): Promise<StaticWorkflowDependencyResolution> {
-		const exportedWorkflowIds = new Set(options.seeds.map(({ workflowId }) => workflowId));
-		const originsByWorkflowId = this.resolveOrigins(options.seeds, options.requirements);
+		const seeds = this.buildSeeds({
+			topLevelWorkflowIds: options.topLevelWorkflowIds,
+			folderWorkflowIds: options.folderWorkflowIds,
+			projectWorkflowIds: options.projectWorkflowIds,
+		});
+		const exportedWorkflowIds = new Set(seeds.map(({ workflowId }) => workflowId));
+		const originsByWorkflowId = this.resolveOrigins(seeds, options.requirements);
 
 		const autoAddedWorkflowIds = [...originsByWorkflowId.keys()].filter(
 			(workflowId) => !exportedWorkflowIds.has(workflowId),
@@ -59,6 +66,27 @@ export class StaticWorkflowDependencyResolver {
 		});
 
 		return { autoAddedWorkflows };
+	}
+
+	private buildSeeds(options: {
+		topLevelWorkflowIds: string[];
+		folderWorkflowIds: string[];
+		projectWorkflowIds: string[];
+	}): ExportedWorkflowDependencySeed[] {
+		return [
+			...options.topLevelWorkflowIds.map((workflowId) => ({
+				workflowId,
+				origin: 'top-level' as const,
+			})),
+			...options.folderWorkflowIds.map((workflowId) => ({
+				workflowId,
+				origin: 'folder' as const,
+			})),
+			...options.projectWorkflowIds.map((workflowId) => ({
+				workflowId,
+				origin: 'project' as const,
+			})),
+		];
 	}
 
 	private resolveOrigins(

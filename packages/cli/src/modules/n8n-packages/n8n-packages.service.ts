@@ -17,7 +17,6 @@ import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { VariableExporter } from './entities/variable/variable.exporter';
 import { assertStaticSubWorkflowsIncluded } from './entities/workflow/static-sub-workflow-requirements';
-import type { ExportedWorkflowDependencySeed } from './entities/workflow/static-workflow-dependency-resolver';
 import { StaticWorkflowDependencyResolver } from './entities/workflow/static-workflow-dependency-resolver';
 import {
 	StaticWorkflowDependencyExporter,
@@ -132,11 +131,9 @@ export class N8nPackagesService {
 			const autoAddWorkflowRequirements = await this.staticWorkflowDependencyResolver.resolve({
 				user: request.user,
 				requirements: workflowRequirements,
-				seeds: this.buildWorkflowDependencySeeds({
-					topLevelWorkflows: workflowExportResult?.entries ?? [],
-					folderWorkflows: folderExportResult?.workflowEntries ?? [],
-					projectWorkflows: projectExportResult?.workflowEntries ?? [],
-				}),
+				topLevelWorkflowIds: workflowExportResult?.entries.map(({ id }) => id) ?? [],
+				folderWorkflowIds: folderExportResult?.workflowEntries.map(({ id }) => id) ?? [],
+				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 			});
 
 			autoAddExportResult = this.staticWorkflowDependencyExporter.export({
@@ -285,27 +282,6 @@ export class N8nPackagesService {
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
 		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
 		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
-	}
-
-	private buildWorkflowDependencySeeds(options: {
-		topLevelWorkflows: ManifestEntry[];
-		folderWorkflows: ManifestEntry[];
-		projectWorkflows: ManifestEntry[];
-	}): ExportedWorkflowDependencySeed[] {
-		return [
-			...options.topLevelWorkflows.map((entry) => ({
-				workflowId: entry.id,
-				origin: 'top-level' as const,
-			})),
-			...options.folderWorkflows.map((entry) => ({
-				workflowId: entry.id,
-				origin: 'folder' as const,
-			})),
-			...options.projectWorkflows.map((entry) => ({
-				workflowId: entry.id,
-				origin: 'project' as const,
-			})),
-		];
 	}
 
 	private dedupeManifestEntries(entries: ManifestEntry[]): ManifestEntry[] {
