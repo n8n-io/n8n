@@ -36,6 +36,7 @@
     "@typescript/native": "catalog:typescript-tooling",
     "rimraf": "catalog:",
     "typescript": "catalog:typescript-tooling",
+    "typescript-eslint": "^8.35.0",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-eslint-parser": "^10.1.3"

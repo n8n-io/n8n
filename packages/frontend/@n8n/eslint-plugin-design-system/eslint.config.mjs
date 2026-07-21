@@ -1,10 +1,8 @@
-import { baseConfig } from '@n8n/eslint-config/base';
-import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
 
-export default defineConfig(baseConfig, {
+export default tseslint.config(...tseslint.configs.recommended, {
 	files: ['src/**/*.ts'],
 	rules: {
 		'@typescript-eslint/naming-convention': 'off',
-		'import-x/no-default-export': 'off',
 	},
 });
