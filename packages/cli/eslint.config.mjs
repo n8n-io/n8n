@@ -171,6 +171,7 @@ export default defineConfig(
 			'./src/modules/agents/builder/agents-builder.service.ts',
 			'./src/modules/agents/instance-ai-builder-delegate.adapter.ts',
 			'./src/modules/agents/integrations/n8n-memory.ts',
+			'./src/modules/agents/tools/workflow-tool-workflow-resolver.ts',
 			'./src/modules/breaking-changes/breaking-changes.service.ts',
 			'./src/modules/chat-hub/chat-hub-credentials.service.ts',
 			'./src/modules/chat-hub/chat-hub-workflow.service.ts',
