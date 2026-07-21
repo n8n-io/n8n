@@ -45,7 +45,18 @@ export class TaskBrokerWsServer {
 
 	start() {
 		this.startHeartbeatChecks();
+		this.runnerLifecycleEvents.on('runner:unresponsive', this.onRunnerUnresponsive);
 	}
+
+	/**
+	 * Handle the broker's `runner:unresponsive` signal — fired when a runner
+	 * has missed the configured number of consecutive task-accept handshakes.
+	 * Disconnect the runner so its launcher can restart it via the standard
+	 * connection-loss recovery path.
+	 */
+	private onRunnerUnresponsive = ({ runnerId }: { runnerId: string }) => {
+		void this.removeConnection(runnerId, 'runner-unresponsive', WsStatusCodes.CloseProtocolError);
+	};
 
 	private startHeartbeatChecks() {
 		const { heartbeatInterval } = this.taskRunnersConfig;
@@ -72,6 +83,8 @@ export class TaskBrokerWsServer {
 	}
 
 	async stop() {
+		this.runnerLifecycleEvents.off('runner:unresponsive', this.onRunnerUnresponsive);
+
 		if (this.heartbeatTimer) {
 			clearInterval(this.heartbeatTimer);
 			this.heartbeatTimer = undefined;
