@@ -37,6 +37,12 @@ export type ToolCallData = {
 		type: string | number | true | object;
 	};
 	observation: string;
+	/**
+	 * Index of the item this step belongs to. Lets buildSteps() keep concurrent
+	 * batch items' histories separate when previousRequests from multiple items
+	 * end up merged into the same metadata (see executeBatch's batch merge).
+	 */
+	itemIndex?: number;
 };
 
 /**
