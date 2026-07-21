@@ -24,6 +24,16 @@ type EditImageNodeOptions = {
 	quality?: number;
 };
 
+const GRAVITY_MAP: { [horizontal: string]: { [vertical: string]: string } } = {
+	west: { north: 'northwest', middle: 'west', south: 'southwest' },
+	center: { north: 'north', middle: 'center', south: 'south' },
+	east: { north: 'northeast', middle: 'east', south: 'southeast' },
+};
+
+export function resolveGravity(horizontal: string, vertical: string): string {
+	return GRAVITY_MAP[horizontal]?.[vertical] ?? 'northwest';
+}
+
 const nodeOperations: INodePropertyOptions[] = [
 	{
 		name: 'Blur',
@@ -319,6 +329,58 @@ const nodeOperationOptions: INodeProperties[] = [
 			},
 		},
 		description: 'Y (vertical) position of the text',
+	},
+	{
+		displayName: 'Horizontal Alignment',
+		name: 'horizontalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Left',
+				value: 'west',
+			},
+			{
+				name: 'Center',
+				value: 'center',
+			},
+			{
+				name: 'Right',
+				value: 'east',
+			},
+		],
+		default: 'center',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+			},
+		},
+		description: 'Horizontal alignment of the text',
+	},
+	{
+		displayName: 'Vertical Alignment',
+		name: 'verticalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Top',
+				value: 'north',
+			},
+			{
+				name: 'Middle',
+				value: 'middle',
+			},
+			{
+				name: 'Bottom',
+				value: 'south',
+			},
+		],
+		default: 'middle',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+			},
+		},
+		description: 'Vertical alignment of the text',
 	},
 	{
 		displayName: 'Max Line Length',
@@ -1045,7 +1107,17 @@ export class EditImage implements INodeType {
 					resize: ['height', 'resizeOption', 'width'],
 					rotate: ['backgroundColor', 'rotate'],
 					shear: ['degreesX', 'degreesY'],
-					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
+					text: [
+						'horizontalAlignment',
+						'verticalAlignment',
+						'font',
+						'fontColor',
+						'fontSize',
+						'lineLength',
+						'positionX',
+						'positionY',
+						'text',
+					],
 					transparent: ['color'],
 				};
 
@@ -1260,6 +1332,11 @@ export class EditImage implements INodeType {
 							);
 						}
 
+						const gravity = resolveGravity(
+							operationData.horizontalAlignment as string,
+							operationData.verticalAlignment as string,
+						);
+
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
@@ -1268,6 +1345,7 @@ export class EditImage implements INodeType {
 								operationData.positionX as number,
 								operationData.positionY as number,
 								renderText,
+								gravity,
 							);
 					} else if (operationData.operation === 'transparent') {
 						gmInstance = gmInstance!.transparent(operationData.color as string);
