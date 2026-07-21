@@ -1,6 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp, type CustomFetch } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { ErrorReporter } from 'n8n-core';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -26,12 +28,20 @@ export class GraphMailer {
 
 	private logoAttachment?: Record<string, unknown>;
 
+	// Proxy-aware (HTTP(S)_PROXY / NO_PROXY) fetch routed through the single
+	// outbound transport, so token + Graph calls honor instance proxy settings.
+	// SSRF stays disabled: targets are fixed Microsoft hosts.
+	private readonly fetch: CustomFetch;
+
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
+		outboundHttp: OutboundHttp,
 	) {
 		this.config = globalConfig.userManagement.emails.microsoftGraph;
 		this.sender = this.config.sender;
+		this.fetch = outboundHttp.transport({ proxy: 'env', ssrf: 'disabled' }).asCustomFetch();
 	}
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
@@ -46,7 +56,7 @@ export class GraphMailer {
 			const body =
 				typeof mailData.body === 'string' ? mailData.body : mailData.body.toString('utf-8');
 
-			const response = await fetch(
+			const response = await this.fetch(
 				`${GRAPH_HOST}/users/${encodeURIComponent(this.sender)}/sendMail`,
 				{
 					method: 'POST',
@@ -75,6 +85,7 @@ export class GraphMailer {
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
 			);
 		} catch (error) {
+			this.errorReporter.error(error);
 			this.logger.error('Failed to send email via Microsoft Graph', {
 				recipients: mailData.emailRecipients,
 				error: error as Error,
@@ -91,7 +102,7 @@ export class GraphMailer {
 			return this.accessToken.value;
 		}
 
-		const response = await fetch(`${LOGIN_HOST}/${this.config.tenantId}/oauth2/v2.0/token`, {
+		const response = await this.fetch(`${LOGIN_HOST}/${this.config.tenantId}/oauth2/v2.0/token`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: new URLSearchParams({

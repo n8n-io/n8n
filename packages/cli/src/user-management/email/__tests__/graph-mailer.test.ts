@@ -1,3 +1,4 @@
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
@@ -11,12 +12,19 @@ const graphConfig = {
 	sender: 'noreply@test.com',
 };
 
-function makeMailer() {
+function makeMailer(fetchMock: ReturnType<typeof vi.fn>) {
+	const transport = mock<HttpTransport>({
+		asCustomFetch: () => fetchMock as unknown as CustomFetch,
+	});
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.transport.mockReturnValue(transport);
 	return new GraphMailer(
 		mockInstance(GlobalConfig, {
 			userManagement: { emails: { microsoftGraph: graphConfig } },
 		}),
 		mock(),
+		mock(),
+		outboundHttp,
 	);
 }
 
@@ -28,7 +36,6 @@ describe('GraphMailer', () => {
 	const fetchMock = vi.fn();
 
 	beforeEach(() => {
-		vi.stubGlobal('fetch', fetchMock);
 		fetchMock.mockReset();
 		// 1st call: token, 2nd call: sendMail
 		fetchMock
@@ -36,10 +43,8 @@ describe('GraphMailer', () => {
 			.mockResolvedValue(okJson({}));
 	});
 
-	afterEach(() => vi.unstubAllGlobals());
-
 	it('requests a token then posts sendMail with a bearer token', async () => {
-		const result = await makeMailer().sendMail({
+		const result = await makeMailer(fetchMock).sendMail({
 			emailRecipients: 'user@test.com',
 			subject: 'Hi',
 			body: '<p>hello</p>',
@@ -60,7 +65,7 @@ describe('GraphMailer', () => {
 	});
 
 	it('maps multiple recipients', async () => {
-		await makeMailer().sendMail({
+		await makeMailer(fetchMock).sendMail({
 			emailRecipients: ['a@test.com', 'b@test.com'],
 			subject: 'Hi',
 			body: 'x',
@@ -73,7 +78,7 @@ describe('GraphMailer', () => {
 	});
 
 	it('reuses the cached token across sends', async () => {
-		const mailer = makeMailer();
+		const mailer = makeMailer(fetchMock);
 		await mailer.sendMail({ emailRecipients: 'a@test.com', subject: 's', body: 'x' });
 		await mailer.sendMail({ emailRecipients: 'b@test.com', subject: 's', body: 'x' });
 		// 1 token request + 2 sends, not 2 token requests
@@ -88,7 +93,7 @@ describe('GraphMailer', () => {
 			.mockResolvedValue({ ok: false, status: 403, text: async () => 'forbidden' } as Response);
 
 		await expect(
-			makeMailer().sendMail({ emailRecipients: 'a@test.com', subject: 's', body: 'x' }),
+			makeMailer(fetchMock).sendMail({ emailRecipients: 'a@test.com', subject: 's', body: 'x' }),
 		).rejects.toThrow(/403/);
 	});
 });
