@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	buildInstanceAiCredentialHandoffContext,
+	clearPendingAgentAttachment,
 	consumePendingHandoffContext,
+	getPendingAgentAttachment,
+	stashPendingAgentAttachment,
 	stashPendingHandoffContext,
 } from '../composables/useInstanceAiHandoff';
 
@@ -75,5 +78,21 @@ describe('useInstanceAiHandoff', () => {
 
 		expect(consumePendingHandoffContext('thread-1')).toEqual(context);
 		expect(consumePendingHandoffContext('thread-1')).toBeNull();
+	});
+
+	it('keeps a pending agent attachment until it is explicitly cleared', () => {
+		const attachment = {
+			type: 'agent' as const,
+			id: 'agent-1',
+			name: 'New agent',
+			projectId: 'project-1',
+		};
+
+		stashPendingAgentAttachment('thread-1', attachment);
+
+		expect(getPendingAgentAttachment('thread-1')).toEqual(attachment);
+		expect(getPendingAgentAttachment('thread-1')).toEqual(attachment);
+		clearPendingAgentAttachment('thread-1');
+		expect(getPendingAgentAttachment('thread-1')).toBeNull();
 	});
 });

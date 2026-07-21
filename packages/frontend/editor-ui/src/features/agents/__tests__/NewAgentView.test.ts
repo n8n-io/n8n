@@ -2,7 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import NewAgentView from '../views/NewAgentView.vue';
-import { AGENTS_LIST_VIEW, AGENT_BUILDER_VIEW, PROJECT_AGENTS } from '../constants';
+import { INSTANCE_AI_THREAD_VIEW } from '@/features/ai/instanceAi/constants';
+import { AGENTS_LIST_VIEW, PROJECT_AGENTS } from '../constants';
 import type { AgentResource } from '../types';
 
 const mocks = vi.hoisted(() => ({
@@ -12,6 +13,10 @@ const mocks = vi.hoisted(() => ({
 	upsertProjectAgentsListCache: vi.fn(),
 	track: vi.fn(),
 	showError: vi.fn(),
+	syncThread: vi.fn(),
+	updateThreadMetadata: vi.fn(),
+	getOrCreateRuntime: vi.fn(() => ({ sendMessage: vi.fn() })),
+	stashPendingAgentAttachment: vi.fn(),
 }));
 
 vi.mock('vue-router', () => ({
@@ -30,6 +35,17 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({ showError: mocks.showError }),
 }));
+vi.mock('@/features/ai/instanceAi/instanceAi.store', () => ({
+	useInstanceAiStore: () => ({
+		syncThread: mocks.syncThread,
+		updateThreadMetadata: mocks.updateThreadMetadata,
+		getOrCreateRuntime: mocks.getOrCreateRuntime,
+	}),
+}));
+vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
+	stashPendingAgentAttachment: mocks.stashPendingAgentAttachment,
+}));
+vi.mock('uuid', () => ({ v4: () => 'thread-1' }));
 vi.mock('../composables/useAgentApi', () => ({ createAgent: mocks.createAgent }));
 vi.mock('../composables/useProjectAgentsList', () => ({
 	upsertProjectAgentsListCache: mocks.upsertProjectAgentsListCache,
@@ -41,7 +57,7 @@ describe('NewAgentView', () => {
 		mocks.route.query = { projectId: 'project-1' };
 	});
 
-	it('creates a blank agent and opens its builder', async () => {
+	it('creates a blank agent and opens it in an empty Instance AI thread', async () => {
 		const agent = { id: 'agent-1', name: 'New agent' } as AgentResource;
 		mocks.createAgent.mockResolvedValue(agent);
 
@@ -59,9 +75,24 @@ describe('NewAgentView', () => {
 			agent_id: 'agent-1',
 			source: 'create_blank',
 		});
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1');
+		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+			instanceAiAgentBuilderTarget: {
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				name: 'New agent',
+			},
+		});
+		expect(mocks.stashPendingAgentAttachment).toHaveBeenCalledWith('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			name: 'New agent',
+			projectId: 'project-1',
+		});
+		expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(mocks.replace).toHaveBeenCalledWith({
-			name: AGENT_BUILDER_VIEW,
-			params: { projectId: 'project-1', agentId: 'agent-1' },
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-1' },
 		});
 	});
 

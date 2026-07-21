@@ -1,10 +1,12 @@
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiThreadOrigin,
-	InstanceAiThreadSource,
-	InstanceAiResourceAttachment,
+import {
+	instanceAiAgentAttachmentSchema,
+	type InstanceAiAgentAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiThreadOrigin,
+	type InstanceAiThreadSource,
+	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -44,6 +46,8 @@ export function buildInstanceAiArtifactCredentialQuestion(
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
 const pendingHandoffContextKey = (threadId: string) =>
 	`n8n-instance-ai-handoff-context:${threadId}`;
+const pendingAgentAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-agent-attachment:${threadId}`;
 
 export interface PendingFirstMessage {
 	message: string;
@@ -132,6 +136,28 @@ export function consumePendingHandoffContext(threadId: string): InstanceAiHandof
 	} catch {
 		return null;
 	}
+}
+
+export function stashPendingAgentAttachment(
+	threadId: string,
+	attachment: InstanceAiAgentAttachment,
+): void {
+	localStorage.setItem(pendingAgentAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function getPendingAgentAttachment(threadId: string): InstanceAiAgentAttachment | null {
+	const raw = localStorage.getItem(pendingAgentAttachmentKey(threadId));
+	if (!raw) return null;
+	try {
+		const parsed = instanceAiAgentAttachmentSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : null;
+	} catch {
+		return null;
+	}
+}
+
+export function clearPendingAgentAttachment(threadId: string): void {
+	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */
