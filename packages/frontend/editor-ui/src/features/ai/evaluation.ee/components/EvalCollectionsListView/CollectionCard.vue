@@ -13,7 +13,7 @@ import type {
 } from '../../evalCollections.types';
 import {
 	buildScoreShapedMetricGroups,
-	countCompletedRuns,
+	countSettledRuns,
 	deriveRunsStatus,
 } from '../../evaluation.utils';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
@@ -45,7 +45,7 @@ const status = computed<'done' | 'running' | 'error' | null>(() =>
 const isRunning = computed(() => status.value === 'running');
 
 // Live completed-count while runs are in flight; the store's detail poll advances it.
-const completedCount = computed(() => countCompletedRuns(props.detail?.runs ?? []));
+const completedCount = computed(() => countSettledRuns(props.detail?.runs ?? []));
 const versionCount = computed(() => props.detail?.runs.length ?? 0);
 
 // Settled badge per status; null while loading or running so neither reads as settled.

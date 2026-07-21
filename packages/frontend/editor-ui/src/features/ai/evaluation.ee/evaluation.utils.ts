@@ -3,10 +3,7 @@ import {
 	normalizeMetricScore,
 	ONE_TO_FIVE_METRIC_KEYS,
 	RESERVED_METRIC_KEYS,
-	// Aliased so it doesn't clash with this file's display-formatting `MetricScale`
-	// ('oneToFive' | 'normalized'). This one ('unit' | 'oneToFive' | 'boolean') is
-	// the scoring scale resolved from the eval config, keyed by metric name.
-	type MetricScale as MetricScoringScale,
+	type MetricScale,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { JsonValue } from 'n8n-workflow';
@@ -145,7 +142,7 @@ export function deriveRunsStatus(
 
 // How many runs have settled. Uses the inverse of `deriveRunsStatus`'s in-flight
 // predicate so the "N/M complete" count and the status can't disagree.
-export function countCompletedRuns(runs: Array<{ status: EvalCollectionRunStatus }>): number {
+export function countSettledRuns(runs: Array<{ status: EvalCollectionRunStatus }>): number {
 	return runs.filter((run) => run.status !== 'new' && run.status !== 'running').length;
 }
 
@@ -157,7 +154,7 @@ export function countCompletedRuns(runs: Array<{ status: EvalCollectionRunStatus
 // the bars clamp to max=1 and an absolute count would render a maxed-out bar.
 export function buildScoreShapedMetricGroups(
 	runs: Array<{ metrics: Record<string, number> | null }>,
-	scaleByMetric?: Record<string, MetricScoringScale>,
+	scaleByMetric?: Record<string, MetricScale>,
 ): Array<{ key: string; values: Array<number | null> }> {
 	const orderedKeys: string[] = [];
 	const seen = new Set<string>();
@@ -196,7 +193,7 @@ export function buildScoreShapedMetricGroups(
 // hero chart agree on what a case/run scored.
 export function averageNormalizedScore(
 	metrics: Record<string, number> | null | undefined,
-	scaleByMetric?: Record<string, MetricScoringScale>,
+	scaleByMetric?: Record<string, MetricScale>,
 ): number | null {
 	if (!metrics) return null;
 	const values = Object.entries(metrics)
@@ -245,9 +242,9 @@ export function stringifyValue(value: unknown): string {
 }
 
 // AI-based handlers (correctness, helpfulness) return 1-5; others return 0-1.
-export type MetricScale = 'oneToFive' | 'normalized';
+export type MetricDisplayScale = 'oneToFive' | 'normalized';
 
-export function getMetricScale(category: MetricCategory | undefined): MetricScale {
+export function getMetricScale(category: MetricCategory | undefined): MetricDisplayScale {
 	return category === 'aiBased' ? 'oneToFive' : 'normalized';
 }
 

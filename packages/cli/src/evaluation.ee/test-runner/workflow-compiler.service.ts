@@ -468,11 +468,14 @@ export class WorkflowCompilerService {
 }
 
 /**
- * Retarget a dataset-sourced input's `$json` base to the eval trigger. Only the
- * bare `$json` token is rewritten, so an explicit `$('Node')…` ref or a literal
- * value is left untouched.
+ * Retarget a dataset-sourced input's `$json` base to the eval trigger. Only n8n
+ * expressions (leading `=`) reference the `$json` variable — a fixed literal is
+ * returned unchanged so text that merely contains "$json" isn't corrupted. Within
+ * an expression only the bare `$json` token is rewritten, so an explicit
+ * `$('Node')…` reference is left untouched too.
  */
 function resolveDatasetSourcedInput(value: string): string {
+	if (!value.startsWith('=')) return value;
 	return value.replace(/\$json\b/g, () => `$('${TRIGGER_NAME}').item.json`);
 }
 

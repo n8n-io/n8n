@@ -8,7 +8,7 @@ import { useToast } from '@/app/composables/useToast';
 
 import type { CompareVersion } from '../../composables/useCompareData';
 import { useEvalCollectionsStore } from '../../evalCollections.store';
-import { countCompletedRuns, deriveRunsStatus } from '../../evaluation.utils';
+import { countSettledRuns, deriveRunsStatus } from '../../evaluation.utils';
 import RunningIndicator from '../shared/RunningIndicator.vue';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
@@ -27,7 +27,7 @@ const store = useEvalCollectionsStore();
 const status = computed(() => deriveRunsStatus(props.versions));
 const isRunning = computed(() => status.value === 'running');
 
-const completedCount = computed(() => countCompletedRuns(props.versions));
+const completedCount = computed(() => countSettledRuns(props.versions));
 
 // Hidden while running so a user can't stack a second wave on an unfinished one.
 const canRerun = computed(() => !isRunning.value);

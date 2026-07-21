@@ -251,24 +251,28 @@ export class EvaluationCollectionService {
 				);
 			}
 		} catch (error) {
-			// Detach only the fresh runs this call linked; the old runs stay
-			// linked as the collection's valid state until every fresh run starts.
+			// Roll back the fresh runs this call started: cancel them so they stop
+			// consuming compute and can't later bust the collection's insights cache
+			// (the runner reads the run's collectionId captured at start), then
+			// unlink them atomically. Old runs stay linked as the collection's valid
+			// state. Best-effort — the original error is what surfaces.
 			for (const runId of runsStartedIds) {
-				try {
-					await this.collectionRepo.removeRunFromCollection(collection.id, runId);
-				} catch {
-					// Ignore cleanup failures; the original error is what matters.
-				}
+				await this.testRunnerService.cancelTestRun(runId).catch(() => {});
 			}
+			await this.collectionRepo
+				.removeRunsFromCollection(collection.id, runsStartedIds)
+				.catch(() => {});
 			throw error;
 		}
 
-		// Unlink the old runs so the compare view reflects only the fresh attempt.
-		// Reached only after every fresh run started, so a partial failure never
-		// strips them; the new runs have distinct ids, so only the old ones detach.
-		for (const run of runs) {
-			await this.collectionRepo.removeRunFromCollection(collection.id, run.id);
-		}
+		// Replace the old runs with the fresh attempt in one atomic unlink, so a
+		// partial failure can't leave both attempts linked (duplicate versions).
+		// Reached only after every fresh run started; the new runs have distinct
+		// ids, so only the old ones detach.
+		await this.collectionRepo.removeRunsFromCollection(
+			collection.id,
+			runs.map((run) => run.id),
+		);
 
 		// Membership changed — the cached insights envelope is now stale.
 		await this.collectionRepo.updateInsightsCache(collection.id, null);

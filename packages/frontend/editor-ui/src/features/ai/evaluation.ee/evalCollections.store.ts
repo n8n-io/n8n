@@ -154,10 +154,17 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 			collectionId,
 		);
 
-		// Refresh detail so the UI flips to running + arms polling on the fresh runs.
-		// Best-effort: the re-run is already scheduled server-side, so a transient
-		// failure must not surface as a re-run failure (retry → "already in progress").
+		// Fresh runs replace the old ones — drop the stale local insights envelope
+		// (the server busts its cache too) so the compare view doesn't show the
+		// previous attempt's insights.
+		const { [collectionId]: _stale, ...rest } = insightsByCollectionId.value;
+		insightsByCollectionId.value = rest;
+
+		// Refresh detail so the UI flips to running. Arm polling regardless: if the
+		// refresh fails transiently the view would otherwise stay on the old terminal
+		// state (re-run is already scheduled server-side, retry → "already in progress").
 		await fetchCollectionDetail(workflowId, collectionId).catch(() => null);
+		startPolling(workflowId, collectionId);
 		return response;
 	};
 

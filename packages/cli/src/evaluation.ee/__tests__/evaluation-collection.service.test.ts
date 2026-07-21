@@ -119,6 +119,10 @@ describe('EvaluationCollectionService', () => {
 		testRunnerService = mock<TestRunnerService>();
 		telemetry = mock<Telemetry>();
 
+		// Async no-op cleanup paths used by rerun rollback.
+		collectionRepo.removeRunsFromCollection.mockResolvedValue(undefined);
+		testRunnerService.cancelTestRun.mockResolvedValue(undefined);
+
 		service = new EvaluationCollectionService(
 			collectionRepo,
 			testRunRepo,
@@ -359,10 +363,12 @@ describe('EvaluationCollectionService', () => {
 				expect.objectContaining({ workflowVersionId: 'wfv-b' }),
 			);
 
-			// Old runs unlinked (collectionId → null) so the compare view shows
-			// only the fresh attempt; insights cache busted.
-			expect(collectionRepo.removeRunFromCollection).toHaveBeenCalledWith('col-1', 'tr-old-a');
-			expect(collectionRepo.removeRunFromCollection).toHaveBeenCalledWith('col-1', 'tr-old-b');
+			// Old runs unlinked in one atomic call so the compare view shows only
+			// the fresh attempt; insights cache busted.
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', [
+				'tr-old-a',
+				'tr-old-b',
+			]);
 			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null);
 
 			expect(runsStartedIds).toEqual(['tr-new-a', 'tr-new-b']);
@@ -482,12 +488,11 @@ describe('EvaluationCollectionService', () => {
 				'Workflow version wfv-b not found',
 			);
 
-			// The one fresh run that started is unlinked; the old runs are left
-			// untouched, and no more than that single cleanup unlink happens.
-			expect(collectionRepo.removeRunFromCollection).toHaveBeenCalledWith('col-1', 'tr-new-a');
-			expect(collectionRepo.removeRunFromCollection).not.toHaveBeenCalledWith('col-1', 'tr-old-a');
-			expect(collectionRepo.removeRunFromCollection).not.toHaveBeenCalledWith('col-1', 'tr-old-b');
-			expect(collectionRepo.removeRunFromCollection).toHaveBeenCalledTimes(1);
+			// The one fresh run that started is cancelled and unlinked; the old runs
+			// are left untouched, and only that single cleanup unlink happens.
+			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-a');
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', ['tr-new-a']);
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledTimes(1);
 			// A failed re-run never busts the insights cache — the collection is
 			// unchanged, so the cached envelope is still valid.
 			expect(collectionRepo.updateInsightsCache).not.toHaveBeenCalled();

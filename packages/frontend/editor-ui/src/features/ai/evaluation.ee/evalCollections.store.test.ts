@@ -272,6 +272,29 @@ describe('evalCollections.store', () => {
 			rerunCollection.mockRejectedValueOnce(new Error('already in progress'));
 			await expect(store.rerunCollection('wf-1', 'col-1')).rejects.toThrow('already in progress');
 		});
+
+		it('drops cached insights after a re-run so the fresh runs reload them', async () => {
+			await store.generateInsights('wf-1', 'col-1');
+			expect(store.getInsights('col-1')).not.toBeNull();
+
+			getCollection.mockResolvedValueOnce(RUNNING_DETAIL);
+			await store.rerunCollection('wf-1', 'col-1');
+
+			expect(store.getInsights('col-1')).toBeNull();
+		});
+
+		it('arms polling after a re-run even when the detail refresh fails', async () => {
+			// Refresh fails transiently, so nothing armed polling inline...
+			getCollection.mockRejectedValueOnce(new Error('detail fetch failed'));
+			await store.rerunCollection('wf-1', 'col-1');
+
+			// ...but the unconditional startPolling means the next tick still refetches,
+			// so the view isn't stuck on the old terminal state.
+			const callsBefore = getCollection.mock.calls.length;
+			getCollection.mockResolvedValueOnce(RUNNING_DETAIL);
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(getCollection.mock.calls.length).toBeGreaterThan(callsBefore);
+		});
 	});
 
 	describe('deleteCollection', () => {

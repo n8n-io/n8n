@@ -474,10 +474,14 @@ export class TestRunnerService {
 	 * The dataset row's JSON as a plain object; empty object when it isn't one.
 	 */
 	private datasetRowToJsonObject(testCase: INodeExecutionData): JsonObject {
-		const json = testCase.json;
+		return this.toJsonObject(testCase.json);
+	}
+
+	/** Coerce a value to a plain JSON object, or `{}` when it isn't one. */
+	private toJsonObject(value: unknown): JsonObject {
 		const out: JsonObject = {};
-		if (json && typeof json === 'object' && !Array.isArray(json)) {
-			Object.assign(out, json);
+		if (value && typeof value === 'object' && !Array.isArray(value)) {
+			Object.assign(out, value);
 		}
 		return out;
 	}
@@ -502,15 +506,13 @@ export class TestRunnerService {
 	 * produced no JSON object (e.g. an untaken IF/Switch branch).
 	 */
 	private getEndNodeOutputs(execution: IRun, endNodeName: string): JsonObject {
-		const json =
-			execution.data.resultData.runData[endNodeName]?.[0]?.data?.[
-				NodeConnectionTypes.Main
-			]?.[0]?.[0]?.json;
-		const out: JsonObject = {};
-		if (json && typeof json === 'object' && !Array.isArray(json)) {
-			Object.assign(out, json);
-		}
-		return out;
+		const mainBuckets =
+			execution.data.resultData.runData[endNodeName]?.[0]?.data?.[NodeConnectionTypes.Main] ?? [];
+		// An IF/Switch end node emits on one of several main branches, so read the
+		// first branch that produced an item rather than always branch 0 — otherwise
+		// a case that took a non-zero (e.g. "false") branch shows a blank output.
+		const json = mainBuckets.find((bucket) => bucket?.[0]?.json !== undefined)?.[0]?.json;
+		return this.toJsonObject(json);
 	}
 
 	/** Collects the evaluation result from all Evaluation Metrics nodes. */

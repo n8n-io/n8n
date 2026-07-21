@@ -6,7 +6,7 @@ import {
 	buildScoreShapedMetricGroups,
 	computeDelta,
 	computeDurationMs,
-	countCompletedRuns,
+	countSettledRuns,
 	extractAnswerText,
 	formatDeltaPercent,
 	formatDuration,
@@ -1574,10 +1574,10 @@ describe('utils', () => {
 		});
 	});
 
-	describe('countCompletedRuns', () => {
+	describe('countSettledRuns', () => {
 		it('counts only runs that have left the queued/executing states', () => {
 			expect(
-				countCompletedRuns([
+				countSettledRuns([
 					{ status: 'completed' },
 					{ status: 'error' },
 					{ status: 'cancelled' },
@@ -1588,11 +1588,11 @@ describe('utils', () => {
 		});
 
 		it('returns 0 while every run is still in flight', () => {
-			expect(countCompletedRuns([{ status: 'new' }, { status: 'running' }])).toBe(0);
+			expect(countSettledRuns([{ status: 'new' }, { status: 'running' }])).toBe(0);
 		});
 
 		it('returns 0 for an empty run set', () => {
-			expect(countCompletedRuns([])).toBe(0);
+			expect(countSettledRuns([])).toBe(0);
 		});
 	});
 });

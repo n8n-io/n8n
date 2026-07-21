@@ -114,6 +114,47 @@ describe('TestRunnerService', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('getEndNodeOutputs (per-case output capture)', () => {
+		// Private helper that feeds the compare Outputs tab; exercised directly.
+		const readOutputs = (execution: IRun, endNodeName: string) =>
+			(
+				testRunnerService as unknown as {
+					getEndNodeOutputs(execution: IRun, endNodeName: string): Record<string, unknown>;
+				}
+			).getEndNodeOutputs(execution, endNodeName);
+
+		test('reads the output from the first non-empty main branch (IF/Switch false branch)', () => {
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							End: [
+								{
+									data: {
+										main: [
+											[], // branch 0 — not taken
+											[{ json: { answer: 'from the false branch' } }], // branch 1 — taken
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			});
+
+			expect(readOutputs(execution, 'End')).toEqual({ answer: 'from the false branch' });
+		});
+
+		test('returns an empty object when the end node produced no items', () => {
+			const execution = mock<IRun>({
+				data: { resultData: { runData: { End: [{ data: { main: [[]] } }] } } },
+			});
+
+			expect(readOutputs(execution, 'End')).toEqual({});
+		});
+	});
+
 	describe('findEvaluationTriggerNode', () => {
 		test('should find the trigger node in a workflow', () => {
 			// Setup a test workflow with a trigger node

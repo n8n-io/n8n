@@ -342,6 +342,28 @@ describe('WorkflowCompilerService', () => {
 		expect(metric.parameters.userQuery).toBe('={{ $("Some Upstream").item.json.q }}');
 	});
 
+	it('leaves a fixed literal dataset value untouched even when it contains "$json"', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-ss-lit',
+				name: 'Similarity',
+				type: 'string_similarity',
+				config: {
+					inputs: {
+						actualAnswer: '={{ $json.output }}',
+						// Fixed literal (no leading `=`) — `$json` here is plain text.
+						expectedAnswer: 'the $json field holds the answer',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-ss-lit')!;
+		expect(metric.parameters.expectedAnswer).toBe('the $json field holds the answer');
+	});
+
 	it('supports startNodeName != endNodeName (middle slice)', () => {
 		const wf = baseWorkflow();
 		wf.nodes.push({
