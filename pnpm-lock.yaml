@@ -3649,7 +3649,7 @@ importers:
         specifier: ^3.5.2
         version: 3.8.0
       reflect-metadata:
-        specifier: ^0.2.2
+        specifier: 'catalog:'
         version: 0.2.2
       sha.js:
         specifier: ^2.4.12
