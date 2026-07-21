@@ -7,6 +7,9 @@
   "humans": {
     "h_760178ed151f13": {
       "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   },
   "sessions": {
@@ -17,6 +20,14 @@
         "model": "default"
       },
       "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_b3f23ab76a494c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
