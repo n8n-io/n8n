@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import {
 	N8nButton,
-	N8nHeading,
 	N8nIcon,
 	N8nLink,
+	N8nSettingsLayout,
+	N8nSettingsPageHeader,
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
@@ -128,19 +129,10 @@ const sortedInstanceResults = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<N8nHeading tag="h1" size="2xlarge" class="mb-l">
-			{{ i18n.baseText('settings.migrationReport') }}
-		</N8nHeading>
-		<N8nText tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
-			{{
-				i18n.baseText('settings.migrationReport.title', {
-					interpolate: { version: targetVersionDisplay },
-				})
-			}}
-		</N8nText>
-		<N8nText tag="p" color="text-base" class="mb-2xl">
-			{{
+	<N8nSettingsLayout>
+		<N8nSettingsPageHeader
+			:title="i18n.baseText('settings.migrationReport')"
+			:description="
 				i18n.baseText('settings.migrationReport.description', {
 					interpolate: {
 						compatibleCount: String(compatibleWorkflowsCount),
@@ -148,151 +140,144 @@ const sortedInstanceResults = computed(() => {
 						version: targetVersionDisplay,
 					},
 				})
-			}}
-			<N8nLink theme="text" :href="documentationUrl" target="_blank" rel="noopener noreferrer">
-				<span :class="$style.UnderlinedText">{{
-					i18n.baseText('settings.migrationReport.documentationLink')
-				}}</span>
-				↗
-			</N8nLink>
-		</N8nText>
-
-		<div :class="$style.ActionBar">
-			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
-			<N8nButton
-				variant="subtle"
-				v-if="shouldShowRefreshButton"
-				:label="i18n.baseText('settings.migrationReport.refreshButton')"
-				icon="refresh-cw"
-				:loading="isLoading"
-				:disabled="isLoading"
-				@click="refreshReport"
-			/>
-		</div>
-
-		<div v-if="isLoading" :class="$style.CardContainer">
-			<div v-for="i in 4" :key="i" :class="$style.Card">
-				<div>
-					<N8nLoading variant="p" :rows="3" :class="$style.PLoading"></N8nLoading>
-				</div>
-				<N8nLoading variant="button"></N8nLoading>
+			"
+			:docs-url="documentationUrl"
+			:docs-label="i18n.baseText('settings.migrationReport.documentationLink')"
+			docs-leading-text=""
+		/>
+		<div>
+			<div :class="$style.ActionBar">
+				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
+				<N8nButton
+					variant="subtle"
+					v-if="shouldShowRefreshButton"
+					:label="i18n.baseText('settings.migrationReport.refreshButton')"
+					icon="refresh-cw"
+					:loading="isLoading"
+					:disabled="isLoading"
+					@click="refreshReport"
+				/>
 			</div>
-		</div>
-		<template v-else-if="currentTab === 'workflow-issues'">
-			<template v-if="state?.report.workflowResults.length === 0">
-				<EmptyTab>
-					<template #title>{{
-						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
-					}}</template>
-					<template #description>{{
-						i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description', {
-							interpolate: { version: targetVersionDisplay },
-						})
-					}}</template>
-				</EmptyTab>
-			</template>
-			<div v-else :class="$style.CardContainer">
-				<div v-for="issue in sortedWorkflowResults" :key="issue.ruleId" :class="$style.Card">
+
+			<div v-if="isLoading" :class="$style.CardContainer">
+				<div v-for="i in 4" :key="i" :class="$style.Card">
 					<div>
-						<div :class="$style.CardTitleContainer">
-							<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
-							<N8nTooltip
-								:content="workflowTooltips[issue.ruleSeverity]"
-								placement="top"
-								:enterable="false"
-							>
-								<SeverityTag :severity="issue.ruleSeverity" />
-							</N8nTooltip>
-						</div>
-						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-							<N8nLink
-								v-if="issue.ruleDocumentationUrl"
-								theme="text"
-								:href="issue.ruleDocumentationUrl"
-								target="_blank"
-								rel="noopener noreferrer"
-								:class="$style.NoLineBreak"
-							>
-								<span :class="$style.UnderlinedText">{{
-									i18n.baseText('settings.migrationReport.documentation')
-								}}</span>
-								↗
-							</N8nLink>
-						</N8nText>
+						<N8nLoading variant="p" :rows="3" :class="$style.PLoading"></N8nLoading>
 					</div>
-					<N8nLink
-						:class="$style.NoLineBreak"
-						theme="text"
-						:to="{ name: VIEWS.MIGRATION_RULE_REPORT, params: { migrationRuleId: issue.ruleId } }"
-					>
-						<span :class="$style.NoLineBreak">
-							{{
-								i18n.baseText('settings.migrationReport.workflowsCount', {
-									interpolate: { count: issue.nbAffectedWorkflows },
-								})
-							}}
-							<N8nIcon icon="chevron-right" :size="24" />
-						</span>
-					</N8nLink>
+					<N8nLoading variant="button"></N8nLoading>
 				</div>
 			</div>
-		</template>
-		<template v-else-if="currentTab === 'instance-issues'">
-			<template v-if="state?.report.instanceResults.length === 0">
-				<EmptyTab>
-					<template #title>{{
-						i18n.baseText('settings.migrationReport.emptyInstanceIssues.title')
-					}}</template>
-					<template #description>{{
-						i18n.baseText('settings.migrationReport.emptyInstanceIssues.description', {
-							interpolate: { version: targetVersionDisplay },
-						})
-					}}</template>
-				</EmptyTab>
-			</template>
-			<div v-else :class="$style.CardContainer">
-				<div v-for="issue in sortedInstanceResults" :key="issue.ruleId" :class="$style.Card">
-					<div>
-						<div :class="$style.CardTitleContainer">
-							<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
-							<N8nTooltip
-								:content="instanceTooltips[issue.ruleSeverity]"
-								placement="top"
-								:enterable="false"
-							>
-								<SeverityTag :severity="issue.ruleSeverity" />
-							</N8nTooltip>
+			<template v-else-if="currentTab === 'workflow-issues'">
+				<template v-if="state?.report.workflowResults.length === 0">
+					<EmptyTab>
+						<template #title>{{
+							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.title')
+						}}</template>
+						<template #description>{{
+							i18n.baseText('settings.migrationReport.emptyWorkflowIssues.description', {
+								interpolate: { version: targetVersionDisplay },
+							})
+						}}</template>
+					</EmptyTab>
+				</template>
+				<div v-else :class="$style.CardContainer">
+					<div v-for="issue in sortedWorkflowResults" :key="issue.ruleId" :class="$style.Card">
+						<div>
+							<div :class="$style.CardTitleContainer">
+								<N8nText tag="h3" size="medium" color="text-dark">{{ issue.ruleTitle }}</N8nText>
+								<N8nTooltip
+									:content="workflowTooltips[issue.ruleSeverity]"
+									placement="top"
+									:enterable="false"
+								>
+									<SeverityTag :severity="issue.ruleSeverity" />
+								</N8nTooltip>
+							</div>
+							<N8nText tag="p" color="text-base">
+								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
+								<N8nLink
+									v-if="issue.ruleDocumentationUrl"
+									theme="text"
+									:href="issue.ruleDocumentationUrl"
+									target="_blank"
+									rel="noopener noreferrer"
+									:class="$style.NoLineBreak"
+								>
+									<span :class="$style.UnderlinedText">{{
+										i18n.baseText('settings.migrationReport.documentation')
+									}}</span>
+									↗
+								</N8nLink>
+							</N8nText>
 						</div>
-						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
-							<N8nLink
-								v-if="issue.ruleDocumentationUrl"
-								theme="text"
-								:href="issue.ruleDocumentationUrl"
-								target="_blank"
-								rel="noopener noreferrer"
-								:class="$style.NoLineBreak"
-							>
-								<span :class="$style.UnderlinedText">{{
-									i18n.baseText('settings.migrationReport.documentation')
-								}}</span>
-								↗
-							</N8nLink>
-						</N8nText>
+						<N8nLink
+							:class="$style.NoLineBreak"
+							theme="text"
+							:to="{ name: VIEWS.MIGRATION_RULE_REPORT, params: { migrationRuleId: issue.ruleId } }"
+						>
+							<span :class="$style.NoLineBreak">
+								{{
+									i18n.baseText('settings.migrationReport.workflowsCount', {
+										interpolate: { count: issue.nbAffectedWorkflows },
+									})
+								}}
+								<N8nIcon icon="chevron-right" :size="24" />
+							</span>
+						</N8nLink>
 					</div>
 				</div>
-			</div>
-		</template>
-	</div>
+			</template>
+			<template v-else-if="currentTab === 'instance-issues'">
+				<template v-if="state?.report.instanceResults.length === 0">
+					<EmptyTab>
+						<template #title>{{
+							i18n.baseText('settings.migrationReport.emptyInstanceIssues.title')
+						}}</template>
+						<template #description>{{
+							i18n.baseText('settings.migrationReport.emptyInstanceIssues.description', {
+								interpolate: { version: targetVersionDisplay },
+							})
+						}}</template>
+					</EmptyTab>
+				</template>
+				<div v-else :class="$style.CardContainer">
+					<div v-for="issue in sortedInstanceResults" :key="issue.ruleId" :class="$style.Card">
+						<div>
+							<div :class="$style.CardTitleContainer">
+								<N8nText tag="h3">{{ issue.ruleTitle }}</N8nText>
+								<N8nTooltip
+									:content="instanceTooltips[issue.ruleSeverity]"
+									placement="top"
+									:enterable="false"
+								>
+									<SeverityTag :severity="issue.ruleSeverity" />
+								</N8nTooltip>
+							</div>
+							<N8nText tag="p" color="text-base">
+								{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
+								<N8nLink
+									v-if="issue.ruleDocumentationUrl"
+									theme="text"
+									:href="issue.ruleDocumentationUrl"
+									target="_blank"
+									rel="noopener noreferrer"
+									:class="$style.NoLineBreak"
+								>
+									<span :class="$style.UnderlinedText">{{
+										i18n.baseText('settings.migrationReport.documentation')
+									}}</span>
+									↗
+								</N8nLink>
+							</N8nText>
+						</div>
+					</div>
+				</div>
+			</template>
+		</div>
+	</N8nSettingsLayout>
 </template>
 
 <style module>
-.container {
-	padding-right: var(--spacing--2xs);
-	padding-bottom: var(--spacing--2xl);
-}
-
 .CardContainer {
 	border: var(--border);
 	border-radius: var(--radius);
