@@ -1,9 +1,9 @@
 import { UnexpectedError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 
-import { createFixedSizeChunker } from '@/binary-data/utils';
+import { createFixedSizeChunker } from '../stream-utils';
 
-describe('BinaryData/utils', () => {
+describe('stream-utils', () => {
 	describe('createFixedSizeChunker', () => {
 		const drain = async (source: Readable): Promise<Buffer[]> => {
 			return await new Promise((resolve, reject) => {
