@@ -232,7 +232,7 @@ const EXPECTED_CREATE_FIELDS = [
 		],
 	},
 	{ ...sharedFieldShape, id: 'datetime', displayName: 'Datetime', type: 'dateTime' },
-	{ ...sharedFieldShape, id: 'person', displayName: 'Person', type: 'string' },
+	{ ...sharedFieldShape, id: 'personLookupId', displayName: 'Person (Lookup ID)', type: 'number' },
 	{ ...sharedFieldShape, id: 'number', displayName: 'Number', type: 'number' },
 	{ ...sharedFieldShape, id: 'bool', displayName: 'Bool', type: 'boolean' },
 	{ ...sharedFieldShape, id: 'hyperlink.Url', displayName: 'Hyperlink (URL)', type: 'url' },
@@ -244,7 +244,7 @@ const EXPECTED_CREATE_FIELDS = [
 	},
 	{ ...sharedFieldShape, id: 'currency', displayName: 'Currency', type: 'number' },
 	{ ...sharedFieldShape, id: 'image', displayName: 'Image', type: 'object' },
-	{ ...sharedFieldShape, id: 'lookup', displayName: 'Lookup', type: 'string' },
+	{ ...sharedFieldShape, id: 'lookupLookupId', displayName: 'Lookup (Lookup ID)', type: 'number' },
 	{ ...sharedFieldShape, id: 'AverageRating', displayName: 'Rating (0-5)', type: 'number' },
 ];
 

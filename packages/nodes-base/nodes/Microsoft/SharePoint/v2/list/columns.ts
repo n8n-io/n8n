@@ -29,8 +29,6 @@ const UNSUPPORTED_COLUMN_TYPES = new Set(['location', 'geolocation', 'term', 'mu
 
 const FIELD_TYPE_BY_COLUMN_TYPE: Record<string, FieldType> = {
 	text: 'string',
-	user: 'string',
-	lookup: 'string',
 	number: 'number',
 	currency: 'number',
 	// Rating columns report unknownFutureValue
@@ -73,6 +71,21 @@ function toMapperFields(column: SharePointListColumn): ResourceMapperField[] {
 				displayName: `${column.displayName} (Description)`,
 				canBeUsedToMatch: false,
 				type: 'string',
+			},
+		];
+	}
+
+	// Graph only accepts person/lookup writes through the `{name}LookupId`
+	// field (a numeric ID), and reads return the same key — so the mapper
+	// exposes that field directly and auto-map round-trips.
+	if (columnType === 'user' || columnType === 'lookup') {
+		return [
+			{
+				...base,
+				id: `${column.name}LookupId`,
+				displayName: `${column.displayName} (Lookup ID)`,
+				canBeUsedToMatch: Boolean(column.enforceUniqueValues && column.required),
+				type: 'number',
 			},
 		];
 	}

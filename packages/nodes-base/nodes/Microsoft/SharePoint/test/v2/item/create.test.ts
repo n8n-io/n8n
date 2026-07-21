@@ -29,7 +29,7 @@ const SCHEMA = [
 	{ id: 'bool', type: 'boolean' },
 	{ id: 'choice', type: 'options' },
 	{ id: 'datetime', type: 'dateTime' },
-	{ id: 'person', type: 'string' },
+	{ id: 'personLookupId', type: 'number' },
 	{ id: 'link.Url', type: 'url' },
 	{ id: 'link.Description', type: 'string' },
 ] as ResourceMapperField[];
@@ -78,7 +78,7 @@ describe('Microsoft SharePoint v2 — Item: Create', () => {
 			bool: true,
 			choice: 'Choice 1',
 			datetime: '2025-03-24T00:00:00',
-			person: '1',
+			personLookupId: 1,
 		};
 		setParams({ ...baseParams, 'columns.value': value });
 		const created = { id: '1', fields: value };
