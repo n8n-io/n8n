@@ -40,11 +40,6 @@ if (process.env.E2E_TESTS !== 'true') {
 	require('dotenv').config({ quiet: true });
 }
 
-// Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
-// _before_ typeorm entities in `@n8n/db` are loaded, as typeorm entity decorators rely on
-// `GlobalConfig.database.type` to decide on column types and timestamp syntax.
-require('../dist/config');
-
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	require('dns').setDefaultResultOrder('ipv4first');
 }
@@ -58,6 +53,15 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 require('net').setDefaultAutoSelectFamily?.(false);
 
 (async () => {
+	// May rewrite N8N_PORT, so it must run before the config load below bakes
+	// the port into derived values such as the instance base URL.
+	await require('./port-check')();
+
+	// Load config early to ensure `N8N_CONFIG_FILES` values are populated into `GlobalConfig`
+	// _before_ typeorm entities in `@n8n/db` are loaded, as typeorm entity decorators rely on
+	// `GlobalConfig.database.type` to decide on column types and timestamp syntax.
+	require('../dist/config');
+
 	const { Container } = await import('@n8n/di');
 	const { CommandRegistry } = await import('../dist/command-registry.js');
 	await Container.get(CommandRegistry).execute();
