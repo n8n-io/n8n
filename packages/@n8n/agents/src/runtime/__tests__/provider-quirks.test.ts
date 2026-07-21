@@ -58,9 +58,26 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('openai: defaults reasoningEffort to medium', () => {
+	it('openai: defaults reasoningEffort to medium (AI SDK providerOptions form)', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({})).toEqual({
 			openai: { reasoningEffort: 'medium' },
+		});
+	});
+
+	it('openai: forwards GPT-5.6 Sol compatible reasoningEffort values', () => {
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.({
+				reasoningEffort: 'medium',
+			}),
+		).toEqual({
+			openai: { reasoningEffort: 'medium' },
+		});
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.({
+				reasoningEffort: 'xhigh',
+			}),
+		).toEqual({
+			openai: { reasoningEffort: 'xhigh' },
 		});
 	});
 

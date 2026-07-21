@@ -338,18 +338,18 @@ describe('AgentsBuilderService session isolation', () => {
 		]);
 	});
 
-	it('enables high-effort reasoning for an OpenAI builder model', async () => {
+	it('enables medium-effort reasoning for an OpenAI builder model', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
 				...baseSession,
-				modelConfig: 'openai/gpt-5.5',
+				modelConfig: 'openai/gpt-5.6-sol',
 			}),
 		);
 
 		expect(agentsSdkMocks.thinkingCalls).toEqual([
-			{ provider: 'openai', config: { reasoningEffort: 'high' } },
+			{ provider: 'openai', config: { reasoningEffort: 'medium' } },
 		]);
 	});
 

@@ -73,12 +73,12 @@ describe('eval agent model config', () => {
 		process.env.OPENAI_API_KEY = 'openai-key';
 
 		createEvalAgent('test-agent', {
-			model: 'openai/gpt-5.5',
+			model: 'openai/gpt-5.6-sol',
 			instructions: 'Do the task.',
 		});
 
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-			reasoningEffort: 'high',
+			reasoningEffort: 'medium',
 		});
 	});
 });
