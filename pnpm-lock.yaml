@@ -3655,6 +3655,9 @@ importers:
         specifier: 3.25.67
         version: 3.25.67
     devDependencies:
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../eslint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3667,6 +3670,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
