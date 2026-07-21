@@ -107,15 +107,15 @@ async function onUpgradeClick() {
 						}}
 					</span>
 				</div>
-				<N8nText tag="p" size="xsmall" color="text-base" :class="$style.eyebrow">
+				<N8nText tag="p" size="xsmall" :bold="true" color="text-light" :class="$style.eyebrow">
 					{{ i18n.baseText('experiments.trialIntroModal.eyebrow') }}
 				</N8nText>
 				<N8nHeading tag="h1" size="2xlarge" :bold="true" :class="$style.title">
 					<I18nT keypath="experiments.trialIntroModal.title" tag="span" scope="global">
 						<template #highlight>
-							<N8nText color="primary" :bold="true" :class="$style.titleHighlight">
-								{{ i18n.baseText('experiments.trialIntroModal.titleHighlight') }}
-							</N8nText>
+							<span :class="$style.titleHighlight">{{
+								i18n.baseText('experiments.trialIntroModal.titleHighlight')
+							}}</span>
 						</template>
 					</I18nT>
 				</N8nHeading>
@@ -128,10 +128,10 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-ai-credits"
 					>
-						<div :class="[$style.statTile, $style.statTileAiCredits]">
-							<N8nIcon icon="sparkles" size="medium" />
-						</div>
-						<N8nText tag="div" size="large" :bold="true">{{ aiCredits.toLocaleString() }}</N8nText>
+						<N8nIcon icon="sparkles" :size="22" :class="$style.statIcon" />
+						<N8nHeading tag="div" size="large" :bold="true">{{
+							aiCredits.toLocaleString()
+						}}</N8nHeading>
 						<N8nText tag="div" size="xsmall" color="text-base">
 							{{ i18n.baseText('experiments.trialIntroModal.stats.aiCredits') }}
 						</N8nText>
@@ -141,12 +141,10 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-executions"
 					>
-						<div :class="[$style.statTile, $style.statTileExecutions]">
-							<N8nIcon icon="refresh-cw" size="medium" />
-						</div>
-						<N8nText tag="div" size="large" :bold="true">
-							{{ executionsLimit.toLocaleString() }}
-						</N8nText>
+						<N8nIcon icon="refresh-cw" :size="22" :class="$style.statIcon" />
+						<N8nHeading tag="div" size="large" :bold="true">{{
+							executionsLimit.toLocaleString()
+						}}</N8nHeading>
 						<N8nText tag="div" size="xsmall" color="text-base">
 							{{ i18n.baseText('experiments.trialIntroModal.stats.executions') }}
 						</N8nText>
@@ -156,10 +154,10 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-days"
 					>
-						<div :class="[$style.statTile, $style.statTileDays]">
-							<N8nIcon icon="calendar" size="medium" />
-						</div>
-						<N8nText tag="div" size="large" :bold="true">{{ trialDays.toLocaleString() }}</N8nText>
+						<N8nIcon icon="calendar" :size="22" :class="$style.statIcon" />
+						<N8nHeading tag="div" size="large" :bold="true">{{
+							trialDays.toLocaleString()
+						}}</N8nHeading>
 						<N8nText tag="div" size="xsmall" color="text-base">
 							{{ i18n.baseText('experiments.trialIntroModal.stats.days') }}
 						</N8nText>
@@ -330,20 +328,19 @@ async function onUpgradeClick() {
 .countdownPill {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--5xs) var(--spacing--xs);
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--2xs);
 	border: var(--border);
-	border-color: var(--color--warning--tint-1);
 	border-radius: var(--radius--full);
-	background: var(--color--warning--tint-2);
-	color: var(--color--gold-800);
+	background: var(--background--subtle);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	font-variant-numeric: tabular-nums;
 }
 
 .pillIcon {
-	color: var(--color--gold-600);
+	color: var(--icon-color);
 }
 
 .eyebrow {
@@ -351,10 +348,11 @@ async function onUpgradeClick() {
 }
 
 .title {
-	.titleHighlight {
-		font-size: inherit;
-		line-height: inherit;
-	}
+	letter-spacing: var(--letter-spacing--tight);
+}
+
+.titleHighlight {
+	color: var(--color--primary);
 }
 
 .subtitle {
@@ -364,41 +362,28 @@ async function onUpgradeClick() {
 
 .statCards {
 	display: flex;
-	gap: var(--spacing--xs);
 	margin-bottom: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--sm);
+	overflow: hidden;
 }
 
 .statCard {
-	flex: 1;
-	padding: var(--spacing--sm) var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	text-align: center;
-}
-
-.statTile {
 	display: flex;
+	flex: 1;
+	flex-direction: column;
 	align-items: center;
-	justify-content: center;
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
-	margin: 0 auto var(--spacing--2xs);
-	border-radius: var(--radius);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--md) var(--spacing--xs);
+	text-align: center;
+
+	& + & {
+		border-left: var(--border);
+	}
 }
 
-.statTileAiCredits {
-	background: linear-gradient(135deg, var(--color--purple-400), var(--color--purple-600));
-	color: var(--color--neutral-white);
-}
-
-.statTileExecutions {
-	background: var(--color--purple-150);
-	color: var(--color--purple-500);
-}
-
-.statTileDays {
-	background: var(--color--red-50);
-	color: var(--color--red-500);
+.statIcon {
+	color: var(--text-color--subtle);
 }
 
 .calloutTitle {
@@ -422,12 +407,16 @@ async function onUpgradeClick() {
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--xs);
 	cursor: pointer;
+
+	&:hover {
+		color: var(--text-color);
+	}
 }
 
 .comparisonRows {
 	margin-bottom: var(--spacing--md);
 	border: var(--border);
-	border-radius: var(--radius);
+	border-radius: var(--radius--sm);
 	overflow: hidden;
 }
 
@@ -437,6 +426,7 @@ async function onUpgradeClick() {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	font-size: var(--font-size--sm);
+	color: var(--text-color);
 
 	& + & {
 		border-top: var(--border);
@@ -444,7 +434,7 @@ async function onUpgradeClick() {
 }
 
 .rowIcon {
-	color: var(--color--purple-500);
+	color: var(--icon-color);
 }
 
 .rowLabel {
@@ -458,11 +448,11 @@ async function onUpgradeClick() {
 }
 
 .rowArrow {
-	color: var(--text-color--subtler);
+	color: var(--icon-color--subtle);
 }
 
 .rowNewValue {
-	color: var(--color--success);
+	color: var(--text-color--success);
 	font-weight: var(--font-weight--bold);
 	font-variant-numeric: tabular-nums;
 }
@@ -484,15 +474,27 @@ async function onUpgradeClick() {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius);
+	border: var(--border-width) var(--border-style) var(--border-color--subtle);
+	border-radius: var(--radius--sm);
+	background: var(--background--surface);
 	cursor: pointer;
+	transition:
+		border-color var(--duration--snappy) var(--easing--ease-out),
+		background-color var(--duration--snappy) var(--easing--ease-out);
+
+	&:hover {
+		border-color: var(--border-color--strong);
+	}
 }
 
 .periodCardSelected {
 	border-color: var(--color--primary);
 	box-shadow: inset 0 0 0 var(--border-width, 1px) var(--color--primary);
-	background: var(--color--orange-50);
+	background: var(--color--orange-alpha-100);
+
+	&:hover {
+		border-color: var(--color--primary);
+	}
 
 	.radioDot {
 		border-color: var(--color--primary);
@@ -512,7 +514,7 @@ async function onUpgradeClick() {
 	flex-shrink: 0;
 	width: var(--spacing--sm);
 	height: var(--spacing--sm);
-	border: var(--border);
+	border: var(--border-width) var(--border-style) var(--border-color--strong);
 	border-radius: var(--radius--full);
 }
 
