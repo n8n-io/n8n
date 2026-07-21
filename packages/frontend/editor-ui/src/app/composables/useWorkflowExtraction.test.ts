@@ -607,6 +607,45 @@ describe('useWorkflowExtraction', () => {
 			expect(created.nodeGroups?.[0].id).not.toBe(group.id);
 		});
 
+		it('preserves every group when the selection spans multiple groups', async () => {
+			const nodeA1 = makeNode('A1', [0, 0]);
+			const nodeA2 = makeNode('A2', [200, 0]);
+			const nodeB1 = makeNode('B1', [400, 0]);
+			const nodeB2 = makeNode('B2', [600, 0]);
+			const groupA = { id: 'gA', name: 'Group A', nodeIds: [nodeA1.id, nodeA2.id] };
+			const groupB = { id: 'gB', name: 'Group B', nodeIds: [nodeB1.id, nodeB2.id] };
+
+			setWorkflowNodes([nodeA1, nodeA2, nodeB1, nodeB2]);
+			mockWorkflowDocumentStore.allGroups = [groupA, groupB];
+			mockWorkflowDocumentStore.connectionsBySourceNode = {
+				A1: {
+					[NodeConnectionTypes.Main]: [[{ node: 'A2', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				A2: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B1', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				B1: {
+					[NodeConnectionTypes.Main]: [[{ node: 'B2', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+
+			mockSuccessfulWorkflowCreation();
+
+			const { extractNodesIntoSubworkflow } = useWorkflowExtraction();
+
+			await extractNodesIntoSubworkflow(
+				{ start: 'A1', end: 'B2' },
+				[nodeA1, nodeA2, nodeB1, nodeB2],
+				'Sub',
+			);
+
+			const created = mockWorkflowsStore.createNewWorkflow.mock.calls[0][0] as WorkflowDataCreate;
+			expect(created.nodeGroups).toHaveLength(2);
+			const byName = Object.fromEntries((created.nodeGroups ?? []).map((g) => [g.name, g]));
+			expect(byName['Group A'].nodeIds).toEqual([nodeA1.id, nodeA2.id]);
+			expect(byName['Group B'].nodeIds).toEqual([nodeB1.id, nodeB2.id]);
+		});
+
 		it('does not recreate the group when the whole selection is exactly the same as that group', async () => {
 			const nodeA = makeNode('A', [0, 0]);
 			const nodeB = makeNode('B', [200, 0]);
