@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
-import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
+import { resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import {
 	getDelegateDifficultySummary,
 	isDelegateSubAgentTool,
@@ -49,8 +49,7 @@ interface ToolStepDisplay {
 }
 
 function getToolDisplayName(toolName: string): string {
-	const translationKey = getToolNameTranslationKey(toolName);
-	return translationKey ? i18n.baseText(translationKey) : formatToolNameForDisplay(toolName);
+	return resolveToolNameForDisplay(toolName, i18n.baseText);
 }
 
 function toolStepLabel(tc: ToolCall): string {

@@ -4,6 +4,7 @@ import {
 	WEB_SEARCH_TOOL_NAME_KEY,
 	formatToolNameForDisplay,
 	getToolNameTranslationKey,
+	resolveToolNameForDisplay,
 } from '../utils/toolDisplayName';
 
 describe('formatToolNameForDisplay', () => {
@@ -53,5 +54,9 @@ describe('formatToolNameForDisplay', () => {
 	it('returns an empty string for missing or blank names', () => {
 		expect(formatToolNameForDisplay(undefined)).toBe('');
 		expect(formatToolNameForDisplay('   ')).toBe('');
+	});
+
+	it('falls back to a humanized tool name when a translation key is missing', () => {
+		expect(resolveToolNameForDisplay('search_nodes', (key) => key)).toBe('Search nodes');
 	});
 });

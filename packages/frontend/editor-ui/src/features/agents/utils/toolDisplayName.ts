@@ -64,6 +64,17 @@ export function getToolNameTranslationKey(toolName: string | undefined): BaseTex
 		: undefined;
 }
 
+export function resolveToolNameForDisplay(
+	toolName: string | undefined,
+	baseText: (key: BaseTextKey) => string,
+): string {
+	const translationKey = getToolNameTranslationKey(toolName);
+	if (!translationKey) return formatToolNameForDisplay(toolName);
+
+	const translated = baseText(translationKey);
+	return translated === translationKey ? formatToolNameForDisplay(toolName) : translated;
+}
+
 export function formatToolNameForDisplay(toolName: string | undefined): string {
 	const trimmed = toolName?.trim();
 	const normalized = trimmed?.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ');
