@@ -50,6 +50,7 @@ docs/generated/postgres-schema/README.md
   s_44a98ba2784a12::t_16f911908620c5 65,97,822,1136
 docs/generated/sqlite-schema/README.md
   s_44a98ba2784a12::t_16f911908620c5 65,97,809,1123
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 87,1037
 packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
   ai_agent 1-31
 docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
@@ -65,6 +66,8 @@ packages/@n8n/db/src/migrations/sqlite/index.ts
   s_44a98ba2784a12::t_daa8f45a138448 436-437,436-437
   s_44a98ba2784a12::t_d446b22a984aa3 216,216
   s_44a98ba2784a12::t_29c7d74109de94 435,435
+  s_44a98ba2784a12::t_fe94af8470378e 434,434
+  s_44a98ba2784a12::t_bfa5a9f5ac9def 215,215
 docs/generated/postgres-schema/public.scheduled_job.md
   s_44a98ba2784a12::t_16f911908620c5 92
 docs/generated/postgres-schema/public.instance_ai_threads.md
@@ -76,10 +79,20 @@ packages/@n8n/db/src/migrations/postgresdb/index.ts
   s_44a98ba2784a12::t_d25d8416783ebe 225-226,225-226
   s_44a98ba2784a12::t_50f198fd2246d1 224,224
   s_44a98ba2784a12::t_6a70a4b32b68f9 453,453
+  s_44a98ba2784a12::t_aa1e8f3f5a3b38 223,223
+  s_44a98ba2784a12::t_473e032380eaeb 452,452
 docs/generated/postgres-schema/public.instance_ai_checkpoints.md
   s_44a98ba2784a12::t_16f911908620c5 9,49
 packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
   ai_agent 1-39
+docs/generated/sqlite-schema/oauth_user_consents.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 9,21,51
+docs/generated/sqlite-schema/oauth_clients.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 95
+docs/generated/sqlite-schema/user.md
+  s_44a98ba2784a12::t_c7a37a3d8a1ed7 236
+packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
+  s_44a98ba2784a12::t_2b023adf499a11 1-100
 ---
 {
   "schema_version": "authorship/3.0.0",

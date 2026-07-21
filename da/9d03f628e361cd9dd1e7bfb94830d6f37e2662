@@ -1,0 +1,92 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_78bcef4cf1110e::t_d9d9695837aa44 641,645-650
+  s_78bcef4cf1110e::t_fe4e53de92b923 654-701
+  s_78bcef4cf1110e::t_c5ea3e23e58126 702-704
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_78bcef4cf1110e::t_f63cb71a0b5684 10
+  s_78bcef4cf1110e::t_2b5d63f39c8d5b 407-412,414,418,426,428,430
+  s_78bcef4cf1110e::t_d75209ca9caeb4 271
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_78bcef4cf1110e::t_ddacde4e422572 206
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_78bcef4cf1110e::t_5f58c71f984f77 762,767,781,787,793,800,807-808,810,813,816,822,827
+  s_61bb0190088fea::t_6e0979733ff4c1 768,777-779,784-785,790,823-825,830
+  s_78bcef4cf1110e::t_08afd3cfea3dc3 763-766,769-775
+  s_61bb0190088fea::t_fe06f00aacfa91 796-797
+  s_78bcef4cf1110e::t_76c186b1c7c74c 803-804
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_78bcef4cf1110e::t_c416edd92ac7bf 467-468,475-478,482,484,487,490-496,498,501,504,507-508,511-512,514,516,520,523-525,528-531,535,538,542-543,546-549,552-555,560-566
+  s_61bb0190088fea::t_297792f8cacebc 469-474,479-481,483,485-486,488-489,497,499-500,502-503,505-506,509-510,513,515,517-519,521-522,526-527,532-534,536-537,539-541,544-545,550-551,556-559,567-569
+  s_78bcef4cf1110e::t_fe63fa831b9543 11
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_78bcef4cf1110e::t_bb045e4730eb42 14-19,33-39
+packages/frontend/editor-ui/src/features/ai/instanceAi/canvasPreview.utils.ts
+  s_61bb0190088fea::t_18eb1161c53659 495-496,499-502,508,510-511,514-515,518-520,522-523,525-529,531-539,544-546,548-555
+  s_78bcef4cf1110e::t_6f3c6adf0ffde0 484-494,497-498,503-507,509,512-513,516-517,521,524,530,540-543,547
+  s_78bcef4cf1110e::t_c749c28e526892 2
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_9aed2f8f48728b::t_0737bed3be169b 119-122,138
+  s_9aed2f8f48728b::t_ec0785c3a8e5cc 147
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_78bcef4cf1110e::t_623d2e3b0ed337 1295
+  s_78bcef4cf1110e::t_f22b42405bacc9 814
+  s_78bcef4cf1110e::t_c493d345b6090e 140-144
+  s_78bcef4cf1110e::t_579ebf8e46edd8 964
+  s_78bcef4cf1110e::t_949f70addb9584 1368
+  s_78bcef4cf1110e::t_c4386452c28e06 84-85,92
+  s_78bcef4cf1110e::t_2dc49248bfe3c6 907
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAgentPreview.test.ts
+  s_78bcef4cf1110e::t_7b43c74e24b5bf 1,3
+  s_78bcef4cf1110e::t_97ed2ce5340c49 2,4-39,41-58,63-100
+  s_78bcef4cf1110e::t_abd5c3a83984f3 59-62
+  s_78bcef4cf1110e::t_ea3b06c28e0aaa 40
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_78bcef4cf1110e::t_8357aa01376904 41-42
+  s_78bcef4cf1110e::t_b9d5abbffa1d20 228
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_78bcef4cf1110e::t_b1c9c1d395d882 1203-1234
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_78bcef4cf1110e::t_2ffbaf70052923 586
+  s_78bcef4cf1110e::t_97120497a138ac 573
+  s_78bcef4cf1110e::t_475cb7d244424c 634
+  s_78bcef4cf1110e::t_24f67eb0057f1f 660,675
+  s_78bcef4cf1110e::t_5a01a1c21d22a5 718
+  s_78bcef4cf1110e::t_7ea90a44a977d6 759
+  s_78bcef4cf1110e::t_f89696d68dd9e0 735
+  s_78bcef4cf1110e::t_d646bd60306681 797
+  s_78bcef4cf1110e::t_ed16f04ae693a5 693
+packages/frontend/editor-ui/src/features/agents/components/AgentSubAgentsPanel.vue
+  s_78bcef4cf1110e::t_43bdae5fd39a51 254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "da9d03f628e361cd9dd1e7bfb94830d6f37e2662",
+  "prompts": {},
+  "sessions": {
+    "s_61bb0190088fea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e1d0729a-bf6d-494f-9e31-649a6c02b4a1",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_78bcef4cf1110e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cb0dab5a-7c87-42b3-b273-a3a9083a1888",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9aed2f8f48728b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c6bff247-be6c-4ebb-bcf0-9311a06d48f1",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

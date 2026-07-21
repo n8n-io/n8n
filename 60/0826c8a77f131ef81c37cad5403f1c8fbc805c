@@ -1,3 +1,15 @@
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_770a4f5233186c::t_8ad2b3903b74bc 98
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_770a4f5233186c::t_a7cff99b8f3cd2 143
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_d446b22a984aa3 216,216
+  s_44a98ba2784a12::t_29c7d74109de94 435,435
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_50f198fd2246d1 224,224
+  s_44a98ba2784a12::t_6a70a4b32b68f9 453,453
+packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
+  ai_agent 1-39
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -5,11 +17,33 @@
   "base_commit_sha": "600826c8a77f131ef81c37cad5403f1c8fbc805c",
   "prompts": {},
   "humans": {
+    "h_760178ed151f13": {
+      "author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
     "h_9c8f56e3400786": {
       "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   },
   "sessions": {
+    "s_1ef72897374beb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1e495e5d-7657-49d3-9e14-471f81cd06f2",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
     "s_44a98ba2784a12": {
       "agent_id": {
         "tool": "cursor",
@@ -18,6 +52,46 @@
       },
       "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
     },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_63922c16247082": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b337778-08d5-4266-bf43-54422800dd01",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
+    },
+    "s_770a4f5233186c": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "af98002c-f09b-4489-8374-ebc72894c73f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_813e262a61f3c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2b40806b-1b79-457f-8546-5d2b9b1d3ad1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_9006126844c8d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5b699ae-12d0-405b-9a78-fb4840686602",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
     "s_b3f23ab76a494c": {
       "agent_id": {
         "tool": "codex",
@@ -25,6 +99,14 @@
         "model": "gpt-5.6-sol"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_d8236b8b5400e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "500e2669-64fc-46e2-9484-cf22ebf66e89",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": null
     }
   }
 }

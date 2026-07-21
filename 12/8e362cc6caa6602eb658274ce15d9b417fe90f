@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-20-agent-tool-compatibility-design.md
+  s_c6a266640f10ab::t_23717bcd83cd15 1-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "128e362cc6caa6602eb658274ce15d9b417fe90f",
+  "prompts": {},
+  "sessions": {
+    "s_c6a266640f10ab": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7ef9-bd80-7e80-a629-f33cbb14a5e0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/workflow/test/application-error.test.ts
+  s_fe728b514eaeff::t_7941d4359033a1 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5916575b8b3fb8c851af82f8ef837bf485866aef",
+  "prompts": {},
+  "sessions": {
+    "s_fe728b514eaeff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6c7c590-2ff2-4d78-a266-d7547585e4f5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

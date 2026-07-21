@@ -1,10 +1,11 @@
 packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences.test.ts
-  s_70e4a16a672757::t_a03d32108719b6 2,17,24,47,53,55-60
   s_70e4a16a672757::t_fb4dc791b159aa 1,3-16,18-23,25-46,48-52,54,61-62
-packages/frontend/editor-ui/src/app/constants/localStorage.ts
-  s_70e4a16a672757::t_489e68614b7d2b 38-41
+  s_70e4a16a672757::t_a03d32108719b6 2,17,24,47,53,55-60
 packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences.ts
   s_70e4a16a672757::t_489e68614b7d2b 1-33
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_70e4a16a672757::t_489e68614b7d2b 38-39
+  s_70e4a16a672757::t_706452e921bce7 40-41
 packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
   s_70e4a16a672757::t_489e68614b7d2b 1-28
 ---

@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_d0b8437e76f497::t_ee70cc8ae2c245 879,910-913
+  s_d0b8437e76f497::t_a532e784b67cf4 942
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b677b1702e385e455ab0c05edaf5e9cbc7b38fd4",
+  "prompts": {},
+  "sessions": {
+    "s_d0b8437e76f497": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5c86617f-a8d8-4a78-915d-711f71cafb6d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
