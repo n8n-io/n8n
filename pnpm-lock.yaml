@@ -5184,6 +5184,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../../../@n8n/vitest-config
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)
       tsdown:
         specifier: 'catalog:'
         version: 0.16.5(typescript@6.0.2)(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@6.0.2))

@@ -31,6 +31,7 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "eslint": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
