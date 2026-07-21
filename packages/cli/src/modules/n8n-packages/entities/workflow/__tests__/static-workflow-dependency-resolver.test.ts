@@ -116,7 +116,6 @@ describe('StaticWorkflowDependencyResolver', () => {
 	it('returns nothing to add when every requirement points back at a seed', async () => {
 		const { resolver } = makeResolver({
 			workflows: [makeWorkflow('a'), makeWorkflow('b')],
-			owners: { a: makeProject('p1'), b: makeProject('p1') },
 		});
 
 		const { autoAddedWorkflows } = await resolver.resolve(
@@ -148,8 +147,31 @@ describe('StaticWorkflowDependencyResolver', () => {
 		expect(autoAddedWorkflows.every((d) => d.folderChain.length === 0)).toBe(true);
 	});
 
+	it('prefers folder over top-level when a workflow is reached from both a folder and a top-level seed', async () => {
+		// projectId is mutually exclusive with folder/workflow ids, so top-level
+		// + folder is the only origin mix a real request can produce.
+		const chain = [makeFolder('root')];
+		const { resolver } = makeResolver({
+			workflows: [makeWorkflow('folderSeed'), makeWorkflow('topSeed'), makeWorkflow('b', 'root')],
+			owners: { b: makeProject('p1') },
+			folderChains: { root: chain },
+		});
+
+		const { autoAddedWorkflows } = await resolver.resolve(
+			resolveInput({
+				topLevelWorkflowIds: ['topSeed'],
+				folderWorkflowIds: ['folderSeed'],
+				requirements: [requirement('topSeed', 'b'), requirement('folderSeed', 'b')],
+			}),
+		);
+
+		expect(autoAddedWorkflows).toHaveLength(1);
+		expect(autoAddedWorkflows[0].placement).toBe('folder');
+	});
+
 	it('prefers the richest placement (project > folder > top-level) when origins converge', async () => {
-		// b is reachable from a folder-seed and a project-seed; project wins.
+		// project+folder isn't a reachable request shape today; this guards the
+		// generic precedence invariant if that validation ever loosens.
 		const project = makeProject('p1');
 		const { resolver } = makeResolver({
 			workflows: [makeWorkflow('folderSeed'), makeWorkflow('projectSeed'), makeWorkflow('b')],
