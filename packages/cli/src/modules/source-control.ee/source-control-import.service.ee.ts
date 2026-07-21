@@ -1012,6 +1012,14 @@ export class SourceControlImportService {
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				);
 				const existingCredentialById = existingCredentialsById.get(credential.id);
+				if (
+					existingCredentialById?.availability === 'instance' &&
+					existingCredentialById.type !== credential.type
+				) {
+					throw new UserError(
+						'Provider connection type cannot be changed. Create a new connection instead.',
+					);
+				}
 				const existingCredential =
 					existingCredentialById?.type === credential.type ? existingCredentialById : undefined;
 
@@ -1031,7 +1039,7 @@ export class SourceControlImportService {
 				const availability = existingCredentialById?.availability ?? remoteAvailability;
 				const newCredentialObject = new Credentials({ id, name }, type);
 				if (availability === 'instance' && (isGlobal || isResolvable || resolvableAllowFallback)) {
-					throw new UserError('Instance credentials cannot be global or dynamically resolved');
+					throw new UserError('Provider connections cannot be global or dynamically resolved');
 				}
 
 				if (existingCredential?.data) {

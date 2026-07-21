@@ -386,6 +386,30 @@ describe('CredentialsController', () => {
 			);
 		});
 
+		it('should reject changing the type of an instance credential', async () => {
+			const instanceCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				type: 'apiKey',
+				availability: 'instance',
+				shared: [],
+			});
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'httpHeaderAuth',
+					data: { name: 'x-api-key', value: 'secret' },
+				},
+			} as unknown as CredentialRequest.Update;
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(instanceCredential);
+
+			await expect(credentialsController.updateCredentials(ownerReq)).rejects.toThrow(
+				'Provider connection type cannot be changed',
+			);
+			expect(prepareUpdateDataSpy).not.toHaveBeenCalled();
+		});
+
 		it('should emit "credentials-updated" with jweEnabled true when JWE is enabled in payload', async () => {
 			// ARRANGE
 			const ownerReq = {

@@ -154,6 +154,25 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
+		// Availability is instance-local state; imports never change it for existing credentials.
+		if (credential.id) {
+			const existing = await this.transactionManager.findOne(CredentialsEntity, {
+				where: { id: credential.id },
+				select: ['availability', 'type'],
+			});
+			if (existing) {
+				credential.availability = existing.availability;
+				if (
+					existing.availability === 'instance' &&
+					credential.type !== undefined &&
+					credential.type !== existing.type
+				) {
+					throw new UserError(
+						'Provider connection type cannot be changed. Create a new connection instead.',
+					);
+				}
+			}
+		}
 		credential.availability ??= 'workflow';
 
 		if (credential.availability === 'instance') {
@@ -165,7 +184,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				credential.resolverId
 			) {
 				throw new UserError(
-					'Instance credentials cannot be global, managed, or dynamically resolved',
+					'Provider connections cannot be global, managed, or dynamically resolved',
 				);
 			}
 			Object.assign(credential, {

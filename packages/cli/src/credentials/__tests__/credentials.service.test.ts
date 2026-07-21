@@ -2507,7 +2507,7 @@ describe('CredentialsService', () => {
 				};
 
 				await expect(service.createUnmanagedCredential(payload, ownerUser)).rejects.toThrow(
-					'Instance credentials cannot reference project-scoped external secrets',
+					'Provider connections cannot reference project-scoped external secrets',
 				);
 				expect(projectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
 			});
@@ -2523,7 +2523,7 @@ describe('CredentialsService', () => {
 						},
 						memberUser,
 					),
-				).rejects.toThrow('You do not have permission to create instance credentials');
+				).rejects.toThrow('You do not have permission to create provider connections');
 			});
 
 			it('should reject contradictory instance credential flags', async () => {
@@ -2538,7 +2538,7 @@ describe('CredentialsService', () => {
 						},
 						ownerUser,
 					),
-				).rejects.toThrow('Instance credentials cannot be globally shared');
+				).rejects.toThrow('Provider connections cannot be globally shared');
 			});
 		});
 	});
@@ -2832,7 +2832,7 @@ describe('CredentialsService', () => {
 
 				await expect(
 					service.prepareUpdateData(ownerUser, payload, existingCredential),
-				).rejects.toThrow('Instance credentials cannot reference project-scoped external secrets');
+				).rejects.toThrow('Provider connections cannot reference project-scoped external secrets');
 				expect(projectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
 			});
 		});

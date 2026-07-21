@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) |  |
+| credentialId | varchar(36) |  | false |  | [public.credentials_entity](public.credentials_entity.md) | Instance credential assigned to the registered credential use |
 | credentialUseId | varchar(128) |  | false |  |  | Stable credential use registered with the instance credential broker |
 
 ## Constraints

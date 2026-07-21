@@ -20,7 +20,9 @@ export class AddInstanceCredentials1784000000052 implements ReversibleMigration 
 				column('credentialUseId')
 					.varchar(128)
 					.primary.comment('Stable credential use registered with the instance credential broker'),
-				column('credentialId').varchar(36).notNull,
+				column('credentialId')
+					.varchar(36)
+					.notNull.comment('Instance credential assigned to the registered credential use'),
 			)
 			.withForeignKey('credentialId', {
 				tableName: 'credentials_entity',

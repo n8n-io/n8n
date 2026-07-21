@@ -1607,13 +1607,13 @@ export class CredentialsService {
 
 	private async createInstanceCredential(opts: CreateCredentialOptions, user: User) {
 		if (!hasGlobalScope(user, 'credential:manageInstance')) {
-			throw new ForbiddenError('You do not have permission to create instance credentials');
+			throw new ForbiddenError('You do not have permission to create provider connections');
 		}
 		if (opts.isGlobal === true) {
-			throw new BadRequestError('Instance credentials cannot be globally shared');
+			throw new BadRequestError('Provider connections cannot be globally shared');
 		}
 		if (opts.isResolvable === true || opts.isManaged) {
-			throw new BadRequestError('Instance credentials cannot be end-user or managed credentials');
+			throw new BadRequestError('Provider connections cannot be end-user or managed credentials');
 		}
 		const data = opts.data as ICredentialDataDecryptedObject;
 		this.validateInstanceCredentialData(data);
@@ -1652,7 +1652,7 @@ export class CredentialsService {
 	validateInstanceCredentialData(data: ICredentialDataDecryptedObject): void {
 		if (getExternalSecretExpressionPaths(data).length > 0) {
 			throw new BadRequestError(
-				'Instance credentials cannot reference project-scoped external secrets',
+				'Provider connections cannot reference project-scoped external secrets',
 			);
 		}
 	}
