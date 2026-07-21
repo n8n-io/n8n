@@ -28,14 +28,6 @@
         "model": "gpt-5.6-sol"
       },
       "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
-    },
-    "s_b6381fbb8ddc64": {
-      "agent_id": {
-        "tool": "claude",
-        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
-        "model": "claude-fable-5"
-      },
-      "human_author": null
     }
   }
 }
