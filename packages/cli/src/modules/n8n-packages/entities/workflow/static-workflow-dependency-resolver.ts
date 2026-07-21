@@ -15,11 +15,6 @@ import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 export type WorkflowDependencyOrigin = 'top-level' | 'folder' | 'project';
 
-interface ExportedWorkflowDependencySeed {
-	workflowId: string;
-	origin: WorkflowDependencyOrigin;
-}
-
 export interface StaticWorkflowDependency {
 	workflow: WorkflowEntity;
 	placement: WorkflowDependencyOrigin;
@@ -47,13 +42,12 @@ export class StaticWorkflowDependencyResolver {
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
 	}): Promise<StaticWorkflowDependencyResolution> {
-		const seeds = this.buildSeeds({
+		const { exportedWorkflowIds, originsByWorkflowId } = this.seedExportedOrigins({
 			topLevelWorkflowIds: options.topLevelWorkflowIds,
 			folderWorkflowIds: options.folderWorkflowIds,
 			projectWorkflowIds: options.projectWorkflowIds,
 		});
-		const exportedWorkflowIds = new Set(seeds.map(({ workflowId }) => workflowId));
-		const originsByWorkflowId = this.resolveOrigins(seeds, options.requirements);
+		this.propagateOrigins(originsByWorkflowId, options.requirements);
 
 		const autoAddedWorkflowIds = [...originsByWorkflowId.keys()].filter(
 			(workflowId) => !exportedWorkflowIds.has(workflowId),
@@ -68,41 +62,42 @@ export class StaticWorkflowDependencyResolver {
 		return { autoAddedWorkflows };
 	}
 
-	private buildSeeds(options: {
+	/**
+	 * Seed origin sets from the export buckets in one pass. The same workflow can
+	 * appear in more than one bucket when export options overlap; origins are merged
+	 * so placement can pick the richest context later.
+	 */
+	private seedExportedOrigins(options: {
 		topLevelWorkflowIds: string[];
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
-	}): ExportedWorkflowDependencySeed[] {
-		return [
-			...options.topLevelWorkflowIds.map((workflowId) => ({
-				workflowId,
-				origin: 'top-level' as const,
-			})),
-			...options.folderWorkflowIds.map((workflowId) => ({
-				workflowId,
-				origin: 'folder' as const,
-			})),
-			...options.projectWorkflowIds.map((workflowId) => ({
-				workflowId,
-				origin: 'project' as const,
-			})),
-		];
+	}): {
+		exportedWorkflowIds: Set<string>;
+		originsByWorkflowId: Map<string, Set<WorkflowDependencyOrigin>>;
+	} {
+		const exportedWorkflowIds = new Set<string>();
+		const originsByWorkflowId = new Map<string, Set<WorkflowDependencyOrigin>>();
+
+		const add = (workflowIds: string[], origin: WorkflowDependencyOrigin) => {
+			for (const workflowId of workflowIds) {
+				exportedWorkflowIds.add(workflowId);
+				const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowDependencyOrigin>();
+				origins.add(origin);
+				originsByWorkflowId.set(workflowId, origins);
+			}
+		};
+
+		add(options.topLevelWorkflowIds, 'top-level');
+		add(options.folderWorkflowIds, 'folder');
+		add(options.projectWorkflowIds, 'project');
+
+		return { exportedWorkflowIds, originsByWorkflowId };
 	}
 
-	private resolveOrigins(
-		seeds: ExportedWorkflowDependencySeed[],
+	private propagateOrigins(
+		originsByWorkflowId: Map<string, Set<WorkflowDependencyOrigin>>,
 		requirements: WorkflowSubWorkflowRequirement[],
-	): Map<string, Set<WorkflowDependencyOrigin>> {
-		// Seeds can list the same workflow more than once when export options overlap
-		// (e.g. workflowIds/folderIds mixed with projectIds). Merge those into one
-		// origin set per id so placement can pick the richest context later.
-		const originsByWorkflowId = new Map<string, Set<WorkflowDependencyOrigin>>();
-		for (const { workflowId, origin } of seeds) {
-			const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowDependencyOrigin>();
-			origins.add(origin);
-			originsByWorkflowId.set(workflowId, origins);
-		}
-
+	): void {
 		const requirementsByWorkflowId = new Map<string, WorkflowSubWorkflowRequirement[]>();
 
 		for (const requirement of requirements) {
@@ -138,8 +133,6 @@ export class StaticWorkflowDependencyResolver {
 				}
 			}
 		}
-
-		return originsByWorkflowId;
 	}
 
 	private async buildAutoAddedWorkflows(options: {
