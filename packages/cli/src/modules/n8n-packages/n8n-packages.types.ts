@@ -77,6 +77,8 @@ export const DataTableSchemaConflictPolicy = {
 export const VariableMissingPolicy = {
 	/** Imports workflows even when referenced variables are absent. Nothing is created; unresolved names are reported as warnings in the response. */
 	DoNothing: 'do-nothing',
+	/** Blocks the import unless every referenced variable already resolves in the target project or global scope. */
+	MustPreexist: 'must-preexist',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -257,7 +259,15 @@ export type BlockingIssue =
 			usedByWorkflows: string[];
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure);
+	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| {
+			// Inlined rather than intersected with VariableResolutionFailure: variable.types
+			// imports VariableMissingPolicy from here, so importing back would form a type cycle.
+			type: 'variable-unresolved';
+			/** Requirement name with no match in the target project or global scope. */
+			name: string;
+			usedByWorkflows: string[];
+	  };
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';

@@ -87,5 +87,5 @@ export class ImportPackageRequestDto extends Z.class({
 		.enum(['keep-existing', 'fail'])
 		.optional()
 		.default('keep-existing'),
-	variableMissingPolicy: z.enum(['do-nothing']).optional().default('do-nothing'),
+	variableMissingPolicy: z.enum(['do-nothing', 'must-preexist']).optional().default('do-nothing'),
 }) {}

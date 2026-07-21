@@ -28,9 +28,17 @@ export interface VariableImportRequest {
 	missingPolicy: VariableMissingPolicy;
 }
 
+export interface VariableResolutionFailure {
+	name: string;
+	usedByWorkflows: string[];
+}
+
 export interface VariableImportPlan {
 	/** Requirement names that resolve in the target project or at the global level. */
 	matched: string[];
-	/** Requirement names with no match in the lookup scope. Reported as warnings under `do-nothing`. */
-	missing: string[];
+	/**
+	 * Unresolved requirements. Named `missing` (not `failures`) because they are
+	 * only warnings under `do-nothing`; they block the import under `must-preexist`.
+	 */
+	missing: VariableResolutionFailure[];
 }

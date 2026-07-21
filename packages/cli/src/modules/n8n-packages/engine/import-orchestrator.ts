@@ -24,6 +24,7 @@ import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
 	VariableImportPlan,
 	VariableImportRequest,
+	VariableResolutionFailure,
 } from '../entities/variable/variable.types';
 import type {
 	PreparedWorkflow,
@@ -128,6 +129,8 @@ export class ImportOrchestrator {
 			credentialRequest,
 			folderPlan,
 			dataTablePlan,
+			variableRequest,
+			variablePlan,
 		});
 
 		return {
@@ -194,12 +197,16 @@ export class ImportOrchestrator {
 		credentialRequest,
 		folderPlan,
 		dataTablePlan,
+		variableRequest,
+		variablePlan,
 	}: {
 		workflowPlan: WorkflowImportPlan;
 		credentialPlan: CredentialResolution;
 		credentialRequest: CredentialBindingRequest;
 		folderPlan: FolderImportPlan;
 		dataTablePlan: DataTableImportPlan;
+		variableRequest: VariableImportRequest;
+		variablePlan: VariableImportPlan;
 	}): BlockingIssue[] {
 		return [
 			...workflowPlan.conflicts.map(
@@ -220,6 +227,9 @@ export class ImportOrchestrator {
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
 				.map(toCredentialBlockingIssue),
+			...this.variableImporter
+				.blockingFailures(variableRequest, variablePlan)
+				.map(toVariableBlockingIssue),
 		];
 	}
 }
@@ -234,5 +244,13 @@ function toCredentialBlockingIssue(failure: CredentialResolutionFailure): Blocki
 		...(expectedType ? { expectedType } : {}),
 		...(actualType ? { actualType } : {}),
 		usedByWorkflows,
+	};
+}
+
+function toVariableBlockingIssue(failure: VariableResolutionFailure): BlockingIssue {
+	return {
+		type: 'variable-unresolved',
+		name: failure.name,
+		usedByWorkflows: failure.usedByWorkflows,
 	};
 }

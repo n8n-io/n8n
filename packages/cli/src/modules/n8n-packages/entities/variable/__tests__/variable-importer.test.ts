@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { VariableImporter } from '../variable-importer';
+import type { VariableImportPlan } from '../variable.types';
 import type { ImportContext } from '../../../n8n-packages.types';
 
 const context: ImportContext = {
@@ -55,7 +56,7 @@ describe('VariableImporter', () => {
 			expect(variablesService.getAllCached).not.toHaveBeenCalled();
 		});
 
-		it('reports a missing name when no variable resolves in the target project or globally', async () => {
+		it('reports an unresolved requirement when no variable resolves in the project or globally', async () => {
 			const { importer, variablesService } = makeImporter();
 			variablesService.getAllCached.mockResolvedValue([]);
 
@@ -64,7 +65,10 @@ describe('VariableImporter', () => {
 				missingPolicy: 'do-nothing',
 			});
 
-			expect(plan).toEqual({ matched: [], missing: ['API_URL'] });
+			expect(plan).toEqual({
+				matched: [],
+				missing: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
+			});
 		});
 
 		it('matches a project-scoped variable in the target project', async () => {
@@ -129,7 +133,10 @@ describe('VariableImporter', () => {
 				missingPolicy: 'do-nothing',
 			});
 
-			expect(plan).toEqual({ matched: [], missing: ['API_URL'] });
+			expect(plan).toEqual({
+				matched: [],
+				missing: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
+			});
 		});
 
 		it('classifies each requirement independently', async () => {
@@ -146,7 +153,51 @@ describe('VariableImporter', () => {
 				missingPolicy: 'do-nothing',
 			});
 
-			expect(plan).toEqual({ matched: ['API_URL'], missing: ['API_KEY'] });
+			expect(plan).toEqual({
+				matched: ['API_URL'],
+				missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
+			});
+		});
+	});
+
+	describe('blockingFailures', () => {
+		const plan: VariableImportPlan = {
+			matched: ['API_URL'],
+			missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
+		};
+
+		describe('do-nothing policy', () => {
+			it('never blocks, even with unresolved requirements', () => {
+				const { importer } = makeImporter();
+
+				expect(
+					importer.blockingFailures({ requirements: undefined, missingPolicy: 'do-nothing' }, plan),
+				).toEqual([]);
+			});
+		});
+
+		describe('must-preexist policy', () => {
+			it('blocks on every unresolved requirement', () => {
+				const { importer } = makeImporter();
+
+				expect(
+					importer.blockingFailures(
+						{ requirements: undefined, missingPolicy: 'must-preexist' },
+						plan,
+					),
+				).toEqual([{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }]);
+			});
+
+			it('does not block when every requirement resolves', () => {
+				const { importer } = makeImporter();
+
+				expect(
+					importer.blockingFailures(
+						{ requirements: undefined, missingPolicy: 'must-preexist' },
+						{ matched: ['API_URL'], missing: [] },
+					),
+				).toEqual([]);
+			});
 		});
 	});
 });

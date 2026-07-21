@@ -3,7 +3,12 @@ import { pickVariableForProject } from 'n8n-workflow';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
-import type { VariableImportPlan, VariableImportRequest } from './variable.types';
+import { variableBlockingFailures } from './variable-missing-policy';
+import type {
+	VariableImportPlan,
+	VariableImportRequest,
+	VariableResolutionFailure,
+} from './variable.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
@@ -12,9 +17,8 @@ export class VariableImporter {
 
 	/**
 	 * Resolves the package's variable requirements against the target project
-	 * (then global), mirroring runtime `$vars` precedence. Read-only for
-	 * `do-nothing`: matched names and unresolved names are reported, nothing
-	 * is created.
+	 * (then global), mirroring runtime `$vars` precedence. Read-only: matched
+	 * names and unresolved requirements are reported, nothing is created.
 	 */
 	async plan(context: ImportContext, request: VariableImportRequest): Promise<VariableImportPlan> {
 		const requirements = request.requirements ?? [];
@@ -29,18 +33,26 @@ export class VariableImporter {
 		}
 
 		const matched: string[] = [];
-		const missing: string[] = [];
+		const missing: VariableResolutionFailure[] = [];
 
-		for (const { name } of requirements) {
+		for (const { name, usedByWorkflows } of requirements) {
 			const picked = pickVariableForProject(
 				variablesByKey.get(name) ?? [],
 				name,
 				context.projectId,
 			);
 			if (picked) matched.push(name);
-			else missing.push(name);
+			else missing.push({ name, usedByWorkflows: [...usedByWorkflows].sort() });
 		}
 
 		return { matched, missing };
+	}
+
+	/** Classifies which unresolved requirements block the import under the chosen missing policy. */
+	blockingFailures(
+		request: VariableImportRequest,
+		plan: VariableImportPlan,
+	): VariableResolutionFailure[] {
+		return variableBlockingFailures(request.missingPolicy, plan);
 	}
 }

@@ -12,7 +12,10 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
-import type { VariableImportRequest } from '../entities/variable/variable.types';
+import type {
+	VariableImportRequest,
+	VariableResolutionFailure,
+} from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type { ImportContext, ImportPackageRequest, ImportResult } from '../n8n-packages.types';
 import { ImportOrchestrator } from './import-orchestrator';
@@ -116,7 +119,9 @@ export class WorkflowPackageImporter {
 			},
 			variables: {
 				matched: imported.variablePlan.matched,
-				missing: imported.variablePlan.missing,
+				missing: imported.variablePlan.missing.map(
+					(missing: VariableResolutionFailure) => missing.name,
+				),
 			},
 		});
 	}
