@@ -38,6 +38,7 @@ import type { INodeUi, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
+import RunDataMarkdown from '@/features/ndv/runData/components/RunDataMarkdown.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
@@ -50,7 +51,15 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
-import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconButton,
+	N8nInfoTip,
+	N8nInput,
+	N8nMarkdownEditor,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 defineOptions({ name: 'FocusPanel' });
 
@@ -89,6 +98,9 @@ const { renameNode } = useCanvasOperations();
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
 const inputValue = ref<string>('');
+
+// Renders a plain string param as editable markdown (WYSIWYG + raw toggle) instead of the raw textarea
+const markdownMode = ref(false);
 
 const isDisabled = computedAsync(async () => {
 	if (!resolvedParameter.value) {
@@ -201,9 +213,8 @@ const expressionModeEnabled = computed(
 
 const expression = computed(() => {
 	if (!expressionModeEnabled.value) return '';
-	return isResourceLocatorValue(resolvedParameter.value)
-		? resolvedParameter.value.value
-		: resolvedParameter.value;
+	const value = resolvedParameter.value?.value;
+	return isResourceLocatorValue(value) ? value.value : value;
 });
 
 const shouldCaptureForPosthog = computed(
@@ -211,6 +222,29 @@ const shouldCaptureForPosthog = computed(
 );
 
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
+
+// Markdown only makes sense for plain string params (no dedicated code/html/sql editor).
+// Plain strings render an editable markdown editor; expressions render a read-only preview
+// of the resolved output (editing them as markdown would break the expression syntax).
+const canRenderMarkdown = computed(
+	() =>
+		!!resolvedParameter.value &&
+		typeof resolvedParameter.value.value === 'string' &&
+		resolvedParameter.value.parameter.type === 'string' &&
+		!editorType.value &&
+		isDisplayed.value,
+);
+
+const markdownToggleTitle = computed(() => {
+	if (expressionModeEnabled.value) {
+		return markdownMode.value
+			? locale.baseText('nodeView.focusPanel.markdownPreview.showExpression')
+			: locale.baseText('nodeView.focusPanel.markdownPreview.previewExpression');
+	}
+	return markdownMode.value
+		? locale.baseText('nodeView.focusPanel.markdownPreview.hide')
+		: locale.baseText('nodeView.focusPanel.markdownPreview.show');
+});
 
 const resolvedAdditionalExpressionData = computed(() => {
 	return {
@@ -244,7 +278,7 @@ const emptySubtitle = computed(() =>
 		: locale.baseText('nodeView.focusPanel.noParameters.subtitle'),
 );
 
-const { resolvedExpression } = useResolvedExpression({
+const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	stringifyObject:
@@ -383,6 +417,16 @@ watch(
 	{ immediate: true },
 );
 
+// Reset markdown mode only when the focused parameter changes, not on every value edit
+watch(
+	() =>
+		resolvedParameter.value &&
+		`${resolvedParameter.value.node.id}:${resolvedParameter.value.parameterPath}`,
+	() => {
+		markdownMode.value = false;
+	},
+);
+
 function onOpenNdv() {
 	if (node.value) {
 		ndvStore.value.setActiveNodeName(node.value.name, 'focus_panel');
@@ -456,13 +500,25 @@ function onRenameNode(value: string) {
 							{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
 						</N8nInfoTip>
 					</div>
-					<ParameterOptions
-						v-if="isDisplayed"
-						:parameter="resolvedParameter.parameter"
-						:value="resolvedParameter.value"
-						:is-read-only="isReadOnly"
-						@update:model-value="optionSelected"
-					/>
+					<div :class="$style.optionsRight">
+						<N8nIconButton
+							v-if="canRenderMarkdown"
+							:icon="markdownMode ? 'eye-off' : 'eye'"
+							type="tertiary"
+							size="small"
+							text
+							:title="markdownToggleTitle"
+							data-test-id="focus-panel-markdown-toggle"
+							@click="markdownMode = !markdownMode"
+						/>
+						<ParameterOptions
+							v-if="isDisplayed"
+							:parameter="resolvedParameter.parameter"
+							:value="resolvedParameter.value"
+							:is-read-only="isReadOnly"
+							@update:model-value="optionSelected"
+						/>
+					</div>
 				</div>
 				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
 					<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
@@ -472,17 +528,25 @@ function onRenameNode(value: string) {
 							</N8nText>
 						</div>
 					</div>
-					<ExpressionEditorModalInput
-						v-else-if="expressionModeEnabled"
-						ref="inputField"
-						v-model="inputValue"
-						:class="$style.editor"
-						:is-read-only="isReadOnly"
-						:path="resolvedParameter.parameterPath"
-						data-test-id="expression-modal-input"
-						:target-node-parameter-context="targetNodeParameterContext"
-						@change="onInputChange($event.value)"
-					/>
+					<template v-else-if="expressionModeEnabled">
+						<RunDataMarkdown
+							v-if="markdownMode"
+							:input-markdown="resolvedExpressionString"
+							:class="$style.heightFull"
+							data-test-id="focus-panel-markdown-preview"
+						/>
+						<ExpressionEditorModalInput
+							v-else
+							ref="inputField"
+							v-model="inputValue"
+							:class="$style.editor"
+							:is-read-only="isReadOnly"
+							:path="resolvedParameter.parameterPath"
+							data-test-id="expression-modal-input"
+							:target-node-parameter-context="targetNodeParameterContext"
+							@change="onInputChange($event.value)"
+						/>
+					</template>
 					<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor'"
@@ -550,6 +614,15 @@ function onRenameNode(value: string) {
 							:rows="editorRows"
 							fullscreen
 							fill-parent
+							@update:model-value="onInputChange"
+						/>
+						<N8nMarkdownEditor
+							v-else-if="markdownMode && canRenderMarkdown"
+							ref="inputField"
+							v-model="inputValue"
+							:class="$style.markdownEditor"
+							:readonly="isReadOnly"
+							max-height="100%"
 							@update:model-value="onInputChange"
 						/>
 						<N8nInput
@@ -687,6 +760,12 @@ function onRenameNode(value: string) {
 		.parameterOptionsWrapper {
 			display: flex;
 			justify-content: space-between;
+
+			.optionsRight {
+				display: flex;
+				align-items: center;
+				gap: var(--spacing--4xs);
+			}
 		}
 
 		.noExecutionDataTip {
@@ -738,6 +817,14 @@ function onRenameNode(value: string) {
 
 .heightFull {
 	height: 100%;
+}
+
+.markdownEditor {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	width: 100%;
 }
 
 .forceHover {
