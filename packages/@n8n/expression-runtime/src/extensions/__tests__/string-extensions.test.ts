@@ -7,6 +7,8 @@ const extractUrlPath = stringExtensions.functions.extractUrlPath as (
 
 const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: string) => string;
 
+const toBoolean = stringExtensions.functions.toBoolean as (value: string) => boolean;
+
 describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 	it.each([
 		['https://example.com/path', '/path'],
@@ -62,5 +64,41 @@ describe('toSentenceCase', () => {
 		['', ''],
 	])('should return letter-free input %p unchanged', (input, expected) => {
 		expect(toSentenceCase(input)).toBe(expected);
+	});
+});
+
+describe('toBoolean', () => {
+	it.each([
+		['true', true],
+		['yes', true],
+		['1', true],
+		['anything', true],
+		['false', false],
+		['no', false],
+		['0', false],
+		['', false],
+	])('should convert %s to %s', (input, expected) => {
+		expect(toBoolean(input)).toBe(expected);
+	});
+
+	it.each([
+		['FALSE', false],
+		['False', false],
+		['NO', false],
+		['No', false],
+	])('should be case-insensitive: %s → %s', (input, expected) => {
+		expect(toBoolean(input)).toBe(expected);
+	});
+
+	it.each([
+		[' false ', false],
+		[' 0 ', false],
+		[' no ', false],
+		['\tfalse\t', false],
+		['\n0\n', false],
+		[' true ', true],
+		['  ', false],
+	])('should trim whitespace before comparison: %s → %s', (input, expected) => {
+		expect(toBoolean(input)).toBe(expected);
 	});
 });
