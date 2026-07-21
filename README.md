@@ -32,6 +32,9 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n
 
 Access the editor at http://localhost:5678
 
+> 💡 Tip: If you are completely new to n8n, you can also explore [ready-made workflows](https://n8n.io/workflows) to learn faster before building your own.
+
+
 ## Resources
 
 - 📚 [Documentation](https://docs.n8n.io)
