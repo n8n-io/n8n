@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
 	N8nButton,
+	N8nHeading,
 	N8nIcon,
 	N8nLink,
 	N8nTabs,
@@ -18,10 +19,13 @@ import SeverityTag from './components/SeverityTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
 import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
 const i18n = useI18n();
+
+useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const currentTab = ref('workflow-issues');
 const shouldShowRefreshButton = ref(false);
@@ -124,7 +128,10 @@ const sortedInstanceResults = computed(() => {
 </script>
 
 <template>
-	<div style="max-width: 700px; margin: 0 auto; padding-bottom: 40px">
+	<div :class="$style.container">
+		<N8nHeading tag="h1" size="2xlarge" class="mb-l">
+			{{ i18n.baseText('settings.migrationReport') }}
+		</N8nHeading>
 		<N8nText tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 			{{
 				i18n.baseText('settings.migrationReport.title', {
@@ -281,6 +288,11 @@ const sortedInstanceResults = computed(() => {
 </template>
 
 <style module>
+.container {
+	padding-right: var(--spacing--2xs);
+	padding-bottom: var(--spacing--2xl);
+}
+
 .CardContainer {
 	border: var(--border);
 	border-radius: var(--radius);

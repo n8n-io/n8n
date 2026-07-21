@@ -2,6 +2,7 @@
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -27,6 +28,8 @@ import { useRouter } from 'vue-router';
 import SeverityTag from './components/SeverityTag.vue';
 
 const i18n = useI18n();
+
+useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const props = defineProps<{ migrationRuleId: string }>();
 
