@@ -27,14 +27,9 @@ const store = useEvalCollectionsStore();
 const status = computed(() => deriveRunsStatus(props.versions));
 const isRunning = computed(() => status.value === 'running');
 
-// Live "N/M versions complete" progress while runs are in flight. Reads from
-// `versions` (refreshed by the store's detail poll), so the count advances on
-// its own and the indicator disappears once the set settles.
 const completedCount = computed(() => countCompletedRuns(props.versions));
 
-// Re-run is offered once the current attempt has settled (done or failed) and
-// hidden while runs are still in flight, so a user can't schedule a second
-// wave on top of an unfinished one (the backend rejects that anyway).
+// Hidden while running so a user can't stack a second wave on an unfinished one.
 const canRerun = computed(() => !isRunning.value);
 
 const rerunning = ref(false);
@@ -51,8 +46,7 @@ async function onRerun() {
 	}
 }
 
-// Done/Failed badge only; the running state renders a distinct RunningIndicator
-// instead so it can't be mistaken for a settled result.
+// Settled result only; the running state renders a distinct RunningIndicator.
 const statusBadge = computed(() =>
 	status.value === 'error'
 		? {
@@ -70,8 +64,7 @@ const legend = computed(() =>
 		...version,
 		scorePercent: version.avgScore !== null ? Math.round(version.avgScore * 100) : null,
 		isBest: version.index === props.bestVersionIndex,
-		// Which specific version's run is still in flight, so the chip can show a
-		// spinner — the collection-level "N/M complete" doesn't say which one.
+		// Per-version flag so the chip can spin; the collection count can't say which.
 		isRunning: version.status === 'new' || version.status === 'running',
 	})),
 );
@@ -106,7 +99,7 @@ const legend = computed(() =>
 		</N8nText>
 
 		<div :class="$style.legend">
-			<router-link
+			<RouterLink
 				v-for="version in legend"
 				:key="version.testRunId"
 				:to="{
@@ -132,7 +125,7 @@ const legend = computed(() =>
 				<N8nText v-if="version.isBest" size="xsmall" bold color="success">
 					{{ i18n.baseText('evaluation.compare.versionsLegend.best') }}
 				</N8nText>
-			</router-link>
+			</RouterLink>
 		</div>
 	</header>
 </template>
@@ -165,8 +158,7 @@ const legend = computed(() =>
 	margin-top: var(--spacing--3xs);
 }
 
-// Each chip links to its run's detail view; the border affordance signals it's
-// clickable while keeping the resting size stable (transparent → colored).
+// Transparent resting border keeps size stable; it colors on hover to signal the link.
 .chip {
 	display: inline-flex;
 	align-items: center;

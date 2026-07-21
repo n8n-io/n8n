@@ -7,18 +7,15 @@ import { formatMetricLabel, getMetricDescriptionKey } from '../../evaluation.uti
 
 const props = defineProps<{
 	metricKey: string;
-	// The metric's custom LLM-judge prompt — the specific criteria the user
-	// configured (e.g. "checks for markdown"). Omitted for preset/non-judge
-	// metrics, which only show the generic description.
+	// The metric's custom LLM-judge criteria. Omitted for preset/non-judge metrics.
 	prompt?: string;
 }>();
 
 const i18n = useI18n();
 const isModalOpen = ref(false);
 
-// Characters of the custom criteria shown inline before "Show more" opens the
-// full rubric in a modal. Judging prompts are often long, multi-paragraph
-// rubrics that would otherwise push the score chart far down the page.
+// Inline preview length before "Show more" opens the full rubric in a modal;
+// judge prompts are often long enough to push the score chart off-screen.
 const PREVIEW_CHARS = 120;
 
 const description = computed(() => {
@@ -36,10 +33,8 @@ const previewText = computed(() => {
 
 const modalTitle = computed(() => formatMetricLabel(props.metricKey));
 
-// The judge prompt is free-form, multi-paragraph text. Split on blank lines so
-// each instruction block (the intro, the input placeholders, the true/false
-// rules) renders as its own spaced paragraph in the modal instead of one dense
-// wall of text. Single newlines within a block are preserved via `pre-wrap`.
+// Split the free-form judge prompt on blank lines so each block renders as its own
+// spaced paragraph; single newlines within a block are preserved via `pre-wrap`.
 const promptParagraphs = computed(() =>
 	(props.prompt ?? '')
 		.split(/\n\s*\n/)
@@ -125,8 +120,7 @@ const promptParagraphs = computed(() =>
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	// Cap the height so a long rubric scrolls inside the modal rather than
-	// growing it past the viewport.
+	// Cap height so a long rubric scrolls inside the modal instead of growing past the viewport.
 	max-height: 60vh;
 	overflow-y: auto;
 	// Keeps text off the scrollbar when the rubric overflows.

@@ -51,17 +51,22 @@ const metricInputSchema = z.object({
 		.string()
 		.min(1)
 		.describe(
-			"n8n expression resolving to the workflow's produced answer, e.g. {{ $json.output }}",
+			"n8n expression for the workflow's produced answer (read from the workflow output). " +
+				'Must begin with `=` so it is stored as an expression, not literal text, e.g. ={{ $json.output }}',
 		),
 	userQuery: z
 		.string()
 		.optional()
-		.describe('n8n expression for the user query (required for the "helpfulness" preset)'),
+		.describe(
+			'n8n expression for the user query — a dataset column (required for the "helpfulness" preset). ' +
+				'Write it as `={{ $json.<column> }}` (the eval reads it from the dataset row); do not reference the trigger by name. Must begin with `=`, e.g. ={{ $json.input }}',
+		),
 	expectedAnswer: z
 		.string()
 		.optional()
 		.describe(
-			'n8n expression for the expected/ground-truth answer (required for the "correctness" preset)',
+			'n8n expression for the expected/ground-truth answer — a dataset column (required for the "correctness" preset). ' +
+				'Write it as `={{ $json.<column> }}` (the eval reads it from the dataset row); do not reference the trigger by name. Must begin with `=`, e.g. ={{ $json.expected_output }}',
 		),
 	prompt: z.string().optional().describe('Optional override for the judge prompt'),
 });
@@ -90,7 +95,22 @@ const listAction = z.object({
 });
 
 const getAction = z.object({
-	action: z.literal('get').describe('Get a single config-based evaluation'),
+	action: z
+		.literal('get')
+		.describe('Get a single config-based evaluation (summary: metric names and types only)'),
+	workflowId: z.string().min(1),
+	configId: z.string().min(1),
+});
+
+const describeAction = z.object({
+	action: z
+		.literal('describe')
+		.describe(
+			'Get a config-based evaluation with full metric detail — the expression strings ' +
+				'(actualAnswer/userQuery/expectedAnswer), judge model, and prompt that "get" omits. ' +
+				'Use this before "update": an update replaces the whole config, so you must read the ' +
+				'current values first and resend the ones you are not changing.',
+		),
 	workflowId: z.string().min(1),
 	configId: z.string().min(1),
 });
@@ -114,7 +134,14 @@ const deleteAction = z.object({
 	configId: z.string().min(1),
 });
 
-const allActions = [listAction, getAction, createAction, updateAction, deleteAction] as const;
+const allActions = [
+	listAction,
+	getAction,
+	describeAction,
+	createAction,
+	updateAction,
+	deleteAction,
+] as const;
 
 type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
 
@@ -174,6 +201,17 @@ async function handleGet(context: InstanceAiContext, input: Extract<FullInput, {
 	const service = context.evaluationConfigService;
 	if (!service) return UNAVAILABLE;
 	const config = await service.get(input.workflowId, input.configId);
+	if (!config) return { error: `Evaluation config "${input.configId}" not found` };
+	return { config };
+}
+
+async function handleDescribe(
+	context: InstanceAiContext,
+	input: Extract<FullInput, { action: 'describe' }>,
+) {
+	const service = context.evaluationConfigService;
+	if (!service) return UNAVAILABLE;
+	const config = await service.describe(input.workflowId, input.configId);
 	if (!config) return { error: `Evaluation config "${input.configId}" not found` };
 	return { config };
 }
@@ -263,7 +301,9 @@ export function createEvalConfigTool(context: InstanceAiContext) {
 			'Manage configuration-based evaluations on a workflow. ' +
 				'A config-based eval attaches a name, a start/end node, judged metrics, and a Data Table ' +
 				'dataset to the workflow via the evaluation-config API (no eval nodes are added to the canvas). ' +
-				'Create/populate the dataset Data Table with the data-tables tool first, then link it by id.',
+				'Create/populate the dataset Data Table with the data-tables tool first, then link it by id. ' +
+				'"get" returns a summary (metric names/types); "describe" returns full metric detail — ' +
+				'read with "describe" before "update", which replaces the entire config.',
 		)
 		.input(inputSchema)
 		.suspend(confirmationSuspendSchema)
@@ -274,6 +314,8 @@ export function createEvalConfigTool(context: InstanceAiContext) {
 					return await handleList(context, input);
 				case 'get':
 					return await handleGet(context, input);
+				case 'describe':
+					return await handleDescribe(context, input);
 				case 'create':
 					return await handleCreate(context, input, ctx);
 				case 'update':

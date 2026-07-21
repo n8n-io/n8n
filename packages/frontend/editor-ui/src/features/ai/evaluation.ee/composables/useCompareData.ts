@@ -18,9 +18,8 @@ export interface CompareVersion {
 	avgScore: number | null;
 }
 
-// One metric row in the hero chart: a value per version (aligned to the
-// `versions` order; `null` where a run lacks the metric) plus which version
-// scored highest so the legend/table can flag the winner.
+// One metric row in the hero chart: a value per version (aligned to `versions`
+// order, `null` where a run lacks the metric) plus which version scored highest.
 export interface CompareMetricGroup {
 	key: string;
 	label: string;
@@ -36,12 +35,10 @@ export interface CompareData {
 }
 
 /**
- * Shapes a collection's aggregate detail into the compare view's model:
- * one `CompareVersion` per run (in stored order) and one `CompareMetricGroup`
- * per score-shaped metric with per-version values aligned by version index.
- *
- * Only aggregate per-version metrics are read here — per-case data (Cases /
- * Outputs tabs) is fetched separately by those components.
+ * Shapes a collection's aggregate detail into the compare view's model: one
+ * `CompareVersion` per run and one `CompareMetricGroup` per score-shaped metric.
+ * Only aggregate per-version metrics are read here — per-case data is fetched
+ * separately by the Cases/Outputs components.
  */
 export function useCompareData(detail: Ref<EvaluationCollectionDetail | null>) {
 	const i18n = useI18n();

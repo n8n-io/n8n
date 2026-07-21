@@ -36,10 +36,8 @@ const isEvalCollectionsEnabled = useEvalCollectionsFlag();
 
 const detail = computed(() => store.getDetail(props.collectionId));
 
-// metric name → its custom LLM-judge prompt (the specific criteria the user
-// configured), sourced from the collection's evaluation config. Run metrics are
-// keyed by the metric's `name` (see the workflow compiler), so the map keys line
-// up with the compare view's metric keys. Empty until the config resolves.
+// metric name → its custom LLM-judge prompt, from the collection's eval config. Keyed
+// by the metric's `name` so keys line up with the compare view. Empty until config resolves.
 const metricPrompts = computed<Record<string, string>>(() => {
 	const configId = detail.value?.evaluationConfigId;
 	if (!configId) return {};
@@ -65,8 +63,7 @@ const {
 	casesError,
 } = useCompareCases(detail, workflowIdRef);
 
-// Fire the compare-opened event once per collection, after both the versions
-// and the per-case data have resolved so `case_count` is accurate.
+// Fire the compare-opened event once per collection, after case data resolves so case_count is accurate.
 const tracked = ref(false);
 watch(
 	() => compareData.value !== null && casesLoaded.value,
@@ -84,13 +81,11 @@ watch(
 );
 
 const loading = computed(() => store.loadingDetail[props.collectionId] ?? false);
-// Set only when the collection is genuinely gone (404), so a deleted collection
-// stops rendering stale cached metrics. Transient failures keep the last-known
-// data on screen rather than blanking it on a network blip.
+// Set only on a genuine 404 so a deleted collection stops rendering stale cached metrics;
+// transient failures keep the last-known data on screen.
 const notFound = ref(false);
-// Show the empty/not-found state once the fetch settles with no data, or when
-// the collection 404s. Guarded on `loading` so the skeleton isn't skipped on
-// first paint.
+// Empty/not-found state once the fetch settles with no data (or 404); guarded on
+// `loading` so the skeleton isn't skipped on first paint.
 const isEmpty = computed(() => notFound.value || (!loading.value && compareData.value === null));
 
 function isNotFoundError(error: unknown): boolean {
@@ -102,26 +97,22 @@ function isNotFoundError(error: unknown): boolean {
 	);
 }
 
-// Tracks unmount so a fetch that resolves after the user leaves can tear down
-// the poll it armed instead of letting it outlive the view.
+// Tracks unmount so a late-resolving fetch can tear down the poll it armed.
 let unmounted = false;
 
 async function load(workflowId: string, collectionId: string) {
 	notFound.value = false;
 	try {
 		await store.fetchCollectionDetail(workflowId, collectionId);
-		// Best-effort: metric criteria come from the eval config. A failure here
-		// just means the compare view shows metric names without their criteria.
+		// Best-effort: on failure the compare view just shows metric names without criteria.
 		await evaluationStore.fetchEvaluationConfigs(workflowId).catch(() => null);
-		// If we left or switched collections mid-fetch, `fetchCollectionDetail`
-		// may have just (re)armed polling for a collection we're no longer
-		// showing — stop it so the timer doesn't outlive the view.
+		// If we left or switched mid-fetch, fetchCollectionDetail may have re-armed polling
+		// for a collection we're no longer showing; stop it so the timer doesn't outlive the view.
 		if (unmounted || collectionId !== props.collectionId) {
 			store.stopPolling(collectionId);
 		}
 	} catch (error) {
-		// A 404 already shows the not-found state; a toast on top would be a
-		// second, contradictory signal. Only toast transient (non-404) failures.
+		// A 404 already shows the not-found state, so only toast transient (non-404) failures.
 		if (isNotFoundError(error)) {
 			notFound.value = true;
 		} else {
@@ -135,11 +126,8 @@ function backToList() {
 }
 
 onMounted(async () => {
-	// A direct URL must not reach the compare view when the flag is off — mirror
-	// the backend 404-ing its routes by bouncing back to the evaluations list.
-	// Wait for client-side flag evaluation first: `isFeatureEnabled` coerces the
-	// still-pending state to `false`, which is right for a reactive `v-if` but
-	// would wrongly bounce an entitled cohort user hard-reloading this URL.
+	// Bounce back to the list when the flag is off, mirroring the backend 404. Wait for flag
+	// evaluation first, or the still-pending state would wrongly bounce an entitled user on hard reload.
 	await postHog.waitForFeatureFlags();
 	if (!isEvalCollectionsEnabled.value) {
 		void router.replace({ name: VIEWS.EVALUATION_EDIT, params: { workflowId: props.workflowId } });
@@ -148,9 +136,8 @@ onMounted(async () => {
 	await load(props.workflowId, props.collectionId);
 });
 
-// The compare route reuses this instance when navigating between collections
-// (only the param changes), so tear down the previous collection's poll and
-// refetch — otherwise a stale timer keeps hitting the backend.
+// The route reuses this instance across collections (only the param changes), so tear
+// down the previous poll and refetch, or a stale timer keeps hitting the backend.
 watch(
 	[() => props.workflowId, () => props.collectionId],
 	([, collectionId], [, prevCollectionId]) => {
@@ -209,9 +196,7 @@ onBeforeUnmount(() => {
 				:versions="compareData.versions"
 				:metric-prompts="metricPrompts"
 			/>
-			<!-- Key by collection so navigating between compare views remounts the
-			     card and re-runs its fetch-on-mount, rather than relying on the
-			     surrounding v-if to cycle through null. -->
+			<!-- Key by collection so navigating remounts the card and re-runs its fetch-on-mount. -->
 			<AiInsightsCard :key="collectionId" :workflow-id="workflowId" :collection-id="collectionId" />
 			<CompareTabs
 				:versions="compareData.versions"

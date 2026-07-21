@@ -2,11 +2,8 @@
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-// Accent "actively working" pill for an in-progress run set. Distinct from the
-// muted Done/Failed badges (green/orange outline) so a running collection reads
-// as busy at a glance, and carries a live "N/M versions complete" count so the
-// user sees progress advance. Shared by the compare header and the list card so
-// the two surfaces show the same treatment and copy.
+// Accent "working" pill for an in-progress run set, distinct from the settled
+// Done/Failed badges. Shared by the compare header and list card for one treatment.
 defineProps<{
 	completed: number;
 	total: number;

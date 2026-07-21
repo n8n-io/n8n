@@ -12,8 +12,7 @@ import { averageNormalizedScore, indexOfMax, stringifyValue } from '../evaluatio
 export interface CompareCaseCell {
 	versionIndex: number;
 	testCaseId: string | null;
-	// The workflow execution that produced this output, so the Outputs tab can
-	// open it for inspection. Null when this version skipped the case.
+	// Execution that produced this output, so the Outputs tab can open it. Null when skipped.
 	executionId: string | null;
 	inputs: JsonObject | undefined;
 	outputs: JsonObject | undefined;
@@ -49,14 +48,10 @@ function inputPreview(inputs: JsonObject | undefined): string {
 }
 
 /**
- * Loads per-case executions for every run in a collection and aligns them into
- * one row per test case across versions.
- *
- * There is no collection-level per-case endpoint and no case id shared across
- * runs, so this fans out `fetchTestCaseExecutions` per run and aligns cells by
- * `runIndex` (the seeded per-case sequence) — a version missing a case leaves a
- * null cell rather than shifting later cases into the wrong row. Divergent case
- * counts surface as a `mismatch` rather than silently misaligning rows.
+ * Loads per-case executions for every run and aligns them into one row per test
+ * case. Cells align by `runIndex` (the seeded per-case sequence), not list
+ * position, so a version missing a case leaves a null cell instead of shifting
+ * later cases into the wrong row; divergent counts surface as a `mismatch`.
  */
 export function useCompareCases(
 	detail: Ref<EvaluationCollectionDetail | null>,
@@ -65,14 +60,11 @@ export function useCompareCases(
 	const evaluationStore = useEvaluationStore();
 
 	const loading = ref(false);
-	// True once the current run set's per-case fetches have completed at least
-	// once. Downstream gates (mismatch banner, telemetry) use this rather than
-	// `!loading` so they can't act on the empty window before the first load or
-	// on a superseded load's transient `loading = false`.
+	// True once the current run set's fetches have completed at least once. Gates
+	// use this rather than `!loading` to avoid acting on the pre-load empty window.
 	const casesLoaded = ref(false);
-	// True when any run's per-case fetch failed. Distinguishes a transient
-	// failure from a real dataset mismatch — a failed run also comes back with
-	// zero cases, which would otherwise read as "diverging case counts".
+	// True when any run's fetch failed — distinguishes a transient failure from a
+	// real mismatch, since a failed run also returns zero cases.
 	const casesError = ref(false);
 
 	// Monotonic token so a slow load for a previous collection can't flip state
@@ -110,10 +102,9 @@ export function useCompareCases(
 		}
 	}
 
-	// Per-run, sorted case lists. Bucket the shared (app-global, poll-mutated)
-	// store map by `testRunId` in a single pass instead of re-scanning it per
-	// run, then sort each run's bucket by the same [runIndex, runAt] ordering
-	// the run-detail view uses so aligned positions map to the same seeded case.
+	// Per-run, sorted case lists: bucket the shared store map by `testRunId` in one
+	// pass, then sort each bucket by [runIndex, runAt] so aligned positions map to
+	// the same seeded case.
 	const casesByVersion = computed<TestCaseExecutionRecord[][]>(() => {
 		const runs = detail.value?.runs ?? [];
 		const byRunId = new Map<string, TestCaseExecutionRecord[]>(
@@ -143,10 +134,9 @@ export function useCompareCases(
 	});
 
 	const caseRows = computed<CompareCaseRow[]>(() => {
-		// Align cells by `runIndex` (the seeded per-case sequence), not list
-		// position: a version missing a case in the middle must leave a null cell
-		// in that row rather than shift every later case up and pair unrelated
-		// inputs. Fall back to list position only when a record has no runIndex.
+		// Align cells by `runIndex`, not list position: a version missing a case must
+		// leave a null cell rather than shift later cases and pair unrelated inputs.
+		// Fall back to list position only when a record has no runIndex.
 		const byIndex = casesByVersion.value.map((cases) => {
 			const map = new Map<number, TestCaseExecutionRecord>();
 			cases.forEach((record, position) => map.set(record.runIndex ?? position, record));
@@ -182,11 +172,9 @@ export function useCompareCases(
 		});
 	});
 
-	// Refetch whenever the run set changes (collection switch reuses the view).
-	// The key is `null` while the detail hasn't loaded and an empty string once
-	// it has but with no runs — distinguishing them so an empty collection still
-	// runs `load()` (which resolves its own empty-run completion state) instead
-	// of sitting in the initial loading state forever.
+	// Refetch whenever the run set changes. Key is `null` before detail loads and
+	// `''` once loaded with no runs — distinguished so an empty collection still
+	// runs `load()` instead of sitting in the loading state forever.
 	watch(
 		() => (detail.value ? (detail.value.runs ?? []).map((run) => run.testRunId).join(',') : null),
 		async (key) => {

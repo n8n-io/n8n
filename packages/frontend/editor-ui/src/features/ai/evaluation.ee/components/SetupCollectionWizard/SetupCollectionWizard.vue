@@ -22,9 +22,7 @@ import VersionsTable from './VersionsTable.vue';
 import { versionRowKey } from './versionRowKey';
 import { buildVersionEntries, isReusableRun } from './buildVersionEntries';
 
-// State machine matches the setup flow. We collapse INITIAL/NAME_PROVIDED into
-// a single user-facing step ("fill the form"); the meaningful transitions are
-// loading the versions table and submitting.
+// State machine for the setup flow: the meaningful transitions are loading versions and submitting.
 type WizardState = 'collecting' | 'versionsLoading' | 'submitting' | 'done';
 
 const props = defineProps<{
@@ -47,8 +45,7 @@ const selectedConfigId = ref<string | null>(null);
 const selectedVersionKeys = ref<Set<string>>(new Set());
 const state = ref<WizardState>('collecting');
 
-// Filters the user can apply on the versions table. `Source: All` is the
-// default — narrows by the `sourceLabel` returned on each version row.
+// Versions-table filters; `Source: All` narrows by each row's `sourceLabel`.
 const sourceFilter = ref<string>('all');
 const sortOrder = ref<'recent' | 'oldest'>('recent');
 
@@ -60,9 +57,7 @@ const onSortChange = (value: string | number | boolean) => {
 	sortOrder.value = value === 'oldest' ? 'oldest' : 'recent';
 };
 
-// Evaluation configs are owned by the evaluation store; each config maps to
-// one dataset in the picker. The collection pins `evaluationConfigId` so its
-// runs stay comparable.
+// Each config maps to one dataset; the collection pins `evaluationConfigId` to keep runs comparable.
 const configs = computed(
 	() => evaluationStore.evaluationConfigsByWorkflowId[props.workflowId] ?? [],
 );
@@ -76,9 +71,7 @@ const datasetLabel = computed(() => {
 	return configs.value.find((c) => c.id === selectedConfigId.value)?.name ?? '';
 });
 
-// The config's metrics, all of which are recorded for every version in the
-// collection. Shown read-only — there's no backend field to scope a subset
-// yet, so a per-metric toggle would be a no-op affordance.
+// All config metrics are recorded for every version; shown read-only since there's no field to scope a subset.
 const allMetricNames = computed<string[]>(() => {
 	if (!selectedConfigId.value) return [];
 	const cfg = configs.value.find((c) => c.id === selectedConfigId.value);
@@ -99,19 +92,15 @@ const sourceOptions = computed(() => {
 	return opts;
 });
 
-// Row order in the table: filter by source, then sort. Version *colors* are
-// NOT tied to this order — they key off `versionColorByKey` (a version's
-// stable position) so changing the sort doesn't recolor rows. Matching those
-// colors to the list-view card needs a shared stable key and is deferred to
-// the compare view work.
+// Row order = filter by source, then sort. Colors are NOT tied to this order; they
+// key off versionColorByKey (a version's stable position) so re-sorting doesn't recolor rows.
 const visibleVersions = computed<EvalVersionEntry[]>(() => {
 	const filtered =
 		sourceFilter.value === 'all'
 			? allVersions.value
 			: allVersions.value.filter((v) => v.sourceLabel === sourceFilter.value);
 
-	// Dedupe by row key so a version can never appear twice (e.g. the live draft
-	// and a snapshot that resolve to the same key).
+	// Dedupe by row key so a version can't appear twice (e.g. live draft + snapshot with the same key).
 	const seen = new Set<string>();
 	const deduped = filtered.filter((v) => {
 		const key = versionRowKey(v);
@@ -126,8 +115,7 @@ const visibleVersions = computed<EvalVersionEntry[]>(() => {
 		return sortOrder.value === 'recent' ? bTs - aTs : aTs - bTs;
 	});
 
-	// The "Current draft" (live workflow) is the primary choice — pin it to the
-	// very top regardless of the chosen sort so it's always the first row.
+	// Pin the "Current draft" row to the top regardless of sort, since it's the primary choice.
 	const draftIndex = sorted.findIndex((v) => v.workflowVersionId === null);
 	if (draftIndex > 0) {
 		sorted.unshift(sorted.splice(draftIndex, 1)[0]);
@@ -135,8 +123,7 @@ const visibleVersions = computed<EvalVersionEntry[]>(() => {
 	return sorted;
 });
 
-// A version's color follows its stable position in the unfiltered list, so the
-// avatar color stays put when the user re-sorts or filters the table.
+// Color follows a version's stable position in the unfiltered list, so re-sort/filter won't recolor.
 const versionColorByKey = computed<Record<string, number>>(() => {
 	const map: Record<string, number> = {};
 	allVersions.value.forEach((v, index) => {
@@ -449,9 +436,8 @@ const onSubmit = async () => {
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
-	// N8nDialog has no intrinsic max-height, so a tall versions table pushes the
-	// footer past the viewport. Cap the body and scroll it, leaving room for the
-	// dialog's header, footer, and padding so the CTA stays visible.
+	// N8nDialog has no intrinsic max-height, so a tall table pushes the footer off-screen.
+	// Cap and scroll the body, leaving room for the dialog chrome so the CTA stays visible.
 	max-height: calc(100dvh - 16rem);
 	overflow-y: auto;
 }

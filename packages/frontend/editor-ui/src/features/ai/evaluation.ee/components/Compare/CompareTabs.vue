@@ -22,8 +22,7 @@ const props = defineProps<{
 	workflowId: string;
 	// metric name → its custom LLM-judge prompt, when configured.
 	metricPrompts?: Record<string, string>;
-	// metric name → scale, threaded to OutputsTab so raw per-metric values are
-	// normalized before display.
+	// metric name → scale, so OutputsTab can normalize raw values before display.
 	metricScales?: Record<string, MetricScale>;
 }>();
 
@@ -43,12 +42,10 @@ const tabs = computed<Array<TabOptions<TabValue>>>(() => [
 
 const hasCases = computed(() => props.caseRows.length > 0);
 
-// While any version is still executing, per-case scores stream in — surface an
-// in-progress note so the partially-filled table doesn't read as broken.
+// Scores stream in while runs execute; used to flag the partially-filled table as in-progress.
 const isRunning = computed(() => deriveRunsStatus(props.versions) === 'running');
 
-// Drilling into a case row jumps to its side-by-side outputs — the same detail
-// a per-case drawer would show, without a second surface to keep in sync.
+// A case row drills into its side-by-side outputs rather than a separate drawer.
 function onDrilldown(caseIndex: number) {
 	selectedCaseIndex.value = caseIndex;
 	activeTab.value = 'outputs';
@@ -65,9 +62,8 @@ function onDrilldown(caseIndex: number) {
 
 		<div :class="$style.panel">
 			<template v-if="activeTab === 'cases'">
-				<!-- Gate on loading first: the per-version case fetches resolve
-				     independently, so rendering mid-load would flash partial rows
-				     and a false dataset mismatch until every run settles. -->
+				<!-- Gate on loading first: per-version fetches resolve independently, so
+				     rendering mid-load flashes partial rows and a false dataset mismatch. -->
 				<N8nText v-if="casesLoading" size="small" color="text-light">
 					{{ i18n.baseText('evaluation.compare.cases.loading') }}
 				</N8nText>

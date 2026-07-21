@@ -18,8 +18,7 @@ import type {
 const POLL_INTERVAL_MS = 3000;
 
 // Give up after this many consecutive failed polls so a persistently-failing
-// collection (deleted elsewhere → 404, expired session → 401) doesn't hammer
-// the backend forever at the poll cadence.
+// collection (404, 401) doesn't hammer the backend forever.
 const MAX_POLL_FAILURES = 3;
 
 const isTerminal = (status: EvalCollectionRunStatus) =>
@@ -42,11 +41,10 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 	// the other maps) — timer handles never render, so they need no reactivity.
 	const pollingTimeouts = ref<Record<string, ReturnType<typeof setTimeout>>>({});
 
-	// Monotonic token per collection. `stopPolling`/`cleanupPolling` bump it to
-	// invalidate any tick that is mid-`await`: clearing a timer handle can't
-	// cancel a request already in flight, so the tick re-checks its token after
-	// awaiting and bails (instead of re-arming a loop into an emptied map that
-	// would outlive the component). Plain Map — internal bookkeeping, not state.
+	// Monotonic token per collection to invalidate a tick that is mid-`await`:
+	// clearing a timer handle can't cancel an in-flight request, so a tick
+	// re-checks its token after awaiting and bails rather than re-arming a loop
+	// into an emptied map. Plain Map — internal bookkeeping, not state.
 	const pollTokens = new Map<string, number>();
 	const nextPollToken = (collectionId: string) => {
 		const token = (pollTokens.get(collectionId) ?? 0) + 1;
@@ -142,10 +140,9 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 			[workflowId]: [record, ...list],
 		};
 
-		// Refresh detail so subsequent navigation has run rows + polling armed.
-		// Best-effort: the collection is already created server-side, so a
-		// transient detail/polling failure must not surface as a create failure
-		// (which would push the user to retry and create a duplicate).
+		// Refresh detail so navigation has run rows + polling armed. Best-effort:
+		// the collection already exists server-side, so a transient failure here
+		// must not surface as a create failure (user retries → duplicate).
 		await fetchCollectionDetail(workflowId, record.id).catch(() => null);
 		return response;
 	};
@@ -157,11 +154,9 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 			collectionId,
 		);
 
-		// Refresh detail so the UI flips to running + arms polling on the fresh
-		// runs. Best-effort: the re-run is already scheduled server-side, so a
-		// transient refresh failure must not surface as a re-run failure (which
-		// would push the user to click again and reject with "already in
-		// progress"). The compare view refetches on its next poll/navigation.
+		// Refresh detail so the UI flips to running + arms polling on the fresh runs.
+		// Best-effort: the re-run is already scheduled server-side, so a transient
+		// failure must not surface as a re-run failure (retry → "already in progress").
 		await fetchCollectionDetail(workflowId, collectionId).catch(() => null);
 		return response;
 	};
@@ -213,10 +208,9 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 		return result;
 	};
 
-	// Both membership mutations return the freshly-recomputed detail from the
-	// server, so we replace the cached detail wholesale. The server also busts
-	// its insights cache on membership change; we mirror that locally by
-	// dropping the cached envelope so the next compare-view load refetches.
+	// Both membership mutations return the freshly-recomputed detail, so we replace
+	// the cached detail wholesale. The server also busts its insights cache on
+	// membership change; mirror that locally by dropping the cached envelope.
 	const applyMembershipChange = (
 		workflowId: string,
 		collectionId: string,
@@ -280,10 +274,9 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 		}
 	};
 
-	// Polling loop. Mirrors the simpler `evaluation.store.ts:startPollingTestRun`
-	// pattern (per-id timer, latest tick owns the next setTimeout). Stops when
-	// the detail comes back with no in-flight runs, so a collection that
-	// completes between visits to the page doesn't hold an open timer.
+	// Polling loop (per-id timer, latest tick owns the next setTimeout). Stops when
+	// the detail has no in-flight runs, so a collection that completes between page
+	// visits doesn't hold an open timer.
 	const startPolling = (workflowId: string, collectionId: string) => {
 		// Guard against double-arming when both fetchDetail and addRun trigger
 		// the helper in the same tick.

@@ -95,7 +95,7 @@ describe('metricScaleFromConfig', () => {
 		expect(metricScaleFromConfig(metric)).toBe('oneToFive');
 	});
 
-	it('maps a boolean LLM judge to boolean (outputType wins over the judge default)', () => {
+	it('maps a boolean-outputType LLM judge to oneToFive (the compiler ignores a judge outputType)', () => {
 		const metric: EvaluationMetric = {
 			id: 'm2',
 			name: 'Is Correct',
@@ -109,7 +109,7 @@ describe('metricScaleFromConfig', () => {
 				inputs: { actualAnswer: 'a', expectedAnswer: 'b' },
 			},
 		};
-		expect(metricScaleFromConfig(metric)).toBe('boolean');
+		expect(metricScaleFromConfig(metric)).toBe('oneToFive');
 	});
 
 	it('maps a numeric expression metric to unit and a boolean one to boolean', () => {

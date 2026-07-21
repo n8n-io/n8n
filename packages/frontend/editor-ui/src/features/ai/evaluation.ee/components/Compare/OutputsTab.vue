@@ -22,15 +22,13 @@ const props = defineProps<{
 	caseRows: CompareCaseRow[];
 	selectedIndex: number;
 	workflowId: string;
-	// metric name → scale, so a raw value is normalized to [0, 1] before it's
-	// shown as a percent (a 1–5 judge value of 3 must read as 60%, not "3%").
+	// metric name → scale, so a raw value normalizes to a percent (a 1–5 judge 3 → 60%).
 	metricScales?: Record<string, MetricScale>;
 }>();
 
 const router = useRouter();
 
-// Open the workflow execution that produced this output in a new tab, so the
-// user can inspect what actually ran without losing their place in the compare.
+// Open the source execution in a new tab so the user keeps their place in the compare.
 function openExecution(executionId: string | null) {
 	if (!executionId) return;
 	const { href } = router.resolve({
@@ -53,8 +51,7 @@ const selectedRow = computed(
 function metricEntries(metrics: Record<string, number> | undefined) {
 	if (!metrics) return [];
 	return getUserDefinedMetricNames(metrics).map((key) => {
-		// Normalize the raw value to [0, 1] by its config scale (a 1–5 judge → /5),
-		// then format as a percent — the raw value must never be shown as "3%".
+		// Normalize by the metric's scale so a raw judge value never shows as a bare percent.
 		const normalized = normalizeMetricScore(key, metrics[key], props.metricScales?.[key]);
 		return {
 			key,
@@ -183,8 +180,7 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 	}
 }
 
-// Distinct from the hover tint so the open case is unmistakable: a primary
-// wash plus a left accent bar.
+// Primary wash + left accent bar, distinct from the hover tint, marks the open case.
 .caseItemActive,
 .caseItemActive:hover {
 	background: var(--color--primary--tint-3);
@@ -238,7 +234,6 @@ function metricEntries(metrics: Record<string, number> | undefined) {
 	gap: var(--spacing--2xs);
 }
 
-// Right-aligned "Inspect run ↗" link opening the underlying execution.
 .inspect {
 	margin-left: auto;
 	display: inline-flex;

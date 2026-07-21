@@ -73,13 +73,9 @@ export interface TestCaseExecutionResult {
 }
 
 /**
- * This service orchestrates the running of evaluations.
- * It makes a partial execution of the workflow under test to get the dataset
- * by running the evaluation trigger node only and capturing the output.
- * Then it iterates over test cases (the items of a list produced by evaluation trigger node)
- * and runs the workflow under test with each test case as input.
- * After running each test case, it collects the metrics from the evaluation nodes output.
- * After all test cases are run, it aggregates the metrics and saves them to the database.
+ * Orchestrates evaluation runs: a partial execution of the eval trigger fetches
+ * the dataset, each test case is run through the workflow, metrics are collected
+ * per case, then aggregated and saved.
  */
 @Service()
 export class TestRunnerService {
@@ -107,17 +103,11 @@ export class TestRunnerService {
 		private readonly ownershipService: OwnershipService,
 	) {}
 
-	/**
-	 * Finds the dataset trigger node in the workflow
-	 */
 	private findEvaluationTriggerNode(workflow: IWorkflowBase) {
 		return workflow.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
 	}
 
-	/**
-	 * Validates the evaluation trigger node is present in the workflow
-	 * and is configured correctly.
-	 */
+	/** Validates the evaluation trigger node is present and configured. */
 	private validateEvaluationTriggerNode(workflow: IWorkflowBase) {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		if (!triggerNode) {
@@ -149,12 +139,8 @@ export class TestRunnerService {
 		}
 	}
 
-	/**
-	 * Checks if the Evaluation Set Metrics nodes are present in the workflow
-	 * and are configured correctly.
-	 */
 	private hasModelNodeConnected(workflow: IWorkflowBase, targetNodeName: string): boolean {
-		// Check if there's a node connected to the target node via ai_languageModel connection type
+		// True if a node connects to the target via the ai_languageModel type.
 		return Object.keys(workflow.connections).some((sourceNodeName) => {
 			const connections = workflow.connections[sourceNodeName];
 			return connections?.[NodeConnectionTypes.AiLanguageModel]?.[0]?.some(
@@ -174,9 +160,7 @@ export class TestRunnerService {
 				return true;
 			}
 
-			// Check customMetrics configuration if:
-			// - Version 4.7+ and metric is 'customMetrics'
-			// - Version < 4.7 (customMetrics is default)
+			// customMetrics mode: explicit on 4.7+, the default below 4.7.
 			const isCustomMetricsMode =
 				node.typeVersion >= 4.7 ? node.parameters.metric === 'customMetrics' : true;
 
@@ -211,10 +195,7 @@ export class TestRunnerService {
 		}
 	}
 
-	/**
-	 * Checks if the Evaluation Set Outputs nodes are present in the workflow
-	 * and are configured correctly.
-	 */
+	/** Validates any Evaluation Set Outputs nodes are configured. */
 	private validateSetOutputsNodes(workflow: IWorkflowBase) {
 		const setOutputsNodes = TestRunnerService.getEvaluationSetOutputsNodes(workflow);
 		if (setOutputsNodes.length === 0) {
@@ -238,10 +219,7 @@ export class TestRunnerService {
 		}
 	}
 
-	/**
-	 * Validates workflow configuration for evaluation
-	 * Throws appropriate TestRunError if validation fails
-	 */
+	/** Validates workflow configuration for evaluation; throws TestRunError on failure. */
 	private validateWorkflowConfiguration(workflow: IWorkflowBase): void {
 		this.validateEvaluationTriggerNode(workflow);
 
@@ -251,9 +229,8 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Runs a test case with the given input.
-	 * Injects the input data as pinned data of evaluation trigger node.
-	 * Waits for the workflow under test to finish execution.
+	 * Runs one test case: injects the input as the eval trigger's pinned data and
+	 * waits for the workflow to finish.
 	 */
 	private async runTestCase(
 		workflow: IWorkflowBase,
@@ -261,15 +238,12 @@ export class TestRunnerService {
 		testCase: INodeExecutionData,
 		abortSignal: AbortSignal,
 	): Promise<TestCaseExecutionResult | undefined> {
-		// Do not run if the test run is cancelled
 		if (abortSignal.aborted) {
 			return;
 		}
 
-		// Prepare the data to run the workflow
-		// Evaluation executions should run the same way as manual,
-		// because they need pinned data and partial execution logic
-
+		// Run like a manual execution — evaluation needs pinned data and partial
+		// execution logic.
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
 
@@ -298,8 +272,7 @@ export class TestRunnerService {
 			},
 		};
 
-		// When in queue mode, we need to pass additional data to the execution
-		// the same way as it would be passed in manual mode
+		// Queue mode needs the same additional data manual mode would pass.
 		if (this.executionsConfig.mode === 'queue') {
 			data.executionData = createRunExecutionData({
 				executionData: null,
@@ -316,7 +289,6 @@ export class TestRunnerService {
 			});
 		}
 
-		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
 
@@ -335,7 +307,6 @@ export class TestRunnerService {
 			source: 'evaluation',
 		});
 
-		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {
 			this.activeExecutions.stopExecution(
 				executionId,
@@ -343,7 +314,6 @@ export class TestRunnerService {
 			);
 		});
 
-		// Wait for the execution to finish
 		const executionData = await this.activeExecutions.getPostExecutePromise(executionId);
 
 		assert(executionData);
@@ -351,15 +321,10 @@ export class TestRunnerService {
 		return { executionId, executionData };
 	}
 
-	/**
-	 * This method creates a partial workflow execution to run the dataset trigger only
-	 * to get the whole dataset.
-	 */
+	/** Partial execution of just the dataset trigger, to fetch the whole dataset. */
 	private async runDatasetTrigger(workflow: IWorkflowBase, metadata: TestRunMetadata) {
-		// Prepare the data to run the workflow
-		// Evaluation executions should run the same way as manual,
-		// because they need pinned data and partial execution logic
-
+		// Run like a manual execution — evaluation needs pinned data and partial
+		// execution logic.
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 
 		if (!triggerNode) {
@@ -414,27 +379,21 @@ export class TestRunnerService {
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
 
 		if (offloadingManualExecutionsInQueueMode) {
-			// In regular mode we need executionData.executionData to be passed, but when
-			// offloading manual execution to workers the workflow evaluation fails if
-			// executionData.executionData is present, so we remove it in this case.
-			// We keep executionData itself (with startData, manualData) intact.
+			// Offloading to workers fails if executionData.executionData is present,
+			// so drop just that nested field (keep startData/manualData).
 			// @ts-expect-error - Removing nested executionData property for queue mode
 			delete data.executionData.executionData;
 		}
 
-		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
 
-		// Wait for the execution to finish
 		const executePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
 		return await executePromise;
 	}
 
-	/**
-	 * Get the evaluation set metrics nodes from a workflow.
-	 */
+	/** Get the enabled evaluation nodes for the given operation. */
 	static getEvaluationNodes(
 		workflow: IWorkflowBase,
 		operation: 'setMetrics' | 'setOutputs' | 'setInputs',
@@ -449,23 +408,14 @@ export class TestRunnerService {
 		);
 	}
 
-	/**
-	 * Get the evaluation set metrics nodes from a workflow.
-	 */
 	static getEvaluationMetricsNodes(workflow: IWorkflowBase) {
 		return this.getEvaluationNodes(workflow, 'setMetrics');
 	}
 
-	/**
-	 * Get the evaluation set outputs nodes from a workflow.
-	 */
 	static getEvaluationSetOutputsNodes(workflow: IWorkflowBase) {
 		return this.getEvaluationNodes(workflow, 'setOutputs', { isDefaultOperation: true });
 	}
 
-	/**
-	 * Extract the dataset trigger output
-	 */
 	private extractDatasetTriggerOutput(execution: IRun, workflow: IWorkflowBase) {
 		const triggerNode = this.findEvaluationTriggerNode(workflow);
 		assert(triggerNode);
@@ -505,13 +455,9 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Per-case `inputs`: the Set Inputs node's evaluationData when present,
-	 * otherwise the dataset row fed to the evaluated slice's start. Config-compiled
-	 * runs have no Set Inputs node, so their per-case input is the dataset row
-	 * (`testCase`, the eval trigger's injected row) — without this the compare
-	 * Cases input column is blank. `startNodeName` is defined only for
-	 * config-compiled runs; direct/legacy runs pass it undefined and keep their
-	 * current behavior.
+	 * Per-case `inputs`: the Set Inputs node's data when present, else the dataset
+	 * row. Config-compiled runs have no Set Inputs node, so they use the row;
+	 * `startNodeName` is undefined for direct/legacy runs (behavior unchanged).
 	 */
 	private resolveCaseInputs(
 		execution: IRun,
@@ -525,8 +471,7 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * The dataset row's JSON as a plain object. Returns an empty object when the
-	 * row isn't a JSON object.
+	 * The dataset row's JSON as a plain object; empty object when it isn't one.
 	 */
 	private datasetRowToJsonObject(testCase: INodeExecutionData): JsonObject {
 		const json = testCase.json;
@@ -538,11 +483,9 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Per-case `outputs`: the Set Outputs node's evaluationData when present,
-	 * otherwise the evaluated slice's end-node output. Config-compiled runs have
-	 * no Set Outputs node, so their per-case output comes from the end node
-	 * instead — without this the compare Outputs tab is always blank. Direct /
-	 * legacy runs pass `endNodeName` undefined, so their behavior is unchanged.
+	 * Per-case `outputs`: the Set Outputs node's data when present, else the
+	 * evaluated slice's end-node output. Config-compiled runs have no Set Outputs
+	 * node; `endNodeName` is undefined for direct/legacy runs (unchanged).
 	 */
 	private resolveCaseOutputs(
 		execution: IRun,
@@ -555,9 +498,8 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * The evaluated slice's end-node output for a single case: the first main
-	 * output item's JSON. Returns an empty object when the node did not produce a
-	 * JSON object (e.g. an untaken IF/Switch branch).
+	 * The end node's first main output JSON for one case; empty object when it
+	 * produced no JSON object (e.g. an untaken IF/Switch branch).
 	 */
 	private getEndNodeOutputs(execution: IRun, endNodeName: string): JsonObject {
 		const json =
@@ -571,9 +513,7 @@ export class TestRunnerService {
 		return out;
 	}
 
-	/**
-	 * Evaluation result is collected from all Evaluation Metrics nodes
-	 */
+	/** Collects the evaluation result from all Evaluation Metrics nodes. */
 	private extractUserDefinedMetrics(execution: IRun, workflow: IWorkflowBase): IDataObject {
 		const metricsNodes = TestRunnerService.getEvaluationMetricsNodes(workflow);
 
@@ -588,10 +528,7 @@ export class TestRunnerService {
 		return metricsResult;
 	}
 
-	/**
-	 * Extracts predefined metrics from the execution data.
-	 * Currently, it extracts token usage and execution time.
-	 */
+	/** Extracts predefined metrics (token usage and execution time). */
 	private extractPredefinedMetrics(execution: IRun) {
 		const metricValues: Record<string, number> = {};
 
@@ -606,26 +543,13 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Creates a new test run for the given workflow.
-	 *
-	 * `concurrency` is the requested number of test cases to run in parallel.
-	 * The effective value is `min(user_request, 10, evaluationLimit)`:
-	 *   - Clamped 1–10 as a defensive UX guardrail (the controller already
-	 *     validates this via zod, but direct service callers must not exceed
-	 *     it either).
-	 *   - Further clamped to the effective evaluation limit resolved by
-	 *     {@link resolveEvaluationConcurrencyLimit} (env override → tier
-	 *     default). `concurrency_limited_by_config` is recorded in telemetry
-	 *     when this kicks in.
-	 *
-	 * `concurrency = 1` reproduces the legacy sequential behaviour exactly.
+	 * `concurrency` is the requested parallel test-case count; the effective value
+	 * is `min(request, 10, evaluationLimit)`. Clamped 1–10 as a guardrail, then to
+	 * the resolved evaluation limit. `concurrency = 1` reproduces legacy sequential.
 	 */
 	/**
-	 * Convenience wrapper that awaits both the synchronous setup and the
-	 * detached execution. Mostly useful in tests that want the legacy "block
-	 * until the run is complete" semantics. The HTTP path uses
-	 * {@link startTestRun} directly so it can return the new `testRun.id`
-	 * before cases finish.
+	 * Awaits both setup and the detached execution — legacy "block until complete"
+	 * semantics for tests. The HTTP path uses {@link startTestRun} directly.
 	 */
 	async runTest(user: User, workflowId: string, concurrency: number = 1): Promise<void> {
 		const { finished } = await this.startTestRun(user, workflowId, concurrency);
@@ -689,10 +613,8 @@ export class TestRunnerService {
 		let configLookupErrorCode: typeof TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND | undefined;
 		if (options?.compileFromConfig) {
 			if (options.evaluationConfigSnapshot) {
-				// Prefer the caller-supplied frozen snapshot: collection runs pass one
-				// so every version compiles against identical dataset/trigger/metrics,
-				// immune to a config edit that races the run. Its serialized dates are
-				// not read by the compiler, which only needs the eval fields.
+				// Prefer the caller's frozen snapshot: collection runs pass one so every
+				// version compiles against identical config, immune to a racing edit.
 				configToCompile = options.evaluationConfigSnapshot as unknown as EvaluationConfig;
 			} else if (options.evaluationConfigId) {
 				// No snapshot supplied (single-run callers) — resolve the live config.
@@ -726,10 +648,8 @@ export class TestRunnerService {
 
 		const runType = configToCompile ? 'config' : 'direct';
 
-		// Config-compiled runs have no Set Inputs / Set Outputs nodes, so per-case
-		// inputs come from the dataset row and outputs from the evaluated slice's
-		// end node instead. Set inside the config branch below; both undefined for
-		// direct/legacy runs (behavior unchanged).
+		// Config-compiled runs lack Set Inputs/Outputs nodes; these name the
+		// dataset-row and end-node fallbacks. Undefined for direct/legacy runs.
 		let startNodeName: string | undefined;
 		let endNodeName: string | undefined;
 
@@ -795,7 +715,6 @@ export class TestRunnerService {
 		startNodeName?: string;
 		endNodeName?: string;
 	}): Promise<void> {
-		// Initialize telemetry metadata
 		const telemetryMeta = {
 			workflow_id: workflowId,
 			test_type: 'evaluation',
@@ -813,21 +732,15 @@ export class TestRunnerService {
 			parallel_enabled: effectiveConcurrency > 1,
 			concurrency_limited_by_config: concurrencyLimitedByConfig,
 			concurrency_limit_source: getEvaluationConcurrencyLimitSource(this.license),
-			// Realised parallelism observed at runtime — `cases_started` counts
-			// callbacks that actually began (post-throttle, pre-abort), and
-			// `peak_in_flight` is the high-water mark for in-flight cases.
-			// Updated in lockstep with fanOutMetrics inside the per-case callback;
-			// stays at 0 if the run aborts before the fan-out begins.
+			// Realised parallelism, updated in lockstep with fanOutMetrics in the
+			// per-case callback: cases that began (post-throttle) and the in-flight peak.
 			cases_started: 0,
 			peak_in_flight: 0,
 		};
 
-		// 0.1 Initialize AbortController
 		const abortController = new AbortController();
 		this.abortControllers.set(testRun.id, abortController);
 
-		// 0.2 Initialize metadata
-		// This will be passed to the test case executions
 		const testRunMetadata = {
 			testRunId: testRun.id,
 			userId: user.id,
@@ -837,10 +750,9 @@ export class TestRunnerService {
 		const { manager: dbManager } = this.testRunRepository;
 
 		try {
-			// Update test run status with instance ID for multi-main coordination
+			// Tag with instance ID for multi-main coordination.
 			await this.testRunRepository.markAsRunning(testRun.id, this.instanceSettings.hostId);
 
-			// Check if the workflow is ready for evaluation
 			this.validateWorkflowConfiguration(workflow);
 
 			this.telemetry.track('User ran test', {
@@ -850,10 +762,6 @@ export class TestRunnerService {
 				run_type: runType,
 				via,
 			});
-
-			///
-			// 1. Make test cases list
-			///
 
 			const datasetFetchExecution = await this.runDatasetTrigger(workflow, testRunMetadata);
 			assert(datasetFetchExecution);
@@ -865,9 +773,7 @@ export class TestRunnerService {
 
 			const allTestCases = datasetTriggerOutput.map((items) => ({ json: items.json }));
 
-			// Determine which dataset rows to run. When `rowIndices` is provided
-			// and non-empty, only those rows are executed; otherwise all rows run.
-			// Out-of-range indices are silently dropped.
+			// Run only the given `rowIndices` (out-of-range dropped) or all rows.
 			const indicesToRun =
 				rowIndices && rowIndices.length > 0
 					? rowIndices.filter((i) => i >= 0 && i < allTestCases.length)
@@ -881,37 +787,22 @@ export class TestRunnerService {
 				running: testCases.length,
 			});
 
-			// Seed one TestCaseExecution row per case to run. Each row's `runIndex`
-			// equals the original dataset index so the FE can map results back even
-			// when only a subset of rows is executed.
+			// Seed one row per case; `runIndex` = original dataset index so the FE
+			// maps results back even when running a subset.
 			const seededCases = await this.testCaseExecutionRepository.createPendingBatch(
 				testRun.id,
 				indicesToRun,
 			);
 
-			// Initialize object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics();
 
-			///
-			// 2. Run over all the test cases
-			///
-
-			// pLimit(N) governs how many per-case tasks may be in flight at
-			// once. With concurrency=1 the per-case callback runs in serial,
-			// reproducing the legacy `for…of` loop exactly. Each callback
-			// returns the contributions it built; merging happens once on the
-			// main thread after Promise.all so EvaluationMetrics state is
-			// never touched concurrently.
-			//
-			// `telemetryMeta.*++` increments inside the callback are safe under
-			// JS's single-threaded event loop: `++` is synchronous, and there
-			// is no `await` between the read and the write of the counter.
+			// pLimit(N) caps in-flight per-case tasks; concurrency=1 runs serial like
+			// the legacy loop. Callbacks return contributions merged once after
+			// Promise.all, so EvaluationMetrics is never touched concurrently. The
+			// counter `++`s in the callback are safe under JS's single-threaded loop.
 			const limit = pLimit(effectiveConcurrency);
 
-			// Visibility for parallel fan-out. The `inFlight` counter is mutated
-			// from per-case callbacks but the increments are safe — JS's single-
-			// threaded event loop guarantees no interleaving between read and
-			// write of `++` within a sync block.
+			// Fan-out visibility; `inFlight` is mutated from callbacks (safe, see above).
 			const fanOutMetrics = { inFlight: 0, peakInFlight: 0, casesStarted: 0 };
 			this.logger.debug(
 				`[Eval] Fan-out begin: cases=${testCases.length} concurrency=${effectiveConcurrency}`,
@@ -926,12 +817,9 @@ export class TestRunnerService {
 								return [];
 							}
 
-							// Atomic check-and-set against the pre-seeded row: only
-							// proceed if it's still 'new'. If the user pre-emptively
-							// cancelled, the row is now 'cancelled' and the update
-							// affects 0 rows — bail before queuing for throttle
-							// capacity so cancelled cases don't take up slots that
-							// could be used by sibling runs.
+							// Atomic claim: proceed only if the row is still 'new'. A
+							// pre-cancelled case affects 0 rows — bail before taking a
+							// throttle slot a sibling run could use.
 							const seededCase = seededCases[caseIndex];
 							const claimed = await this.testCaseExecutionRepository.tryMarkCaseAsRunning(
 								seededCase.id,
@@ -944,11 +832,8 @@ export class TestRunnerService {
 								return [];
 							}
 
-							// Multi-main DB cancellation poll, run per case as a defensive
-							// fallback for the rare case a foreign main flips the cancel
-							// flag but the pubsub broadcast doesn't reach this instance.
-							// Cheap (~1ms indexed PK lookup); kept as-is rather than
-							// optimised to once-per-run to preserve the existing safety net.
+							// Per-case DB poll: defensive fallback when a foreign main sets
+							// the cancel flag but pubsub doesn't reach us. Cheap (~1ms PK lookup).
 							if (
 								this.instanceSettings.isMultiMain &&
 								(await this.testRunRepository.isCancellationRequested(testRun.id))
@@ -961,21 +846,11 @@ export class TestRunnerService {
 								return [];
 							}
 
-							// Layer onto the existing instance-wide concurrency control. The
-							// service is a no-op in queue mode (BullMQ governs there) and when
-							// the configured limit is -1 ("unlimited"). pLimit and the eval
-							// queue cap the in-flight count complementarily: pLimit is
-							// per-run, the queue is shared across all test runs from all
-							// users on the instance.
-							//
-							// Abort-aware acquisition: if Stop is clicked while we're queued
-							// behind another evaluation's capacity, we evict ourselves from the
-							// queue so the slot returns to circulation and our task short-
-							// circuits promptly instead of waiting for an unrelated run to
-							// release. Without this, queued cases would block until they drained
-							// through the queue — and then `runTestCase` would return undefined
-							// (abort observed at its top), tripping the assert below and landing
-							// a misleading UNKNOWN_ERROR test-case row.
+							// Layer onto instance-wide concurrency control (no-op in queue
+							// mode / unlimited): pLimit is per-run, the queue is instance-wide.
+							// Abort-aware: if Stop is clicked while queued, evict ourselves so
+							// the slot frees and we short-circuit — otherwise the case would
+							// drain through, return undefined, and trip the assert below.
 							const caseTrackingId = `${testRun.id}-case-${caseIndex}`;
 							let abortHandler: (() => void) | undefined;
 							let throttleAcquired = false;
@@ -992,22 +867,10 @@ export class TestRunnerService {
 							const acquired = await Promise.race([acquireRace, abortRace]);
 
 							if (acquired === 'aborted') {
-								// Two abort sub-cases handled defensively, distinguished by
-								// whether throttle's `.then` microtask managed to set
-								// `throttleAcquired` before abort won the race:
-								//
-								// 1. throttleAcquired = true — the eval queue had immediate
-								//    capacity (no queue push, slot synchronously consumed),
-								//    and the `.then` microtask fired before abort. Race
-								//    *should* have picked 'acquired' in this ordering, but
-								//    handle defensively against scheduler quirks: release
-								//    the slot back to the queue.
-								// 2. throttleAcquired = false — we were either still queued
-								//    (capacity wasn't available) or the immediate-acquire's
-								//    microtask hadn't fired yet. Either way, remove() splices
-								//    a queued entry (frees the slot via internal capacity++)
-								//    and is a no-op for non-queued entries. The unawaited
-								//    acquireRace becomes garbage.
+								// Abort won the race. If throttle was already acquired (queue had
+								// immediate capacity, microtask beat abort), release the slot;
+								// otherwise remove() the possibly-queued entry (no-op if not
+								// queued). Both defensive against scheduler ordering quirks.
 								if (throttleAcquired) {
 									this.concurrencyControlService.release({ mode: 'evaluation' });
 								} else {
@@ -1030,11 +893,8 @@ export class TestRunnerService {
 								return [];
 							}
 
-							// In-flight tracking — increment as we leave the throttle and
-							// decrement in the outer finally. The peak counter shows whether
-							// the runner actually fanned out concurrently. Mirror the two
-							// summary stats into telemetryMeta so they survive into the
-							// `Test run finished` event even if the run errors mid-fan-out.
+							// In-flight tracking (decremented in the finally). Mirror the peak
+							// + started counts into telemetryMeta so they survive an error.
 							fanOutMetrics.inFlight += 1;
 							fanOutMetrics.casesStarted += 1;
 							telemetryMeta.cases_started = fanOutMetrics.casesStarted;
@@ -1050,9 +910,8 @@ export class TestRunnerService {
 							const runAt = new Date();
 
 							try {
-								// Hoisted so the catch below can still link the failed case to
-								// its execution: errors thrown during metric extraction (e.g.
-								// INVALID_METRICS) happen after the execution already ran.
+								// Hoisted so the catch can link a failed case to its execution:
+								// metric-extraction errors happen after the execution ran.
 								let testCaseExecutionId: string | undefined;
 								try {
 									const testCaseMetadata = { ...testRunMetadata };
@@ -1064,12 +923,9 @@ export class TestRunnerService {
 										abortSignal,
 									);
 
-									// `runTestCase` returns undefined only when `abortSignal.aborted`
-									// is true at entry (see method body). Skip silently so the outer
-									// reconciliation can mark the run as cancelled — landing an
-									// UNKNOWN_ERROR test-case row here would be misleading. Asserting
-									// the abort invariant catches future regressions where the
-									// undefined return path widens.
+									// `runTestCase` returns undefined only when aborted at entry.
+									// Skip silently (outer path marks cancelled); assert the abort
+									// invariant to catch future widening of the undefined return.
 									if (!testCaseResult) {
 										assert(
 											abortSignal.aborted,
@@ -1216,11 +1072,8 @@ export class TestRunnerService {
 				}
 			}
 
-			// Mark the test run as completed or cancelled. The multi-main DB
-			// poll inside each per-case callback can flip `abortController.abort()`
-			// on its own; this branch is the only place telemetry status is set
-			// for cancellations, so both the user-initiated and poll-initiated
-			// paths converge here.
+			// Complete or cancel. The per-case DB poll can trigger the abort, and
+			// this is where cancellation telemetry status is set for both paths.
 			if (abortSignal.aborted) {
 				this.logger.debug('Test run was cancelled', { workflowId });
 				await dbManager.transaction(async (trx) => {
@@ -1236,23 +1089,11 @@ export class TestRunnerService {
 
 				await this.testRunRepository.markAsCompleted(testRun.id, aggregatedMetrics);
 
-				// If this run belongs to an eval collection, a fresh
-				// `completed` status with new metrics can flip the
-				// winner / produce new regressions in the insights
-				// envelope. Bust any cached envelope so the next
-				// `EvalInsightsService.generateInsights` call regenerates
-				// against the up-to-date set. Cache busts happen here (not
-				// in the repository) because terminal-state setters live
-				// in this service; centralising the bust avoids spreading
-				// the dependency across every call site.
-				//
-				// Failure isolation: an exception from `updateInsightsCache`
-				// must NOT propagate. The run is already persisted as
-				// `completed` with its metrics; if the outer catch sees an
-				// error here it would re-mark the run as `error` and we'd
-				// lose a successful run. Worst case on cache-bust failure
-				// is a stale envelope on the next insights request, which
-				// the user can resolve with `forceRegenerate: true`.
+				// A fresh completed run can flip the collection's insights
+				// winner/regressions, so bust the cached envelope. Failure must
+				// NOT propagate — the run is already persisted as completed, and
+				// re-marking it error would lose a successful run; worst case is a
+				// stale envelope until the next `forceRegenerate`.
 				if (testRun.collectionId) {
 					try {
 						await this.evaluationCollectionRepository.updateInsightsCache(
@@ -1297,32 +1138,27 @@ export class TestRunnerService {
 				throw e;
 			}
 		} finally {
-			// Calculate duration
 			telemetryMeta.duration = Date.now() - telemetryMeta.start;
 
-			// Clean up abort controller
 			this.abortControllers.delete(testRun.id);
 
-			// Clear instance tracking fields (runningInstanceId, cancelRequested)
+			// Clear instance tracking fields (runningInstanceId, cancelRequested).
 			await this.testRunRepository.clearInstanceTracking(testRun.id);
 
-			// Send telemetry event with complete metadata
 			const telemetryPayload: Record<string, GenericValue> = {
 				...telemetryMeta,
-				// Collection context (TRUST-72). `collection_id` is null for legacy
-				// one-off runs so analytics can split flag-on/off cohorts cleanly.
+				// `collection_id` is null for legacy one-off runs so analytics can
+				// split cohorts cleanly.
 				collection_id: testRun.collectionId ?? null,
 				is_part_of_collection: testRun.collectionId !== null,
 			};
 
-			// Add success-specific fields
 			if (telemetryMeta.status === 'success') {
 				telemetryPayload.test_case_count = telemetryMeta.test_case_count;
 				telemetryPayload.errored_test_case_count = telemetryMeta.errored_test_case_count;
 				telemetryPayload.metric_count = telemetryMeta.metric_count;
 			}
 
-			// Add fail-specific fields
 			if (telemetryMeta.status === 'fail') {
 				telemetryPayload.error_message = telemetryMeta.error_message;
 			}
@@ -1331,16 +1167,14 @@ export class TestRunnerService {
 		}
 	}
 
-	/**
-	 * Checks if the test run in a cancellable state.
-	 */
+	/** Whether the test run is in a cancellable state. */
 	canBeCancelled(testRun: TestRun) {
 		return testRun.status !== 'running' && testRun.status !== 'new';
 	}
 
 	/**
-	 * Attempts to cancel a test run locally by aborting its controller.
-	 * This is called both directly and via pub/sub event handler.
+	 * Cancel a run locally by aborting its controller. Called directly and via
+	 * the pub/sub handler.
 	 */
 	private cancelTestRunLocally(testRunId: string): boolean {
 		const abortController = this.abortControllers.get(testRunId);
@@ -1353,9 +1187,7 @@ export class TestRunnerService {
 		return false;
 	}
 
-	/**
-	 * Handle cancel-test-run pub/sub command from other main instances.
-	 */
+	/** Handle the cancel-test-run pub/sub command from other main instances. */
 	@OnPubSubEvent('cancel-test-run', { instanceType: 'main' })
 	handleCancelTestRunCommand({ testRunId }: { testRunId: string }) {
 		this.logger.debug('Received cancel-test-run command via pub/sub', { testRunId });
@@ -1363,10 +1195,8 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Handle cancel-collection pub/sub command from other main instances.
-	 * Each main aborts the in-flight runs it owns that belong to the
-	 * collection — runs not held locally are no-ops, mirroring the per-run
-	 * cancel path's "if not running locally, fall back to DB" semantics.
+	 * Handle the cancel-collection pub/sub command: each main aborts the runs it
+	 * owns locally; runs held elsewhere are no-ops (DB fallback handles them).
 	 */
 	@OnPubSubEvent('cancel-collection', { instanceType: 'main' })
 	async handleCancelCollectionCommand({ collectionId }: { collectionId: string }) {
@@ -1375,15 +1205,9 @@ export class TestRunnerService {
 	}
 
 	private async cancelCollectionLocally(collectionId: string): Promise<string[]> {
-		// Match the active-status filter `cancelCollection` uses for DB-flag
-		// cancellation. `executeTestRun` registers the abort controller in
-		// `abortControllers` *before* `markAsRunning` flips status from `new`
-		// to `running`, so a freshly-kicked-off run is locally abortable
-		// while still showing as `new` in DB. Querying only `running` here
-		// would silently skip that window on every main — both the
-		// initiator (called from `cancelCollection`) and foreign mains
-		// (called from `handleCancelCollectionCommand`). The result set is
-		// still bounded by the collection size (≤ a handful in practice).
+		// Include `new`, not just `running`: the abort controller is registered
+		// before `markAsRunning` flips status, so a freshly-kicked-off run is
+		// locally abortable while still `new` in DB.
 		const runs = await this.testRunRepository.find({
 			where: [
 				{ collectionId, status: 'running' },
@@ -1399,14 +1223,12 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Cancels every in-flight run in an evaluation collection. Mirrors
-	 * {@link cancelTestRun}'s multi-main fan-out: each main aborts what it
-	 * holds locally, the DB cancelRequested flag is set per run as a fallback,
-	 * and pubsub broadcasts so foreign mains pick up the signal too.
+	 * Cancels every in-flight run in a collection. Mirrors {@link cancelTestRun}'s
+	 * fan-out: abort locally, set the DB flag per run as fallback, and broadcast
+	 * via pubsub for foreign mains.
 	 */
 	async cancelCollection(collectionId: string): Promise<{ cancelledRunIds: string[] }> {
-		// 1. Mark every run in the collection that's still active for
-		// fallback DB-poll cancellation. Runs already terminal stay terminal.
+		// Flag every still-active run for fallback DB-poll cancellation.
 		const activeRuns = await this.testRunRepository.find({
 			where: [
 				{ collectionId, status: 'running' },
@@ -1418,11 +1240,10 @@ export class TestRunnerService {
 			await this.testRunRepository.requestCancellation(id);
 		}
 
-		// 2. Try local cancellation for whatever this main owns.
+		// Try local cancellation for whatever this main owns.
 		const cancelledLocally = await this.cancelCollectionLocally(collectionId);
 
-		// 3. In multi-main or queue mode, broadcast so foreign mains can
-		// cancel their share.
+		// In multi-main or queue mode, broadcast so foreign mains cancel their share.
 		if (this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue') {
 			this.logger.debug('Broadcasting cancel-collection command via pub/sub', { collectionId });
 			await this.publisher.publishCommand({
@@ -1431,19 +1252,10 @@ export class TestRunnerService {
 			});
 		}
 
-		// 4. Anything we didn't own locally and that's still flagged as
-		// pending: mark it cancelled in DB as a fallback (matches
-		// `cancelTestRun`'s contract for unreachable instances).
-		//
-		// Race protection: `activeRuns` was sampled before the requestCancellation
-		// loop and before the pubsub broadcast — by now a foreign main may have
-		// completed a run naturally (status → `completed`/`error`). A plain
-		// `markAsCancelled(id)` would clobber that terminal status with
-		// `cancelled` and corrupt the run record. Scope the update by status
-		// so it only fires on rows that are still active; if 0 rows were
-		// affected, the natural completion wins and we skip the test-case
-		// sweep too (its own status filter would no-op anyway, but skipping
-		// makes the "winner takes all" intent explicit).
+		// Fallback for runs we don't own locally. Race protection: a foreign main
+		// may have completed a run since `activeRuns` was sampled, so scope the
+		// update by status — a plain markAsCancelled would clobber the terminal
+		// state. 0 rows affected means natural completion won; skip its case sweep.
 		const localSet = new Set(cancelledLocally);
 		const fallbackRunIds = activeRuns.map((r) => r.id).filter((id) => !localSet.has(id));
 		if (fallbackRunIds.length > 0) {
@@ -1466,18 +1278,17 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Cancels the test run with the given ID.
-	 * In multi-main mode, this broadcasts the cancellation to all instances via pub/sub
-	 * and sets a database flag as a fallback mechanism.
+	 * Cancels a test run. In multi-main mode, broadcasts via pub/sub and sets a
+	 * DB flag as fallback.
 	 */
 	async cancelTestRun(testRunId: string) {
-		// 1. Set the database cancellation flag (fallback for polling)
+		// Set the DB cancellation flag (fallback for polling).
 		await this.testRunRepository.requestCancellation(testRunId);
 
-		// 2. Try local cancellation first
+		// Try local cancellation first.
 		const cancelledLocally = this.cancelTestRunLocally(testRunId);
 
-		// 3. In multi-main or queue mode, broadcast cancellation to all instances
+		// In multi-main or queue mode, broadcast cancellation to all instances.
 		if (this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue') {
 			this.logger.debug('Broadcasting cancel-test-run command via pub/sub', { testRunId });
 			await this.publisher.publishCommand({
@@ -1486,13 +1297,9 @@ export class TestRunnerService {
 			});
 		}
 
-		// 4. If not running locally, mark as cancelled in DB as a fallback.
-		// This handles both single-main (where this is the only instance) and
-		// multi-main (where the running instance may be dead or unreachable
-		// via pub/sub). Same race-protection as `cancelCollection`: between
-		// the requestCancellation flag and this update, a foreign main may
-		// have completed the run naturally — scope by status so the
-		// terminal state wins.
+		// If not running locally, mark cancelled in DB as fallback (single-main, or
+		// multi-main where the owner is unreachable). Same race protection as
+		// `cancelCollection`: scope by status so a natural completion wins.
 		if (!cancelledLocally) {
 			const { manager: dbManager } = this.testRunRepository;
 			await dbManager.transaction(async (trx) => {

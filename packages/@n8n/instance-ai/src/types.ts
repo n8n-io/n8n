@@ -13,6 +13,7 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type {
+	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
@@ -694,7 +695,9 @@ export interface UpsertEvaluationConfigInput {
 	metrics: EvaluationConfigMetricInput[];
 }
 
-/** A config-based eval as surfaced to the agent. */
+/** A config-based eval as surfaced to the agent. Metrics are reduced to
+ *  identity only — use {@link EvaluationConfigDetail} when the metric bodies
+ *  (expressions, judge model, prompt) are needed. */
 export interface EvaluationConfigSummary {
 	id: string;
 	workflowId: string;
@@ -708,11 +711,20 @@ export interface EvaluationConfigSummary {
 	dataTableId?: string;
 }
 
+/** A config-based eval with its full metric bodies (expressions, judge model,
+ *  prompt) — what the summary omits. Returned by `describe` so the agent can
+ *  read a config before an `update` replaces it wholesale. */
+export interface EvaluationConfigDetail extends Omit<EvaluationConfigSummary, 'metrics'> {
+	metrics: EvaluationMetric[];
+}
+
 /** Create/read/update config-based evaluations attached to a workflow via the
  *  evaluation-config API (distinct from on-canvas eval nodes). */
 export interface InstanceAiEvaluationConfigService {
 	list(workflowId: string): Promise<EvaluationConfigSummary[]>;
 	get(workflowId: string, configId: string): Promise<EvaluationConfigSummary | null>;
+	/** Full-detail read: metric bodies included. */
+	describe(workflowId: string, configId: string): Promise<EvaluationConfigDetail | null>;
 	create(workflowId: string, input: UpsertEvaluationConfigInput): Promise<EvaluationConfigSummary>;
 	update(
 		workflowId: string,
