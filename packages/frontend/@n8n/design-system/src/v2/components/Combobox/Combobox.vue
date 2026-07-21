@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isRecord } from '@n8n/utils/is-record';
 import { reactivePick } from '@vueuse/core';
 import {
 	ComboboxAnchor,
@@ -81,10 +82,6 @@ const rootProps = useForwardPropsEmits(
 
 function isPrimitiveComboboxValue(item: ComboboxItem): item is string {
 	return typeof item === 'string';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 const anchorRef = useTemplateRef<InstanceType<typeof ComboboxAnchor>>('anchor');
