@@ -33,6 +33,23 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('custom_web_search')).toBeUndefined();
 	});
 
+	it('returns translation keys for builder tools, including legacy aliases', () => {
+		expect(getToolNameTranslationKey('add-integration')).toBe('instanceAi.tools.add-integration');
+		expect(getToolNameTranslationKey('resolve_integration')).toBe(
+			'instanceAi.tools.add-integration',
+		);
+		expect(getToolNameTranslationKey('describe-nodes')).toBe('instanceAi.tools.describe-nodes');
+		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.describe-nodes');
+		expect(getToolNameTranslationKey('inspect-credentials')).toBe(
+			'instanceAi.tools.inspect-credentials',
+		);
+		expect(getToolNameTranslationKey('list_credentials')).toBe(
+			'instanceAi.tools.inspect-credentials',
+		);
+		expect(getToolNameTranslationKey('list-workflows')).toBe('instanceAi.tools.list-workflows');
+		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list-workflows');
+	});
+
 	it('returns an empty string for missing or blank names', () => {
 		expect(formatToolNameForDisplay(undefined)).toBe('');
 		expect(formatToolNameForDisplay('   ')).toBe('');

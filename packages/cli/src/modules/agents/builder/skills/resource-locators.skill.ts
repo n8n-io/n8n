@@ -8,7 +8,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 			'Use when adding or changing node tools with stable dynamic selector fields: resourceLocator, loadOptionsMethod, loadOptions routing, "Name or ID" parameters, teamId, channelId, projectId, calendarId, databaseId, tableId, model selectors, or when write_config/patch_config rejects $fromAI on a dynamic selector.',
 		recommendedTools: [
 			'search_nodes',
-			'get_node_types',
+			'describe-nodes',
 			'ask_credential',
 			'get_resource_locator_options',
 			'read_config',
@@ -16,7 +16,7 @@ export function resourceLocatorsSkill(): RuntimeSkill {
 		],
 		allowedTools: [
 			'search_nodes',
-			'get_node_types',
+			'describe-nodes',
 			'ask_credential',
 			'get_resource_locator_options',
 			'ask_questions',
@@ -36,14 +36,14 @@ locator values that the target agent cannot reliably guess at runtime.
 - You are adding or changing a node tool and a parameter is a stable resource
   selector, such as Linear \`teamId\`, Slack channel, project, calendar, board,
   database, table, model, folder, or another "Name or ID" field.
-- \`get_node_types\` shows a parameter with \`type: "resourceLocator"\`,
+- \`describe-nodes\` shows a parameter with \`type: "resourceLocator"\`,
   \`typeOptions.loadOptionsMethod\`, or \`typeOptions.loadOptions\`.
 - \`write_config\` or \`patch_config\` rejects a node parameter with a dynamic
   selector / \`get_resource_locator_options\` error.
 
 ## Workflow
 
-1. Discover and inspect the node with \`search_nodes\`, then \`get_node_types\`.
+1. Discover and inspect the node with \`search_nodes\`, then \`describe-nodes\`.
 2. Identify dynamic selectors from node metadata. Treat these as build-time
    lookup fields:
    - \`type: "resourceLocator"\`

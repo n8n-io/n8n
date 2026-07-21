@@ -876,7 +876,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
@@ -936,7 +936,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',

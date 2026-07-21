@@ -149,22 +149,22 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 
 ### Add an explicitly requested n8n node tool to an existing agent
 1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
-   \`get_node_types\`; the explicit n8n-node request does not need
-   \`resolve_integration\`.
+   \`describe-nodes\`; the explicit n8n-node request does not need
+   \`add-integration\`.
 2. \`ask_credential\` for every required slot.
 3. \`read_config()\`.
 4. \`patch_config(...)\` adding the node tool to \`/tools/-\`.
 
 ### Add an explicitly requested n8n node tool when credential setup is skipped
 1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
-   \`get_node_types\`.
+   \`describe-nodes\`.
 2. \`ask_credential(...)\` -> \`{ skipped: true }\`.
 3. \`read_config()\`.
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
 
 ### Add MCP integration: "Connect Notion MCP"
-1. \`resolve_integration({ queries: ["notion"] })\`.
+1. \`add-integration({ queries: ["notion"] })\`.
 2. When it returns \`kind: "mcp"\`, load \`agent-builder-mcp\`.
 3. For MCP candidates, select one entry from \`results[]\`. If
    multiple candidates remain, use \`ask_questions\` with their titles and
@@ -188,11 +188,11 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    \`integrationType\`. After \`configure_channel\` returns, stop this flow; the
    setup UI already persisted or skipped the channel, so do not read or mutate
    the config.
-4. Otherwise call \`resolve_integration({ queries: ["<selected service>"] })\`
+4. Otherwise call \`add-integration({ queries: ["<selected service>"] })\`
    and follow the returned kind:
    - \`kind: "mcp"\`: load \`agent-builder-mcp\`, verify, and wire the MCP server.
    - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
-     results with \`get_node_types\`, and ask for every required credential.
+     results with \`describe-nodes\`, and ask for every required credential.
 5. In this non-chat branch only, \`read_config()\`, then \`patch_config(...)\` or
    \`write_config(...)\` with the resolved capability.
 

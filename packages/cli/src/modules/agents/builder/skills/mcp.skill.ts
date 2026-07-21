@@ -16,7 +16,7 @@ export function mcpSkill(): RuntimeSkill {
 		description:
 			'Use when adding, removing, or updating MCP (Model Context Protocol) servers on the target agent.',
 		recommendedTools: [
-			'resolve_integration',
+			'add-integration',
 			'ask_questions',
 			'ask_credential',
 			'verify_mcp_server',
@@ -24,10 +24,10 @@ export function mcpSkill(): RuntimeSkill {
 			'patch_config',
 		],
 		allowedTools: [
-			'resolve_integration',
+			'add-integration',
 			'search_mcp_servers',
 			'search_nodes',
-			'get_node_types',
+			'describe-nodes',
 			'ask_credential',
 			'verify_mcp_server',
 			'ask_questions',
@@ -46,7 +46,7 @@ connected MCP server.
 
 ## Use when:
 
-- \`resolve_integration\` returned \`kind: "mcp"\`.
+- \`add-integration\` returned \`kind: "mcp"\`.
 - The user explicitly asks to add or edit an MCP server.
 - The user provides or asks to configure a custom MCP server.
 
@@ -54,9 +54,9 @@ connected MCP server.
 
 ### Discovery and setup
 
-For a generic external-service request, \`resolve_integration\` must select the
+For a generic external-service request, \`add-integration\` must select the
 integration type before this skill is loaded. If no resolver result is
-available yet, call \`resolve_integration\` with queries matching the requested
+available yet, call \`add-integration\` with queries matching the requested
 service. Resolve one requested service per call; use \`queries\` only for
 alternative search terms for that service.
 
@@ -67,7 +67,7 @@ alternative search terms for that service.
   do not silently substitute a node tool. Continue with manual MCP setup by
   asking for the URL and transport/authentication decision through
   \`${ASK_QUESTIONS_TOOL_NAME}\`.
-- \`resolve_integration\` returns \`{ kind: "mcp", results: [...] }\` for MCP
+- \`add-integration\` returns \`{ kind: "mcp", results: [...] }\` for MCP
   matches. Never read server fields from the wrapper; select a result first:
   - If \`results[]\` contains one entry, use it as \`selectedResult\`.
   - If the request uniquely identifies one entry by \`name\` or \`title\`, use

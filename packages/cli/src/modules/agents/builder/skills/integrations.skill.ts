@@ -7,7 +7,7 @@ export function integrationsSkill(): RuntimeSkill {
 		description:
 			'Use when deciding whether Slack, Linear, Telegram, or another external platform should be a target-agent chat integration/trigger versus an MCP, node, or workflow tool, and when adding, changing, or removing chat integrations; not for built-in Build chat or Preview chat behavior.',
 		recommendedTools: [
-			'resolve_integration',
+			'add-integration',
 			'list_integration_types',
 			'configure_channel',
 			'ask_questions',
@@ -15,7 +15,7 @@ export function integrationsSkill(): RuntimeSkill {
 			'patch_config',
 		],
 		allowedTools: [
-			'resolve_integration',
+			'add-integration',
 			'list_integration_types',
 			'configure_channel',
 			'ask_questions',
@@ -88,14 +88,14 @@ The \`integrations\` array controls how the target agent is triggered.
 
 ### Callable External Services
 
-When the product is not a chat/trigger integration, call \`resolve_integration\`
+When the product is not a chat/trigger integration, call \`add-integration\`
 with queries matching the requested service before loading MCP or node-tool
 skills.
 
 - If it returns \`kind: "mcp"\`, load \`agent-builder-mcp\` and follow the MCP
   credential, verification, and config workflow.
 - If it returns \`kind: "node"\`, load \`agent-builder-node-tools\`, use the
-  returned node results with \`get_node_types\`, and ask for every required
+  returned node results with \`describe-nodes\`, and ask for every required
   credential.
 - Use workflow tools when the capability should come from an existing workflow
   instead of a direct MCP or node tool.
@@ -104,7 +104,7 @@ skills.
 
 - Chat integration types must come from \`list_integration_types\`.
 - Do not add a chat integration just because the agent needs CRUD or notifications
-  for that product. Resolve the callable capability through \`resolve_integration\`
+  for that product. Resolve the callable capability through \`add-integration\`
   unless the product itself is the chat/trigger context.
 - For recurring or scheduled runs, create a task (\`create_tasks\`), not an
   integration.
@@ -117,9 +117,9 @@ skills.
 - Connected chat integrations were set up through \`configure_channel\`, not
   \`ask_credential\` or a manual config write.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise resolve the
-  callable capability through \`resolve_integration\` and use MCP, node, or
+  callable capability through \`add-integration\` and use MCP, node, or
   workflow tools.
-- Generic non-chat external services were routed through \`resolve_integration\`
+- Generic non-chat external services were routed through \`add-integration\`
   before MCP or node setup.
 - The final \`integrations\` array keeps unrelated integrations intact and
   removes only the requested channel entries.`,

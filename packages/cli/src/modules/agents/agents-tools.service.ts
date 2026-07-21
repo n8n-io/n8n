@@ -78,7 +78,7 @@ const searchNodesInputSchema = z.object({
 const nodeVersionSchema = z
 	.number()
 	.describe(
-		'Tool node type version from node discovery results (search_nodes or resolve_integration kind: "node")',
+		'Tool node type version from node discovery results (search_nodes or add-integration kind: "node")',
 	);
 
 const getNodeTypesInputSchema = z.object({
@@ -97,7 +97,7 @@ const getNodeTypesInputSchema = z.object({
 		)
 		.min(1)
 		.describe(
-			'Tool node IDs from node discovery results (search_nodes or resolve_integration kind: "node"; e.g., ["n8n-nodes-base.gmailTool"])',
+			'Tool node IDs from node discovery results (search_nodes or add-integration kind: "node"; e.g., ["n8n-nodes-base.gmailTool"])',
 		),
 });
 
@@ -108,7 +108,7 @@ const listCredentialsInputSchema = z.object({
 		.describe(
 			'Optional credential types to filter by (e.g., ["gmailOAuth2", "httpHeaderAuth"]). ' +
 				'When omitted, returns all credentials. Use the credential types declared in the ' +
-				'node schema from get_node_types to narrow the results.',
+				'node schema from describe-nodes to narrow the results.',
 		),
 });
 
@@ -126,8 +126,8 @@ export class AgentsToolsService {
 	): BuiltTool[] {
 		return [
 			this.buildSearchNodesTool(),
-			this.buildGetNodeTypesTool(),
-			this.buildListCredentialsTool(credentialProvider, listCredentialsUsageHint),
+			this.buildDescribeNodesTool(),
+			this.buildInspectCredentialsTool(credentialProvider, listCredentialsUsageHint),
 		];
 	}
 
@@ -143,7 +143,7 @@ export class AgentsToolsService {
 			.description(
 				'Search for n8n nodes by name or service. Use this to find nodes that can be executed. ' +
 					'Returns tool node IDs, display names, versions, and descriptions. ' +
-					'After finding a node, call get_node_types to get its parameter schema.',
+					'After finding a node, call describe-nodes to get its parameter schema.',
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
@@ -153,11 +153,11 @@ export class AgentsToolsService {
 			.build();
 	}
 
-	private buildGetNodeTypesTool(): BuiltTool {
-		return new Tool('get_node_types')
+	private buildDescribeNodesTool(): BuiltTool {
+		return new Tool('describe-nodes')
 			.description(
 				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
-					'discovery results (search_nodes or resolve_integration kind: "node"). Returns ' +
+					'discovery results (search_nodes or add-integration kind: "node"). Returns ' +
 					'parameter definitions needed to configure a node for execution. Use the tool node ' +
 					'IDs from discovery, usually ending in Tool. You can optionally filter by ' +
 					'resource/operation/mode.',
@@ -190,18 +190,18 @@ export class AgentsToolsService {
 			.build();
 	}
 
-	private buildListCredentialsTool(
+	private buildInspectCredentialsTool(
 		credentialProvider: CredentialProvider,
 		usageHint: string,
 	): BuiltTool {
-		return new Tool('list_credentials')
+		return new Tool('inspect-credentials')
 			.description(
 				'List the credentials available to the user. Returns an array of credential names and types. ' +
 					'Accepts an optional `types` filter to return only credentials matching the given types. ' +
 					usageHint,
 			)
 			.input(listCredentialsInputSchema)
-			.handler(async ({ types }) => {
+			.handler(async ({ types }: { types?: string[] }) => {
 				const creds = await credentialProvider.list();
 				if (!types || types.length === 0) return { credentials: creds };
 				const allowed = new Set(types);

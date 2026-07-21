@@ -1,8 +1,17 @@
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiMessage,
+	InstanceAiTimelineEntry,
+} from '@n8n/api-types';
 
-/** True when the agent node is the workflow-builder sub-agent. */
+/** True when the agent node is a workflow-builder or agent-builder sub-agent. */
 export function isBuilderAgent(node: InstanceAiAgentNode): boolean {
-	return node.kind === 'builder' || node.role === 'workflow-builder';
+	return (
+		node.kind === 'builder' ||
+		node.kind === 'agent-builder' ||
+		node.role === 'workflow-builder' ||
+		node.role === 'agent-builder'
+	);
 }
 
 /** True when the node is a builder sub-agent that is currently running. */
@@ -35,7 +44,7 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 	// a non-builder child is still running (builders are rendered separately).
 	if (
 		!message.isStreaming &&
-		tree.children.some((c) => c.status === 'active' && !isBuilderAgent(c))
+		tree.children.some((c: InstanceAiAgentNode) => c.status === 'active' && !isBuilderAgent(c))
 	) {
 		return true;
 	}
@@ -43,7 +52,7 @@ export function messageHasVisibleContent(message: InstanceAiMessage): boolean {
 	// Any timeline entry that isn't a hoisted active builder counts as content.
 	const childrenById: Record<string, InstanceAiAgentNode> = {};
 	for (const c of tree.children) childrenById[c.agentId] = c;
-	return tree.timeline.some((e) => {
+	return tree.timeline.some((e: InstanceAiTimelineEntry) => {
 		if (e.type !== 'child') return true;
 		const child = childrenById[e.agentId];
 		return !child || !isActiveBuilderAgent(child);

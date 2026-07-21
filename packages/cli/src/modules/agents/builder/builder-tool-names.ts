@@ -2,6 +2,10 @@
  * Tool names used by the agent builder. Centralised so tool implementations,
  * prompts, and tests can't drift on string typos.
  *
+ * New builder tool IDs should use kebab-case. Existing wire-sensitive
+ * snake_case names remain as-is to avoid breaking persisted checkpoints and
+ * shared frontend interaction contracts.
+ *
  * The interactive tools (`ask_credential`, `ask_embedding_credential`,
  * `ask_questions`, `configure_channel`) are NOT listed here — their names live
  * in `@n8n/api-types` (`agent-builder-interactive.ts` / `agents/agent-interaction.schema.ts`)
@@ -18,11 +22,12 @@ export const BUILDER_TOOLS = {
 	CREATE_SKILLS: 'create_skills',
 	CREATE_TASKS: 'create_tasks',
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
+	LIST_WORKFLOWS: 'list-workflows',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
 	PUBLISH_AGENT: 'publish_agent',
 	UNPUBLISH_AGENT: 'unpublish_agent',
-	RESOLVE_INTEGRATION: 'resolve_integration',
+	ADD_INTEGRATION: 'add-integration',
 	RESOLVE_LLM: 'resolve_llm',
 	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',

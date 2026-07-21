@@ -770,7 +770,7 @@ describe('useCanvasPreview', () => {
 							makeAgentNode({
 								agentId: 'agent-builder-child',
 								role: 'agent-builder',
-								kind: 'builder',
+								kind: 'agent-builder',
 								targetResource: {
 									type: 'agent',
 									id: 'agent-1',
@@ -809,7 +809,7 @@ describe('useCanvasPreview', () => {
 							makeAgentNode({
 								agentId: 'agent-builder-child',
 								role: 'agent-builder',
-								kind: 'builder',
+								kind: 'agent-builder',
 								targetResource: {
 									type: 'agent',
 									id: 'agent-1',

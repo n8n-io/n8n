@@ -6,6 +6,11 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
+				'instanceAi.tools.read_config': 'Reading agent config',
+				'instanceAi.tools.add-integration': 'Adding integration',
+				'instanceAi.tools.describe-nodes': 'Reading node schema',
+				'instanceAi.tools.inspect-credentials': 'Inspecting credentials',
+				'instanceAi.tools.list-workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
@@ -61,6 +66,10 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('build-workflow-with-agent')).toBe('share');
 	});
 
+	test('returns share for renamed builder integration tools', () => {
+		expect(getToolIcon('add-integration')).toBe('share');
+	});
+
 	test('returns table for data-table tools', () => {
 		expect(getToolIcon('data-tables')).toBe('table');
 	});
@@ -70,6 +79,8 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('executions')).toBe('workflow');
 		expect(getToolIcon('nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
+		expect(getToolIcon('search_nodes')).toBe('workflow');
+		expect(getToolIcon('describe-nodes')).toBe('workflow');
 		expect(getToolIcon('submit-workflow')).toBe('workflow');
 		expect(getToolIcon('materialize-node-type')).toBe('workflow');
 	});
@@ -118,6 +129,8 @@ describe('getToolIcon', () => {
 describe('useToolLabel', () => {
 	test('getToolLabel returns translated label when found', () => {
 		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('read_config')).toBe('Reading agent config');
+		expect(getToolLabel('add-integration')).toBe('Adding integration');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
@@ -136,6 +149,14 @@ describe('useToolLabel', () => {
 				filePath: 'scripts/import-rows.mjs',
 			}),
 		).toBe('Inspecting import rows script');
+	});
+
+	test('getToolLabel normalizes legacy builder tool names to their new labels', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
+		expect(getToolLabel('get_node_types')).toBe('Reading node schema');
+		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
+		expect(getToolLabel('list_workflows')).toBe('Listing workflows');
 	});
 
 	test('getToolLabel shows skill script commands cleanly', () => {

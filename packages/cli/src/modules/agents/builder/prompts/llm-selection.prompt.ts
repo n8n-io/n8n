@@ -37,7 +37,7 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
   when the selected model also supports native search.
 - For "Anthropic via OpenRouter", pass \`provider: "openrouter"\`; if the user names a routed model, pass the routed id without adding another provider prefix.
 - Prefer a provider the user already has credentials for when choosing from recommendations.
-- Never copy main LLM credential IDs from \`list_credentials\`.
+- Never copy main LLM credential IDs from \`inspect-credentials\`.
 
 ### Gotchas
 

@@ -46,16 +46,18 @@ describe('AgentsToolsService', () => {
 	});
 
 	describe('getSharedTools()', () => {
-		it('returns search_nodes, get_node_types, and list_credentials', () => {
+		it('returns search_nodes, describe-nodes, and inspect-credentials', () => {
 			const { service } = makeService();
 			const names = service.getSharedTools(makeCredentialProvider(), 'hint').map((t) => t.name);
-			expect(names).toEqual(['search_nodes', 'get_node_types', 'list_credentials']);
+			expect(names).toEqual(['search_nodes', 'describe-nodes', 'inspect-credentials']);
 		});
 	});
 
-	describe('list_credentials handler', () => {
+	describe('inspect-credentials handler', () => {
 		function getListTool(service: AgentsToolsService, provider: CredentialProvider) {
-			return service.getSharedTools(provider, 'hint').find((t) => t.name === 'list_credentials')!;
+			return service
+				.getSharedTools(provider, 'hint')
+				.find((t) => t.name === 'inspect-credentials')!;
 		}
 
 		it('returns all credentials when no types filter is provided', async () => {
@@ -190,11 +192,11 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
-	describe('get_node_types handler', () => {
+	describe('describe-nodes handler', () => {
 		function getTypesTool(service: AgentsToolsService) {
 			return service
 				.getSharedTools(makeCredentialProvider(), 'hint')
-				.find((t) => t.name === 'get_node_types')!;
+				.find((t) => t.name === 'describe-nodes')!;
 		}
 
 		it('forwards string node IDs unchanged', async () => {

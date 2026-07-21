@@ -242,7 +242,7 @@ describe('AgentsBuilderToolsService', () => {
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
-			expect(toolNames).toContain(BUILDER_TOOLS.RESOLVE_INTEGRATION);
+			expect(toolNames).toContain(BUILDER_TOOLS.ADD_INTEGRATION);
 		});
 
 		it('registers publish and unpublish tools in the builder toolset', () => {
@@ -1083,11 +1083,11 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
-	describe('list_workflows tool', () => {
+	describe('list-workflows tool', () => {
 		function getListWorkflowsTool(service: AgentsBuilderToolsService) {
 			return service
 				.getTools(agentId, projectId, credentialProvider, user)
-				.shared.find((tool) => tool.name === 'list_workflows')!;
+				.shared.find((tool) => tool.name === 'list-workflows')!;
 		}
 
 		it('passes the search term to the attachable workflows service', async () => {
