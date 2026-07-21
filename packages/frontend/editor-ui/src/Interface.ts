@@ -1,4 +1,3 @@
-import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
 	AgentJsonConfig,
 	FrontendSettings,
@@ -697,9 +696,9 @@ export type TargetNodeParameterContext = {
 	parameterPath: string;
 };
 
-export interface NotificationOptions extends Partial<ElementNotificationOptions> {
-	message: string | ElementNotificationOptions['message'];
-}
+// Relocated to `@n8n/stores/notifications.store` alongside the notifications
+// store; re-exported here for existing importers.
+export type { NotificationOptions } from '@n8n/stores/notifications.store';
 
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW

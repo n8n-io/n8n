@@ -85,7 +85,6 @@ import type {
 	Modals,
 	NewCredentialsModal,
 	ThemeOption,
-	NotificationOptions,
 	ModalState,
 	ModalKey,
 	AppliedThemeOption,
@@ -307,9 +306,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	// Optional source for the auto-opened node creator (e.g. opened from Instance
 	// AI), so the 'User opened nodes panel' event is attributed to its origin.
 	const addFirstStepOnLoadSource = ref<NodeCreatorOpenSource>();
-	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
-	const areNotificationsSuppressed = ref(false);
-	const allowErrorNotificationsWhenSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -648,15 +644,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		});
 	};
 
-	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
-		pendingNotificationsForViews.value[view] = notifications;
-	};
-
-	const setNotificationsSuppressed = (suppressed: boolean, options?: { allowErrors?: boolean }) => {
-		areNotificationsSuppressed.value = suppressed;
-		allowErrorNotificationsWhenSuppressed.value = suppressed && options?.allowErrors === true;
-	};
-
 	function resetLastInteractedWith() {
 		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
@@ -778,9 +765,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		modalsById,
 		currentView,
 		isAnyModalOpen,
-		pendingNotificationsForViews,
-		areNotificationsSuppressed,
-		allowErrorNotificationsWhenSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -796,8 +780,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		addActiveAction,
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
-		setNotificationsForView,
-		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

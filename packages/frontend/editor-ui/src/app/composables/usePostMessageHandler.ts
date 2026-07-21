@@ -9,7 +9,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCanvasStore } from '@/app/stores/canvas.store';
-import { useUIStore } from '@/app/stores/ui.store';
+import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -48,7 +48,7 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
-	const uiStore = useUIStore();
+	const notificationsStore = useNotificationsStore();
 	const projectsStore = useProjectsStore();
 	const executionsStore = useExecutionsStore();
 	const credentialsStore = useCredentialsStore();
@@ -92,7 +92,7 @@ export function usePostMessageHandler({ currentWorkflowDocumentStore }: PostMess
 		canOpenNDV.value =
 			canOpenNDVFromRouteQuery(route.query.canOpenNDV) && json.canOpenNDV !== false;
 
-		uiStore.setNotificationsSuppressed(json.suppressNotifications === true, {
+		notificationsStore.setNotificationsSuppressed(json.suppressNotifications === true, {
 			allowErrors: json.allowErrorNotifications === true,
 		});
 
