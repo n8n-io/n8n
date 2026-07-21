@@ -49,7 +49,7 @@
     "sync:skill-links": "node scripts/sync-agent-skill-links.mjs",
     "check:skill-links": "node scripts/sync-agent-skill-links.mjs --check",
     "check:single-instance-peers": "node scripts/single-instance/check-single-instance-peers.mjs",
-    "check:single-instance": "syncpack lint && node scripts/single-instance/check-single-instance-peers.mjs",
+    "check:single-instance": "syncpack lint && pnpm check:single-instance-peers",
     "test:single-instance": "node --test scripts/single-instance/*.test.mjs",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
     "setup-backend-module": "node scripts/ensure-zx.mjs && zx scripts/backend-module/setup.mjs",

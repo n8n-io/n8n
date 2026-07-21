@@ -28,8 +28,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
 
 import {
 	CURATED_LIBS,
@@ -37,11 +36,10 @@ import {
 	HOST_PACKAGES,
 	FRONTEND_PATH_PREFIXES,
 } from './single-instance-libs.mjs';
-import { loadWorkspaceManifests } from './workspace-manifests.mjs';
+import { loadWorkspaceManifests, repoRoot } from './workspace-manifests.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const BASELINE_FILE = join(
-	root,
+	repoRoot,
 	'scripts',
 	'single-instance',
 	'single-instance-peers-baseline.json',
@@ -54,22 +52,15 @@ function exempt(name, relDir) {
 	return HOST_PACKAGES.includes(name) || FRONTEND_PATH_PREFIXES.some((p) => relDir.startsWith(p));
 }
 
-/**
- * Pure core: given a package's name, its relative dir and its manifest, return the
- * curated libs it declares in `dependencies` that ought to be peers (violations).
- */
-export function violationsFor(name, relDir, pkg) {
-	if (exempt(name, relDir)) return [];
-	const deps = pkg.dependencies ?? {};
-	return PEER_LIBS.filter((lib) => Object.hasOwn(deps, lib));
-}
+/** Pure core: curated libs a package declares in the given manifest field (none if exempt). */
+const curatedIn = (field, name, relDir, pkg) =>
+	exempt(name, relDir) ? [] : PEER_LIBS.filter((lib) => Object.hasOwn(pkg[field] ?? {}, lib));
 
-/** Pure core: the curated libs a package declares as peerDependencies. */
-export function peersFor(name, relDir, pkg) {
-	if (exempt(name, relDir)) return [];
-	const peers = pkg.peerDependencies ?? {};
-	return PEER_LIBS.filter((lib) => Object.hasOwn(peers, lib));
-}
+/** Curated libs declared as plain `dependencies` (should be peers). */
+export const violationsFor = (name, relDir, pkg) => curatedIn('dependencies', name, relDir, pkg);
+
+/** Curated libs declared as `peerDependencies`. */
+export const peersFor = (name, relDir, pkg) => curatedIn('peerDependencies', name, relDir, pkg);
 
 /**
  * Walk the workspace once, returning per-package curated state:
@@ -79,11 +70,9 @@ export function peersFor(name, relDir, pkg) {
 function collectState() {
 	const dependencies = {};
 	const requiredPeers = {};
-	for (const { dir, pkg } of loadWorkspaceManifests(join(root, 'packages'))) {
+	for (const { relDir, pkg } of loadWorkspaceManifests()) {
 		const name = pkg.name;
 		if (!name) continue;
-		// Forward slashes so the FRONTEND_PATH_PREFIXES match works on Windows too.
-		const relDir = relative(root, dir).split(sep).join('/');
 		const deps = violationsFor(name, relDir, pkg);
 		const peers = peersFor(name, relDir, pkg);
 		if (deps.length > 0) dependencies[name] = deps.sort();
@@ -136,7 +125,7 @@ function writeBaseline(state) {
 	};
 	writeFileSync(BASELINE_FILE, `${JSON.stringify(out, null, '\t')}\n`);
 	console.log(
-		`Wrote baseline (${Object.keys(out.dependencies).length} tracked deps, ${Object.keys(out.requiredPeers).length} locked peers) to ${relative(root, BASELINE_FILE)}`,
+		`Wrote baseline (${Object.keys(out.dependencies).length} tracked deps, ${Object.keys(out.requiredPeers).length} locked peers) to ${relative(repoRoot, BASELINE_FILE)}`,
 	);
 }
 

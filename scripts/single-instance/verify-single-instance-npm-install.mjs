@@ -21,30 +21,24 @@
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve, sep } from 'node:path';
+import { join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 
 import { collectCopies, analyze } from './verify-single-instance-deps.mjs';
-import { loadWorkspaceManifests } from './workspace-manifests.mjs';
+import { loadWorkspaceManifests, repoRoot } from './workspace-manifests.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-
-/** Every non-private workspace package: name -> { dir, pkg }. */
+/** Every non-private workspace package: name -> { dir, relDir, pkg }. */
 function loadWorkspace() {
 	const byName = new Map();
-	for (const { dir, pkg } of loadWorkspaceManifests(join(root, 'packages'))) {
-		if (pkg.name && !pkg.private) byName.set(pkg.name, { dir, pkg });
+	for (const { dir, relDir, pkg } of loadWorkspaceManifests()) {
+		if (pkg.name && !pkg.private) byName.set(pkg.name, { dir, relDir, pkg });
 	}
 	return byName;
 }
 
 /** Package dirs as forward-slash, trailing-slash prefixes (matches git's path output on any OS). */
 function packageDirPrefixes(byName) {
-	return [...byName.entries()].map(([name, { dir }]) => [
-		name,
-		`${relative(root, dir).split(sep).join('/')}/`,
-	]);
+	return [...byName.entries()].map(([name, { relDir }]) => [name, `${relDir}/`]);
 }
 
 /**
@@ -77,7 +71,7 @@ function changedPackages(baseRef, byName) {
 	let out;
 	try {
 		out = execFileSync('git', ['diff', '--name-only', baseRef, 'HEAD'], {
-			cwd: root,
+			cwd: repoRoot,
 			encoding: 'utf8',
 		});
 	} catch {
@@ -159,8 +153,9 @@ function main() {
 
 	// Scratch project: install targets as file: deps, force ALL packed workspace deps
 	// to their local tarballs. Third-party deps resolve from the real npm registry.
-	const overrides = Object.fromEntries(toPack.map((n) => [n, `file:${tarballByName[n]}`]));
-	const deps = Object.fromEntries(targets.map((n) => [n, `file:${tarballByName[n]}`]));
+	const fileDep = (n) => [n, `file:${tarballByName[n]}`];
+	const overrides = Object.fromEntries(toPack.map(fileDep));
+	const deps = Object.fromEntries(targets.map(fileDep));
 	writeFileSync(
 		join(scratch, 'package.json'),
 		JSON.stringify(
@@ -182,7 +177,7 @@ function main() {
 
 	const { duplicates, failures } = analyze(collectCopies(scratch));
 
-	console.log(`\nnpm-install closure — scratch: ${relative(root, scratch) || scratch}\n`);
+	console.log(`\nnpm-install closure — scratch: ${relative(repoRoot, scratch) || scratch}\n`);
 	for (const d of duplicates) {
 		const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : 'FAIL') : 'dup (report)';
 		console.log(
