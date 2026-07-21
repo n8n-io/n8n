@@ -33,19 +33,17 @@ describe('AWS AI Agent node — parameters', () => {
 		expect(arnMode).toBeDefined();
 	});
 
-	it('carries identity on credentials, not hardcoded node fields', () => {
+	it('carries identity on the AWS credential alone, not hardcoded node fields', () => {
 		// No identity dropdown, no user-id field, no bearer-token field on the node itself.
 		expect(prop('identity')).toBeUndefined();
 		expect(prop('userId')).toBeUndefined();
 		expect(prop('bearerToken')).toBeUndefined();
 
 		const creds = node.description.credentials ?? [];
-		// AWS credential is the invocation identity (IAM / SigV4).
+		// The AWS credential (IAM / assume-role / IRSA workload identity) is the only one needed —
+		// no separate identity credential.
 		expect(creds.some((c) => c.name === 'aws')).toBe(true);
-		// On-behalf-of-user identity is an optional separate credential on top.
-		const obo = creds.find((c) => c.name === 'httpBearerAuth');
-		expect(obo).toBeDefined();
-		expect(obo?.required).toBe(false);
+		expect(creds.some((c) => c.name === 'httpBearerAuth')).toBe(false);
 	});
 
 	it('supports session lifecycle: new vs resume', () => {

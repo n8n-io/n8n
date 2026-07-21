@@ -27,16 +27,9 @@ export class AwsAiAgent implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			...awsNodeCredentials,
-			{
-				// Optional on-behalf-of-user identity. When set, the agent is invoked on behalf of
-				// this bearer token instead of the workflow's IAM principal. Identity rides on the
-				// credential — it is never entered as a node field.
-				name: 'httpBearerAuth',
-				required: false,
-			},
-		],
+		// The AWS credential (IAM keys, Assume Role, or IRSA/workload identity) carries the
+		// identity used to invoke the agent — no separate identity credential or node field.
+		credentials: awsNodeCredentials,
 		properties: [
 			awsNodeAuthOptions,
 			{
