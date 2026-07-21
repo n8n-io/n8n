@@ -1,4 +1,5 @@
 import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
@@ -12,10 +13,20 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
-import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
+import {
+	AgentChatIntegration,
+	type AgentChatIntegrationContext,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
+} from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
 import { loadTelegramAdapter } from '../esm-loader';
-import type { IntegrationAction } from '../integration-tools';
+import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+import {
+	createTelegramBridgeExecutionContext,
+	createTelegramResumeExecutionContext,
+} from './telegram-bridge-behavior';
 
 /**
  * Telegram platform integration.
@@ -59,9 +70,14 @@ export class TelegramIntegration extends AgentChatIntegration {
 		],
 	};
 
-	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'divider',
+		'fields',
+	];
 
-	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'send_dm']);
 
 	readonly needsShortCallbackData = true;
 
@@ -188,6 +204,20 @@ export class TelegramIntegration extends AgentChatIntegration {
 			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
 			return normalized === author.userId || normalized === author.userName;
 		});
+	}
+
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		return createTelegramBridgeExecutionContext(params);
+	}
+
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return createTelegramResumeExecutionContext(params);
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {

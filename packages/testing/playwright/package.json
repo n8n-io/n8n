@@ -16,6 +16,7 @@
     "bench:canvas:report": "playwright show-report",
     "test:infrastructure": "playwright test --project='*:infrastructure'",
     "test:benchmark": "playwright test --project='benchmarking:infrastructure'",
+    "benchmark:sizing-matrix": "tsx scripts/sizing-matrix-aggregate.ts",
     "test:container:sqlite": "playwright test --project='sqlite:*'",
     "test:container:sqlite:e2e": "playwright test --project='sqlite:e2e'",
     "test:container:postgres": "playwright test --project='postgres:*'",
@@ -82,6 +83,7 @@
     "otplib": "^12.0.1",
     "ts-morph": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:typescript",
     "zod": "catalog:",
     "vitest": "catalog:"
   },

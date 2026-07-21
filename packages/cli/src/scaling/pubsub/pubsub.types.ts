@@ -56,9 +56,12 @@ export namespace PubSub {
 		export type DisplayWorkflowActivation = ToCommand<'display-workflow-activation'>;
 		export type DisplayWorkflowDeactivation = ToCommand<'display-workflow-deactivation'>;
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
+		export type DisplayWorkflowPublicationStatus = ToCommand<'display-workflow-publication-status'>;
 		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
+		export type RelayInstanceAiEvent = ToCommand<'relay-instance-ai-event'>;
+		export type RelayInstanceAiTaskControl = ToCommand<'relay-instance-ai-task-control'>;
 		export type RelayChatHumanMessage = ToCommand<'relay-chat-human-message'>;
 		export type RelayChatMessageEdit = ToCommand<'relay-chat-message-edit'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
@@ -92,9 +95,12 @@ export namespace PubSub {
 		| Commands.DisplayWorkflowActivation
 		| Commands.DisplayWorkflowDeactivation
 		| Commands.DisplayWorkflowActivationError
+		| Commands.DisplayWorkflowPublicationStatus
 		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
 		| Commands.RelayChatStreamEvent
+		| Commands.RelayInstanceAiEvent
+		| Commands.RelayInstanceAiTaskControl
 		| Commands.RelayChatHumanMessage
 		| Commands.RelayChatMessageEdit
 		| Commands.ClearTestWebhooks

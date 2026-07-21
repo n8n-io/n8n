@@ -1,0 +1,10 @@
+export type * from './descriptor';
+export type * from './modal';
+export type * from './resource';
+export type * from './tabs';
+export type * from './push';
+export type * from './command';
+export type * from './shortcut';
+export type * from './banner';
+export type * from './setup';
+export type * from './locale';

@@ -23,6 +23,7 @@ import type {
 } from './workflow-import.types';
 import { WorkflowPublisher } from './workflow-publisher';
 import type {
+	ImportContext,
 	ImportWorkflowProperties,
 	PackageImportBindings,
 	WorkflowIdPolicy,
@@ -48,7 +49,7 @@ export class WorkflowImporter {
 	) {}
 
 	async plan(
-		context: WorkflowImportContext,
+		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
 	): Promise<WorkflowImportPlan> {
@@ -88,14 +89,15 @@ export class WorkflowImporter {
 				});
 			}
 
-			if (context.folderId && existing) {
+			const targetFolderId = workflow.parentFolderId ?? context.folderId;
+			if (targetFolderId && existing) {
 				const existingParentFolderId = existing.parentFolder?.id ?? null;
-				if (existingParentFolderId !== context.folderId) {
+				if (existingParentFolderId !== targetFolderId) {
 					folderConflicts.push({
 						sourceWorkflowId: workflow.sourceWorkflowId,
 						existingWorkflowId: existing.id,
 						existingParentFolderId,
-						targetFolderId: context.folderId,
+						targetFolderId,
 						name: existing.name,
 					});
 				}
@@ -132,15 +134,15 @@ export class WorkflowImporter {
 	}
 
 	async apply(
-		plan: WorkflowImportPlan,
 		context: WorkflowImportContext,
+		plan: WorkflowImportPlan,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportResult> {
 		const workflowBindings = new Map(bindings.workflows);
 		const outcomes: WorkflowImportOutcome[] = [];
 
 		for (const item of plan.items) {
-			const outcome = await this.applyItem(item, context, bindings);
+			const outcome = await this.applyItem(context, item, bindings);
 			outcomes.push(outcome);
 			// Works for every status: created/updated/skipped all resolve to a real target id.
 			workflowBindings.set(outcome.sourceWorkflowId, outcome.workflow.id);
@@ -150,8 +152,8 @@ export class WorkflowImporter {
 	}
 
 	private async applyItem(
-		item: WorkflowPlanItem,
 		context: WorkflowImportContext,
+		item: WorkflowPlanItem,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportOutcome> {
 		if (item.action === 'skip') {
@@ -196,7 +198,7 @@ export class WorkflowImporter {
 			const entity = prepareEntityForPersist(item.entity, bindings, item.decidedId);
 			return await this.workflowCreationService.createWorkflow(context.user, entity, {
 				projectId: context.projectId,
-				parentFolderId: context.folderId ?? undefined,
+				parentFolderId: item.parentFolderId ?? context.folderId ?? undefined,
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,

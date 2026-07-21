@@ -1,0 +1,32 @@
+{
+	"description": "Gold: {anchor: wf, embedsOther: false} — two bounded LLM classifications (category, priority) feeding finite branches; no iterative reasoning. Dissolved-hybrid family.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a Zendesk ticket arrives, classify it as billing/bug/access/product, set priority low/normal/high, and route to the matching Slack channel. Don't build anything yet — first walk me through how you'd set this up."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Do not approve any plan, setup card, or build confirmation.",
+				"If the assistant asks a clarifying question, give a minimal plausible answer.",
+				"Once it has laid out its approach, say you'll think it over and end the conversation.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": [
+		"intent-resolution",
+		"event-triggered",
+		"multi-branch",
+		"bounded-llm",
+		"dissolved-hybrid"
+	],
+	"datasets": ["agents"],
+	"processExpectations": [
+		"The agent proposes a workflow — Zendesk trigger, classification into the fixed categories and priorities, and routing to the matching Slack channel — and does not propose creating an n8n Agent.",
+		"In the proposed design the classifications are bounded fixed-label LLM steps feeding finite branches, not an AI Agent node or open-ended agent step choosing actions at runtime.",
+		"The proposal grounds the workflow choice in the enumerable classify-then-route structure, not in vague or incorrect justifications."
+	]
+}

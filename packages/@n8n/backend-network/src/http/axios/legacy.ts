@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-import type { AxiosHeaders, AxiosRequestConfig } from 'axios';
+import type { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import crypto from 'crypto';
 import type FormData from 'form-data';
 import { type AgentOptions } from 'https';
@@ -24,6 +24,26 @@ import {
 import type { SsrfBridge } from '../../ssrf';
 
 /**
+ * Builds the per-request Node agent options for a legacy `IRequestOptions`,
+ * including the relaxed TLS settings the legacy path applies when `rejectUnauthorized` is `false`.
+ * Shared with the manual redirect follower so both derive agents the same way.
+ *
+ * @deprecated Backs the deprecated `request` helpers.
+ */
+export function buildLegacyAgentOptions(requestObject: IRequestOptions): AgentOptions {
+	const host = getHostFromRequestObject(requestObject);
+	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
+	if (host) {
+		agentOptions.servername = host;
+	}
+	if (requestObject.rejectUnauthorized === false) {
+		agentOptions.rejectUnauthorized = false;
+		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
+	}
+	return agentOptions;
+}
+
+/**
  * This function is a temporary implementation that translates all http requests
  * done via the request library to axios directly.
  * We are not using n8n's interface as it would an unnecessary step,
@@ -37,7 +57,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 	const axiosConfig: AxiosRequestConfig = {};
 
 	if (requestObject.headers !== undefined) {
-		axiosConfig.headers = requestObject.headers as AxiosHeaders;
+		axiosConfig.headers = requestObject.headers as AxiosRequestHeaders;
 	}
 
 	// Let's start parsing the hardest part, which is the request body.
@@ -254,15 +274,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 		axiosConfig.maxRedirects = 0;
 	}
 
-	const host = getHostFromRequestObject(requestObject);
-	const agentOptions: AgentOptions = { ...requestObject.agentOptions };
-	if (host) {
-		agentOptions.servername = host;
-	}
-	if (requestObject.rejectUnauthorized === false) {
-		agentOptions.rejectUnauthorized = false;
-		agentOptions.secureOptions = crypto.constants.SSL_OP_LEGACY_SERVER_CONNECT;
-	}
+	const agentOptions: AgentOptions = buildLegacyAgentOptions(requestObject);
 
 	if (requestObject.timeout !== undefined) {
 		axiosConfig.timeout = requestObject.timeout;

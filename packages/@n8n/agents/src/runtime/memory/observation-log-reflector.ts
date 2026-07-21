@@ -1,6 +1,7 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
+import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
@@ -14,6 +15,7 @@ import type {
 	TokenCounter,
 } from '../../types/sdk/observation-log';
 import { estimateObservationTokens } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
 
 export type { ObservationLogReflectFn, ObservationLogReflectorInput };
 
@@ -45,6 +47,7 @@ export interface RunObservationLogReflectorOpts {
 	now?: Date;
 	onWarning?: (warning: ObservationLogReflectorWarning) => void;
 	executionCounter?: AgentExecutionCounter;
+	telemetry?: BuiltTelemetry;
 }
 
 export type RunObservationLogReflectorResult =
@@ -184,11 +187,16 @@ export async function runObservationLogReflector(
 		tokenCount,
 		tokenBudget: reflectorThresholdTokens,
 		executionCounter: opts.executionCounter,
+		telemetry: opts.telemetry,
 	});
-	const reflection = normalizeObservationLogReflection(
+	const normalized = normalizeObservationLogReflection(
 		activeObservationLog,
 		withCreatedAt(parseObservationLogReflectionJson(output), now),
 	);
+	const reflection = {
+		...normalized,
+		merge: normalized.merge.map((merge) => ({ ...merge, text: redactText(merge.text).text })),
+	};
 	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
 	const remainingTokenCount = countObservationTokens(

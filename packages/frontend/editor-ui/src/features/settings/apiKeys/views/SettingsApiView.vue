@@ -3,12 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { DOCS_DOMAIN } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { useI18n } from '@n8n/i18n';
@@ -21,7 +22,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { ApiKey } from '@n8n/api-types';
 import type { IUser } from '@n8n/design-system';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -130,7 +131,14 @@ const { baseUrl } = useRootStore();
 
 const { isPublicApiEnabled } = settingsStore;
 
-const apiDocsURL = ref('');
+const apiDocsURL = computed(() => {
+	if (!isSwaggerUIEnabled) return `https://${DOCS_DOMAIN}/api/api-reference/`;
+
+	// Join with exactly one slash: baseUrl may or may not end in "/", and
+	// publicApiPath may or may not start with "/" (its default is "api").
+	const apiBase = `${baseUrl.replace(/\/+$/, '')}/${publicApiPath.replace(/^\/+/, '')}`;
+	return `${apiBase}/v${publicApiLatestVersion}/docs`;
+});
 
 const scopesModalApiKey = ref<ApiKey | null>(null);
 const revokeApiKey = ref<ApiKey | null>(null);
@@ -191,10 +199,6 @@ const onCreateApiKey = () => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.api'));
-
-	apiDocsURL.value = isSwaggerUIEnabled
-		? `${baseUrl}${publicApiPath}/v${publicApiLatestVersion}/docs`
-		: `https://${DOCS_DOMAIN}/api/api-reference/`;
 
 	if (!isPublicApiEnabled) return;
 
@@ -400,7 +404,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			{{ i18n.baseText('settings.api.empty.mine') }}
 		</N8nText>
 
-		<N8nActionBox
+		<N8nEmptyState
 			v-if="!isPublicApiEnabled && cloudPlanStore.userIsTrialing"
 			data-test-id="public-api-upgrade-cta"
 			:heading="i18n.baseText('settings.api.trial.upgradePlan.title')"
@@ -409,7 +413,7 @@ function onOpenScopes(apiKey: ApiKey) {
 			@click:button="onUpgrade"
 		/>
 
-		<N8nActionBox
+		<N8nEmptyState
 			v-if="isPublicApiEnabled && !hasAnyKeys"
 			:button-text="
 				i18n.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')

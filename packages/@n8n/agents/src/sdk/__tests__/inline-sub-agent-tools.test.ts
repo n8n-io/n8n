@@ -132,6 +132,12 @@ describe('inline sub-agent tool filtering', () => {
 			blockedTools: ['host_tool'],
 			expected: ['lookup'],
 		},
+		{
+			name: 'blocks a renamed delegate tool by metadata, not by tool name',
+			tools: [createDelegateSubAgentTool({ name: 'agent' }), makeTool('lookup')],
+			blockedTools: undefined,
+			expected: ['lookup'],
+		},
 	])('$name', ({ tools, blockedTools, expected }) => {
 		expect(filterInlineSubAgentTools(tools, blockedTools).map((tool) => tool.name)).toEqual(
 			expected,
@@ -343,5 +349,47 @@ describe('inline sub-agent tool filtering', () => {
 		expect(runtimeConfigs).toHaveLength(2);
 		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-4-5');
 		expect(providerToolNames(runtimeConfigs[1])).toEqual(['anthropic.web_search_20250305']);
+	});
+});
+
+describe('inline sub-agent transport inheritance', () => {
+	beforeEach(() => {
+		runtimeConfigs.length = 0;
+		runtimeGenerateResults.length = 0;
+	});
+
+	it('passes the parent modelFetch to inline child runtimes', async () => {
+		const parentFetch = vi.fn();
+		const agent = new Agent('parent');
+		agent.modelFetch(parentFetch as never);
+		const runInline = (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
+			deferredTools: [],
+			modelConfig: 'openai/gpt-4o-mini',
+			tools: [makeTool('lookup')],
+		});
+
+		await runInline({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: ['research'],
+		} as unknown as DelegateSubAgentRequest);
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect(runtimeConfigs[0].modelFetch).toBe(parentFetch);
+	});
+
+	it('leaves modelFetch unset on child runtimes when the parent has none', async () => {
+		const runInline = createInlineRunner({});
+
+		await runInline({
+			subAgentId: INLINE_SUB_AGENT_ID,
+			taskName: 'research',
+			goal: 'Find the answer',
+			taskPath: ['research'],
+		} as unknown as DelegateSubAgentRequest);
+
+		expect(runtimeConfigs).toHaveLength(1);
+		expect('modelFetch' in runtimeConfigs[0]).toBe(false);
 	});
 });

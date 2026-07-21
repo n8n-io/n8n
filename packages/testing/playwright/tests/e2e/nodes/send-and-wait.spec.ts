@@ -1,9 +1,9 @@
-import type { Page } from '@playwright/test';
 import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test as base, expect } from '../../../fixtures/base';
 import { PublicFormPage } from '../../../pages/PublicFormPage';
+import type { ApiHelpers } from '../../../services/api-helper';
 import type { CredentialResponse } from '../../../services/credential-api-helper';
 
 interface SlackBlock {
@@ -105,9 +105,9 @@ async function getFormUrlFromSlack(proxyServer: ProxyServer) {
 	return extractFormUrl(blocks!);
 }
 
-async function clickApprovalLink(page: Page, url: string) {
+async function clickApprovalLink(api: ApiHelpers, url: string) {
 	console.log('Clicking approval URL:', url);
-	const response = await page.request.get(url, {
+	const response = await api.webhooks.trigger(url, {
 		headers: { 'User-Agent': NOT_A_BOT_USER_AGENT },
 	});
 	console.log('Response status:', response.status());
@@ -129,142 +129,146 @@ function withSlackCredential(credential: CredentialResponse) {
 
 test.use({ capability: 'proxy' });
 
-test.describe('Send and Wait @capability:proxy', () => {
-	test('should complete approval flow when clicking approve URL', async ({
-		n8n,
-		services,
-		slackCredential,
-	}) => {
-		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
-			'send-and-wait-approval.json',
-			{ transform: withSlackCredential(slackCredential) },
-		);
-		await n8n.navigate.toWorkflow(workflowId);
+test.describe(
+	'Send and Wait @capability:proxy',
+	{ annotation: [{ type: 'owner', description: 'NODES' }] },
+	() => {
+		test('should complete approval flow when clicking approve URL', async ({
+			n8n,
+			services,
+			slackCredential,
+		}) => {
+			const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
+				'send-and-wait-approval.json',
+				{ transform: withSlackCredential(slackCredential) },
+			);
+			await n8n.navigate.toWorkflow(workflowId);
 
-		await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
-		await waitForSlackRequest(services.proxy);
-		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
+			await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
+			await waitForSlackRequest(services.proxy);
+			await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
-		expect(approveUrl).toContain('signature=');
+			const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
+			expect(approveUrl).toContain('signature=');
 
-		await clickApprovalLink(n8n.page, approveUrl!);
+			await clickApprovalLink(n8n.api, approveUrl!);
 
-		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
-	});
+			await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
+		});
 
-	test('should complete rejection flow when clicking reject URL', async ({
-		n8n,
-		services,
-		slackCredential,
-	}) => {
-		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
-			'send-and-wait-approval.json',
-			{ transform: withSlackCredential(slackCredential) },
-		);
-		await n8n.navigate.toWorkflow(workflowId);
+		test('should complete rejection flow when clicking reject URL', async ({
+			n8n,
+			services,
+			slackCredential,
+		}) => {
+			const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
+				'send-and-wait-approval.json',
+				{ transform: withSlackCredential(slackCredential) },
+			);
+			await n8n.navigate.toWorkflow(workflowId);
 
-		await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
-		await waitForSlackRequest(services.proxy);
-		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
+			await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
+			await waitForSlackRequest(services.proxy);
+			await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const { rejectUrl } = await getApprovalUrlsFromSlack(services.proxy);
-		expect(rejectUrl).toContain('signature=');
+			const { rejectUrl } = await getApprovalUrlsFromSlack(services.proxy);
+			expect(rejectUrl).toContain('signature=');
 
-		await clickApprovalLink(n8n.page, rejectUrl!);
+			await clickApprovalLink(n8n.api, rejectUrl!);
 
-		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
-	});
+			await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
+		});
 
-	test('should reject requests with invalid signatures', async ({
-		n8n,
-		services,
-		slackCredential,
-	}) => {
-		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
-			'send-and-wait-approval.json',
-			{ transform: withSlackCredential(slackCredential) },
-		);
-		await n8n.navigate.toWorkflow(workflowId);
+		test('should reject requests with invalid signatures', async ({
+			n8n,
+			services,
+			slackCredential,
+		}) => {
+			const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
+				'send-and-wait-approval.json',
+				{ transform: withSlackCredential(slackCredential) },
+			);
+			await n8n.navigate.toWorkflow(workflowId);
 
-		await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
-		await waitForSlackRequest(services.proxy);
+			await n8n.canvas.clickExecuteWorkflowButton('Manual Trigger');
+			await waitForSlackRequest(services.proxy);
 
-		const execution = await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
+			const execution = await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const unsignedResponse = await n8n.api.webhooks.trigger(
-			`/webhook-waiting/${execution.id}/slack-send-wait`,
-		);
-		expect(unsignedResponse.status()).toBe(401);
+			const unsignedResponse = await n8n.api.webhooks.trigger(
+				`/webhook-waiting/${execution.id}/slack-send-wait`,
+			);
+			expect(unsignedResponse.status()).toBe(401);
 
-		const tamperedResponse = await n8n.api.webhooks.trigger(
-			`/webhook-waiting/${execution.id}/slack-send-wait?approved=true&signature=tampered`,
-		);
-		expect(tamperedResponse.status()).toBe(401);
-	});
+			const tamperedResponse = await n8n.api.webhooks.trigger(
+				`/webhook-waiting/${execution.id}/slack-send-wait?approved=true&signature=tampered`,
+			);
+			expect(tamperedResponse.status()).toBe(401);
+		});
 
-	test('should complete form submission flow', async ({ n8n, services, slackCredential }) => {
-		const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
-			'send-and-wait-form.json',
-			{ transform: withSlackCredential(slackCredential) },
-		);
-		await n8n.navigate.toWorkflow(workflowId);
+		test('should complete form submission flow', async ({ n8n, services, slackCredential }) => {
+			const { workflowId } = await n8n.api.workflows.importWorkflowFromFile(
+				'send-and-wait-form.json',
+				{ transform: withSlackCredential(slackCredential) },
+			);
+			await n8n.navigate.toWorkflow(workflowId);
 
-		await n8n.canvas.clickExecuteWorkflowButton();
-		await waitForSlackRequest(services.proxy);
-		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
+			await n8n.canvas.clickExecuteWorkflowButton();
+			await waitForSlackRequest(services.proxy);
+			await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const formUrl = await getFormUrlFromSlack(services.proxy);
-		expect(formUrl).toContain('signature=');
+			const formUrl = await getFormUrlFromSlack(services.proxy);
+			expect(formUrl).toContain('signature=');
 
-		const formPage = await PublicFormPage.fromNewTab(n8n.page.context(), formUrl!);
+			const formPage = await PublicFormPage.fromNewTab(n8n.page.context(), formUrl!);
 
-		await formPage.expectText('Test Form', { timeout: 10000 });
-		await formPage.expectText('Please provide your information');
+			await formPage.expectText('Test Form', { timeout: 10000 });
+			await formPage.expectText('Please provide your information');
 
-		await formPage.fillField('Name', 'John Doe');
-		await formPage.fillField('Email', 'john@example.com');
-		await formPage.fillField('Comments', 'This is a test comment');
+			await formPage.fillField('Name', 'John Doe');
+			await formPage.fillField('Email', 'john@example.com');
+			await formPage.fillField('Comments', 'This is a test comment');
 
-		await formPage.submit('Submit Form');
+			await formPage.submit('Submit Form');
 
-		await formPage.expectText('Got it, thanks', { timeout: 10000 });
+			await formPage.expectText('Got it, thanks', { timeout: 10000 });
 
-		await formPage.close();
+			await formPage.close();
 
-		await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
+			await expect(n8n.canvas.getNodeSuccessStatusIndicator('Capture Result')).toBeVisible();
 
-		await n8n.canvas.openNode('Capture Result');
-		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText('John Doe');
-		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 1)).toHaveText('john@example.com');
-		await expect(n8n.ndv.outputPanel.getTbodyCell(0, 2)).toHaveText('This is a test comment');
-	});
+			await n8n.canvas.openNode('Capture Result');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toHaveText('John Doe');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 1)).toHaveText('john@example.com');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 2)).toHaveText('This is a test comment');
+		});
 
-	test('should complete approval flow in production mode (activated workflow)', async ({
-		n8n,
-		services,
-		slackCredential,
-	}) => {
-		const { workflowId, webhookPath } = await n8n.api.workflows.importWorkflowFromFile(
-			'send-and-wait-approval.json',
-			{ transform: withSlackCredential(slackCredential) },
-		);
+		test('should complete approval flow in production mode (activated workflow)', async ({
+			n8n,
+			services,
+			slackCredential,
+		}) => {
+			const { workflowId, webhookPath } = await n8n.api.workflows.importWorkflowFromFile(
+				'send-and-wait-approval.json',
+				{ transform: withSlackCredential(slackCredential) },
+			);
 
-		await n8n.navigate.toWorkflow(workflowId);
-		await n8n.canvas.publishWorkflow();
+			await n8n.navigate.toWorkflow(workflowId);
+			await n8n.canvas.publishWorkflow();
 
-		const triggerResponse = await n8n.api.webhooks.trigger(`/webhook/${webhookPath}`);
-		expect(triggerResponse.ok()).toBe(true);
+			const triggerResponse = await n8n.api.webhooks.trigger(`/webhook/${webhookPath}`);
+			expect(triggerResponse.ok()).toBe(true);
 
-		await waitForSlackRequest(services.proxy);
-		await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
+			await waitForSlackRequest(services.proxy);
+			await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 
-		const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
-		expect(approveUrl).toContain('signature=');
+			const { approveUrl } = await getApprovalUrlsFromSlack(services.proxy);
+			expect(approveUrl).toContain('signature=');
 
-		await clickApprovalLink(n8n.page, approveUrl!);
+			await clickApprovalLink(n8n.api, approveUrl!);
 
-		const execution = await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'success', 10000);
-		expect(execution.status).toBe('success');
-	});
-});
+			const execution = await n8n.api.workflows.waitForWorkflowStatus(workflowId, 'success', 10000);
+			expect(execution.status).toBe('success');
+		});
+	},
+);

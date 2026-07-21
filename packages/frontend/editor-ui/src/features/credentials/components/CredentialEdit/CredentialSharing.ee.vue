@@ -24,7 +24,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import { getResourcePermissions } from '@n8n/permissions';
 
-import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
+import { N8nEmptyState, N8nInfoTip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;
@@ -32,13 +32,11 @@ type Props = {
 	credential?: ICredentialsResponse | ICredentialsDecryptedResponse | null;
 	modalBus: EventBus;
 	isSharedGlobally?: boolean;
-	isResolvable?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	credential: null,
 	isSharedGlobally: false,
-	isResolvable: false,
 });
 
 const emit = defineEmits<{
@@ -142,7 +140,7 @@ function goToUpgrade() {
 <template>
 	<div :class="$style.container">
 		<div v-if="!isSharingEnabled">
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="
 					i18n.baseText(uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title)
 				"
@@ -158,11 +156,8 @@ function goToUpgrade() {
 			/>
 		</div>
 		<div v-else>
-			<N8nInfoTip v-if="isResolvable" :bold="false" class="mb-s">
-				{{ i18n.baseText('credentialEdit.credentialSharing.info.dynamicCredential') }}
-			</N8nInfoTip>
 			<N8nInfoTip
-				v-else-if="credentialPermissions.share || isPersonalSpaceRestricted"
+				v-if="credentialPermissions.share || isPersonalSpaceRestricted"
 				:bold="false"
 				class="mb-s"
 			>
@@ -186,7 +181,6 @@ function goToUpgrade() {
 				:home-project="homeProject"
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
-				:hide-add-input="isResolvable"
 				:disabled-tooltip="
 					isPersonalSpaceRestricted
 						? i18n.baseText('credentialEdit.credentialSharing.info.personalSpaceRestricted')

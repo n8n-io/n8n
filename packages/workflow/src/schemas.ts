@@ -316,6 +316,7 @@ export const IDisplayOptionsSchema: z.ZodType<IDisplayOptions> = z.object({
 		z.string(),
 		z.union([z.array(z.union([NodeParameterValueSchema, DisplayConditionSchema])), z.undefined()]),
 	),
+	showOnDeployment: z.enum(['cloud', 'hosted']).optional(),
 	hideOnCloud: z.boolean().optional(),
 });
 
@@ -460,6 +461,7 @@ export const OnErrorSchema: z.ZodType<OnError> = z.enum([
 export const INodeCredentialsDetailsSchema: z.ZodType<INodeCredentialsDetails> = z.object({
 	id: z.string().nullable(),
 	name: z.string(),
+	__aiGatewayManaged: z.boolean().optional(),
 });
 
 export const INodeCredentialsSchema: z.ZodType<INodeCredentials> = z.record(

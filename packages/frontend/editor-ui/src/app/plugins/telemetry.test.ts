@@ -228,4 +228,54 @@ describe('telemetry', () => {
 			vi.unstubAllGlobals();
 		});
 	});
+
+	describe('trackNodeParametersValuesChange - advanced HITL', () => {
+		it('tracks the enable event when Slack captureResponder is turned on', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.slack', {
+				name: 'parameters.captureResponder',
+				value: true,
+			});
+
+			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
+				node_type: 'n8n-nodes-base.slack',
+			});
+		});
+
+		it('tracks the enable event when Telegram chatApproval is turned on', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.telegram', {
+				name: 'parameters.chatApproval',
+				value: true,
+			});
+
+			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
+				node_type: 'n8n-nodes-base.telegram',
+			});
+		});
+
+		it('does not track the enable event when the toggle is turned off', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.slack', {
+				name: 'parameters.captureResponder',
+				value: false,
+			});
+
+			expect(trackSpy).not.toHaveBeenCalledWith('User enabled advanced HITL', expect.anything());
+		});
+
+		it('does not track the enable event for an unrelated parameter change', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.slack', {
+				name: 'parameters.otherOptions.someField',
+				value: true,
+			});
+
+			expect(trackSpy).not.toHaveBeenCalledWith('User enabled advanced HITL', expect.anything());
+		});
+	});
 });

@@ -81,6 +81,7 @@ const moduleSettings: FrontendModuleSettings = {
 	insights: {
 		summary: true,
 		dashboard: true,
+		earliestDataDate: null,
 		dateRanges: [
 			{
 				key: 'day',
@@ -175,6 +176,7 @@ const mockTableData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-1',
 			workflowName: 'Test Workflow 1',
+			hasReadAccess: true,
 			total: 100,
 			failed: 5,
 			failureRate: 5,
@@ -188,6 +190,7 @@ const mockTableData: InsightsByWorkflow = {
 		{
 			workflowId: 'workflow-2',
 			workflowName: 'Test Workflow 2',
+			hasReadAccess: true,
 			total: 50,
 			failed: 2,
 			failureRate: 4,
@@ -264,6 +267,49 @@ const selectProject = async (projectName: string | null) => {
 	await userEvent.click(teamProject as Element);
 };
 
+const setupStores = () => {
+	insightsStore = mockedStore(useInsightsStore);
+	projectsStore = mockedStore(useProjectsStore);
+
+	insightsStore.isSummaryEnabled = true;
+	insightsStore.isDashboardEnabled = true;
+
+	projectsStore.availableProjects = projects;
+	projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
+	projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+	projectsStore.globalProjectPermissions = { list: true };
+
+	insightsStore.summary = {
+		state: mockSummaryData,
+		isLoading: false,
+		execute: vi.fn(),
+		executeImmediate: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+
+	insightsStore.charts = {
+		state: mockChartsData,
+		isLoading: false,
+		execute: vi.fn(),
+		executeImmediate: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+
+	insightsStore.table = {
+		state: mockTableData,
+		isLoading: false,
+		execute: vi.fn(),
+		executeImmediate: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+};
+
 describe('InsightsDashboard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -275,45 +321,7 @@ describe('InsightsDashboard', () => {
 			initialState: { settings: { settings: defaultSettings, moduleSettings } },
 		});
 
-		insightsStore = mockedStore(useInsightsStore);
-		projectsStore = mockedStore(useProjectsStore);
-
-		insightsStore.isSummaryEnabled = true;
-		insightsStore.isDashboardEnabled = true;
-
-		// Mock projects store
-		projectsStore.availableProjects = projects;
-		projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
-		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
-		projectsStore.globalProjectPermissions = { list: true };
-
-		// Mock async states
-		insightsStore.summary = {
-			state: mockSummaryData,
-			isLoading: false,
-			execute: vi.fn(),
-			isReady: true,
-			error: null,
-			then: vi.fn(),
-		};
-
-		insightsStore.charts = {
-			state: mockChartsData,
-			isLoading: false,
-			execute: vi.fn(),
-			isReady: true,
-			error: null,
-			then: vi.fn(),
-		};
-
-		insightsStore.table = {
-			state: mockTableData,
-			isLoading: false,
-			execute: vi.fn(),
-			isReady: true,
-			error: null,
-			then: vi.fn(),
-		};
+		setupStores();
 	});
 
 	describe('Component Rendering', () => {
@@ -717,6 +725,35 @@ describe('InsightsDashboard', () => {
 					projectId: teamProjects[0].id,
 				},
 			});
+		});
+	});
+
+	describe('Default date range initialization', () => {
+		it('should default to 7 days ago when earliestDataDate is null', () => {
+			const { getByRole } = renderComponent({ props: { insightType: INSIGHT_TYPES.TOTAL } });
+			// System date is 2000-12-19, so 7 days ago is 2000-12-12
+			expect(getByRole('button', { name: '12 Dec - 19 Dec, 2000' })).toBeInTheDocument();
+		});
+
+		it('should clamp default range start to the earliest date with data with a maximum of 7', () => {
+			// earliestDataDate is Dec 15, which is within the last 7 days (Dec 12–19)
+			createTestingPinia({
+				initialState: {
+					settings: {
+						settings: defaultSettings,
+						moduleSettings: {
+							...moduleSettings,
+							insights: {
+								...moduleSettings.insights!,
+								earliestDataDate: '2000-12-15T00:00:00.000Z',
+							},
+						},
+					},
+				},
+			});
+			setupStores();
+			const { getByRole } = renderComponent({ props: { insightType: INSIGHT_TYPES.TOTAL } });
+			expect(getByRole('button', { name: '15 Dec - 19 Dec, 2000' })).toBeInTheDocument();
 		});
 	});
 });

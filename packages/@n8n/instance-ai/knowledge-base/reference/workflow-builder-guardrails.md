@@ -4,6 +4,9 @@ Use these guardrails for workflow builds with multiple external systems,
 multiple requested effects, digests or reports, non-trivial branching, or Code
 nodes. They are a runtime checklist, not extra user-facing output.
 
+Do not add sticky notes unless the user explicitly asks for them. Prefer chat
+explanations over canvas stickies.
+
 ## Preserve Source Data
 
 Normalize trigger or source data before side effects. Nodes that create, update,
@@ -67,6 +70,18 @@ sources in a digest/report path. Its done branch does not accumulate loop-body
 outputs. Prefer parallel source branches plus explicit fan-in, or emit one
 success/empty/failure record per source before aggregation.
 
+## HTTP Request Output Field Names
+
+The HTTP Request node's output field depends on Response Format. With `json`
+(the default), the parsed body is the item json itself — or under `body` when
+"Include Response Headers and Status" (full response) is enabled. With `text`,
+the body string is under the Output Field option (default `data`) — even with
+full response enabled it stays under `data` next to `headers`/`statusCode`,
+never under `body`. A Code node reading `$json.body` after a text-format fetch
+gets `undefined`, which silently breaks length/emptiness checks (e.g. scraped
+HTML misclassified as blocked). Read the field the chosen format actually
+emits.
+
 ## Fetch Complete External Data
 
 If downstream logic depends on labels, memberships, related records, nested
@@ -79,6 +94,27 @@ For reports that combine named sources, make sure every named source has a
 reachable read/query/fetch node before the formatter and final action. A
 schedule item, date-window calculator, placeholder row, or final formatter is
 not source data.
+
+## Structured-Output Schema Fields Are JSON Strings
+
+On OpenAI/LM nodes, the structured-output schema field
+(`textFormat.textOptions.schema` and equivalents) must be a STRING containing
+strict, valid JSON — the node runs JSON.parse on it at execution time. A
+JS/TS object literal, single-quoted keys, trailing commas, comments, or an
+expression there produce "Failed to parse schema" and crash the node before
+any output. Serialize the schema with double-quoted keys and strings, keep it
+minimal, and set the sibling `name` field.
+
+## Data After Side-Effect Nodes
+
+Send/notify/write nodes (Gmail, Slack, Telegram, email send, most "create"
+actions) output their own API response — message IDs, thread stamps, `ok`
+flags — not the data that flowed into them. A node chained after a send that
+reads `$json.someField` from the original data gets `null`/undefined and
+silently no-ops (an update matching no rows, an empty mapped column). When a
+node after a side-effect needs the original data, reference it by node name
+(`$('Compute Change').item.json.status`) or wire it in parallel from the
+data-producing node instead of chaining through the send.
 
 ## Keep Code Nodes Parseable
 

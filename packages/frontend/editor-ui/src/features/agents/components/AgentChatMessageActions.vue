@@ -7,10 +7,12 @@ defineProps<{
 	content: string;
 	isSpeechSynthesisAvailable: boolean;
 	isSpeaking: boolean;
+	canSendToAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
 	readAloud: [];
+	sendToAssistant: [];
 }>();
 
 const i18n = useI18n();
@@ -19,6 +21,19 @@ const i18n = useI18n();
 <template>
 	<div :class="$style.actions" data-test-id="agent-chat-message-actions">
 		<CopyButton :content="content" data-test-id="agent-chat-message-copy" />
+		<N8nTooltip v-if="canSendToAssistant" placement="bottom" :show-after="300">
+			<N8nIconButton
+				variant="ghost"
+				icon="square-arrow-out-up-right"
+				size="small"
+				icon-size="medium"
+				data-test-id="agent-chat-message-send-to-assistant"
+				@click="emit('sendToAssistant')"
+			/>
+			<template #content>
+				{{ i18n.baseText('agents.builder.preview.sendToAssistant') }}
+			</template>
+		</N8nTooltip>
 		<N8nTooltip v-if="isSpeechSynthesisAvailable" placement="bottom" :show-after="300">
 			<N8nIconButton
 				variant="ghost"

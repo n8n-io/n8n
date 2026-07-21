@@ -1,5 +1,4 @@
 import { UNLIMITED_CREDITS, buildProxyHeaders } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,21 +6,16 @@ import type { ModelConfig } from '@n8n/instance-ai';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION } from '@/constants';
-import { Push } from '@/push';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-
-function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
-}
 
 /**
- * Resolves the language model the Instance AI agent runs against and accounts
- * for the credits a run consumes.
+ * Resolves the language model the Instance AI agent runs against and reports
+ * the credit balance for the current user.
  *
  * Model resolution follows a layered chain so chat and eval paths share the
  * same working model:
@@ -31,53 +25,21 @@ function getErrorMessage(error: unknown): string {
  *      proxy-aware fetch.
  *   3. Env vars / user credential — raw settings resolution.
  *
- * Credit accounting counts one credit for the first completed orchestrator run
- * in a thread; later messages in the same thread are free. An in-memory guard
- * plus DB metadata keep the count idempotent across concurrent calls and
- * process restarts.
+ * Credit *accounting* (claiming token usage per run) lives in
+ * `InstanceAiCreditService.claimRunUsage`; this service only exposes the
+ * read-only balance via `getCredits`.
  */
 @Service()
 export class InstanceAiModelService {
-	private readonly logger: Logger;
-
-	/** In-memory guard to prevent double credit counting within the same process. */
-	private readonly creditedThreads = new Set<string>();
-
 	constructor(
-		logger: Logger,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly aiService: AiService,
-		private readonly push: Push,
-		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly outboundHttp: OutboundHttp,
-	) {
-		this.logger = logger.scoped('instance-ai');
-	}
+	) {}
 
 	/** Whether the AI service proxy is enabled for credit counting. */
 	isProxyEnabled(): boolean {
 		return this.aiService.isProxyEnabled();
-	}
-
-	/** Forget any per-thread credit state once a thread is torn down. */
-	clearThread(threadId: string): void {
-		this.creditedThreads.delete(threadId);
-	}
-
-	/**
-	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
-	 * Each caller gets a unique token (separate nanoid) for audit tracking.
-	 */
-	private async getProxyAuth(user: User) {
-		const client = await this.aiService.getClient();
-		const token = await client.getBuilderApiProxyToken(
-			{ id: user.id },
-			{ userMessageId: nanoid() },
-		);
-		return {
-			client,
-			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
-		};
 	}
 
 	/**
@@ -96,7 +58,10 @@ export class InstanceAiModelService {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
 			const tokenManager = new ProxyTokenManager(async () => {
-				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+				return await client.getInstanceAiApiProxyToken(
+					{ id: user.id },
+					{ userMessageId: nanoid() },
+				);
 			});
 			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
 		}
@@ -178,71 +143,15 @@ export class InstanceAiModelService {
 		})(modelName);
 	}
 
-	/**
-	 * Count one credit for the first completed orchestrator run in a thread.
-	 * Subsequent messages in the same thread are free.
-	 *
-	 * Race-condition mitigation strategy:
-	 * - In-memory Set (`creditedThreads`) prevents concurrent calls within
-	 *   the same process from both passing the check.
-	 * - DB metadata (`creditCounted: true`) survives process restarts.
-	 * - markBuilderSuccess is idempotent on the proxy side, so a theoretical
-	 *   double-count after a crash mid-save is harmless.
-	 */
-	async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
-		if (!this.aiService.isProxyEnabled()) return;
-
-		// Fast in-memory check — prevents the read-then-write race within a single process.
-		if (this.creditedThreads.has(threadId)) return;
-
-		let thread: Awaited<ReturnType<InstanceAiThreadRepository['findOneBy']>>;
-		try {
-			thread = await this.threadRepo.findOneBy({ id: threadId });
-		} catch (error) {
-			this.logger.warn('Failed to check Instance AI credit status', {
-				threadId,
-				runId,
-				error: getErrorMessage(error),
-			});
-			return;
-		}
-		if (!thread) return;
-		if (thread.metadata?.creditCounted) {
-			this.creditedThreads.add(threadId); // Sync in-memory with DB state
-			return;
-		}
-
-		try {
-			this.creditedThreads.add(threadId); // Claim before async work
-			const { client, headers: authHeaders } = await this.getProxyAuth(user);
-			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
-			if (info) {
-				thread.metadata = { ...thread.metadata, creditCounted: true };
-				await this.threadRepo.save(thread);
-				this.push.sendToUsers(
-					{
-						type: 'updateInstanceAiCredits',
-						data: { creditsQuota: info.creditsQuota, creditsClaimed: info.creditsClaimed },
-					},
-					[user.id],
-				);
-			}
-		} catch (error) {
-			this.creditedThreads.delete(threadId); // Allow retry on failure
-			this.logger.warn('Failed to count Instance AI credits', {
-				error: getErrorMessage(error),
-				threadId,
-				runId,
-			});
-		}
-	}
-
-	/** Get current credit usage from the AI service proxy. */
+	/** Get current Instance AI credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
 		if (!this.aiService.isProxyEnabled()) {
 			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}
 		const client = await this.aiService.getClient();
-		return await client.getBuilderInstanceCredits({ id: user.id });
+		return await callAiServiceWithRetry(
+			'Instance AI credits fetch',
+			async () => await client.getInstanceAiCredits({ id: user.id }),
+		);
 	}
 }

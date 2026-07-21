@@ -3,6 +3,7 @@ import callsites from 'callsites';
 import glob from 'fast-glob';
 import { mock } from './mock-extended';
 import isEmpty from 'lodash/isEmpty';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	ICredentialDataDecryptedObject,
 	IRun,
@@ -10,12 +11,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	createRunExecutionData,
-	UnexpectedError,
-	Workflow,
-} from 'n8n-workflow';
+import { createRunExecutionData, UnexpectedError, Workflow } from 'n8n-workflow';
 import nock from 'nock';
 import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -240,6 +236,9 @@ export class NodeTestHarness {
 			encryptedRunnerIdentity: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
+		// Prevent the auto-mocked property from being truthy so credential and
+		// request helpers don't take the eval-mock code path.
+		(additionalData as unknown as Record<string, unknown>).evalLlmMockHandler = undefined;
 
 		let executionData: IRun;
 		const runExecutionData = createRunExecutionData({

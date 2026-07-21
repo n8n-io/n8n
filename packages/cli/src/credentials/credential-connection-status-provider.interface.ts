@@ -1,4 +1,3 @@
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
 
 /**
@@ -37,7 +36,21 @@ export interface ICredentialConnectionStatusProvider {
 	/**
 	 * Re-evaluates access for the given users and deletes all their per-user
 	 * entries (across all resolvers) for any credential where they no longer
-	 * hold `credential:update`.
+	 * hold `credential:connect`. Pass `credentialId` to scope to one credential.
 	 */
-	cleanupOrphanedEntriesForUsers(userIds: string[], em?: EntityManager): Promise<void>;
+	cleanupOrphanedEntriesForUsers(
+		userIds: string[],
+		em?: EntityManager,
+		credentialId?: string,
+	): Promise<void>;
+
+	/**
+	 * Re-evaluates one credential's connections for members of the given
+	 * projects, deleting those who no longer hold `credential:connect`.
+	 */
+	cleanupOrphanedEntriesForProjects(
+		credentialId: string,
+		projectIds: string[],
+		em?: EntityManager,
+	): Promise<void>;
 }

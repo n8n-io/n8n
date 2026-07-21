@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type {
 	CustomFetch,
@@ -7,8 +8,8 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import { OutboundHttp } from '@n8n/backend-network';
-import { mock } from 'jest-mock-extended';
-import { createResultError, createResultOk } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+import { createResultError, createResultOk } from '@n8n/utils/result';
 import dns from 'node:dns';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo, LookupFunction } from 'node:net';
@@ -26,7 +27,7 @@ const validatedUrl = (href: string) => expect.objectContaining({ href }) as unkn
  * with deterministic responses.
  */
 function mockTransport(fetchImpl: CustomFetch) {
-	const transportFetch = jest.fn(fetchImpl);
+	const transportFetch = vi.fn(fetchImpl);
 	const transport = mock<HttpTransport>();
 	transport.asCustomFetch.mockReturnValue(transportFetch);
 	return { transport, transportFetch };
@@ -66,7 +67,7 @@ function createMockResponse(
 
 describe('fetchAndExtract', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('extracts markdown from HTML', async () => {
@@ -144,7 +145,7 @@ describe('fetchAndExtract', () => {
 
 	it('caps the body at maxResponseBytes and cancels the stream', async () => {
 		const encoder = new TextEncoder();
-		const cancel = jest.fn().mockResolvedValue(undefined);
+		const cancel = vi.fn().mockResolvedValue(undefined);
 		// A stream that never closes on its own — emits a 4-byte chunk per pull so
 		// the byte cap is reached mid-stream and we must cancel to stop reading.
 		const body = new ReadableStream({
@@ -223,46 +224,30 @@ describe('fetchAndExtract', () => {
 		expect(result.contentLength).toBe(0);
 	});
 
-	it('follows redirects manually, authorizing each hop before fetching it', async () => {
+	it('lets the transport follow redirects and reports its final URL', async () => {
 		const html = '<html><body><p>Hi</p></body></html>';
-		const transportFetch = jest
-			.fn()
-			.mockResolvedValueOnce(
-				createMockResponse('', { status: 301, location: 'https://final.example.com/page' }),
-			)
-			.mockResolvedValueOnce(createMockResponse(html));
-		const transport = mock<HttpTransport>();
-		transport.asCustomFetch.mockReturnValue(transportFetch);
+		const { transport, transportFetch } = mockTransport(async () =>
+			createMockResponse(html, { url: 'https://final.example.com/page' }),
+		);
 
-		const authorizeUrl = jest.fn().mockResolvedValue(undefined);
+		const result = await fetchAndExtract('https://example.com', { transport });
 
-		const result = await fetchAndExtract('https://example.com', {
-			transport,
-			authorizeUrl,
-		});
-
-		expect(authorizeUrl).toHaveBeenCalledWith('https://final.example.com/page');
-		expect(transportFetch).toHaveBeenCalledTimes(2);
+		expect(transportFetch).toHaveBeenCalledTimes(1);
+		expect(transportFetch).toHaveBeenCalledWith(
+			'https://example.com',
+			expect.objectContaining({ redirect: 'follow' }),
+		);
 		expect(result.finalUrl).toBe('https://final.example.com/page');
 	});
 
-	it('aborts before fetching a redirect target that authorizeUrl rejects', async () => {
-		const transportFetch = jest
-			.fn()
-			.mockResolvedValueOnce(
-				createMockResponse('', { status: 301, location: 'https://blocked.example.com/page' }),
-			);
-		const transport = mock<HttpTransport>();
-		transport.asCustomFetch.mockReturnValue(transportFetch);
+	it('surfaces the root cause when the transport rejects a hop', async () => {
+		const { transport } = mockTransport(async () => {
+			throw new TypeError('fetch failed', { cause: new Error('Access blocked') });
+		});
 
-		const authorizeUrl = jest.fn().mockRejectedValue(new Error('Access blocked'));
-
-		await expect(
-			fetchAndExtract('https://example.com', { transport, authorizeUrl }),
-		).rejects.toThrow('Access blocked');
-
-		// The redirect target is never fetched — only the initial request was made.
-		expect(transportFetch).toHaveBeenCalledTimes(1);
+		await expect(fetchAndExtract('https://example.com', { transport })).rejects.toThrow(
+			'Access blocked',
+		);
 	});
 
 	it('does not deadlock when the response body streams in chunks after fetch resolves', async () => {
@@ -341,12 +326,16 @@ describe('fetchAndExtract', () => {
 		}
 
 		// Builds a real transport (the wiring the adapter service performs) so the
-		// SSRF interceptor runs for real against the redirecting server below.
-		function realTransport(ssrf: SsrfOption) {
-			return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport({ ssrf });
+		// SSRF (and optional authorize) interceptors run for real against the
+		// redirecting server below.
+		function realTransport(ssrf: SsrfOption, authorize?: (url: URL) => Promise<void>) {
+			return new OutboundHttp(mock<SsrfProtectionService>(), mock<Logger>()).transport({
+				ssrf,
+				authorize,
+			});
 		}
 
-		function makeBridge(blockedPath?: string): jest.Mocked<SsrfBridge> {
+		function makeBridge(blockedPath?: string): Mocked<SsrfBridge> {
 			const bridge = mock<SsrfBridge>();
 			bridge.validateUrl.mockImplementation(async (url) => {
 				const href = typeof url === 'string' ? url : url.href;
@@ -409,18 +398,17 @@ describe('fetchAndExtract', () => {
 
 		it('authorizes the redirect target before it is fetched', async () => {
 			const ssrf = makeBridge();
-			const authorizeUrl = jest.fn(async (target: string) => {
-				if (target.includes('/internal')) throw new Error('Redirect not allowed');
+			const authorize = vi.fn(async (target: URL) => {
+				if (target.href.includes('/internal')) throw new Error('Redirect not allowed');
 			});
 
 			await expect(
 				fetchAndExtract(`${server.url}/start`, {
-					transport: realTransport(ssrf),
-					authorizeUrl,
+					transport: realTransport(ssrf, authorize),
 				}),
 			).rejects.toThrow('Redirect not allowed');
 
-			expect(authorizeUrl).toHaveBeenCalledWith(`${server.url}/internal`);
+			expect(authorize).toHaveBeenCalledWith(validatedUrl(`${server.url}/internal`));
 			// The redirect target is gated before any request reaches it.
 			expect(server.captured).toEqual(['/start']);
 		});

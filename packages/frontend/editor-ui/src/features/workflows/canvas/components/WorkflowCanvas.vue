@@ -18,18 +18,24 @@ import {
 	watch,
 	type EffectScope,
 } from 'vue';
-import type { CanvasEventBusEvents } from '../canvas.types';
+import type { CanvasEventBusEvents, GroupExpansionMode } from '../canvas.types';
 import { createEmptyCanvasRenderData, type CanvasRenderData } from '../canvas.utils';
 import { useCanvasMapping } from '../composables/useCanvasMapping';
-import { mapGroupsToVueFlowNodes } from '../composables/useCanvasMapping.groups';
+import {
+	aggregateGroupExecution,
+	mapGroupsToVueFlowNodes,
+} from '../composables/useCanvasMapping.groups';
 import { NodeGroupViewKey, useCanvasNodeGroupView } from '../composables/useCanvasNodeGroupView';
+import {
+	NodeGroupDescriptionVisibilityKey,
+	useCanvasNodeGroupDescriptionVisibility,
+} from '../composables/useCanvasNodeGroupDescriptionVisibility';
 import { buildNodeGroupLayoutComponents } from '../composables/useCanvasNodeGroupLayout';
+import { ContextMenuGroupViewKey } from '@/features/shared/contextMenu/composables/contextMenuGroupView';
 import Canvas from './Canvas.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowDocumentRenderData } from '@/app/stores/workflowDocument/useWorkflowDocumentRenderData';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants';
 
 defineOptions({
 	inheritAttrs: false,
@@ -42,6 +48,7 @@ const props = withDefaults(
 		showFallbackNodes?: boolean;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		groupExpansionMode?: GroupExpansionMode;
 		canExecute?: boolean;
 		executing?: boolean;
 		suppressInteraction?: boolean;
@@ -55,6 +62,7 @@ const props = withDefaults(
 		showFallbackNodes: true,
 		suppressInteraction: false,
 		stripedBackground: true,
+		groupExpansionMode: undefined,
 	},
 );
 
@@ -93,17 +101,29 @@ const nodes = computed(() => {
 });
 const connections = computed(() => workflowDocumentStore.value.connectionsBySourceNode);
 
-const posthogStore = usePostHog();
-const isCanvasNodeGroupingEnabled = computed(() =>
-	posthogStore.isFeatureEnabled(CANVAS_NODES_GROUPING_EXPERIMENT.name),
-);
-
 const nodeGroupView = useCanvasNodeGroupView({
-	workflowId: () => workflowDocumentStore.value.documentId.split('@')[0],
+	workflowId: () => workflowDocumentStore.value.workflowId,
 	getCurrentGroupIds: () => workflowDocumentStore.value.allGroups.map((group) => group.id),
 	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
-	isGroupingEnabled: () => isCanvasNodeGroupingEnabled.value,
+	getGroupExpansionMode: () => props.groupExpansionMode,
 });
+
+const nodeGroupDescriptionVisibility = useCanvasNodeGroupDescriptionVisibility({
+	workflowId: () => workflowDocumentStore.value.workflowId,
+	getCurrentGroups: () => workflowDocumentStore.value.allGroups,
+	onNodeGroupsChange: (handler) => workflowDocumentStore.value.onNodeGroupsChange(handler),
+});
+
+// Keep the group view in sync with the currently displayed document
+watch(
+	() => workflowDocumentStore.value.documentId,
+	() => {
+		nodeGroupView.reinitialize();
+		applyGroupExpansion();
+		nodeGroupDescriptionVisibility.reinitialize();
+	},
+);
+
 const allGroups = computed(() => workflowDocumentStore.value.allGroups);
 const readOnlyRef = computed(() => props.readOnly ?? false);
 const suppressInteractionRef = computed(() => props.suppressInteraction ?? false);
@@ -125,10 +145,32 @@ const {
 	isExperimentalNdvActive,
 });
 
+const groupIdsToExpand = computed(() => {
+	switch (props.groupExpansionMode) {
+		case 'all':
+			return allGroups.value.map((group) => group.id);
+		case 'errored':
+			return allGroups.value
+				.filter(
+					(group) => aggregateGroupExecution(group.nodeIds, getNodeExecutionSnapshot) === 'error',
+				)
+				.map((group) => group.id);
+		default:
+			return [];
+	}
+});
+
+function applyGroupExpansion() {
+	for (const id of groupIdsToExpand.value) {
+		nodeGroupView.setGroupExpanded(id, true);
+	}
+}
+
+watch(groupIdsToExpand, applyGroupExpansion, { immediate: true });
+
 const layoutComponents = computed(() =>
-	// Without grouping enabled or without groups there can be no pushes —
-	// skip building per-node components.
-	!isCanvasNodeGroupingEnabled.value || workflowDocumentStore.value.allGroups.length === 0
+	// Without groups there can be no pushes — skip building per-node components.
+	workflowDocumentStore.value.allGroups.length === 0
 		? []
 		: buildNodeGroupLayoutComponents({
 				allGroups: workflowDocumentStore.value.allGroups,
@@ -161,6 +203,13 @@ const mappedNodes = computed(() => [
 ]);
 
 provide(NodeGroupViewKey, nodeGroupView);
+provide(NodeGroupDescriptionVisibilityKey, nodeGroupDescriptionVisibility);
+// Collapse state for the context menu's expand/collapse item enablement —
+// the menu lives in the shared layer and can't reach this canvas' view state.
+provide(ContextMenuGroupViewKey, {
+	isGroupCollapsed: (id) => nodeGroupView.isGroupCollapsed(id),
+	isDescriptionVisible: (id) => nodeGroupDescriptionVisibility.isVisible(id),
+});
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 const { off } = onNodesInitialized(() => {

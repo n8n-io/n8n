@@ -55,7 +55,11 @@ export function extractToolCallId(
 
 /**
  * Converts ToolCallData array into LangChain message sequence.
- * Creates alternating AIMessage (with tool_calls) and ToolMessage pairs.
+ * For sequential tool calls this produces alternating AIMessage (with tool_calls)
+ * and ToolMessage pairs. For parallel tool calls, the shared AIMessage is emitted
+ * once for the batch followed by one ToolMessage per call
+ * (e.g. [AIMessage, ToolMessage, ToolMessage, …]), to avoid splitting a single
+ * model turn into several consecutive AI messages.
  *
  * @param steps - Array of tool call data with actions and observations
  * @returns Array of BaseMessage objects (AIMessage and ToolMessage pairs)
@@ -88,31 +92,37 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 		const toolCallId =
 			existingToolCallId ?? extractToolCallId(step.action.toolCallId, step.action.tool);
 
-		// Use existing AIMessage or create a synthetic one
-		const aiMessage =
-			existingAIMessage ??
-			new AIMessage({
-				content: `Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
-				tool_calls: [
-					{
-						id: toolCallId,
-						name: step.action.tool,
-						args: step.action.toolInput,
-						type: 'tool_call',
-					},
-				],
-			});
+		// Parallel tool calls share one AIMessage on the first step (with all tool_calls)
+		// and leave an empty messageLog on the rest. Emit the AIMessage when present;
+		// continuation steps (empty messageLog, i > 0) get only a ToolMessage to avoid
+		// splitting one model turn into several consecutive AI messages. Synthesize an
+		// AIMessage only for a first step lacking one, so its ToolMessage isn't orphaned.
+		if (existingAIMessage) {
+			messages.push(existingAIMessage);
+		} else if (i === 0) {
+			messages.push(
+				new AIMessage({
+					content: `Calling ${step.action.tool} with input: ${JSON.stringify(step.action.toolInput)}`,
+					tool_calls: [
+						{
+							id: toolCallId,
+							name: step.action.tool,
+							args: step.action.toolInput,
+							type: 'tool_call',
+						},
+					],
+				}),
+			);
+		}
 
 		// Create ToolMessage with the observation result
-		const toolMessage = new ToolMessage({
-			content: step.observation,
-			tool_call_id: toolCallId,
-			name: step.action.tool,
-		});
-
-		// Add both messages
-		messages.push(aiMessage);
-		messages.push(toolMessage);
+		messages.push(
+			new ToolMessage({
+				content: step.observation,
+				tool_call_id: toolCallId,
+				name: step.action.tool,
+			}),
+		);
 	}
 
 	return messages;
@@ -145,39 +155,70 @@ export function buildToolContext(steps: ToolCallData[]): string {
 }
 
 /**
- * Removes orphaned ToolMessages and AIMessages with tool_calls from the start of chat history.
+ * Removes orphaned ToolMessages and AIMessages with tool_calls from the start and end of chat history.
  * This happens when memory trimming cuts messages mid-turn, leaving incomplete tool call sequences.
  *
  * @param chatHistory - Array of messages to clean up
- * @returns Cleaned array with orphaned messages removed from the start
+ * @returns Cleaned array with orphaned messages removed from both ends
  */
-function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
+export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
+	const result = [...chatHistory];
+
+	// Clean up orphaned messages from the start
 	let changed = true;
-	while (changed && chatHistory.length > 0) {
+	while (changed && result.length > 0) {
 		changed = false;
 
 		// Remove orphaned ToolMessages at the start
-		while (chatHistory.length > 0 && chatHistory[0] instanceof ToolMessage) {
-			chatHistory.shift();
+		while (result.length > 0 && result[0] instanceof ToolMessage) {
+			result.shift();
 			changed = true;
 		}
 
 		// Remove AIMessages with tool_calls if they don't have following ToolMessages
-		if (chatHistory.length > 0) {
-			const firstMessage = chatHistory[0];
+		if (result.length > 0) {
+			const firstMessage = result[0];
 			const hasOrphanedAIMessage =
 				firstMessage instanceof AIMessage &&
 				(firstMessage.tool_calls?.length ?? 0) > 0 &&
-				!(chatHistory[1] instanceof ToolMessage);
+				!(result[1] instanceof ToolMessage);
 
 			if (hasOrphanedAIMessage) {
-				chatHistory.shift();
+				result.shift();
 				changed = true;
 			}
 		}
 	}
 
-	return chatHistory;
+	// Clean up orphaned messages from the end
+	changed = true;
+	while (changed && result.length > 0) {
+		changed = false;
+		const lastIdx = result.length - 1;
+		const lastMessage = result[lastIdx];
+
+		if (lastMessage instanceof ToolMessage) {
+			// Scan backwards past all consecutive trailing ToolMessages
+			let precedingIdx = lastIdx - 1;
+			while (precedingIdx >= 0 && result[precedingIdx] instanceof ToolMessage) {
+				precedingIdx--;
+			}
+			// The ToolMessage group is orphaned if not preceded by an AIMessage with tool_calls
+			const precedingMessage = precedingIdx >= 0 ? result[precedingIdx] : undefined;
+			const isPaired =
+				precedingMessage instanceof AIMessage && (precedingMessage.tool_calls?.length ?? 0) > 0;
+			if (!isPaired) {
+				result.pop();
+				changed = true;
+			}
+		} else if (lastMessage instanceof AIMessage && (lastMessage.tool_calls?.length ?? 0) > 0) {
+			// An AIMessage with tool_calls at the end is orphaned (no ToolMessage follows)
+			result.pop();
+			changed = true;
+		}
+	}
+
+	return result;
 }
 
 /**

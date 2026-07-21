@@ -121,7 +121,10 @@ const hint = computed(() =>
 );
 
 const isResourceLocator = computed(
-	() => props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector',
+	() =>
+		props.parameter.type === 'resourceLocator' ||
+		props.parameter.type === 'workflowSelector' ||
+		props.parameter.type === 'agentSelector',
 );
 const isDropDisabled = computed(
 	() =>

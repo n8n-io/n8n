@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, provide, useTemplateRef } from 'vue';
+import { computed, provide, useTemplateRef } from 'vue';
 import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
@@ -11,15 +11,14 @@ import {
 	InstanceAiEditorCapabilityKey,
 	type InstanceAiEditorCapability,
 } from '@/app/composables/useInstanceAiEditorCapability';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import { isAgentEditingWorkflow } from '../canvasPreview.utils';
+import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
 import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
 import type { FixWithAiError } from '../fixWithAi';
 import { useThread } from '../instanceAi.store';
 
@@ -34,8 +33,10 @@ const props = withDefaults(
 		workflowId: string;
 		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
+		/** Latest completed execution produced by the agent for this workflow. */
+		executionResult?: ExecutionResult;
 	}>(),
-	{ refreshKey: 0 },
+	{ refreshKey: 0, executionResult: undefined },
 );
 
 const emit = defineEmits<{
@@ -49,31 +50,6 @@ function requestFitView() {
 }
 
 defineExpose({ requestFitView });
-
-// === Artifact-context push listeners ===
-// Registered here (in the AI-aware wrapper) rather than inside the generic
-// WorkflowCanvasHost so the host stays decoupled from instance-ai concerns.
-// This wrapper's setup runs before the host body's, which runs before
-// MainHeader's onBeforeMount registers the global push handler — so our
-// listener fires first, which is required for the activeExecutionId reset
-// below to take effect before the global executionStarted handler reads it.
-const pushStore = usePushConnectionStore();
-
-// Reset activeExecutionId to null on every executionStarted for the displayed
-// workflow. The global executionStarted handler only enters its needsInit
-// branch (which calls promotePendingExecution and re-points activeExecutionId
-// at the new run) when activeExecutionId is null/undefined or we're in an
-// iframe. Without this reset, agent-triggered runs after the first one keep
-// activeExecutionId stuck on the previous run's id, so nodeExecuteAfter
-// writes land in the wrong store: previous-run errors persist on the canvas
-// and post-Wait events never paint.
-const removeExecutionStartedListener = pushStore.addEventListener((event) => {
-	if (event.type !== 'executionStarted') return;
-	if (event.data.workflowId !== props.workflowId) return;
-	useWorkflowExecutionStateStore(createWorkflowDocumentId(props.workflowId)).setActiveExecutionId(
-		null,
-	);
-});
 
 // On executionFinished with errors, surface a structured failures report so
 // InstanceAiThreadView can offer "Fix with AI". This used to come via
@@ -125,23 +101,10 @@ function reportWorkflowFailures(executionId: string, workflowId: string) {
 	emit('workflow-failures', { workflowId, executionId, errors });
 }
 
-const removeExecutionFinishedListener = pushStore.addEventListener((event) => {
-	if (event.type !== 'executionFinished') return;
-	if (event.data.workflowId !== props.workflowId) return;
-	// Only genuine failures. Anything else — success, but also canceled — must
-	// not fall through to collectValidationIssues(), which would show a
-	// misleading Fix with AI card right after the user stopped a run.
-	if (event.data.status !== 'error' && event.data.status !== 'crashed') return;
-	// Only offer "Fix with AI" for human-initiated runs. When the agent ran the
-	// workflow itself (source 'instance_ai'), it already sees the errors in its
-	// tool result and fixes them on its own.
-	if (event.data.source === 'instance_ai') return;
-	reportWorkflowFailures(event.data.executionId, event.data.workflowId);
-});
-
-onBeforeUnmount(() => {
-	removeExecutionStartedListener();
-	removeExecutionFinishedListener();
+const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
+	workflowId: () => props.workflowId,
+	executionResult: () => props.executionResult,
+	reportWorkflowFailures,
 });
 
 // === Editing lock ===
@@ -170,9 +133,11 @@ const isAgentEditingThisWorkflow = computed(() => {
 // standalone AI helpers (`false`), forces the canvas read-only while a
 // workflow-builder agent is mutating this workflow, and suppresses workflow
 // execution result toasts (success + error) — the agent surfaces run outcomes
-// in the thread UI, so the canvas would only duplicate them. NodeView derives
-// its read-only state from these via useEditorContext(); usePushConnection
-// reads the toast flags to gate execution result notifications.
+// in the thread UI, so the canvas would only duplicate them. The execute button
+// demotes to a secondary action — the conversation is the primary surface here.
+// NodeView derives its read-only state from these via useEditorContext();
+// usePushConnection reads the toast flags to gate execution result
+// notifications.
 const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	aiAssistant: false,
 	aiBuilder: false,
@@ -180,6 +145,7 @@ const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
 	readOnly: isAgentEditingThisWorkflow.value,
 	executionSuccessToasts: false,
 	executionErrorToasts: false,
+	executionButtonType: 'secondary',
 }));
 provide(EditorEnabledFeaturesKey, enabledFeatures);
 
@@ -211,6 +177,7 @@ provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 			:refresh-key="refreshKey"
 			:initial-workflow="initialWorkflow"
 			:initial-execution="initialExecution"
+			@workflow-loaded="restoreExecutionResult"
 		/>
 	</div>
 </template>

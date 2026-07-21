@@ -4,6 +4,7 @@ import { expect } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { ClipboardHelper } from '../helpers/ClipboardHelper';
 import { NodeParameterHelper } from '../helpers/NodeParameterHelper';
+import { ActionToggle } from './components/ActionToggle';
 import { CodeNodeEditor } from './components/CodeNodeEditor';
 import { dialogCloseIconIn, dialogRootIn } from './components/dialogLocators';
 import { InlineExpressionEditor } from './components/InlineExpressionEditor';
@@ -13,6 +14,8 @@ import { EditFieldsNode } from './components/nodes/EditFieldsNode';
 import { ResourceLocator } from './components/ResourceLocator';
 import { RunDataPanel } from './components/RunDataPanel';
 import { locatorByIndex } from '../utils/index-helper';
+
+const containsValue = (value: string) => new RegExp(value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 export class NodeDetailsViewPage extends BasePage {
 	readonly setupHelper: NodeParameterHelper;
@@ -25,6 +28,7 @@ export class NodeDetailsViewPage extends BasePage {
 	readonly resourceLocator = new ResourceLocator(this.container);
 	readonly codeNodeEditor = new CodeNodeEditor(this.container);
 	readonly nodeCreator = new NodeCreator(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
 
 	constructor(page: Page) {
 		super(page);
@@ -427,15 +431,15 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getResourceMapperRemoveAllFieldsOption() {
-		return this.page.getByTestId('action-removeAllFields');
+		return this.actionToggle.getAction('removeAllFields');
 	}
 
 	async refreshResourceMapperColumns() {
 		const selectColumn = this.getResourceMapperSelectColumn();
 		await selectColumn.hover();
-		await selectColumn.getByTestId('action-toggle').getByRole('button').click();
-		await expect(this.getVisiblePopper().getByTestId('action-refreshFieldList')).toBeVisible();
-		await this.getVisiblePopper().getByTestId('action-refreshFieldList').click();
+		await this.actionToggle.open(selectColumn);
+		await expect(this.actionToggle.getAction('refreshFieldList')).toBeVisible();
+		await this.actionToggle.getAction('refreshFieldList').click();
 	}
 
 	getAddValueButton() {
@@ -452,6 +456,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getInlineExpressionEditorContent() {
 		return this.inlineExpressionEditor.getContent();
+	}
+
+	getInlineExpressionEditorLine(index: number) {
+		return this.inlineExpressionEditor.getLine(index);
 	}
 
 	getInlineExpressionEditorOutput() {
@@ -476,6 +484,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async expressionSelectPrevItem() {
 		await this.inlineExpressionEditor.selectPrevItem();
+	}
+
+	async moveMouseAwayFromRunData() {
+		await this.inlineExpressionEditor.moveMouseAway();
 	}
 
 	async openExpressionEditorModal(parameterName: string) {
@@ -590,12 +602,14 @@ export class NodeDetailsViewPage extends BasePage {
 		const selector = this.inputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
+		await expect(this.inputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
 	async changeOutputRunSelector(value: string) {
 		const selector = this.outputPanel.getRunSelector();
 		await selector.click();
 		await this.getVisiblePopoverOption(value).click();
+		await expect(this.outputPanel.getRunSelectorInput()).toHaveValue(containsValue(value));
 	}
 
 	async getInputRunSelectorValue() {
@@ -767,6 +781,14 @@ export class NodeDetailsViewPage extends BasePage {
 		await collection.click();
 	}
 
+	getNodeParameterButton(buttonName: string) {
+		return this.getNodeParameters().getByRole('button', { name: buttonName });
+	}
+
+	async clickNodeParameterButton(buttonName: string) {
+		await this.getNodeParameterButton(buttonName).click();
+	}
+
 	getFixedCollectionPropertyPicker(index?: number) {
 		const pickers = this.getNodeParameters().getByTestId('fixed-collection-add-property');
 		return index !== undefined ? pickers.nth(index) : pickers.first();
@@ -862,6 +884,14 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAiOutputModeToggle() {
 		return this.container.getByTestId('ai-output-mode-select');
+	}
+
+	getAiOutputModeRadios() {
+		return this.getAiOutputModeToggle().locator('[role="radio"]');
+	}
+
+	getWebhookUrlsContainer() {
+		return this.container.getByText('Webhook URLs').locator('..');
 	}
 
 	getCredentialLabel(credentialType: string) {

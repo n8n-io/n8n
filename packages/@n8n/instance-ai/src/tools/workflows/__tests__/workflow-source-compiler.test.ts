@@ -113,7 +113,7 @@ describe('compileWorkflowSource', () => {
 		expect(runInSandbox).toHaveBeenCalledWith(
 			context.workspace,
 			"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
-			'/home/daytona/workspace',
+			{ cwd: '/home/daytona/workspace', abortSignal: undefined },
 		);
 		expect(result).toMatchObject({
 			success: true,
@@ -164,5 +164,145 @@ describe('compileWorkflowSource', () => {
 			editable: false,
 		});
 		expect(runInSandbox).not.toHaveBeenCalled();
+	});
+
+	it('rethrows AbortError from sandbox execution instead of converting to a build failure', async () => {
+		const abortError = new Error('This operation was aborted');
+		abortError.name = 'AbortError';
+		vi.mocked(runInSandbox).mockRejectedValue(abortError);
+
+		await expect(
+			compileWorkflowSource(makeContext(), 'src/workflows/main.workflow.ts', 'workflow source'),
+		).rejects.toMatchObject({ name: 'AbortError' });
+	});
+
+	it('forwards abortSignal into the sandbox runner', async () => {
+		const controller = new AbortController();
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({
+				success: true,
+				workflow: { name: 'TS workflow', nodes: [], connections: {} },
+				warnings: [],
+			}),
+			stderr: '',
+		});
+
+		await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+			controller.signal,
+		);
+
+		expect(runInSandbox).toHaveBeenCalledWith(expect.anything(), expect.any(String), {
+			cwd: '/home/daytona/workspace',
+			abortSignal: controller.signal,
+		});
+	});
+});
+
+describe('compileWorkflowSource credential resolution', () => {
+	const hosts = [
+		{ type: 'stripeApi', hosts: ['api.stripe.com'] },
+		{ type: 'facebookGraphApi', hosts: ['graph.facebook.com'] },
+		{ type: 'whatsAppApi', hosts: ['graph.facebook.com'] },
+	];
+
+	function contextWithHosts(overrides = {}) {
+		return makeContext({
+			credentialService: { listHttpCredentialHosts: async () => await Promise.resolve(hosts) },
+			...overrides,
+		} as unknown as Partial<InstanceAiContext>);
+	}
+
+	function httpWorkflow(parameters: Record<string, unknown>) {
+		return {
+			name: 'HTTP workflow',
+			nodes: [
+				{
+					id: 'http-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [0, 0] as [number, number],
+					parameters,
+				},
+			],
+			connections: {},
+		};
+	}
+
+	async function compileHttp(parameters: Record<string, unknown>, context = contextWithHosts()) {
+		const result = await compileWorkflowSource(
+			context,
+			'src/workflows/http.workflow.json',
+			JSON.stringify(httpWorkflow(parameters)),
+		);
+		if (!result.success) throw new Error('expected compile success');
+		return result.warnings.filter((w) => w.code === 'PREFER_PREDEFINED_CREDENTIAL');
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(validateWorkflow).mockReturnValue({ valid: true, errors: [], warnings: [] });
+	});
+
+	it('warns when generic auth targets a host with a single predefined credential', async () => {
+		const warnings = await compileHttp({
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			url: 'https://api.stripe.com/v1/charges',
+		});
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toMatchObject({ nodeName: 'HTTP Request' });
+		expect(warnings[0].message).toContain('stripeApi');
+		expect(warnings[0].message).toContain('predefinedCredentialType');
+	});
+
+	it('lists candidates when the host maps to multiple predefined credentials', async () => {
+		const warnings = await compileHttp({
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			url: 'https://graph.facebook.com/v19.0/me',
+		});
+
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].message).toContain('facebookGraphApi');
+		expect(warnings[0].message).toContain('whatsAppApi');
+	});
+
+	it('does not warn for a host with no predefined credential', async () => {
+		const warnings = await compileHttp({
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+			url: 'https://queue.fal.run/fal-ai/flux',
+		});
+
+		expect(warnings).toHaveLength(0);
+	});
+
+	it('does not warn when the node already uses a predefined credential', async () => {
+		const warnings = await compileHttp({
+			authentication: 'predefinedCredentialType',
+			nodeCredentialType: 'stripeApi',
+			url: 'https://api.stripe.com/v1/charges',
+		});
+
+		expect(warnings).toHaveLength(0);
+	});
+
+	it('is a no-op when the credential service cannot list hosts', async () => {
+		const warnings = await compileHttp(
+			{
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+				url: 'https://api.stripe.com/v1/charges',
+			},
+			makeContext(),
+		);
+
+		expect(warnings).toHaveLength(0);
 	});
 });

@@ -1,19 +1,17 @@
-import type { User, WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 
 import type { WorkflowIdConflict } from './workflow-import-match.service';
 import type {
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
 } from './workflow-publishing-policy.types';
+import type { ImportContext } from '../../n8n-packages.types';
 
-/** The actor and destination a batch of workflows is imported into. */
-export interface WorkflowImportContext {
-	user: User;
-	projectId: string;
-	folderId: string | null;
+/** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
+export interface WorkflowImportContext extends ImportContext {
 	publishingPolicy: WorkflowPublishingPolicy;
 	/** Package workflow ids that must stay inactive because they use stubbed credentials. */
-	publishBlockedSourceWorkflowIds?: ReadonlySet<string>;
+	publishBlockedSourceWorkflowIds: ReadonlySet<string>;
 }
 
 export interface PreparedWorkflow {
@@ -21,6 +19,11 @@ export interface PreparedWorkflow {
 	sourceWorkflowId: string;
 	/** Whether the workflow was published (active) in the source instance. */
 	sourcePublished: boolean;
+	/**
+	 * Source id of the package folder this workflow is nested under or null for a scope-root workflow that lands in the request's
+	 * target folder.
+	 */
+	parentFolderId: string | null;
 }
 
 export type WorkflowPlannedAction = 'create' | 'update' | 'skip';

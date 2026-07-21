@@ -50,7 +50,7 @@ const emit = defineEmits<{
 			:data-test-id="testId"
 			:class="danger ? $style.dangerAction : undefined"
 			v-bind="$attrs"
-			@click.stop="emit('click', $event)"
+			@click="emit('click', $event)"
 		/>
 	</N8nTooltip>
 </template>

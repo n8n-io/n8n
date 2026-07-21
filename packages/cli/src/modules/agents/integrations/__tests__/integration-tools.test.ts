@@ -1,5 +1,6 @@
 import { zodToJsonSchema, type InterruptibleToolContext } from '@n8n/agents';
-import { mock } from 'jest-mock-extended';
+import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
 import {
@@ -10,7 +11,6 @@ import {
 	type IntegrationContextQueryExecutor,
 	type IntegrationMessageContextStore,
 } from '../integration-tools';
-import type { AgentIntegrationConfig } from '@n8n/api-types';
 
 const slackA: AgentIntegrationConfig = {
 	type: 'slack',
@@ -32,7 +32,7 @@ function makeInterruptibleCtx(
 ): InterruptibleToolContext {
 	return {
 		resumeData: undefined,
-		suspend: jest.fn().mockResolvedValue(undefined as never),
+		suspend: vi.fn().mockResolvedValue(undefined as never),
 		runId: 'run-1',
 		toolCallId: 'tool-1',
 		persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
@@ -59,6 +59,12 @@ describe('integration tools', () => {
 			'cred-a',
 			'cred-b',
 		]);
+		expect(descriptors[0].contextToolDefinitions.map((definition) => definition.name)).toEqual(
+			descriptors[0].contextQueries,
+		);
+		expect(descriptors[0].actionToolDefinitions.map((definition) => definition.name)).toEqual(
+			descriptors[0].actions,
+		);
 	});
 
 	it('context tool returns the latest message context for its integration connection', async () => {
@@ -150,6 +156,48 @@ describe('integration tools', () => {
 		expect(queryExecutor.execute).not.toHaveBeenCalled();
 	});
 
+	it('context tool accepts an argument-free query without an input object', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue({
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456' },
+			messageId: '123.456',
+			interactingUserId: 'U123',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		});
+		const queryExecutor = mock<IntegrationContextQueryExecutor>();
+		queryExecutor.execute.mockResolvedValue({
+			ok: true,
+			user: { userId: 'U123', displayName: 'Ada Lovelace' },
+		});
+
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			queryExecutor,
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ query: 'get_current_user' }).success).toBe(true);
+
+		const result = await tool.handler!(
+			{ query: 'get_current_user' },
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			user: { userId: 'U123', displayName: 'Ada Lovelace' },
+		});
+		expect(queryExecutor.execute).toHaveBeenCalledWith({
+			descriptor: expect.any(Object),
+			query: 'get_user',
+			input: { userId: 'U123' },
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+	});
+
 	it('context tool schema requires platform IDs for user and channel lookups', () => {
 		const tool = createIntegrationContextTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
@@ -162,6 +210,7 @@ describe('integration tools', () => {
 			false,
 		);
 		expect(schema.safeParse({ query: 'get_user', input: { userId: 'U123' } }).success).toBe(true);
+		expect(schema.safeParse({ query: 'get_user' }).success).toBe(false);
 		expect(
 			schema.safeParse({ query: 'get_channel_info', input: { name: '#support' } }).success,
 		).toBe(false);
@@ -308,10 +357,7 @@ describe('integration tools', () => {
 		const schema = tool.inputSchema as z.ZodType;
 
 		const input = {
-			queries: [
-				{ query: 'search_teams', input: { query: 'eng' } },
-				{ query: 'search_labels', input: { query: 'bug' } },
-			],
+			queries: [{ query: 'search_teams', input: { query: 'eng' } }, { query: 'search_labels' }],
 		};
 
 		expect(schema.safeParse(input).success).toBe(true);
@@ -345,7 +391,7 @@ describe('integration tools', () => {
 		expect(queryExecutor.execute).toHaveBeenNthCalledWith(2, {
 			descriptor: expect.any(Object),
 			query: 'search_labels',
-			input: { query: 'bug' },
+			input: {},
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 	});

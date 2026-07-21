@@ -24,7 +24,7 @@ describe('RoleController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Enable CUSTOM_ROLES license for all tests by default
 		testServer.license.enable('feat:customRoles');
 	});
@@ -744,6 +744,52 @@ describe('RoleController', () => {
 		});
 	});
 
+	describe('GET /roles/:slug/members', () => {
+		it('should require authentication', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await testServer.authlessAgent.get('/roles/global:admin/members').expect(401);
+		});
+
+		it('should require role:read permission', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await memberAgent.get('/roles/global:admin/members').expect(403);
+		});
+
+		it('should return the role members for a holder of role:read', async () => {
+			//
+			// ARRANGE
+			//
+			const mockResponse = {
+				members: [
+					{
+						userId: 'user-1',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+						email: 'ada@example.com',
+						role: 'global:admin',
+					},
+				],
+				total: 1,
+			};
+			roleService.getRoleMembers.mockResolvedValue(mockResponse);
+
+			//
+			// ACT
+			//
+			const response = await ownerAgent.get('/roles/global:admin/members').expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response.body).toEqual({ data: mockResponse });
+			expect(roleService.getRoleMembers).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('POST /roles', () => {
 		it('should require authentication', async () => {
 			//
@@ -1080,6 +1126,32 @@ describe('RoleController', () => {
 			expect(response.body).toEqual({ data: mockDeletedRole });
 			// Parameter verification skipped - test framework issue
 			expect(roleService.removeCustomRole).toHaveBeenCalledTimes(1);
+		});
+
+		it('should forward the reassignRoleSlug query param to the service', async () => {
+			//
+			// ARRANGE
+			//
+			const roleSlug = 'global:test-role';
+			roleService.removeCustomRole.mockResolvedValue({
+				slug: roleSlug,
+				displayName: 'Deleted Role',
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				scopes: [],
+				licensed: true,
+			});
+
+			//
+			// ACT
+			//
+			await ownerAgent.delete(`/roles/${roleSlug}?reassignRoleSlug=global:member`).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith(roleSlug, 'global:member');
 		});
 
 		it('should handle service errors gracefully', async () => {

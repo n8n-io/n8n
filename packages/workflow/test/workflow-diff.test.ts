@@ -468,12 +468,17 @@ describe('groupWorkflows', () => {
 	});
 	describe('rules', () => {
 		describe('mergeAdditiveChanges', () => {
-			const createWorkflow = (id: string, nodes: DiffableNode[]): IWorkflowBase => {
+			const createWorkflow = (
+				id: string,
+				nodes: DiffableNode[],
+				nodeGroups: IWorkflowBase['nodeGroups'] = [],
+			): IWorkflowBase => {
 				return {
 					id,
 					nodes,
 					connections: {},
 					createdAt: new Date(),
+					nodeGroups,
 				} as IWorkflowBase;
 			};
 
@@ -607,6 +612,108 @@ describe('groupWorkflows', () => {
 						{ id: '1', parameters: { a: 'val with some text ue1' }, name: 'n1' },
 					]),
 					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: false,
+				},
+				{
+					description: 'should return true when an unchanged group is present',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					expected: true,
+				},
+				{
+					description: 'should return true when a group is added',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: {}, name: 'n1' }]),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					expected: true,
+				},
+				{
+					description: 'should return true when a node is added to an existing group',
+					baseWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1', '2'] }],
+					),
+					expected: true,
+				},
+				{
+					description: 'should return false when a group is removed',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: {}, name: 'n1' }]),
+					expected: false,
+				},
+				{
+					description: 'should return false when a group is renamed',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Renamed Group', nodeIds: ['1'] }],
+					),
+					expected: false,
+				},
+				{
+					description: 'should return false when a group description changes',
+					baseWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'], description: 'Before' }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[{ id: '1', parameters: {}, name: 'n1' }],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'], description: 'After' }],
+					),
+					expected: false,
+				},
+				{
+					description: 'should return false when a node is removed from a group',
+					baseWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1', '2'] }],
+					),
+					nextWorkflow: createWorkflow(
+						'1',
+						[
+							{ id: '1', parameters: {}, name: 'n1' },
+							{ id: '2', parameters: {}, name: 'n2' },
+						],
+						[{ id: 'g1', name: 'Group 1', nodeIds: ['1'] }],
+					),
 					expected: false,
 				},
 			])('$description', ({ baseWorkflow, nextWorkflow, expected }) => {

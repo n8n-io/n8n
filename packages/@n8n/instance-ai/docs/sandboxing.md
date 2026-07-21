@@ -226,6 +226,8 @@ graph LR
 
 If any step fails, the agent reads the error output, fixes the code, and retries. This loop runs entirely inside the sandbox — the n8n host is never involved until the final save.
 
+Agent building does not go through the sandbox at all. The `build-agent` orchestration tool delegates each turn to the agents-module builder (`AgentsBuilderService`), which runs host-side as a sub-agent — there are no agent-config files in the workspace, and no sandbox is required for agent building.
+
 ## Boundaries
 
 **Sandboxing is not the filesystem service.** The sandbox gives the agent a private workspace for building workflows. The filesystem service (and gateway) gives the agent access to the user's project files on their machine. These are separate systems with different security models and do not overlap.
@@ -245,9 +247,10 @@ If any step fails, the agent reads the error output, fixes the code, and retries
 | `N8N_SANDBOX_SERVICE_URL` | — | n8n sandbox service URL (required for `n8n-sandbox`) |
 | `N8N_SANDBOX_SERVICE_API_KEY` | — | n8n sandbox service API key (optional when using an `httpHeaderAuth` credential) |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Base container image for Daytona |
+| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | — | Override the full snapshot name (e.g. `n8n/instance-ai:2.27.3`) instead of the version-derived default. Proxy mode only; falls back to building from the base image if the snapshot doesn't exist. |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Command timeout in milliseconds |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | — | Prefix for every Daytona sandbox name (e.g. `eval-baseline-daily`). Also added as a `name_prefix` label. Empty in production. |
 | `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Create Daytona sandboxes ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |
 | `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | `15` | Minutes an idle sandbox waits before Daytona stops it. `0` = disabled (stays running). |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `10080` (7 days) | Minutes a stopped sandbox waits before Daytona archives it to cold storage. `0` = Daytona's max interval. |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `43200` (30 days) | Minutes a stopped sandbox waits before Daytona deletes it. Negative = disabled; `0` = on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `60` (1 hour) | Minutes a stopped sandbox waits before Daytona archives it to cold storage. `0` = Daytona's max interval. |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `10080` (7 days) | Minutes a stopped sandbox waits before Daytona deletes it. Negative = disabled; `0` = on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |

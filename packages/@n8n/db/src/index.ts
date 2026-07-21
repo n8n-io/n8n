@@ -10,7 +10,8 @@ export {
 	DateTimeColumn,
 } from './entities/abstract-entity';
 
-export { generateNanoId } from '@n8n/utils';
+export { generateNanoId } from '@n8n/utils/generate-nano-id';
+export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
 export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
 export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
@@ -37,10 +38,20 @@ export { postgresMigrations } from './migrations/postgresdb';
 export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
 export { DbConnection } from './connection/db-connection';
+export { DbConnectionMetrics } from './connection/db-connection-metrics';
 export { DbConnectionOptions } from './connection/db-connection-options';
+export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
+
+export { TransactionRunner } from './services/transaction';
+export type {
+	Transaction,
+	OperationContext,
+	IsolationLevel,
+	RunOptions,
+} from './services/transaction';
 
 export { In, Like, MoreThanOrEqual, Not, DataSource } from '@n8n/typeorm';
 export type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';

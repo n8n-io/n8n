@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
@@ -19,7 +20,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -47,8 +48,22 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		if (runExecutionData?.executionData !== undefined) {
 			executionData = runExecutionData.executionData.nodeExecutionStack[0];
 			if (executionData !== undefined) {
-				connectionInputData = executionData.data.main[0]!;
+				connectionInputData = executionData.data.main[0] ?? [];
 			}
+		}
+
+		if (executionData === undefined && additionalData.httpRequest) {
+			const req = additionalData.httpRequest;
+			connectionInputData = [
+				{
+					json: {
+						body: (req.body ?? {}) as IDataObject,
+						headers: req.headers,
+						params: req.params as IDataObject,
+						query: req.query as IDataObject,
+					},
+				},
+			];
 		}
 
 		super(
@@ -140,6 +155,15 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	getWebhookName() {
 		return this.webhookData.webhookDescription.name;
+	}
+
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }) {
+		this.additionalData.logHitlResponse?.({
+			...payload,
+			nodeType: this.node.type,
+			executionId: this.additionalData.executionId,
+			workflowId: this.workflow.id,
+		});
 	}
 
 	async validateCookieAuth(cookieValue: string): Promise<IUser> {

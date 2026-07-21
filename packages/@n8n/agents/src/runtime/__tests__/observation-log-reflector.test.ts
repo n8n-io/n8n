@@ -1,6 +1,7 @@
 import type * as AiImport from 'ai';
 
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
+import type { BuiltTelemetry } from '../../types/telemetry';
 import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogReflectorPrompt,
@@ -16,7 +17,10 @@ import {
 } from '../memory/observation-log-reflector';
 
 type GenerateTextCall = Record<string, unknown>;
-type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };
+type GenerateTextResult = {
+	text: string;
+	usage?: { totalTokens?: number; inputTokens?: number; outputTokens?: number };
+};
 
 const { mockGenerateText } = vi.hoisted(() => ({
 	mockGenerateText: vi.fn<(...args: [GenerateTextCall]) => Promise<GenerateTextResult>>(),
@@ -51,7 +55,7 @@ describe('observation-log reflector defaults', () => {
 	});
 
 	it('keeps default policy and threshold configuration in the SDK', () => {
-		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(4_000);
+		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS).toBe(12_000);
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain('Return JSON with two arrays');
 		expect(DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT).toContain(
 			'CRITICAL. Facts, decisions, identities, commitments',
@@ -101,6 +105,68 @@ describe('observation-log reflector defaults', () => {
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(19);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
 		expect(counter.incrementToolCallCount).not.toHaveBeenCalled();
+	});
+
+	it('threads input.telemetry into generateText as a memory-reflector-suffixed call, omitting it when disabled or absent', async () => {
+		mockGenerateText.mockResolvedValue({ text: '{"drop":[],"merge":[]}' });
+		const reflect = createObservationLogReflectFn('openai/gpt-4o-mini');
+		const baseInput = {
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '',
+			tokenCount: 10,
+			tokenBudget: 12_000,
+		};
+		const telemetry: BuiltTelemetry = {
+			enabled: true,
+			functionId: 'my-agent',
+			metadata: { thread_id: 't1' },
+			recordInputs: true,
+			recordOutputs: false,
+			integrations: [],
+		};
+
+		await reflect({ ...baseInput, telemetry });
+		await reflect(baseInput);
+		await reflect({ ...baseInput, telemetry: { ...telemetry, enabled: false } });
+
+		expect(mockGenerateText.mock.calls[0][0]).toMatchObject({
+			experimental_telemetry: {
+				isEnabled: true,
+				functionId: 'my-agent.memory-reflector',
+				metadata: { thread_id: 't1' },
+				recordInputs: true,
+				recordOutputs: false,
+			},
+		});
+		expect(mockGenerateText.mock.calls[1][0].experimental_telemetry).toBeUndefined();
+		expect(mockGenerateText.mock.calls[2][0].experimental_telemetry).toBeUndefined();
+	});
+
+	it('reports usage with task="reflector" and the configured model through onUsage', async () => {
+		mockGenerateText.mockResolvedValue({
+			text: '{"drop":[],"merge":[]}',
+			usage: { inputTokens: 50, outputTokens: 5, totalTokens: 55 },
+		});
+		const onUsage = vi.fn();
+
+		await createObservationLogReflectFn('anthropic/claude-haiku-4-5-20251001', { onUsage })({
+			observationScopeId: 'thread-1',
+			now: new Date('2026-05-12T14:30:00.000Z'),
+			activeObservationLog: [],
+			renderedObservationLog: '',
+			tokenCount: 10,
+			tokenBudget: 12_000,
+		});
+
+		expect(onUsage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				task: 'reflector',
+				model: 'anthropic/claude-haiku-4-5-20251001',
+				reportId: expect.any(String),
+			}),
+		);
 	});
 });
 
@@ -392,5 +458,54 @@ describe('runObservationLogReflector', () => {
 		await expect(
 			store.getActiveObservationLog({ observationScopeId: 'thread-1' }),
 		).resolves.toMatchObject([{ id: critical.id }]);
+	});
+
+	it('does not persist secret values echoed by the reflector into merged observations', async () => {
+		const store = new InMemoryMemory();
+		const [oldA, oldB] = await store.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'Old plan A',
+				tokenCount: 9,
+			},
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'Old plan B',
+				tokenCount: 9,
+			},
+		]);
+
+		const result = await runObservationLogReflector({
+			memory: store,
+			observationScopeId: 'thread-1',
+			reflectorThresholdTokens: 10,
+			reflect: async () =>
+				await Promise.resolve(
+					JSON.stringify({
+						drop: [],
+						merge: [
+							{
+								supersedes: [oldA.id, oldB.id],
+								marker: 'IMPORTANT',
+								text: 'User set the Slack bot token to xoxb-1234567890-abcdefghij.',
+							},
+						],
+					}),
+				),
+		});
+
+		expect(result).toMatchObject({ status: 'ran' });
+		if (result.status !== 'ran') throw new Error('expected reflector to run');
+		expect(result.reflection.merge[0].text).toContain('[REDACTED]');
+		expect(result.reflection.merge[0].text).not.toContain('xoxb-1234567890-abcdefghij');
+
+		const merged = await store.getObservationLog({
+			observationScopeId: 'thread-1',
+			status: 'active',
+		});
+		expect(merged.some((entry) => entry.text.includes('xoxb-1234567890-abcdefghij'))).toBe(false);
+		expect(merged.some((entry) => entry.text.includes('[REDACTED]'))).toBe(true);
 	});
 });

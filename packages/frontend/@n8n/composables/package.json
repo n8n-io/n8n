@@ -1,7 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.19.0",
+  "version": "1.22.0",
   "files": [
     "dist"
   ],
@@ -20,7 +20,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
-    "test:changed": "janitor test-scoped --runner=vitest",
+    "test:changed": "janitor test-scoped",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@vueuse/core": "catalog:frontend",
+    "lodash": "catalog:",
     "vue": "catalog:frontend"
   },
   "devDependencies": {
@@ -39,6 +40,7 @@
     "@testing-library/vue": "catalog:frontend",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
+    "@types/lodash": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "tsdown": "catalog:",

@@ -7,7 +7,7 @@
  */
 
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { redactSecrets, redactSecretsInText } from '../harness/redact';
 import type {
@@ -263,7 +263,7 @@ function interpretConfirmationRequest(
 // Helpers
 // ---------------------------------------------------------------------------
 
-function extractSetupWizardOutcome(result: Record<string, unknown>): ToolInteraction | null {
+export function extractSetupWizardOutcome(result: Record<string, unknown>): ToolInteraction | null {
 	const completed = Array.isArray(result.completedNodes)
 		? extractCompletedNodes(result.completedNodes)
 		: [];
@@ -291,7 +291,7 @@ function interpretSetupCard(
 	return { kind: 'setup-card', requests, outcome, filled };
 }
 
-function extractSetupCardRequests(raw: unknown[]): SetupCardRequest[] {
+export function extractSetupCardRequests(raw: unknown[]): SetupCardRequest[] {
 	const requests: SetupCardRequest[] = [];
 	for (const item of raw) {
 		if (!isRecord(item)) continue;
@@ -398,7 +398,7 @@ function inferFeedback(response: InstanceAiConfirmRequest | undefined): string |
 	return undefined;
 }
 
-function extractPlanTasks(raw: unknown[]): PlanTask[] {
+export function extractPlanTasks(raw: unknown[]): PlanTask[] {
 	const tasks: PlanTask[] = [];
 	for (const item of raw) {
 		if (!isRecord(item)) continue;
@@ -409,7 +409,7 @@ function extractPlanTasks(raw: unknown[]): PlanTask[] {
 	return tasks;
 }
 
-function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
+export function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
 	const questions: AskUserQuestion[] = [];
 	for (const item of raw) {
 		if (!isRecord(item)) continue;
@@ -423,7 +423,7 @@ function extractAskUserQuestions(raw: unknown[]): AskUserQuestion[] {
 	return questions;
 }
 
-function extractAskUserAnswers(raw: unknown): AskUserAnswer[] {
+export function extractAskUserAnswers(raw: unknown): AskUserAnswer[] {
 	if (!Array.isArray(raw)) return [];
 	const answers: AskUserAnswer[] = [];
 	for (const item of raw) {

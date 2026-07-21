@@ -10,8 +10,12 @@ const route = vi.hoisted(() => ({
 	params: {} as { workflowId?: string | string[] },
 }));
 
+// `absent` simulates instantiation outside a router context, where
+// `useRoute()` resolves to `undefined`.
+const routeState = vi.hoisted(() => ({ absent: false }));
+
 vi.mock('vue-router', () => ({
-	useRoute: () => route,
+	useRoute: () => (routeState.absent ? undefined : route),
 }));
 
 describe('useWorkflowId', () => {
@@ -69,6 +73,7 @@ describe('useRouteWorkflowId', () => {
 	beforeEach(() => {
 		route.name = VIEWS.WORKFLOW;
 		route.params = {};
+		routeState.absent = false;
 	});
 
 	it('uses the workflow route workflowId parameter', () => {
@@ -85,6 +90,15 @@ describe('useRouteWorkflowId', () => {
 
 	it('returns an empty string when the workflow route workflowId parameter is missing', () => {
 		expect(useRouteWorkflowId().value).toBe('');
+	});
+
+	it('returns an empty string without throwing when there is no router context', () => {
+		routeState.absent = true;
+
+		const workflowId = useRouteWorkflowId();
+
+		expect(() => workflowId.value).not.toThrow();
+		expect(workflowId.value).toBe('');
 	});
 
 	it.each([VIEWS.DEMO, VIEWS.DEMO_DIFF])('uses demo for %s routes', (routeName) => {

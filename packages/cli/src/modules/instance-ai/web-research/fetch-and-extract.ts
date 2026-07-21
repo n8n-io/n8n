@@ -46,17 +46,13 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MB
 const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
-const MAX_REDIRECTS = 10;
 
 export interface FetchAndExtractOptions {
 	maxContentLength?: number;
 	maxResponseBytes?: number;
 	timeoutMs?: number;
-	/**
-	 * Called before following each redirect hop to validate the target URL.
-	 * Throw to abort the fetch (e.g. for HITL domain approval).
-	 */
-	authorizeUrl?: (url: string) => Promise<void>;
+	/** Combined with the request timeout so Stop cancels in-flight fetches. */
+	abortSignal?: AbortSignal;
 	/**
 	 * SSRF-validated fetch transport.
 	 */
@@ -64,12 +60,22 @@ export interface FetchAndExtractOptions {
 }
 
 /**
+ * undici's `fetch` reports a failure raised inside dispatch
+ * as an opaque `TypeError: fetch failed` with the real error on `.cause`.
+ */
+function unwrapFetchError(error: unknown): unknown {
+	let current = error;
+	const seen = new Set<unknown>();
+	while (current instanceof Error && current.cause instanceof Error && !seen.has(current)) {
+		seen.add(current);
+		current = current.cause;
+	}
+	return current;
+}
+
+/**
  * Fetch a URL, extract its main content, and convert to markdown.
  * Routes by content-type: HTML → Readability + Turndown, PDF → pdf-parse, text → passthrough.
- *
- * The factory transport runs SSRF validation per dispatched request, so the
- * initial fetch and every redirect hop are checked — closing open-redirect
- * chains to internal/private addresses.
  */
 export async function fetchAndExtract(
 	url: string,
@@ -79,61 +85,30 @@ export async function fetchAndExtract(
 	const maxResponseBytes = options.maxResponseBytes ?? MAX_RESPONSE_BYTES;
 	const timeoutMs = Math.min(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-	const { authorizeUrl, transport } = options;
+	const customFetch = options.transport.asCustomFetch();
 
-	const customFetch = transport.asCustomFetch();
+	const timeoutSignal = AbortSignal.timeout(timeoutMs);
+	const signal = options.abortSignal
+		? AbortSignal.any([timeoutSignal, options.abortSignal])
+		: timeoutSignal;
 
-	let currentUrl = url;
-	let response!: Response;
-	let redirectCount = 0;
-
-	while (redirectCount <= MAX_REDIRECTS) {
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-		try {
-			response = await customFetch(currentUrl, {
-				signal: controller.signal,
-				headers: {
-					'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
-					Accept:
-						'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
-				},
-				redirect: 'manual',
-			});
-		} finally {
-			clearTimeout(timeout);
-		}
-
-		// Follow redirects manually so each hop can be authorized before it is fetched
-		if (response.status >= 300 && response.status < 400) {
-			const location = response.headers.get('location');
-			if (!location) break;
-
-			// Release the redirect response's connection back to the pool.
-			await response.body?.cancel().catch(() => {});
-
-			redirectCount++;
-			if (redirectCount > MAX_REDIRECTS) {
-				throw new Error(`Too many redirects (max ${MAX_REDIRECTS})`);
-			}
-
-			// Resolve relative redirect URLs against the current URL
-			currentUrl = new URL(location, currentUrl).href;
-
-			// Domain-access authorization for the redirect target.
-			// SSRF for the target is enforced by the transport on the next dispatch.
-			if (authorizeUrl) {
-				await authorizeUrl(currentUrl);
-			}
-
-			continue;
-		}
-
-		break;
+	let response: Response;
+	try {
+		response = await customFetch(url, {
+			signal,
+			headers: {
+				'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
+				Accept:
+					'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
+			},
+			redirect: 'follow',
+		});
+	} catch (error) {
+		throw unwrapFetchError(error);
 	}
 
-	const finalUrl = currentUrl;
+	// `redirect: 'follow'` resolves to the final, non-redirect response.
+	const finalUrl = response.url || url;
 
 	if (!response.ok) {
 		// Release the connection back to the pool — we don't read the error body.

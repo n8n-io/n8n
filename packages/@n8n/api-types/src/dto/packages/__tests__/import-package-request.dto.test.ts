@@ -8,10 +8,14 @@ describe('ImportPackageRequestDto', () => {
 			expect(result.data).toEqual({
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'create-stub',
-				credentialBindings: {},
+				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
@@ -27,10 +31,14 @@ describe('ImportPackageRequestDto', () => {
 			expect(result.data).toEqual({
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'create-stub',
-				credentialBindings: {},
+				bindings: {},
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
@@ -48,10 +56,14 @@ describe('ImportPackageRequestDto', () => {
 				folderId: 'fld-1',
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'create-stub',
-				credentialBindings: {},
+				bindings: {},
 				workflowConflictPolicy: 'new-version',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
@@ -68,18 +80,36 @@ describe('ImportPackageRequestDto', () => {
 				projectId: 'proj-1',
 				credentialMatchingMode: 'id-only',
 				credentialMissingMode: 'create-stub',
-				credentialBindings: {},
+				bindings: {},
 				workflowConflictPolicy: 'skip',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'merge',
+				dataTableMatchingMode: 'by-id',
+				dataTableMissingMode: 'create',
+				dataTableSchemaConflictPolicy: 'keep-existing',
 			});
 		}
 	});
 
+	it.each(['id-only', 'name-and-type', 'type-only'] as const)(
+		'accepts %s as a credentialMatchingMode value',
+		(credentialMatchingMode) => {
+			const result = ImportPackageRequestDto.safeParse({
+				credentialMatchingMode,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.credentialMatchingMode).toBe(credentialMatchingMode);
+			}
+		},
+	);
+
 	it('rejects unsupported credentialMatchingMode values', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
-				credentialMatchingMode: 'name-and-type',
+				credentialMatchingMode: 'fuzzy-match',
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);
@@ -89,6 +119,61 @@ describe('ImportPackageRequestDto', () => {
 		expect(
 			ImportPackageRequestDto.safeParse({
 				credentialMissingMode: 'auto-create',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it.each(['create', 'must-preexist', 'do-nothing'] as const)(
+		'accepts %s as a dataTableMissingMode value',
+		(dataTableMissingMode) => {
+			const result = ImportPackageRequestDto.safeParse({
+				dataTableMissingMode,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.dataTableMissingMode).toBe(dataTableMissingMode);
+			}
+		},
+	);
+
+	it('rejects unsupported dataTableMissingMode values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableMissingMode: 'recreate',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it('rejects unsupported dataTableMatchingMode values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableMatchingMode: 'by-name',
+				workflowConflictPolicy: 'fail',
+			}).success,
+		).toBe(false);
+	});
+
+	it.each(['keep-existing', 'fail'] as const)(
+		'accepts %s as a dataTableSchemaConflictPolicy value',
+		(dataTableSchemaConflictPolicy) => {
+			const result = ImportPackageRequestDto.safeParse({
+				dataTableSchemaConflictPolicy,
+				workflowConflictPolicy: 'fail',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.dataTableSchemaConflictPolicy).toBe(dataTableSchemaConflictPolicy);
+			}
+		},
+	);
+
+	it('rejects unsupported dataTableSchemaConflictPolicy values', () => {
+		expect(
+			ImportPackageRequestDto.safeParse({
+				dataTableSchemaConflictPolicy: 'merge',
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);
@@ -105,31 +190,52 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
-	it('parses credentialBindings from a JSON object string', () => {
+	it('parses bindings from a JSON object string keyed by entity type', () => {
 		const result = ImportPackageRequestDto.safeParse({
-			credentialBindings: '{"source-cred":"target-cred"}',
+			bindings: '{"credentials":{"source-cred":"target-cred"}}',
 			workflowConflictPolicy: 'fail',
 		});
 
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.credentialBindings).toEqual({ 'source-cred': 'target-cred' });
+			expect(result.data.bindings).toEqual({ credentials: { 'source-cred': 'target-cred' } });
 		}
 	});
 
 	it.each([
-		{ name: 'invalid JSON', credentialBindings: 'not json' },
-		{ name: 'array JSON', credentialBindings: '[]' },
-		{ name: 'non-string target id', credentialBindings: '{"source":1}' },
-		{ name: 'empty source id', credentialBindings: '{"":"target"}' },
-		{ name: 'empty target id', credentialBindings: '{"source":""}' },
-	])('rejects credentialBindings with $name', ({ credentialBindings }) => {
+		{ name: 'invalid JSON', bindings: 'not json' },
+		{ name: 'array JSON', bindings: '[]' },
+		{ name: 'non-object credentials map', bindings: '{"credentials":"nope"}' },
+		{ name: 'non-string target id', bindings: '{"credentials":{"source":1}}' },
+		{ name: 'empty source id', bindings: '{"credentials":{"":"target"}}' },
+		{ name: 'empty target id', bindings: '{"credentials":{"source":""}}' },
+		{ name: 'a misspelled credentials key', bindings: '{"credential":{"source":"target"}}' },
+		{ name: 'an unsupported workflows key', bindings: '{"workflows":{"source":"target"}}' },
+		{
+			name: 'a mix of known and unknown keys',
+			bindings: '{"credentials":{"source":"target"},"nope":{"a":"b"}}',
+		},
+	])('rejects bindings with $name', ({ bindings }) => {
 		expect(
 			ImportPackageRequestDto.safeParse({
-				credentialBindings,
+				bindings,
 				workflowConflictPolicy: 'fail',
 			}).success,
 		).toBe(false);
+	});
+
+	it('names the offending key when bindings use an unknown entity type', () => {
+		const result = ImportPackageRequestDto.safeParse({
+			bindings: '{"credential":{"source":"target"}}',
+			workflowConflictPolicy: 'fail',
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const message = result.error.errors.map((issue) => issue.message).join('; ');
+			expect(message).toContain('Unrecognized key');
+			expect(message).toContain('credential');
+		}
 	});
 
 	it('rejects omitted workflowConflictPolicy', () => {

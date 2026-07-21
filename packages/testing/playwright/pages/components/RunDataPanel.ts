@@ -91,6 +91,14 @@ export class RunDataPanel {
 		return this.root.locator('tr').nth(index);
 	}
 
+	getTableRowHighlights(index: number) {
+		return this.getTableRow(index).locator('mark');
+	}
+
+	getTableCellByText(text: string) {
+		return this.getTable().locator(`text=${text}`);
+	}
+
 	getTbodyCell(row: number, col: number) {
 		return this.root.locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
@@ -135,6 +143,14 @@ export class RunDataPanel {
 		return this.getSchemaItems().locator('span').filter({ hasText: text }).first();
 	}
 
+	getSchemaItemToggle(text: string) {
+		return this.getSchemaItem(text).locator('.toggle');
+	}
+
+	getSchemaItemPill(text: string) {
+		return this.getSchemaItemText(text).locator('span');
+	}
+
 	getNodeInputOptions() {
 		return this.root.getByTestId('ndv-input-select');
 	}
@@ -153,6 +169,10 @@ export class RunDataPanel {
 
 	getNodeErrorMessageHeader(): Locator {
 		return this.root.getByTestId('node-error-message');
+	}
+
+	getErrorMessage(): Locator {
+		return this.getNodeErrorMessageHeader().first();
 	}
 
 	async toggleInputRunLinking() {

@@ -24,7 +24,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { IWorkflowToShare, IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import router from '@/app/router';
-import { sanitizeFilename } from '@n8n/utils';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo, WorkflowListEventMap } from '@/features/core/folders/folders.types';
@@ -423,6 +423,7 @@ defineExpose({
 		<N8nActionDropdown
 			:items="workflowMenuItems"
 			data-test-id="workflow-menu"
+			max-height="var(--reka-dropdown-menu-content-available-height)"
 			@select="onWorkflowMenuSelect"
 		/>
 	</div>

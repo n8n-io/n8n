@@ -1,10 +1,13 @@
 import { type InsightsSummary } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
+
+import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
@@ -21,6 +24,7 @@ export class InsightsService {
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
+		private readonly workflowSharingService: WorkflowSharingService,
 	) {
 		this.logger = this.logger.scoped('insights');
 	}
@@ -34,7 +38,7 @@ export class InsightsService {
 			return;
 		}
 
-		const { InsightsCollectionService } = await import('./insights-collection.service');
+		const { InsightsCollectionService } = await import('./insights-collection.service.js');
 		const collectionService = Container.get(InsightsCollectionService);
 		if (enable) {
 			collectionService.init();
@@ -56,14 +60,14 @@ export class InsightsService {
 	}
 
 	@OnLeaderStepdown()
-	stopCompactionAndPruningTimers() {
-		this.compactionService.stopCompactionTimer();
+	async stopCompactionAndPruningTimers() {
 		this.pruningService.stopPruningTimer();
+		await this.compactionService.stopCompactionTimer();
 	}
 
 	async shutdown() {
 		await this.toggleCollectionService(false);
-		this.stopCompactionAndPruningTimers();
+		await this.stopCompactionAndPruningTimers();
 	}
 
 	async getInsightsSummary({
@@ -161,6 +165,7 @@ export class InsightsService {
 	}
 
 	async getInsightsByWorkflow({
+		user,
 		skip = 0,
 		take = 10,
 		sortBy = 'total:desc',
@@ -168,6 +173,7 @@ export class InsightsService {
 		startDate,
 		endDate,
 	}: {
+		user: User;
 		skip?: number;
 		take?: number;
 		sortBy?: string;
@@ -184,9 +190,21 @@ export class InsightsService {
 			projectId,
 		});
 
+		const accessibleWorkflowIds = new Set(
+			await this.workflowSharingService.getSharedWorkflowIds(user, {
+				scopes: ['workflow:read'],
+				projectId,
+			}),
+		);
+
+		const data = rows.map((row) => ({
+			...row,
+			hasReadAccess: row.workflowId !== null && accessibleWorkflowIds.has(row.workflowId),
+		}));
+
 		return {
 			count,
-			data: rows,
+			data,
 		};
 	}
 

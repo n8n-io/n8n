@@ -1,22 +1,33 @@
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+
 function clearUnknownCredentialId(
 	credentialId: unknown,
 	accessibleCredentialIds: ReadonlySet<string>,
+	allowManagedCredentialToken = false,
 ): unknown {
 	if (typeof credentialId !== 'string' || credentialId === '') {
+		return credentialId;
+	}
+
+	if (allowManagedCredentialToken && credentialId === MANAGED_CREDENTIAL_TOKEN) {
 		return credentialId;
 	}
 
 	return accessibleCredentialIds.has(credentialId) ? credentialId : '';
 }
 
+function isManagedEpisodicMemoryCredentialPath(path: readonly string[]): boolean {
+	return path.join('.') === 'memory.episodicMemory.credential';
+}
+
 function sanitizeUnknownCredentialsInValue(
 	value: unknown,
 	accessibleCredentialIds: ReadonlySet<string>,
-	parentKey?: string,
+	path: readonly string[] = [],
 ): unknown {
 	if (Array.isArray(value)) {
 		return value.map((entry) =>
-			sanitizeUnknownCredentialsInValue(entry, accessibleCredentialIds, parentKey),
+			sanitizeUnknownCredentialsInValue(entry, accessibleCredentialIds, path),
 		);
 	}
 
@@ -28,8 +39,13 @@ function sanitizeUnknownCredentialsInValue(
 	const sanitized: Record<string, unknown> = {};
 
 	for (const [key, entry] of Object.entries(record)) {
+		const nextPath = [...path, key];
 		if (key === 'credential' && typeof entry === 'string') {
-			sanitized[key] = clearUnknownCredentialId(entry, accessibleCredentialIds);
+			sanitized[key] = clearUnknownCredentialId(
+				entry,
+				accessibleCredentialIds,
+				isManagedEpisodicMemoryCredentialPath(nextPath),
+			);
 			continue;
 		}
 
@@ -54,7 +70,10 @@ function sanitizeUnknownCredentialsInValue(
 					if (!('id' in credentialRef) || typeof credentialRef.id !== 'string') {
 						return [
 							credType,
-							sanitizeUnknownCredentialsInValue(credentialRef, accessibleCredentialIds, key),
+							sanitizeUnknownCredentialsInValue(credentialRef, accessibleCredentialIds, [
+								...nextPath,
+								credType,
+							]),
 						];
 					}
 
@@ -70,7 +89,7 @@ function sanitizeUnknownCredentialsInValue(
 			continue;
 		}
 
-		sanitized[key] = sanitizeUnknownCredentialsInValue(entry, accessibleCredentialIds, key);
+		sanitized[key] = sanitizeUnknownCredentialsInValue(entry, accessibleCredentialIds, nextPath);
 	}
 
 	return sanitized;

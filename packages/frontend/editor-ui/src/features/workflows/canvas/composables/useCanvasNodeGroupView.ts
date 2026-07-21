@@ -1,9 +1,11 @@
-import { computed, getCurrentScope, onScopeDispose, ref, type InjectionKey } from 'vue';
-import { jsonParse } from 'n8n-workflow';
+import { computed, ref, type InjectionKey } from 'vue';
 import type { NodeGroupChangeEvent } from '@/app/stores/workflowDocument/useWorkflowDocumentNodeGroups';
 import { CHANGE_ACTION } from '@/app/stores/workflowDocument/types';
 import { LOCAL_STORAGE_CANVAS_GROUP_EXPANDED } from '@/app/constants/localStorage';
-import { isStringArrayRecord } from '@/app/utils/objectUtils';
+import type { GroupExpansionMode } from '../canvas.types';
+import { applyOffset } from '../canvas.utils';
+import { useCanvasGroupIdStorage } from './useCanvasGroupIdStorage';
+import { useNodeGroupsSubscription } from './useNodeGroupsSubscription';
 import {
 	aggregateNodeGroupLayoutOffsets,
 	computeNodeGroupLayoutPushes,
@@ -16,7 +18,8 @@ export interface UseCanvasNodeGroupViewDeps {
 	workflowId: () => string;
 	getCurrentGroupIds: () => string[];
 	onNodeGroupsChange: (handler: (event: NodeGroupChangeEvent) => void) => { off: () => void };
-	isGroupingEnabled: () => boolean;
+	// Host override for group expansion; leaves persisted view state untouched.
+	getGroupExpansionMode?: () => GroupExpansionMode | undefined;
 }
 
 export interface NodeGroupNodePosition {
@@ -29,27 +32,6 @@ export type GetNodePositionById = (nodeId: string) => [number, number] | undefin
 export type CanvasNodeGroupView = ReturnType<typeof useCanvasNodeGroupView>;
 
 export const NodeGroupViewKey: InjectionKey<CanvasNodeGroupView> = Symbol('nodeGroupView');
-
-// workflowId -> ordered expanded group ids.
-type ExpandedGroupStore = Record<string, string[]>;
-
-function readStore(): ExpandedGroupStore {
-	try {
-		const raw = localStorage.getItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED) ?? '';
-		const parsed = jsonParse<unknown>(raw, { fallbackValue: {} });
-		return isStringArrayRecord(parsed) ? parsed : {};
-	} catch {
-		return {};
-	}
-}
-
-function writeStore(store: ExpandedGroupStore) {
-	try {
-		localStorage.setItem(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED, JSON.stringify(store));
-	} catch {
-		// Failure is not critical, as collapse state is a view preference
-	}
-}
 
 /** Copy of `ignored` with `nodeIds` added to the set of every group in `groupIds`. */
 function withIgnoredNodes(
@@ -106,8 +88,12 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 	);
 	const componentOffsets = computed(() => aggregateNodeGroupLayoutOffsets(pushEntries.value));
 
+	const storage = useCanvasGroupIdStorage(LOCAL_STORAGE_CANVAS_GROUP_EXPANDED);
+	const usesStoredExpansion = () => deps.getGroupExpansionMode?.() === undefined;
+
 	function persist() {
-		writeStore({ ...readStore(), [deps.workflowId()]: [...expandedGroupIdOrder.value] });
+		if (!usesStoredExpansion()) return;
+		storage.write(deps.workflowId(), [...expandedGroupIdOrder.value]);
 	}
 
 	function clearIgnoredNodesForSourceGroup(id: string) {
@@ -126,13 +112,21 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	// Load the persisted ids, dropping any whose group no longer exists.
 	function restore(presentIds: Set<string>) {
-		const stored = readStore()[deps.workflowId()] ?? [];
-		expandedGroupIdOrder.value = stored.filter((id) => presentIds.has(id));
 		disabledPushSourceGroupIds.value = new Set();
 		ignoredNodeIdsBySourceGroup.value = new Map();
-		persist();
+
+		if (!usesStoredExpansion()) {
+			expandedGroupIdOrder.value = [];
+			return;
+		}
+
+		const storedExpandedGroupIds = storage.read(deps.workflowId());
+		// Prune ids whose group no longer exists
+		expandedGroupIdOrder.value = storedExpandedGroupIds.filter((id) => presentIds.has(id));
+
+		const groupsLoaded = presentIds.size > 0;
+		if (groupsLoaded) persist();
 	}
 
 	function setGroupExpanded(id: string, value: boolean) {
@@ -151,7 +145,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		persist();
 	}
 
-	const isGroupCollapsed = (id: string) => deps.isGroupingEnabled() && !expandedIds.value.has(id);
+	const isGroupCollapsed = (id: string) => !expandedIds.value.has(id);
 
 	function toggleCollapsed(id: string) {
 		setGroupExpanded(id, isGroupCollapsed(id));
@@ -256,7 +250,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 					if (!position) continue;
 					bakedMoves.push({
 						id: nodeId,
-						position: { x: position[0] + offset.x, y: position[1] + offset.y },
+						position: applyOffset(position, offset),
 					});
 				}
 			}
@@ -279,10 +273,7 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 			return [
 				{
 					id: nodeId,
-					position: {
-						x: position[0] + offset.x,
-						y: position[1] + offset.y,
-					},
+					position: applyOffset(position, offset),
 				},
 			];
 		});
@@ -295,15 +286,12 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		return pushedNodeMoves;
 	}
 
-	// Seed from groups already loaded (the SET event can fire before we subscribe).
-	restore(new Set(deps.getCurrentGroupIds()));
-
 	// Default collapse state per change action: SET (workflow load /
 	// replacement) restores the persisted expanded state; ADD (new group)
 	// starts expanded, unless flagged `startCollapsed` (imported/pasted
 	// groups, whose stored positions describe the collapsed layout); DELETE
 	// removes the id; UPDATE leaves collapse state alone.
-	const subscription = deps.onNodeGroupsChange((event) => {
+	function handleNodeGroupsChange(event: NodeGroupChangeEvent) {
 		if (event.action === CHANGE_ACTION.SET) {
 			restore(new Set(event.payload.groups.map((group) => group.id)));
 		} else if (event.action === CHANGE_ACTION.ADD && !event.payload.startCollapsed) {
@@ -318,17 +306,19 @@ export function useCanvasNodeGroupView(deps: UseCanvasNodeGroupViewDeps) {
 		} else if (event.action === CHANGE_ACTION.DELETE) {
 			removeDeletedGroup(event.payload.id);
 		}
-	});
-
-	// Release the subscription with the surrounding scope so the handler
-	// doesn't outlive its owner.
-	if (getCurrentScope()) {
-		onScopeDispose(() => subscription.off());
 	}
 
+	const { reinitialize } = useNodeGroupsSubscription({
+		onNodeGroupsChange: deps.onNodeGroupsChange,
+		onChange: handleNodeGroupsChange,
+		onRebind: () => restore(new Set(deps.getCurrentGroupIds())),
+	});
+
 	return {
+		reinitialize,
 		isGroupCollapsed,
 		toggleCollapsed,
+		setGroupExpanded,
 		syncLayoutComponents,
 		getVisualOffsetForComponent,
 		getVisualOffsetForNode,

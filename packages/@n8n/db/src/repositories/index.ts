@@ -4,6 +4,7 @@ export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-wor
 export { ApiKeyRepository } from './api-key.repository';
 export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
+export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
@@ -35,6 +36,19 @@ export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
+export { ScheduledJobRepository } from './scheduled-job.repository';
+export type {
+	NewScheduledJob,
+	ScheduledJobDefinitionUpdate,
+} from './scheduled-job.repository';
+export { ScheduledTaskRepository } from './scheduled-task.repository';
+export type {
+	ClaimDueTasksOptions,
+	ClaimedRef,
+	HostedClaimedRef,
+	DeleteFinishedTasksOptions,
+	ScheduledTaskMetricSnapshot,
+} from './scheduled-task.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
@@ -48,8 +62,19 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
-export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
+export {
+	WorkflowPublicationTriggerStatusRepository,
+	type TriggerStatusRow,
+} from './workflow-publication-trigger-status.repository';
+export {
+	WorkflowPublishedVersionRepository,
+	type PublishedWorkflowDataForExecution,
+} from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+export { WorkflowReviewRequestRepository } from './workflow-review-request.repository';
+export { WorkflowReviewRequestWorkflowRepository } from './workflow-review-request-workflow.repository';
+export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
+export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,

@@ -124,7 +124,7 @@ Then, **once**, trigger the nightly with `workflow_dispatch` and set `bootstrap_
 
 For a **genuine cold-start** (first run after the ledger is provisioned, the read-all returns `[]`), trigger with `bootstrap_packages: '*'` instead — it acknowledges the empty ledger and skips the per-package divergence check for every entry.
 
-Not yet covered: **jest** packages (need Stryker's jest-runner — different setup) and `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
+Not yet covered: `@n8n/expression-runtime` (it _is_ the isolated-vm engine; blocked on the patch in DEVP-257).
 
 ## State transitions
 
@@ -165,6 +165,8 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
       "package": "n8n-workflow",
       "last_score": 95.12,
       "coverage": 0.93,
+      "churn": 7,
+      "fix_density": 2.41,
       "threshold_at_run": 80,
       "last_checked_at": "2026-05-22T10:03:55.660Z",
       "status": "green",
@@ -186,6 +188,8 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
         "status_after": "green",
         "threshold": 80,
         "coverage": 0.93,
+        "churn": 7,
+        "fix_density": 2.41,
         "mutants_killed": 39,
         "mutants_survived": 2,
         "mutants_no_coverage": 0,
@@ -199,6 +203,10 @@ Two n8n workflows back the pipeline. Both live in the internal Quality project (
 Either array may be empty (manual smoke tests sometimes send only `events`).
 
 Each ledger row also carries `coverage` — the scored file's line-coverage proxy in `[0,1]`, the share of mutants a test actually exercised — written back by `mutate.mjs` after each run. The global picker reads it next cycle as the `(1 − coverage)` term of its value formula, so a file no test touches (`coverage` 0) gets the strongest urge to be scored.
+
+Rows also carry `churn` — the count of commits touching the source file within a recent window (default `90 days`, override with `--churn-window`), derived from git in `emit-payload.mjs`. It feeds the picker's `churn` term so hot files outrank cold ones. On a shallow clone history is truncated and the count would undercount, so `churn` is emitted as `null` rather than a misleading low number.
+
+The third value-formula term, `fix_density`, is emitted the same way — the file's time-decayed, delta-weighted fix-density (the same git-derived signal `signals.mjs` computes: lines changed by `fix:`-shaped commits, decayed by a half-life on commit age). `emit-payload.mjs` reads one per-package `git log --numstat` pass (bounded by `--fix-density-window`, default `1 year`; half-life via `--fix-density-half-life`, default `90` days) and scores each file. A file with no fix commits scores `0` (known: no fixes); a shallow clone or git failure emits `null` (unknown), the same guard as `churn`. A richer variant joining against the bug taxonomy is a possible future enhancement on the writer side, but is not required to feed the picker.
 
 The writer:
 
@@ -219,6 +227,8 @@ The webhook URL is delivered to GHA via the `MUTATION_HEALTH_WEBHOOK` repo secre
       "package": "n8n-workflow",
       "last_score": 95.12,
       "coverage": 0.93,
+      "churn": 7,
+      "fix_density": 2.41,
       "threshold_at_run": 80,
       "last_checked_at": "2026-05-22T10:03:55.660Z",
       "status": "green",

@@ -10,7 +10,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
@@ -20,7 +20,8 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 
-import { AgentsService } from '../agents.service';
+import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import { AgentPublishService } from '../agent-publish.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationService } from './chat-integration.service';
@@ -132,7 +133,8 @@ export class SlackAppSetupService {
 		private readonly credentialsService: CredentialsService,
 		private readonly userRepository: UserRepository,
 		private readonly agentRepository: AgentRepository,
-		private readonly agentsService: AgentsService,
+		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
+		private readonly agentPublishService: AgentPublishService,
 		private readonly chatIntegrationService: ChatIntegrationService,
 		private readonly urlService: UrlService,
 		private readonly outboundHttp: OutboundHttp,
@@ -254,16 +256,19 @@ export class SlackAppSetupService {
 			credentialId: credential.id,
 		} satisfies AgentIntegrationConfig;
 
-		await this.agentsService.saveCredentialIntegration(agent, integration, { broadcast: false });
-		await this.agentsService.publishAgent(session.agentId, session.projectId, user, undefined, {
-			syncIntegrations: false,
+		await this.agentIntegrationPersistenceService.saveCredentialIntegration(agent, integration, {
+			broadcast: false,
 		});
-		await this.chatIntegrationService.connect(
+		await this.agentPublishService.publishAgent(
 			session.agentId,
-			integration,
-			session.userId,
 			session.projectId,
+			user,
+			undefined,
+			{
+				syncIntegrations: false,
+			},
 		);
+		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,
 			integration,

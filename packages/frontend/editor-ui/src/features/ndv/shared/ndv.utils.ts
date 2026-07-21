@@ -340,7 +340,7 @@ export function getParameterTypeOption<T extends keyof NonNullable<INodeProperti
 }
 
 export function isResourceLocatorParameterType(type: NodePropertyTypes) {
-	return type === 'resourceLocator' || type === 'workflowSelector';
+	return type === 'resourceLocator' || type === 'workflowSelector' || type === 'agentSelector';
 }
 
 export function isValidParameterOption(
@@ -433,10 +433,15 @@ export function parseFromExpression(
 			: null;
 	}
 
-	// Fall back to default when the expression can't resolve (e.g. $fromAI() -> null); `??` keeps a real `false`/`0`.
+	// `json` fields (e.g. HTTP Request "JSON Body") store raw text. Switching back to
+	// fixed mode must drop the internal "=" expression marker so the value parses as JSON.
+	if (parameterType === 'json' && typeof currentParameterValue === 'string') {
+		return currentParameterValue ? currentParameterValue.replace(/^=+/, '') : null;
+	}
+  
+  // Fall back to default when the expression can't resolve (e.g. $fromAI() -> null); `??` keeps a real `false`/`0`.
 	if (['number', 'boolean'].includes(parameterType)) {
 		return evaluatedExpressionValue ?? defaultValue;
-	}
 
 	if (typeof evaluatedExpressionValue !== 'undefined') {
 		return evaluatedExpressionValue;

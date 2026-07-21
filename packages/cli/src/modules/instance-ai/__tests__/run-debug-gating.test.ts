@@ -57,6 +57,14 @@ describe('InstanceAiService run debug gating', () => {
 		expect(resumeOptions.onStepStart).toBeUndefined();
 		expect(resumeOptions.onStepFinish).toBeUndefined();
 		expect(service.getRunDebug(runId)).toBeUndefined();
+		// Both terminal paths opt into raw-usage recovery so stopped/errored runs bill.
+		expect(streamOptions.recoverUsageOnAbort).toBe(true);
+		expect(resumeOptions.recoverUsageOnAbort).toBe(true);
+		// Both paths must carry the request-level Anthropic cache directive; without it
+		// on resume, HITL turns reprocess the whole conversation uncached (INS-759).
+		const cacheDirective = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		expect(streamOptions.providerOptions).toEqual(cacheDirective);
+		expect(resumeOptions.providerOptions).toEqual(cacheDirective);
 	});
 
 	it('attaches step hooks and creates run records when run debug is enabled', () => {

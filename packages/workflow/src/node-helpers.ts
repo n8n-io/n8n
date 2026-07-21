@@ -6,7 +6,11 @@ import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 import { v4 as uuid } from 'uuid';
 
-import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+} from './constants';
 import { UnexpectedError, UserError } from './errors';
 import { isExpression } from './expressions/expression-helpers';
 import { isFromAIOnlyExpression } from './from-ai-parse-utils';
@@ -565,6 +569,10 @@ function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IPara
 		}
 
 		for (const displayRule of Object.values(displayOptions)) {
+			if (typeof displayRule !== 'object' || displayRule === null) {
+				continue;
+			}
+
 			for (const parameterName of Object.keys(displayRule)) {
 				if (!dependencies[name].includes(parameterName)) {
 					if (parameterName.charAt(0) === '@') {
@@ -1411,7 +1419,9 @@ function addToIssuesIfMissing(
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
-		((nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		((nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
@@ -1441,6 +1451,55 @@ export function getParameterValueByPath(
 	path: string,
 ) {
 	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
+}
+
+/**
+ * Resolves the property definition for a parameter path, honoring `displayOptions` so that
+ * duplicate-named variants resolve to the one shown for the given node values (e.g. version- or
+ * source-gated parameters). Descends into `collection`/`fixedCollection`; the leading
+ * `parameters.` prefix and array indices in the path are ignored. Returns `undefined` when the
+ * path resolves to no displayed property.
+ */
+export function findDisplayedProperty(
+	parameterPath: string,
+	properties: INodeProperties[],
+	nodeValues: INodeParameters,
+	node: Pick<INode, 'typeVersion'> | null,
+	nodeTypeDescription: INodeTypeDescription | null,
+): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined {
+	const parts = parameterPath.replace(/^parameters\./, '').split('.');
+	let currentPath = '';
+	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
+
+	const findProp = (
+		name: string,
+		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	) =>
+		options.find(
+			(option) =>
+				option.name === name &&
+				displayParameterPath(nodeValues, option, currentPath, node, nodeTypeDescription),
+		);
+
+	for (const part of parts) {
+		const name = part.split('[')[0];
+
+		if (!property) {
+			property = findProp(name, properties);
+		} else if ('options' in property && property.options) {
+			property = findProp(name, property.options);
+			currentPath += `.${name}`;
+		} else if ('values' in property) {
+			property = findProp(name, property.values);
+			currentPath += `.${name}`;
+		} else {
+			return undefined;
+		}
+
+		if (!property) return undefined;
+	}
+
+	return property;
 }
 
 function isINodeParameterResourceLocator(value: unknown): value is INodeParameterResourceLocator {
@@ -1493,7 +1552,9 @@ export function getParameterIssues(
 	}
 
 	if (
-		(nodeProperties.type === 'resourceLocator' || nodeProperties.type === 'workflowSelector') &&
+		(nodeProperties.type === 'resourceLocator' ||
+			nodeProperties.type === 'workflowSelector' ||
+			nodeProperties.type === 'agentSelector') &&
 		isDisplayed
 	) {
 		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
@@ -1759,7 +1820,11 @@ export function isExecutable(
 }
 
 export function isNodeWithWorkflowSelector(node: INode) {
-	return [EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE].includes(node.type);
+	return [
+		EXECUTE_WORKFLOW_NODE_TYPE,
+		WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
+		RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE,
+	].includes(node.type);
 }
 
 /**

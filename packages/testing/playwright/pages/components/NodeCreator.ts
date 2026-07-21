@@ -24,7 +24,9 @@ export class NodeCreator {
 	}
 
 	getNodeItems(): Locator {
-		return this.page.getByTestId('item-iterator-item');
+		// Scope to the node creator root so items from a panel that is still
+		// sliding out during a view transition don't leak into the count.
+		return this.getRoot().getByTestId('item-iterator-item');
 	}
 
 	getCategoryItems(): Locator {
@@ -65,6 +67,17 @@ export class NodeCreator {
 
 	getCategoryItem(text: string): Locator {
 		return this.getCategoryItems().filter({ hasText: text });
+	}
+
+	getCategoryContainer(text: string): Locator {
+		return this.getCategoryItem(text).locator('..');
+	}
+
+	async expectCategoryCollapsed(text: string, collapsed: boolean): Promise<void> {
+		await expect(this.getCategoryContainer(text)).toHaveAttribute(
+			'data-category-collapsed',
+			String(collapsed),
+		);
 	}
 
 	// Actions

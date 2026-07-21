@@ -10,9 +10,9 @@ vi.mock('@n8n/di', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ApplicationError,
-	createDeferredPromise,
 	NodeConnectionTypes,
 	OperationalError,
 	UnexpectedError,
@@ -161,6 +161,17 @@ describe('WorkflowExecute node error forwarding to ErrorReporter', () => {
 		expect(mockErrorReporter.error).toHaveBeenCalledTimes(1);
 		const [reported] = mockErrorReporter.error.mock.calls[0] as [Error];
 		expect(reported).toBe(baseError);
+	});
+
+	it('should not report an axios error', async () => {
+		const axiosError = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:443'), {
+			name: 'AxiosError',
+			isAxiosError: true,
+		});
+
+		await runWorkflowThatThrows(axiosError);
+
+		expect(mockErrorReporter.error).not.toHaveBeenCalled();
 	});
 
 	it('should not report an ApplicationError with no cause', async () => {

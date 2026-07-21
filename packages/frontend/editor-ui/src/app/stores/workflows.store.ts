@@ -26,7 +26,7 @@ import { i18n } from '@n8n/i18n';
 
 import { computed, ref } from 'vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
+import type { ExecutionRedactionQueryDto, WorkflowPublicationStatus } from '@n8n/api-types';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
@@ -166,8 +166,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowId.value = id || '';
 	}
 
-	function resetWorkflow() {
-		const previousId = workflowId.value;
+	function resetWorkflow(outgoingWorkflowId?: string) {
+		// Reset the workflow being torn down. Callers pass it explicitly (the route may
+		// already point at the next workflow); fall back to the current id otherwise.
+		const previousId = outgoingWorkflowId ?? workflowId.value;
 		workflowId.value = '';
 		if (previousId) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousId));
@@ -380,6 +382,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function fetchPublicationStatus(id: string): Promise<WorkflowPublicationStatus> {
+		return await makeRestApiRequest<WorkflowPublicationStatus>(
+			rootStore.restApiContext,
+			'GET',
+			`/workflows/${id}/publication-status`,
+		);
+	}
+
 	async function deactivateWorkflow(id: string, expectedChecksum?: string): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
@@ -534,6 +544,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createNewWorkflow,
 		updateWorkflow,
 		publishWorkflow,
+		fetchPublicationStatus,
 		deactivateWorkflow,
 		updateWorkflowSetting,
 		runWorkflow,

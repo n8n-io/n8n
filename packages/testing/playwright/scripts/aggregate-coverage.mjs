@@ -11,7 +11,7 @@
  *
  * --unit-shards: directory of downloaded unit + integration + frontend lcov
  *   artifacts, nested per-artifact as `<artifact>/<pkg>/coverage/lcov.info`.
- *   Jest and vitest write package-RELATIVE SF paths (`src/foo.ts`); we qualify
+ *   Vitest writes package-RELATIVE SF paths (`src/foo.ts`); we qualify
  *   them to repo-root-relative `packages/<pkg>/src/...` (pkg derived from the
  *   artifact dir) so they MERGE with the already-qualified E2E lcovs instead of
  *   colliding under bare `src/...` keys (every package has a `src/index.ts`).

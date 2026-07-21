@@ -5,9 +5,10 @@ import {
 	type BuiltTelemetry,
 	type BuiltTool,
 	type InterruptibleToolContext,
+	type ScopedMemoryTaskEvent,
 	type ToolContext,
 } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
 	SpanStatusCode,
@@ -43,6 +44,7 @@ import {
 	GEN_AI_COMPLETION,
 	GEN_AI_PROMPT,
 	mergeTraceInputs,
+	rawTracePayload,
 	redactLangSmithTelemetrySpan,
 	sanitizeTracePayload,
 	sanitizeTraceValue,
@@ -75,6 +77,76 @@ const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 
 const otelTraceRuntimes = new Map<string, ProductOtelTraceRuntime>();
 const hostRequire = createRequire(__filename);
+
+/** Every live {@link ProductTelemetryLifetime}, until its provider has shut down. Drained on process shutdown. */
+const activeProductTelemetryLifetimes = new Set<ProductTelemetryLifetime>();
+
+/**
+ * Reference-counts how many holders (the root trace, plus any in-flight
+ * observational-memory task) still need one trace's dedicated LangSmith
+ * provider alive. The root trace holds the initial reference; a queued
+ * observer/reflector task (see `InstanceAiTraceContext.onMemoryTaskEvent`)
+ * retains its own reference before its async body starts, so the provider
+ * can't shut down mid-flight even though the root trace usually finalizes
+ * first. The provider force-flushes then shuts down exactly once, when the
+ * last reference releases.
+ */
+class ProductTelemetryLifetime {
+	private refCount = 1;
+	private shutdownPromise: Promise<void> | undefined;
+
+	constructor(private readonly telemetry: BuiltTelemetry) {
+		activeProductTelemetryLifetimes.add(this);
+	}
+
+	/**
+	 * Add a holder and return its release function. The release function is
+	 * idempotent — calling it more than once only decrements the refcount once.
+	 */
+	retain(): () => Promise<void> {
+		this.refCount++;
+		let released = false;
+		return async () => {
+			if (released) return;
+			released = true;
+			await this.decrementAndMaybeShutdown();
+		};
+	}
+
+	/** Release the trace's own root holder. Callers are responsible for their own idempotence (the root release is already guarded by `ProductOtelTraceRuntime.shutdown`). */
+	async release(): Promise<void> {
+		await this.decrementAndMaybeShutdown();
+	}
+
+	/** Force shutdown now regardless of outstanding holders. Intended for tests and process shutdown. */
+	async shutdownNow(): Promise<void> {
+		await this.shutdown();
+	}
+
+	private async decrementAndMaybeShutdown(): Promise<void> {
+		this.refCount = Math.max(0, this.refCount - 1);
+		if (this.refCount > 0) return;
+		await this.shutdown();
+	}
+
+	private async shutdown(): Promise<void> {
+		this.shutdownPromise ??= (async () => {
+			try {
+				await Telemetry.shutdown(this.telemetry);
+			} catch {
+				// Telemetry teardown is best-effort.
+			}
+			activeProductTelemetryLifetimes.delete(this);
+		})();
+		await this.shutdownPromise;
+	}
+}
+
+/** Shut down every live trace's product telemetry provider. Intended for tests and process shutdown. */
+export async function shutdownProductTelemetryProviders(): Promise<void> {
+	const lifetimes = [...activeProductTelemetryLifetimes];
+	await Promise.all(lifetimes.map(async (lifetime) => await lifetime.shutdownNow()));
+}
 
 /**
  * Fetch wrapper for LangSmith clients:
@@ -109,6 +181,7 @@ interface ProductOtelTraceRuntime {
 	spans: Map<string, OtelApiSpan>;
 	contexts: Map<string, OtelContext>;
 	shutdown: boolean;
+	lifetime: ProductTelemetryLifetime;
 }
 
 interface OTelTracer {
@@ -337,11 +410,24 @@ async function finishProductSpan(
 	}
 
 	if (options?.outputs !== undefined) {
-		const completion = stringifyTracePayload(options.outputs);
+		let completion: string | undefined;
+		let runOutputs: Record<string, unknown> | undefined;
+		if (options.rawOutputs) {
+			// Lossless pre-bounded payload; the export scrubber still redacts inside it.
+			const raw = rawTracePayload(options.outputs);
+			try {
+				completion = JSON.stringify(raw);
+				runOutputs = raw;
+			} catch {
+				// Unserializable (cycles) — fall through to the sanitized path.
+			}
+		}
+		completion ??= stringifyTracePayload(options.outputs);
+		runOutputs ??= sanitizeTracePayload(options.outputs);
 		if (completion !== undefined) {
 			attributes[GEN_AI_COMPLETION] = completion;
 		}
-		run.outputs = sanitizeTracePayload(options.outputs);
+		run.outputs = runOutputs;
 	}
 
 	run.endTime = Date.now();
@@ -383,7 +469,17 @@ async function finishProductSpanBestEffort(
 	}
 }
 
-async function shutdownProductOtelRuntime(
+/**
+ * Release a trace's OTel bookkeeping: mark it not-live, drop its span/context
+ * maps, and release the trace's own reference on its dedicated provider (see
+ * `ProductTelemetryLifetime`). Callers that need pending spans flushed before
+ * this (e.g. the root run) pass `forceFlush: true` to their own span-finish
+ * call first — see `finishRun`. The provider shuts down once every
+ * reference — this root release plus any in-flight observational-memory task
+ * leases — has released, so spans from background tasks that outlive the
+ * trace still export.
+ */
+async function releaseProductOtelRuntime(
 	runtime: ProductOtelTraceRuntime,
 	traceId: string,
 ): Promise<void> {
@@ -394,11 +490,7 @@ async function shutdownProductOtelRuntime(
 	runtime.contexts.clear();
 	otelTraceRuntimes.delete(traceId);
 
-	try {
-		await Telemetry.shutdown(runtime.telemetry);
-	} catch {
-		// Product tracing is best-effort and must not fail or mask agent execution.
-	}
+	await runtime.lifetime.release();
 }
 
 async function withProxyHeaders<T>(
@@ -652,6 +744,11 @@ function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
 	return undefined;
 }
 
+// LANGSMITH_PROJECT lets deployments (e.g. eval CI) route product traces off the default project.
+function resolveDefaultProjectName(): string {
+	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
+}
+
 function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
 	if (readBooleanEnvFlag(process.env.N8N_DIAGNOSTICS_ENABLED) === false) {
 		return false;
@@ -720,7 +817,7 @@ export function releaseTraceClient(traceId: string): void {
 		return;
 	}
 
-	void shutdownProductOtelRuntime(runtime, traceId);
+	void releaseProductOtelRuntime(runtime, traceId);
 }
 
 export interface SubmitLangsmithUserFeedbackOptions {
@@ -933,6 +1030,7 @@ async function startAndFinishProductChildSpan(
 		metadata?: Record<string, unknown>;
 		inputs?: unknown;
 		outputs?: unknown;
+		rawOutputs?: boolean;
 		error?: string;
 		forceFlush?: boolean;
 	},
@@ -956,12 +1054,62 @@ async function startAndFinishProductChildSpan(
 	}
 	await finishProductSpanBestEffort(currentTrace.runtime, childRun, {
 		...(options.outputs !== undefined ? { outputs: options.outputs } : {}),
+		...(options.rawOutputs ? { rawOutputs: true } : {}),
 		...(options.error ? { error: options.error } : {}),
 		metadata: {
 			final_status: options.error ? 'error' : 'completed',
 		},
 		forceFlush: options.forceFlush,
 	});
+}
+
+/**
+ * Emit a trace-only child run, preferring the current turn's ambient trace: a
+ * tool suspended in one turn and resumed in a later one holds a stale handle
+ * whose shut-down runtime silently exports nothing. Returns the path taken.
+ */
+export async function emitTraceOnlyChildRun(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	init: InstanceAiTraceRunInit,
+	finish: { outputs: unknown; rawOutputs?: boolean },
+): Promise<'ambient' | 'handle' | 'skipped'> {
+	// Raw payloads are flagged in metadata so the export scrubber lifts its
+	// structural depth cap for them — keyed on producer-set metadata, not on a
+	// span name any tool could claim.
+	const metadata = finish.rawOutputs
+		? { ...init.metadata, raw_trace_payload: true }
+		: init.metadata;
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		await startAndFinishProductChildSpan(currentTrace, {
+			name: init.name,
+			canonicalName: init.canonicalName,
+			runType: init.runType,
+			tags: init.tags,
+			metadata,
+			inputs: init.inputs,
+			outputs: finish.outputs,
+			rawOutputs: finish.rawOutputs,
+		});
+		return 'ambient';
+	}
+	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
+	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+		try {
+			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
+				...init,
+				metadata,
+			});
+			await fallbackTracing.finishRun(run, {
+				outputs: finish.outputs,
+				...(finish.rawOutputs ? { rawOutputs: true } : {}),
+			});
+			return 'handle';
+		} catch {
+			// Best-effort: tracing must never break the caller.
+		}
+	}
+	return 'skipped';
 }
 
 async function traceProductSuspendableToolExecute(
@@ -1042,6 +1190,26 @@ function createTraceContext(
 ): InstanceAiTraceContext {
 	otelTraceRuntimes.set(rootRun.traceId, otelRuntime);
 
+	// Keyed by ScopedMemoryTaskInfo.id, released exactly once on whichever
+	// terminal event (`completed` | `failed` | `skipped`) arrives first for
+	// that task. A `queued` task retains the trace's provider synchronously —
+	// before its async observer/reflector body starts — so the provider can't
+	// shut down mid-flight even though the root trace usually finalizes first
+	// (see MemoryOrchestrator.saveToMemory, which schedules memory tasks
+	// before the stream's `finish` chunk).
+	const memoryTaskReleases = new Map<string, () => Promise<void>>();
+	const onMemoryTaskEvent = (event: ScopedMemoryTaskEvent): void => {
+		if (event.type === 'queued') {
+			memoryTaskReleases.set(event.task.id, otelRuntime.lifetime.retain());
+			return;
+		}
+		if (event.type === 'started') return;
+		const release = memoryTaskReleases.get(event.task.id);
+		if (!release) return;
+		memoryTaskReleases.delete(event.task.id);
+		void release();
+	};
+
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
 		init: InstanceAiTraceRunInit,
@@ -1089,7 +1257,7 @@ function createTraceContext(
 		if (isRootRun) {
 			await withProxyHeadersBestEffort(
 				proxyConfig,
-				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+				async () => await releaseProductOtelRuntime(otelRuntime, run.traceId),
 			);
 		}
 	};
@@ -1112,7 +1280,7 @@ function createTraceContext(
 		if (isRootRun) {
 			await withProxyHeadersBestEffort(
 				proxyConfig,
-				async () => await shutdownProductOtelRuntime(otelRuntime, run.traceId),
+				async () => await releaseProductOtelRuntime(otelRuntime, run.traceId),
 			);
 		}
 	};
@@ -1126,11 +1294,13 @@ function createTraceContext(
 		messageRun: rootRun,
 		orchestratorRun: actorRun,
 		startChildRun,
+		isLive: () => !otelRuntime.shutdown,
 		withRunTree,
 		withActiveSpan,
 		toHeaders: () => ({}),
 		finishRun,
 		failRun,
+		onMemoryTaskEvent,
 		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
@@ -1597,6 +1767,7 @@ async function createProductOtelRuntime(
 		spans: new Map(),
 		contexts: new Map(),
 		shutdown: false,
+		lifetime: new ProductTelemetryLifetime(telemetry),
 	};
 }
 
@@ -1637,7 +1808,7 @@ export async function createInstanceAiTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
@@ -1699,7 +1870,8 @@ export async function continueInstanceAiTraceContext(
 	}
 
 	const baseMetadata = await buildBaseMetadata(options);
-	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName =
+		existingContext?.projectName ?? options.projectName ?? resolveDefaultProjectName();
 	const continuedMetadata =
 		existingContext && existingContext.rootRun.traceId !== 'stub'
 			? {
@@ -1773,7 +1945,7 @@ export async function createDetachedSubAgentTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata(options);
 
 	const createDetachedRuns = async () => {
@@ -1832,7 +2004,7 @@ export async function createInternalOperationTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata({
 		...options,
 		messageId: options.messageId ?? `internal:${options.operationName}:${options.runId}`,
