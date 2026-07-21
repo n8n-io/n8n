@@ -72,6 +72,7 @@ export class ToolWikipedia implements INodeType {
 			if (item === undefined) {
 				continue;
 			}
+
 			let result: string;
 			try {
 				result = await WikiTool.invoke(item.json);
@@ -89,6 +90,7 @@ export class ToolWikipedia implements INodeType {
 					level: isProgrammerError ? 'error' : 'warning',
 				});
 			}
+
 			response.push({
 				json: { response: result },
 				pairedItem: { item: itemIndex },
