@@ -26,6 +26,7 @@ const newJob = (name: string): NewScheduledJob => ({
 	intervalSeconds: null,
 	fireAt: null,
 	nextRunAt: CLOCK,
+	maxAttempts: 5,
 });
 
 /** A chainable insert query-builder mock; `execute` is set per test. */

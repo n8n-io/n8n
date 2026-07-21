@@ -117,7 +117,7 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		args: string[] = [],
 		options?: ExecuteCommandOptions,
 	): Promise<CommandResult> {
-		await this.ensureRunning();
+		await this.ensureRunning({ abortSignal: options?.abortSignal });
 		const result = await this.client.exec(this.requireSandboxId(), {
 			command: toShellCommand(command, args),
 			env: this.compactEnv(options?.env),

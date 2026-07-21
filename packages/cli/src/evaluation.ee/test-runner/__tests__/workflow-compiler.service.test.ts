@@ -1,10 +1,59 @@
 import type { EvaluationConfig } from '@n8n/db';
-import type { IWorkflowBase } from 'n8n-workflow';
+import { createRequire } from 'module';
+import type {
+	INodeType,
+	INodeTypeDescription,
+	IWorkflowBase,
+	NodeLoadingDetails,
+} from 'n8n-workflow';
+import { join } from 'path';
+
+import type { NodeTypes } from '@/node-types';
 
 import { LlmJudgeProviderRegistry } from '../../llm-judge-provider-registry';
 import { WorkflowCompilerService } from '../workflow-compiler.service';
 
 const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+
+// Load the REAL chat-model node descriptions from the built @n8n/n8n-nodes-langchain
+// package (via absolute-path require, the same mechanism as test-integration's
+// loadNodesFromDist) so these tests bind to the actual node contract the compiler
+// introspects. If a provider node changes its version array or `@version`-gated
+// `model` shape, these tests reflect that change instead of passing against a stale
+// hand-authored replica. Requires the langchain package to be built.
+const nodeRequire = createRequire(__filename);
+const LANGCHAIN_DIR = join(__dirname, '../../../../../@n8n/nodes-langchain');
+
+function realNodeDescription(shortName: string): INodeTypeDescription {
+	const known = nodeRequire(join(LANGCHAIN_DIR, 'dist/known/nodes.json')) as Record<
+		string,
+		NodeLoadingDetails
+	>;
+	const info = known[shortName];
+	const nodeModule = nodeRequire(join(LANGCHAIN_DIR, info.sourcePath)) as Record<
+		string,
+		new () => INodeType
+	>;
+	return new nodeModule[info.className]().description;
+}
+
+// Anthropic exposes `model` as a resource locator on its current (default) version;
+// Ollama keeps it a plain options field on a single version. Any other provider is
+// absent here so the compiler exercises its introspection fallback.
+const ANTHROPIC_DESCRIPTION = realNodeDescription('lmChatAnthropic');
+const OLLAMA_DESCRIPTION = realNodeDescription('lmChatOllama');
+
+const nodeTypes = {
+	getByNameAndVersion: (nodeType: string) => {
+		if (nodeType === '@n8n/n8n-nodes-langchain.lmChatAnthropic') {
+			return { description: ANTHROPIC_DESCRIPTION };
+		}
+		if (nodeType === '@n8n/n8n-nodes-langchain.lmChatOllama') {
+			return { description: OLLAMA_DESCRIPTION };
+		}
+		throw new Error(`unknown node type ${nodeType}`);
+	},
+} as unknown as NodeTypes;
 
 function baseWorkflow(): IWorkflowBase {
 	return {
@@ -59,11 +108,32 @@ function baseConfig(): EvaluationConfig {
 	} as unknown as EvaluationConfig;
 }
 
+function llmJudgeConfig(provider: string, model: string): EvaluationConfig {
+	const config = baseConfig();
+	config.metrics = [
+		{
+			id: 'm-judge',
+			name: 'Correctness',
+			type: 'llm_judge',
+			config: {
+				preset: 'correctness',
+				prompt: 'Judge it',
+				provider,
+				credentialId: 'cred',
+				model,
+				outputType: 'numeric',
+				inputs: { actualAnswer: '={{ $json.a }}', expectedAnswer: '={{ $json.e }}' },
+			},
+		},
+	];
+	return config;
+}
+
 describe('WorkflowCompilerService', () => {
 	let compiler: WorkflowCompilerService;
 
 	beforeEach(() => {
-		compiler = new WorkflowCompilerService(new LlmJudgeProviderRegistry());
+		compiler = new WorkflowCompilerService(new LlmJudgeProviderRegistry(), nodeTypes);
 	});
 
 	it('injects __eval_trigger and leaves the user trigger intact, redirecting the edge to entry', () => {
@@ -172,7 +242,13 @@ describe('WorkflowCompilerService', () => {
 
 		const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
 		expect(model.type).toBe('@n8n/n8n-nodes-langchain.lmChatAnthropic');
-		expect(model.parameters.model).toBe('claude-sonnet-4-6');
+		expect(model.typeVersion).toBe(ANTHROPIC_DESCRIPTION.defaultVersion);
+		expect(model.parameters.model).toEqual({
+			__rl: true,
+			mode: 'list',
+			value: 'claude-sonnet-4-6',
+			cachedResultName: 'claude-sonnet-4-6',
+		});
 		expect(model.credentials).toEqual({ anthropicApi: { id: 'cred-anth', name: '' } });
 
 		expect(compiled.connections['__eval_model_m-judge']).toEqual({
@@ -204,6 +280,44 @@ describe('WorkflowCompilerService', () => {
 		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-judge')!;
 		expect(metric.parameters).not.toHaveProperty('prompt');
 		expect(metric.parameters.metric).toBe('correctness');
+	});
+
+	describe('llm-judge chat-model sub-node shape', () => {
+		it('emits the sub-node at the provider default version with a resource-locator model when the node expects one', () => {
+			const compiled = compiler.compile(
+				baseWorkflow(),
+				llmJudgeConfig('@n8n/n8n-nodes-langchain.lmChatAnthropic', 'claude-sonnet-4-6'),
+			);
+			const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
+			expect(model.typeVersion).toBe(ANTHROPIC_DESCRIPTION.defaultVersion);
+			expect(model.parameters.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'claude-sonnet-4-6',
+			});
+		});
+
+		it('emits a plain-string model at the provider default version when the node model is not a resource locator', () => {
+			const compiled = compiler.compile(
+				baseWorkflow(),
+				llmJudgeConfig('@n8n/n8n-nodes-langchain.lmChatOllama', 'llama3'),
+			);
+			const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
+			expect(model.typeVersion).toBe(OLLAMA_DESCRIPTION.version);
+			expect(model.parameters.model).toBe('llama3');
+		});
+
+		it('falls back to typeVersion 1 with a string model when the provider node type cannot be introspected', () => {
+			// lmChatOpenAi is a registered provider but absent from the node-type double.
+			const compiled = compiler.compile(
+				baseWorkflow(),
+				llmJudgeConfig('@n8n/n8n-nodes-langchain.lmChatOpenAi', 'gpt-4o'),
+			);
+			const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
+			expect(model.typeVersion).toBe(1);
+			expect(model.parameters.model).toBe('gpt-4o');
+		});
 	});
 
 	it('compiles a string_similarity metric to a setMetrics node with metric=stringSimilarity', () => {
