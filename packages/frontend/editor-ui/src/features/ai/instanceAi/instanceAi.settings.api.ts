@@ -34,12 +34,6 @@ export async function updatePreferences(
 	return await makeRestApiRequest(context, 'PUT', '/instance-ai/preferences', body);
 }
 
-export async function fetchModelCredentials(
-	context: IRestApiContext,
-): Promise<InstanceAiModelCredential[]> {
-	return await makeRestApiRequest(context, 'GET', '/instance-ai/settings/credentials');
-}
-
 export async function fetchServiceCredentials(
 	context: IRestApiContext,
 ): Promise<InstanceAiModelCredential[]> {

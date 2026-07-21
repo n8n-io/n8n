@@ -34,8 +34,8 @@ const mockFetchSettings = vi.fn();
 const mockUpdateSettings = vi.fn();
 const mockFetchPreferences = vi.fn();
 const mockUpdatePreferences = vi.fn();
-const mockFetchModelCredentials = vi.fn().mockResolvedValue([]);
 const mockFetchServiceCredentials = vi.fn().mockResolvedValue([]);
+const mockFetchInstanceModelCredentials = vi.fn().mockResolvedValue([]);
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
 
@@ -44,8 +44,8 @@ vi.mock('../instanceAi.settings.api', () => ({
 	updateSettings: (...args: unknown[]) => mockUpdateSettings(...args),
 	fetchPreferences: (...args: unknown[]) => mockFetchPreferences(...args),
 	updatePreferences: (...args: unknown[]) => mockUpdatePreferences(...args),
-	fetchModelCredentials: (...args: unknown[]) => mockFetchModelCredentials(...args),
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
+	fetchInstanceModelCredentials: (...args: unknown[]) => mockFetchInstanceModelCredentials(...args),
 }));
 
 const mockGetGatewayStatus = vi.fn();
@@ -57,6 +57,7 @@ vi.mock('../instanceAi.api', () => ({
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai']>;
 
@@ -97,9 +98,32 @@ describe('useInstanceAiSettingsStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(false);
 		setActivePinia(createPinia());
 		store = useInstanceAiSettingsStore();
 		settingsStore = useSettingsStore();
+	});
+
+	describe('permissions', () => {
+		it('checks related admin scopes independently', () => {
+			vi.mocked(hasPermission)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce(false)
+				.mockReturnValueOnce(false);
+
+			expect(store.canManage).toBe(true);
+			expect(store.canManageAiUsage).toBe(false);
+			expect(store.canManageInstanceCredentials).toBe(false);
+			expect(hasPermission).toHaveBeenNthCalledWith(1, ['rbac'], {
+				rbac: { scope: 'instanceAi:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(2, ['rbac'], {
+				rbac: { scope: 'aiAssistant:manage' },
+			});
+			expect(hasPermission).toHaveBeenNthCalledWith(3, ['rbac'], {
+				rbac: { scope: 'credential:manageInstance' },
+			});
+		});
 	});
 
 	describe('isInstanceAiDisabled', () => {
@@ -256,10 +280,9 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.isWorkflowBuilderAvailable).toBe(false);
 			expect(store.isSandboxEnabled).toBe(false);
-			expect(store.sandboxUnavailableReason).toBeNull();
 		});
 
-		it('exposes the sandbox unavailable reason from module settings', () => {
+		it('keeps the builder unavailable while the sandbox is enabled', () => {
 			setModuleSettings(settingsStore, {
 				sandboxEnabled: true,
 				workflowBuilderAvailable: false,
@@ -268,7 +291,6 @@ describe('useInstanceAiSettingsStore', () => {
 
 			expect(store.isWorkflowBuilderAvailable).toBe(false);
 			expect(store.isSandboxEnabled).toBe(true);
-			expect(store.sandboxUnavailableReason).toBe('N8N_SANDBOX_SERVICE_URL is required.');
 		});
 	});
 

@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
-import { fireEvent } from '@testing-library/vue';
+import { nextTick, ref } from 'vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { VIEWS } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
+import ModelCredentialDialog from '../components/settings/ModelCredentialDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { fetchInstanceModelCredentials, fetchSettings } from '../instanceAi.settings.api';
 import type { FrontendModuleSettings } from '@n8n/api-types';
+import type { ICredentialType } from 'n8n-workflow';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -37,8 +43,8 @@ vi.mock('../instanceAi.settings.api', () => ({
 		localGatewayDisabled: false,
 	}),
 	updatePreferences: vi.fn(),
-	fetchModelCredentials: vi.fn().mockResolvedValue([]),
 	fetchServiceCredentials: vi.fn().mockResolvedValue([]),
+	fetchInstanceModelCredentials: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../instanceAi.api', () => ({
@@ -50,16 +56,21 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { mcpConnectionsExperimentMock, computerUseExperimentMock, browserUseExperimentMock } =
-	vi.hoisted(() => ({
-		mcpConnectionsExperimentMock: vi.fn(),
-		browserUseExperimentMock: vi.fn(),
-		computerUseExperimentMock: vi.fn(),
-	}));
+const {
+	mcpConnectionsExperimentMock,
+	computerUseExperimentMock,
+	browserUseExperimentMock,
+	routerPushMock,
+} = vi.hoisted(() => ({
+	mcpConnectionsExperimentMock: vi.fn(),
+	browserUseExperimentMock: vi.fn(),
+	computerUseExperimentMock: vi.fn(),
+	routerPushMock: vi.fn(),
+}));
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRouter: () => ({ push: vi.fn() }),
+	useRouter: () => ({ push: routerPushMock }),
 }));
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
@@ -75,6 +86,7 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
+const renderModelDialog = createComponentRenderer(ModelCredentialDialog);
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
@@ -101,11 +113,16 @@ describe('SettingsInstanceAiView', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(hasPermission).mockReturnValue(true);
 		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
+		useCredentialsStore().setCredentialTypes([
+			{ name: 'openAiApi', displayName: 'OpenAI', properties: [] },
+			{ name: 'anthropicApi', displayName: 'Anthropic', properties: [] },
+		] satisfies ICredentialType[]);
 		store = useInstanceAiSettingsStore();
 		settingsStore = useSettingsStore();
 		setModuleSettings(settingsStore, { ...defaultModuleSettings });
@@ -113,50 +130,246 @@ describe('SettingsInstanceAiView', () => {
 			settings: {
 				enabled: true,
 				permissions: {},
-				mcpServers: '',
 				mcpAccessEnabled: true,
 				sandboxEnabled: false,
 				sandboxProvider: 'n8n-sandbox',
-				sandboxImage: '',
-				sandboxTimeout: 60,
 				daytonaCredentialId: null,
 				n8nSandboxCredentialId: null,
 				searchCredentialId: null,
+				modelCredentialId: null,
+				modelName: null,
+				modelEnvConfigured: false,
+				sandboxEnvConfigured: false,
+				searchEnvConfigured: false,
 				localGatewayDisabled: false,
 			},
 		});
 	});
 
-	describe('env-only config', () => {
-		it.each([
-			['model', 'instanceAi.settings.section.model'],
-			['search', 'instanceAi.settings.section.search'],
-			['sandbox', 'instanceAi.settings.section.sandbox'],
-			['advanced', 'instanceAi.settings.section.advanced'],
-		])('does not render the %s config section', (_name, titleKey) => {
-			const { queryByText } = renderComponent();
-			expect(queryByText(titleKey)).toBeNull();
+	describe('Model credential dialog', () => {
+		it('hides credential mutation controls without the provider connection scope', async () => {
+			vi.mocked(hasPermission).mockImplementation(
+				(_permissionNames, options) => options?.rbac?.scope !== 'credential:manageInstance',
+			);
+			store.$patch({
+				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
+				instanceModelCredentials: [
+					{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi', provider: 'openai' },
+				],
+			});
+
+			const { getByTestId, queryByTestId } = renderModelDialog({ props: { open: true } });
+			await nextTick();
+
+			expect(getByTestId('n8n-agent-model-credential-select')).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-credential-edit')).not.toBeInTheDocument();
+			expect(queryByTestId('n8n-agent-model-credential-create')).not.toBeInTheDocument();
 		});
 
-		it('renders the Permissions section', () => {
-			const { getByText } = renderComponent();
-			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
-		});
+		it('stages a provider switch and only saves once a model name is committed', async () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelName: 'gpt-4o',
+				},
+				instanceModelCredentials: [
+					{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi', provider: 'openai' },
+					{
+						id: 'anthropic-id',
+						name: 'Anthropic production',
+						type: 'anthropicApi',
+						provider: 'anthropic',
+					},
+				],
+			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, getByText } = renderModelDialog({ props: { open: true } });
+			await nextTick();
 
-		it('renders the enabled status action', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
+			const select = getByTestId('n8n-agent-model-credential-select');
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(getByText('Anthropic production · Anthropic'));
+
+			const saveButton = getByTestId('n8n-agent-model-dialog-save');
+			expect(saveButton).toBeDisabled();
+			expect(save).not.toHaveBeenCalled();
+
+			const modelNameField = getByTestId('n8n-agent-model-name-input');
+			const modelNameInput =
+				modelNameField.tagName === 'INPUT'
+					? (modelNameField as HTMLInputElement)
+					: modelNameField.querySelector('input')!;
+			await fireEvent.update(modelNameInput, 'claude-sonnet-4');
+			await fireEvent.click(saveButton);
+
+			expect(store.draft).toMatchObject({
+				modelCredentialId: 'anthropic-id',
+				modelName: 'claude-sonnet-4',
+			});
+			expect(save).toHaveBeenCalledOnce();
 		});
 	});
 
-	describe('isEnabled fallback for non-admin users', () => {
-		it('falls back to moduleSettings when store.settings is null', () => {
-			store.$patch({ settings: null });
-			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: true });
+	describe('setup chain', () => {
+		beforeEach(() => {
+			vi.mocked(fetchInstanceModelCredentials).mockResolvedValue([
+				{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi', provider: 'openai' },
+			]);
+			store.$patch({
+				instanceModelCredentials: [
+					{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi', provider: 'openai' },
+				],
+			});
+			vi.spyOn(store, 'save').mockImplementation(async () => {
+				store.$patch({
+					settings: { ...store.settings!, ...store.draft },
+				});
+				for (const key of Object.keys(store.draft)) {
+					delete (store.draft as Record<string, unknown>)[key];
+				}
+				return true;
+			});
+		});
 
-			const { getByText } = renderComponent();
-			// When enabled, the local gateway section should render
+		async function completeModelStep(
+			findByTestId: (id: string) => Promise<HTMLElement>,
+			getByTestId: (id: string) => HTMLElement,
+			findByText: (text: string) => Promise<HTMLElement>,
+		) {
+			const select = await findByTestId('n8n-agent-model-credential-select');
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('OpenAI account · OpenAI'));
+			const modelNameField = getByTestId('n8n-agent-model-name-input');
+			const modelNameInput =
+				modelNameField.tagName === 'INPUT'
+					? (modelNameField as HTMLInputElement)
+					: modelNameField.querySelector('input')!;
+			await fireEvent.update(modelNameInput, 'gpt-4.1');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+		}
+
+		it('chains model setup into the sandbox step when both are unconfigured', async () => {
+			const { findByTestId, findByText, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-add'));
+			expect(await findByTestId('n8n-agent-model-dialog-step')).toBeVisible();
+
+			await completeModelStep(findByTestId, getByTestId, findByText);
+
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+			expect(queryByTestId('n8n-agent-sandbox-dialog-back')).toBeVisible();
+		});
+
+		it('lets the user go back to step one and continue without changes', async () => {
+			const { findByTestId, findByText, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-add'));
+			await completeModelStep(findByTestId, getByTestId, findByText);
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-back')).toBeVisible());
+
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-back'));
+			await waitFor(() => expect(getByTestId('n8n-agent-model-dialog-step')).toBeVisible());
+
+			const continueButton = getByTestId('n8n-agent-model-dialog-save');
+			expect(continueButton).not.toBeDisabled();
+			await fireEvent.click(continueButton);
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+		});
+
+		it('opens a plain dialog when only the model is missing', async () => {
+			store.$patch({
+				settings: { ...store.settings!, sandboxEnvConfigured: true },
+			});
+			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-add'));
+
+			expect(await findByTestId('n8n-agent-model-credential-select')).toBeVisible();
+			expect(queryByTestId('n8n-agent-model-dialog-step')).toBeNull();
+		});
+
+		it('opens a plain sandbox dialog when only the sandbox is missing', async () => {
+			store.$patch({
+				settings: { ...store.settings!, modelEnvConfigured: true },
+			});
+			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-add'));
+
+			expect(await findByTestId('n8n-agent-sandbox-credential-select')).toBeVisible();
+			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
+			expect(queryByTestId('n8n-agent-sandbox-dialog-back')).toBeNull();
+		});
+
+		it('editing the configured model row never chains into the sandbox step', async () => {
+			const configured = {
+				...store.settings!,
+				modelCredentialId: 'openai-id',
+				modelName: 'gpt-4o',
+			};
+			store.$patch({ settings: configured });
+			vi.mocked(fetchSettings).mockResolvedValue(configured);
+			const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-row'));
+			const modelNameField = await findByTestId('n8n-agent-model-name-input');
+			expect(queryByTestId('n8n-agent-model-dialog-step')).toBeNull();
+
+			const modelNameInput =
+				modelNameField.tagName === 'INPUT'
+					? (modelNameField as HTMLInputElement)
+					: modelNameField.querySelector('input')!;
+			await fireEvent.update(modelNameInput, 'gpt-4o-mini');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+			await nextTick();
+			expect(queryByTestId('n8n-agent-sandbox-dialog-step')).toBeNull();
+		});
+	});
+
+	describe('status row', () => {
+		it('renders the enabled status action', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelEnvConfigured: true,
+					sandboxEnvConfigured: true,
+				},
+			});
+			const { getByTestId, getByText } = renderComponent();
+			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
+			expect(getByText('settings.n8nAgent.status.enabled')).toBeVisible();
+		});
+
+		it('shows setup required while model or sandbox are unconfigured', () => {
+			const { getByTestId, getByText } = renderComponent();
+			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
+			expect(getByText('settings.n8nAgent.status.setupRequired')).toBeVisible();
+		});
+
+		it('shows an enable button with dimmed sections when disabled but configured', () => {
+			store.$patch({
+				settings: { ...store.settings!, enabled: false, modelCredentialId: 'openai-id' },
+			});
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+
+			const { getByTestId, getByText, queryByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-enable-button')).toBeVisible();
+			expect(queryByTestId('n8n-agent-status-menu')).toBeNull();
 			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
+		});
+	});
+
+	describe('empty state', () => {
+		it('shows the empty state when disabled and never configured', () => {
+			store.$patch({ settings: { ...store.settings!, enabled: false } });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+
+			const { getByText, queryByText } = renderComponent();
+			expect(getByText('settings.n8nAgent.empty.title')).toBeVisible();
+			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
 		});
 
 		it('hides content when disabled via moduleSettings fallback', () => {
@@ -165,6 +378,74 @@ describe('SettingsInstanceAiView', () => {
 
 			const { queryByText } = renderComponent();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+
+		it('falls back to moduleSettings when store.settings is null', () => {
+			store.$patch({ settings: null });
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: true });
+
+			const { getByText } = renderComponent();
+			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
+		});
+	});
+
+	describe('credential rows', () => {
+		it('shows add buttons when nothing is configured', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-model-add')).toBeVisible();
+			expect(getByTestId('n8n-agent-sandbox-add')).toBeVisible();
+			expect(getByTestId('n8n-agent-search-setup')).toBeVisible();
+		});
+
+		it('shows the configured model value once a credential pair is set', () => {
+			store.$patch({
+				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
+				instanceModelCredentials: [
+					{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi', provider: 'openai' },
+				],
+			});
+
+			const { getByText, queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-model-add')).toBeNull();
+			expect(getByText('OpenAI · gpt-4o')).toBeVisible();
+		});
+
+		it('marks env-managed search instead of offering setup', () => {
+			store.$patch({ settings: { ...store.settings!, searchEnvConfigured: true } });
+
+			const { getByText, queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-search-setup')).toBeNull();
+			expect(getByText('settings.n8nAgent.search.managedByEnv')).toBeVisible();
+		});
+
+		it('hides credential rows on managed deployments', () => {
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, proxyEnabled: true });
+
+			const { queryByTestId } = renderComponent();
+			expect(queryByTestId('n8n-agent-model-row')).toBeNull();
+			expect(queryByTestId('n8n-agent-sandbox-row')).toBeNull();
+			expect(queryByTestId('n8n-agent-search-row')).toBeNull();
+		});
+	});
+
+	describe('data sharing', () => {
+		it('links to the AI usage settings instead of duplicating its controls', async () => {
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
+
+			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.AI_SETTINGS });
+		});
+
+		it('does not link without permission to manage AI usage', async () => {
+			vi.mocked(hasPermission).mockImplementation(
+				(_permissionNames, options) => options?.rbac?.scope !== 'aiAssistant:manage',
+			);
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
+
+			expect(routerPushMock).not.toHaveBeenCalled();
 		});
 	});
 
@@ -206,7 +487,7 @@ describe('SettingsInstanceAiView', () => {
 
 		it('persists a change to the MCP access toggle', async () => {
 			const setField = vi.spyOn(store, 'setField');
-			const save = vi.spyOn(store, 'save').mockResolvedValue();
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
 			const { getByTestId } = renderComponent();
 
 			await fireEvent.click(getByTestId('n8n-agent-mcp-access-toggle'));
@@ -215,16 +496,21 @@ describe('SettingsInstanceAiView', () => {
 			expect(save).toHaveBeenCalled();
 		});
 
-		it('shows the Execute MCP tools permission when MCP access is enabled', () => {
-			const { getByTestId } = renderComponent();
-			expect(getByTestId('n8n-agent-permission-executeMcpTool')).toBeVisible();
+		it('shows the Execute MCP tools permission when the group is expanded', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
+
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-executeMcpTool')).toBeVisible());
 		});
 
-		it('hides the Execute MCP tools permission when MCP access is disabled', () => {
+		it('locks the MCP permission group when MCP access is disabled', () => {
 			store.$patch({ settings: { ...store.settings!, mcpAccessEnabled: false } });
 
-			const { queryByTestId } = renderComponent();
+			const { getByText, queryByTestId, queryByLabelText } = renderComponent();
 
+			expect(getByText('settings.n8nAgent.permissions.group.mcpDisabled')).toBeVisible();
+			expect(queryByLabelText('Toggle settings.n8nAgent.permissions.group.mcp')).toBeNull();
 			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
 		});
 
@@ -234,7 +520,49 @@ describe('SettingsInstanceAiView', () => {
 			const { queryByTestId } = renderComponent();
 
 			expect(queryByTestId('n8n-agent-mcp-access-toggle')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-group-mcp')).toBeNull();
+		});
+	});
+
+	describe('Permissions groups', () => {
+		it('renders a row per permission group', () => {
+			const { getByTestId } = renderComponent();
+			for (const group of ['workflows', 'folders', 'dataTables', 'credentials', 'system', 'web']) {
+				expect(getByTestId(`n8n-agent-permission-group-${group}`)).toBeVisible();
+			}
+		});
+
+		it('summarises non-default permissions as exceptions', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					permissions: { createWorkflow: 'always_allow', deleteWorkflow: 'blocked' },
+				},
+			});
+
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-permission-group-workflows').textContent).toContain(
+				'settings.n8nAgent.permissions.group.exceptions',
+			);
+			expect(getByTestId('n8n-agent-permission-group-folders').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
+		it('persists a permission change from an expanded group', async () => {
+			const setPermission = vi.spyOn(store, 'setPermission');
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, getByLabelText, getAllByText } = renderComponent();
+
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.folders'));
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-createFolder')).toBeVisible());
+
+			const select = getByTestId('n8n-agent-permission-createFolder');
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(getAllByText('settings.n8nAgent.permissions.alwaysAllow')[0]);
+
+			expect(setPermission).toHaveBeenCalledWith('createFolder', 'always_allow');
+			expect(save).toHaveBeenCalled();
 		});
 	});
 });

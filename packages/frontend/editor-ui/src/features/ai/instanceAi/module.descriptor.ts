@@ -9,7 +9,6 @@ import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
-	INSTANCE_AI_CREDENTIALS_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 } from './constants';
 import {
@@ -23,8 +22,6 @@ const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const SettingsInstanceAiCredentialsView = async () =>
-	await import('./views/SettingsInstanceAiCredentialsView.vue');
 const ComputerUseSetupModal = async () =>
 	await import('./components/modals/ComputerUseSetupModal.vue');
 const BrowserUseSetupModal = async () =>
@@ -125,24 +122,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middlewareOptions: {
 					rbac: {
 						scope: ['instanceAi:message', 'instanceAi:manage'],
-					},
-				},
-				telemetry: {
-					pageCategory: 'settings',
-				},
-			},
-		},
-		{
-			path: 'assistant/credentials',
-			name: INSTANCE_AI_CREDENTIALS_SETTINGS_VIEW,
-			component: SettingsInstanceAiCredentialsView,
-			meta: {
-				layout: 'settings',
-				middleware: ['authenticated', 'rbac', 'custom'],
-				middlewareOptions: {
-					rbac: {
-						scope: ['instanceAi:manage', 'credential:manageInstance'],
-						options: { mode: 'allOf' },
 					},
 				},
 				telemetry: {
