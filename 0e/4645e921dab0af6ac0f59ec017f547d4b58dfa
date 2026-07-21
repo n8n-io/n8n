@@ -1,0 +1,14 @@
+AGENTS.md
+  h_9c8f56e3400786 221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "0e4645e921dab0af6ac0f59ec017f547d4b58dfa",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
