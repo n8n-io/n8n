@@ -23,11 +23,9 @@ const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
 
-// Curated single-instance libraries must resolve to a single copy in the bundle too.
-// Backend enforces this via the peer model + closure verifier; the frontend bundles
-// with Vite, so dedupe is the equivalent mechanism. Keep in sync with the curated list
-// in scripts/single-instance-libs.mjs.
-const singleInstanceDedupe = ['zod', 'form-data', '@langchain/core', 'reflect-metadata'];
+// zod is the only single-instance-sensitive library the frontend bundles; dedupe it so
+// Vite resolves it to a single copy. The other curated libs are backend-only.
+const singleInstanceDedupe = ['zod'];
 
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },

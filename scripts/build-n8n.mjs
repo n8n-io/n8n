@@ -234,7 +234,7 @@ await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --fil
 // duplicate fails the build. `pnpm deploy` applies workspace overrides, so this path
 // dedupes cleanly today — the `npm install` graph is covered separately in CI.
 echo(chalk.yellow('INFO: Verifying single-instance dependency integrity in the production closure...'));
-const verifyProcess = $`cd ${config.rootDir} && node scripts/verify-single-instance-deps.mjs ${config.compiledAppDir}`;
+const verifyProcess = $`cd ${config.rootDir} && node scripts/single-instance/verify-single-instance-deps.mjs ${config.compiledAppDir}`;
 verifyProcess.pipe(process.stdout);
 await verifyProcess;
 echo(chalk.green('✅ Single-instance dependency check passed'));

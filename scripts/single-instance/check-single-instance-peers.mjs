@@ -23,8 +23,8 @@
  * exact regression the original zod-only check guarded against, now generalized and
  * derived from the tree instead of a hardcoded package list.
  *
- *   node scripts/check-single-instance-peers.mjs          # lint
- *   node scripts/check-single-instance-peers.mjs --write  # regenerate the baseline
+ *   node scripts/single-instance/check-single-instance-peers.mjs          # lint
+ *   node scripts/single-instance/check-single-instance-peers.mjs --write  # regenerate the baseline
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -39,8 +39,13 @@ import {
 } from './single-instance-libs.mjs';
 import { loadWorkspaceManifests } from './workspace-manifests.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const BASELINE_FILE = join(root, 'scripts', 'single-instance-peers-baseline.json');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const BASELINE_FILE = join(
+	root,
+	'scripts',
+	'single-instance',
+	'single-instance-peers-baseline.json',
+);
 
 /** Curated libs subject to the peer rule (pin-only libs are exempt). */
 const PEER_LIBS = CURATED_LIBS.filter((l) => !PIN_ONLY_LIBS.includes(l));

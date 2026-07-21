@@ -158,4 +158,4 @@ jobs:
         with:
           build-command: pnpm build
       - name: Verify full npm-install closure
-        run: node scripts/verify-single-instance-npm-install.mjs --all
+        run: node scripts/single-instance/verify-single-instance-npm-install.mjs --all

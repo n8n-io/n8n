@@ -12,8 +12,8 @@
  * specifiers the same way publishing does), installs them into a scratch dir with
  * npm (no overrides, no workspace), and verifies no curated library duplicates.
  *
- *   node scripts/verify-single-instance-npm-install.mjs --all
- *   node scripts/verify-single-instance-npm-install.mjs @n8n/permissions @n8n/db
+ *   node scripts/single-instance/verify-single-instance-npm-install.mjs --all
+ *   node scripts/single-instance/verify-single-instance-npm-install.mjs @n8n/permissions @n8n/db
  *
  * With explicit names it runs the fast, scoped check (merge-to-master, changed
  * packages); `--all` runs the full check (release prep).
@@ -28,7 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { collectCopies, analyze } from './verify-single-instance-deps.mjs';
 import { loadWorkspaceManifests } from './workspace-manifests.mjs';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Every non-private workspace package: name -> { dir, pkg }. */
 function loadWorkspace() {

@@ -19,7 +19,7 @@
  * scratch tree — NOT the dev `.pnpm` store, which over-reports latent
  * peer-context entries that are never co-loaded.
  *
- *   node scripts/verify-single-instance-deps.mjs <installRoot> [--strict] [--json]
+ *   node scripts/single-instance/verify-single-instance-deps.mjs <installRoot> [--strict] [--json]
  *
  * `--strict` ignores the allowlist (fail on any curated duplicate); `--json`
  * prints a machine-readable report instead of the human summary.

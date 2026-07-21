@@ -1,4 +1,4 @@
-import { CURATED_LIBS } from './scripts/single-instance-libs.mjs';
+import { CURATED_LIBS } from './scripts/single-instance/single-instance-libs.mjs';
 
 /**
  * syncpack enforces one rule for the single-instance-sensitive libraries: they
@@ -8,7 +8,7 @@ import { CURATED_LIBS } from './scripts/single-instance-libs.mjs';
  * narrow, not a monorepo-wide version-consistency gate.
  *
  * The dependencies-shape policy (peerDependencies vs dependencies) is enforced by
- * scripts/check-single-instance-peers.mjs, which needs report-first nuance that a
+ * scripts/single-instance/check-single-instance-peers.mjs, which needs report-first nuance that a
  * declarative syncpack rule cannot express.
  */
 export default {

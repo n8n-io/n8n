@@ -66,7 +66,7 @@ jobs:
         with:
           build-command: pnpm build
       - name: Verify npm-install closure for changed packages
-        run: node scripts/verify-single-instance-npm-install.mjs --changed=${{ github.event.before }}
+        run: node scripts/single-instance/verify-single-instance-npm-install.mjs --changed=${{ github.event.before }}
 
   notify-on-failure:
     name: Notify Slack on failure
