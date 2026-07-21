@@ -1,10 +1,10 @@
 import { binaryToBuffer } from '@n8n/backend-network';
+import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { Service } from '@n8n/di';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
-import { ObjectStoreService } from './object-store/object-store.service.ee';
 import type { BinaryData } from './types';
 
 @Service()
