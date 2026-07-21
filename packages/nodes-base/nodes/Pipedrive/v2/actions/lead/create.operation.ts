@@ -6,8 +6,13 @@ import type {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { pipedriveApiRequest } from '../../transport';
-import { visibleToOption } from '../common.description';
+import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
+import { encodeCustomFieldsV2, resolveCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import {
+	customFieldsCollection,
+	rawCustomFieldKeysOption,
+	visibleToOption,
+} from '../common.description';
 import { currencies } from '../../../utils';
 
 const properties: INodeProperties[] = [
@@ -159,8 +164,10 @@ const properties: INodeProperties[] = [
 				default: false,
 				description: 'Whether the lead was seen by someone in the Pipedrive UI',
 			},
+			customFieldsCollection,
 		],
 	},
+	rawCustomFieldKeysOption,
 ];
 
 const displayOptions = {
@@ -176,6 +183,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
+	const rawKeys = this.getNodeParameter('rawCustomFieldKeys', 0, false) as boolean;
+	let customProperties;
+	if (!rawKeys) {
+		customProperties = await pipedriveGetCustomProperties.call(this, 'lead');
+	}
+
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const body: IDataObject = {
@@ -190,10 +203,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				body.person_id = this.getNodeParameter('person_id', i) as number;
 			}
 
-			const { value, expected_close_date, ...rest } = this.getNodeParameter(
-				'additionalFields',
-				i,
-			) as {
+			const additionalFields = this.getNodeParameter('additionalFields', i);
+			const { value, expected_close_date, ...rest } = additionalFields as {
 				value?: {
 					valueProperties: {
 						amount: number;
@@ -205,7 +216,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			};
 
 			if (Object.keys(rest).length) {
-				Object.assign(body, rest);
+				addFieldsToBody(body, rest as IDataObject);
 			}
 
 			if (value) {
@@ -214,6 +225,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (expected_close_date) {
 				body.expected_close_date = expected_close_date.split('T')[0];
+			}
+
+			if (customProperties) {
+				encodeCustomFieldsV2(customProperties, body);
 			}
 
 			const responseData = await pipedriveApiRequest.call(
@@ -229,6 +244,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				this.helpers.returnJsonArray(responseData.data as IDataObject),
 				{ itemData: { item: i } },
 			);
+
+			if (customProperties) {
+				for (const item of executionData) {
+					resolveCustomFieldsV2(customProperties, item);
+				}
+			}
+
 			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
