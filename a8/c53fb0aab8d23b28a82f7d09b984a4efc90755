@@ -1,19 +1,20 @@
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
   s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,93-94,106-108,229-264,275-288,783-796
-  s_b6381fbb8ddc64::t_ee482984b97cbd 116
-  h_9c8f56e3400786 113-114
   s_b6381fbb8ddc64::t_626896e5a21e72 110-112,115,117-118
+  h_9c8f56e3400786 113-114
+  s_b6381fbb8ddc64::t_ee482984b97cbd 116
   s_b6381fbb8ddc64::t_809d0a0041ae07 7
-  s_c2503c0608a3df::t_289e0c5b2872c4 109
 packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
-  s_70e4a16a672757::t_498ce41e0925d7 6,583-586,588-606
-  s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-221,487-497,499-503,536-537,560-571,573-580
-  s_70e4a16a672757::t_99465de0d4547d 25-30,156-177,195-196,458-486,498,504-523,525-535
-  s_70e4a16a672757::t_548f55dcfa8be1 587
-  s_70e4a16a672757::t_40de41d139ecad 524,572
-  s_70e4a16a672757::t_a10c87b65e1123 538-559,581,607
-  s_70e4a16a672757::t_1ef57baf512bc4 79-80,582,608
-  s_c2503c0608a3df::t_0468c3d32e408a 193-194
+  s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-220,486-496,498-502,535-536,559-570,572-579
+  s_70e4a16a672757::t_40de41d139ecad 523,571
+  s_70e4a16a672757::t_1ef57baf512bc4 221,581,607
+  s_70e4a16a672757::t_99465de0d4547d 25-30,156-177,193-195,458-485,497,503-522,524-534
+  s_70e4a16a672757::t_548f55dcfa8be1 586
+  s_70e4a16a672757::t_a10c87b65e1123 537-558,606
+  s_70e4a16a672757::t_498ce41e0925d7 6,580,582-585,587-605
+  s_70e4a16a672757::t_054f4386e635c2 79-80
+  s_70e4a16a672757::t_1ed0098a0aec0a 196
+  s_70e4a16a672757::t_69bc31d0031457 608
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -41,14 +42,6 @@ packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPub
         "model": "claude-fable-5"
       },
       "human_author": null
-    },
-    "s_c2503c0608a3df": {
-      "agent_id": {
-        "tool": "codex",
-        "id": "019f7ea4-b00f-7082-ab26-2894ae42cef2",
-        "model": "gpt-5.6-sol"
-      },
-      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
