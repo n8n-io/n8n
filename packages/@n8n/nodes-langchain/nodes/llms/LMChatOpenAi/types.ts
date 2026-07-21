@@ -27,6 +27,7 @@ export type ModelOptions = {
 	timeout?: number;
 	maxRetries?: number;
 	topP?: number;
+	extraBody?: string;
 	conversationId?: string;
 	metadata?: string;
 	promptCacheKey?: string;
