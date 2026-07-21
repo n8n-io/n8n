@@ -57,18 +57,32 @@ export async function fetchCollection<T extends IDataObject = IDataObject>(
 	itemIndex: number,
 	endpoint: string,
 	qs: IDataObject,
+	filterPage?: (items: T[]) => T[],
 ): Promise<T[]> {
+	const keep = filterPage ?? ((items: T[]) => items);
 	if (this.getNodeParameter('returnAll', itemIndex)) {
-		return await (microsoftApiRequestAllItems<T>).call(this, endpoint, qs);
+		return keep(await (microsoftApiRequestAllItems<T>).call(this, endpoint, qs));
 	}
-	const response = await (microsoftApiRequest<GraphListResponse<T>>).call(
-		this,
-		'GET',
-		endpoint,
-		{},
-		{ ...qs, $top: this.getNodeParameter('limit', itemIndex) },
-	);
-	return response.value ?? [];
+	// $top is only a page-size hint: a client-side filter can leave a page short
+	// (even empty) while matches exist further on — follow nextLink until the
+	// limit is met or there are no more pages
+	const limit = this.getNodeParameter('limit', itemIndex) as number;
+	const collected: T[] = [];
+	let uri: string | undefined;
+	do {
+		const response = uri
+			? await (microsoftApiRequest<GraphListResponse<T>>).call(this, 'GET', '', {}, {}, uri)
+			: await (microsoftApiRequest<GraphListResponse<T>>).call(
+					this,
+					'GET',
+					endpoint,
+					{},
+					{ ...qs, $top: limit },
+				);
+		collected.push.apply(collected, keep(response.value ?? []));
+		uri = response['@odata.nextLink'];
+	} while (collected.length < limit && uri !== undefined);
+	return collected.slice(0, limit);
 }
 
 export async function fetchTableColumnNames(

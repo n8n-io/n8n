@@ -79,7 +79,10 @@ export async function execute(
 		);
 		const endpoint = workbookSearchEndpoint(siteId, driveId, filterText);
 
-		const found = await (fetchCollection<DriveItem>).call(this, i, endpoint, qs);
-		return found.filter(isWorkbookFile);
+		// Filter per page inside fetchCollection so a limited listing keeps paging
+		// until it has `limit` workbooks, not just whatever the first page holds
+		return await (fetchCollection<DriveItem>).call(this, i, endpoint, qs, (page) =>
+			page.filter(isWorkbookFile),
+		);
 	});
 }
