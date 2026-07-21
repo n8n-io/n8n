@@ -51,11 +51,11 @@ export type ComboboxItemSlots = {
 };
 
 export type ComboboxSlots = {
-	item: (props: { item: ComboboxListItem }) => unknown;
-	label: (props: { item: ComboboxListItem }) => unknown;
-	['item-leading']: SlotProps;
-	['item-label']: (props: { item: ComboboxListItem }) => unknown;
-	['item-trailing']: SlotProps;
+	item?: (props: { item: ComboboxListItem }) => unknown;
+	label?: (props: { item: ComboboxListItem }) => unknown;
+	'item-leading'?: SlotProps;
+	'item-label'?: (props: { item: ComboboxListItem }) => unknown;
+	'item-trailing'?: SlotProps;
 	header?: () => unknown;
 	footer?: () => unknown;
 };
