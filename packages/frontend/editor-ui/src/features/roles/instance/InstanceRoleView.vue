@@ -111,7 +111,14 @@ async function createInstanceRole() {
 	}
 }
 
-async function confirmRoleUpdate(usedByUsers?: number) {
+async function confirmRoleUpdate(slug: string) {
+	// Fetch the usage count at save time so the confirmation also covers
+	// assignments made since the page was loaded.
+	const usedByUsers = await rolesStore
+		.fetchRoleBySlug({ slug })
+		.then((role) => role.usedByUsers)
+		.catch(() => initialState.value?.usedByUsers);
+
 	if (!usedByUsers) return true;
 
 	const confirmed = await message.confirm(
@@ -131,7 +138,7 @@ async function confirmRoleUpdate(usedByUsers?: number) {
 }
 
 async function updateInstanceRole(slug: string) {
-	const proceed = await confirmRoleUpdate(initialState.value?.usedByUsers);
+	const proceed = await confirmRoleUpdate(slug);
 	if (!proceed) return;
 
 	try {
@@ -150,12 +157,7 @@ async function updateInstanceRole(slug: string) {
 			permissions_to: role.scopes,
 		});
 
-		// The update response carries no usage count; keep the fetched one so
-		// subsequent saves in this session still ask for confirmation.
-		initialState.value = structuredClone({
-			...role,
-			usedByUsers: initialState.value?.usedByUsers,
-		});
+		initialState.value = structuredClone(role);
 		showMessage({
 			type: 'success',
 			message: i18n.baseText('roles.instance.action.update.success'),
