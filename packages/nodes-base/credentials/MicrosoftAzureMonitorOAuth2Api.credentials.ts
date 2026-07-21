@@ -105,7 +105,8 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 			},
 		},
 		{
-			// The default scope is built from Grant Type and Resource, so it can't prefill this field
+			// The default scope is built from Grant Type and Resource, so it can't prefill
+			// this field — left blank, the computed default applies instead
 			displayName: 'Enabled Scopes',
 			name: 'enabledScopes',
 			type: 'string',
@@ -123,7 +124,7 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["customScopes"] ? $self["enabledScopes"] : ($self["grantType"] === "clientCredentials" ? $self["resource"] + "/.default" : "")}}',
+				'={{$self["customScopes"] && $self["enabledScopes"] ? $self["enabledScopes"] : ($self["grantType"] === "clientCredentials" ? $self["resource"] + "/.default" : "")}}',
 		},
 		{
 			displayName: 'Authentication',

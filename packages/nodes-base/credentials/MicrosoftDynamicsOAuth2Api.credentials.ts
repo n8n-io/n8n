@@ -121,7 +121,8 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 			},
 		},
 		{
-			// The default scope is built from Subdomain and Region, so it can't prefill this field
+			// The default scope is built from Subdomain and Region, so it can't prefill
+			// this field — left blank, the computed default applies instead
 			displayName: 'Enabled Scopes',
 			name: 'enabledScopes',
 			type: 'string',
@@ -139,7 +140,7 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access https://" + $self["subdomain"] + "." + $self["region"] + "/.default"}}',
+				'={{$self["customScopes"] && $self["enabledScopes"] ? $self["enabledScopes"] : "openid offline_access https://" + $self["subdomain"] + "." + $self["region"] + "/.default"}}',
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',

@@ -15,10 +15,10 @@ describe('MicrosoftDynamicsOAuth2Api Credential', () => {
 		expect(property('enabledScopes')?.default).toBe('');
 	});
 
-	it('should keep the scope hidden and build the standard scopes from subdomain and region when custom scopes are off', () => {
+	it('should keep the scope hidden and build the standard scopes when custom scopes are off or left blank', () => {
 		expect(property('scope')?.type).toBe('hidden');
 		expect(property('scope')?.default).toBe(
-			'={{$self["customScopes"] ? $self["enabledScopes"] : "openid offline_access https://" + $self["subdomain"] + "." + $self["region"] + "/.default"}}',
+			'={{$self["customScopes"] && $self["enabledScopes"] ? $self["enabledScopes"] : "openid offline_access https://" + $self["subdomain"] + "." + $self["region"] + "/.default"}}',
 		);
 	});
 });
