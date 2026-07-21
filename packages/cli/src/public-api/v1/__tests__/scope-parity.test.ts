@@ -57,6 +57,7 @@ type RawOperation = {
 	'x-eov-operation-id'?: string;
 	'x-eov-operation-handler'?: string;
 	'x-required-scope'?: string;
+	'x-decorator-routed'?: boolean;
 };
 
 async function loadEovOperations(): Promise<Operation[]> {
@@ -66,13 +67,12 @@ async function loadEovOperations(): Promise<Operation[]> {
 	for (const [pathStr, methods] of Object.entries(paths)) {
 		for (const method of HTTP_METHODS) {
 			const op = methods[method];
-			if (!op) continue;
-			const operationId = op['x-eov-operation-id'] ?? op.operationId;
-			if (!operationId) {
-				throw new Error(
-					`Missing operationId / x-eov-operation-id for ${method.toUpperCase()} ${pathStr}`,
-				);
-			}
+			// Decorator-routed operations also carry x-eov-* fields (pointing at an unreachable
+			// stub — see decorator-routed.handler.ts, required so eov's operation-handler installer
+			// doesn't choke on them) but are excluded here via x-decorator-routed; they're covered by
+			// loadDecoratorOperations() instead.
+			if (op?.['x-decorator-routed']) continue;
+			if (!op?.['x-eov-operation-id'] || !op?.['x-eov-operation-handler']) continue;
 			ops.push({
 				source: 'eov',
 				pathStr,
