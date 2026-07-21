@@ -1,51 +1,32 @@
+import { collectNodeTypeUsage, type NodeTypeUsage } from './node-type-usage';
 import type { PreparedWorkflow } from './workflow-import.types';
 import type { MissingNodeTypeMode } from '../../n8n-packages.types';
 
 /** A `(type, typeVersion)` pair the target instance cannot resolve. Field names align with the manifest requirements shape. */
-export interface MissingNodeTypeRequirement {
-	type: string;
-	typeVersion: number;
-	usedByWorkflows: string[];
-}
+export type MissingNodeTypeRequirement = NodeTypeUsage;
 
 /**
- * Folds every node of the packaged workflows into unique `(type, typeVersion)`
- * pairs and returns the ones the instance cannot resolve. Disabled nodes still
- * count — they render on canvas and are part of the content. Read-only.
+ * Folds the packaged workflows' nodes into unique `(type, typeVersion)` pairs
+ * and returns the ones the instance cannot resolve. Read-only.
  */
 export function collectMissingNodeTypes(
 	workflows: PreparedWorkflow[],
 	getSupportedVersions: (nodeType: string) => number[] | undefined,
 ): MissingNodeTypeRequirement[] {
+	const usage = collectNodeTypeUsage(
+		workflows.map(({ entity, sourceWorkflowId }) => ({
+			workflowId: sourceWorkflowId,
+			nodes: entity.nodes,
+		})),
+	);
+
 	const supportedByType = new Map<string, number[] | undefined>();
-	const missing = new Map<string, MissingNodeTypeRequirement>();
-
-	for (const { entity, sourceWorkflowId } of workflows) {
-		for (const node of entity.nodes) {
-			if (!supportedByType.has(node.type)) {
-				supportedByType.set(node.type, getSupportedVersions(node.type));
-			}
-			if (supportedByType.get(node.type)?.includes(node.typeVersion)) continue;
-
-			const key = `${node.type}@${node.typeVersion}`;
-			const requirement = missing.get(key);
-			if (requirement) {
-				// Workflows fold sequentially, so a duplicate id can only be the last pushed.
-				if (requirement.usedByWorkflows.at(-1) !== sourceWorkflowId) {
-					requirement.usedByWorkflows.push(sourceWorkflowId);
-				}
-				continue;
-			}
-
-			missing.set(key, {
-				type: node.type,
-				typeVersion: node.typeVersion,
-				usedByWorkflows: [sourceWorkflowId],
-			});
+	return usage.filter(({ type, typeVersion }) => {
+		if (!supportedByType.has(type)) {
+			supportedByType.set(type, getSupportedVersions(type));
 		}
-	}
-
-	return [...missing.values()];
+		return !supportedByType.get(type)?.includes(typeVersion);
+	});
 }
 
 /**

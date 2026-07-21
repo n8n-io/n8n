@@ -76,7 +76,15 @@ export function assertPackageImportApiKeyScopes(
 	}
 }
 
-/** Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match. */
+/**
+ * Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match.
+ *
+ * Trust asymmetry: credential/data-table requirements are manifest-trusted —
+ * they play an index role and a wrong entry degrades softly. Node-type
+ * requirements are advisory only: the import gate re-derives usage from
+ * workflow content (`collectMissingNodeTypes`) because it makes a hard
+ * guarantee. Do not unify the two in the trusting direction.
+ */
 export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
 	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],

@@ -72,6 +72,7 @@ describe('workflow package export — with data tables', () => {
 			const { manifest, entries } = await readExport(stream);
 
 			expect(manifest.requirements).toEqual({
+				nodeTypes: expect.any(Array),
 				dataTables: [
 					{
 						id: dataTable.id,
