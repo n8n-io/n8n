@@ -17,14 +17,13 @@ const validSettings = {
 describe('UpdateOtelSettingsDto', () => {
 	it('requires every field (stays strict, so a partial body is rejected)', () => {
 		const result = UpdateOtelSettingsDto.safeParse({});
-		expect(result.success).toBe(false);
+
+		assert(!result.success, 'Expected validation to fail for an empty body');
 
 		// An empty body must report every field as missing. A field that carries a
 		// default would parse successfully instead of erroring — this guards the
 		// public API PUT against silently resetting omitted fields.
-		const missing = result.success
-			? []
-			: [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
+		const missing = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
 		expect(missing).toEqual(Object.keys(validSettings).sort());
 	});
 
@@ -38,12 +37,28 @@ describe('UpdateOtelSettingsDto', () => {
 			...validSettings,
 			exporterEndpoint: 'not-a-url',
 		});
-		expect(result.success).toBe(false);
+
+		assert(!result.success, 'Expected validation to fail for an invalid exporter endpoint');
+		expect(result.error.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'invalid_string',
+				validation: 'url',
+				path: ['exporterEndpoint'],
+			}),
+		);
 	});
 
 	it('rejects a sample rate outside the 0..1 range', () => {
 		const result = UpdateOtelSettingsDto.safeParse({ ...validSettings, tracesSampleRate: 2 });
-		expect(result.success).toBe(false);
+
+		assert(!result.success, 'Expected validation to fail for an out-of-range sample rate');
+		expect(result.error.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'too_big',
+				maximum: 1,
+				path: ['tracesSampleRate'],
+			}),
+		);
 	});
 });
 
@@ -58,16 +73,31 @@ describe('TestOtelTraceDto', () => {
 
 	it('requires every connection field (stays strict)', () => {
 		const result = TestOtelTraceDto.safeParse({});
-		expect(result.success).toBe(false);
 
-		const missing = result.success
-			? []
-			: [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
+		assert(!result.success, 'Expected validation to fail for an empty body');
+
+		const missing = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))].sort();
 		expect(missing).toEqual(Object.keys(validConnection).sort());
 	});
 
 	it('accepts a full connection body', () => {
 		const result = TestOtelTraceDto.safeParse(validConnection);
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects an invalid exporter endpoint', () => {
+		const result = TestOtelTraceDto.safeParse({
+			...validConnection,
+			exporterEndpoint: 'not-a-url',
+		});
+
+		assert(!result.success, 'Expected validation to fail for an invalid exporter endpoint');
+		expect(result.error.issues).toContainEqual(
+			expect.objectContaining({
+				code: 'invalid_string',
+				validation: 'url',
+				path: ['exporterEndpoint'],
+			}),
+		);
 	});
 });
