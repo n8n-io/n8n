@@ -1,6 +1,4 @@
 import { assertDir } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
-import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
@@ -8,19 +6,23 @@ import path from 'node:path';
 
 import type { ByteStore, ByteStoreKey } from './types';
 
-@Service()
+export type FsByteStoreOptions = {
+	/** Root dir all keys resolve under. */
+	storagePath: string;
+
+	/** Reports a non-fatal error, e.g. a failed temp-file cleanup. */
+	reportError: (error: unknown) => void;
+};
+
 export class FsByteStore implements ByteStore {
-	constructor(
-		private readonly config: StorageConfig,
-		private readonly reporter: ErrorReporter,
-	) {}
+	constructor(private readonly options: FsByteStoreOptions) {}
 
 	async init() {
-		await assertDir(this.config.storagePath);
+		await assertDir(this.options.storagePath);
 	}
 
 	async write(key: ByteStoreKey, body: Buffer) {
-		const writePath = this.resolvePath(key);
+		const writePath = this.getAbsolutePath(key);
 		await assertDir(path.dirname(writePath));
 		const tempPath = `${writePath}.tmp.${process.pid}.${randomUUID()}`;
 
@@ -33,13 +35,13 @@ export class FsByteStore implements ByteStore {
 			return body.length;
 		} finally {
 			if (!success) {
-				await fs.rm(tempPath, { force: true }).catch((error) => this.reporter.error(error));
+				await fs.rm(tempPath, { force: true }).catch((error) => this.options.reportError(error));
 			}
 		}
 	}
 
 	async read(key: ByteStoreKey) {
-		const readPath = this.resolvePath(key);
+		const readPath = this.getAbsolutePath(key);
 		try {
 			return await fs.readFile(readPath);
 		} catch (error) {
@@ -49,29 +51,15 @@ export class FsByteStore implements ByteStore {
 	}
 
 	async delete(keys: ByteStoreKey[]) {
-		const deletePaths = keys.map((key) => this.resolvePath(key));
+		const deletePaths = keys.map((key) => this.getAbsolutePath(key));
 		await Promise.all(deletePaths.map(async (p) => await fs.rm(p, { force: true })));
 		const dirs = [...new Set(deletePaths.map((p) => path.dirname(p)))];
 		await Promise.all(dirs.map(async (dir) => await this.removeEmptyAncestors(dir)));
 	}
 
-	// private methods
-
-	private async removeEmptyAncestors(dir: string) {
-		const storagePath = path.resolve(this.config.storagePath);
-		let current = dir;
-		while (current.startsWith(storagePath) && current !== storagePath) {
-			try {
-				await fs.rmdir(current);
-			} catch {
-				return; // non-empty (ENOTEMPTY) or already gone (ENOENT)
-			}
-			current = path.dirname(current);
-		}
-	}
-
-	private resolvePath(key: ByteStoreKey) {
-		const storagePath = path.resolve(this.config.storagePath);
+	/** Absolute filesystem path for `key`, guarded against escaping the storage root. */
+	getAbsolutePath(key: ByteStoreKey) {
+		const storagePath = path.resolve(this.options.storagePath);
 		const resolvedPath = path.resolve(storagePath, key);
 		const relativePath = path.relative(storagePath, resolvedPath);
 
@@ -82,6 +70,21 @@ export class FsByteStore implements ByteStore {
 		}
 
 		return resolvedPath;
+	}
+
+	// private methods
+
+	private async removeEmptyAncestors(dir: string) {
+		const storagePath = path.resolve(this.options.storagePath);
+		let current = dir;
+		while (current.startsWith(storagePath) && current !== storagePath) {
+			try {
+				await fs.rmdir(current);
+			} catch {
+				return; // non-empty (ENOTEMPTY) or already gone (ENOENT)
+			}
+			current = path.dirname(current);
+		}
 	}
 
 	private isFileNotFound(error: unknown): error is NodeJS.ErrnoException {

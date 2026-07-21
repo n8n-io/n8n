@@ -8,7 +8,8 @@ import { computed, ref, watch, onMounted } from 'vue';
 import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../projects.types';
 import type { ProjectSearchFn } from '../projects.utils';
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 
 import {
 	N8nBadge,

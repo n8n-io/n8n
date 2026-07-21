@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { ObjectStoreService } from '@n8n/blob-storage';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
+import type { ObjectStoreService } from '../object-store/object-store.service.ee';
 import { S3ByteStore } from '../s3-byte-store.ee';
 import { body, s3NotFoundError, s3NoSuchBucketError, s3ThrottledError } from './mocks';
 
