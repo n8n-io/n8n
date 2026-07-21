@@ -188,12 +188,20 @@ export const objectOperations: INodeProperties[] = [
 								if (bodyData.acl) {
 									try {
 										bodyData.acl = JSON.parse(bodyData.acl as string);
-									} catch (error) {}
+									} catch (error) {
+										console.warn('Failed to parse Google Cloud Storage object ACL as JSON', {
+											error: error instanceof Error ? error.message : error,
+										});
+									}
 								}
 								if (bodyData.metadata) {
 									try {
 										bodyData.metadata = JSON.parse(bodyData.metadata as string);
-									} catch (error) {}
+									} catch (error) {
+										console.warn('Failed to parse Google Cloud Storage object metadata as JSON', {
+											error: error instanceof Error ? error.message : error,
+										});
+									}
 								}
 								metadata = Object.assign(metadata, bodyData);
 
@@ -553,12 +561,20 @@ export const objectOperations: INodeProperties[] = [
 								if (body.acl) {
 									try {
 										body.acl = JSON.parse(body.acl as string);
-									} catch (error) {}
+									} catch (error) {
+										console.warn('Failed to parse Google Cloud Storage object ACL as JSON', {
+											error: error instanceof Error ? error.message : error,
+										});
+									}
 								}
 								if (body.metadata) {
 									try {
 										body.metadata = JSON.parse(body.metadata as string);
-									} catch (error) {}
+									} catch (error) {
+										console.warn('Failed to parse Google Cloud Storage object metadata as JSON', {
+											error: error instanceof Error ? error.message : error,
+										});
+									}
 								}
 
 								// Merge in the options into the queryset and headers objects

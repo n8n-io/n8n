@@ -282,7 +282,12 @@ export class Webhook extends Node {
 		if (nodeVersion > 1 && !req.body && !options.rawBody) {
 			try {
 				return await this.handleBinaryData(context, prepareOutput);
-			} catch (error) {}
+			} catch (error) {
+				// If binary data handling fails, continue with normal processing
+				console.debug('Failed to handle binary data in webhook, continuing with normal processing', {
+					error: error instanceof Error ? error.message : error,
+				});
+			}
 		}
 
 		if (options.rawBody && !req.rawBody) {
