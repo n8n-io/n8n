@@ -117,6 +117,7 @@ describe('McpAgentToolsService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		userHasScopesMock.mockResolvedValue(true);
+		agentsService.findByIdForUser.mockResolvedValue(agentEntity());
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
 
 		tools = new Map();
@@ -164,7 +165,7 @@ describe('McpAgentToolsService', () => {
 	});
 
 	describe('scope enforcement', () => {
-		const identity = { projectId: 'project-1', agentId: 'agent-1' };
+		const identity = { agentId: 'agent-1' };
 
 		test.each<[string, string, Record<string, unknown>]>([
 			['search_agents', 'agent:list', { projectId: 'project-1' }],
@@ -793,14 +794,14 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
-	describe('projectId resolution', () => {
+	describe('project resolution', () => {
 		beforeEach(() => {
 			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
 			agentSkillsService.listSkills.mockResolvedValue([] as never);
 			agentTaskService.list.mockResolvedValue([] as never);
 		});
 
-		it('resolves the project from agentId when projectId is omitted', async () => {
+		it('resolves the project from the agentId', async () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
 			agentsService.findById.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
 
@@ -813,14 +814,6 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ ok: true });
 		});
 
-		it('skips resolution when projectId is supplied', async () => {
-			agentsService.findById.mockResolvedValue(agentEntity());
-
-			await callTool('get_agent', { projectId: 'project-1', agentId: 'agent-1' });
-
-			expect(agentsService.findByIdForUser).not.toHaveBeenCalled();
-		});
-
 		it('returns an error when the agentId resolves to no accessible agent', async () => {
 			agentsService.findByIdForUser.mockResolvedValue(null);
 
@@ -830,7 +823,7 @@ describe('McpAgentToolsService', () => {
 			expect(result.structuredContent).toMatchObject({ error: 'Agent "ghost" not found' });
 		});
 
-		it('applies a mutation against the resolved project when projectId is omitted', async () => {
+		it('applies a mutation against the resolved project', async () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
 			agentConfigService.getConfig.mockResolvedValue(baseConfig);
 			agentConfigService.updateConfig.mockResolvedValue({

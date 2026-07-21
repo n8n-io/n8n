@@ -40,8 +40,8 @@ creating either one.
 ## Build sequence
 
 1. Use search_projects to identify the project, or search_agents and get_agent for an existing Agent.
-   By-ID tools (get_agent, mutate_agent, validate_agent, publish_agent, delete_agent,
-   update_agent_integration) accept an agentId alone; projectId is optional and resolved from it.
+   By-ID tools (get_agent, mutate_agent, validate_agent, publish_agent, unpublish_agent,
+   delete_agent, update_agent_integration) take an agentId alone and resolve the project from it.
 2. Use discover_agent_assets plus list_credentials, search_nodes, get_node_types, and
    explore_node_resources to ground model, tool, workflow, integration, and credential choices.
 3. For a new Agent, call create_agent with the initial config after discovering its assets. The

@@ -86,11 +86,6 @@ const httpUrlSchema = z
 	.refine((value) => /^https?:\/\//i.test(value), { message: 'Must be a valid HTTP(S) URL' });
 
 const agentIdentityShape = {
-	projectId: z
-		.string()
-		.min(1)
-		.optional()
-		.describe('Project containing the Agent. Optional; resolved from agentId when omitted.'),
 	agentId: z.string().min(1).describe('Agent ID'),
 } satisfies z.ZodRawShape;
 
@@ -367,9 +362,9 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId: projectIdArg, agentId }) =>
-				await this.run(user, 'get_agent', { projectId: projectIdArg, agentId }, async () => {
-					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
+			handler: async ({ agentId }) =>
+				await this.run(user, 'get_agent', { agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId);
 					await this.assertScope(user, projectId, 'agent:read');
 					return { ok: true, ...(await this.getAgentSnapshot(user, projectId, agentId)) };
 				}),
@@ -459,9 +454,9 @@ export class McpAgentToolsService {
 				await this.run(
 					user,
 					'mutate_agent',
-					{ projectId: input.projectId, agentId: input.agentId, type: input.operation.type },
+					{ agentId: input.agentId, type: input.operation.type },
 					async () => {
-						const projectId = await this.resolveProjectId(user, input.agentId, input.projectId);
+						const projectId = await this.resolveProjectId(user, input.agentId);
 						await this.assertScope(user, projectId, 'agent:update');
 						const config = await this.agentConfigService.getConfig(input.agentId, projectId);
 						const configHash = getAgentConfigHash(config);
@@ -510,9 +505,9 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId: projectIdArg, agentId }) =>
-				await this.run(user, 'validate_agent', { projectId: projectIdArg, agentId }, async () => {
-					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
+			handler: async ({ agentId }) =>
+				await this.run(user, 'validate_agent', { agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId);
 					await this.assertScope(user, projectId, 'agent:read');
 					return {
 						ok: true,
@@ -538,9 +533,9 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId: projectIdArg, agentId }) =>
-				await this.run(user, 'publish_agent', { projectId: projectIdArg, agentId }, async () => {
-					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
+			handler: async ({ agentId }) =>
+				await this.run(user, 'publish_agent', { agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId);
 					await this.assertScope(user, projectId, 'agent:publish');
 					const validation = await this.validateAgent(user, projectId, agentId);
 					if (!validation.valid) {
@@ -575,9 +570,9 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId: projectIdArg, agentId }) =>
-				await this.run(user, 'unpublish_agent', { projectId: projectIdArg, agentId }, async () => {
-					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
+			handler: async ({ agentId }) =>
+				await this.run(user, 'unpublish_agent', { agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId);
 					await this.assertScope(user, projectId, 'agent:unpublish');
 					const agent = await this.agentPublishService.unpublishAgent(agentId, projectId);
 					return {
@@ -605,9 +600,9 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId: projectIdArg, agentId }) =>
-				await this.run(user, 'delete_agent', { projectId: projectIdArg, agentId }, async () => {
-					const projectId = await this.resolveProjectId(user, agentId, projectIdArg);
+			handler: async ({ agentId }) =>
+				await this.run(user, 'delete_agent', { agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId);
 					await this.assertScope(user, projectId, 'agent:delete');
 					const deleted = await this.agentsService.delete(agentId, projectId);
 					if (!deleted) throw new UserError(`Agent "${agentId}" not found`);
@@ -693,7 +688,6 @@ export class McpAgentToolsService {
 					user,
 					'update_agent_integration',
 					{
-						projectId: input.projectId,
 						agentId: input.agentId,
 						action: input.action,
 						type: input.type,
@@ -1060,7 +1054,7 @@ export class McpAgentToolsService {
 	}
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
-		const projectId = await this.resolveProjectId(user, input.agentId, input.projectId);
+		const projectId = await this.resolveProjectId(user, input.agentId);
 		await this.assertScope(user, projectId, 'agent:update');
 		const agent = await this.getAgentOrThrow(input.agentId, projectId);
 		return input.action === 'disconnect'
@@ -1178,12 +1172,11 @@ export class McpAgentToolsService {
 	}
 
 	/**
-	 * Resolves the project a by-ID tool should act on. Clients that already hold
-	 * the projectId pass it through; otherwise it is derived from the agentId,
-	 * scoped to the projects the user can access.
+	 * An Agent belongs to exactly one project, so by-ID tools derive the project
+	 * from the agentId rather than making the client supply it, scoped to the
+	 * projects the user can access.
 	 */
-	private async resolveProjectId(user: User, agentId: string, projectId?: string): Promise<string> {
-		if (projectId) return projectId;
+	private async resolveProjectId(user: User, agentId: string): Promise<string> {
 		const agent = await this.agentsService.findByIdForUser(agentId, user.id);
 		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
 		return agent.projectId;
