@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { DataSource, EntityManager, ObjectLiteral } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -9,6 +10,7 @@ import { TypeOrmTransaction, TypeOrmTransactionRunner } from '../typeorm-transac
 describe('TypeOrmTransactionRunner', () => {
 	const managerFromTransaction = mock<EntityManager>();
 	const dataSource = mock<DataSource>();
+	const logger = mock<Logger>();
 
 	const transactionMock =
 		vi.fn<(...args: [unknown, ((m: EntityManager) => Promise<unknown>)?]) => Promise<unknown>>();
@@ -25,7 +27,7 @@ describe('TypeOrmTransactionRunner', () => {
 			return await runInTransaction(managerFromTransaction);
 		});
 		dataSource.transaction = transactionMock as never;
-		runner = new TypeOrmTransactionRunner(dataSource);
+		runner = new TypeOrmTransactionRunner(dataSource, logger);
 	});
 
 	it('opens a new transaction and hands the callback a context carrying it', async () => {
@@ -54,6 +56,34 @@ describe('TypeOrmTransactionRunner', () => {
 		expect(transactionMock).not.toHaveBeenCalled();
 		expect(received).toBe(contextWithTrx);
 		expect(received?.trx).toBe(trx);
+	});
+
+	it('warns when joining a transaction whose active level differs from the requested one', async () => {
+		const trx = new TypeOrmTransaction(managerFromTransaction, 'READ COMMITTED');
+		let ran = false;
+
+		await runner.run(
+			{ trx },
+			async () => {
+				ran = true;
+			},
+			{ isolationLevel: 'SERIALIZABLE' },
+		);
+
+		// The requested level is ignored (no new transaction), but the caller is warned.
+		expect(transactionMock).not.toHaveBeenCalled();
+		expect(ran).toBe(true);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('SERIALIZABLE'));
+	});
+
+	it('does not warn when joining with a matching or absent requested level', async () => {
+		const trx = new TypeOrmTransaction(managerFromTransaction, 'SERIALIZABLE');
+
+		await runner.run({ trx }, async () => undefined, { isolationLevel: 'SERIALIZABLE' });
+		await runner.run({ trx }, async () => undefined);
+
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('passes the isolation level through to the driver', async () => {
@@ -105,7 +135,7 @@ describe('BaseRepository.managerFor', () => {
 	});
 
 	it('throws when the transaction was not created by the TypeORM runner', () => {
-		const foreign: OperationContext = { trx: {} as Transaction };
+		const foreign: OperationContext = { trx: {} as unknown as Transaction };
 
 		expect(() => repository.resolve(foreign)).toThrow(UnexpectedError);
 	});

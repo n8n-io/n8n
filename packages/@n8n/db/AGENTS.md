@@ -16,6 +16,13 @@ type its parameters and return value in **domain terms** — don't surface
 add generic `find(options)` passthroughs. This keeps operators and query
 construction inside the persistence layer where they belong.
 
+## Transactions
+
+Both transaction primitives live here: the deprecated `withTransaction` helper
+(`src/utils/transaction.ts`) and the `TransactionRunner` port
+(`src/services/transaction.ts`). New code uses `TransactionRunner`; see the root
+and `packages/cli` AGENTS.md for which to use and why.
+
 ## Database migrations
 
 For full guidance on authoring migrations — scaffolding, the pre-flight

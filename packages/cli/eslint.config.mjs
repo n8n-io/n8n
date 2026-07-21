@@ -209,6 +209,42 @@ export default defineConfig(
 		},
 	},
 	{
+		// Ratchet allowlist: known relabel leaks — business logic importing a TypeORM
+		// operator/driver type (`In`, `Not`, `EntityManager`, `FindOptionsWhere`, …) from
+		// `@n8n/db` instead of `@n8n/typeorm`. Same rule, same shrink-only contract:
+		// NEVER add to this list — a new relabel must fail CI. Entries removed as each file
+		// drops TypeORM in favor of a use-case repository method.
+		files: [
+			'./src/binary-data/database.manager.ts',
+			'./src/events/relays/telemetry.event-relay.ts',
+			'./src/executions/execution-data/db-store.ts',
+			'./src/executions/execution-persistence.ts',
+			'./src/executions/execution-recovery.service.ts',
+			'./src/executions/execution.service.ts',
+			'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
+			'./src/modules/agents/agents.service.ts',
+			'./src/modules/chat-hub/chat-hub-agent.service.ts',
+			'./src/modules/chat-hub/chat-hub-title.service.ts',
+			'./src/modules/chat-hub/chat-hub-tool.service.ts',
+			'./src/modules/chat-hub/chat-hub.models.service.ts',
+			'./src/modules/chat-hub/chat-hub.service.ts',
+			'./src/modules/chat-hub/chat-hub.settings.service.ts',
+			'./src/modules/dynamic-credentials.ee/services/credential-resolver-workflow.service.ts',
+			'./src/permissions.ee/check-access.ts',
+			'./src/scheduling/durable-job-provisioner.ts',
+			'./src/scheduling/durable-scheduler.ts',
+			'./src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts',
+			'./src/security-audit/risk-reporters/credentials-risk-reporter.ts',
+			'./src/services/role-cache.service.ts',
+			'./src/services/role.service.ts',
+			'./src/services/user.service.ts',
+			'./src/workflows/workflow-creation.service.ts',
+		],
+		rules: {
+			'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
+		},
+	},
+	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'off',

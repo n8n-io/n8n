@@ -16,8 +16,20 @@ export type IsolationLevel =
 /**
  * Opaque transaction handle. Implementations own the native driver handle privately;
  * callers only ever pass it back through repository methods.
+ *
+ * Abstract class (not an `interface`) so the `private` field makes it nominal: an
+ * arbitrary object no longer satisfies `Transaction` structurally, so business logic
+ * can't fabricate one at compile time. The stored isolation level lets the runner
+ * detect a nested `run` requesting a level that differs from the active transaction's.
  */
-export interface Transaction {}
+export abstract class Transaction {
+	constructor(private readonly isolationLevel?: IsolationLevel) {}
+
+	/** The isolation level this transaction was opened with, if one was requested. */
+	getIsolationLevel(): IsolationLevel | undefined {
+		return this.isolationLevel;
+	}
+}
 
 /**
  * Ambient operation context, created at the edge and threaded through the call chain as

@@ -16,7 +16,7 @@ export const NoMisplacedTypeormImportDisableRule = ESLintUtils.RuleCreator.witho
 		},
 		messages: {
 			noDisable:
-				'Do not disable `misplaced-n8n-typeorm-import` inline. Move the import to `@n8n/db`, or add the file to the allowlist in packages/cli/eslint.config.mjs.',
+				'Do not disable `misplaced-n8n-typeorm-import` inline. Keep TypeORM in the persistence layer (add a use-case repository method), or add the file to the allowlist in packages/cli/eslint.config.mjs.',
 		},
 		schema: [],
 	},
