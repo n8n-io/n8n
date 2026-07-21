@@ -47,7 +47,7 @@ const errorMessage = computed(() => {
 });
 
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
-// Known clients get their brand mark on the left tile, like the demo's authorize view.
+// Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
 const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
 const hasScopes = computed(() => availableScopes.value.length > 0);
@@ -149,8 +149,8 @@ onMounted(async () => {
 					<component :is="clientBrandIcon" v-if="clientBrandIcon" :class="$style['brand-icon']" />
 					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
 				</div>
-				<!-- Pending-connection connector (ported from the prototype's authorize view): a dashed
-				     SVG line marching toward the n8n tile with a slow muted spinner badge. Decorative. -->
+				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
+				     with a slow muted spinner badge. Decorative. -->
 				<span :class="$style.connector" aria-hidden="true">
 					<svg viewBox="0 0 64 8" preserveAspectRatio="none">
 						<line
@@ -503,7 +503,7 @@ onMounted(async () => {
 	margin-bottom: 0;
 }
 
-/* CTAs sit at the right, like the demo's authorize actions. */
+/* CTAs sit at the right; the trust checkbox anchors the left edge of the row. */
 .footer-actions {
 	display: flex;
 	flex-direction: row;

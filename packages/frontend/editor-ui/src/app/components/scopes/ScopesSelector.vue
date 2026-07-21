@@ -425,7 +425,7 @@ function toggleScope(scope: S, checked: boolean) {
 </template>
 
 <style module lang="scss">
-/* The demo's scope picker renders option and checkbox labels at 12px. */
+/* Option and checkbox labels render at 12px here, one step below the body copy. */
 .selector {
 	--radio-group-item--label--font-size: var(--font-size--2xs);
 	--checkbox--label--font-size: var(--font-size--2xs);
@@ -498,8 +498,8 @@ function toggleScope(scope: S, checked: boolean) {
 	overflow-y: auto;
 }
 
-/* Compact rows like the demo's scope tree (~24px pitch): the ghost toggle is the
-   tallest thing in the row, so cap it instead of padding the whole row. */
+/* Compact rows (~24px pitch): the ghost toggle is the tallest thing in the row,
+   so cap it instead of padding the whole row. */
 .groupHeader {
 	display: flex;
 	align-items: center;
