@@ -240,7 +240,7 @@ export abstract class AbstractServer {
 			// Slack posts all button clicks to one fixed URL, so the ids travel in the button
 			// value instead of the path.
 			this.app.all(
-				`/${this.endpointWebhookWaiting}${SLACK_HITL_WEBHOOK_SUFFIX}`,
+				`${this.pathResolvingService.resolveWebhookWaitingEndpoint()}${SLACK_HITL_WEBHOOK_SUFFIX}`,
 				createWebhookHandlerFor(Container.get(SlackInteractionWebhooks)),
 			);
 
