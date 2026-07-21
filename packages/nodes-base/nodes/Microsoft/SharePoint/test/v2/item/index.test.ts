@@ -131,6 +131,22 @@ describe('Microsoft SharePoint v2 — item search', () => {
 		expect(result.results).toEqual([{ name: 'Quarterly Report', value: '1' }]);
 	});
 
+	it('walks further pages to find a filter match that is not on the first page', async () => {
+		const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/lists/l/items?$skiptoken=abc';
+		apiRequest
+			.mockResolvedValueOnce({
+				value: [{ id: '1', fields: { FileLeafRef: 'unrelated.txt' } }],
+				'@odata.nextLink': nextLink,
+			})
+			.mockResolvedValueOnce({ value: [{ id: '2', fields: { FileLeafRef: 'trash.txt' } }] });
+
+		const result = await getItems.call(ctx, 'trash');
+
+		// Second page is fetched with the next-page link verbatim.
+		expect(apiRequest).toHaveBeenNthCalledWith(2, 'GET', '', {}, {}, nextLink);
+		expect(result.results).toEqual([{ name: 'trash.txt', value: '2' }]);
+	});
+
 	it('pages through the reply, requesting the next-page link verbatim and returning every item', async () => {
 		const nextLink = 'https://graph.microsoft.com/v1.0/sites/s/lists/l/items?$skiptoken=abc';
 		apiRequest.mockResolvedValueOnce({
