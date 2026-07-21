@@ -63,8 +63,8 @@ describe('episodic memory integration', () => {
 			.instructions(
 				[
 					'You are a concise assistant.',
-					'When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering.',
-					'Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result.',
+					'When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering.',
+					'Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result.',
 					'Use exact identifiers verbatim.',
 					'If no relevant prior memory is available, say you do not have saved prior memory for that request.',
 					'When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations.',
@@ -115,12 +115,12 @@ describe('episodic memory integration', () => {
 
 		const result = await generateSuccessfully(
 			agent,
-			'You must call recall_memory before answering. Use the recall query "Acme Harbor Vendor Intake - Pilot #vendor-acme-harbor Waiting on Vendor Info". From previous conversations, what tracker title, Slack channel, and Waiting on Vendor Info meaning did we decide for Acme Harbor?',
+			'You must call memory with the recall operation before answering. Use the recall query "Acme Harbor Vendor Intake - Pilot #vendor-acme-harbor Waiting on Vendor Info". From previous conversations, what tracker title, Slack channel, and Waiting on Vendor Info meaning did we decide for Acme Harbor?',
 			{ persistence: { threadId: uniqueId('thread-acme-recall'), resourceId } },
 		);
 
-		expect(toolNames(result.messages)).toContain('recall_memory');
-		const recallOutput = resolvedToolOutput(result.messages, 'recall_memory');
+		expect(toolNames(result.messages)).toContain('memory');
+		const recallOutput = resolvedToolOutput(result.messages, 'memory');
 		const recalledText = JSON.stringify(recallOutput);
 		expect(normalizedText(recalledText)).toContain(
 			normalizedText('Acme Harbor Vendor Intake - Pilot'),
@@ -186,11 +186,11 @@ describe('episodic memory integration', () => {
 
 		const result = await generateSuccessfully(
 			agent,
-			'You must call recall_memory before answering. Use the recall query "Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate.',
+			'You must call memory with the recall operation before answering. Use the recall query "Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate.',
 			{ persistence: { threadId: uniqueId('thread-distinct-recall'), resourceId } },
 		);
 
-		expect(toolNames(result.messages)).toContain('recall_memory');
+		expect(toolNames(result.messages)).toContain('memory');
 		const answer = normalizedAnswer(result.messages);
 		expect(answer).toContain('redwood clinic intake board');
 		expect(answer).toContain('#redwood-intake');
@@ -221,11 +221,11 @@ describe('episodic memory integration', () => {
 
 		const result = await generateSuccessfully(
 			agent,
-			'You must call recall_memory before answering. From previous memory, what is the current final tracker title for Orion Export? If an earlier title existed, mention it only as outdated.',
+			'You must call memory with the recall operation before answering. From previous memory, what is the current final tracker title for Orion Export? If an earlier title existed, mention it only as outdated.',
 			{ persistence: { threadId: uniqueId('thread-orion-recall'), resourceId } },
 		);
 
-		expect(toolNames(result.messages)).toContain('recall_memory');
+		expect(toolNames(result.messages)).toContain('memory');
 		const answer = normalizedAnswer(result.messages);
 		expect(answer).toContain('orion vendor command center');
 		if (answer.includes('orion vendor intake draft')) {

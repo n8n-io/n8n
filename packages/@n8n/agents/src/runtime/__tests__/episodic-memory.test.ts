@@ -8,8 +8,9 @@ import type {
 	NewEpisodicMemoryEntrySourceForEntry,
 } from '../../types';
 import {
-	createRecallMemoryTool,
+	createMemoryTool,
 	getEpisodicMemoryScope,
+	MEMORY_TOOL_NAME,
 	rankEpisodicMemoryEntries,
 	runEpisodicMemoryIndexer,
 } from '../memory/episodic-memory';
@@ -162,16 +163,23 @@ describe('rankEpisodicMemoryEntries', () => {
 	});
 });
 
-describe('createRecallMemoryTool', () => {
-	it('instructs the model to call recall_memory only for explicit prior-context asks', () => {
+describe('createMemoryTool', () => {
+	it('exposes one memory tool with guidance for deliberate record and recall', () => {
 		const memory = new InMemoryMemory();
-		const tool = createRecallMemoryTool({
+		const tool = createMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
 			scope: { resourceId: 'user-1' },
 		});
 
-		expect(tool.systemInstruction).toContain('Only call recall_memory');
+		expect(MEMORY_TOOL_NAME).toBe('memory');
+		expect(tool.name).toBe(MEMORY_TOOL_NAME);
+		expect(tool.systemInstruction).toContain('record');
+		expect(tool.systemInstruction).toContain('explicitly asks');
+		expect(tool.systemInstruction).toContain('future');
+		expect(tool.systemInstruction).toContain('Do not record incidental');
+		expect(tool.systemInstruction).toContain('Only confirm');
+		expect(tool.systemInstruction).toContain('recall');
 		expect(tool.systemInstruction).toContain('explicitly asks');
 		expect(tool.systemInstruction).not.toContain('<episodic_memory>');
 		expect(tool.systemInstruction).toContain('current user message');
@@ -184,9 +192,171 @@ describe('createRecallMemoryTool', () => {
 		expect(tool.description).toContain('prior artifacts');
 	});
 
+	it('records a user-directed memory synchronously with current-message provenance', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 11 } } as never);
+		const memory = new InMemoryMemory();
+		const sourceCreatedAt = new Date('2026-05-20T13:42:36.631Z');
+		if (!memory.episodic.saveEntryWithSourceObservation) {
+			throw new Error('Expected an atomic source-observation writer');
+		}
+		if (!memory.episodic.taskLock) throw new Error('Expected an episodic memory task lock');
+		const saveEntry = vi.spyOn(memory.episodic, 'saveEntryWithSourceObservation');
+		const acquireLock = vi.spyOn(memory.episodic.taskLock, 'acquire');
+		const releaseLock = vi.spyOn(memory.episodic.taskLock, 'release');
+		const tool = createMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder, embeddingModel: 'test-embedder' },
+			scope: { resourceId: 'user-1' },
+			sourceMessage: {
+				observationScopeId: 'thread-1',
+				threadId: 'thread-1',
+				text: 'Remember that I want implementation changes tested before they are committed.',
+				createdAt: sourceCreatedAt,
+			},
+		});
+		if (!tool.handler) throw new Error('Expected memory tool to have a handler');
+
+		const output = await tool.handler(
+			{
+				operation: 'record',
+				content: 'User wants implementation changes tested before they are committed.',
+			},
+			{},
+		);
+
+		expect(output).toEqual({
+			recorded: true,
+			entry: expect.objectContaining({
+				content: 'User wants implementation changes tested before they are committed.',
+			}),
+		});
+		const [stored] = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'implementation changes tested committed',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(stored).toMatchObject({
+			metadata: { origin: 'user-directed' },
+			embeddingModel: 'test-embedder',
+		});
+		await expect(memory.episodic.getEntrySources([stored.id])).resolves.toEqual([
+			expect.objectContaining({
+				threadId: 'thread-1',
+				evidenceText:
+					'Remember that I want implementation changes tested before they are committed.',
+				createdAt: sourceCreatedAt,
+			}),
+		]);
+		const [sourceObservation] = await memory.getObservationLog({
+			observationScopeId: 'thread-1',
+		});
+		expect(sourceObservation).toMatchObject({
+			marker: 'critical',
+			text: 'Remember that I want implementation changes tested before they are committed.',
+			createdAt: sourceCreatedAt,
+		});
+		await expect(memory.episodic.getEntrySources([stored.id])).resolves.toEqual([
+			expect.objectContaining({ observationId: sourceObservation.id }),
+		]);
+		expect(mockedEmbed).toHaveBeenCalledWith(
+			expect.objectContaining({
+				value: 'User wants implementation changes tested before they are committed.',
+			}),
+		);
+		expect(saveEntry).toHaveBeenCalledWith(
+			expect.objectContaining({ metadata: { origin: 'user-directed' } }),
+			expect.objectContaining({
+				observation: expect.objectContaining({
+					observationScopeId: 'thread-1',
+					marker: 'critical',
+					text: 'Remember that I want implementation changes tested before they are committed.',
+				}),
+			}),
+		);
+		expect(acquireLock).toHaveBeenCalledWith(
+			'user-1',
+			expect.objectContaining({ holderId: expect.any(String), ttlMs: expect.any(Number) }),
+		);
+		expect(releaseLock).toHaveBeenCalledOnce();
+	});
+
+	it('marks an existing matching entry as user-directed when the user asks to remember it', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 4 } } as never);
+		const memory = new InMemoryMemory();
+		const content = 'User wants implementation changes tested before they are committed.';
+		const existing = await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content,
+			embedding: [1, 0],
+			metadata: { category: 'workflow-preference' },
+		});
+		const tool = createMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+			sourceMessage: {
+				observationScopeId: 'thread-1',
+				threadId: 'thread-1',
+				text: 'Please remember to test implementation changes before committing them.',
+				createdAt: new Date('2026-05-20T13:42:36.631Z'),
+			},
+		});
+		if (!tool.handler) throw new Error('Expected memory tool to have a handler');
+
+		await tool.handler({ operation: 'record', content }, {});
+
+		const [stored] = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'implementation changes tested committed',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(stored).toMatchObject({
+			id: existing.id,
+			metadata: { category: 'workflow-preference', origin: 'user-directed' },
+		});
+	});
+
+	it('surfaces persistence failures instead of reporting a memory as recorded', async () => {
+		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 4 } } as never);
+		const memory = new InMemoryMemory();
+		const writeError = new Error('memory write failed');
+		if (!memory.episodic.saveEntryWithSourceObservation) {
+			throw new Error('Expected an atomic source-observation writer');
+		}
+		vi.spyOn(memory.episodic, 'saveEntryWithSourceObservation').mockRejectedValueOnce(writeError);
+		const tool = createMemoryTool({
+			memory,
+			config: { embedder: fakeEmbedder },
+			scope: { resourceId: 'user-1' },
+			sourceMessage: {
+				observationScopeId: 'thread-1',
+				threadId: 'thread-1',
+				text: 'Please remember to test before committing.',
+				createdAt: new Date('2026-05-20T13:42:36.631Z'),
+			},
+		});
+		if (!tool.handler) throw new Error('Expected memory tool to have a handler');
+
+		await expect(
+			tool.handler(
+				{
+					operation: 'record',
+					content: 'User wants implementation changes tested before they are committed.',
+				},
+				{},
+			),
+		).rejects.toThrow(writeError);
+		await expect(
+			memory.episodic.searchEntries(
+				{ resourceId: 'user-1' },
+				'implementation changes tested committed',
+			),
+		).resolves.toEqual([]);
+	});
+
 	it('strips retrieval metadata from the model-visible recall output', () => {
 		const memory = new InMemoryMemory();
-		const tool = createRecallMemoryTool({
+		const tool = createMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
 			scope: { resourceId: 'user-1' },
@@ -224,7 +394,7 @@ describe('createRecallMemoryTool', () => {
 			incrementTokenCount: vi.fn(),
 		};
 		const memory = new InMemoryMemory();
-		const tool = createRecallMemoryTool({
+		const tool = createMemoryTool({
 			memory,
 			config: { embedder: fakeEmbedder },
 			scope: { resourceId: 'user-1' },
@@ -232,7 +402,7 @@ describe('createRecallMemoryTool', () => {
 		});
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
 
-		await tool.handler({ query: 'what did we decide?' }, {});
+		await tool.handler({ operation: 'recall', query: 'what did we decide?' }, {});
 
 		expect(counter.incrementTokenCount).toHaveBeenCalledWith(7);
 		expect(counter.incrementMessageCount).not.toHaveBeenCalled();
@@ -908,6 +1078,132 @@ describe('runEpisodicMemoryIndexer', () => {
 			{ includeStatuses: ['dropped'], queryEmbedding: [1, 0] },
 		);
 		expect(dropped.id).toBe(noise.id);
+	});
+
+	it('protects user-directed entries from reflection drops', async () => {
+		const memory = new InMemoryMemory();
+		const protectedEntry = await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'User wants implementation changes tested before they are committed.',
+			embedding: [1, 0],
+			metadata: { origin: 'user-directed' },
+		});
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User continued discussing the implementation workflow.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User continued discussing the implementation workflow.',
+						sources: [
+							{
+								observationId: observation.id,
+								evidence: 'continued discussing the implementation workflow',
+							},
+						],
+					},
+				],
+			});
+		const reflect: EpisodicMemoryReflectFn = async () =>
+			await Promise.resolve({ drop: [protectedEntry.id], merge: [] });
+
+		await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract, reflect },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+		});
+
+		const entries = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'implementation changes tested committed',
+			{ includeStatuses: ['active', 'dropped'], queryEmbedding: [1, 0], topK: 10 },
+		);
+		expect(entries.find((entry) => entry.id === protectedEntry.id)?.status).toBe('active');
+	});
+
+	it('protects user-directed entries at the reflection storage boundary', async () => {
+		const memory = new InMemoryMemory();
+		const protectedEntry = await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'User wants implementation changes tested before they are committed.',
+			metadata: { origin: 'user-directed' },
+		});
+
+		const result = await memory.episodic.applyReflection(
+			{ resourceId: 'user-1' },
+			{ drop: [protectedEntry.id], merge: [] },
+		);
+
+		expect(result.droppedIds).toEqual([]);
+		const [stored] = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'implementation changes tested committed',
+		);
+		expect(stored).toMatchObject({ id: protectedEntry.id, status: 'active' });
+	});
+
+	it('protects user-directed entries from reflection merges', async () => {
+		const memory = new InMemoryMemory();
+		const protectedEntry = await saveEpisodicEntry(memory, {
+			resourceId: 'user-1',
+			content: 'User wants implementation changes tested before they are committed.',
+			embedding: [1, 0],
+			metadata: { origin: 'user-directed' },
+		});
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'User continued discussing the implementation workflow.',
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content: 'User continued discussing the implementation workflow.',
+						sources: [
+							{
+								observationId: observation.id,
+								evidence: 'continued discussing the implementation workflow',
+							},
+						],
+					},
+				],
+			});
+		const reflect: EpisodicMemoryReflectFn = async (input) =>
+			await Promise.resolve({
+				drop: [],
+				merge: [
+					{
+						supersedes: [protectedEntry.id, input.seedEntryIds[0]],
+						content: 'User discussed testing in the implementation workflow.',
+					},
+				],
+			});
+
+		await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract, reflect },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+		});
+
+		const entries = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'implementation workflow tested committed',
+			{ includeStatuses: ['active', 'superseded'], queryEmbedding: [1, 0], topK: 10 },
+		);
+		expect(entries.find((entry) => entry.id === protectedEntry.id)?.status).toBe('active');
+		expect(entries.filter((entry) => entry.status === 'active')).toHaveLength(2);
 	});
 
 	it('ignores invalid reflection actions and keeps similar distinct cases active', async () => {

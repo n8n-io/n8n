@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type * as AgentRuntimeModule from '../../runtime/loop/agent-runtime';
-import { RECALL_MEMORY_TOOL_NAME } from '../../runtime/memory/episodic-memory';
+import { MEMORY_TOOL_NAME } from '../../runtime/memory/episodic-memory';
 import type {
 	DelegateSubAgentRequest,
 	InlineSubAgentProviderToolsResolver,
@@ -118,7 +118,7 @@ describe('inline sub-agent tool filtering', () => {
 			name: 'blocks SDK-owned tools by default but not other tool names',
 			tools: [
 				makeTool(DELEGATE_SUB_AGENT_TOOL_NAME),
-				makeTool(RECALL_MEMORY_TOOL_NAME),
+				makeTool(MEMORY_TOOL_NAME),
 				makeTool(WRITE_TODOS_TOOL_NAME),
 				makeTool('host_tool'),
 				makeTool('lookup'),

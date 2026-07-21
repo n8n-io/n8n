@@ -201,6 +201,14 @@ function parseMemoryOutput(output: unknown): MemoryUsed[] {
 		.filter((memory) => memory.keyMemory.length > 0);
 }
 
+function isMemoryRecall(toolCall: ToolCall): boolean {
+	// Keep recall results from conversations persisted before the unified tool rename visible.
+	if (toolCall.tool === 'recall_memory') return true;
+	return (
+		toolCall.tool === 'memory' && isRecord(toolCall.input) && toolCall.input.operation === 'recall'
+	);
+}
+
 function isCompletedAssistantGroup(group: DisplayGroup): boolean {
 	if (group.kind === 'toolRun') {
 		return (
@@ -242,7 +250,7 @@ function getMemoriesUsedInAssistantRun(groupId: string): MemoryUsed[] {
 		const toolCalls = group.kind === 'toolRun' ? group.toolCalls : (group.message.toolCalls ?? []);
 		for (let j = toolCalls.length - 1; j >= 0; j--) {
 			const toolCall = toolCalls[j];
-			if (toolCall.tool !== 'recall_memory') continue;
+			if (!isMemoryRecall(toolCall)) continue;
 
 			const uniqueMemories = parseMemoryOutput(toolCall.output).filter((memory) => {
 				if (memoryIds.has(memory.id)) return false;

@@ -2,16 +2,18 @@ import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { LanguageModel, Output } from 'ai';
 
 import type { AgentRuntimeConfig } from './agent-runtime';
+import { isLlmMessage } from '../../sdk/message';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions, ModelConfig } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
 import { isZodSchema } from '../../utils/zod';
 import {
-	createRecallMemoryTool,
+	createMemoryTool,
 	getEpisodicMemoryScope,
 	hasEpisodicMemoryStore,
 	isEpisodicMemoryEnabled,
-	RECALL_MEMORY_TOOL_NAME,
+	MEMORY_TOOL_NAME,
+	type MemoryToolSourceMessage,
 } from '../memory/episodic-memory';
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
@@ -56,7 +58,7 @@ export interface StaticLoopContext {
 /**
  * Builds the per-run and per-iteration dependencies the agentic loop hands to
  * the LLM call: the model instance, provider/thinking options, structured
- * output spec, and the effective tool surface (base + deferred + recall tools,
+ * output spec, and the effective tool surface (base + deferred + memory tools,
  * mapped to AI SDK shapes). Keeps tool/model assembly out of the loop body.
  */
 export class RuntimeContextBuilder {
@@ -107,8 +109,9 @@ export class RuntimeContextBuilder {
 		aiProviderTools: ReturnType<typeof toAiSdkProviderTools>,
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	) {
-		const allUserTools = this.getCurrentTools(persistence, executionCounter);
+		const allUserTools = this.getCurrentTools(persistence, executionCounter, list);
 		const aiTools = toAiSdkTools(allUserTools);
 		const allTools = { ...aiTools, ...aiProviderTools };
 		const aiToolCount = Object.keys(allTools).length;
@@ -141,6 +144,7 @@ export class RuntimeContextBuilder {
 	getCurrentTools(
 		persistence?: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	): BuiltTool[] {
 		const baseTools = this.config.tools ?? [];
 		const tools = [
@@ -153,8 +157,8 @@ export class RuntimeContextBuilder {
 				: []),
 		];
 
-		const recallTool = this.createRecallMemoryToolForRun(persistence, tools, executionCounter);
-		return recallTool ? [...tools, recallTool] : tools;
+		const memoryTool = this.createMemoryToolForRun(persistence, tools, executionCounter, list);
+		return memoryTool ? [...tools, memoryTool] : tools;
 	}
 
 	hydrateDeferredToolsFromList(list: AgentMessageList): void {
@@ -190,10 +194,11 @@ export class RuntimeContextBuilder {
 		return result;
 	}
 
-	private createRecallMemoryToolForRun(
+	private createMemoryToolForRun(
 		persistence: AgentPersistenceOptions | undefined,
 		existingTools: BuiltTool[],
 		executionCounter?: AgentExecutionCounter,
+		list?: AgentMessageList,
 	): BuiltTool | undefined {
 		const { memory, episodicMemory } = this.config;
 		if (
@@ -206,12 +211,42 @@ export class RuntimeContextBuilder {
 		}
 		const scope = getEpisodicMemoryScope(persistence);
 		if (!scope) return undefined;
-		if (existingTools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) {
+		if (existingTools.some((tool) => tool.name === MEMORY_TOOL_NAME)) {
 			throw new Error(
-				`Tool name "${RECALL_MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
+				`Tool name "${MEMORY_TOOL_NAME}" is reserved while episodic memory is enabled.`,
 			);
 		}
-		return createRecallMemoryTool({ memory, config: episodicMemory, scope, executionCounter });
+		return createMemoryTool({
+			memory,
+			config: episodicMemory,
+			scope,
+			sourceMessage: this.getMemoryToolSourceMessage(list, persistence),
+			executionCounter,
+		});
+	}
+
+	private getMemoryToolSourceMessage(
+		list: AgentMessageList | undefined,
+		persistence: AgentPersistenceOptions | undefined,
+	): MemoryToolSourceMessage | undefined {
+		if (!list || !persistence) return undefined;
+		const inputs = list.inputDelta();
+		for (let index = inputs.length - 1; index >= 0; index--) {
+			const message = inputs[index];
+			if (!isLlmMessage(message) || message.role !== 'user') continue;
+			const text = message.content
+				.filter((part) => part.type === 'text')
+				.map((part) => part.text)
+				.join('\n');
+			if (!text.trim()) continue;
+			return {
+				observationScopeId: persistence.threadId,
+				threadId: persistence.threadId,
+				text,
+				createdAt: message.createdAt,
+			};
+		}
+		return undefined;
 	}
 
 	/**
@@ -219,7 +254,7 @@ export class RuntimeContextBuilder {
 	 * configured instructions, split by stability:
 	 *
 	 * - `instructions`: fragments from tools present for the life of the run
-	 *   (base tools, deferred-tool controllers, the recall tool) plus the
+	 *   (base tools, deferred-tool controllers, the memory tool) plus the
 	 *   user's instructions. Sent as the cached system message.
 	 * - `volatileInstructions`: fragments from deferred tools loaded mid-
 	 *   conversation via `load_tool`. Kept out of the cached message —

@@ -28,6 +28,7 @@ import {
 	type NewEpisodicMemoryCursor,
 	type NewEpisodicMemoryEntry,
 	type NewEpisodicMemoryEntrySourceForEntry,
+	type NewEpisodicMemoryEntrySourceObservation,
 	type NewObservationLogEntry,
 	type ObservationCursor,
 	type ObservationLogEntry,
@@ -39,11 +40,14 @@ import {
 	type ObservationLogTaskLockHandle,
 	type RetrievedEpisodicMemoryEntry,
 	type Thread,
+	USER_DIRECTED_MEMORY_ORIGIN,
 } from '@n8n/agents';
+import { dbType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager, FindOperator, FindOptionsWhere } from '@n8n/typeorm';
 import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { isUniqueConstraintError } from '@/response-helper';
 
@@ -125,6 +129,8 @@ export class N8nMemoryImpl
 	readonly episodic: EpisodicMemoryMethods = {
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
+		saveEntryWithSourceObservation: async (entry, source) =>
+			await this.saveEpisodicMemoryEntryWithSourceObservation(entry, source),
 		searchEntries: async (scope, query, opts) =>
 			await this.searchEpisodicMemoryEntries(scope, query, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
@@ -635,71 +641,108 @@ export class N8nMemoryImpl
 	): Promise<EpisodicMemoryEntry | null> {
 		await this.ensureResource(entry.resourceId);
 		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
-			const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
-			const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
-			const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
-			const now = new Date();
-			const entity = entryRepo.create({
-				agentId: this.agentId,
-				resourceId: entry.resourceId,
-				content: entry.content,
-				contentHash,
-				...activeLifecycleState(),
-				embeddingModel: entry.embeddingModel ?? null,
-				embedding: entry.embedding ?? null,
-				metadata: entry.metadata ?? null,
-				createdAt: entry.createdAt ?? now,
-				lastSeenAt: entry.lastSeenAt ?? now,
-			});
-
-			let persisted: AgentMemoryEntryEntity | null = null;
-			try {
-				const [saved] = await entryRepo.save([entity]);
-				persisted = saved ?? null;
-			} catch (error) {
-				if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-				const existing = await entryRepo.findOneBy({
-					agentId: this.agentId,
-					resourceId: entry.resourceId,
-					contentHash,
-				});
-				if (!existing) throw error;
-				markLifecycleActive(existing);
-				existing.lastSeenAt = entry.lastSeenAt ?? now;
-				existing.updatedAt = now;
-				const [saved] = await entryRepo.save([existing]);
-				persisted = saved ?? existing;
-			}
-
-			if (!persisted) return null;
-
-			for (const source of sources) {
-				const evidenceHash = hashEpisodicMemoryEvidence(source.evidenceText);
-				const sourceEntity = sourceRepo.create({
-					agentId: this.agentId,
-					memoryEntryId: persisted.id,
-					observationId: source.observationId,
-					threadId: source.threadId,
-					evidenceHash,
-					evidenceText: source.evidenceText,
-					createdAt: source.createdAt,
-				});
-				try {
-					await sourceRepo.save([sourceEntity]);
-				} catch (error) {
-					if (!(error instanceof Error) || !isUniqueConstraintError(error)) throw error;
-					const existing = await sourceRepo.findOneBy({
-						agentId: this.agentId,
-						memoryEntryId: persisted.id,
-						observationId: source.observationId,
-						evidenceHash,
-					});
-					if (!existing) throw error;
-				}
-			}
-
+			const persisted = await this.saveEpisodicMemoryEntryInTransaction(trx, entry);
+			await this.saveEpisodicMemorySourcesInTransaction(trx, persisted, sources);
 			return this.toEpisodicMemoryEntry(persisted);
 		});
+	}
+
+	private async saveEpisodicMemoryEntryWithSourceObservation(
+		entry: NewEpisodicMemoryEntry,
+		source: NewEpisodicMemoryEntrySourceObservation,
+	): Promise<EpisodicMemoryEntry | null> {
+		await this.ensureResource(entry.resourceId);
+		return await this.memoryEntryRepository.manager.transaction(async (trx) => {
+			const observationRepo = trx.getRepository(AgentObservationEntity);
+			const observationEntity = observationRepo.create({
+				agentId: this.agentId,
+				observationScopeId: source.observation.observationScopeId,
+				marker: source.observation.marker,
+				text: source.observation.text,
+				parentId: source.observation.parentId ?? null,
+				tokenCount:
+					source.observation.tokenCount ?? estimateObservationTokens(source.observation.text),
+				...activeLifecycleState(),
+				createdAt: source.observation.createdAt,
+			});
+			const [observation] = await observationRepo.save([observationEntity]);
+			if (!observation) {
+				throw new UnexpectedError('Failed to persist episodic memory source observation.');
+			}
+
+			const persisted = await this.saveEpisodicMemoryEntryInTransaction(trx, entry);
+			await this.saveEpisodicMemorySourcesInTransaction(trx, persisted, [
+				{
+					observationId: observation.id,
+					threadId: source.threadId,
+					evidenceText: source.evidenceText,
+					createdAt: source.createdAt ?? observation.createdAt,
+				},
+			]);
+			return this.toEpisodicMemoryEntry(persisted);
+		});
+	}
+
+	private async saveEpisodicMemoryEntryInTransaction(
+		trx: EntityManager,
+		entry: NewEpisodicMemoryEntry,
+	): Promise<AgentMemoryEntryEntity> {
+		const entryRepo = trx.getRepository(AgentMemoryEntryEntity);
+		const contentHash = entry.contentHash ?? hashEpisodicMemoryContent(entry.content);
+		const now = new Date();
+		const entity = entryRepo.create({
+			agentId: this.agentId,
+			resourceId: entry.resourceId,
+			content: entry.content,
+			contentHash,
+			...activeLifecycleState(),
+			embeddingModel: entry.embeddingModel ?? null,
+			embedding: entry.embedding ?? null,
+			metadata: entry.metadata ?? null,
+			createdAt: entry.createdAt ?? now,
+			lastSeenAt: entry.lastSeenAt ?? now,
+		});
+		// A handled unique violation still aborts a Postgres transaction, so ignore conflicts and reload.
+		await entryRepo.createQueryBuilder().insert().values(entity).orIgnore().execute();
+
+		const persisted = await entryRepo.findOneBy({
+			agentId: this.agentId,
+			resourceId: entry.resourceId,
+			contentHash,
+		});
+		if (!persisted) throw new UnexpectedError('Failed to persist episodic memory entry.');
+
+		markLifecycleActive(persisted);
+		if (entry.embedding !== undefined) persisted.embedding = entry.embedding;
+		if (entry.embeddingModel !== undefined) persisted.embeddingModel = entry.embeddingModel;
+		if (entry.metadata !== undefined) {
+			persisted.metadata =
+				entry.metadata === null ? null : { ...(persisted.metadata ?? {}), ...entry.metadata };
+		}
+		persisted.lastSeenAt = entry.lastSeenAt ?? now;
+		persisted.updatedAt = now;
+		const [saved] = await entryRepo.save([persisted]);
+		return saved ?? persisted;
+	}
+
+	private async saveEpisodicMemorySourcesInTransaction(
+		trx: EntityManager,
+		entry: AgentMemoryEntryEntity,
+		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<void> {
+		const sourceRepo = trx.getRepository(AgentMemoryEntrySourceEntity);
+		for (const source of sources) {
+			const sourceEntity = sourceRepo.create({
+				agentId: this.agentId,
+				memoryEntryId: entry.id,
+				observationId: source.observationId,
+				threadId: source.threadId,
+				evidenceHash: hashEpisodicMemoryEvidence(source.evidenceText),
+				evidenceText: source.evidenceText,
+				createdAt: source.createdAt,
+			});
+			await sourceRepo.createQueryBuilder().insert().values(sourceEntity).orIgnore().execute();
+		}
 	}
 
 	private async searchEpisodicMemoryEntries(
@@ -742,15 +785,36 @@ export class N8nMemoryImpl
 			]);
 			if (actionIds.length === 0) return { droppedIds: [], supersededIds: [], inserted: [] };
 
-			const activeEntries = await entryRepo.find({
-				where: {
-					agentId: this.agentId,
-					resourceId: scope.resourceId,
-					id: In(actionIds),
-					status: 'active',
-				},
-			});
-			const activeIds = new Set(activeEntries.map((entry) => entry.id));
+			let activeEntries: AgentMemoryEntryEntity[];
+			if (dbType === 'postgresdb') {
+				activeEntries = [];
+				for (const id of [...actionIds].sort()) {
+					const entry = await entryRepo.findOne({
+						where: {
+							agentId: this.agentId,
+							resourceId: scope.resourceId,
+							id,
+							status: 'active',
+						},
+						lock: { mode: 'pessimistic_write' },
+					});
+					if (entry) activeEntries.push(entry);
+				}
+			} else {
+				activeEntries = await entryRepo.find({
+					where: {
+						agentId: this.agentId,
+						resourceId: scope.resourceId,
+						id: In(actionIds),
+						status: 'active',
+					},
+				});
+			}
+			const activeIds = new Set(
+				activeEntries
+					.filter((entry) => entry.metadata?.origin !== USER_DIRECTED_MEMORY_ORIGIN)
+					.map((entry) => entry.id),
+			);
 			const normalized = normalizeFlatReflectionActions({
 				activeIds,
 				drop: reflection.drop,

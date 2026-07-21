@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled through the memory tool. Use the record operation when the user explicitly asks you to remember something, asks you to carry information or a way of working into future tasks, or clearly marks an instruction or preference as important for future work. Allow for natural ambiguity and use judgment about clearly future-facing intent. Do not record incidental details, transient current-task context, or information merely mentioned without a reason to carry it forward. Only confirm that you remembered something after the record operation succeeds; if it fails, tell the user it was not saved. Use the recall operation when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not use recall for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering. Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -25,18 +25,41 @@
 			],
 			"tools": [
 				{
-					"name": "recall_memory",
-					"description": "Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.",
+					"name": "memory",
+					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "recall"
+									},
+									"query": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "query"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "record"
+									},
+									"content": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "content"],
+								"additionalProperties": false
 							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
+						],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -452,7 +475,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled through the memory tool. Use the record operation when the user explicitly asks you to remember something, asks you to carry information or a way of working into future tasks, or clearly marks an instruction or preference as important for future work. Allow for natural ambiguity and use judgment about clearly future-facing intent. Do not record incidental details, transient current-task context, or information merely mentioned without a reason to carry it forward. Only confirm that you remembered something after the record operation succeeds; if it fails, tell the user it was not saved. Use the recall operation when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not use recall for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering. Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -468,18 +491,41 @@
 			],
 			"tools": [
 				{
-					"name": "recall_memory",
-					"description": "Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.",
+					"name": "memory",
+					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "recall"
+									},
+									"query": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "query"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "record"
+									},
+									"content": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "content"],
+								"additionalProperties": false
 							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
+						],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -489,7 +535,7 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01WZGHmf2PgECHmqjWgBrdba\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01X6dAui9HP6u41qLaL1WYDF\",\"name\":\"recall_memory\",\"input\":{\"query\":\"deployment codename\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":908,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":56,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01WZGHmf2PgECHmqjWgBrdba\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01X6dAui9HP6u41qLaL1WYDF\",\"name\":\"memory\",\"input\":{\"operation\":\"recall\",\"query\":\"deployment codename\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":908,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":56,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "22500000",
 			"anthropic-ratelimit-input-tokens-remaining": "22500000",
@@ -567,7 +613,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled through the memory tool. Use the record operation when the user explicitly asks you to remember something, asks you to carry information or a way of working into future tasks, or clearly marks an instruction or preference as important for future work. Allow for natural ambiguity and use judgment about clearly future-facing intent. Do not record incidental details, transient current-task context, or information merely mentioned without a reason to carry it forward. Only confirm that you remembered something after the record operation succeeds; if it fails, tell the user it was not saved. Use the recall operation when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not use recall for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering. Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -586,8 +632,9 @@
 						{
 							"type": "tool_use",
 							"id": "toolu_01X6dAui9HP6u41qLaL1WYDF",
-							"name": "recall_memory",
+							"name": "memory",
 							"input": {
+								"operation": "recall",
 								"query": "deployment codename"
 							},
 							"caller": {
@@ -609,18 +656,41 @@
 			],
 			"tools": [
 				{
-					"name": "recall_memory",
-					"description": "Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.",
+					"name": "memory",
+					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "recall"
+									},
+									"query": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "query"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "record"
+									},
+									"content": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "content"],
+								"additionalProperties": false
 							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
+						],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -679,7 +749,7 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nUnobserved transcript tokens: 135\n\nCurrent observation log tail:\n(empty)\n\nNew transcript delta since the last observation:\n[2026-06-01T12:00:00.000Z] user:\nFrom previous memory, what deployment codename did I give you?\n[2026-06-01T12:00:00.001Z] tool_call recall_memory input={\"query\":\"deployment codename\"}\n[2026-06-01T12:00:00.001Z] tool_result recall_memory output={\"entries\":[]}\n[2026-06-01T12:00:00.002Z] assistant:\nI don't have any saved prior memory of a deployment codename you gave me. It's possible it was never stored, or it may have been shared in a session that wasn't saved to memory. Could you share it again, and I'll remember it going forward?"
+							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nUnobserved transcript tokens: 135\n\nCurrent observation log tail:\n(empty)\n\nNew transcript delta since the last observation:\n[2026-06-01T12:00:00.000Z] user:\nFrom previous memory, what deployment codename did I give you?\n[2026-06-01T12:00:00.001Z] tool_call memory input={\"operation\":\"recall\",\"query\":\"deployment codename\"}\n[2026-06-01T12:00:00.001Z] tool_result memory output={\"entries\":[]}\n[2026-06-01T12:00:00.002Z] assistant:\nI don't have any saved prior memory of a deployment codename you gave me. It's possible it was never stored, or it may have been shared in a session that wasn't saved to memory. Could you share it again, and I'll remember it going forward?"
 						}
 					]
 				}

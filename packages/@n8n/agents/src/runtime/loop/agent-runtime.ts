@@ -725,6 +725,7 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
 			const batch = await this.toolExecutor.iteratePendingToolCallsConcurrent({
 				...buildToolBatchContext(pendingLoopContext.toolMap),
@@ -766,6 +767,7 @@ export class AgentRuntime {
 				staticLoopContext.aiProviderTools,
 				options?.persistence,
 				options?.executionCounter,
+				list,
 			);
 			const { system, messages } = list.forLlm(
 				effectiveInstructions,

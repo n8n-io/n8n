@@ -10,7 +10,7 @@ import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
 import type { VectorStore } from './vector-store';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
-import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import { MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
@@ -76,7 +76,7 @@ type ToolParameter = BuiltTool | { build(): BuiltTool };
 
 const SDK_INLINE_SUB_AGENT_BLOCKED_TOOL_NAMES = new Set([
 	DELEGATE_SUB_AGENT_TOOL_NAME,
-	RECALL_MEMORY_TOOL_NAME,
+	MEMORY_TOOL_NAME,
 	WRITE_TODOS_TOOL_NAME,
 ]);
 

@@ -1,4 +1,8 @@
-import { hashEpisodicMemoryContent, rankEpisodicMemoryEntries } from './episodic-memory';
+import {
+	hashEpisodicMemoryContent,
+	rankEpisodicMemoryEntries,
+	USER_DIRECTED_MEMORY_ORIGIN,
+} from './episodic-memory';
 import {
 	activeLifecycleState,
 	markLifecycleActive,
@@ -25,6 +29,7 @@ import type {
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
+	NewEpisodicMemoryEntrySourceObservation,
 	RetrievedEpisodicMemoryEntry,
 	Thread,
 } from '../../types';
@@ -106,6 +111,8 @@ export class InMemoryMemory
 	readonly episodic: EpisodicMemoryMethods = {
 		saveEntryWithSources: async (entry, sources) =>
 			await this.saveEpisodicMemoryEntryWithSources(entry, sources),
+		saveEntryWithSourceObservation: async (entry, source) =>
+			await this.saveEpisodicMemoryEntryWithSourceObservation(entry, source),
 		searchEntries: async (scope, query, opts) =>
 			await this.searchEpisodicMemoryEntries(scope, query, opts),
 		getEntrySources: async (entryIds) => await this.getEpisodicMemoryEntrySources(entryIds),
@@ -454,6 +461,12 @@ export class InMemoryMemory
 			);
 			if (duplicate) {
 				markLifecycleActive(duplicate);
+				if (entry.embedding !== undefined) duplicate.embedding = [...entry.embedding];
+				if (entry.embeddingModel !== undefined) duplicate.embeddingModel = entry.embeddingModel;
+				if (entry.metadata !== undefined) {
+					duplicate.metadata =
+						entry.metadata === null ? null : { ...(duplicate.metadata ?? {}), ...entry.metadata };
+				}
 				duplicate.lastSeenAt = entry.lastSeenAt ?? now;
 				duplicate.updatedAt = now;
 				saved.push(cloneEpisodicMemoryEntry(duplicate));
@@ -529,6 +542,36 @@ export class InMemoryMemory
 		}
 	}
 
+	private async saveEpisodicMemoryEntryWithSourceObservation(
+		entry: NewEpisodicMemoryEntry,
+		source: NewEpisodicMemoryEntrySourceObservation,
+	): Promise<EpisodicMemoryEntry | null> {
+		const observationSnapshot = new Map<string, ObservationLogEntry[]>(
+			Array.from(
+				this.observationLogByScope,
+				([scope, entries]) =>
+					[scope, entries.map(cloneObservationLogEntry)] as [string, ObservationLogEntry[]],
+			),
+		);
+		try {
+			const [observation] = await this.appendObservationLogEntries([source.observation]);
+			if (!observation) return null;
+			const saved = await this.saveEpisodicMemoryEntryWithSources(entry, [
+				{
+					observationId: observation.id,
+					threadId: source.threadId,
+					evidenceText: source.evidenceText,
+					createdAt: source.createdAt ?? observation.createdAt,
+				},
+			]);
+			if (!saved) this.observationLogByScope = observationSnapshot;
+			return saved;
+		} catch (error) {
+			this.observationLogByScope = observationSnapshot;
+			throw error;
+		}
+	}
+
 	// eslint-disable-next-line @typescript-eslint/require-await
 	private async searchEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
@@ -542,13 +585,25 @@ export class InMemoryMemory
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	private async supersedeEpisodicMemoryEntries(ids: string[], supersededBy: string): Promise<void> {
+	private async supersedeEpisodicMemoryEntries(
+		ids: string[],
+		supersededBy: string,
+	): Promise<string[]> {
 		const idSet = new Set(ids);
+		const superseded: string[] = [];
 		for (const entry of this.episodicMemory) {
-			if (!idSet.has(entry.id) || entry.id === supersededBy) continue;
+			if (
+				!idSet.has(entry.id) ||
+				entry.id === supersededBy ||
+				entry.metadata?.origin === USER_DIRECTED_MEMORY_ORIGIN
+			) {
+				continue;
+			}
 			markLifecycleSuperseded(entry, supersededBy);
 			entry.updatedAt = new Date();
+			superseded.push(entry.id);
 		}
+		return superseded;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
@@ -568,7 +623,12 @@ export class InMemoryMemory
 	): Promise<EpisodicMemoryReflectionResult> {
 		const activeIds = new Set(
 			this.episodicMemory
-				.filter((entry) => entry.resourceId === scope.resourceId && entry.status === 'active')
+				.filter(
+					(entry) =>
+						entry.resourceId === scope.resourceId &&
+						entry.status === 'active' &&
+						entry.metadata?.origin !== USER_DIRECTED_MEMORY_ORIGIN,
+				)
 				.map((entry) => entry.id),
 		);
 		const normalized = normalizeFlatReflectionActions({
@@ -600,8 +660,11 @@ export class InMemoryMemory
 					createdAt: merge.entry.createdAt ?? new Date(),
 				}));
 			await this.saveEpisodicMemoryEntrySources(copiedSources);
-			await this.supersedeEpisodicMemoryEntries(supersedes, replacement.id);
-			supersededIds.push(...supersedes.filter((id) => id !== replacement.id));
+			const actuallySuperseded = await this.supersedeEpisodicMemoryEntries(
+				supersedes,
+				replacement.id,
+			);
+			supersededIds.push(...actuallySuperseded);
 		}
 
 		return {

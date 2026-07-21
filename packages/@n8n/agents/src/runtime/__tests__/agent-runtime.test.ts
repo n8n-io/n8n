@@ -5001,7 +5001,7 @@ describe('promptCaching', () => {
 		}
 	});
 
-	it('adds a tool cache breakpoint on recall_memory for an episodic Anthropic agent (no deferred tools)', async () => {
+	it('adds a tool cache breakpoint on memory for an episodic Anthropic agent (no deferred tools)', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
@@ -5019,12 +5019,12 @@ describe('promptCaching', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 
-		// recall_memory is static within a run, so it is eligible to anchor the
+		// memory is static within a run, so it is eligible to anchor the
 		// tool breakpoint (it is the last tool in getCurrentTools).
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
-		expect(tools).toHaveProperty('recall_memory');
-		expect(tools.recall_memory.providerOptions).toEqual({
+		expect(tools).toHaveProperty('memory');
+		expect(tools.memory.providerOptions).toEqual({
 			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
@@ -5251,7 +5251,7 @@ describe('AgentRuntime — observation log jobs', () => {
 		await expect(memory.episodic.getCursor(observationScope)).resolves.toBeNull();
 	});
 
-	it('does not inject episodic memory and exposes recall_memory for explicit recall', async () => {
+	it('does not inject episodic memory and exposes memory for explicit recall', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess('Scoped response'));
 		const memory = new InMemoryMemory();
 		const fakeEmbedder = { specificationVersion: 'v2' } as never;
@@ -5304,14 +5304,102 @@ describe('AgentRuntime — observation log jobs', () => {
 		expect(systemPrompt).not.toContain('<episodic_memory>');
 		expect(systemPrompt).not.toContain('Postgres');
 		expect(systemPrompt).not.toContain('SQLite');
-		expect(callArgs.tools).toHaveProperty('recall_memory');
+		expect(callArgs.tools).toHaveProperty('memory');
 		expect(embed).not.toHaveBeenCalled();
 	});
 
-	it('counts recall_memory query embedding tokens', async () => {
+	it('records memory with provenance from the current user message', async () => {
 		generateText
 			.mockResolvedValueOnce(
-				makeGenerateWithToolCall('tc-recall', 'recall_memory', { query: 'storage' }),
+				makeGenerateWithToolCall('tc-record', 'memory', {
+					operation: 'record',
+					content: 'User wants implementation changes tested before they are committed.',
+				}),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('I will remember that.'));
+		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 6 } });
+		const memory = new InMemoryMemory();
+		const runtime = new AgentRuntime({
+			name: 'remembering-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: { specificationVersion: 'v2' } as never },
+		});
+
+		const result = await runtime.generate(
+			'  Remember that I want implementation changes tested before they are committed.  ',
+			{
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			},
+		);
+
+		expect(result.finishReason).toBe('stop');
+		const [stored] = await memory.episodic.searchEntries(
+			{ resourceId: 'resource-1' },
+			'implementation changes tested committed',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(stored.metadata).toEqual({ origin: 'user-directed' });
+		await expect(memory.episodic.getEntrySources([stored.id])).resolves.toEqual([
+			expect.objectContaining({
+				threadId: 'thread-1',
+				evidenceText:
+					'  Remember that I want implementation changes tested before they are committed.  ',
+			}),
+		]);
+	});
+
+	it('makes a memory write failure visible to the next model turn', async () => {
+		const receivedMessages: unknown[] = [];
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-record', 'memory', {
+					operation: 'record',
+					content: 'User wants implementation changes tested before they are committed.',
+				}),
+			)
+			.mockImplementationOnce(async ({ messages }: { messages: unknown[] }) => {
+				receivedMessages.push(...messages);
+				return await Promise.resolve(makeGenerateSuccess('I could not save that memory.'));
+			});
+		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 6 } });
+		const memory = new InMemoryMemory();
+		if (!memory.episodic.saveEntryWithSourceObservation) {
+			throw new Error('Expected an atomic source-observation writer');
+		}
+		vi.spyOn(memory.episodic, 'saveEntryWithSourceObservation').mockRejectedValueOnce(
+			new Error('memory write failed'),
+		);
+		const runtime = new AgentRuntime({
+			name: 'remembering-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: { specificationVersion: 'v2' } as never },
+		});
+
+		const result = await runtime.generate('Remember to test before committing.', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		expect(result.finishReason).toBe('stop');
+		expect(JSON.stringify(receivedMessages)).toContain('memory write failed');
+		await expect(
+			memory.episodic.searchEntries(
+				{ resourceId: 'resource-1' },
+				'implementation changes tested committed',
+			),
+		).resolves.toEqual([]);
+	});
+
+	it('counts memory recall query embedding tokens', async () => {
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-recall', 'memory', {
+					operation: 'recall',
+					query: 'storage',
+				}),
 			)
 			.mockResolvedValueOnce(makeGenerateSuccess('Recalled response'));
 		embed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } });

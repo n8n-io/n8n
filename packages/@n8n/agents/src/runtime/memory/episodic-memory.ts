@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import {
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
-	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
+	DEFAULT_EPISODIC_MEMORY_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
@@ -19,21 +19,36 @@ import type {
 	EpisodicMemoryReflectionMerge,
 	EpisodicMemoryScope,
 	EpisodicMemorySearchOptions,
+	EpisodicMemoryTaskLockHandle,
+	EpisodicMemoryTaskLockMethods,
 	RetrievedEpisodicMemoryEntry,
 } from '../../types';
 import type { AgentExecutionCounter, AgentPersistenceOptions } from '../../types/sdk/agent';
 import type { ObservationLogEntry, ObservationLogScope } from '../../types/sdk/observation-log';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
 
-export const RECALL_MEMORY_TOOL_NAME = 'recall_memory';
+export const MEMORY_TOOL_NAME = 'memory';
+/** @deprecated Use MEMORY_TOOL_NAME. */
+export const RECALL_MEMORY_TOOL_NAME = MEMORY_TOOL_NAME;
+export const USER_DIRECTED_MEMORY_ORIGIN = 'user-directed';
 
 const RRF_K = 60;
 const RECENCY_RRF_WEIGHT = 1;
 const MIN_VECTOR_RELEVANCE_SCORE = 0.2;
+const MEMORY_RECORD_LOCK_TTL_MS = 30_000;
+const MEMORY_RECORD_LOCK_WAIT_MS = 10_000;
+const MEMORY_RECORD_LOCK_RETRY_MS = 100;
 
-const RecallMemoryInputSchema = z.object({
-	query: z.string().min(1),
-});
+const MemoryInputSchema = z.discriminatedUnion('operation', [
+	z.object({
+		operation: z.literal('recall'),
+		query: z.string().min(1),
+	}),
+	z.object({
+		operation: z.literal('record'),
+		content: z.string().min(1),
+	}),
+]);
 
 const RecallMemoryOutputSchema = z.object({
 	entries: z.array(
@@ -51,6 +66,26 @@ const RecallMemoryOutputSchema = z.object({
 
 type RecallMemoryOutput = z.infer<typeof RecallMemoryOutputSchema>;
 
+const RecordMemoryOutputSchema = z.object({
+	recorded: z.literal(true),
+	entry: z.object({
+		id: z.string(),
+		content: z.string(),
+		createdAt: z.string(),
+	}),
+});
+
+const MemoryOutputSchema = z.union([RecallMemoryOutputSchema, RecordMemoryOutputSchema]);
+
+type MemoryOutput = z.infer<typeof MemoryOutputSchema>;
+
+export interface MemoryToolSourceMessage {
+	observationScopeId: string;
+	threadId: string;
+	text: string;
+	createdAt: Date;
+}
+
 interface NormalizedEpisodicMemoryConfig {
 	topK: number;
 	maxEntriesPerRun: number;
@@ -58,7 +93,7 @@ interface NormalizedEpisodicMemoryConfig {
 	embeddingModel: string;
 	extract: EpisodicMemoryConfig['extract'];
 	reflect: EpisodicMemoryConfig['reflect'];
-	recallToolInstruction: string;
+	toolInstruction: string;
 }
 
 export interface RunEpisodicMemoryIndexerOpts {
@@ -110,8 +145,10 @@ export function withEpisodicMemoryDefaults(
 		embeddingModel: config.embeddingModel ?? 'custom',
 		extract: config.extract,
 		reflect: config.reflect,
-		recallToolInstruction:
-			config.prompts?.recallToolInstruction ?? DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
+		toolInstruction:
+			config.prompts?.toolInstruction ??
+			config.prompts?.recallToolInstruction ??
+			DEFAULT_EPISODIC_MEMORY_TOOL_INSTRUCTION,
 	};
 }
 
@@ -173,23 +210,90 @@ export async function runEpisodicMemoryIndexer(
 	};
 }
 
-export function createRecallMemoryTool(opts: {
+export function createMemoryTool(opts: {
 	memory: BuiltMemory & BuiltEpisodicMemoryStore;
 	config: EpisodicMemoryConfig;
 	scope: EpisodicMemoryScope;
+	sourceMessage?: MemoryToolSourceMessage;
 	executionCounter?: AgentExecutionCounter;
 }) {
 	const normalized = withEpisodicMemoryDefaults(opts.config);
 
-	return new Tool(RECALL_MEMORY_TOOL_NAME)
+	return new Tool(MEMORY_TOOL_NAME)
 		.description(
-			'Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.',
+			'Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.',
 		)
-		.systemInstruction(normalized.recallToolInstruction)
-		.input(RecallMemoryInputSchema)
-		.output(RecallMemoryOutputSchema)
-		.handler(async ({ query }, ctx): Promise<RecallMemoryOutput> => {
+		.systemInstruction(normalized.toolInstruction)
+		.input(MemoryInputSchema)
+		.output(MemoryOutputSchema)
+		.handler(async (input, ctx): Promise<MemoryOutput> => {
 			const { embed } = await import('ai');
+			if (input.operation === 'record') {
+				if (!opts.sourceMessage) {
+					throw new Error('Cannot record memory without a current user message.');
+				}
+				const episodic = opts.memory.episodic;
+				if (!episodic.saveEntryWithSourceObservation) {
+					throw new Error('Cannot record memory without an atomic source-observation writer.');
+				}
+				const taskLock = episodic.taskLock;
+				if (!taskLock) {
+					throw new Error('Cannot record memory without an episodic memory task lock.');
+				}
+				const content = normalizeEntryContent(input.content);
+				if (!content) throw new Error('Cannot record an empty memory.');
+				const { embedding, usage } = await embed({
+					model: normalized.embedder,
+					value: content,
+					abortSignal: ctx.abortSignal,
+				});
+				incrementTokenCountFromUsage(opts.executionCounter, usage);
+				const lock = await acquireMemoryRecordLock(
+					taskLock,
+					opts.scope.resourceId,
+					ctx.abortSignal,
+				);
+				let saved: EpisodicMemoryEntry | null;
+				try {
+					const now = new Date();
+					saved = await episodic.saveEntryWithSourceObservation(
+						{
+							...opts.scope,
+							content,
+							contentHash: hashEpisodicMemoryContent(content),
+							embedding,
+							embeddingModel: normalized.embeddingModel,
+							metadata: { origin: USER_DIRECTED_MEMORY_ORIGIN },
+							createdAt: now,
+							lastSeenAt: now,
+						},
+						{
+							observation: {
+								observationScopeId: opts.sourceMessage.observationScopeId,
+								marker: 'critical',
+								text: opts.sourceMessage.text,
+								createdAt: opts.sourceMessage.createdAt,
+							},
+							threadId: opts.sourceMessage.threadId,
+							evidenceText: opts.sourceMessage.text,
+							createdAt: opts.sourceMessage.createdAt,
+						},
+					);
+				} finally {
+					await taskLock.release(lock).catch(() => undefined);
+				}
+				if (!saved) throw new Error('Memory could not be recorded.');
+				return {
+					recorded: true,
+					entry: {
+						id: saved.id,
+						content: saved.content,
+						createdAt: saved.createdAt.toISOString(),
+					},
+				};
+			}
+
+			const { query } = input;
 			const { embedding: queryEmbedding, usage } = await embed({
 				model: normalized.embedder,
 				value: query,
@@ -202,13 +306,45 @@ export function createRecallMemoryTool(opts: {
 			});
 			return { entries: entries.map(toRecallToolEntry) };
 		})
-		.toModelOutput((output) => ({
-			entries: output.entries.map((entry) => ({
-				content: `Prior/historical entry: ${entry.content}`,
-				createdAt: entry.createdAt,
-			})),
-		}))
+		.toModelOutput((output) =>
+			'entries' in output
+				? {
+						entries: output.entries.map((entry) => ({
+							content: `Prior/historical entry: ${entry.content}`,
+							createdAt: entry.createdAt,
+						})),
+					}
+				: { recorded: true, content: output.entry.content },
+		)
 		.build();
+}
+
+/** @deprecated Use createMemoryTool. */
+export const createRecallMemoryTool = createMemoryTool;
+
+async function acquireMemoryRecordLock(
+	taskLock: EpisodicMemoryTaskLockMethods,
+	resourceId: string,
+	abortSignal?: AbortSignal,
+): Promise<EpisodicMemoryTaskLockHandle> {
+	const holderId = `memory-record:${crypto.randomUUID()}`;
+	const deadline = Date.now() + MEMORY_RECORD_LOCK_WAIT_MS;
+	while (true) {
+		if (abortSignal?.aborted) {
+			throw abortSignal.reason instanceof Error
+				? abortSignal.reason
+				: new Error('Memory recording was aborted.');
+		}
+		const lock = await taskLock.acquire(resourceId, {
+			holderId,
+			ttlMs: MEMORY_RECORD_LOCK_TTL_MS,
+		});
+		if (lock) return lock;
+		if (Date.now() >= deadline) {
+			throw new Error('Memory is busy with another update. Please try again.');
+		}
+		await new Promise((resolve) => setTimeout(resolve, MEMORY_RECORD_LOCK_RETRY_MS));
+	}
 }
 
 export function rankEpisodicMemoryEntries(
@@ -439,6 +575,9 @@ function normalizeEpisodicMemoryReflection(
 	activeEntries: EpisodicMemoryEntry[],
 	reflection: EpisodicMemoryReflection,
 ): EpisodicMemoryReflection {
+	const userDirectedIds = new Set(
+		activeEntries.filter(isUserDirectedMemoryEntry).map((entry) => entry.id),
+	);
 	const activeIds = new Set(
 		activeEntries.filter((entry) => entry.status === 'active').map((entry) => entry.id),
 	);
@@ -447,13 +586,19 @@ function normalizeEpisodicMemoryReflection(
 		EpisodicMemoryReflectionMerge
 	>({
 		activeIds,
-		drop: reflection.drop,
-		merge: reflection.merge,
+		drop: reflection.drop.filter((id) => !userDirectedIds.has(id)),
+		merge: reflection.merge.filter(
+			(entry) => !entry.supersedes.some((id) => userDirectedIds.has(id)),
+		),
 		normalizeMerge: (entry, supersedes) => {
 			const content = normalizeEntryContent(entry.content);
 			return content ? { supersedes, content } : null;
 		},
 	});
+}
+
+function isUserDirectedMemoryEntry(entry: EpisodicMemoryEntry): boolean {
+	return entry.metadata?.origin === USER_DIRECTED_MEMORY_ORIGIN;
 }
 
 async function advanceEpisodicCursor(

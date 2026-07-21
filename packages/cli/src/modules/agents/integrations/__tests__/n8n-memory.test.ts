@@ -49,11 +49,16 @@ describe('N8nMemory', () => {
 	let transactionObservationUpdate: Mock;
 	let memoryEntryRunInTransaction: Mock;
 	let transactionMemoryEntryCreate: Mock;
+	let transactionMemoryEntryCreateQueryBuilder: Mock;
+	let transactionMemoryEntryInsertOrIgnore: Mock;
 	let transactionMemoryEntryFind: Mock;
 	let transactionMemoryEntryFindOneBy: Mock;
 	let transactionMemoryEntrySave: Mock;
 	let transactionMemoryEntryUpdate: Mock;
 	let transactionMemoryEntrySourceCreate: Mock;
+	let transactionMemoryEntrySourceCreateQueryBuilder: Mock;
+	let transactionMemoryEntrySourceInsertExecute: Mock;
+	let transactionMemoryEntrySourceInsertOrIgnore: Mock;
 	let transactionMemoryEntrySourceFind: Mock;
 	let transactionMemoryEntrySourceFindOneBy: Mock;
 	let transactionMemoryEntrySourceSave: Mock;
@@ -100,6 +105,18 @@ describe('N8nMemory', () => {
 		});
 
 		transactionMemoryEntryCreate = vi.fn((input) => ({ ...input }) as AgentMemoryEntryEntity);
+		const memoryEntryInsertExecute = vi.fn().mockResolvedValue({ identifiers: [] });
+		const memoryEntryInsertBuilder = {
+			insert: vi.fn(),
+			values: vi.fn(),
+			orIgnore: vi.fn(),
+			execute: memoryEntryInsertExecute,
+		};
+		memoryEntryInsertBuilder.insert.mockReturnValue(memoryEntryInsertBuilder);
+		memoryEntryInsertBuilder.values.mockReturnValue(memoryEntryInsertBuilder);
+		memoryEntryInsertBuilder.orIgnore.mockReturnValue(memoryEntryInsertBuilder);
+		transactionMemoryEntryCreateQueryBuilder = vi.fn().mockReturnValue(memoryEntryInsertBuilder);
+		transactionMemoryEntryInsertOrIgnore = memoryEntryInsertBuilder.orIgnore;
 		transactionMemoryEntryFind = vi.fn().mockResolvedValue([]);
 		transactionMemoryEntryFindOneBy = vi.fn().mockResolvedValue(null);
 		transactionMemoryEntrySave = vi.fn(async (input: AgentMemoryEntryEntity[]) =>
@@ -114,6 +131,20 @@ describe('N8nMemory', () => {
 		transactionMemoryEntrySourceCreate = vi.fn(
 			(input) => ({ ...input }) as AgentMemoryEntrySourceEntity,
 		);
+		transactionMemoryEntrySourceInsertExecute = vi.fn().mockResolvedValue({ identifiers: [] });
+		const memoryEntrySourceInsertBuilder = {
+			insert: vi.fn(),
+			values: vi.fn(),
+			orIgnore: vi.fn(),
+			execute: transactionMemoryEntrySourceInsertExecute,
+		};
+		memoryEntrySourceInsertBuilder.insert.mockReturnValue(memoryEntrySourceInsertBuilder);
+		memoryEntrySourceInsertBuilder.values.mockReturnValue(memoryEntrySourceInsertBuilder);
+		memoryEntrySourceInsertBuilder.orIgnore.mockReturnValue(memoryEntrySourceInsertBuilder);
+		transactionMemoryEntrySourceCreateQueryBuilder = vi
+			.fn()
+			.mockReturnValue(memoryEntrySourceInsertBuilder);
+		transactionMemoryEntrySourceInsertOrIgnore = memoryEntrySourceInsertBuilder.orIgnore;
 		transactionMemoryEntrySourceFind = vi.fn().mockResolvedValue([]);
 		transactionMemoryEntrySourceFindOneBy = vi.fn().mockResolvedValue(null);
 		transactionMemoryEntrySourceSave = vi.fn(async (input: AgentMemoryEntrySourceEntity[]) =>
@@ -152,14 +183,22 @@ describe('N8nMemory', () => {
 						if (entity === AgentMemoryEntryEntity) {
 							return {
 								create: transactionMemoryEntryCreate,
+								createQueryBuilder: transactionMemoryEntryCreateQueryBuilder,
 								find: transactionMemoryEntryFind,
 								findOneBy: transactionMemoryEntryFindOneBy,
 								save: transactionMemoryEntrySave,
 								update: transactionMemoryEntryUpdate,
 							};
 						}
+						if (entity === AgentObservationEntity) {
+							return {
+								create: transactionObservationCreate,
+								save: transactionObservationSave,
+							};
+						}
 						return {
 							create: transactionMemoryEntrySourceCreate,
+							createQueryBuilder: transactionMemoryEntrySourceCreateQueryBuilder,
 							find: transactionMemoryEntrySourceFind,
 							findOneBy: transactionMemoryEntrySourceFindOneBy,
 							save: transactionMemoryEntrySourceSave,
@@ -1261,12 +1300,12 @@ describe('N8nMemory', () => {
 		});
 
 		it('stores active source-backed entries with a content hash', async () => {
-			transactionMemoryEntrySave.mockResolvedValueOnce([
-				makeMemoryEntryEntity({
-					id: 'memory-1',
-					content: 'User chose Postgres for the memory store.',
-				}),
-			]);
+			const persisted = makeMemoryEntryEntity({
+				id: 'memory-1',
+				content: 'User chose Postgres for the memory store.',
+			});
+			transactionMemoryEntryFindOneBy.mockResolvedValueOnce(persisted);
+			transactionMemoryEntrySave.mockResolvedValueOnce([persisted]);
 
 			const result = await memory.episodic.saveEntryWithSources(
 				{
@@ -1293,7 +1332,7 @@ describe('N8nMemory', () => {
 					contentHash: expect.any(String),
 				}),
 			);
-			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
+			expect(transactionMemoryEntrySourceCreate).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: 'agent-1',
 					memoryEntryId: 'memory-1',
@@ -1301,13 +1340,86 @@ describe('N8nMemory', () => {
 					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
 					evidenceText: 'User chose Postgres',
 				}),
-			]);
+			);
+			expect(transactionMemoryEntrySourceInsertOrIgnore).toHaveBeenCalledOnce();
 			expect(result).toMatchObject({
 				id: 'memory-1',
 				content: 'User chose Postgres for the memory store.',
 				status: 'active',
 				embedding: [1, 0],
 			});
+		});
+
+		it('updates metadata when a matching entry is saved again', async () => {
+			const existing = makeMemoryEntryEntity({ metadata: { category: 'workflow-preference' } });
+			transactionMemoryEntryFindOneBy.mockResolvedValueOnce(existing);
+
+			const result = await memory.episodic.saveEntryWithSources(
+				{
+					resourceId: 'resource-1',
+					content: existing.content,
+					metadata: { origin: 'user-directed' },
+				},
+				[
+					{
+						observationId: 'message-1',
+						threadId: 'thread-1',
+						evidenceText: 'Please remember this.',
+					},
+				],
+			);
+
+			expect(transactionMemoryEntrySave).toHaveBeenLastCalledWith([
+				expect.objectContaining({
+					metadata: { category: 'workflow-preference', origin: 'user-directed' },
+				}),
+			]);
+			expect(result?.metadata).toEqual({
+				category: 'workflow-preference',
+				origin: 'user-directed',
+			});
+			expect(transactionMemoryEntryInsertOrIgnore).toHaveBeenCalledOnce();
+		});
+
+		it('stores a source observation and memory entry in the same transaction', async () => {
+			if (!memory.episodic.saveEntryWithSourceObservation) {
+				throw new Error('Expected an atomic source-observation writer');
+			}
+
+			const persisted = makeMemoryEntryEntity({
+				content: 'User wants implementation changes tested before they are committed.',
+			});
+			transactionMemoryEntryFindOneBy.mockResolvedValueOnce(persisted);
+			transactionMemoryEntrySave.mockResolvedValueOnce([persisted]);
+
+			await memory.episodic.saveEntryWithSourceObservation(
+				{
+					resourceId: 'resource-1',
+					content: 'User wants implementation changes tested before they are committed.',
+					metadata: { origin: 'user-directed' },
+				},
+				{
+					observation: {
+						observationScopeId: 'thread-1',
+						marker: 'critical',
+						text: 'Please remember to test implementation changes before committing them.',
+					},
+					threadId: 'thread-1',
+					evidenceText: 'Please remember to test implementation changes before committing them.',
+				},
+			);
+
+			expect(memoryEntryRunInTransaction).toHaveBeenCalledOnce();
+			expect(observationRepository.save).not.toHaveBeenCalled();
+			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
+			expect(memoryEntrySourceRepository.save).not.toHaveBeenCalled();
+			expect(transactionObservationSave).toHaveBeenCalledOnce();
+			expect(transactionMemoryEntrySourceCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					observationId: 'merged-1',
+					evidenceText: 'Please remember to test implementation changes before committing them.',
+				}),
+			);
 		});
 
 		it('searches scoped active entries through hybrid ranking', async () => {
@@ -1341,12 +1453,12 @@ describe('N8nMemory', () => {
 		});
 
 		it('stores an episodic entry and its sources in one transaction', async () => {
-			transactionMemoryEntrySave.mockResolvedValueOnce([
-				makeMemoryEntryEntity({
-					id: 'memory-atomic',
-					content: 'User chose Postgres for durable memory storage.',
-				}),
-			]);
+			const persisted = makeMemoryEntryEntity({
+				id: 'memory-atomic',
+				content: 'User chose Postgres for durable memory storage.',
+			});
+			transactionMemoryEntryFindOneBy.mockResolvedValueOnce(persisted);
+			transactionMemoryEntrySave.mockResolvedValueOnce([persisted]);
 			transactionMemoryEntrySourceSave.mockResolvedValueOnce([
 				makeMemoryEntrySourceEntity({
 					id: 'source-atomic',
@@ -1375,7 +1487,7 @@ describe('N8nMemory', () => {
 			expect(memoryEntryRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
 			expect(memoryEntryRepository.save).not.toHaveBeenCalled();
 			expect(memoryEntrySourceRepository.save).not.toHaveBeenCalled();
-			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
+			expect(transactionMemoryEntrySourceCreate).toHaveBeenCalledWith(
 				expect.objectContaining({
 					agentId: 'agent-1',
 					memoryEntryId: 'memory-atomic',
@@ -1383,18 +1495,20 @@ describe('N8nMemory', () => {
 					evidenceHash: hashEpisodicMemoryEvidence('User chose Postgres'),
 					evidenceText: 'User chose Postgres',
 				}),
-			]);
+			);
 			expect(result).toEqual(expect.objectContaining({ id: 'memory-atomic' }));
 		});
 
 		it('rolls back the episodic entry transaction when source persistence fails', async () => {
-			transactionMemoryEntrySave.mockResolvedValueOnce([
-				makeMemoryEntryEntity({
-					id: 'memory-atomic',
-					content: 'User chose Postgres for durable memory storage.',
-				}),
-			]);
-			transactionMemoryEntrySourceSave.mockRejectedValueOnce(new Error('source write failed'));
+			const persisted = makeMemoryEntryEntity({
+				id: 'memory-atomic',
+				content: 'User chose Postgres for durable memory storage.',
+			});
+			transactionMemoryEntryFindOneBy.mockResolvedValueOnce(persisted);
+			transactionMemoryEntrySave.mockResolvedValueOnce([persisted]);
+			transactionMemoryEntrySourceInsertExecute.mockRejectedValueOnce(
+				new Error('source write failed'),
+			);
 
 			await expect(
 				memory.episodic.saveEntryWithSources(
@@ -1515,6 +1629,23 @@ describe('N8nMemory', () => {
 				supersededIds: ['memory-1', 'memory-2'],
 				inserted: [expect.objectContaining({ id: 'merged-memory-1' })],
 			});
+		});
+
+		it('does not apply reflection actions to user-directed entries', async () => {
+			transactionMemoryEntryFind.mockResolvedValueOnce([
+				makeMemoryEntryEntity({
+					id: 'user-directed',
+					metadata: { origin: 'user-directed' },
+				}),
+			]);
+
+			const result = await memory.episodic.applyReflection(
+				{ resourceId: 'resource-1' },
+				{ drop: ['user-directed'], merge: [] },
+			);
+
+			expect(transactionMemoryEntryUpdate).not.toHaveBeenCalled();
+			expect(result).toEqual({ droppedIds: [], supersededIds: [], inserted: [] });
 		});
 
 		it('reuses an existing replacement entry when reflection content already exists', async () => {

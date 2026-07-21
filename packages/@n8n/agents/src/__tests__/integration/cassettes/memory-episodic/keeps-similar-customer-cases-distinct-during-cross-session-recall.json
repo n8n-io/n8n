@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled through the memory tool. Use the record operation when the user explicitly asks you to remember something, asks you to carry information or a way of working into future tasks, or clearly marks an instruction or preference as important for future work. Allow for natural ambiguity and use judgment about clearly future-facing intent. Do not record incidental details, transient current-task context, or information merely mentioned without a reason to carry it forward. Only confirm that you remembered something after the record operation succeeds; if it fails, tell the user it was not saved. Use the recall operation when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not use recall for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering. Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -25,18 +25,41 @@
 			],
 			"tools": [
 				{
-					"name": "recall_memory",
-					"description": "Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.",
+					"name": "memory",
+					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "recall"
+									},
+									"query": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "query"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "record"
+									},
+									"content": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "content"],
+								"additionalProperties": false
 							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
+						],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -376,7 +399,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled through the memory tool. Use the record operation when the user explicitly asks you to remember something, asks you to carry information or a way of working into future tasks, or clearly marks an instruction or preference as important for future work. Allow for natural ambiguity and use judgment about clearly future-facing intent. Do not record incidental details, transient current-task context, or information merely mentioned without a reason to carry it forward. Only confirm that you remembered something after the record operation succeeds; if it fails, tell the user it was not saved. Use the recall operation when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not use recall for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering. Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -392,18 +415,41 @@
 			],
 			"tools": [
 				{
-					"name": "recall_memory",
-					"description": "Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.",
+					"name": "memory",
+					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "recall"
+									},
+									"query": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "query"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "record"
+									},
+									"content": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "content"],
+								"additionalProperties": false
 							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
+						],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -819,7 +865,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled through the memory tool. Use the record operation when the user explicitly asks you to remember something, asks you to carry information or a way of working into future tasks, or clearly marks an instruction or preference as important for future work. Allow for natural ambiguity and use judgment about clearly future-facing intent. Do not record incidental details, transient current-task context, or information merely mentioned without a reason to carry it forward. Only confirm that you remembered something after the record operation succeeds; if it fails, tell the user it was not saved. Use the recall operation when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not use recall for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering. Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -828,25 +874,48 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "You must call recall_memory before answering. Use the recall query \"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate."
+							"text": "You must call memory with the recall operation before answering. Use the recall query \"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate."
 						}
 					]
 				}
 			],
 			"tools": [
 				{
-					"name": "recall_memory",
-					"description": "Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.",
+					"name": "memory",
+					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "recall"
+									},
+									"query": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "query"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "record"
+									},
+									"content": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "content"],
+								"additionalProperties": false
 							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
+						],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -856,7 +925,7 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01B2JU2sujGTj966PShHJgNd\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01Wecj4YzrrXrQdYGPjGD8px\",\"name\":\"recall_memory\",\"input\":{\"query\":\"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":980,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":91,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
+		"response": "{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_01B2JU2sujGTj966PShHJgNd\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01Wecj4YzrrXrQdYGPjGD8px\",\"name\":\"memory\",\"input\":{\"operation\":\"recall\",\"query\":\"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":980,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":91,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "22500000",
 			"anthropic-ratelimit-input-tokens-remaining": "22500000",
@@ -936,7 +1005,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "<built_in_rules>\n- Episodic memory is enabled. Only call recall_memory when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall_memory to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not call recall_memory for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the recall_memory tool before answering. Do not answer a prior-context question from ordinary context alone; call recall_memory first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
+					"text": "<built_in_rules>\n- Episodic memory is enabled through the memory tool. Use the record operation when the user explicitly asks you to remember something, asks you to carry information or a way of working into future tasks, or clearly marks an instruction or preference as important for future work. Allow for natural ambiguity and use judgment about clearly future-facing intent. Do not record incidental details, transient current-task context, or information merely mentioned without a reason to carry it forward. Only confirm that you remembered something after the record operation succeeds; if it fails, tell the user it was not saved. Use the recall operation when the user explicitly asks about prior conversations, earlier decisions, remembered details, previous sessions/work, similar historical situations, exact names, prior artifacts, or complete lists/inventories of what was established before. Use recall to find related prior entries; it does not answer from memory. Treat returned results as prior or historical candidate context, not current-thread truth. The current user message, current thread history, and current observations outrank recall results. Do not use recall for normal current-thread questions, thin current context, missing current information, or as a fallback for missing current context.\n</built_in_rules>\n\nYou are a concise assistant. When the user explicitly asks about previous conversations, prior decisions, remembered artifacts, or previous memory, your first step must be to call the memory tool with the recall operation before answering. Do not answer a prior-context question from ordinary context alone; call memory with the recall operation first, then answer from the tool result. Use exact identifiers verbatim. If no relevant prior memory is available, say you do not have saved prior memory for that request. When asked to remember durable details, acknowledge in one concise sentence and repeat the exact identifiers without discussing memory limitations."
 				}
 			],
 			"messages": [
@@ -945,7 +1014,7 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "You must call recall_memory before answering. Use the recall query \"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate."
+							"text": "You must call memory with the recall operation before answering. Use the recall query \"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate."
 						}
 					]
 				},
@@ -955,8 +1024,9 @@
 						{
 							"type": "tool_use",
 							"id": "toolu_01Wecj4YzrrXrQdYGPjGD8px",
-							"name": "recall_memory",
+							"name": "memory",
 							"input": {
+								"operation": "recall",
 								"query": "Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance"
 							},
 							"caller": {
@@ -978,18 +1048,41 @@
 			],
 			"tools": [
 				{
-					"name": "recall_memory",
-					"description": "Recall source-backed prior-session entries for explicit asks about previous conversations, earlier decisions, exact names, prior artifacts, remembered details, or similar historical situations.",
+					"name": "memory",
+					"description": "Record durable information the user wants carried into future work, or recall source-backed prior-session entries about earlier decisions, exact names, prior artifacts, remembered details, and similar historical situations.",
 					"input_schema": {
-						"type": "object",
-						"properties": {
-							"query": {
-								"type": "string",
-								"minLength": 1
+						"anyOf": [
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "recall"
+									},
+									"query": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "query"],
+								"additionalProperties": false
+							},
+							{
+								"type": "object",
+								"properties": {
+									"operation": {
+										"type": "string",
+										"const": "record"
+									},
+									"content": {
+										"type": "string",
+										"minLength": 1
+									}
+								},
+								"required": ["operation", "content"],
+								"additionalProperties": false
 							}
-						},
-						"required": ["query"],
-						"additionalProperties": false,
+						],
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				}
@@ -1048,7 +1141,7 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nUnobserved transcript tokens: 633\n\nCurrent observation log tail:\n(empty)\n\nNew transcript delta since the last observation:\n[2026-06-01T12:00:00.000Z] user:\nYou must call recall_memory before answering. Use the recall query \"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate.\n[2026-06-01T12:00:00.001Z] tool_call recall_memory input={\"query\":\"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\"}\n[2026-06-01T12:00:00.001Z] tool_result recall_memory output={\"entries\":[{\"content\":\"Prior/historical entry: Redwood Clinics uses a tracker titled exactly 'Redwood Clinic Intake Board', Slack channel #redwood-intake, with an owner rule 'Clinic Ops owns New and Needs Clinic Review'. This owner rule is Redwood-specific and must not be generalized.\",\"createdAt\":\"2026-06-01T12:00:00.000Z\"},{\"content\":\"Prior/historical entry: Cedar Labs uses a tracker titled exactly 'Cedar Lab Partner Queue', Slack channel #cedar-lab-queue. Owner rule: Lab Success owns New, and Finance owns Terms Review. Do not reuse Redwood owner rules for Cedar Labs.\",\"createdAt\":\"2026-06-01T12:00:00.000Z\"}]}\n[2026-06-01T12:00:00.002Z] assistant:\nHere is a side-by-side comparison based on prior saved memory, kept strictly separate:\n\n---\n\n### Redwood Clinics\n\n| Attribute | Detail |\n|---|---|\n| **Tracker Title** | Redwood Clinic Intake Board |\n| **Slack Channel** | #redwood-intake |\n| **Owner Rule** | Clinic Ops owns **New** and **Needs Clinic Review** |\n\n---\n\n### Cedar Labs\n\n| Attribute | Detail |\n|---|---|\n| **Tracker Title** | Cedar Lab Partner Queue |\n| **Slack Channel** | #cedar-lab-queue |\n| **Owner Rule** | Lab Success owns **New**; Finance owns **Terms Review** |\n\n---\n\n### Key Differences\n\n- **Tracker titles** are entirely distinct — \"Intake Board\" vs. \"Partner Queue\" — reflecting different operational focuses (clinic intake vs. lab partnerships).\n- **Slack channels** are separate and dedicated to each org (#redwood-intake vs. #cedar-lab-queue).\n- **Owner rules** differ significantly:\n  - Redwood Clinics has **one owner (Clinic Ops)** covering two stages (New + Needs Clinic Review).\n  - Cedar Labs has **two separate owners** split by stage: Lab Success for New, Finance for Terms Review.\n\n> ⚠️ Per saved memory: Redwood's owner rules are Redwood-specific and must **not** be generalized or applied to Cedar Labs, and vice versa."
+							"text": "Current timestamp: 2026-06-01T12:00:00.000Z\n\nUnobserved transcript tokens: 633\n\nCurrent observation log tail:\n(empty)\n\nNew transcript delta since the last observation:\n[2026-06-01T12:00:00.000Z] user:\nYou must call memory with the recall operation before answering. Use the recall query \"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\". Using previous conversations, compare the Redwood Clinics and Cedar Labs tracker titles, Slack channels, and owner rules. Keep the cases separate.\n[2026-06-01T12:00:00.001Z] tool_call memory input={\"operation\":\"recall\",\"query\":\"Redwood Clinics Redwood Clinic Intake Board #redwood-intake Clinic Ops Cedar Labs Cedar Lab Partner Queue #cedar-lab-queue Lab Success Finance\"}\n[2026-06-01T12:00:00.001Z] tool_result memory output={\"entries\":[{\"content\":\"Prior/historical entry: Redwood Clinics uses a tracker titled exactly 'Redwood Clinic Intake Board', Slack channel #redwood-intake, with an owner rule 'Clinic Ops owns New and Needs Clinic Review'. This owner rule is Redwood-specific and must not be generalized.\",\"createdAt\":\"2026-06-01T12:00:00.000Z\"},{\"content\":\"Prior/historical entry: Cedar Labs uses a tracker titled exactly 'Cedar Lab Partner Queue', Slack channel #cedar-lab-queue. Owner rule: Lab Success owns New, and Finance owns Terms Review. Do not reuse Redwood owner rules for Cedar Labs.\",\"createdAt\":\"2026-06-01T12:00:00.000Z\"}]}\n[2026-06-01T12:00:00.002Z] assistant:\nHere is a side-by-side comparison based on prior saved memory, kept strictly separate:\n\n---\n\n### Redwood Clinics\n\n| Attribute | Detail |\n|---|---|\n| **Tracker Title** | Redwood Clinic Intake Board |\n| **Slack Channel** | #redwood-intake |\n| **Owner Rule** | Clinic Ops owns **New** and **Needs Clinic Review** |\n\n---\n\n### Cedar Labs\n\n| Attribute | Detail |\n|---|---|\n| **Tracker Title** | Cedar Lab Partner Queue |\n| **Slack Channel** | #cedar-lab-queue |\n| **Owner Rule** | Lab Success owns **New**; Finance owns **Terms Review** |\n\n---\n\n### Key Differences\n\n- **Tracker titles** are entirely distinct — \"Intake Board\" vs. \"Partner Queue\" — reflecting different operational focuses (clinic intake vs. lab partnerships).\n- **Slack channels** are separate and dedicated to each org (#redwood-intake vs. #cedar-lab-queue).\n- **Owner rules** differ significantly:\n  - Redwood Clinics has **one owner (Clinic Ops)** covering two stages (New + Needs Clinic Review).\n  - Cedar Labs has **two separate owners** split by stage: Lab Success for New, Finance for Terms Review.\n\n> ⚠️ Per saved memory: Redwood's owner rules are Redwood-specific and must **not** be generalized or applied to Cedar Labs, and vice versa."
 						}
 					]
 				}

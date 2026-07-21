@@ -471,6 +471,40 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-testid="agent-chat-external-wait"]').exists()).toBe(false);
 	});
 
+	it('shows recalled entries from the memory tool in the assistant footer', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-memory',
+						role: 'assistant',
+						content: 'We chose Postgres.',
+						toolCalls: [
+							{
+								tool: 'memory',
+								toolCallId: 'tc-memory-recall',
+								state: 'done',
+								input: { operation: 'recall', query: 'storage decision' },
+								output: {
+									entries: [
+										{
+											id: 'memory-1',
+											content: 'User chose Postgres for memory storage.',
+										},
+									],
+								},
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.text()).toContain('agents.builder.quickActions.memoriesUsed.count 1');
+	});
+
 	it('shows a single action row for consecutive assistant messages and copies the whole run', async () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {

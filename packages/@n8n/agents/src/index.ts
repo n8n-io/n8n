@@ -62,6 +62,7 @@ export type {
 	NewEpisodicMemoryEntry,
 	NewEpisodicMemoryEntrySource,
 	NewEpisodicMemoryEntrySourceForEntry,
+	NewEpisodicMemoryEntrySourceObservation,
 	RetrievedEpisodicMemoryEntry,
 	ResumeOptions,
 	McpServerConfig,
@@ -295,7 +296,10 @@ export {
 	uniqueStrings,
 } from './runtime/memory/memory-lifecycle';
 export {
+	MEMORY_TOOL_NAME,
 	RECALL_MEMORY_TOOL_NAME,
+	USER_DIRECTED_MEMORY_ORIGIN,
+	createMemoryTool,
 	createRecallMemoryTool,
 	getEpisodicMemoryScope,
 	hashEpisodicMemoryContent,
@@ -306,11 +310,13 @@ export {
 	runEpisodicMemoryIndexer,
 	withEpisodicMemoryDefaults,
 } from './runtime/memory/episodic-memory';
+export type { MemoryToolSourceMessage } from './runtime/memory/episodic-memory';
 export {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_EXTRACTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION,
+	DEFAULT_EPISODIC_MEMORY_TOOL_INSTRUCTION,
 	DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 	buildEpisodicMemoryExtractorPrompt,

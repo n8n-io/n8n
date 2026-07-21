@@ -104,7 +104,7 @@ describe('Memory builder — episodic memory', () => {
 		const prompts = {
 			extraction: 'extract prompt',
 			reflection: 'reflect prompt',
-			recallToolInstruction: 'recall prompt',
+			toolInstruction: 'memory tool prompt',
 		};
 
 		const resolved = resolveEpisodicMemoryConfig(

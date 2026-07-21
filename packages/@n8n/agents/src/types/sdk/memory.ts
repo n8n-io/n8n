@@ -4,6 +4,7 @@ import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from 
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
+	NewObservationLogEntry,
 	ObservationLogEntry,
 	ObservationLogObserveFn,
 	ObservationLogReflectFn,
@@ -122,6 +123,13 @@ export type NewEpisodicMemoryEntrySourceForEntry = Omit<
 	'memoryEntryId'
 >;
 
+export interface NewEpisodicMemoryEntrySourceObservation {
+	observation: NewObservationLogEntry;
+	threadId: string;
+	evidenceText: string;
+	createdAt?: Date;
+}
+
 export interface EpisodicMemoryCursor extends ObservationLogScope {
 	lastIndexedObservationId: string;
 	lastIndexedObservationCreatedAt: Date;
@@ -163,6 +171,11 @@ export interface EpisodicMemoryMethods {
 	saveEntryWithSources(
 		entry: NewEpisodicMemoryEntry,
 		sources: NewEpisodicMemoryEntrySourceForEntry[],
+	): Promise<EpisodicMemoryEntry | null>;
+	/** Atomically persists a new source observation with its memory entry and source link. */
+	saveEntryWithSourceObservation?(
+		entry: NewEpisodicMemoryEntry,
+		source: NewEpisodicMemoryEntrySourceObservation,
 	): Promise<EpisodicMemoryEntry | null>;
 	searchEntries(
 		scope: EpisodicMemoryScope,
@@ -251,6 +264,8 @@ export interface EpisodicMemoryReflectionResult {
 export interface EpisodicMemoryPrompts {
 	extraction?: string;
 	reflection?: string;
+	toolInstruction?: string;
+	/** @deprecated Use toolInstruction. */
 	recallToolInstruction?: string;
 }
 
