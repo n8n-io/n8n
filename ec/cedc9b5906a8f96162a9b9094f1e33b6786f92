@@ -1,0 +1,25 @@
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_a2f2604c6a0758::t_772b452826b82d 2,18-19,23-24,28-29,34,44-49,55,81,122-127,131,135,137-138,140-142,145-146,151,153,157,180-183,185,193-195
+  s_a2f2604c6a0758::t_f142dc4aeaface 20-22,25-27
+  s_a2f2604c6a0758::t_c4a9273b09452b 134,136,139,143-144,147-150,152,156,158-161,164
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_a2f2604c6a0758::t_5185abd3cd764b 1
+  s_a2f2604c6a0758::t_02b090cd0f1188 36,40,44,49-50,53,60-64
+  s_a2f2604c6a0758::t_5bac6a8461ad8b 74,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eccedc9b5906a8f96162a9b9094f1e33b6786f92",
+  "prompts": {},
+  "sessions": {
+    "s_a2f2604c6a0758": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2eebeab3-c2f8-45bc-a543-37d531da2598",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

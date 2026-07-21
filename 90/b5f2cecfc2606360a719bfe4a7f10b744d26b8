@@ -1,0 +1,143 @@
+packages/cli/src/public-api/index.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 13-15,23,190-195,332
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/static-sub-workflow-requirements.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 26,38
+packages/cli/src/controller.registry.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 48-49
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_833ccdcceb346a::t_b21fa1d8d60321 9,20,34,51,92-93,125,290,300,302-341,351-353,550,553-556,594-605
+packages/@n8n/api-types/src/dto/tag/tag-public.dto.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-22
+packages/@n8n/decorators/src/controller/types.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1,4,9-15,54-55,85
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 7,176-349
+packages/@n8n/config/src/configs/user-management.config.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 84-87
+packages/@n8n/api-types/src/dto/index.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 133-134,245,247
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/OAuthClientDetailsModal.vue
+  s_833ccdcceb346a::t_b21fa1d8d60321 44-50,128-136
+packages/@n8n/decorators/src/controller/__tests__/api-response.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-39
+packages/@n8n/api-types/src/index.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 516-520,522-525
+packages/@n8n/api-types/src/dto/tag/list-tags-query.dto.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-9
+packages/@n8n/decorators/src/controller/__tests__/api-key-scope.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-69
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_833ccdcceb346a::t_b21fa1d8d60321 5-16,18-20,23-29,31-32,36-37,47-63,68-69,71-77,79-96,99-106,108-138,148-160,229-260,266-268,271-272,291-295,322-328,368-383
+packages/@n8n/decorators/src/controller/index.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 4-6,14,18
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPEmptyState.vue
+  s_833ccdcceb346a::t_b21fa1d8d60321 2-3,7-11,29-30,36-40,42,45-68,70-72
+packages/cli/src/modules/oauth-server/__tests__/oauth-clients.controller.api.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 74-346,496-634
+packages/@n8n/decorators/src/controller/api-key-scope.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-45
+.agents/skills/public-api/SKILL.md
+  s_833ccdcceb346a::t_b21fa1d8d60321 6,11,13-67,108,110-113
+packages/core/src/execution-engine/workflow-execute.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 5,1980-1982
+packages/cli/src/modules/oauth-server/database/repositories/oauth-user-consent.repository.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1,7-39,47-89,91-99
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 86-87,353-375
+packages/@n8n/nodes-langchain/utils/agent-execution/test/memoryManagement.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 19,221-391
+packages/cli/src/public-api/v1/handlers/tags/tags.handler.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 3-5,73-80,83-85
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 48,50,52
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 3-9,22-28,38-41,76-90
+packages/frontend/editor-ui/src/features/ai/mcpAccess/clients.utils.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-23
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/ActionItem.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-93
+packages/cli/src/services/tag.service.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 105-117
+packages/@n8n/decorators/src/controller/__tests__/public-api-controller.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-41
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 19-22,140,164,264,277-304
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 14,45,61,286,303-318,333-343,441
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsFilters.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-86
+packages/cli/src/modules/n8n-packages/__tests__/utils/test-builders.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 153-177
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 25,37,48,71,912,915,940,943,956-1000,1018,1179,1224
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 16-17,20,22,34-35,40-46,54-68,71-85,104,477-484,486-496,498-530,537-546,549-564,573-574,577-578,580,590-594,630-640
+packages/cli/src/public-api/v1/controllers/tags.public.controller.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-50
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_833ccdcceb346a::t_b21fa1d8d60321 3179,3241-3261
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientOwnerCell.vue
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-20
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 4,8,22-32,35-47,54,89-114
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-requirements.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 25,27
+packages/@n8n/config/test/config.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 173
+packages/@n8n/decorators/src/controller/public-api-controller.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-34
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1,16-17,19-40,51-57,158-285
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 32-79
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsFilters.vue
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-201
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.store.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 26-29,47-57,187-212,215-217,221-240,254-266,310-319
+packages/cli/src/user-management/email/user-management-mailer.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 50-51,130-154
+packages/cli/src/user-management/email/templates/mcp-client-revoked.mjml
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-19
+packages/cli/src/modules/oauth-server/oauth-clients.controller.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 2,5,11-12,15,28-29,36,38-41,43-46,48,60,65,67-68,84-87,95,97-101,105,110,115
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-207
+packages/cli/src/user-management/email/__tests__/user-management-mailer.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 221-246
+packages/core/src/execution-engine/__tests__/workflow-execute-node-error-reporting.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 166-176
+packages/frontend/editor-ui/src/features/shared/nodeCreator/composables/useActions.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 5,9-10,17,24-29,32-60,68,84-86,175-239,412-479,596,602-604
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/RevokeOAuthClientConfirmModal.vue
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-60
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 19,138,155,159-180
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.api.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 6-7,82-91,94,96-104,116,122
+packages/@n8n/nodes-langchain/utils/agent-execution/memoryManagement.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 158,162,164-167,169,173-174,179-180,184,187,193-221
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 137,152
+packages/@n8n/decorators/src/controller/api-response.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-28
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/NodeCreation.test.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 1-96
+packages/@n8n/api-types/src/dto/oauth/oauth-client.dto.ts
+  s_833ccdcceb346a::t_b21fa1d8d60321 3,5-12,26-27,35-51,57,61-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "90b5f2cecfc2606360a719bfe4a7f10b744d26b8",
+  "prompts": {},
+  "sessions": {
+    "s_833ccdcceb346a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53b23618-9cb8-4677-8d58-bcda22b06d2a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

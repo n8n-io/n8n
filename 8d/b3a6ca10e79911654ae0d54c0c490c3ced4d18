@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_b8b852d7293170::t_b351afa5897856 1-654
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_b8b852d7293170::t_b906f55dce40f8 1-3,7,14,18,145-151,237-240,446
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_b8b852d7293170::t_32d2b9e685c20f 1-538
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_b8b852d7293170::t_1a4196108a721a 40,1235,1244-1245,1261-1262,1287,1317,1352,1390,1423,1449,1462,1485,1516-1517,1550-1551
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_b8b852d7293170::t_177c107eb7d6d6 5
+packages/cli/src/modules/agents/utils/agent-execution-counter.ts
+  s_b8b852d7293170::t_e0e4682e7e85a4 1-30
+packages/cli/src/workflow-execute-additional-data.ts
+  s_b8b852d7293170::t_debd7f2662b2d9 391
+  s_b8b852d7293170::t_00cfdc5abf24d4 378-379,381
+  s_b8b852d7293170::t_0dec45ee502a70 406
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8db3a6ca10e79911654ae0d54c0c490c3ced4d18",
+  "prompts": {},
+  "sessions": {
+    "s_b8b852d7293170": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70c26026-68fb-4dc8-8bb5-992fef38deb8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/eslint.config.mjs
+  s_25c07ec43b6d58::t_fd18457bb85fbe 174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5386b811d32c03b1783247fb9c6d89562aa6bf44",
+  "prompts": {},
+  "sessions": {
+    "s_25c07ec43b6d58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b9242dd-f2a6-4de2-ba89-937d787ddd5c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

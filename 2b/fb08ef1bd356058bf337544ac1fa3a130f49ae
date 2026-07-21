@@ -1,0 +1,66 @@
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  h_32d8cd6a0d6aad 428
+  s_a2c0d20cbf22fa::t_86cd6af0f98d9e 429-430,432-436
+  s_a2c0d20cbf22fa::t_541af15107db6d 431
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_a2c0d20cbf22fa::t_65e9042e1548fb 502,516-521,523-524,529-533,536-537,539,541-545,548-554,557-563,578-583,585-589
+  s_a2c0d20cbf22fa::t_15619fa0453da2 503-506,511,522,526-528,540,555,584
+  s_a2c0d20cbf22fa::t_e9a91e7d315116 514
+  s_a2c0d20cbf22fa::t_909825815c361d 512-513,515,525,535,538,547,556,577
+  s_a2c0d20cbf22fa::t_9447eabaceeaa5 39
+  s_a2c0d20cbf22fa::t_fa460456e5b353 10
+  s_a2c0d20cbf22fa::t_0f4a2acef048d2 534
+  s_a2c0d20cbf22fa::t_de8a4e3d1966af 564-576
+  s_a2c0d20cbf22fa::t_8d090dc20d6bee 546
+  s_a2c0d20cbf22fa::t_f28248c593dc52 507-510
+packages/@n8n/scheduler/src/core/index.ts
+  s_a2c0d20cbf22fa::t_d2ec1186ca78e5 23,27
+  s_a2c0d20cbf22fa::t_fbf156e6afe60d 21-22,24-26,28
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_a2c0d20cbf22fa::t_92893a47d7dc3d 80
+packages/@n8n/scheduler/src/core/clock-skew.ts
+  s_a2c0d20cbf22fa::t_5448f76406527f 26-35
+  s_a2c0d20cbf22fa::t_c9f00b1b783cc0 2-7,10,12,22,37-40,43,45-47,52
+  s_a2c0d20cbf22fa::t_a8e7cc3075fc8a 1,8-9,11,13-21,23-25,36,41-42,44,48-51,53-67
+packages/@n8n/scheduler/src/core/__tests__/clock-skew.test.ts
+  s_a2c0d20cbf22fa::t_a66da464c9ccdc 1-7,10-14,18-21,24-57
+  s_a2c0d20cbf22fa::t_f6ba3d54a0a353 8-9,15-17,22-23
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_a2c0d20cbf22fa::t_3c27099cce72e3 139,145,147-149
+  s_a2c0d20cbf22fa::t_0648a5ddc2bb4f 140,143-144
+  s_a2c0d20cbf22fa::t_979123587a9fc2 141-142,146
+  s_a2c0d20cbf22fa::t_127edd7345b1e3 32
+  s_a2c0d20cbf22fa::t_9356aaae5ed1e0 31,37,48
+packages/@n8n/scheduler/src/core/factory.ts
+  s_a2c0d20cbf22fa::t_3e431cb31886e9 76,82,84
+  s_a2c0d20cbf22fa::t_23aa140faba9b5 4-9
+  s_a2c0d20cbf22fa::t_3e7e7a713661c5 442,445,447,451
+  s_a2c0d20cbf22fa::t_f8ea85e3ed55e7 77-81,83
+  s_a2c0d20cbf22fa::t_172c800ff4e77d 448
+  s_a2c0d20cbf22fa::t_e36a50e7553e0e 487-489
+  s_a2c0d20cbf22fa::t_2083437161b6e3 70-72
+  h_32d8cd6a0d6aad 456
+  s_a2c0d20cbf22fa::t_99f23ba12a247b 126
+  s_a2c0d20cbf22fa::t_4b53d10babc0a4 441,443-444,446,449-450,452-455,457-461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2bfb08ef1bd356058bf337544ac1fa3a130f49ae",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a2c0d20cbf22fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "690c56b3-10ef-472e-ae89-2d9900990d66",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
