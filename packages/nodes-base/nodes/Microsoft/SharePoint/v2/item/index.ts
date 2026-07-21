@@ -3,11 +3,9 @@ import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } fr
 import { type CollectionSearchOptions, searchGraphCollection } from '../helpers/driveItemSearch';
 import { resolveSiteId } from '../site';
 
-/** Hide gate mirroring untilSiteSelected: the item field stays hidden until a list is chosen. */
+/** Keeps the item field hidden until a list is chosen. */
 export const untilListSelected = { list: [''] };
 
-// Colocated with getItems/resolveSiteId, mirroring how listRLC lives next to
-// getLists in v2/list/index.ts, rather than a separate registry.
 export const itemRLC: INodeProperties = {
 	displayName: 'Item',
 	name: 'item',
@@ -37,16 +35,10 @@ export const itemRLC: INodeProperties = {
 	],
 };
 
-// FileLeafRef is a document library's file name; Title is empty there (see label fallback).
+// FileLeafRef labels document-library items, where Title is empty.
 type ItemEntry = { id?: string; fields?: { Title?: string; FileLeafRef?: string } };
 
-/**
- * Searches a list's items by their label, walking further pages when the typed
- * filter needs them (Graph can't substring-filter list items server-side).
- * Resolves `site` via `resolveSiteId` and reads `list` through the resource
- * locator so a URL-mode site and a title-mode list behave identically here and
- * in the Item actions.
- */
+/** Searches a list's items by label, paging through when a filter is typed. */
 export async function getItems(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -54,9 +46,7 @@ export async function getItems(
 ): Promise<INodeListSearchResult> {
 	let endpoint = '';
 	if (!paginationToken) {
-		// In load-options contexts getNodeParameter's 2nd arg is the fallback, not
-		// an item index (see getLists) — a real site/list value exists by the time
-		// this dropdown can be opened. extractValue unwraps the list resource locator.
+		// In load-options contexts getNodeParameter's 2nd arg is a fallback, not an item index.
 		const siteId = await resolveSiteId.call(this, 0);
 		const list = String(this.getNodeParameter('list', 0, { extractValue: true }));
 		endpoint = `/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(list)}/items`;
@@ -68,17 +58,14 @@ export async function getItems(
 		Promise<INodeListSearchResult>
 	>(this, {
 		endpoint,
-		// Graph requires the `$`-prefixed nested option: fields($select=...).
-		// (v1's legacy endpoint tolerated `select=Title`; Graph's OData parser rejects it.)
-		// FileLeafRef gives document libraries a file-name label where Title is empty.
+		// Graph requires the nested form: fields($select=...), not select=Title.
 		qs: { $expand: 'fields($select=Title,FileLeafRef)', $select: 'id,fields' },
 		filter,
 		paginationToken,
 		toResult: (item) =>
 			item.id
 				? {
-						// `||` (not `??`) so an empty Title falls back to FileLeafRef, then the item's ID.
-						// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty Title must fall back, which ?? would not do
+						// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty Title must fall back to FileLeafRef
 						name: item.fields?.Title || item.fields?.FileLeafRef || String(item.id),
 						value: String(item.id),
 					}

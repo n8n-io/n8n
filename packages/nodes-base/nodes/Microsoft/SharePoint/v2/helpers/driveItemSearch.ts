@@ -3,9 +3,7 @@ import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from '
 import { type GraphSearchReply } from './utils';
 import { microsoftApiRequest } from '../transport';
 
-// A page can yield nothing to show (filtered out, or the wrong item kind);
-// those pages are walked here in one call — the editor would otherwise re-request
-// per empty page — capped so a single dropdown request can't crawl a whole collection.
+// Caps how many pages a single dropdown request walks looking for matches.
 export const SEARCH_PAGE_LIMIT = 10;
 
 export type CollectionSearchOptions<T> = {
@@ -18,19 +16,16 @@ export type CollectionSearchOptions<T> = {
 };
 
 /**
- * Pages through a Graph collection, mapping each entry to a dropdown result via
- * `toResult` (return `null` to drop an entry) and applying the typed filter to
- * the produced label — Graph can't substring-filter these collections
- * server-side. Next-page links are requested exactly as returned — never
- * rebuilt.
+ * Pages through a Graph collection, mapping each entry via `toResult` (return
+ * `null` to drop it) and filtering on the produced label — Graph can't
+ * substring-filter these collections server-side.
  */
 export async function searchGraphCollection<T>(
 	this: ILoadOptionsFunctions,
 	options: CollectionSearchOptions<T>,
 ): Promise<INodeListSearchResult> {
 	const filterLower = options.filter?.toLowerCase();
-	// Kept in the API's order: the editor concatenates pages, so a per-page
-	// sort would reset at every page boundary and read as misordered
+	// Kept in the API's order — the editor concatenates pages.
 	const results: INodeListSearchResult['results'] = [];
 	let nextToken = options.paginationToken;
 	let pagesLeft = SEARCH_PAGE_LIMIT;
@@ -73,10 +68,7 @@ export async function searchGraphCollection<T>(
 
 type DriveItem = { id?: string; name?: string; folder?: unknown; file?: unknown };
 
-/**
- * Drive-items wrapper over `searchGraphCollection`: keeps the entries `keep`
- * accepts and labels each by its file name.
- */
+/** Drive-items wrapper over `searchGraphCollection`, labelling each by file name. */
 export async function searchDriveItems(
 	this: ILoadOptionsFunctions,
 	options: {

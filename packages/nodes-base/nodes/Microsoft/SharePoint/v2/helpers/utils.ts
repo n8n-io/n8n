@@ -9,10 +9,8 @@ export const LIST_SIMPLIFY_SELECT =
 export const ITEM_SIMPLIFY_SELECT = 'id,createdDateTime,lastModifiedDateTime,webUrl';
 
 /**
- * Validates and trims a value used verbatim as a URL path segment (a list or
- * item ID/title). Rejects empty, `.` and `..` — each would change the request
- * shape (`/items/` → the collection, `/items/.` → the collection, `/items/..`
- * → the parent list) instead of addressing one resource.
+ * Validates and trims a value used verbatim as a URL path segment. Rejects
+ * empty, `.` and `..`, which would address a different resource than intended.
  */
 export function assertPathSegment(node: INode, value: string, paramName: string): string {
 	const trimmed = value.trim();

@@ -9,8 +9,7 @@ import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../../v2/transport';
 import type * as _importType0 from '../../../v2/transport';
 
-// Real transport module except the network helper, so getSharePointCredentialType
-// keeps its real behavior; only microsoftApiRequest is stubbed.
+// Stub only the network helper; keep the rest of the transport real.
 vi.mock('../../../v2/transport', async () => {
 	const originalModule = await vi.importActual<typeof _importType0>('../../../v2/transport');
 	return {
@@ -19,10 +18,7 @@ vi.mock('../../../v2/transport', async () => {
 	};
 });
 
-// A representative subset of v1's item reply (test/item/get.test.ts): the four
-// keys the simplify strip targets, plus survivors, so the trimming assertions are
-// exact. Not a byte-for-byte copy of v1's full field set — v1 parity is covered
-// by v1's own tests; here we assert the same trimming behavior on the same shape.
+// A v1-shaped item reply: the keys Simplify strips, plus survivors.
 const GRAPH_ITEM_REPLY: IDataObject = {
 	'@odata.context':
 		'https://mydomain.sharepoint.com/sites/site1/_api/v2.0/$metadata#listItems/$entity',
@@ -122,8 +118,7 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 			'GET',
 			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items/${ITEM_ID}`,
 			{},
-			// Assert v1's literal $select (not the shared constant) so a drift of
-			// ITEM_SIMPLIFY_SELECT away from v1's contract fails this parity test.
+			// Assert the literal $select, so drifting ITEM_SIMPLIFY_SELECT fails here.
 			{
 				$select: 'id,createdDateTime,lastModifiedDateTime,webUrl',
 				$expand: 'fields($select=Title)',

@@ -60,8 +60,7 @@ export async function execute(
 		'Item',
 	);
 
-	// A 204 has no body; ignore the transport return and report the deletion
-	// ourselves (matches v1's { deleted: true } post-receive).
+	// 204 has no body — report the deletion ourselves, like v1.
 	await microsoftApiRequest.call(
 		this,
 		'DELETE',

@@ -68,15 +68,12 @@ export async function execute(
 	);
 	const simplify = this.getNodeParameter('simplify', i) as boolean;
 
-	// Simplify narrows the request the same way v1 does; off keeps the literal
-	// ?expand=fields the ticket specifies (Simplify defaults on, so the default
-	// path matches v1).
+	// Simplify (default on) trims the response to v1's fields; off returns raw.
 	const qs: IDataObject = simplify
 		? { $select: ITEM_SIMPLIFY_SELECT, $expand: 'fields($select=Title)' }
 		: { $expand: 'fields' };
 
-	// Encode segments: site IDs contain commas, list titles contain spaces;
-	// encoding also keeps user input from escaping its path segment.
+	// Encode segments so user input can't escape its path segment.
 	const response = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -86,7 +83,7 @@ export async function execute(
 	);
 
 	if (simplify) {
-		// Match v1's simplifyItemPostReceive exactly: strip these four keys.
+		// Strip the same metadata keys v1's Simplify drops.
 		delete response['@odata.context'];
 		delete response['@odata.etag'];
 		delete response['fields@odata.navigationLink'];

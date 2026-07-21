@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-// `delete` is reserved, so import under the `del` alias and re-export (as v1 does).
+// `delete` is reserved — alias as `del`.
 import * as del from './delete.operation';
 import * as get from './get.operation';
 
