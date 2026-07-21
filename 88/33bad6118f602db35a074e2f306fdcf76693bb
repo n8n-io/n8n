@@ -1,28 +1,28 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_70e4a16a672757::t_bdf6c7bea8e71a 4379-4393
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.test.ts
+  s_70e4a16a672757::t_a03d32108719b6 10,13-18,27,42,46-50
+  s_70e4a16a672757::t_fb4dc791b159aa 1-9,11-12,19-26,28-41,43-45,51-52
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
   s_70e4a16a672757::t_a03d32108719b6 23,27-33,36,53,71,97,113,127
   s_70e4a16a672757::t_40a2d32740e901 54,57-59,61
   s_70e4a16a672757::t_951740fe8071cd 1-22,24-26,34-35,37-52,55-56,60,62-70,72-96,98-112,114-126,128-136
-packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
-  s_70e4a16a672757::t_e9f6c3ccb75050 41,56,75,101,126-130
-  s_70e4a16a672757::t_960c6985deff23 1-40,42-44,48-55,57-74,76-100,102-125,131-156,158-191
-  s_70e4a16a672757::t_5e2c31eed03274 45-47,157
-packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
-  s_70e4a16a672757::t_960c6985deff23 1-5,7-37,42,44-48,50-71
-  s_70e4a16a672757::t_5e8b00967df401 49
-  s_70e4a16a672757::t_5ef1c3465c32d3 6,38,43
-  s_70e4a16a672757::t_e9f6c3ccb75050 39-41
-packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.test.ts
-  s_70e4a16a672757::t_a03d32108719b6 10,13-18,27,42,46-50
-  s_70e4a16a672757::t_fb4dc791b159aa 1-9,11-12,19-26,28-41,43-45,51-52
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue
   s_70e4a16a672757::t_960c6985deff23 1-38,40-43,45-72
-  s_70e4a16a672757::t_e9f6c3ccb75050 39
   s_70e4a16a672757::t_5e8b00967df401 44
-packages/frontend/@n8n/i18n/src/locales/en.json
-  s_70e4a16a672757::t_bdf6c7bea8e71a 4379-4393
+  s_70e4a16a672757::t_e9f6c3ccb75050 39
 packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.test.ts
-  s_70e4a16a672757::t_fb4dc791b159aa 1-9,11-12,19-26,28-41,43-45,51-52
   s_70e4a16a672757::t_a03d32108719b6 10,13-18,27,42,46-50
+  s_70e4a16a672757::t_fb4dc791b159aa 1-9,11-12,19-26,28-41,43-45,51-52
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue
+  s_70e4a16a672757::t_5ef1c3465c32d3 6,38,43
+  s_70e4a16a672757::t_960c6985deff23 1-5,7-37,42,44-48,50-71
+  s_70e4a16a672757::t_5e8b00967df401 49
+  s_70e4a16a672757::t_e9f6c3ccb75050 39-41
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_70e4a16a672757::t_5e2c31eed03274 45-47,157
+  s_70e4a16a672757::t_960c6985deff23 1-40,42-44,48-55,57-74,76-100,102-125,131-156,158-191
+  s_70e4a16a672757::t_e9f6c3ccb75050 41,56,75,101,126-130
 ---
 {
   "schema_version": "authorship/3.0.0",
