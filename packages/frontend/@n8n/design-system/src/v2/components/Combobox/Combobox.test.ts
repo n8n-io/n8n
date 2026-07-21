@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor, within } from '@testing-library/vue';
+import { ref } from 'vue';
 
 import type { ComboboxItem } from './Combobox.types';
 import Combobox from './Combobox.vue';
@@ -324,6 +325,70 @@ describe('v2/components/Combobox', () => {
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([[]]);
+			});
+		});
+
+		it('should clear the value and close the menu when clear is clicked while open', async () => {
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					const value = ref('Option 1');
+					return { value };
+				},
+				template: `
+					<Combobox
+						v-model="value"
+						:items="['Option 1', 'Option 2', 'Option 3']"
+						clearable
+						:default-open="true"
+					/>
+				`,
+			});
+
+			const input = getComboboxInput(wrapper);
+			input.focus();
+
+			const { popover } = await getPopoverContainer();
+			expect(popover).toBeVisible();
+			expect(input).toHaveValue('Option 1');
+
+			await userEvent.click(wrapper.getByRole('button', { name: 'Clear selection' }));
+
+			await waitFor(() => {
+				expect(input).toHaveValue('');
+				expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
+			});
+		});
+
+		it('should refocus the input after clearing with the keyboard', async () => {
+			const wrapper = render({
+				components: { Combobox },
+				setup() {
+					const value = ref('Option 1');
+					return { value };
+				},
+				template: `
+					<Combobox
+						v-model="value"
+						:items="['Option 1', 'Option 2']"
+						clearable
+					/>
+				`,
+			});
+
+			const input = getComboboxInput(wrapper);
+			const clearButton = wrapper.getByRole('button', { name: 'Clear selection' });
+
+			input.focus();
+			await userEvent.keyboard('{Escape}');
+			clearButton.focus();
+			expect(clearButton).toHaveFocus();
+
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(input).toHaveValue('');
+				expect(input).toHaveFocus();
 			});
 		});
 	});

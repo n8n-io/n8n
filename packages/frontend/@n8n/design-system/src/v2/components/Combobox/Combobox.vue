@@ -188,18 +188,19 @@ const selectedItem = computed(() => {
 
 const leadingIcon = computed(() => selectedItem.value?.icon ?? props.icon);
 
-function focusInput() {
-	void nextTick(() => {
-		const element = inputRef.value?.$el;
-		if (element instanceof HTMLInputElement) {
-			element.focus();
-		}
-	});
-}
-
 function onClear() {
 	emit('update:modelValue', props.multiple ? [] : undefined);
-	focusInput();
+
+	void nextTick(() => {
+		const element = inputRef.value?.$el;
+		if (!(element instanceof HTMLInputElement)) {
+			return;
+		}
+
+		element.value = '';
+		element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		element.focus();
+	});
 }
 
 function onTagsUpdate(value: TagsInputValue[]) {
@@ -294,6 +295,7 @@ function onInput(event: Event) {
 				type="button"
 				:class="$style.clearButton"
 				:aria-label="t('combobox.clearSelection')"
+				@mousedown.prevent
 				@click.stop="onClear"
 			>
 				<Icon icon="x" size="small" />

@@ -1,6 +1,6 @@
 # Component specification
 
-Allows users to search and choose one or more options from a list. All comboboxes filter as the user types. Supports single and multiple selection, grouped lists (labels and separators), and is suited to larger datasets where a plain Select is not enough.
+Allows users to search and choose one or more options from a list. All comboboxes filter as the user types and open the dropdown on input focus. Supports single and multiple selection, grouped lists (labels and separators), and is suited to larger datasets where a plain Select is not enough.
 
 - **Component Name:** N8nCombobox2
 - **Figma Component:** [ComboBox](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=2631-7139&m=dev)
@@ -51,7 +51,6 @@ When `multiple` is true, selected values render via embedded `N8nTagsInput2` (sh
 - `resetSearchTermOnBlur?: boolean` — Reset search text on blur | reka default: `true`
 - `resetSearchTermOnSelect?: boolean` — Reset search text on select | reka default: `true`
 - `openOnClick?: boolean` — Open dropdown when input is clicked | reka default: `false`
-- `openOnFocus?: boolean` — Open dropdown when input receives focus | default: `true`
 - `highlightOnHover?: boolean` — Highlight items on hover (reka-ui root)
 - `clearable?: boolean` — When `true`, shows a clear button (×) when a value is selected. Hidden when disabled or empty. Default: `false`
 - `teleported?: boolean` — Whether to teleport the dropdown to body. Default: `true`
