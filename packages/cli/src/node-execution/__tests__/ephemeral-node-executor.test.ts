@@ -244,20 +244,25 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.status).toBe('success');
 		});
 
-		it('returns a structured error when the operation is on the blacklist (sendAndWait)', async () => {
-			nodeTypes.getByNameAndVersion.mockReturnValue(mockNodeType({ description: toolDescription }));
+		it.each(['sendAndWait', 'dispatchAndWait'])(
+			'returns a structured error when operation %s is unsupported',
+			async (operation) => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mockNodeType({ description: toolDescription }),
+				);
 
-			const result = await executor.executeInline({
-				nodeType: 'n8n-nodes-base.slack',
-				nodeTypeVersion: 1,
-				nodeParameters: { operation: 'sendAndWait' },
-				inputData: [],
-				projectId: 'p-1',
-			});
+				const result = await executor.executeInline({
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: { operation },
+					inputData: [],
+					projectId: 'p-1',
+				});
 
-			expect(result.status).toBe('error');
-			expect(result.error).toMatch(/not supported for agent tool execution/);
-		});
+				expect(result.status).toBe('error');
+				expect(result.error).toMatch(/not supported for agent tool execution/);
+			},
+		);
 	});
 
 	describe('resolveInlineCredentials (via executeInline)', () => {

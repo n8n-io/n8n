@@ -186,6 +186,71 @@ describe('ask_credential tool', () => {
 		expect(result).toEqual({ skipped: true });
 	});
 
+	it('reuses the configured channel integration credential when it matches the requested type', async () => {
+		const credentialProvider = makeProvider([
+			{ id: 'c1', name: 'Personal Slack', type: 'slackApi' },
+			{ id: 'c2', name: 'Workspace Slack', type: 'slackApi' },
+		]);
+		const tool = buildAskCredentialTool({
+			credentialProvider,
+			listIntegrationCredentialIds: async () => ['c2'],
+		});
+		const ctx = makeCtx();
+
+		const result = await tool.handler!(
+			{ purpose: 'Slack', credentialType: 'slackApi' },
+			ctx as never,
+		);
+
+		expect(ctx.suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			credentialId: 'c2',
+			credentialName: 'Workspace Slack',
+			credentials: { slackApi: { id: 'c2', name: 'Workspace Slack' } },
+		});
+	});
+
+	it('ignores channel integration credentials of a different type', async () => {
+		const credentialProvider = makeProvider([
+			{ id: 'c1', name: 'Personal Slack', type: 'slackApi' },
+			{ id: 'c2', name: 'Workspace Slack', type: 'slackApi' },
+			{ id: 'c3', name: 'Telegram Bot', type: 'telegramApi' },
+		]);
+		const tool = buildAskCredentialTool({
+			credentialProvider,
+			listIntegrationCredentialIds: async () => ['c3'],
+		});
+		const ctx = makeCtx();
+
+		await tool.handler!({ purpose: 'Slack', credentialType: 'slackApi' }, ctx as never);
+
+		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+	});
+
+	it('lets an explicit resume selection win over the channel integration credential', async () => {
+		const credentialProvider = makeProvider([
+			{ id: 'c1', name: 'Personal Slack', type: 'slackApi' },
+			{ id: 'c2', name: 'Workspace Slack', type: 'slackApi' },
+		]);
+		const tool = buildAskCredentialTool({
+			credentialProvider,
+			listIntegrationCredentialIds: async () => ['c2'],
+		});
+		const ctx = makeCtx({ resumeData: { credentials: { slackApi: 'c1' } } });
+
+		const result = await tool.handler!(
+			{ purpose: 'Slack', credentialType: 'slackApi' },
+			ctx as never,
+		);
+
+		expect(ctx.suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			credentialId: 'c1',
+			credentialName: 'Personal Slack',
+			credentials: { slackApi: { id: 'c1', name: 'Personal Slack' } },
+		});
+	});
+
 	it('returns skipped when the resume has no credentials map (explicit skip or denial)', async () => {
 		const credentialProvider = makeProvider([]);
 		const tool = buildAskCredentialTool({ credentialProvider });

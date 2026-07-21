@@ -21,6 +21,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { collectParametersByTab, createCommonNodeSettings } from '@/features/ndv/shared/ndv.utils';
+import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.utils';
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -46,6 +47,8 @@ const props = defineProps<{
 	existingToolNames?: string[];
 	hideAskAssistant?: boolean;
 	projectId?: string;
+	/** Operation option values to hide from the form (e.g. operations the hosting runtime cannot execute). */
+	hiddenOperations?: readonly string[];
 }>();
 
 const emit = defineEmits<{
@@ -76,7 +79,11 @@ const nodeTypeDescription = computed(() => {
 	if (!props.initialNode) {
 		return null;
 	}
-	return nodeTypesStore.getNodeType(props.initialNode.type);
+	const description = nodeTypesStore.getNodeType(props.initialNode.type);
+	if (!description || !props.hiddenOperations?.length) {
+		return description;
+	}
+	return omitOperationOptions(description, props.hiddenOperations);
 });
 
 type ToolSettingsTab = 'params' | 'settings';
