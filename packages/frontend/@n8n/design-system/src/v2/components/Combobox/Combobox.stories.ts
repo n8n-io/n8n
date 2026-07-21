@@ -133,6 +133,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Items = {
+	name: 'String items',
 	render: (args) => ({
 		components: { Combobox },
 		setup() {
@@ -149,9 +150,18 @@ export const Items = {
 		items: statusItems,
 		modelValue: undefined,
 	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Items as a plain string array. Each string is used as both the label and the value.',
+			},
+		},
+	},
 } satisfies Story;
 
-export const ItemsObjectArray = {
+export const ObjectItems = {
+	name: 'Object items',
 	render: (args) => ({
 		components: { Combobox },
 		setup() {
@@ -167,6 +177,14 @@ export const ItemsObjectArray = {
 	args: {
 		items: objectItems,
 		modelValue: undefined,
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Items as `{ label, value }` objects. The selected model value is the item `value`, while `label` is shown in the list and trigger.',
+			},
+		},
 	},
 } satisfies Story;
 
