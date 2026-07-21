@@ -1,0 +1,111 @@
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_e00fbf120c49dd::t_7024f569fa4857 91-93
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_89043350dae1a0::t_a6edb4d6a9fc8c 17
+  s_89043350dae1a0::t_56320ab3c42023 273
+  s_e00fbf120c49dd::t_c9d4abf3f0e508 717
+  s_e00fbf120c49dd::t_72d3dcb362eb18 718
+  s_89043350dae1a0::t_5e3f8bf037e8fe 391
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_a04650a9144c0a::t_2187eab3e2f8bd 44-50
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_e00fbf120c49dd::t_9564eea96f4f4b 66-68
+packages/cli/src/modules/agents/builder/skills/mcp.skill.ts
+  s_f64db5da84331f::t_f05011b3546373 96-100
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_89043350dae1a0::t_3dc3834fd6b23d 65-67
+  s_89043350dae1a0::t_ca702709c62583 52
+  s_89043350dae1a0::t_1ffd11b45b42fc 1
+  s_89043350dae1a0::t_9e758d586d3a1a 44
+  s_f64db5da84331f::t_ccf948706303bf 53
+packages/cli/src/modules/agents/builder/interactive/ask-credential.tool.ts
+  s_a04650a9144c0a::t_d8b979039d9ea0 139-143
+packages/cli/src/modules/agents/builder/agents-builder.service.ts
+  s_89043350dae1a0::t_c9cafc8b7c41f8 279
+  s_89043350dae1a0::t_f5e1f94f758c20 232
+  s_89043350dae1a0::t_6f59152faa20d0 280
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_89043350dae1a0::t_aa9af17951f243 876,881-907,919,921-951
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_a04650a9144c0a::t_1130ae049a08fd 55
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_89043350dae1a0::t_c5fcccbc78725b 24-25
+  s_89043350dae1a0::t_30f91ad9778a87 15
+  s_a5607af8f84452::t_d8e42400bc448e 18,20
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_89043350dae1a0::t_4849229eafcf47 95-97
+  s_a5607af8f84452::t_950fc4926c3923 101-104
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_a04650a9144c0a::t_86cf8bbdc52c7b 50-54,56-61
+  s_89043350dae1a0::t_1b588a42a2d1e3 122-131,143
+  s_e00fbf120c49dd::t_f931cfe990bfa7 138-142
+  s_f64db5da84331f::t_d78c5b18cdee8f 62
+  s_e00fbf120c49dd::t_fdeb85b91e4772 78
+  s_89043350dae1a0::t_578a8a3b844781 77
+  s_89043350dae1a0::t_d6239b992d2940 152-153,155-157,160-164
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-prompts.test.ts
+  s_a04650a9144c0a::t_2bec2a71ac8440 302-305
+  s_f64db5da84331f::t_48146d73276195 299-301,306-307
+  s_a5607af8f84452::t_779925843f0645 308-311
+  s_89043350dae1a0::t_dd412d6e23a5ca 279-298,312
+  s_89043350dae1a0::t_40e2257b857c23 185
+packages/cli/src/modules/agents/builder/prompts/memory.prompt.ts
+  s_f64db5da84331f::t_670af2ec4819e8 38-39
+packages/cli/src/modules/agents/builder/agents-builder-model-recommendations.ts
+  s_f64db5da84331f::t_7ad358985942cb 85-87,89-91
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_89043350dae1a0::t_f29907a8e6b650 37,39-41,48
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_f64db5da84331f::t_167991464485b9 141
+  s_f64db5da84331f::t_4a59aa2477212a 107-108
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_e00fbf120c49dd::t_308521413fc5f3 52-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3a310ec273cd326b3c41ea2300ab45ff9f8cb2b3",
+  "prompts": {},
+  "sessions": {
+    "s_89043350dae1a0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "37b7ff66-88fe-41b1-aceb-e725e5068ed8",
+        "model": "composer-2.5-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a04650a9144c0a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "72599e6d-963a-4b8d-86d4-b1540eaf437f",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a5607af8f84452": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44c99cdd-3786-4e1e-84b2-98f2b7744cea",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_e00fbf120c49dd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "38d10a5a-f35d-499a-a73f-c0f28ce2bb48",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f64db5da84331f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9fdb0121-c637-4210-a60e-0166e8bd55d4",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
