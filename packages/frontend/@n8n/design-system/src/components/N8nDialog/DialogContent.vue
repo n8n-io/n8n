@@ -180,6 +180,7 @@ function handleInteractOutside(e: Event) {
 }
 
 .scrollable {
+	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
 }
