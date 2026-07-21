@@ -21,6 +21,9 @@ export const versionDescription: INodeTypeDescription = {
 	defaults: {
 		name: 'Microsoft SharePoint',
 	},
+	// The generated Tool variant ships with the version: dormant while v2 is
+	// unregistered, exposed together with the node at launch.
+	usableAsTool: true,
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
 	// The v1 credential (microsoftSharePointOAuth2Api) is deliberately not
