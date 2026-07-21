@@ -245,8 +245,13 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes published integration chat with integration-scoped runtime', async () => {
-		const { service, runtimeCacheService, executionService, agentRunTracingService, externalHooks } =
-			makeService();
+		const {
+			service,
+			runtimeCacheService,
+			executionService,
+			agentRunTracingService,
+			externalHooks,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
@@ -286,8 +291,13 @@ describe('AgentExecutionOrchestratorService', () => {
 	});
 
 	it('executes published scheduled tasks with task-scoped runtime and metadata', async () => {
-		const { service, runtimeCacheService, executionService, agentRunTracingService, externalHooks } =
-			makeService();
+		const {
+			service,
+			runtimeCacheService,
+			executionService,
+			agentRunTracingService,
+			externalHooks,
+		} = makeService();
 		const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
 
