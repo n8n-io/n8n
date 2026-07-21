@@ -42,7 +42,6 @@
     "n8n-workflow": "workspace:*",
     "@vueuse/core": "catalog:frontend",
     "bowser": "2.11.0",
-    "element-plus": "catalog:frontend",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
   },

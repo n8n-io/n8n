@@ -5392,9 +5392,6 @@ importers:
       bowser:
         specifier: 2.11.0
         version: 2.11.0
-      element-plus:
-        specifier: catalog:frontend
-        version: 2.4.3(patch_hash=fbab57fe3750e430abd5d5e7c04cbf1b6a8f9f1c9676b14c73b77d3e06ba9eee)(vue@3.5.26(typescript@6.0.2))
       n8n-workflow:
         specifier: workspace:*
         version: link:../../../workflow
