@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_d7ad43abb0f718::t_02f05e42812e4c 15
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_d7ad43abb0f718::t_af07dc207a128f 932
+  s_d7ad43abb0f718::t_d14319ba54e6ed 983,987-990,1004,1008-1009
+  s_d7ad43abb0f718::t_6bab04623cdee9 852
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_d7ad43abb0f718::t_45bf57ceb4f44b 667-668,670-676,678,680-681,683-685,688-690,692-694
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_d7ad43abb0f718::t_caacbadf7b84da 92
+packages/@n8n/api-types/src/agents/__tests__/agent-config-validation.schema.test.ts
+  s_d7ad43abb0f718::t_f0c71800907cb0 4-7,33-39,41-48,50-61,63-65
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_d7ad43abb0f718::t_a47e501fc295c2 180,184,194,197
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChipButton.test.ts
+  s_d7ad43abb0f718::t_c2451ba2c0255f 14-15,19,21,27,32,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4cdbf559f22736cccbac6ddfa68eaf8a73fc1e5c",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d7ad43abb0f718": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a7511cdd-7d62-4b0b-8f6b-18913c177fa9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

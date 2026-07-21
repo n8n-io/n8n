@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_0237a66f4d3f8f::t_a79667e5fd3605 2435-2639
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_0237a66f4d3f8f::t_9eb6cdf518857b 447-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2ab5da9a93b1a9191f8e20697862e5af11c8eee6",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

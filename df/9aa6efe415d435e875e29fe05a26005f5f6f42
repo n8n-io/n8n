@@ -1,6 +1,6 @@
 packages/@n8n/db/src/migrations/sqlite/index.ts
-  s_44a98ba2784a12::t_fe94af8470378e 432-433
-  s_44a98ba2784a12::t_bfa5a9f5ac9def 215-216
+  s_44a98ba2784a12::t_fe94af8470378e 432-433,432
+  s_44a98ba2784a12::t_bfa5a9f5ac9def 215-216,215
 packages/@n8n/db/src/migrations/common/1784000000048-CreateWorkflowReviewRequestTables.ts
   s_44a98ba2784a12::t_83153f2bfd59af 17
 docs/generated/sqlite-schema/oauth_user_consents.md
@@ -14,8 +14,8 @@ packages/cli/test/migration/1784000000048-create-workflow-review-request-tables.
 docs/generated/sqlite-schema/user.md
   s_44a98ba2784a12::t_c7a37a3d8a1ed7 241
 packages/@n8n/db/src/migrations/postgresdb/index.ts
-  s_44a98ba2784a12::t_aa1e8f3f5a3b38 223-224
-  s_44a98ba2784a12::t_473e032380eaeb 450-451
+  s_44a98ba2784a12::t_aa1e8f3f5a3b38 223-224,223
+  s_44a98ba2784a12::t_473e032380eaeb 450-451,450
 packages/@n8n/db/src/migrations/common/1784000000047-BackfillPreScopingOAuthGrantScopes.ts
   s_44a98ba2784a12::t_2b023adf499a11 1-100
 ---
