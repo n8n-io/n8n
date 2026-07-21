@@ -5,6 +5,7 @@ import {
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
+	DEBOUNCE_TIME,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
@@ -40,7 +41,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 
 import { N8nIcon, N8nNotice } from '@n8n/design-system';
 const i18n = useI18n();
-const { callDebounced } = useDebounce();
+const { callDebounced, debounce } = useDebounce();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
@@ -109,8 +110,12 @@ function getDefaultActiveIndex(search: string = ''): number {
 	return 0;
 }
 
-function onSearch(value: string) {
-	if (activeViewStack.value.uuid) {
+// Debounce the actual filtering so rapid typing doesn't re-run the fuzzy
+// search (and re-render the list) on every keystroke. The view stack search is
+// only written once the user pauses, keeping the input responsive.
+const debouncedApplySearch = debounce(
+	(value: string) => {
+		if (!activeViewStack.value.uuid) return;
 		updateCurrentViewStack({ search: value });
 		void setActiveItemIndex(getDefaultActiveIndex(value));
 		if (value.length) {
@@ -126,7 +131,12 @@ function onSearch(value: string) {
 				},
 			);
 		}
-	}
+	},
+	{ trailing: true, debounceTime: DEBOUNCE_TIME.INPUT.SEARCH },
+);
+
+function onSearch(value: string) {
+	debouncedApplySearch(value);
 }
 
 function onTransitionEnd() {

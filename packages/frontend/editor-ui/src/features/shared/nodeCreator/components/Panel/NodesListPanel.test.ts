@@ -1,7 +1,7 @@
 import { defineComponent, nextTick, watch } from 'vue';
 import type { PropType } from 'vue';
 import { createPinia } from 'pinia';
-import { screen, fireEvent } from '@testing-library/vue';
+import { screen, fireEvent, waitFor } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
@@ -246,19 +246,16 @@ describe('NodesListPanel', () => {
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Ninth' },
 			});
-			await nextTick();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1));
 
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: 'Non sense' },
 			});
-			await nextTick();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(0));
 			expect(screen.queryByText("We didn't make that... yet")).toBeInTheDocument();
 
 			await fireEvent.click(container.querySelector('svg[data-icon=circle-x]')!);
-			await nextTick();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9));
 		});
 
 		it('should trim search input before emitting update', async () => {
@@ -269,9 +266,8 @@ describe('NodesListPanel', () => {
 			await fireEvent.input(screen.getByTestId('node-creator-search-bar'), {
 				target: { value: '    Node 1' },
 			});
-			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
+			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1));
 			expect(screen.queryByText('Node 1')).toBeInTheDocument();
 
 			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
