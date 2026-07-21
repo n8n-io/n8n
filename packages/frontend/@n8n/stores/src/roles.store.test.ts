@@ -1,7 +1,8 @@
-import { useRolesStore } from '@/app/stores/roles.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import * as rolesApi from '@n8n/rest-api-client/api/roles';
 import { createPinia, setActivePinia } from 'pinia';
+
+import { useRolesStore } from './roles.store';
+import { useSettingsStore } from './settings.store';
 
 let rolesStore: ReturnType<typeof useRolesStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
