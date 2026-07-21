@@ -691,7 +691,7 @@ describe('CommunityPackagesService', () => {
 			expect(execFile).toHaveBeenCalledTimes(1);
 			expect(execFile).toHaveBeenCalledWith(
 				'tar',
-				['-xzf', testBlockTarballName, '-C', testBlockPackageDir, '--strip-components=1'],
+				['-xzf', testBlockTarballName, '-C', testBlockPackageDir, '--strip-components=1', '--no-same-owner'],
 				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
