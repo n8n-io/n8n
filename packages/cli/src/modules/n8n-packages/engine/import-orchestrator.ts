@@ -115,6 +115,8 @@ export class ImportOrchestrator {
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
+		// This collects/validates the node usage by traversing the workflows.
+		// This can be changed later to only rely on the requirements if desired.
 		const missingNodeTypes = collectMissingNodeTypes(workflows, (nodeType) =>
 			this.nodeTypes.getSupportedVersions(nodeType),
 		);
