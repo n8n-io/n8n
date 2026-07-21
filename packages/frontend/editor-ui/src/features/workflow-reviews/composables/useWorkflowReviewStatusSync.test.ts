@@ -101,7 +101,7 @@ describe('useWorkflowReviewStatusSync', () => {
 		expect(reviewStatusStore.fetchStatus).not.toHaveBeenCalled();
 	});
 
-	it('refetches on workflowReviewStateChanged for the current workflow only', async () => {
+	it('refetches on a review state change for the current workflow, ignoring other workflows', async () => {
 		mountComposable(() => 'workflow-1');
 		await nextTick();
 		reviewStatusStore.fetchStatus.mockClear();
@@ -114,7 +114,7 @@ describe('useWorkflowReviewStatusSync', () => {
 		expect(reviewStatusStore.fetchStatus).toHaveBeenCalledWith('workflow-1');
 	});
 
-	it('ignores collaboration push messages', async () => {
+	it('ignores push messages of unrelated types', async () => {
 		mountComposable(() => 'workflow-1');
 		await nextTick();
 		reviewStatusStore.fetchStatus.mockClear();
@@ -123,7 +123,7 @@ describe('useWorkflowReviewStatusSync', () => {
 		expect(reviewStatusStore.fetchStatus).not.toHaveBeenCalled();
 	});
 
-	it('refetches on a reconnect rising edge only', async () => {
+	it('refetches when the push connection is restored, but not when it drops', async () => {
 		mountComposable(() => 'workflow-1');
 		await nextTick();
 		reviewStatusStore.fetchStatus.mockClear();
@@ -137,7 +137,7 @@ describe('useWorkflowReviewStatusSync', () => {
 		expect(reviewStatusStore.fetchStatus).toHaveBeenCalledTimes(1);
 	});
 
-	it('refetches for the new workflow when the id switches', async () => {
+	it('refetches for the new workflow when the active workflow id changes', async () => {
 		const workflowId = ref<string | undefined>('workflow-1');
 		mountComposable(() => workflowId.value);
 		await nextTick();
@@ -150,7 +150,7 @@ describe('useWorkflowReviewStatusSync', () => {
 		expect(reviewStatusStore.fetchStatus).toHaveBeenCalledWith('workflow-2');
 	});
 
-	it('refetches when the document becomes visible', async () => {
+	it('refetches when the browser tab becomes visible again', async () => {
 		mountComposable(() => 'workflow-1');
 		await nextTick();
 		reviewStatusStore.fetchStatus.mockClear();
