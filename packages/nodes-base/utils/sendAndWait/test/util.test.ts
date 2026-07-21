@@ -651,6 +651,11 @@ describe('Send and Wait utils tests', () => {
 				);
 			};
 
+			beforeEach(() => {
+				// HITL response logging is gated to Gmail for now.
+				mockWebhookFunctions.getNode.mockReturnValue({ type: 'n8n-nodes-base.gmail' } as any);
+			});
+
 			it('should render confirmation page on GET when the option is enabled', async () => {
 				const send = vi.fn();
 				mockWebhookFunctions.getRequestObject.mockReturnValue({
@@ -747,6 +752,25 @@ describe('Send and Wait utils tests', () => {
 				mockParams({
 					responseType: 'approval',
 					confirmationPage: false,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
+			});
+
+			it('should not log a HITL response on POST for a non-Gmail node', async () => {
+				mockWebhookFunctions.getNode.mockReturnValue({
+					type: 'n8n-nodes-base.microsoftOutlook',
+				} as any);
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
 				});
 
 				await sendAndWaitWebhook.call(mockWebhookFunctions);

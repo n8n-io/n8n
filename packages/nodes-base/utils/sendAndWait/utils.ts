@@ -7,7 +7,12 @@ import type {
 	INodeProperties,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
+import {
+	GMAIL_NODE_TYPE,
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 
 import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
@@ -506,7 +511,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	}
 
 	// Advanced HITL: the confirmation-page POST is the actioned response.
-	if (confirmationPage && method === 'POST') {
+	if (confirmationPage && method === 'POST' && this.getNode().type === GMAIL_NODE_TYPE) {
 		this.logHitlResponse({ approved });
 	}
 
