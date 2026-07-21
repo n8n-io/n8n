@@ -1,0 +1,55 @@
+get:
+  x-eov-operation-id: getLdapSync
+  x-required-scope: ldap:sync
+  x-eov-operation-handler: v1/handlers/ldap/ldap.handler
+  tags:
+    - SettingsLdap
+  summary: Retrieve LDAP synchronization history
+  description: >
+    Retrieve the history of LDAP synchronizations, most recent first. Requires the
+    `ldap:sync` scope and the LDAP feature to be licensed.
+  parameters:
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/ldap-sync-history.list.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+post:
+  x-eov-operation-id: runLdapSync
+  x-required-scope: ldap:sync
+  x-eov-operation-handler: v1/handlers/ldap/ldap.handler
+  tags:
+    - SettingsLdap
+  summary: Trigger an LDAP synchronization
+  description: >
+    Manually trigger an LDAP synchronization. The response returns the new sync
+    history record. Requires the `ldap:sync` scope and the LDAP feature to be
+    licensed.
+  requestBody:
+    description: Synchronization parameters.
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/ldap-sync.update.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/ldap-sync-history.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'

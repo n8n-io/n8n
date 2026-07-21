@@ -49,6 +49,8 @@ tags:
     description: Operations about projects
   - name: SecurityPolicy
     description: Operations about the instance security policy settings
+  - name: SettingsLdap
+    description: Operations about LDAP settings
   - name: SettingsOtel
     description: Operations about OpenTelemetry settings
   - name: SettingsSsoSaml
@@ -67,6 +69,10 @@ tags:
 paths:
   /audit:
     $ref: './handlers/audit/spec/paths/audit.yml'
+  /settings/ldap:
+    $ref: './handlers/ldap/spec/paths/settings.ldap.yml'
+  /settings/ldap/sync:
+    $ref: './handlers/ldap/spec/paths/settings.ldap.sync.yml'
   /settings/security-policy:
     $ref: './handlers/security-policy/spec/paths/security-policy.yml'
   /settings/otel:

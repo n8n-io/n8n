@@ -281,6 +281,22 @@ export const getLdapSynchronizations = async (
 };
 
 /**
+ * Retrieve an offset-based page of LDAP synchronizations together with the total count,
+ * for cursor pagination in the public API.
+ */
+export const getLdapSynchronizationsWithCount = async (
+	offset: number,
+	limit: number,
+): Promise<[AuthProviderSyncHistory[], number]> => {
+	return await Container.get(AuthProviderSyncHistoryRepository).findAndCount({
+		where: { providerType: 'ldap' },
+		order: { id: 'DESC' },
+		skip: offset,
+		take: limit,
+	});
+};
+
+/**
  * Format the LDAP connection URL to conform with LDAP client library
  */
 export const formatUrl = (url: string, port: number, security: ConnectionSecurity) => {
