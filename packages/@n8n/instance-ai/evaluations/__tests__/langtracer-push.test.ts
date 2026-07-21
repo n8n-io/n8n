@@ -110,11 +110,42 @@ describe('planPush', () => {
 		expect(plan.toUpdate).toEqual([]);
 	});
 
-	it('ignores tags and datasets differences (the suite export does not round-trip them)', () => {
+	it('ignores tags differences (the suite export returns them empty)', () => {
 		const plan = planPush(
-			[item('c', { tags: ['build', 'ai'], datasets: ['full'] })],
-			// export comes back with empty tags and null datasets — must not count as a change
-			{ 'c.json': body({ tags: [], datasets: null }) },
+			[item('c', { tags: ['build', 'ai'] })],
+			{ 'c.json': body({ tags: [] }) },
+			{ c: 5 },
+		);
+		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+		expect(plan.toUpdate).toEqual([]);
+	});
+
+	it('treats a datasets difference as an update so tier edits re-sync', () => {
+		const plan = planPush(
+			[item('c', { datasets: ['mcp', 'pr', 'full'] })],
+			// the stored case lost its tiers (exported as null) — the push must restore them
+			{ 'c.json': body({ datasets: null }) },
+			{ c: 5 },
+		);
+		expect(plan.toUpdate).toHaveLength(1);
+		expect(plan.toUpdate[0].id).toBe(5);
+		expect(plan.unchanged).toEqual([]);
+	});
+
+	it('treats the default datasets as unchanged whether the export nulls or omits it', () => {
+		const omitted = body();
+		delete omitted.datasets;
+		for (const exported of [body({ datasets: null }), omitted]) {
+			const plan = planPush([item('c', { datasets: ['full'] })], { 'c.json': exported }, { c: 5 });
+			expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
+			expect(plan.toUpdate).toEqual([]);
+		}
+	});
+
+	it('ignores datasets ordering', () => {
+		const plan = planPush(
+			[item('c', { datasets: ['pr', 'full', 'mcp'] })],
+			{ 'c.json': body({ datasets: ['mcp', 'pr', 'full'] }) },
 			{ c: 5 },
 		);
 		expect(plan.unchanged.map((c) => c.fileSlug)).toEqual(['c']);
