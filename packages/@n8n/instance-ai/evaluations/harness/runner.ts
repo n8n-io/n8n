@@ -2115,13 +2115,29 @@ function buildAgentScenarioContextBlock(
 		sections.push('**Run errors:**', ...evalResult.errors.map((error) => `- ${error}`), '');
 	}
 
+	// Looping agents can rack up dozens of calls — elide the middle so the
+	// verifier prompt stays bounded (start + end carry the decisive activity).
+	const MAX_RENDERED_CALLS = 30;
+	const MAX_RENDERED_REQUESTS_PER_CALL = 5;
+	const allCalls = evalResult.toolCalls.map((call, index) => ({ call, ordinal: index + 1 }));
+	const renderedCalls =
+		allCalls.length <= MAX_RENDERED_CALLS
+			? allCalls
+			: [...allCalls.slice(0, MAX_RENDERED_CALLS - 8), ...allCalls.slice(-8)];
+	const elidedCallCount = allCalls.length - renderedCalls.length;
 	if (evalResult.toolCalls.length === 0) {
 		sections.push('**Tool calls:** none — the agent made no tool calls in this run.', '');
 	} else {
 		sections.push(`## Tool calls (${String(evalResult.toolCalls.length)})`, '');
-		evalResult.toolCalls.forEach((call, index) => {
+		if (elidedCallCount > 0) {
 			sections.push(
-				`### ${String(index + 1)}. ${call.tool} (${call.kind})${call.error ? ' — ERRORED' : ''}${call.autoApproved ? ' [approval auto-granted by the harness]' : ''}`,
+				`_Showing the first ${String(MAX_RENDERED_CALLS - 8)} and last 8 calls; ${String(elidedCallCount)} middle calls elided._`,
+				'',
+			);
+		}
+		renderedCalls.forEach(({ call, ordinal }) => {
+			sections.push(
+				`### ${String(ordinal)}. ${call.tool} (${call.kind})${call.error ? ' — ERRORED' : ''}${call.autoApproved ? ' [approval auto-granted by the harness]' : ''}`,
 				'',
 			);
 			if (call.input !== undefined) {
@@ -2133,7 +2149,8 @@ function buildAgentScenarioContextBlock(
 			if (call.output !== undefined) {
 				sections.push('**Output:**', '```json', agentJsonBlock(call.output), '```', '');
 			}
-			for (const req of call.interceptedRequests) {
+			const requests = call.interceptedRequests ?? [];
+			for (const req of requests.slice(0, MAX_RENDERED_REQUESTS_PER_CALL)) {
 				sections.push(`**Intercepted request:** ${req.method} ${req.url} (${req.nodeType})`);
 				if (req.requestBody !== undefined) {
 					sections.push('Request body:', '```json', agentJsonBlock(req.requestBody, 1_000), '```');
@@ -2143,6 +2160,12 @@ function buildAgentScenarioContextBlock(
 					'```json',
 					agentJsonBlock(req.mockResponse, 1_500),
 					'```',
+					'',
+				);
+			}
+			if (requests.length > MAX_RENDERED_REQUESTS_PER_CALL) {
+				sections.push(
+					`_${String(requests.length - MAX_RENDERED_REQUESTS_PER_CALL)} further intercepted request(s) for this call elided._`,
 					'',
 				);
 			}

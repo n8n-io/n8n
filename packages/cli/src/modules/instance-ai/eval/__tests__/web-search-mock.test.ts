@@ -72,6 +72,26 @@ describe('createWebSearchMock', () => {
 		expect(generate).toHaveBeenCalledTimes(1);
 	});
 
+	it('enforces domain filters but never empties a non-empty result set', async () => {
+		extractText.mockReturnValue(
+			JSON.stringify({
+				results: [
+					{ title: 'On-domain', url: 'https://docs.acme.example/a', snippet: 'keep' },
+					{ title: 'Off-domain', url: 'https://other.example/b', snippet: 'drop' },
+				],
+			}),
+		);
+		const search = buildMock();
+
+		const filtered = await search({ query: 'q1', includeDomains: ['docs.acme.example'] });
+		expect(filtered.results.map((hit) => hit.title)).toEqual(['On-domain']);
+
+		// The agent restricted to a domain the mock never generated — serve the
+		// unfiltered results rather than starving the scenario.
+		const fallback = await search({ query: 'q2', includeDomains: ['unrelated.example'] });
+		expect(fallback.results).toHaveLength(2);
+	});
+
 	it('degrades to an empty result set with a framework-issue note when generation fails', async () => {
 		extractText.mockReturnValue('not json');
 		const search = buildMock();

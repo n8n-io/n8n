@@ -121,16 +121,43 @@ export function createWebSearchMock(
 						note: 'Mock web-search generation failed — treat a scenario failure here as a framework issue, not agent behaviour.',
 					};
 				}
-				const capped = args.maxResults !== undefined ? results.slice(0, args.maxResults) : results;
+				// Enforce domain filters on the generated URLs like the real
+				// provider would — but never at the cost of the scenario: when the
+				// agent restricts to a real-world domain and the mock invented
+				// scenario-domain URLs, dropping everything would starve the run
+				// of its mandated facts, so an emptied result set falls back.
+				const domainAllowed = (url: string): boolean => {
+					let host: string;
+					try {
+						host = new URL(url).hostname;
+					} catch {
+						return false;
+					}
+					const matches = (domain: string) => host === domain || host.endsWith(`.${domain}`);
+					if (args.excludeDomains?.some(matches)) return false;
+					if (args.includeDomains?.length) return args.includeDomains.some(matches);
+					return true;
+				};
+				let filtered = results.filter((hit) => domainAllowed(hit.url));
+				if (filtered.length === 0 && results.length > 0) {
+					logger.debug(
+						`[EvalWebSearchMock] domain filters would empty the result set for "${args.query}" — serving unfiltered results to keep the scenario playable`,
+					);
+					filtered = results;
+				}
+				const capped =
+					args.maxResults !== undefined ? filtered.slice(0, args.maxResults) : filtered;
 				return { query: args.query, results: capped };
 			})();
 			cache.set(cacheKey, cached);
 		}
 		const result = await cached;
+		// Carry titles, URLs, and snippet leads so later searches can stay
+		// consistent with the facts already served, not just the headlines.
 		const entry = `- search(${JSON.stringify(args.query).slice(0, 300)}) -> ${result.results
-			.map((hit) => hit.title)
+			.map((hit) => `${hit.title} <${hit.url}> ${hit.snippet.slice(0, 120)}`)
 			.join(' | ')
-			.slice(0, 300)}`;
+			.slice(0, 900)}`;
 		// Repeat (cache-hit) searches add no new information — don't duplicate them.
 		if (
 			!priorSearches.includes(entry) &&

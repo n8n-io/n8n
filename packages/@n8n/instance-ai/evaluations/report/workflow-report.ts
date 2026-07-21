@@ -672,11 +672,13 @@ function renderAgentScenarioDetail(
 		html += '<div class="muted">No tool calls were made in this run.</div>';
 	}
 	for (const call of ar.toolCalls) {
+		// Defensive: reshaped LangSmith rows may carry partially-shaped entries.
+		const interceptedRequests = call.interceptedRequests ?? [];
 		html += '<div class="trace-node">';
 		html += '<div class="trace-node-header">';
-		html += `<span class="${call.mocked ? 'node-mode-mocked' : 'node-mode-real'}">[${escapeHtml(call.kind)}]</span> <strong>${escapeHtml(call.tool)}</strong>`;
-		if (call.interceptedRequests.length > 0) {
-			html += ` <span class="request-count">${String(call.interceptedRequests.length)} request(s)</span>`;
+		html += `<span class="${call.mocked ? 'node-mode-mocked' : 'node-mode-real'}">[${escapeHtml(call.kind)}]</span> <strong>${escapeHtml(call.tool ?? '(unnamed tool)')}</strong>`;
+		if (interceptedRequests.length > 0) {
+			html += ` <span class="request-count">${String(interceptedRequests.length)} request(s)</span>`;
 		}
 		if (call.autoApproved) {
 			html += ' <span class="muted">(approval auto-granted by the harness)</span>';
@@ -689,7 +691,7 @@ function renderAgentScenarioDetail(
 			html += '<div class="request-header">Tool input</div>';
 			html += agentValueBlock(call.input);
 		}
-		for (const req of call.interceptedRequests) {
+		for (const req of interceptedRequests) {
 			html += '<div class="request-pair">';
 			html += '<div class="request-header">Request sent</div>';
 			html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url || '(no URL)')}</div>`;
@@ -1358,6 +1360,8 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 	let agentHtml = '';
 	if (result.agentArtifactContext) {
 		agentHtml = `<details class="section"><summary>Built agent${result.agentId ? ` (${escapeHtml(result.agentId)})` : ''}</summary><pre class="json-block"><code>${escapeHtml(result.agentArtifactContext)}</code></pre></details>`;
+	} else if (result.agentId) {
+		agentHtml = `<details class="section"><summary>Built agent (${escapeHtml(result.agentId)})</summary><pre class="json-block"><code>(no agent artifact captured for this run)</code></pre></details>`;
 	}
 
 	return agentHtml + nodesHtml + diagramHtml + edgesHtml + jsonHtml + traceHtml;

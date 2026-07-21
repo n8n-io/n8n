@@ -125,13 +125,18 @@ function validateToolsList(parsed: unknown): McpMockTool[] | undefined {
 		if (entry === null || typeof entry !== 'object') continue;
 		const tool = entry as Record<string, unknown>;
 		if (typeof tool.name !== 'string' || tool.name.length === 0) continue;
+		// Providers reject tool schemas whose top level isn't `type: object` —
+		// fall back to a permissive one rather than breaking the model turn.
+		const generatedSchema =
+			tool.inputSchema !== null &&
+			typeof tool.inputSchema === 'object' &&
+			(tool.inputSchema as Record<string, unknown>).type === 'object'
+				? (tool.inputSchema as Record<string, unknown>)
+				: { type: 'object', properties: {} };
 		valid.push({
 			name: tool.name,
 			description: typeof tool.description === 'string' ? tool.description : tool.name,
-			inputSchema:
-				tool.inputSchema !== null && typeof tool.inputSchema === 'object'
-					? (tool.inputSchema as Record<string, unknown>)
-					: { type: 'object', properties: {} },
+			inputSchema: generatedSchema,
 		});
 	}
 	return valid.length > 0 ? valid : undefined;

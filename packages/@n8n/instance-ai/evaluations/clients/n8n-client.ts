@@ -801,19 +801,19 @@ export class N8nClient {
 	): Promise<InstanceAiEvalAgentExecutionResult> {
 		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
 		if (scenarioHints) body.scenarioHints = scenarioHints;
-		// Also forward the budget server-side so the run is aborted rather than
-		// orphaned when the client gives up. Kept 5s below the client timeout so the
-		// server's graceful partial result wins the race (floored at the schema min of 30s).
-		if (timeoutMs >= 30_000) {
-			body.timeoutMs = Math.min(Math.max(timeoutMs - 5_000, 30_000), 900_000);
-		}
+		// Forward the budget server-side so the run is aborted rather than
+		// orphaned when the client gives up. The server floor is the schema min
+		// (30s), so the client abort is floored to 5s above it — a smaller
+		// caller value would leave the server running long after the client quit.
+		const serverBudgetMs = Math.min(Math.max(timeoutMs - 5_000, 30_000), 900_000);
+		body.timeoutMs = serverBudgetMs;
 
 		const result = (await this.fetch(
 			`/rest/instance-ai/eval/execute-agent-with-llm-mock/${agentId}`,
 			{
 				method: 'POST',
 				body,
-				timeoutMs,
+				timeoutMs: serverBudgetMs + 5_000,
 			},
 		)) as { data: InstanceAiEvalAgentExecutionResult };
 		return result.data;

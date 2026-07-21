@@ -391,7 +391,10 @@ describe('EvalAgentExecutionService.executeWithLlmMock', () => {
 			expect.objectContaining({ runId: 'run-1', toolCallId: 'tc-1' }),
 		);
 		expect(result.success).toBe(true);
-		expect(result.toolCalls[0]).toMatchObject({ tool: 'Danger_Tool', autoApproved: true });
+		// Pre-suspension segment calls are preserved alongside the approved one.
+		expect(result.toolCalls.find((call) => call.tool === 'Danger_Tool')).toMatchObject({
+			autoApproved: true,
+		});
 	});
 
 	it('maps a thrown run failure into an error result and still closes the runtime', async () => {

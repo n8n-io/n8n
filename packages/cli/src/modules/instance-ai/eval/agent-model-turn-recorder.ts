@@ -3,7 +3,7 @@ import type { InstanceAiEvalAgentModelTurnRecord } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { jsonParse } from 'n8n-workflow';
 
-import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
+import { redactSecretKeys, redactSecretValuePatterns, truncateForLlm } from './request-sanitizer';
 
 // ---------------------------------------------------------------------------
 // Record-passthrough transport for the agent's model calls: the real provider
@@ -48,12 +48,16 @@ function recordableRequestBody(body: unknown): unknown {
 		return body === undefined || body === null ? undefined : '[non-string request body]';
 	}
 	const parsed = jsonParse<unknown>(body, { fallbackValue: undefined });
-	if (parsed === undefined) return truncateForLlm(body, MAX_RECORDED_REQUEST_CHARS);
-	const redactedValue = redactSecretKeys(parsed);
+	if (parsed === undefined)
+		return truncateForLlm(redactSecretValuePatterns(body), MAX_RECORDED_REQUEST_CHARS);
+	// Key-based redaction can't see a secret pasted INSIDE message content —
+	// scrub well-known value shapes off the serialized form too.
+	const serialized = redactSecretValuePatterns(JSON.stringify(redactSecretKeys(parsed)));
+	if (serialized.length <= MAX_RECORDED_REQUEST_CHARS) {
+		return jsonParse<unknown>(serialized, { fallbackValue: serialized });
+	}
 	// Truncating serialized JSON usually breaks parseability — keep the
 	// truncated string (redacted content survives) rather than dropping it.
-	const serialized = JSON.stringify(redactedValue);
-	if (serialized.length <= MAX_RECORDED_REQUEST_CHARS) return redactedValue;
 	return truncateForLlm(serialized, MAX_RECORDED_REQUEST_CHARS);
 }
 
@@ -102,7 +106,10 @@ export function createAgentModelTurnRecorder(
 				teed
 					.text()
 					.then((text) => {
-						turn.responseBody = truncateForLlm(text, MAX_RECORDED_RESPONSE_CHARS);
+						turn.responseBody = truncateForLlm(
+							redactSecretValuePatterns(text),
+							MAX_RECORDED_RESPONSE_CHARS,
+						);
 					})
 					.catch((error: unknown) => {
 						logger.debug('[EvalAgentMock] Model turn tee failed', {

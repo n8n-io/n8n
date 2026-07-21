@@ -286,9 +286,18 @@ export class EvalAgentExecutionService {
 		);
 
 		let result: GenerateResult;
+		// Each resume returns its own GenerateResult segment — collect tool
+		// calls across all of them so pre-suspension calls aren't lost.
+		const segmentToolCalls: NonNullable<GenerateResult['toolCalls']> = [];
+		const collectToolCalls = (segment: GenerateResult) => {
+			for (const entry of segment.toolCalls ?? []) {
+				if (!segmentToolCalls.includes(entry)) segmentToolCalls.push(entry);
+			}
+		};
 		try {
 			const abortSignal = AbortSignal.timeout(timeoutMs);
 			result = await agent.generate(seed.openingMessage, { abortSignal, maxIterations });
+			collectToolCalls(result);
 
 			// Approval-gated tools suspend the run. In real usage the user
 			// approves in the UI; the eval happy-path stands in for them, and
@@ -305,6 +314,7 @@ export class EvalAgentExecutionService {
 					abortSignal,
 					maxIterations,
 				});
+				collectToolCalls(result);
 			}
 			if ((result.pendingSuspend?.length ?? 0) > 0) {
 				errors.push(`Run still suspended after ${MAX_AUTO_APPROVALS} auto-approvals`);
@@ -345,7 +355,7 @@ export class EvalAgentExecutionService {
 			(toolLedger.get(tool) ?? []).some((request) => request.nodeType?.startsWith('mcp:'))
 				? 'mcp'
 				: 'other');
-		const toolCalls = (result.toolCalls ?? []).map((entry): InstanceAiEvalAgentToolCallRecord => {
+		const toolCalls = segmentToolCalls.map((entry): InstanceAiEvalAgentToolCallRecord => {
 			const interceptedRequests = toolLedger.get(entry.tool) ?? [];
 			return {
 				tool: entry.tool,
