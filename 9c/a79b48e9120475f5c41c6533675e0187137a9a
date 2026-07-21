@@ -1,0 +1,31 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/missing-node-type-mode.ts
+  s_0237a66f4d3f8f::t_14a455c86eb0e6 73
+  s_0237a66f4d3f8f::t_353d39345eab1d 33-34
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_0237a66f4d3f8f::t_a2cace96e4e6ff 351-352
+  s_0237a66f4d3f8f::t_ab008a9261d81e 397,402-406
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_0237a66f4d3f8f::t_268890ac85de45 46
+  s_0237a66f4d3f8f::t_40d8ca8f24ac3e 203
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow.schema.test.ts
+  s_0237a66f4d3f8f::t_584ded12a7078f 1-31
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_0237a66f4d3f8f::t_545d4a2615afa0 2475-2502
+  s_0237a66f4d3f8f::t_0607a354c6ff41 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9ca79b48e9120475f5c41c6533675e0187137a9a",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
