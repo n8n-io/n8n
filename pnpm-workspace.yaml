@@ -192,7 +192,7 @@ catalog:
   ssh2: 1.15.0
   stream-json: 1.9.1
   stylelint: ^16.23.0
-  tar: 7.5.17
+  tar: 7.5.19
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
