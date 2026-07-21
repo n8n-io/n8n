@@ -156,6 +156,48 @@ describe('integration tools', () => {
 		expect(queryExecutor.execute).not.toHaveBeenCalled();
 	});
 
+	it('context tool accepts an argument-free query without an input object', async () => {
+		const messageContextStore = mock<IntegrationMessageContextStore>();
+		messageContextStore.getLatest.mockResolvedValue({
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456' },
+			messageId: '123.456',
+			interactingUserId: 'U123',
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		});
+		const queryExecutor = mock<IntegrationContextQueryExecutor>();
+		queryExecutor.execute.mockResolvedValue({
+			ok: true,
+			user: { userId: 'U123', displayName: 'Ada Lovelace' },
+		});
+
+		const tool = createIntegrationContextTool({
+			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
+			messageContextStore,
+			queryExecutor,
+		}).build();
+		const schema = tool.inputSchema as z.ZodType;
+
+		expect(schema.safeParse({ query: 'get_current_user' }).success).toBe(true);
+
+		const result = await tool.handler!(
+			{ query: 'get_current_user' },
+			{ persistence: { threadId: 'thread-1', resourceId: 'resource-1' } },
+		);
+
+		expect(result).toEqual({
+			ok: true,
+			user: { userId: 'U123', displayName: 'Ada Lovelace' },
+		});
+		expect(queryExecutor.execute).toHaveBeenCalledWith({
+			descriptor: expect.any(Object),
+			query: 'get_user',
+			input: { userId: 'U123' },
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+	});
+
 	it('context tool schema requires platform IDs for user and channel lookups', () => {
 		const tool = createIntegrationContextTool({
 			descriptor: getIntegrationToolConnectionDescriptors([slackA])[0],
@@ -168,6 +210,7 @@ describe('integration tools', () => {
 			false,
 		);
 		expect(schema.safeParse({ query: 'get_user', input: { userId: 'U123' } }).success).toBe(true);
+		expect(schema.safeParse({ query: 'get_user' }).success).toBe(false);
 		expect(
 			schema.safeParse({ query: 'get_channel_info', input: { name: '#support' } }).success,
 		).toBe(false);
@@ -314,10 +357,7 @@ describe('integration tools', () => {
 		const schema = tool.inputSchema as z.ZodType;
 
 		const input = {
-			queries: [
-				{ query: 'search_teams', input: { query: 'eng' } },
-				{ query: 'search_labels', input: { query: 'bug' } },
-			],
+			queries: [{ query: 'search_teams', input: { query: 'eng' } }, { query: 'search_labels' }],
 		};
 
 		expect(schema.safeParse(input).success).toBe(true);
@@ -351,7 +391,7 @@ describe('integration tools', () => {
 		expect(queryExecutor.execute).toHaveBeenNthCalledWith(2, {
 			descriptor: expect.any(Object),
 			query: 'search_labels',
-			input: { query: 'bug' },
+			input: {},
 			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
 		});
 	});
