@@ -94,7 +94,7 @@ on:
         required: false
         default: ''
       model:
-        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-sonnet-4-6, openai/gpt-5.6-sol, openrouter/moonshotai/kimi-k3, xai/grok-4.5.'
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). Experiments: anthropic/claude-sonnet-4-6, openai/gpt-5.6-sol, openai/gpt-5.6-terra, openrouter/moonshotai/kimi-k3, xai/grok-4.5.'
         required: false
         default: ''
 
