@@ -100,8 +100,14 @@ function makeAgentSpawned(
 	parentId: string,
 	role = 'sub-agent',
 	tools = ['tool-a'],
+	targetResource?: Extract<InstanceAiEvent, { type: 'agent-spawned' }>['payload']['targetResource'],
 ): Extract<InstanceAiEvent, { type: 'agent-spawned' }> {
-	return { type: 'agent-spawned', runId, agentId, payload: { parentId, role, tools } };
+	return {
+		type: 'agent-spawned',
+		runId,
+		agentId,
+		payload: { parentId, role, tools, targetResource },
+	};
 }
 
 function makeAgentCompleted(
@@ -1030,6 +1036,91 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].children).toHaveLength(1);
 			expect(state.agentsById['sub-1'].textContent).toBe('kept');
+		});
+
+		it('republished agent-spawned for the same target upserts targetResource without a second node', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			expect(state.agentsById['root'].children).toHaveLength(1);
+			expect(state.agentsById['sub-1'].targetResource).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Support Bot',
+			});
+		});
+
+		it('an unnamed replayed agent-spawned does not erase a known targetResource name', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+				}),
+			);
+
+			expect(state.agentsById['sub-1'].targetResource?.name).toBe('Support Bot');
+		});
+
+		it('a replayed agent-spawned for a different target resource leaves the node untouched', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Support Bot',
+				}),
+			);
+
+			reduceEvent(
+				state,
+				makeAgentSpawned('run-1', 'sub-1', 'root', 'agent-builder', [], {
+					type: 'agent',
+					id: 'agent-2',
+					projectId: 'proj-1',
+					name: 'Other Agent',
+				}),
+			);
+
+			expect(state.agentsById['root'].children).toHaveLength(1);
+			expect(state.agentsById['sub-1'].targetResource).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Support Bot',
+			});
 		});
 	});
 

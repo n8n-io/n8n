@@ -22,6 +22,7 @@ import { readExport } from './utils/tar-support';
 import {
 	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
+	buildWorkflowUsingErrorWorkflow,
 } from './utils/test-builders';
 
 beforeAll(async () => {
@@ -140,7 +141,7 @@ describe('workflow package export', () => {
 			}
 		});
 
-		it('blocks workflow exports when static sub-workflows are not explicitly selected', async () => {
+		it('blocks workflow exports when workflow dependencies are not explicitly selected', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			const workflowC = await createWorkflow(
@@ -164,7 +165,7 @@ describe('workflow package export', () => {
 			});
 			await expect(missingDependencyExport).rejects.toThrow(PackageExportBlockedError);
 			await expect(missingDependencyExport).rejects.toThrow(
-				'2 sub-workflow dependencies not included in the package',
+				'2 workflow dependencies not included in the package',
 			);
 
 			const stream = await service.exportPackage({
@@ -220,7 +221,7 @@ describe('workflow package export', () => {
 			).rejects.toThrow(PackageExportBlockedError);
 			await expect(
 				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
-			).rejects.toThrow('sub-workflow dependency not included in the package');
+			).rejects.toThrow('workflow dependency not included in the package');
 
 			const stream = await service.exportPackage({
 				user: owner,
@@ -230,6 +231,37 @@ describe('workflow package export', () => {
 
 			expect(manifest.requirements).toEqual({
 				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+			});
+		});
+
+		it('exports error workflow requirements and blocks when the target workflow is missing', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const errorHandler = await createWorkflow(
+				{ name: 'Error Handler', nodes: [], connections: {} },
+				project,
+			);
+			const parent = await buildWorkflowUsingErrorWorkflow({
+				name: 'Parent',
+				project,
+				errorWorkflowId: errorHandler.id,
+			});
+
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow(PackageExportBlockedError);
+			await expect(
+				service.exportPackage({ user: owner, workflowIds: [parent.id] }),
+			).rejects.toThrow('workflow dependency not included in the package');
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [parent.id, errorHandler.id],
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				workflows: [{ id: errorHandler.id, name: errorHandler.name, usedByWorkflows: [parent.id] }],
 			});
 		});
 
