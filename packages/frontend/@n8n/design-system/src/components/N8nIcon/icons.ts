@@ -230,6 +230,7 @@ import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSplit from '~icons/lucide/split';
 import IconLucideSquare from '~icons/lucide/square';
+import IconLucideSquareArrowOutUpRight from '~icons/lucide/square-arrow-out-up-right';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
@@ -726,6 +727,7 @@ export const updatedIconSet = {
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
 	square: IconLucideSquare,
+	'square-arrow-out-up-right': IconLucideSquareArrowOutUpRight,
 	'square-check': IconLucideSquareCheck,
 	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,

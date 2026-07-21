@@ -3,7 +3,9 @@ import { v4 as uuid } from 'uuid';
 import { MessageComponentKey } from '../constants';
 import type { ChatMessage } from '../types';
 
+const CHAT_NODE_MESSAGE_TYPE = 'message';
 const CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE = 'with-buttons';
+const CHAT_NODE_ERROR_TYPE = 'error';
 
 interface ChatNodeMessageWithButtons {
 	type: typeof CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE;
@@ -15,6 +17,18 @@ interface ChatNodeMessageWithButtons {
 		type: string;
 	}>;
 }
+
+interface ChatNodeMessageRegular {
+	type: typeof CHAT_NODE_MESSAGE_TYPE;
+	text: string;
+}
+
+interface ChatNodeError {
+	type: typeof CHAT_NODE_ERROR_TYPE;
+	message: string;
+}
+
+type ChatNodeFrame = ChatNodeMessageWithButtons | ChatNodeMessageRegular | ChatNodeError;
 
 export function constructChatWebsocketUrl(
 	url: string,
@@ -40,7 +54,7 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 		text: message,
 	};
 	try {
-		const parsed = JSON.parse(message) as ChatNodeMessageWithButtons;
+		const parsed = JSON.parse(message) as ChatNodeFrame;
 		if (parsed.type === CHAT_NODE_MESSAGE_WITH_BUTTONS_TYPE) {
 			chatMessage = {
 				id,
@@ -53,6 +67,10 @@ export function parseBotChatMessageContent(message: string): ChatMessage {
 					blockUserInput: parsed.blockUserInput,
 				},
 			};
+		} else if (parsed.type === CHAT_NODE_MESSAGE_TYPE) {
+			chatMessage = { id, sender: 'bot', text: parsed.text };
+		} else if (parsed.type === CHAT_NODE_ERROR_TYPE) {
+			chatMessage = { id, sender: 'bot', text: parsed.message };
 		}
 	} catch {
 		// ignore error as the message might be just a string

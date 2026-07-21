@@ -29,7 +29,15 @@ export interface ITelemetrySettings {
 	config?: ITelemetryClientConfig;
 }
 
-export type AuthenticationMethod = 'email' | 'ldap' | 'saml' | 'oidc' | 'token-exchange';
+export const AuthenticationMethod = {
+	Email: 'email',
+	Ldap: 'ldap',
+	Saml: 'saml',
+	Oidc: 'oidc',
+	TokenExchange: 'token-exchange',
+} as const;
+
+export type AuthenticationMethod = (typeof AuthenticationMethod)[keyof typeof AuthenticationMethod];
 
 export interface IUserManagementSettings {
 	quota: number;
@@ -257,6 +265,13 @@ export interface FrontendSettings {
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;
+		/**
+		 * Operator override (`N8N_EVAL_COLLECTIONS_ENABLED`) that force-enables the
+		 * eval-collections surface. Surfaced here so the frontend gate works even
+		 * when the in-browser PostHog client is disabled (telemetry off), where the
+		 * `084_eval_collections` flag would otherwise never resolve.
+		 */
+		collectionsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
@@ -365,6 +380,8 @@ export type FrontendModuleSettings = {
 		 * proxy is available.
 		 */
 		knowledgeBaseEnabled: boolean;
+		/** Whether the AI Assistant proxy is available to the agents module. */
+		proxyEnabled: boolean;
 	};
 };
 

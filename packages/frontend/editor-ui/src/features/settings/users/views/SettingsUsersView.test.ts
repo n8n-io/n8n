@@ -259,7 +259,7 @@ describe('SettingsUsersView', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('action-box')).toBeInTheDocument();
+		expect(getByTestId('empty-state')).toBeInTheDocument();
 	});
 
 	it('should show advanced permissions notice when feature is disabled', async () => {

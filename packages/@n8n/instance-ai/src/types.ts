@@ -386,6 +386,7 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
@@ -757,6 +758,8 @@ export interface InstanceAiWebResearchService {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
+			/** When aborted, in-flight search requests should stop promptly. */
+			abortSignal?: AbortSignal;
 		},
 	): Promise<WebSearchResponse>;
 
@@ -766,6 +769,8 @@ export interface InstanceAiWebResearchService {
 			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
+			/** When aborted, in-flight page fetches should stop promptly. */
+			abortSignal?: AbortSignal;
 			/**
 			 * Called before following each redirect hop and on cache hits with a
 			 * cross-host `finalUrl`. Throw to abort the fetch (the tool will
@@ -786,7 +791,10 @@ export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
 	/** Return tools that belong to the given category (based on annotations.category). */
 	getToolsByCategory(category: string): McpTool[];
-	callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
+	callTool(
+		req: McpToolCallRequest,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpToolCallResult>;
 }
 
 // ── Workspace shapes ────────────────────────────────────────────────────────
@@ -917,6 +925,8 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Current display name of the agent, or undefined when not found. */
+	resolveAgentName(agentId: string): Promise<string | undefined>;
 }
 
 // ── Local gateway status ─────────────────────────────────────────────────────
@@ -952,6 +962,18 @@ export interface InstanceAiContext {
 	agentBuilderTarget?: { agentId: string; projectId: string };
 	/** Narrow builder delegate for the build-agent sub-agent tool (agents module active only). */
 	builderDelegate?: InstanceAiBuilderDelegate;
+	/**
+	 * The agent-preview session referenced by this thread, bound when a user sends
+	 * a preview session to Instance AI (and rehydrated from thread metadata on
+	 * follow-up turns). Presence gates the `get-session` tool.
+	 */
+	agentPreviewSession?: { agentId: string; threadId: string; executionId?: string };
+
+	resolvePreviewSession?: (ref: {
+		agentId: string;
+		threadId: string;
+		executionId?: string;
+	}) => Promise<{ title: string; sessionNumber: number; transcript: string } | null>;
 	webResearchService?: InstanceAiWebResearchService;
 	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;

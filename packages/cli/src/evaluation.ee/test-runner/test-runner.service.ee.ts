@@ -13,7 +13,6 @@ import {
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
@@ -620,16 +619,25 @@ export class TestRunnerService {
 		let evaluationConfigSnapshot = options?.evaluationConfigSnapshot ?? null;
 		let configToCompile: EvaluationConfig | undefined;
 		let configLookupErrorCode: typeof TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND | undefined;
-		if (options?.compileFromConfig && options?.evaluationConfigId) {
-			const config = await this.evaluationConfigRepository.findByIdAndWorkflowId(
-				options.evaluationConfigId,
-				workflowId,
-			);
-			if (!config) {
-				configLookupErrorCode = TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND;
-			} else {
-				configToCompile = config;
-				evaluationConfigSnapshot = config as unknown as IDataObject;
+		if (options?.compileFromConfig) {
+			if (options.evaluationConfigSnapshot) {
+				// Prefer the caller-supplied frozen snapshot: collection runs pass one
+				// so every version compiles against identical dataset/trigger/metrics,
+				// immune to a config edit that races the run. Its serialized dates are
+				// not read by the compiler, which only needs the eval fields.
+				configToCompile = options.evaluationConfigSnapshot as unknown as EvaluationConfig;
+			} else if (options.evaluationConfigId) {
+				// No snapshot supplied (single-run callers) — resolve the live config.
+				const config = await this.evaluationConfigRepository.findByIdAndWorkflowId(
+					options.evaluationConfigId,
+					workflowId,
+				);
+				if (!config) {
+					configLookupErrorCode = TestRunErrorCode.EVALUATION_CONFIG_NOT_FOUND;
+				} else {
+					configToCompile = config;
+					evaluationConfigSnapshot = config as unknown as IDataObject;
+				}
 			}
 		}
 

@@ -10,11 +10,31 @@ export const REQUIRED_PERMISSIONS: Record<string, { delegated: string; applicati
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
+	'worksheet:append': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
 	'worksheet:clear': {
 		delegated: 'Sites.ReadWrite.All',
 		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
 	},
 	'worksheet:deleteWorksheet': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'worksheet:getAll': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'table:getAll': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'workbook:addWorksheet': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+	},
+	'workbook:deleteWorkbook': {
 		delegated: 'Sites.ReadWrite.All',
 		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
 	},
