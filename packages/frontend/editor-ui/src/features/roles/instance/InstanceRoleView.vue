@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { N8nButton, N8nHeading, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -20,6 +21,7 @@ const rolesStore = useRolesStore();
 const router = useRouter();
 const { showMessage, showError } = useToast();
 const i18n = useI18n();
+const message = useMessage();
 const telemetry = useTelemetry();
 const { reassignState, requestDelete, confirmReassignDelete, cancelReassign } = useRoleDeletion();
 
