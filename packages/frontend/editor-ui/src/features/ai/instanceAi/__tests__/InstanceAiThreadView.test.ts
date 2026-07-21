@@ -876,7 +876,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
@@ -907,7 +907,10 @@ describe('InstanceAiThreadView', () => {
 
 		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
-		expect(preview).toHaveAttribute('data-refresh-key', '1');
+		// The panel mounts fresh on open, so it loads current data without
+		// needing a refresh-key bump — that's reserved for keeping an
+		// already-open panel in sync with later config mutations.
+		expect(preview).toHaveAttribute('data-refresh-key', '0');
 	});
 
 	it('closes the agent artifact preview from the wrapper toggle', async () => {
@@ -936,7 +939,7 @@ describe('InstanceAiThreadView', () => {
 					{
 						agentId: 'agent-builder-child',
 						role: 'agent-builder',
-						kind: 'builder',
+						kind: 'agent-builder',
 						status: 'completed',
 						textContent: '',
 						reasoning: '',
