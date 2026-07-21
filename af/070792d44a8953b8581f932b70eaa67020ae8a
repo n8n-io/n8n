@@ -378,6 +378,7 @@ packages/@n8n/api-types/src/push/workflow-review.ts
 packages/cli/src/collaboration/collaboration.service.ts
   h_9c8f56e3400786 323-325
   s_b34abcbd386402::t_c3409b3e132c1f 326-341
+  s_91f67565918eee::t_bff7293018fc64 19-25,322
 packages/@n8n/api-types/src/index.ts
   s_b34abcbd386402::t_b86a144c59ab23 16
 packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
@@ -486,6 +487,14 @@ packages/cli/test/integration/collaboration/collaboration.service.test.ts
         "model": "claude-opus-4-8"
       },
       "human_author": null
+    },
+    "s_91f67565918eee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36f4874d-45bc-43d2-bd2d-9c16d23d9c95",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     },
     "s_94fa4ed7d7b038": {
       "agent_id": {
