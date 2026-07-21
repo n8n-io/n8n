@@ -600,6 +600,9 @@ interface SkillAutosaveSnapshot {
 }
 
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
+	// The AI may be mutating this agent right now — a save queued just before
+	// the lock engaged must not persist its now-stale full config over it.
+	if (props.artifactEditingLocked) return;
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
@@ -619,6 +622,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 }
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
+	if (props.artifactEditingLocked) return;
 	const result = await updateAgentSkill(
 		rootStore.restApiContext,
 		snapshot.projectId,
@@ -688,8 +692,26 @@ async function settleAutosave() {
 }
 
 async function flushAutosave() {
+	// Locked means the AI is mutating this agent right now — flushing a
+	// pending edit here would persist a stale full config over its writes.
+	if (props.artifactEditingLocked) {
+		configAutosave.cancelPendingAutosave();
+		skillAutosave.cancelPendingAutosave();
+		return;
+	}
 	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
 }
+
+// Makes the lock a write boundary rather than only a disabled UI state: drop
+// any autosave queued before the AI started mutating this agent.
+watch(
+	() => props.artifactEditingLocked,
+	(locked) => {
+		if (!locked) return;
+		configAutosave.cancelPendingAutosave();
+		skillAutosave.cancelPendingAutosave();
+	},
+);
 
 /**
  * Authoritative pre-publish gate for the frontend: flush any pending edit so

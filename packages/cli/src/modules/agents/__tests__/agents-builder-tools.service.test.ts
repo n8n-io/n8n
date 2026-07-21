@@ -875,18 +875,21 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('write_config accepts a draft config without model and credential', async () => {
 			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const draftConfig = { ...currentConfig, model: '', credential: undefined };
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			const { credential: _credential, ...draftBase } = baseConfig;
+			const currentDraftConfig = { ...draftBase, model: '', integrations: [] };
+			const draftConfig = { ...currentDraftConfig, credential: undefined };
+			agentsService.findById.mockResolvedValue(
+				makeAgent({ ...draftBase, model: '' } as AgentJsonConfig),
+			);
 			agentsService.updateConfig.mockResolvedValue({
-				config: { ...currentConfig, model: '' },
+				config: { ...currentDraftConfig, model: '' },
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
 				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
+					baseConfigHash: getAgentConfigHash(currentDraftConfig),
 					json: JSON.stringify(draftConfig),
 				},
 				ctx,
@@ -902,8 +905,32 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('write_config still rejects empty instructions on a draft', async () => {
 			const { service, agentsService } = makeService();
+			const { credential: _credential, ...draftBase } = baseConfig;
+			const currentDraftConfig = { ...draftBase, model: '', integrations: [] };
+			const draftConfig = { ...currentDraftConfig, instructions: '' };
+			agentsService.findById.mockResolvedValue(
+				makeAgent({ ...draftBase, model: '' } as AgentJsonConfig),
+			);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentDraftConfig),
+					json: JSON.stringify(draftConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: [expect.objectContaining({ path: '/instructions' })],
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('write_config rejects a draft payload when the agent already has a model', async () => {
+			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
-			const draftConfig = { ...currentConfig, model: '', instructions: '' };
+			const draftConfig = { ...currentConfig, model: '', credential: undefined };
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
@@ -916,7 +943,10 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(result).toEqual({
 				ok: false,
-				errors: [expect.objectContaining({ path: '/instructions' })],
+				errors: expect.arrayContaining([
+					expect.objectContaining({ path: 'model' }),
+					expect.objectContaining({ path: 'credential' }),
+				]),
 			});
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
@@ -949,6 +979,27 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({ model: '', instructions: 'Triage Slack messages.' }),
 			);
+		});
+
+		it('patch_config rejects clearing /model on a configured agent', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([{ op: 'replace', path: '/model', value: '' }]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				stage: 'schema',
+				errors: expect.arrayContaining([expect.objectContaining({ path: 'model' })]),
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
 		it('write_config rejects stale baseConfigHash without updating or echoing the config', async () => {

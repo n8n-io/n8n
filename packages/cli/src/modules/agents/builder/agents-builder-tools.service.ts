@@ -15,6 +15,7 @@ import {
 	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
 	AgentJsonConfigSchema,
+	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -129,6 +130,17 @@ function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot
 		config,
 		configHash: getAgentConfigHash(config),
 	};
+}
+
+/**
+ * Draft writes (empty `model`, no `credential`) are only for agents that
+ * don't have a model yet. Once the stored config has a model, require the
+ * runnable schema so a builder write can't wipe it back into an unrunnable
+ * draft.
+ */
+function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConfig | null) {
+	const schema = currentConfig?.model ? RunnableAgentJsonConfigSchema : AgentJsonConfigSchema;
+	return schema.safeParse(sanitizeAgentJsonConfig(incoming));
 }
 
 /**
@@ -270,7 +282,7 @@ export class AgentsBuilderToolsService {
 					if (baseConfigHash !== snapshot.configHash) {
 						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR] };
 					}
-					const zodResult = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(parsed.data));
+					const zodResult = parseBuilderWriteConfig(parsed.data, snapshot.config);
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
@@ -388,7 +400,7 @@ export class AgentsBuilderToolsService {
 					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
 						.newDocument as unknown as AgentJsonConfig;
 
-					const zodResult = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(patched));
+					const zodResult = parseBuilderWriteConfig(patched, snapshot.config);
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}

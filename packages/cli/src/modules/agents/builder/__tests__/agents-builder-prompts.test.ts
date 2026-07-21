@@ -259,6 +259,24 @@ describe('external integration routing guidance', () => {
 		expect(notionFlow).toContain('`credentialId` as `credential`');
 	});
 
+	it('defers MCP candidate selection to the trailing batch during an initial build', () => {
+		const mcpSkill = getBuilderRuntimeSkills().find((skill) => skill.id === 'agent-builder-mcp');
+		const mcpInstructions = normalizeWhitespace(mcpSkill?.instructions);
+
+		expect(mcpInstructions).toContain(
+			'During an initial build, defer this call to the trailing batch together with steps 1-4',
+		);
+		expect(mcpInstructions).toContain('mark the MCP task `blocked` when setup still needs');
+		expect(mcpInstructions).toContain('do not call `ask_questions` or `ask_credential` mid-build');
+
+		const notionFlow = normalizeWhitespace(
+			FEW_SHOT_FLOWS_SECTION.split('### Add MCP integration:')[1]?.split(
+				'### Ambiguous request:',
+			)[0],
+		);
+		expect(notionFlow).toContain('mark the task `blocked` and run steps 3-8');
+	});
+
 	it('stops after channel setup and mutates config only for the non-chat branch', () => {
 		const ambiguousFlow = normalizeWhitespace(
 			FEW_SHOT_FLOWS_SECTION.split('### Ambiguous request:')[1]?.split(

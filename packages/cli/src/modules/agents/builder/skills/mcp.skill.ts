@@ -73,8 +73,10 @@ alternative search terms for that service.
   - If the request uniquely identifies one entry by \`name\` or \`title\`, use
     that entry as \`selectedResult\`.
   - If multiple candidates remain, call \`ask_questions\` with the candidate
-    titles and descriptions; never choose by array order. Use the chosen entry
-    as \`selectedResult\`. If \`ask_questions\` returns \`{ answered: false }\`,
+    titles and descriptions; never choose by array order. During an initial
+    build, defer this call to the trailing batch together with steps 1-4
+    below instead of suspending mid-build. Use the chosen entry as
+    \`selectedResult\`. If \`ask_questions\` returns \`{ answered: false }\`,
     stop MCP setup without selecting a server, asking for credentials, verifying
     a connection, or mutating config. Do not re-present the question.
 - Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
@@ -93,10 +95,12 @@ Follow these steps for the selected MCP result:
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
    \`mcpServers[]\` using the patch pattern below.
 
-During an initial build, run steps 1-4 as one unit in the trailing batch
-(after unblocked build work is done) instead of mid-build; verification needs
-the credential, so do not split them. The "Incomplete setup" rules below apply
-if the user skips there.
+During an initial build, mark the MCP task \`blocked\` when setup still needs
+user input (multi-candidate \`ask_questions\`, credential, or both). Defer
+candidate selection (when needed) and steps 1-4 as one unit in the trailing
+batch after unblocked build work is done; do not call \`ask_questions\` or
+\`ask_credential\` mid-build. Verification needs the credential, so do not
+split them. The "Incomplete setup" rules below apply if the user skips there.
 
 If verification succeeds but the tools do not cover the requested capability
 for a generic service request, load \`agent-builder-node-tools\`, call

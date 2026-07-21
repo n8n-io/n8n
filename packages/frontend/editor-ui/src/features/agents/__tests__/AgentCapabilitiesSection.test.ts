@@ -712,6 +712,46 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.emitted('open-skill')).toBeUndefined();
 	});
 
+	it('disables the grouped-tool dropdown menu when disabled (read-only host)', async () => {
+		getNodeType.mockImplementation((type: string) => {
+			if (type === 'n8n-nodes-base.gmailTool') {
+				return createNodeType('n8n-nodes-base.gmailTool', 'Gmail Tool');
+			}
+
+			return null;
+		});
+
+		const wrapper = mountSection([
+			{
+				type: 'node',
+				name: 'inbox_triage',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+			{
+				type: 'node',
+				name: 'send_follow_up',
+				node: {
+					nodeType: 'n8n-nodes-base.gmailTool',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			},
+		]);
+
+		// Reka's DropdownMenuTrigger — not the read-only chip inside it — is what
+		// actually gates opening the menu, so assert its own disabled state.
+		const trigger = wrapper.find('[aria-haspopup="menu"]');
+		expect(trigger.attributes('disabled')).toBe('false');
+
+		await wrapper.setProps({ disabled: true });
+
+		expect(wrapper.find('[aria-haspopup="menu"]').attributes('disabled')).toBe('true');
+	});
+
 	describe('channel modal', () => {
 		it('opens the channel list view when clicking the add-channel button', async () => {
 			const wrapper = mountSection([]);

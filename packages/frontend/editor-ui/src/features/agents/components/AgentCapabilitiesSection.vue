@@ -623,6 +623,7 @@ function handleChannelDisconnected(channelType: string) {
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
 							:items="toolMenuItems(tool)"
+							:disabled="props.disabled"
 							placement="bottom-start"
 							data-testid="agent-capabilities-tool-group"
 							@select="onToolMenuSelect"

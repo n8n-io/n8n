@@ -488,6 +488,31 @@ describe('getLatestAgentConfigMutation', () => {
 		});
 	});
 
+	test('uses parent agent target for a nested child mutation with no targetResource of its own', () => {
+		const nestedChild = makeAgentNode({
+			agentId: 'nested-child',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-nested-patch',
+					toolName: 'patch_config',
+					isLoading: false,
+					result: { ok: true },
+				}),
+			],
+		});
+		const parentAgentBuilder = makeAgentNode({
+			agentId: 'agent-builder',
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			children: [nestedChild],
+		});
+
+		expect(getLatestAgentConfigMutation(parentAgentBuilder)).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-nested-patch',
+		});
+	});
+
 	test('ignores in-flight calls and failed results', () => {
 		const inFlight = makeAgentNode({
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
