@@ -150,6 +150,13 @@ export function getDecoratorGeneratedOperations(): GeneratedDecoratorOperation[]
 			...(parameters ? { parameters } : {}),
 			...(requestQuery ? { request: { query: requestQuery } } : {}),
 			responses: buildResponses(route),
+			// Satisfies express-openapi-validator's operation-handler installer, which requires
+			// every operation in the spec to resolve to *something* — see decorator-routed.handler.ts
+			// for why. `x-decorator-routed` is the actual signal consumers (discover.service.ts,
+			// scope-parity.test.ts) use to tell this apart from a real eov-routed operation.
+			'x-eov-operation-id': 'unreachable',
+			'x-eov-operation-handler': 'v1/handlers/decorator-routed.handler',
+			'x-decorator-routed': true,
 		};
 
 		return {

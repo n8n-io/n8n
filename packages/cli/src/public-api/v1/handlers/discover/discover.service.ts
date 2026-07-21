@@ -110,10 +110,16 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 
 			const eovOperationId = operation['x-eov-operation-id'];
 			const eovHandlerPath = operation['x-eov-operation-handler'];
-			const isEovRouted = typeof eovOperationId === 'string' && typeof eovHandlerPath === 'string';
+			// Decorator-routed operations (@PublicApiController) carry x-eov-* fields too — required
+			// so express-openapi-validator's operation-handler installer doesn't choke on them (see
+			// decorator-routed.handler.ts) — but they point at an unreachable stub, not a real
+			// handler, so `x-decorator-routed` is the actual signal to tell them apart.
+			const isEovRouted =
+				operation['x-decorator-routed'] !== true &&
+				typeof eovOperationId === 'string' &&
+				typeof eovHandlerPath === 'string';
 
-			// Decorator-routed operations (@PublicApiController) carry no x-eov-* fields — they're
-			// not eov-routed at all — but do carry a plain `operationId` and `x-required-scope`,
+			// Decorator-routed operations carry a plain `operationId` and `x-required-scope`,
 			// generated straight from decorator metadata (see openapi-gen/decorator-routes.ts).
 			const operationId = isEovRouted ? eovOperationId : operation.operationId;
 			if (typeof operationId !== 'string') continue;

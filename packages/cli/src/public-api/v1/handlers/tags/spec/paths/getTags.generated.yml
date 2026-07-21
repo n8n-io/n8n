@@ -6,6 +6,9 @@ x-required-scope: tag:list
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
 responses:
   '200':
     description: Successful response
