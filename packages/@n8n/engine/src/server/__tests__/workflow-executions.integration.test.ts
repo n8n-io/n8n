@@ -4,7 +4,7 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
-import { createDataPlaneDataSource, WorkflowExecution } from '../../database';
+import { createDataSource, WorkflowExecution } from '../../database';
 import type { WorkflowGraph } from '../../graph';
 import { InMemoryWorkQueue } from '../../queue';
 import { startEngineServer } from '../../testing/start-engine-server';
@@ -23,7 +23,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 
 	beforeAll(async () => {
 		container = await new PostgreSqlContainer('postgres:18-alpine').start();
-		dataSource = createDataPlaneDataSource({ url: container.getConnectionUri() });
+		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
 	}, 120_000);
@@ -62,7 +62,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const row = await repo.findOneByOrFail({ id: executionId });
 		expect(row.workflowId).toBe('wf-1');
-		expect(row.status).toBe('running');
+		expect(row.status).toBe('queued');
 		expect(row.mode).toBe('production');
 		expect(row.graph).toEqual(sampleGraph);
 		expect(row.triggerPayload).toEqual({ hello: 'world' });

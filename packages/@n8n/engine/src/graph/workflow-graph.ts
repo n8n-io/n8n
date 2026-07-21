@@ -1,34 +1,26 @@
 /**
- * Engine 2.0 execution graph types — see design doc §3.1, §3.2.
- *
- * A workflow executes as a graph of step nodes connected by edges. The graph
- * supports cycles via back-edges (used to model loop iteration). The graph is
- * captured in the execution record at start and is immutable for the
- * execution's lifetime.
+ * Execution graph: step nodes connected by edges. The graph supports cycles
+ * via back-edges (loop iteration), and is captured in the execution record at
+ * start, immutable for the execution's lifetime.
  */
 
 export type StepType = 'trigger' | 'v1-node' | 'wait' | 'subworkflow' | 'batch';
 
 /**
- * Per-step configuration. Concrete shapes per `StepType` are defined in
- * later tickets — only `WaitStepConfig` is fully specified in the design
- * doc (§3.3) and even that is flagged as needing more design before the
- * `wait` step lands. For StartExecution, the engine treats `config` as
- * opaque payload and persists it with the graph.
+ * Per-step configuration. The engine persists it with the graph without
+ * inspecting it. Left as `unknown` — a to-be-narrowed union — because it
+ * becomes a discriminated union of concrete per-`StepType` configs as those
+ * step types land, rather than an arbitrary JSON blob.
  */
 export type StepConfig = unknown;
 
 export interface GraphNode {
-	/** Deterministic from the source workflow — see §3.1 design properties. */
+	/** Deterministic from the source workflow, so re-converting yields the same graph. */
 	id: string;
 	/** Human-readable name (the v1 node name, for v1 workflows). */
 	name: string;
 	type: StepType;
-	/**
-	 * Step-type-specific configuration. Optional because some step types (e.g.
-	 * empty trigger) carry no config; concrete shapes per `StepType` are
-	 * deferred to later tickets — see design doc §3.3.
-	 */
+	/** Step-type-specific configuration; some step types (e.g. trigger) carry none. */
 	config?: StepConfig;
 }
 
@@ -39,7 +31,7 @@ export interface GraphEdge {
 	to: string;
 	/** Which output slot of `from` feeds this edge — multi-output nodes only. */
 	outputIndex?: number;
-	/** Closes a cycle (loop iteration) — see §3.1 design properties. */
+	/** Closes a cycle (loop iteration). */
 	isBackEdge?: boolean;
 }
 

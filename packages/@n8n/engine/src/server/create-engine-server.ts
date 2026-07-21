@@ -8,12 +8,17 @@ import type { WorkQueue } from '../queue';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
 export interface EngineServerDeps {
-	dataSource?: DataSource;
-	admittance?: AdmittanceService;
-	workQueue?: WorkQueue;
+	dataSource: DataSource;
+	admittance: AdmittanceService;
+	workQueue: WorkQueue;
 }
 
-export function createEngineServer(deps: EngineServerDeps = {}): { app: Application } {
+/**
+ * Builds the engine HTTP app. Without `deps` it serves only `/healthz`; with
+ * `deps` it also mounts the execution API. Deps are all-or-nothing so the API
+ * can't be half-wired.
+ */
+export function createEngineServer(deps?: EngineServerDeps): { app: Application } {
 	const app = express();
 	app.use(express.json());
 
@@ -21,7 +26,7 @@ export function createEngineServer(deps: EngineServerDeps = {}): { app: Applicat
 		res.status(200).json({ status: 'ok' });
 	});
 
-	if (deps.dataSource && deps.admittance && deps.workQueue) {
+	if (deps) {
 		const repo = deps.dataSource.getRepository(WorkflowExecution);
 		const startExecution = new StartExecutionService(deps.admittance, repo, deps.workQueue);
 		app.use('/api/workflow-executions', createWorkflowExecutionsRouter(startExecution));

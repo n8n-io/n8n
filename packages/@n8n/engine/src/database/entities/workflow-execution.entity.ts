@@ -9,6 +9,7 @@ import {
 } from '@n8n/typeorm';
 import { nanoid } from 'nanoid';
 
+import type { JsonObject } from '../../common';
 import type { WorkflowGraph } from '../../graph';
 
 export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -34,7 +35,7 @@ export class WorkflowExecution {
 	graph!: WorkflowGraph;
 
 	@Column('jsonb', { name: 'trigger_payload', nullable: true })
-	triggerPayload!: unknown;
+	triggerPayload!: JsonObject | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

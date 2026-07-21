@@ -1,11 +1,11 @@
 import type { Repository } from '@n8n/typeorm';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { AdmittanceService } from '../../admittance';
+import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
 import type { WorkflowExecution } from '../../database';
 import type { WorkflowGraph } from '../../graph';
 import type { WorkQueue, WorkQueueMessage } from '../../queue';
-import { AdmittanceRejectedError, StartExecutionService } from '../start-execution.service';
+import { StartExecutionService } from '../start-execution.service';
 
 const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
@@ -61,7 +61,7 @@ describe('StartExecutionService', () => {
 		expect(saved).toHaveLength(1);
 		expect(saved[0]).toMatchObject({
 			workflowId: 'wf-1',
-			status: 'running',
+			status: 'queued',
 			mode: 'production',
 			graph: sampleGraph,
 			triggerPayload: { hello: 'world' },

@@ -1,6 +1,8 @@
 export { createEngineServer } from './server';
 export type { EngineServerDeps } from './server';
 
+export type { JsonObject, JsonValue } from './common';
+
 export type {
 	GraphEdge,
 	GraphNode,
@@ -9,9 +11,7 @@ export type {
 	WorkflowGraph,
 } from './graph';
 
-export type { ExternalDependencies, IStepExecutor } from './dependencies';
-
-export { AllowAllAdmittance } from './admittance';
+export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
 export type {
 	AdmittanceDecision,
 	AdmittanceRequest,
@@ -25,9 +25,5 @@ export type {
 	WorkQueueMessage,
 } from './queue';
 
-export { createDataPlaneDataSource } from './database';
-export type {
-	DataPlaneDataSourceConfig,
-	ExecutionMode,
-	ExecutionStatus,
-} from './database';
+export { createDataSource } from './database';
+export type { ExecutionMode, ExecutionStatus } from './database';

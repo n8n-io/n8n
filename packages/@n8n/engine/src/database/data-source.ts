@@ -5,35 +5,19 @@ import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
 import { entities } from './entities';
 import { migrations } from './migrations';
 
-export interface DataPlaneDataSourceConfig {
-	/** Connection URL like `postgres://user:pass@host:port/db`. Takes precedence over individual fields. */
-	url?: string;
-	host?: string;
-	port?: number;
-	username?: string;
-	password?: string;
-	database?: string;
-	schema?: string;
-	ssl?: boolean | { rejectUnauthorized?: boolean };
-}
-
 /**
- * Build a TypeORM `DataSource` for the engine's data-plane Postgres.
+ * Build a TypeORM `DataSource` for the engine's Postgres from a connection URL
+ * (`postgres://user:pass@host:port/db`).
  *
- * The caller is responsible for `initialize()` and `runMigrations()`. This
- * factory only constructs the DataSource — it does not open connections.
+ * This is the persistence adapter's construction helper; composition roots
+ * (`serve.ts`, or the host in integrated mode) call it and own the
+ * `initialize()` / `runMigrations()` lifecycle. It only constructs the
+ * DataSource — it does not open connections.
  */
-export function createDataPlaneDataSource(config: DataPlaneDataSourceConfig): DataSource {
+export function createDataSource(url: string): DataSource {
 	const options: DataSourceOptions = {
 		type: 'postgres',
-		url: config.url,
-		host: config.host,
-		port: config.port,
-		username: config.username,
-		password: config.password,
-		database: config.database,
-		schema: config.schema,
-		ssl: config.ssl,
+		url,
 		entities,
 		migrations,
 		synchronize: false,

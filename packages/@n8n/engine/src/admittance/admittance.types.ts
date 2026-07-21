@@ -1,13 +1,10 @@
 /**
- * Admittance gate — see design doc §7.1.
+ * Admittance gate. Before creating an execution record, the engine consults an
+ * `AdmittanceService` to decide whether the execution is admitted; a rejection
+ * is surfaced as a backpressure error rather than enqueuing work.
  *
- * Before the engine creates an execution record, it consults an
- * `AdmittanceService` to decide whether the execution should be admitted.
- * If rejected, the API returns a backpressure error rather than enqueuing.
- *
- * The reason is intentionally a free-form string for now. Future tickets
- * may introduce typed rejection codes (e.g. for retry/no-retry classification)
- * — design doc flags admittance as "roughly designed, needs tuning".
+ * `reason` is a free-form string for now. TODO(CAT-2909): real cap-based
+ * admittance may replace it with typed rejection codes.
  */
 
 export interface AdmittanceRequest {

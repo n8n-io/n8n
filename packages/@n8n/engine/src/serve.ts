@@ -3,7 +3,7 @@ import { Container } from '@n8n/di';
 import type { DataSource } from '@n8n/typeorm';
 
 import { AllowAllAdmittance } from './admittance';
-import { createDataPlaneDataSource } from './database';
+import { createDataSource } from './database';
 import { InMemoryWorkQueue } from './queue';
 import { createEngineServer } from './server';
 
@@ -12,7 +12,7 @@ async function main(): Promise<void> {
 
 	let dataSource: DataSource | undefined;
 	if (config.databaseUrl) {
-		dataSource = createDataPlaneDataSource({ url: config.databaseUrl });
+		dataSource = createDataSource(config.databaseUrl);
 		await dataSource.initialize();
 		await dataSource.runMigrations();
 	} else {
@@ -28,7 +28,7 @@ async function main(): Promise<void> {
 					admittance: new AllowAllAdmittance(),
 					workQueue: new InMemoryWorkQueue(),
 				}
-			: {},
+			: undefined,
 	);
 
 	const server = app.listen(config.port, config.host, () => {

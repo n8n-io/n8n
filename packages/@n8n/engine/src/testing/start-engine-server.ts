@@ -2,7 +2,7 @@ import type { Server } from 'node:http';
 
 import { createEngineServer, type EngineServerDeps } from '../server';
 
-export async function startEngineServer(deps: EngineServerDeps = {}): Promise<{
+export async function startEngineServer(deps?: EngineServerDeps): Promise<{
 	url: string;
 	stop: () => Promise<void>;
 }> {

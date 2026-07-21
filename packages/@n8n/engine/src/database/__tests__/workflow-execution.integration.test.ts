@@ -2,7 +2,7 @@ import type { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { createDataPlaneDataSource } from '../data-source';
+import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 
 describe('workflow_execution table (integration)', () => {
@@ -11,7 +11,7 @@ describe('workflow_execution table (integration)', () => {
 
 	beforeAll(async () => {
 		container = await new PostgreSqlContainer('postgres:18-alpine').start();
-		dataSource = createDataPlaneDataSource({ url: container.getConnectionUri() });
+		dataSource = createDataSource(container.getConnectionUri());
 		await dataSource.initialize();
 		await dataSource.runMigrations();
 	}, 120_000);

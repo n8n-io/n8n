@@ -1,12 +1,11 @@
 import type { AdmittanceDecision, AdmittanceRequest, AdmittanceService } from './admittance.types';
 
 /**
- * Default admittance policy: accept every request.
+ * Default admittance policy: accept every request. Lets the StartExecution API
+ * be wired up end-to-end without blocking on the cap design.
  *
- * Real cap-based admittance (per design doc §3.8 / §7.1 — global, per-workflow,
- * and queue-depth limits) is a follow-up ticket. This impl exists so the
- * StartExecution API can be wired up end-to-end without blocking on the cap
- * design.
+ * TODO(CAT-2909): real cap-based admittance (global, per-workflow, and
+ * queue-depth limits).
  */
 export class AllowAllAdmittance implements AdmittanceService {
 	// eslint-disable-next-line @typescript-eslint/require-await -- satisfies async interface; impl has no async work

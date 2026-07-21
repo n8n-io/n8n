@@ -1,6 +1,7 @@
 import type { Repository } from '@n8n/typeorm';
 
-import type { AdmittanceService } from '../admittance';
+import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
+import type { JsonObject } from '../common';
 import type { ExecutionMode, WorkflowExecution } from '../database';
 import type { WorkflowGraph } from '../graph';
 import type { WorkQueue } from '../queue';
@@ -8,19 +9,12 @@ import type { WorkQueue } from '../queue';
 export interface StartExecutionRequest {
 	workflowId: string;
 	graph: WorkflowGraph;
-	triggerPayload?: unknown;
+	triggerPayload?: JsonObject;
 	mode?: ExecutionMode;
 }
 
 export interface StartExecutionResult {
 	executionId: string;
-}
-
-export class AdmittanceRejectedError extends Error {
-	constructor(readonly reason: string) {
-		super(`Execution admittance rejected: ${reason}`);
-		this.name = 'AdmittanceRejectedError';
-	}
 }
 
 export class StartExecutionService {
@@ -38,7 +32,8 @@ export class StartExecutionService {
 
 		const execution = this.executionRepo.create({
 			workflowId: request.workflowId,
-			status: 'running',
+			// admitted and enqueued; a worker flips this to 'running' when it starts
+			status: 'queued',
 			mode: request.mode ?? 'production',
 			graph: request.graph,
 			triggerPayload: request.triggerPayload ?? null,
@@ -46,6 +41,8 @@ export class StartExecutionService {
 		});
 		await this.executionRepo.save(execution);
 
+		// TODO(CAT-2938): the save and publish aren't atomic — a crash in between
+		// orphans the execution until the reconciliation sweep exists.
 		await this.workQueue.publish({
 			type: 'execution:started',
 			executionId: execution.id,
