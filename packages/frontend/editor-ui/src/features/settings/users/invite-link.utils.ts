@@ -17,5 +17,8 @@ export async function copyInviteLink(
 	userId: string,
 ): Promise<void> {
 	const invite = usersStore.generateInviteLink({ id: userId });
-	await clipboard.copy(async () => invite.then((res) => res.link));
+	await clipboard.copy(async () => {
+		const response = await invite;
+		return response.link;
+	});
 }
