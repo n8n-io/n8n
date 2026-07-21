@@ -130,6 +130,7 @@ describe('AgentChatController SSE done payload', () => {
 		agentExecutionService.findThreadById.mockResolvedValue(null);
 		agentExecutionOrchestratorService.executeForChat.mockImplementation(async function* (config) {
 			config.onExecutionRecorded?.('exec-99');
+			yield* [];
 		});
 
 		const writes: string[] = [];
@@ -161,6 +162,7 @@ describe('AgentChatController SSE done payload', () => {
 		const { controller, agentExecutionOrchestratorService } = makeController();
 		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
 			config.onExecutionRecorded?.('exec-resume-1');
+			yield* [];
 		});
 
 		const writes: string[] = [];
