@@ -373,7 +373,7 @@ const CustomToolJsonConfigSchema = z.object({
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
-		workflow: z.string().min(1),
+		workflow: z.string().min(1).describe("The workflow's display name (not its ID)."),
 		name: z.string().optional(),
 		description: z.string().optional(),
 		requireApproval: z.boolean().optional(),
