@@ -120,8 +120,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
 | [public.workflow_review_request](public.workflow_review_request.md) | 12 |  | BASE TABLE |
-| [public.workflow_review_request_authors](public.workflow_review_request_authors.md) | 3 |  | BASE TABLE |
-| [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) | 3 |  | BASE TABLE |
+| [public.workflow_review_request_authors](public.workflow_review_request_authors.md) | 2 |  | BASE TABLE |
+| [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) | 2 |  | BASE TABLE |
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
@@ -1411,12 +1411,10 @@ erDiagram
   uuid updatedById FK
 }
 "public.workflow_review_request_authors" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "public.workflow_review_request_reviewers" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }

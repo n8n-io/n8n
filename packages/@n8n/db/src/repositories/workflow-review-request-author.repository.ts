@@ -12,7 +12,7 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestAuthor[]> {
 		return await this.find({
 			where: { workflowReviewRequestId: requestId },
-			order: { id: 'ASC' },
+			order: { userId: 'ASC' },
 		});
 	}
 
@@ -23,7 +23,7 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 
 		return await this.find({
 			where: { workflowReviewRequestId: In(requestIds) },
-			order: { id: 'ASC' },
+			order: { userId: 'ASC' },
 		});
 	}
 }

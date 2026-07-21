@@ -1,4 +1,4 @@
-import { Column, Entity } from '@n8n/typeorm';
+import { Column, Entity, Index } from '@n8n/typeorm';
 
 import { DateTimeColumn, WithTimestampsAndStringId } from './abstract-entity';
 
@@ -24,6 +24,7 @@ export type WorkflowReviewRequestDecision =
 export const WorkflowReviewRequestDecisionList = Object.values(WorkflowReviewRequestDecision);
 
 @Entity({ name: 'workflow_review_request' })
+@Index('IDX_workflow_review_request_project_state', ['projectId', 'state'])
 export class WorkflowReviewRequest extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 36 })
 	projectId: string;

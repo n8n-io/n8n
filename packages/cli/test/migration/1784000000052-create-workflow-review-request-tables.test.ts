@@ -171,11 +171,11 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 					`IDX_${prefix}workflow_review_request_workflow_workflow_request`,
 				),
 			).toBe(true);
+			expect(await indexExists(context, `IDX_${prefix}workflow_review_request_project_state`)).toBe(
+				true,
+			);
 			expect(
-				await indexExists(context, `UQ_${prefix}workflow_review_request_reviewers_request_user`),
-			).toBe(true);
-			expect(
-				await indexExists(context, `UQ_${prefix}workflow_review_request_authors_request_user`),
+				await indexExists(context, `IDX_${prefix}workflow_review_request_reviewers_user`),
 			).toBe(true);
 		} finally {
 			await context.queryRunner.release();
@@ -189,8 +189,6 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 			const { workflowId, versionId } = await seedWorkflow(context, projectId);
 			const requestId = generateNanoId();
 			const childId = generateNanoId();
-			const reviewerId = generateNanoId();
-			const authorId = generateNanoId();
 			const userId = randomUUID();
 			const now = new Date();
 
@@ -240,10 +238,9 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 
 			await context.runQuery(
 				`INSERT INTO ${context.escape.tableName('workflow_review_request_reviewers')}
-			 ("id", "workflowReviewRequestId", "userId")
-			 VALUES (:id, :workflowReviewRequestId, :userId)`,
+			 ("workflowReviewRequestId", "userId")
+			 VALUES (:workflowReviewRequestId, :userId)`,
 				{
-					id: reviewerId,
 					workflowReviewRequestId: requestId,
 					userId,
 				},
@@ -251,10 +248,9 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 
 			await context.runQuery(
 				`INSERT INTO ${context.escape.tableName('workflow_review_request_authors')}
-			 ("id", "workflowReviewRequestId", "userId")
-			 VALUES (:id, :workflowReviewRequestId, :userId)`,
+			 ("workflowReviewRequestId", "userId")
+			 VALUES (:workflowReviewRequestId, :userId)`,
 				{
-					id: authorId,
 					workflowReviewRequestId: requestId,
 					userId,
 				},
@@ -337,7 +333,7 @@ describe('CreateWorkflowReviewRequestTables Migration', () => {
 			expect(childRows).toHaveLength(0);
 
 			const authorRows = await context.runQuery<unknown[]>(
-				`SELECT "id" FROM ${context.escape.tableName('workflow_review_request_authors')} WHERE "workflowReviewRequestId" = :requestId`,
+				`SELECT "userId" FROM ${context.escape.tableName('workflow_review_request_authors')} WHERE "workflowReviewRequestId" = :requestId`,
 				{ requestId },
 			);
 			expect(authorRows).toHaveLength(0);

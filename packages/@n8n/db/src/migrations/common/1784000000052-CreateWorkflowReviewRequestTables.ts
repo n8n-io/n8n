@@ -10,11 +10,11 @@ const USER_TABLE = 'user';
 const WORKFLOW_ENTITY_TABLE = 'workflow_entity';
 const WORKFLOW_HISTORY_TABLE = 'workflow_history';
 
+const IDX_REQUEST_PROJECT_STATE = 'workflow_review_request_project_state';
 const UQ_WORKFLOW_REQUEST_WORKFLOW = 'workflow_review_request_workflow_request_workflow';
 const IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_REQUEST =
 	'workflow_review_request_workflow_workflow_request';
-const UQ_WORKFLOW_REQUEST_REVIEWERS = 'workflow_review_request_reviewers_request_user';
-const UQ_WORKFLOW_REQUEST_AUTHORS = 'workflow_review_request_authors_request_user';
+const IDX_WORKFLOW_REQUEST_REVIEWERS_USER = 'workflow_review_request_reviewers_user';
 
 export class CreateWorkflowReviewRequestTables1784000000052 implements ReversibleMigration {
 	async up(context: MigrationContext) {
@@ -26,18 +26,14 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 	}
 
 	async down({ schemaBuilder: { dropTable }, runQuery, escape, tablePrefix }: MigrationContext) {
-		await runQuery(
-			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_AUTHORS)}`,
-		);
-		await runQuery(
-			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}`,
-		);
+		await runQuery(`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_REVIEWERS_USER)}`);
 		await runQuery(
 			`DROP INDEX IF EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_REQUEST)}`,
 		);
 		await runQuery(
 			`DROP INDEX IF EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_WORKFLOW)}`,
 		);
+		await runQuery(`DROP INDEX IF EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATE)}`);
 
 		await dropTable(AUTHOR_TABLE);
 		await dropTable(REVIEWER_TABLE);
@@ -49,10 +45,14 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 		return `"UQ_${tablePrefix}${name}"`;
 	}
 
-	private async createRequestTable({ schemaBuilder: { createTable, column } }: MigrationContext) {
+	private async createRequestTable({
+		schemaBuilder: { createTable, column },
+		runQuery,
+		escape,
+	}: MigrationContext) {
 		await createTable(REQUEST_TABLE)
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
+				column('id').varchar(36).primary,
 				column('projectId').varchar(36).notNull,
 				column('state')
 					.varchar(16)
@@ -91,6 +91,14 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			});
+
+		const requestTable = escape.tableName(REQUEST_TABLE);
+		const projectIdColumn = escape.columnName('projectId');
+		const stateColumn = escape.columnName('state');
+		await runQuery(
+			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_REQUEST_PROJECT_STATE)}
+			ON ${requestTable}(${projectIdColumn}, ${stateColumn})`,
+		);
 	}
 
 	private async createWorkflowChildTable({
@@ -98,7 +106,7 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 	}: MigrationContext) {
 		await createTable(WORKFLOW_TABLE)
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
+				column('id').varchar(36).primary,
 				column('workflowReviewRequestId').varchar(36).notNull,
 				column('workflowId').varchar(36).notNull,
 				column('workflowVersionId')
@@ -127,9 +135,8 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 	}: MigrationContext) {
 		await createTable(REVIEWER_TABLE)
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
-				column('workflowReviewRequestId').varchar(36).notNull,
-				column('userId').uuid.notNull,
+				column('workflowReviewRequestId').varchar(36).notNull.primary,
+				column('userId').uuid.notNull.primary,
 			)
 			.withForeignKey('workflowReviewRequestId', {
 				tableName: REQUEST_TABLE,
@@ -148,9 +155,8 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 	}: MigrationContext) {
 		await createTable(AUTHOR_TABLE)
 			.withColumns(
-				column('id').varchar(36).primary.notNull,
-				column('workflowReviewRequestId').varchar(36).notNull,
-				column('userId').uuid.notNull,
+				column('workflowReviewRequestId').varchar(36).notNull.primary,
+				column('userId').uuid.notNull.primary,
 			)
 			.withForeignKey('workflowReviewRequestId', {
 				tableName: REQUEST_TABLE,
@@ -171,7 +177,6 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 	}: MigrationContext) {
 		const workflowTable = escape.tableName(WORKFLOW_TABLE);
 		const reviewerTable = escape.tableName(REVIEWER_TABLE);
-		const authorTable = escape.tableName(AUTHOR_TABLE);
 		const requestIdColumn = escape.columnName('workflowReviewRequestId');
 		const workflowIdColumn = escape.columnName('workflowId');
 		const userIdColumn = escape.columnName('userId');
@@ -184,13 +189,10 @@ export class CreateWorkflowReviewRequestTables1784000000052 implements Reversibl
 			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_WORKFLOW_WORKFLOW_REQUEST)}
 			ON ${workflowTable}(${workflowIdColumn}, ${requestIdColumn})`,
 		);
+		// Leading userId for "assigned to me"; PK is (requestId, userId) so cannot serve that lookup.
 		await runQuery(
-			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_REVIEWERS)}
-			ON ${reviewerTable}(${requestIdColumn}, ${userIdColumn})`,
-		);
-		await runQuery(
-			`CREATE UNIQUE INDEX IF NOT EXISTS ${this.uniqueIndexName(tablePrefix, UQ_WORKFLOW_REQUEST_AUTHORS)}
-			ON ${authorTable}(${requestIdColumn}, ${userIdColumn})`,
+			`CREATE INDEX IF NOT EXISTS ${escape.indexName(IDX_WORKFLOW_REQUEST_REVIEWERS_USER)}
+			ON ${reviewerTable}(${userIdColumn}, ${requestIdColumn})`,
 		);
 	}
 }

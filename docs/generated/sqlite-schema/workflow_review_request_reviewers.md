@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_review_request_reviewers" ("id" varchar(36) PRIMARY KEY NOT NULL, "workflowReviewRequestId" varchar(36) NOT NULL, "userId" varchar NOT NULL, CONSTRAINT "FK_ba29e1cc5cdba43ce7b810b3ddd" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_81d0a2584aa4e8e5e0d6aa68f32" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "workflow_review_request_reviewers" ("workflowReviewRequestId" varchar(36) NOT NULL, "userId" varchar NOT NULL, CONSTRAINT "FK_ba29e1cc5cdba43ce7b810b3ddd" FOREIGN KEY ("workflowReviewRequestId") REFERENCES "workflow_review_request" ("id") ON DELETE CASCADE, CONSTRAINT "FK_81d0a2584aa4e8e5e0d6aa68f32" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE, PRIMARY KEY ("workflowReviewRequestId", "userId"))
 ```
 
 </details>
@@ -15,7 +15,6 @@ CREATE TABLE "workflow_review_request_reviewers" ("id" varchar(36) PRIMARY KEY N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
 | userId | varchar |  | false |  | [user](user.md) |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [workflow_review_request](workflow_review_request.md) |  |
 
@@ -25,28 +24,28 @@ CREATE TABLE "workflow_review_request_reviewers" ("id" varchar(36) PRIMARY KEY N
 | ---- | ---- | ---------- |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| id | PRIMARY KEY | PRIMARY KEY (id) |
-| sqlite_autoindex_workflow_review_request_reviewers_1 | PRIMARY KEY | PRIMARY KEY (id) |
+| sqlite_autoindex_workflow_review_request_reviewers_1 | PRIMARY KEY | PRIMARY KEY (workflowReviewRequestId, userId) |
+| userId | PRIMARY KEY | PRIMARY KEY (userId) |
+| workflowReviewRequestId | PRIMARY KEY | PRIMARY KEY (workflowReviewRequestId) |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| UQ_workflow_review_request_reviewers_request_user | CREATE UNIQUE INDEX "UQ_workflow_review_request_reviewers_request_user"<br />			ON "workflow_review_request_reviewers"("workflowReviewRequestId", "userId") |
-| sqlite_autoindex_workflow_review_request_reviewers_1 | PRIMARY KEY (id) |
+| IDX_workflow_review_request_reviewers_user | CREATE INDEX "IDX_workflow_review_request_reviewers_user"<br />			ON "workflow_review_request_reviewers"("userId", "workflowReviewRequestId") |
+| sqlite_autoindex_workflow_review_request_reviewers_1 | PRIMARY KEY (workflowReviewRequestId, userId) |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-"workflow_review_request_reviewers" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_review_request_reviewers" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_reviewers" |o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_reviewers" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_review_request_reviewers" {
-  varchar_36_ id PK
-  varchar userId FK
-  varchar_36_ workflowReviewRequestId FK
+  varchar userId PK
+  varchar_36_ workflowReviewRequestId PK
 }
 "user" {
   datetime_3_ createdAt

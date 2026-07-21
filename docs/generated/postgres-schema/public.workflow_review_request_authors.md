@@ -4,7 +4,6 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
 
@@ -14,17 +13,15 @@
 | ---- | ---- | ---------- |
 | FK_a9c79ab0c352aa0496c39ea56a4 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
 | FK_c255ae5087010c1ab73ac8684af | FOREIGN KEY | FOREIGN KEY ("workflowReviewRequestId") REFERENCES workflow_review_request(id) ON DELETE CASCADE |
-| PK_47755615899710169aada453e6e | PRIMARY KEY | PRIMARY KEY (id) |
+| PK_ae197bb5135d422f6392a879e0c | PRIMARY KEY | PRIMARY KEY ("workflowReviewRequestId", "userId") |
 | workflow_review_request_author_workflowReviewRequestId_not_null | n | NOT NULL "workflowReviewRequestId" |
-| workflow_review_request_authors_id_not_null | n | NOT NULL id |
 | workflow_review_request_authors_userId_not_null | n | NOT NULL "userId" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_47755615899710169aada453e6e | CREATE UNIQUE INDEX "PK_47755615899710169aada453e6e" ON public.workflow_review_request_authors USING btree (id) |
-| UQ_workflow_review_request_authors_request_user | CREATE UNIQUE INDEX "UQ_workflow_review_request_authors_request_user" ON public.workflow_review_request_authors USING btree ("workflowReviewRequestId", "userId") |
+| PK_ae197bb5135d422f6392a879e0c | CREATE UNIQUE INDEX "PK_ae197bb5135d422f6392a879e0c" ON public.workflow_review_request_authors USING btree ("workflowReviewRequestId", "userId") |
 
 ## Relations
 
@@ -35,7 +32,6 @@ erDiagram
 "public.workflow_review_request_authors" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 
 "public.workflow_review_request_authors" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }

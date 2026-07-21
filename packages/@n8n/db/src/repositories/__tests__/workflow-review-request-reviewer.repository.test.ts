@@ -57,7 +57,7 @@ describe('WorkflowReviewRequestReviewerRepository', () => {
 			const callArgs = entityManager.find.mock.calls[0];
 			expect(callArgs?.[1]).toEqual({
 				where: { workflowReviewRequestId: 'req-1' },
-				order: { id: 'ASC' },
+				order: { userId: 'ASC' },
 			});
 		});
 	});
@@ -71,7 +71,7 @@ describe('WorkflowReviewRequestReviewerRepository', () => {
 			const callArgs = entityManager.find.mock.calls[0];
 			expect(callArgs?.[1]).toEqual({
 				where: { workflowReviewRequestId: In(['req-1', 'req-2']) },
-				order: { id: 'ASC' },
+				order: { userId: 'ASC' },
 			});
 		});
 	});
