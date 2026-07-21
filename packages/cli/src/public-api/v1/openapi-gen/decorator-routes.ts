@@ -1,5 +1,5 @@
-// Must run before importing any controller/DTO module — see zod-extend.ts and data-tables.path.ts
-// for why this ordering is load-bearing.
+// Must run before importing any controller/DTO module — see zod-extend.ts for why this ordering
+// is load-bearing (it patches .describe()/.openapi() onto zod's shared prototype).
 import './zod-extend';
 
 // Side-effect import: populates ControllerRegistryMetadata with every @PublicApiController before
@@ -19,9 +19,9 @@ import {
 /**
  * Query fields backed by shared, hand-written parameter files instead of being generated from the
  * DTO. Their `.transform()` chains (string -> parsed/clamped number) collapse to a bare
- * `{ type: 'string' }` under zod-to-openapi's introspection — the same limitation
- * `data-tables.path.ts` documents for `limit`/`cursor` on that resource. Every public API list
- * endpoint reuses this exact pagination shape, so this mapping is generic, not per-resource.
+ * `{ type: 'string' }` under zod-to-openapi's introspection, with constraints like `maximum`/
+ * `default` silently dropped. Every public API list endpoint reuses this exact pagination shape,
+ * so this mapping is generic, not per-resource.
  */
 const SHARED_PAGINATION_PARAMS: Record<string, { $ref: string }> = {
 	limit: { $ref: '../../../../shared/spec/parameters/limit.yml' },
@@ -90,8 +90,8 @@ function buildQueryConfig(route: ResolvedPublicApiRoute): {
 /**
  * Response set is derived from what `PublicApiControllerRegistry` actually does at runtime, not
  * invented: auth always 401s, `@ApiKeyScope` always 403s on mismatch, and a body/query DTO always
- * 400s on failed `.safeParse()`. Error response *bodies* (schemas) stay hand-written $refs, same
- * as data-tables — generating those is explicitly out of scope for this pass.
+ * 400s on failed `.safeParse()`. Error response *bodies* (schemas) stay hand-written $refs —
+ * generating those is out of scope for this pass.
  */
 function buildResponses(route: ResolvedPublicApiRoute): RouteConfig['responses'] {
 	const responses: RouteConfig['responses'] = {
@@ -123,10 +123,10 @@ export interface GeneratedDecoratorOperation {
 }
 
 /**
- * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class — no per-resource
- * registration needed (contrast with `data-tables.path.ts`/`data-tables.schemas.ts`, hand-written
- * because `/data-tables` is still eov-routed, not decorator-routed). Adding a new
- * `@PublicApiController` route makes it show up here automatically.
+ * Builds one `RouteConfig` per route discovered on a `@PublicApiController` class — no
+ * per-resource registration needed. Adding a new `@PublicApiController` route makes it show up
+ * here automatically; a legacy eov-routed endpoint (still hand-written YAML) is untouched until
+ * it's migrated to the controller pattern.
  *
  * Output path convention: `handlers/<first-path-segment>/spec/paths/<handlerName>.generated.yml`
  * — handler (method) names are unique within a controller class, so this can't collide even

@@ -4,12 +4,7 @@ import type { ListDataTableQueryDto } from '../dto';
 
 export const insertRowReturnType = z.union([z.literal('all'), z.literal('count'), z.literal('id')]);
 
-export const dataTableNameSchema = z
-	.string()
-	.trim()
-	.min(1)
-	.max(128)
-	.describe('Name of the data table');
+export const dataTableNameSchema = z.string().trim().min(1).max(128);
 export const dataTableIdSchema = z
 	.string()
 	.max(36)
@@ -26,11 +21,8 @@ export const dataTableColumnNameSchema = z
 	.trim()
 	.min(1)
 	.max(DATA_TABLE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
-	.regex(DATA_TABLE_COLUMN_REGEX, DATA_TABLE_COLUMN_ERROR_MESSAGE)
-	.describe('Column name');
-export const dataTableColumnTypeSchema = z
-	.enum(['string', 'number', 'boolean', 'date'])
-	.describe('Column data type');
+	.regex(DATA_TABLE_COLUMN_REGEX, DATA_TABLE_COLUMN_ERROR_MESSAGE);
+export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
 export const dataTableCreateColumnSchema = z.object({
 	name: dataTableColumnNameSchema,

@@ -120,10 +120,12 @@ sort order.
 - **Registry:** `packages/cli/src/public-api/public-api-controller.registry.ts`
 - **Route resolution (shared by registry + doc-gen):**
   `packages/cli/src/public-api/public-api-route-resolver.ts`
-- **OpenAPI generation:** `v1/openapi-gen/` — `decorator-routes.ts` (discovers
-  `@PublicApiController` routes automatically), `data-tables.path.ts` (manual
-  registration, for the still-eov-routed `/data-tables`), `generate.ts` (ties
-  both together, called from `scripts/build.mjs`'s `build:data` step)
+- **OpenAPI generation:** `v1/openapi-gen/` — `decorator-routes.ts` discovers
+  every `@PublicApiController` route automatically and builds its
+  `RouteConfig`; `generate.ts` renders and writes the fragments, called from
+  `scripts/build.mjs`'s `build:data` step. Only decorator-routed endpoints are
+  generated today — legacy eov endpoints (e.g. `/data-tables`) keep
+  hand-written YAML until migrated to the controller pattern.
 - Simple GET via eov + service: `handlers/insights/`
 - CRUD via eov + service/controller: `handlers/variables/`, `handlers/folders/`,
   `handlers/projects/`, `handlers/data-tables/`
