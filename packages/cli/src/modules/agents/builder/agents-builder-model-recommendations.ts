@@ -82,11 +82,13 @@ tool-capable.
 Treat this list as authoritative for model recommendations. Use these models
 when the user does not know what model to pick. Prefer a recommended model for
 a provider the user has credentials for; then call resolve_llm with that
-provider and model, or ask via ask_questions if the user needs to choose a
-credential.
+provider and model. If the user still needs to choose a provider or
+credential, ask via ask_questions in the trailing batch, after unblocked
+build work is done.
 Do not mention models outside this list unless the user explicitly names one
-and resolve_llm validates it. Do not write a model or credential directly
-without a resolve_llm result.
+and resolve_llm validates it. Never write a non-empty model or credential
+without a resolve_llm result; drafts carry model "" while LLM setup is
+pending.
 
 ${rows.join('\n')}`;
 }

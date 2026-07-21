@@ -14,7 +14,7 @@ import {
 	formatZodErrors,
 	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
-	RunnableAgentJsonConfigSchema,
+	AgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -270,9 +270,7 @@ export class AgentsBuilderToolsService {
 					if (baseConfigHash !== snapshot.configHash) {
 						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR] };
 					}
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
-						sanitizeAgentJsonConfig(parsed.data),
-					);
+					const zodResult = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(parsed.data));
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
@@ -390,9 +388,7 @@ export class AgentsBuilderToolsService {
 					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
 						.newDocument as unknown as AgentJsonConfig;
 
-					const zodResult = RunnableAgentJsonConfigSchema.safeParse(
-						sanitizeAgentJsonConfig(patched),
-					);
+					const zodResult = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(patched));
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}
@@ -718,8 +714,8 @@ export class AgentsBuilderToolsService {
 					'required section, or an unclear schedule. Each objective must follow the required structured ' +
 					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
 					'section filled in with concrete content — it is the exact, self-contained message the agent ' +
-					'receives on each unattended run. If anything is ambiguous, ask the user clarifying questions ' +
-					'(ask_questions with discrete options for choices, or type: "text" for open-ended) before calling ' +
+					'receives on each unattended run. If anything is ambiguous, ask the user clarifying questions with ' +
+					'ask_questions before calling ' +
 					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
 					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
 					'config (patch_config/write_config) BEFORE calling create_tasks — otherwise the task will fail at ' +

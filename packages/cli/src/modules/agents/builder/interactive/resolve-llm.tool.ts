@@ -92,13 +92,16 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.RESOLVE_LLM)
 		.description(
 			'Resolve the agent main LLM without showing a picker. ' +
-				'Only call this when the user explicitly names a provider or model — do NOT call it ' +
-				'at the start of a conversation or proactively for fresh agents. ' +
+				'For fresh agents, call it once, silently, before the first config write to detect existing ' +
+				'credentials — with provider/model when the user named them, otherwise without arguments. ' +
+				'Also call it whenever the user names or changes a provider or model. ' +
 				'If provider is given, resolves only that provider; if model is omitted, uses the ' +
 				'provider default model. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
-				'when credentials are missing, unsupported, or ambiguous; use ask_questions to let the ' +
-				'user choose, then call resolve_llm again with the choice.',
+				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
+				'ask immediately; keep building with model "" and ask via ask_questions in the trailing ' +
+				'batch, then call resolve_llm again with the choice. For a model change on an existing ' +
+				'agent, ask immediately and keep the current model and credential until the new one resolves.',
 		)
 		.input(
 			z.object({

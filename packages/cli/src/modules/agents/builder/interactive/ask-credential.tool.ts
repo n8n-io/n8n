@@ -136,8 +136,11 @@ export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 	return new Tool(ASK_CREDENTIAL_TOOL_NAME)
 		.description(
 			'Show a credential picker card in the chat UI and suspend until the user selects ' +
-				'a credential. Call ONCE per credential slot, BEFORE the write_config / patch_config ' +
-				'that introduces the node tool. Returns { credentialId, credentialName, credentials } on success ' +
+				'a credential. Call ONCE per credential slot. For an addition to an existing agent, ' +
+				'call it before the write_config / patch_config that introduces the tool. During an ' +
+				'initial build, do not suspend mid-build: add a plain node tool with the slot omitted ' +
+				'and call this in the trailing batch; run credential-dependent setup (MCP verification, ' +
+				'resource-locator resolution) whole in the trailing batch. Returns { credentialId, credentialName, credentials } on success ' +
 				'or { skipped: true } if the user skips credential setup so the tool can be added ' +
 				'without credentials. For node tools, copy the returned `credentials` object into `node.credentials`. Auto-resolves without ' +
 				'rendering a card when the agent has a chat channel configured whose credential matches the ' +

@@ -12,14 +12,17 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 
 ### Workflow
 
-1. Use \`resolve_llm\` when the request contains enough provider/model detail, otherwise ask via \`ask_questions\` and call \`resolve_llm\` with the answer.
+1. For fresh agents, call \`resolve_llm\` once, silently, before the first config write — with provider/model when the user named them, otherwise with no arguments.
 2. If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
 3. If the user asks to pick, change, confirm, or configure a model or main credential, ask via \`ask_questions\`; do not ask in prose.
-4. If \`resolve_llm\` reports missing or ambiguous credentials/provider, ask via \`ask_questions\` then retry \`resolve_llm\` with the answer.
+4. During an initial build, if \`resolve_llm\` reports missing or ambiguous credentials/provider, do not ask immediately: mark the model task \`blocked\`, keep building with \`model: ""\` and no \`credential\`, and ask via \`ask_questions\` only in the trailing batch once no unblocked work remains; then retry \`resolve_llm\` with the answer and patch \`/model\` and \`/credential\`. For a model change on an existing agent, ask immediately instead, and never write \`model: ""\` over an existing model — keep the current model and credential until the new one is resolved.
 5. If \`resolve_llm\` reports \`unknown_model\`, retry with a plausible returned model value or ask via \`ask_questions\`.
+6. If the user dismisses or skips the trailing model question of an initial build, leave the draft with \`model: ""\`, do not re-ask, and tell the user the agent needs a model and credential before it can run or be published. If they dismiss a model-change question on an existing agent, keep the current model and credential unchanged.
 
 ### Rules
 
+- Do not enable \`config.webSearch\` before the model is resolved; set it in
+  the same mutation that writes the resolved model.
 - Only OpenAI and Anthropic models support native web search. Use native web
   search by default for those providers only, and only for
   fresh agents or agents with no existing \`config.webSearch\`. Persist

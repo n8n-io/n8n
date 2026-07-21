@@ -182,7 +182,7 @@ describe('chat-channel credential guidance', () => {
 	});
 
 	it('references ask_questions in the batching guidance', () => {
-		expect(WORKFLOW_SECTION).toContain('Clarify missing decisions through the Interactive tools');
+		expect(WORKFLOW_SECTION).toContain('batch all missing decisions into the fewest');
 		expect(INTERACTIVE_TOOLS_SECTION).toContain(
 			'Batch every\n  question you currently need into a single call',
 		);
@@ -273,6 +273,40 @@ describe('external integration routing guidance', () => {
 		expect(chatBranch).not.toContain('`read_config`');
 		expect(chatBranch).not.toContain('`patch_config`');
 		expect(chatBranch).not.toContain('`write_config`');
+	});
+});
+
+describe('build-first workflow guidance', () => {
+	it('guides the builder to plan with write_todos and blocked tasks', () => {
+		expect(WORKFLOW_SECTION).toContain('`write_todos`');
+		expect(WORKFLOW_SECTION).toContain('`blocked`');
+		expect(WORKFLOW_SECTION).toContain('write the config with `model: ""`');
+	});
+
+	it('does not require a real model before the first config write', () => {
+		const prompt = buildBuilderPrompt({
+			agentPreviewPath: '/p',
+			modelRecommendationsSection: null,
+		});
+		expect(prompt).not.toContain('Fresh agents need a real model');
+	});
+
+	it('guides silent resolve_llm and draft-first config mutation', () => {
+		expect(getLlmSelectionPrompt(null)).toContain('call `resolve_llm` once, silently');
+		expect(getConfigMutationPrompt()).toContain('#### Create A Fresh Agent Draft');
+		expect(getConfigMutationPrompt()).not.toContain('Create Or Replace A Fresh Runnable Agent');
+	});
+
+	it('scopes credential asks and model recommendations to the trailing batch', () => {
+		expect(INTERACTIVE_TOOLS_SECTION).toContain(
+			'During an initial build, do not suspend for it\n  mid-build',
+		);
+		expect(INTERACTIVE_TOOLS_SECTION).toContain(
+			'"Initial build" means the first build pass on a fresh agent',
+		);
+		expect(getLlmSelectionPrompt(null)).toContain('leave the draft with `model: ""`');
+		expect(getLlmSelectionPrompt(null)).toContain('never write `model: ""` over an existing model');
+		expect(getLlmSelectionPrompt(null)).toContain('During an initial build, if `resolve_llm`');
 	});
 });
 

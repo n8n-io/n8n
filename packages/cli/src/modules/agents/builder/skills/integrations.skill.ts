@@ -88,17 +88,9 @@ The \`integrations\` array controls how the target agent is triggered.
 
 ### Callable External Services
 
-When the product is not a chat/trigger integration, call \`resolve_integration\`
-with queries matching the requested service before loading MCP or node-tool
-skills.
-
-- If it returns \`kind: "mcp"\`, load \`agent-builder-mcp\` and follow the MCP
-  credential, verification, and config workflow.
-- If it returns \`kind: "node"\`, load \`agent-builder-node-tools\`, use the
-  returned node results with \`get_node_types\`, and ask for every required
-  credential.
-- Use workflow tools when the capability should come from an existing workflow
-  instead of a direct MCP or node tool.
+When the product is not a chat/trigger integration, follow the Tool Guidance
+section of your system prompt: route each service through
+\`resolve_integration\` and continue per its returned \`kind\`.
 
 ## Gotchas
 

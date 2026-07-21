@@ -93,6 +93,11 @@ Follow these steps for the selected MCP result:
 4. Write config: call \`read_config\`, then \`patch_config\` to add the entry to
    \`mcpServers[]\` using the patch pattern below.
 
+During an initial build, run steps 1-4 as one unit in the trailing batch
+(after unblocked build work is done) instead of mid-build; verification needs
+the credential, so do not split them. The "Incomplete setup" rules below apply
+if the user skips there.
+
 If verification succeeds but the tools do not cover the requested capability
 for a generic service request, load \`agent-builder-node-tools\`, call
 \`search_nodes\` with the same service queries, and continue with node setup. Do

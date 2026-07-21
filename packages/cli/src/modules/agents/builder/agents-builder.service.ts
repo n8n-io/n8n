@@ -229,7 +229,7 @@ export class AgentsBuilderService {
 			user,
 		);
 
-		const { Agent, Memory } = await import('@n8n/agents');
+		const { Agent, Memory, createPlannerTodosTool } = await import('@n8n/agents');
 
 		const onMemoryUsage = async (report: MemoryTaskUsageReport) => {
 			try {
@@ -275,6 +275,8 @@ export class AgentsBuilderService {
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
 		}
+
+		builder.tool(createPlannerTodosTool());
 
 		applyAgentThinking(builder, modelConfig);
 

@@ -873,10 +873,37 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
-		it('write_config rejects draft LLM config without updating', async () => {
+		it('write_config accepts a draft config without model and credential', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const draftConfig = { ...currentConfig, model: '', credential: undefined };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...currentConfig, model: '' },
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(draftConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				expect.objectContaining({ model: '', instructions: 'Help the user.' }),
+			);
+		});
+
+		it('write_config still rejects empty instructions on a draft', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const draftConfig = { ...currentConfig, model: '', instructions: '' };
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 
 			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
@@ -887,14 +914,41 @@ describe('AgentsBuilderToolsService', () => {
 				ctx,
 			);
 
-			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				ok: false,
-				errors: expect.arrayContaining([
-					expect.objectContaining({ path: 'model' }),
-					expect.objectContaining({ path: 'credential' }),
-				]),
+				errors: [expect.objectContaining({ path: '/instructions' })],
 			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('patch_config succeeds on a draft config without model and credential', async () => {
+			const { service, agentsService } = makeService();
+			const { credential: _credential, ...noCredential } = baseConfig;
+			const draftBase = { ...noCredential, model: '' };
+			const currentConfig = { ...draftBase, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(draftBase as AgentJsonConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...currentConfig, instructions: 'Triage Slack messages.' },
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'replace', path: '/instructions', value: 'Triage Slack messages.' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				expect.objectContaining({ model: '', instructions: 'Triage Slack messages.' }),
+			);
 		});
 
 		it('write_config rejects stale baseConfigHash without updating or echoing the config', async () => {

@@ -63,11 +63,9 @@ Do NOT call \`create_tasks\` for a task until BOTH of these are true for it:
    fires, so it must stand on its own and must not rely on the current chat.
 2. The schedule is concrete — how often and at what time it should run.
 
-If any section would be empty or a guess, ask the user clarifying questions (use
-\`ask_questions\`, batching multiple questions into one call — discrete options for
-choices, or \`type: "text"\` for open-ended) until you can complete the whole
-template and pin down the cadence for every task. Never create a placeholder or
-"refine-it-later" task.
+If any section would be empty or a guess, ask the user clarifying questions with
+\`ask_questions\` until you can complete the whole template and pin down the
+cadence for every task. Never create a placeholder or "refine-it-later" task.
 
 ## Workflow
 

@@ -41,6 +41,13 @@ locator values that the target agent cannot reliably guess at runtime.
 - \`write_config\` or \`patch_config\` rejects a node parameter with a dynamic
   selector / \`get_resource_locator_options\` error.
 
+## Initial-build timing
+
+During an initial build, run this whole workflow — the credential ask, option
+lookup, and the config mutation for the affected tool — as one unit in the
+trailing batch. Do not suspend for the credential mid-build; build everything
+that does not depend on this tool first.
+
 ## Workflow
 
 1. Discover and inspect the node with \`search_nodes\`, then \`get_node_types\`.
