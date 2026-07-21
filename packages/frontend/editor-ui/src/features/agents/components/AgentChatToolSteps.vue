@@ -64,7 +64,7 @@ const FixWithAssistantCallout = defineComponent({
 							N8nButton,
 							{
 								size: 'small',
-								type: 'secondary',
+								variant: 'subtle',
 								icon: 'sparkles',
 								'data-test-id': 'agent-chat-tool-fix-with-assistant',
 								onClick: () => calloutEmit('fix'),
