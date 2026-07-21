@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-07-17-prompt-builder-edge-cases.md
+  s_80c00fe3320feb::t_b01760b4ad058c 1-334
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "15e170944ae54ba4ef3d8cd0a7a58beb7717e84b",
+  "prompts": {},
+  "sessions": {
+    "s_80c00fe3320feb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7103-2559-7571-8b3f-e57ae73bfda5",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
