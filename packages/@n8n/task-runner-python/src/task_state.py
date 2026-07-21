@@ -1,6 +1,6 @@
 from enum import Enum
 from dataclasses import dataclass
-from multiprocessing.context import ForkServerProcess
+from multiprocessing.process import BaseProcess
 
 
 class TaskStatus(Enum):
@@ -13,7 +13,7 @@ class TaskStatus(Enum):
 class TaskState:
     task_id: str
     status: TaskStatus
-    process: ForkServerProcess | None = None
+    process: BaseProcess | None = None
     workflow_name: str | None = None
     workflow_id: str | None = None
     node_name: str | None = None
