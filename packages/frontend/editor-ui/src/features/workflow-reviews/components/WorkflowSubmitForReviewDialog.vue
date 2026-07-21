@@ -14,6 +14,7 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 import { useToast } from '@/app/composables/useToast';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { createWorkflowReviewRequest } from '@/features/workflow-reviews/workflowReviews.api';
 
 const REVIEW_TITLE_MAX_LENGTH = 128;
@@ -34,6 +35,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
 const reviewRequiredStore = useReviewRequiredStore();
+const reviewStatusStore = useWorkflowReviewStatusStore();
 
 const reviewTitle = ref('');
 const description = ref('');
@@ -92,12 +94,14 @@ const submit = async () => {
 			workflows: [{ workflowId: props.workflowId, workflowVersionId }],
 		});
 
-		// TODO(LIGO-838): authoritative open-review server state takes over the displayed toggle
 		reviewRequiredStore.setReviewRequired(props.workflowId, false);
+		void reviewStatusStore.fetchStatus(props.workflowId);
 		emit('update:open', false);
 		emit('submitted');
 	} catch (error) {
 		if (error instanceof ResponseError && error.httpStatusCode === 409) {
+			// The conflict proves an open review this client didn't know about — lock immediately.
+			void reviewStatusStore.fetchStatus(props.workflowId);
 			hasConflict.value = true;
 			const workflowReviewRequestId = error.meta?.workflowReviewRequestId;
 			existingReviewRequestId.value =

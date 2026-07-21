@@ -56,6 +56,8 @@ import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/
 import WorkflowSubmitForReviewDialog from '@/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue';
 import WorkflowReviewSubmittedDialog from '@/features/workflow-reviews/components/WorkflowReviewSubmittedDialog.vue';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
+import { useWorkflowReviewStatusSync } from '@/features/workflow-reviews/composables/useWorkflowReviewStatusSync';
 import { useWorkflowReviewDialogPreferences } from '@/features/workflow-reviews/composables/useWorkflowReviewDialogPreferences';
 
 const props = defineProps<{
@@ -78,6 +80,7 @@ const workflowDocumentStore = computed(() =>
 // Pass a getter so the composable re-syncs internally when the user navigates
 // to a different workflow without this component being remounted.
 useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
+useWorkflowReviewStatusSync(() => (props.isNewWorkflow ? undefined : props.id));
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
@@ -91,7 +94,12 @@ const { saveCurrentWorkflow, cancelAutoSave } = useWorkflowSaving({ router });
 const workflowActivate = useWorkflowActivate();
 const { isWorkflowReviewsEnabled } = useWorkflowReviewsFeature();
 const reviewRequiredStore = useReviewRequiredStore();
+const reviewStatusStore = useWorkflowReviewStatusStore();
 const { publishChoiceDismissed, submittedDialogDismissed } = useWorkflowReviewDialogPreferences();
+
+const effectiveReviewRequired = computed(
+	() => reviewStatusStore.hasOpenReview(props.id) || reviewRequiredStore.isReviewRequired(props.id),
+);
 
 const isNamedVersionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
@@ -259,7 +267,10 @@ const onPublishButtonClick = async () => {
 	if (!(await ensureWorkflowSaved())) return;
 
 	if (isWorkflowReviewsEnabled.value) {
-		if (reviewRequiredStore.isReviewRequired(props.id)) {
+		// TODO(LIGO-806): with an open review this submit dead-ends in the 409
+		// inline error until syncing the existing review exists
+		// TODO(LIGO-604): backend publish enforcement
+		if (effectiveReviewRequired.value) {
 			showSubmitForReviewDialog.value = true;
 			return;
 		}

@@ -4428,6 +4428,7 @@
 	"workflowHistory.action.viewTimeline": "View timeline",
 	"workflowReviews.reviewRequired.title": "Review required",
 	"workflowReviews.reviewRequired.description": "Require changes to be reviewed and approved before publishing.",
+	"workflowReviews.reviewRequired.lockedDescription": "This workflow has an open review, so a review is required before publishing.",
 	"workflowReviews.publishChoice.title": "New: Submit for review before publishing",
 	"workflowReviews.publishChoice.description": "You can now have your workflow version reviewed and approved before you publish it. Reviews are optional and you can still publish directly if you prefer.",
 	"workflowReviews.publishChoice.submitForReview": "Submit for review",
