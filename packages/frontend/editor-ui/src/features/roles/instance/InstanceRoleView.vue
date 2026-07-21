@@ -111,7 +111,36 @@ async function createInstanceRole() {
 	}
 }
 
+async function confirmRoleUpdate(slug: string) {
+	// Fetch the usage count at save time so the confirmation also covers
+	// assignments made since the page was loaded.
+	const usedByUsers = await rolesStore
+		.fetchRoleBySlug({ slug })
+		.then((role) => role.usedByUsers)
+		.catch(() => initialState.value?.usedByUsers);
+
+	if (!usedByUsers) return true;
+
+	const confirmed = await message.confirm(
+		i18n.baseText('roles.instance.action.update.text', {
+			interpolate: { count: usedByUsers },
+			adjustToNumber: usedByUsers,
+		}),
+		i18n.baseText('roles.instance.action.update.title'),
+		{
+			type: 'warning',
+			confirmButtonText: i18n.baseText('projectRoles.action.update'),
+			cancelButtonText: i18n.baseText('roles.action.cancel'),
+		},
+	);
+
+	return confirmed === MODAL_CONFIRM;
+}
+
 async function updateInstanceRole(slug: string) {
+	const proceed = await confirmRoleUpdate(slug);
+	if (!proceed) return;
+
 	try {
 		const role = await rolesStore.updateRole(slug, {
 			displayName: form.value.displayName,

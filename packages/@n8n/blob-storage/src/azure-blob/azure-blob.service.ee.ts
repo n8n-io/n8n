@@ -8,8 +8,8 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import { PassThrough, Readable, pipeline } from 'node:stream';
 
 import { AzureBlobConfig } from './azure-blob.config';
-import type { BinaryData } from '../types';
-import { createFixedSizeChunker } from '../utils';
+import { createFixedSizeChunker } from '../stream-utils';
+import type { BlobMetadata, PreWriteBlobMetadata } from '../types';
 
 @Service()
 export class AzureBlobService {
@@ -71,7 +71,7 @@ export class AzureBlobService {
 		}
 	}
 
-	async put(blobName: string, body: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
+	async put(blobName: string, body: Buffer, metadata: PreWriteBlobMetadata = {}) {
 		try {
 			await this.containerClient.getBlockBlobClient(blobName).uploadData(body, {
 				blobHTTPHeaders: { blobContentType: metadata.mimeType ?? 'application/octet-stream' },
@@ -139,11 +139,11 @@ export class AzureBlobService {
 		}
 	}
 
-	async getMetadata(blobName: string): Promise<BinaryData.Metadata> {
+	async getMetadata(blobName: string): Promise<BlobMetadata> {
 		try {
 			const props = await this.containerClient.getBlockBlobClient(blobName).getProperties();
 
-			const metadata: BinaryData.Metadata = { fileSize: props.contentLength ?? 0 };
+			const metadata: BlobMetadata = { fileSize: props.contentLength ?? 0 };
 
 			if (props.contentType) metadata.mimeType = props.contentType;
 

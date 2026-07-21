@@ -188,11 +188,12 @@ export function createRecallMemoryTool(opts: {
 		.systemInstruction(normalized.recallToolInstruction)
 		.input(RecallMemoryInputSchema)
 		.output(RecallMemoryOutputSchema)
-		.handler(async ({ query }): Promise<RecallMemoryOutput> => {
+		.handler(async ({ query }, ctx): Promise<RecallMemoryOutput> => {
 			const { embed } = await import('ai');
 			const { embedding: queryEmbedding, usage } = await embed({
 				model: normalized.embedder,
 				value: query,
+				abortSignal: ctx.abortSignal,
 			});
 			incrementTokenCountFromUsage(opts.executionCounter, usage);
 			const entries = await opts.memory.episodic.searchEntries(opts.scope, query, {

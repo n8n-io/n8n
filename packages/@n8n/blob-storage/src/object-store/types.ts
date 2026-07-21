@@ -1,4 +1,4 @@
-import type { BinaryData } from '../types';
+import type { PreWriteBlobMetadata } from '../types';
 
 export type MetadataResponseHeaders = Record<string, string> & {
 	'content-length'?: string;
@@ -6,4 +6,4 @@ export type MetadataResponseHeaders = Record<string, string> & {
 	'x-amz-meta-filename'?: string;
 	etag?: string;
 	'last-modified'?: string;
-} & BinaryData.PreWriteMetadata;
+} & PreWriteBlobMetadata;

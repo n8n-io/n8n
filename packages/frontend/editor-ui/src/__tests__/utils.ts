@@ -1,7 +1,7 @@
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
-import { UserManagementAuthenticationMethod } from '@/Interface';
+import { AuthenticationMethod } from '@n8n/api-types';
 import { defaultSettings } from './defaults';
 import type { Mock } from 'vitest';
 import type { Store, StoreDefinition } from 'pinia';
@@ -45,7 +45,7 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	userManagement: {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
-		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		authenticationMethod: AuthenticationMethod.Email,
 		quota: defaultSettings.userManagement.quota,
 		passwordMinLength: 8,
 	},

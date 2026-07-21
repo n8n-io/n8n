@@ -328,6 +328,7 @@ async function renderView({
 		agents: {
 			modules: [],
 			knowledgeBaseEnabled,
+			proxyEnabled: false,
 		},
 	};
 	const wrapper = mount(AgentBuilderView, {

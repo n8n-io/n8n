@@ -25,8 +25,8 @@ import { PassThrough, Readable, pipeline } from 'node:stream';
 
 import { ObjectStoreConfig } from './object-store.config';
 import type { MetadataResponseHeaders } from './types';
-import type { BinaryData } from '../types';
-import { createFixedSizeChunker } from '../utils';
+import { createFixedSizeChunker } from '../stream-utils';
+import type { PreWriteBlobMetadata } from '../types';
 
 /** How many per-key delete failures to name in the error before truncating, to keep the message bounded. */
 const MAX_REPORTED_DELETE_ERRORS = 5;
@@ -103,7 +103,7 @@ export class ObjectStoreService {
 	/**
 	 * Upload an object to the configured bucket.
 	 */
-	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
+	async put(filename: string, buffer: Buffer, metadata: PreWriteBlobMetadata = {}) {
 		try {
 			const params: PutObjectCommandInput = {
 				Bucket: this.bucket,

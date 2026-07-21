@@ -155,39 +155,70 @@ export function buildToolContext(steps: ToolCallData[]): string {
 }
 
 /**
- * Removes orphaned ToolMessages and AIMessages with tool_calls from the start of chat history.
+ * Removes orphaned ToolMessages and AIMessages with tool_calls from the start and end of chat history.
  * This happens when memory trimming cuts messages mid-turn, leaving incomplete tool call sequences.
  *
  * @param chatHistory - Array of messages to clean up
- * @returns Cleaned array with orphaned messages removed from the start
+ * @returns Cleaned array with orphaned messages removed from both ends
  */
-function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
+export function cleanupOrphanedMessages(chatHistory: BaseMessage[]): BaseMessage[] {
+	const result = [...chatHistory];
+
+	// Clean up orphaned messages from the start
 	let changed = true;
-	while (changed && chatHistory.length > 0) {
+	while (changed && result.length > 0) {
 		changed = false;
 
 		// Remove orphaned ToolMessages at the start
-		while (chatHistory.length > 0 && chatHistory[0] instanceof ToolMessage) {
-			chatHistory.shift();
+		while (result.length > 0 && result[0] instanceof ToolMessage) {
+			result.shift();
 			changed = true;
 		}
 
 		// Remove AIMessages with tool_calls if they don't have following ToolMessages
-		if (chatHistory.length > 0) {
-			const firstMessage = chatHistory[0];
+		if (result.length > 0) {
+			const firstMessage = result[0];
 			const hasOrphanedAIMessage =
 				firstMessage instanceof AIMessage &&
 				(firstMessage.tool_calls?.length ?? 0) > 0 &&
-				!(chatHistory[1] instanceof ToolMessage);
+				!(result[1] instanceof ToolMessage);
 
 			if (hasOrphanedAIMessage) {
-				chatHistory.shift();
+				result.shift();
 				changed = true;
 			}
 		}
 	}
 
-	return chatHistory;
+	// Clean up orphaned messages from the end
+	changed = true;
+	while (changed && result.length > 0) {
+		changed = false;
+		const lastIdx = result.length - 1;
+		const lastMessage = result[lastIdx];
+
+		if (lastMessage instanceof ToolMessage) {
+			// Scan backwards past all consecutive trailing ToolMessages
+			let precedingIdx = lastIdx - 1;
+			while (precedingIdx >= 0 && result[precedingIdx] instanceof ToolMessage) {
+				precedingIdx--;
+			}
+			// The ToolMessage group is orphaned if not preceded by an AIMessage with tool_calls
+			const precedingMessage = precedingIdx >= 0 ? result[precedingIdx] : undefined;
+			const isPaired =
+				precedingMessage instanceof AIMessage && (precedingMessage.tool_calls?.length ?? 0) > 0;
+			if (!isPaired) {
+				result.pop();
+				changed = true;
+			}
+		} else if (lastMessage instanceof AIMessage && (lastMessage.tool_calls?.length ?? 0) > 0) {
+			// An AIMessage with tool_calls at the end is orphaned (no ToolMessage follows)
+			result.pop();
+			changed = true;
+		}
+	}
+
+	return result;
 }
 
 /**

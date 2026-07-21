@@ -41,6 +41,13 @@ const i18n = useI18n();
 
 const brand = computed(() => (props.client ? getClientBrand(props.client.name) : null));
 
+const ownerLabel = computed(() => {
+	const owner = props.client?.owner;
+	if (!owner) return null;
+	const name = [owner.firstName, owner.lastName].filter(Boolean).join(' ');
+	return name ? `${name} (${owner.email})` : owner.email;
+});
+
 const subtitle = computed(() => {
 	const type = brand.value?.type;
 	if (!type) return i18n.baseText('settings.mcp.oAuthClients.details.subtitle');
@@ -118,6 +125,15 @@ function onRevoke() {
 			</N8nDialogHeader>
 
 			<div :class="$style.details">
+				<template v-if="ownerLabel">
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedBy') }}
+					</N8nText>
+					<N8nText color="text-dark" size="small" data-test-id="mcp-client-details-connected-by">
+						{{ ownerLabel }}
+					</N8nText>
+				</template>
+
 				<N8nText color="text-light" size="small">
 					{{ i18n.baseText('settings.mcp.oAuthClients.details.connectedOn') }}
 				</N8nText>
