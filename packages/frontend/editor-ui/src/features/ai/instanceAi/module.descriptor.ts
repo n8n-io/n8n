@@ -141,7 +141,8 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'instanceAi:manage',
+						scope: ['instanceAi:manage', 'credential:manageInstance'],
+						options: { mode: 'allOf' },
 					},
 				},
 				telemetry: {
