@@ -1,3 +1,5 @@
+import { InvalidClientMetadataError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import type { OAuthClientInformationFull } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
@@ -11,9 +13,14 @@ import { SUPPORTED_SCOPES } from '@/modules/mcp/mcp-protected-resource';
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 
 import { OAuthServerConfig } from '../oauth-server.config';
+import { OAuthServerService } from '../oauth-server.service';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp'],
+	endpointGroups: ['mcp'],
+	setupTimeout: 60_000,
+});
 
 let owner: User;
 let mcpSettingsService: McpSettingsService;
@@ -28,6 +35,15 @@ afterEach(async () => {
 });
 
 describe('GET /.well-known/oauth-authorization-server', () => {
+	beforeEach(async () => {
+		// Ensure MCP is enabled for the discovery tests in this block
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should return OAuth authorization server metadata', async () => {
 		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
 
@@ -87,9 +103,27 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 
 		expect(response.statusCode).toBe(200);
 	});
+
+	test('should return 404 when MCP is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get('/.well-known/oauth-authorization-server');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+	});
 });
 
 describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
+	beforeEach(async () => {
+		// Ensure MCP is enabled for the protected resource tests in this block
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should return protected resource metadata', async () => {
 		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
@@ -144,14 +178,117 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 
 		expect(response.statusCode).toBe(200);
 	});
+
+	test('should return 404 when MCP is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+	});
+
+	test('should return 404 for non-existent resource when MCP is enabled', async () => {
+		await mcpSettingsService.setEnabled(true);
+
+		const response = await testServer.restlessAgent.get(
+			'/.well-known/oauth-protected-resource/non-existent',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Unknown protected resource' });
+	});
 });
 
-describe('POST /mcp-oauth/register', () => {
+describe('OPTIONS /.well-known/oauth-authorization-server', () => {
 	beforeEach(async () => {
 		await mcpSettingsService.setEnabled(true);
 	});
 
 	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 204 when MCP is enabled', async () => {
+		const response = await testServer.restlessAgent.options(
+			'/.well-known/oauth-authorization-server',
+		);
+
+		expect(response.statusCode).toBe(204);
+	});
+
+	test('should return 404 when MCP is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.options(
+			'/.well-known/oauth-authorization-server',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+	});
+});
+
+describe('OPTIONS /.well-known/oauth-protected-resource/*', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 204 when MCP is enabled', async () => {
+		const response = await testServer.restlessAgent.options(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(response.statusCode).toBe(204);
+	});
+
+	test('should return 404 when MCP is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.options(
+			'/.well-known/oauth-protected-resource/mcp-server/http',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+	});
+});
+
+describe('POST /mcp-oauth/register', () => {
+	let validateClientRegistrationSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+		validateClientRegistrationSpy = vi
+			.spyOn(
+				OAuthServerService.prototype as unknown as {
+					validateClientRegistration: (client: OAuthClientInformationFull) => void;
+				},
+				'validateClientRegistration',
+			)
+			.mockImplementation((client) => {
+				if (!client.client_name) {
+					throw new InvalidClientMetadataError('client_name is required');
+				}
+
+				if (!client.grant_types || client.grant_types.length === 0) {
+					throw new InvalidClientMetadataError('grant_types is required');
+				}
+
+				if (client.redirect_uris.length > 10) {
+					throw new InvalidClientMetadataError('redirect_uris exceeds maximum count of 10');
+				}
+			});
+	});
+
+	afterEach(async () => {
+		validateClientRegistrationSpy.mockRestore();
 		await mcpSettingsService.setEnabled(false);
 	});
 
@@ -209,7 +346,7 @@ describe('POST /mcp-oauth/register', () => {
 	test('should validate required fields in client registration', async () => {
 		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send({});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should reject registration when client_name is missing', async () => {
@@ -218,7 +355,7 @@ describe('POST /mcp-oauth/register', () => {
 			grant_types: ['authorization_code'],
 		});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should reject registration when grant_types is missing', async () => {
@@ -227,7 +364,7 @@ describe('POST /mcp-oauth/register', () => {
 			redirect_uris: ['https://example.com/callback'],
 		});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should reject registration when redirect_uris is missing', async () => {
@@ -236,7 +373,7 @@ describe('POST /mcp-oauth/register', () => {
 			grant_types: ['authorization_code'],
 		});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should register a client even when MCP access is disabled', async () => {
@@ -267,7 +404,7 @@ describe('POST /mcp-oauth/register', () => {
 
 		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should reject with 503 server_error when instance client limit is reached (pre-check)', async () => {
@@ -380,7 +517,8 @@ describe('GET /mcp-oauth/authorize', () => {
 
 	test('should not reject authorization just because MCP access is disabled', async () => {
 		// Availability of the shared OAuth server is decoupled from the instance
-		// MCP toggle (IAM-798), so the endpoint behaves normally rather than 403.
+		// MCP toggle (IAM-798), so the endpoint behaves normally (302/400/401)
+		// rather than returning 403 or 404.
 		await mcpSettingsService.setEnabled(false);
 
 		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
@@ -392,6 +530,7 @@ describe('GET /mcp-oauth/authorize', () => {
 		});
 
 		expect(response.statusCode).not.toBe(403);
+		expect(response.statusCode).not.toBe(404);
 		expect([302, 400, 401]).toContain(response.statusCode);
 	});
 });
@@ -424,7 +563,7 @@ describe('POST /mcp-oauth/token', () => {
 			code_verifier: 'test-verifier',
 		});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
 		expect(response.body.error).toBeDefined();
 	});
 
@@ -435,14 +574,14 @@ describe('POST /mcp-oauth/token', () => {
 			client_id: 'test-client',
 		});
 
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).toBe(400);
 		expect(response.body.error).toBeDefined();
 	});
 
 	test('should serve token requests even when MCP access is disabled', async () => {
 		// The token service stays available for other OAuth-protected resources
 		// regardless of the instance MCP toggle (IAM-798): an invalid code yields
-		// a normal OAuth error rather than a blanket 403.
+		// a normal OAuth error (400) rather than a blanket 403 or 404.
 		await mcpSettingsService.setEnabled(false);
 
 		const response = await testServer.restlessAgent.post('/mcp-oauth/token').send({
@@ -454,7 +593,8 @@ describe('POST /mcp-oauth/token', () => {
 		});
 
 		expect(response.statusCode).not.toBe(403);
-		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+		expect(response.statusCode).not.toBe(404);
+		expect(response.statusCode).toBe(400);
 		expect(response.body.error).toBeDefined();
 	});
 });
@@ -506,11 +646,20 @@ describe('POST /mcp-oauth/revoke', () => {
 		});
 
 		expect(response.statusCode).not.toBe(403);
+		expect(response.statusCode).not.toBe(404);
 		expect(response.statusCode).toBeGreaterThanOrEqual(200);
 	});
 });
 
 describe('OAuth Discovery - Cross-validation', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should have consistent URLs between authorization server and protected resource metadata', async () => {
 		const authServerResponse = await testServer.restlessAgent.get(
 			'/.well-known/oauth-authorization-server',
@@ -716,10 +865,12 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 	beforeEach(async () => {
 		// MCP access stays OFF for every test in this block: protecting a resource
 		// with n8n OAuth must not depend on the instance MCP server being exposed.
+		// The well-known discovery endpoints are suppressed (404) when MCP is disabled,
+		// but the /mcp-oauth/* endpoints themselves remain functional.
 		await mcpSettingsService.setEnabled(false);
 	});
 
-	test('should serve discovery documents while MCP access is disabled', async () => {
+	test('should return 404 for discovery documents when MCP access is disabled', async () => {
 		const authServerResponse = await testServer.restlessAgent.get(
 			'/.well-known/oauth-authorization-server',
 		);
@@ -727,8 +878,10 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			'/.well-known/oauth-protected-resource/mcp-server/http',
 		);
 
-		expect(authServerResponse.statusCode).toBe(200);
-		expect(protectedResourceResponse.statusCode).toBe(200);
+		expect(authServerResponse.statusCode).toBe(404);
+		expect(authServerResponse.body).toEqual({ message: 'Not Found' });
+		expect(protectedResourceResponse.statusCode).toBe(404);
+		expect(protectedResourceResponse.body).toEqual({ message: 'Not Found' });
 	});
 
 	test('should mint a token pair end-to-end while MCP access is disabled', async () => {
@@ -796,6 +949,38 @@ describe('OAuth server decoupled from MCP access (IAM-798)', () => {
 			refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
 			scope: SUPPORTED_SCOPES.join(' '),
 		});
+	});
+});
+
+describe('POST /mcp-server/http - discovery middleware suppression', () => {
+	beforeEach(async () => {
+		// MCP access is disabled for these tests
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
+	test('should return 404 for POST /mcp-server/http when MCP is disabled', async () => {
+		const response = await testServer.restlessAgent.post('/mcp-server/http').send({
+			jsonrpc: '2.0',
+			method: 'initialize',
+			params: {},
+			id: 1,
+		});
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+		expect(response.headers['cache-control']).toBe('no-store');
+	});
+
+	test('should return 404 for GET /mcp-server/http when MCP is disabled', async () => {
+		const response = await testServer.restlessAgent.get('/mcp-server/http');
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toEqual({ message: 'Not Found' });
+		expect(response.headers['cache-control']).toBe('no-store');
 	});
 });
 

@@ -1,9 +1,9 @@
-import type { Mock } from 'vitest';
 import { Logger } from '@n8n/backend-common';
 import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 // eslint-disable-next-line import-x/order
@@ -89,12 +89,13 @@ describe('McpController', () => {
 		controller = Container.get(McpController);
 	});
 
-	test('returns 403 if MCP access is disabled', async () => {
+	test('returns 404 with Cache-Control: no-store if MCP access is disabled', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
 		const res = createRes();
 		await controller.build(createReq(), res);
-		expect(res.status).toHaveBeenCalledWith(403);
-		expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({ message: 'Not Found' });
+		expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
 		expect(mcpService.getServer as unknown as Mock).not.toHaveBeenCalled();
 		// MCP Apps variant resolution is skipped for rejected requests to
 		// avoid an unnecessary PostHog lookup.
@@ -117,6 +118,9 @@ describe('McpController', () => {
 			res,
 		);
 
+		expect(res.status).toHaveBeenCalledWith(404);
+		expect(res.json).toHaveBeenCalledWith({ message: 'Not Found' });
+		expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
 		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 			user_id: 'user-1',
 			client_name: 'Claude',
@@ -286,6 +290,22 @@ describe('McpController', () => {
 		expect(res.end).toHaveBeenCalled();
 	});
 
+	test('HEAD /http still returns 401 when MCP access is disabled', async () => {
+		// HEAD /mcp-server/http always returns 401 for RFC 6750 discovery,
+		// even when MCP is disabled at the instance level.
+		const req = {} as Request;
+		const res = createRes();
+		res.header = vi.fn().mockReturnThis();
+		res.end = vi.fn().mockReturnThis();
+
+		// Note: discoverAuthSchemeHead does not check MCP enabled state
+		await controller.discoverAuthSchemeHead(req, res);
+
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		expect(res.end).toHaveBeenCalled();
+	});
+
 	// The route decorators read `McpConfig.rateLimitServer` at import time, so
 	// these assertions prove the configured limit is wired into the routes
 	// without booting the full server.
@@ -307,12 +327,13 @@ describe('McpController', () => {
 	});
 
 	describe('GET /http', () => {
-		test('returns 403 if MCP access is disabled', async () => {
+		test('returns 404 with Cache-Control: no-store if MCP access is disabled', async () => {
 			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
 			const res = createRes();
 			await controller.handleGet(createReq(), res);
-			expect(res.status).toHaveBeenCalledWith(403);
-			expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith({ message: 'Not Found' });
+			expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
 		});
 
 		test('delegates to transport.handleRequest', async () => {
