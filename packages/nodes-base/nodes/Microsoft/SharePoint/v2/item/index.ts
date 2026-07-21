@@ -1,6 +1,6 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
 
-import { type CollectionSearchOptions, searchGraphCollection } from '../helpers/driveItemSearch';
+import { type CollectionSearchOptions, searchGraphCollection } from '../helpers/graphSearch';
 import { resolveSiteId } from '../site';
 
 /** Keeps the item field hidden until a list is chosen. */
