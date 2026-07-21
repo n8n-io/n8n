@@ -29,29 +29,41 @@ export interface FileStat {
 	modifiedAt: Date;
 }
 
-export interface ReadOptions {
+/** Shared abort option for workspace filesystem / sandbox ops. */
+export interface AbortableOptions {
+	/** When aborted, in-flight workspace work should settle promptly. */
+	abortSignal?: AbortSignal;
+}
+
+export interface ReadOptions extends AbortableOptions {
 	encoding?: BufferEncoding;
 }
 
-export interface WriteOptions {
+export interface WriteOptions extends AbortableOptions {
 	recursive?: boolean;
 	overwrite?: boolean;
 }
 
-export interface ListOptions {
+export interface ListOptions extends AbortableOptions {
 	recursive?: boolean;
 	extension?: string;
 }
 
-export interface RemoveOptions {
+export interface RemoveOptions extends AbortableOptions {
 	recursive?: boolean;
 	force?: boolean;
 }
 
-export interface CopyOptions {
+export interface CopyOptions extends AbortableOptions {
 	overwrite?: boolean;
 	recursive?: boolean;
 }
+
+export interface MkdirOptions extends AbortableOptions {
+	recursive?: boolean;
+}
+
+export type AppendOptions = AbortableOptions;
 
 export interface MountConfig {
 	type: 'local';
@@ -68,15 +80,15 @@ export interface WorkspaceFilesystem {
 
 	readFile(path: string, options?: ReadOptions): Promise<string | Buffer>;
 	writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void>;
-	appendFile(path: string, content: FileContent): Promise<void>;
+	appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void>;
 	deleteFile(path: string, options?: RemoveOptions): Promise<void>;
 	copyFile(src: string, dest: string, options?: CopyOptions): Promise<void>;
 	moveFile(src: string, dest: string, options?: CopyOptions): Promise<void>;
-	mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
+	mkdir(path: string, options?: MkdirOptions): Promise<void>;
 	rmdir(path: string, options?: RemoveOptions): Promise<void>;
 	readdir(path: string, options?: ListOptions): Promise<FileEntry[]>;
-	exists(path: string): Promise<boolean>;
-	stat(path: string): Promise<FileStat>;
+	exists(path: string, options?: AbortableOptions): Promise<boolean>;
+	stat(path: string, options?: AbortableOptions): Promise<FileStat>;
 
 	init?(): Promise<void>;
 	destroy?(): Promise<void>;

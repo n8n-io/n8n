@@ -51,6 +51,7 @@ import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import {
+	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from './workflow-publication-outbox';
@@ -110,6 +111,7 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	UNPUBLISH_VERSION_SENTINEL,
 	WorkflowPublicationTriggerStatus,
 	type WorkflowPublicationTriggerStatusType,
 	type WorkflowPublicationTriggerKind,
