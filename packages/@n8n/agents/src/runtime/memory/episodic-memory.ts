@@ -7,6 +7,7 @@ import {
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 } from './episodic-memory-defaults';
 import { normalizeFlatReflectionActions } from './memory-lifecycle';
+import { redactMemoryText } from './memory-redaction';
 import { renderObservationLog } from './observation-log-renderer';
 import { Tool } from '../../sdk/tool';
 import type {
@@ -356,7 +357,7 @@ async function saveCandidate(
 		candidate.sources.map((source) => ({
 			observationId: source.observationId,
 			threadId: opts.threadId,
-			evidenceText: source.evidence,
+			evidenceText: redactMemoryText(source.evidence),
 			createdAt: now,
 		})),
 	);
@@ -526,7 +527,7 @@ function isFailedRecallCandidate(content: string, evidence: string, sourceText: 
 }
 
 function normalizeEntryContent(content: string): string {
-	return content.replace(/\s+/g, ' ').trim();
+	return redactMemoryText(content.replace(/\s+/g, ' ').trim());
 }
 
 function normalizeHashContent(content: string): string {

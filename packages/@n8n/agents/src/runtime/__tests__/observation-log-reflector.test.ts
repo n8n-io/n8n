@@ -459,4 +459,53 @@ describe('runObservationLogReflector', () => {
 			store.getActiveObservationLog({ observationScopeId: 'thread-1' }),
 		).resolves.toMatchObject([{ id: critical.id }]);
 	});
+
+	it('does not persist secret values echoed by the reflector into merged observations', async () => {
+		const store = new InMemoryMemory();
+		const [oldA, oldB] = await store.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'Old plan A',
+				tokenCount: 9,
+			},
+			{
+				observationScopeId: 'thread-1',
+				marker: 'important',
+				text: 'Old plan B',
+				tokenCount: 9,
+			},
+		]);
+
+		const result = await runObservationLogReflector({
+			memory: store,
+			observationScopeId: 'thread-1',
+			reflectorThresholdTokens: 10,
+			reflect: async () =>
+				await Promise.resolve(
+					JSON.stringify({
+						drop: [],
+						merge: [
+							{
+								supersedes: [oldA.id, oldB.id],
+								marker: 'IMPORTANT',
+								text: 'User set the Slack bot token to xoxb-1234567890-abcdefghij.',
+							},
+						],
+					}),
+				),
+		});
+
+		expect(result).toMatchObject({ status: 'ran' });
+		if (result.status !== 'ran') throw new Error('expected reflector to run');
+		expect(result.reflection.merge[0].text).toContain('[redacted]');
+		expect(result.reflection.merge[0].text).not.toContain('xoxb-1234567890-abcdefghij');
+
+		const merged = await store.getObservationLog({
+			observationScopeId: 'thread-1',
+			status: 'active',
+		});
+		expect(merged.some((entry) => entry.text.includes('xoxb-1234567890-abcdefghij'))).toBe(false);
+		expect(merged.some((entry) => entry.text.includes('[redacted]'))).toBe(true);
+	});
 });

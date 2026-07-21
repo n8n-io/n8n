@@ -183,4 +183,30 @@ describe('scrubSecretsInText', () => {
 			'?X-Amz-Credential=REDACTED&X-Amz-Signature=abc',
 		);
 	});
+
+	it('redacts prose-form secret mentions with no key=value separator', () => {
+		// The whole "keyword + filler + value" span is replaced, consistent
+		// with the existing generic `key=value` pattern's behavior.
+		expect(scrubSecretsInText('API Key 46FR7-5877E26C078D640')).toBe('[REDACTED]');
+		expect(scrubSecretsInText('API key value is 46FR7-5877E26C078D640')).toBe('[REDACTED]');
+		const out = scrubSecretsInText('set with Name=x-api-key, Value=46FR7-5877E26C078D640');
+		expect(out).not.toContain('46FR7-5877E26C078D640');
+		expect(out).toContain('[REDACTED]');
+	});
+
+	it('leaves prose mentions without a plausible secret value alone', () => {
+		expect(scrubSecretsInText('the token expires in 3600 seconds')).toBe(
+			'the token expires in 3600 seconds',
+		);
+		expect(scrubSecretsInText('api key is invalid')).toBe('api key is invalid');
+	});
+
+	it('does not treat a credential reference as a prose secret mention', () => {
+		expect(scrubSecretsInText('credential 7BOBUZuf1JXs09tG')).toBe('credential 7BOBUZuf1JXs09tG');
+	});
+
+	it('is idempotent for prose-form secret mentions', () => {
+		const once = scrubSecretsInText('API Key 46FR7-5877E26C078D640');
+		expect(scrubSecretsInText(once)).toBe(once);
+	});
 });

@@ -79,6 +79,22 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 		`(?<!\\[(?:redacted|REDACTED):)\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
 		'gi',
 	),
+	// Prose-form mentions with no `:`/`=` separator, e.g. "API Key 46FR7-…"
+	// pasted directly into a sentence. Requires a sensitive keyword, at most
+	// two short filler words ("value", "is", "was", "set to", "to"), then an
+	// opaque blob containing both a letter and a digit (excludes plain
+	// English words and bare IDs/counts). Deliberately excludes
+	// "credential(s)" — credential IDs (not secret values) are commonly
+	// referenced by name in text and must survive. The filler repetition is
+	// bounded ({0,2}) rather than unbounded to avoid pathological backtracking.
+	new RegExp(
+		'\\b(?:password|passwd|secret|authorization|api[\\s_-]?key|' +
+			'(?:access|refresh|id|session|auth)[\\s_-]?token|token)\\b' +
+			'(?:[\\s,]*(?:value|is|was|set\\s+to|to)){0,2}' +
+			'[\\s:=]+' +
+			'(?!\\[?(?:redacted|REDACTED)\\b)(?=[A-Za-z0-9_-]*\\d)(?=[A-Za-z0-9_-]*[A-Za-z])[A-Za-z0-9_-]{8,}\\b',
+		'gi',
+	),
 ];
 
 export function scrubSecretsInText(input: string): string {

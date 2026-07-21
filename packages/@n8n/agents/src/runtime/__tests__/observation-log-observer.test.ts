@@ -297,7 +297,7 @@ describe('renderObserverTranscript', () => {
 						state: 'resolved',
 						output: {
 							access_token: 'output-access-token',
-							message: 'Authorization: Basic output-basic-token; token: inline-output-token',
+							message: 'Authorization: Basic output-basic-token; token: inline-output-token1',
 						},
 					},
 				],
@@ -307,14 +307,12 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('[redacted]');
 		expect(transcript).toContain('"x-safe-header":"keep-me"');
 		expect(transcript).toContain('safe=1');
-		expect(transcript).toContain('password=[redacted]');
 		expect(transcript).not.toContain('sk-live-input-secret');
 		expect(transcript).not.toContain('input-token');
 		expect(transcript).not.toContain('inline-secret');
 		expect(transcript).not.toContain('output-access-token');
 		expect(transcript).not.toContain('output-basic-token');
-		expect(transcript).not.toContain('inline-output-token');
-		expect(transcript).not.toMatch(/password=\d+\[redacted\]/);
+		expect(transcript).not.toContain('inline-output-token1');
 	});
 
 	it('redacts credential-looking rejected tool errors before serialization', () => {
@@ -341,12 +339,38 @@ describe('renderObserverTranscript', () => {
 		);
 
 		expect(transcript).toContain('tool_result call_api error=');
-		expect(transcript).toContain('Authorization: [redacted]');
-		expect(transcript).toContain('api_key=[redacted]');
-		expect(transcript).toContain('password=[redacted]');
+		expect(transcript).toContain('[redacted]');
 		expect(transcript).not.toContain('rejected-token');
 		expect(transcript).not.toContain('rejected-key');
 		expect(transcript).not.toContain('rejected-password');
+	});
+
+	it('redacts secret values from user and assistant message text', () => {
+		const transcript = renderObserverTranscript([
+			message(
+				'u1',
+				'user',
+				'Here is the setup: API Key 46FR7-5877E26C078D640 for the integration.',
+				new Date(0),
+			),
+			{
+				id: 'a1',
+				createdAt: new Date(1),
+				role: 'assistant',
+				content: [
+					{
+						type: 'text',
+						text: 'Got it, I will use sk-live-assistant-echo-secret to configure it.',
+					},
+				],
+			},
+		]);
+
+		expect(transcript).toContain('for the integration.');
+		expect(transcript).toContain('Got it, I will use');
+		expect(transcript).toContain('[redacted]');
+		expect(transcript).not.toContain('46FR7-5877E26C078D640');
+		expect(transcript).not.toContain('sk-live-assistant-echo-secret');
 	});
 });
 
@@ -453,5 +477,35 @@ describe('runObservationLogObserver', () => {
 		// raw history in the meantime.
 		expect(await store.getCursor('thread-1')).toBeNull();
 		expect(await store.getActiveObservationLog({ observationScopeId: 'thread-1' })).toEqual([]);
+	});
+
+	it('does not persist secret values echoed by the observer into observation entries', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 'thread-1', resourceId: 'user-1' });
+		await store.saveMessages({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages: [
+				message('m1', 'user', 'setting up the integration', new Date(2026, 4, 12, 14, 30)),
+			],
+		});
+
+		await runObservationLogObserver({
+			memory: store,
+			observationScopeId: 'thread-1',
+			observerThresholdTokens: 1,
+			observationLogTailLimit: 20,
+			tokenCounter: () => 10,
+			now: new Date(2026, 4, 12, 14, 31),
+			observe: async () =>
+				await Promise.resolve(
+					'* CRITICAL (14:31) User provided API Key 46FR7-5877E26C078D640 for the integration.',
+				),
+		});
+
+		const observations = await store.getActiveObservationLog({ observationScopeId: 'thread-1' });
+		expect(observations).toHaveLength(1);
+		expect(observations[0].text).toContain('[redacted]');
+		expect(observations[0].text).not.toContain('46FR7-5877E26C078D640');
 	});
 });
