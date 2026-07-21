@@ -42,11 +42,13 @@ export class StaticWorkflowDependencyResolver {
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
 	}): Promise<StaticWorkflowDependencyResolution> {
-		const { exportedWorkflowIds, originsByWorkflowId } = this.seedExportedOrigins({
+		const originsByWorkflowId = this.seedExportedOrigins({
 			topLevelWorkflowIds: options.topLevelWorkflowIds,
 			folderWorkflowIds: options.folderWorkflowIds,
 			projectWorkflowIds: options.projectWorkflowIds,
 		});
+		const exportedWorkflowIds = new Set(originsByWorkflowId.keys());
+
 		this.propagateOrigins(originsByWorkflowId, options.requirements);
 
 		const autoAddedWorkflowIds = [...originsByWorkflowId.keys()].filter(
@@ -71,16 +73,11 @@ export class StaticWorkflowDependencyResolver {
 		topLevelWorkflowIds: string[];
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
-	}): {
-		exportedWorkflowIds: Set<string>;
-		originsByWorkflowId: Map<string, Set<WorkflowDependencyOrigin>>;
-	} {
-		const exportedWorkflowIds = new Set<string>();
+	}): Map<string, Set<WorkflowDependencyOrigin>> {
 		const originsByWorkflowId = new Map<string, Set<WorkflowDependencyOrigin>>();
 
 		const add = (workflowIds: string[], origin: WorkflowDependencyOrigin) => {
 			for (const workflowId of workflowIds) {
-				exportedWorkflowIds.add(workflowId);
 				const origins = originsByWorkflowId.get(workflowId) ?? new Set<WorkflowDependencyOrigin>();
 				origins.add(origin);
 				originsByWorkflowId.set(workflowId, origins);
@@ -91,7 +88,7 @@ export class StaticWorkflowDependencyResolver {
 		add(options.folderWorkflowIds, 'folder');
 		add(options.projectWorkflowIds, 'project');
 
-		return { exportedWorkflowIds, originsByWorkflowId };
+		return originsByWorkflowId;
 	}
 
 	private propagateOrigins(
