@@ -24,7 +24,7 @@ import type {
 import { getPersonalizedNodeTypes } from './users.utils';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUIStore } from '@/app/stores/ui.store';
+import type { ModalKey } from '@/Interface';
 import * as mfaApi from '@n8n/rest-api-client/api/mfa';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
 import * as invitationsApi from './invitation.api';
@@ -53,7 +53,6 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	// Stores
 
-	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
@@ -371,10 +370,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setPersonalizationAnswers(results);
 	};
 
-	const showPersonalizationSurvey = async () => {
+	const showPersonalizationSurvey = async (openModal: (name: ModalKey) => void) => {
 		const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
 		if (surveyEnabled && currentUser.value && !currentUser.value.personalizationAnswers) {
-			uiStore.openModal(PERSONALIZATION_MODAL_KEY);
+			openModal(PERSONALIZATION_MODAL_KEY);
 		}
 	};
 

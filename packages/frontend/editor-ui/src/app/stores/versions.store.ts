@@ -12,7 +12,7 @@ import { defineStore } from 'pinia';
 import type { NotificationHandle } from 'element-plus';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { useUIStore } from '@/app/stores/ui.store';
+import type { ModalKey } from '@/Interface';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -21,6 +21,9 @@ import { jsonParse } from 'n8n-workflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
+
+type OpenModalFn = (name: ModalKey) => void;
+type OpenModalWithDataFn = (payload: { name: ModalKey; data: Record<string, unknown> }) => void;
 
 /**
  * Semantic versioning 2.0.0, Regex from https://semver.org/
@@ -51,7 +54,6 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 	const telemetry = useTelemetry();
 	const { showToast, showMessage } = useToast();
-	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
@@ -189,7 +191,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		return hasNewArticle && !allArticlesDismissed;
 	};
 
-	const fetchWhatsNew = async () => {
+	const fetchWhatsNew = async (openModalWithData: OpenModalWithDataFn) => {
 		try {
 			const { enabled, whatsNewEnabled, whatsNewEndpoint } = versionNotificationSettings.value;
 			if (enabled && whatsNewEnabled && whatsNewEndpoint) {
@@ -213,7 +215,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 								telemetry.track("User clicked on what's new notification", {
 									article_id: articleId,
 								});
-								uiStore.openModalWithData({
+								openModalWithData({
 									name: WHATS_NEW_MODAL_KEY,
 									data: { articleId },
 								});
@@ -235,13 +237,16 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		versionNotificationSettings.value = settings;
 	};
 
-	const checkForNewVersions = async () => {
+	const checkForNewVersions = async (modalOpeners: {
+		openModal: OpenModalFn;
+		openModalWithData: OpenModalWithDataFn;
+	}) => {
 		const enabled = areNotificationsEnabled.value;
 		if (!enabled) {
 			return;
 		}
 
-		await Promise.all([fetchVersions(), fetchWhatsNew()]);
+		await Promise.all([fetchVersions(), fetchWhatsNew(modalOpeners.openModalWithData)]);
 
 		if (
 			currentVersion.value &&
@@ -259,7 +264,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 				title: 'Critical update available',
 				message,
 				onClick: () => {
-					uiStore.openModal(VERSIONS_MODAL_KEY);
+					modalOpeners.openModal(VERSIONS_MODAL_KEY);
 				},
 				closeOnClick: true,
 				customClass: 'clickable',

@@ -20,6 +20,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -121,6 +122,7 @@ export async function initializeAuthenticatedFeatures(
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
 	const favoritesStore = useFavoritesStore();
+	const uiStore = useUIStore();
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
@@ -196,7 +198,10 @@ export async function initializeAuthenticatedFeatures(
 	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
 	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
 		versionsStore.initialize(settingsStore.settings.versionNotifications);
-		void versionsStore.checkForNewVersions();
+		void versionsStore.checkForNewVersions({
+			openModal: uiStore.openModal,
+			openModalWithData: uiStore.openModalWithData,
+		});
 	}
 
 	await Promise.all([

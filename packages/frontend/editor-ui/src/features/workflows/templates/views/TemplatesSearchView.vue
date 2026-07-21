@@ -9,6 +9,7 @@ import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import type { IDataObject } from 'n8n-workflow';
 import { CREATOR_HUB_URL, VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useToast } from '@/app/composables/useToast';
@@ -42,6 +43,7 @@ const documentTitle = useDocumentTitle();
 
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
+const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const i18n = useI18n();
 const route = useRoute();
@@ -298,7 +300,7 @@ onMounted(async () => {
 	documentTitle.set('Templates');
 	await loadCategories();
 	void loadWorkflowsAndCollections(true);
-	void usersStore.showPersonalizationSurvey();
+	void usersStore.showPersonalizationSurvey(uiStore.openModal);
 
 	restoreSearchFromRoute();
 

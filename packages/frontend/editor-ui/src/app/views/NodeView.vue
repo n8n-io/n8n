@@ -1961,7 +1961,7 @@ onMounted(async () => {
 		}, 500);
 	}
 
-	void usersStore.showPersonalizationSurvey();
+	void usersStore.showPersonalizationSurvey(uiStore.openModal);
 	checkIfRouteIsAllowed();
 
 	addSourceControlEventBindings();

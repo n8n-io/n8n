@@ -72,6 +72,10 @@ const whatsNew: WhatsNewSection = {
 
 const toast = useToast();
 
+const openModal = vi.fn();
+const openModalWithData = vi.fn();
+const modalOpeners = { openModal, openModalWithData };
+
 describe('versions.store', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
@@ -130,7 +134,7 @@ describe('versions.store', () => {
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize(settings);
 
-			await versionsStore.fetchWhatsNew();
+			await versionsStore.fetchWhatsNew(openModalWithData);
 
 			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
 				settings.whatsNewEndpoint,
@@ -153,7 +157,7 @@ describe('versions.store', () => {
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize(settings);
 
-			await versionsStore.fetchWhatsNew();
+			await versionsStore.fetchWhatsNew(openModalWithData);
 
 			// The callout has been shown ...
 			expect(toast.showMessage).toHaveBeenCalled();
@@ -171,7 +175,7 @@ describe('versions.store', () => {
 				enabled: false,
 			});
 
-			await versionsStore.fetchWhatsNew();
+			await versionsStore.fetchWhatsNew(openModalWithData);
 
 			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
 			expect(versionsStore.whatsNewArticles).toEqual([]);
@@ -187,7 +191,7 @@ describe('versions.store', () => {
 				whatsNewEnabled: false,
 			});
 
-			await versionsStore.fetchWhatsNew();
+			await versionsStore.fetchWhatsNew(openModalWithData);
 
 			expect(versionsApi.getWhatsNewSection).not.toHaveBeenCalled();
 			expect(versionsStore.whatsNewArticles).toEqual([]);
@@ -206,7 +210,7 @@ describe('versions.store', () => {
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize(settings);
 
-			await versionsStore.checkForNewVersions();
+			await versionsStore.checkForNewVersions(modalOpeners);
 
 			expect(versionsApi.getWhatsNewSection).toHaveBeenCalledWith(
 				settings.whatsNewEndpoint,
@@ -243,7 +247,7 @@ describe('versions.store', () => {
 				infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 			});
 
-			await versionsStore.checkForNewVersions();
+			await versionsStore.checkForNewVersions(modalOpeners);
 
 			expect(versionsStore.whatsNewArticles).toEqual([]);
 			expect(versionsStore.nextVersions).toEqual([]);
@@ -267,7 +271,7 @@ describe('versions.store', () => {
 				infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 			});
 
-			await versionsStore.checkForNewVersions();
+			await versionsStore.checkForNewVersions(modalOpeners);
 
 			expect(versionsStore.whatsNewArticles).toEqual([whatsNewArticle]);
 			expect(versionsStore.nextVersions).toEqual([]);
@@ -296,7 +300,7 @@ describe('versions.store', () => {
 			const versionsStore = useVersionsStore();
 			versionsStore.initialize(settings);
 
-			await versionsStore.checkForNewVersions();
+			await versionsStore.checkForNewVersions(modalOpeners);
 
 			expect(versionsStore.nextVersions).toHaveLength(1);
 			expect(versionsStore.nextVersions[0].name).toBe('1.100.1');
