@@ -174,27 +174,39 @@ describe('project package export', () => {
 			subWorkflowId: dependency.id,
 		});
 
-		const { manifest, entries } = await readExport(
-			await service.exportPackage({
-				user: owner,
-				projectIds: [projectA.id],
-				missingWorkflowDependencyPolicy: 'include-in-package',
-			}),
-		);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
-		const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
-		expect(projectBEntry.target).toMatch(/^projects\//);
-		expect(entries.find((e) => e.name === `${projectBEntry.target}/project.json`)).toBeDefined();
-		expect(manifest.folders!.map(({ id }) => id).sort()).toEqual(
-			expect.arrayContaining([dependencyRoot.id, dependencyFolder.id]),
-		);
-		expect(manifest.folders!.some(({ id }) => id === siblingFolder.id)).toBe(false);
+		try {
+			const { manifest, entries } = await readExport(
+				await service.exportPackage({
+					user: owner,
+					projectIds: [projectA.id],
+					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			);
 
-		const dependencyFolderEntry = manifest.folders!.find(({ id }) => id === dependencyFolder.id)!;
-		const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
-		expect(dependencyEntry.target).toMatch(
-			new RegExp(`^${dependencyFolderEntry.target}/workflows/[^/]+$`),
-		);
+			const projectBEntry = manifest.projects!.find(({ id }) => id === projectB.id)!;
+			expect(projectBEntry.target).toMatch(/^projects\//);
+			expect(entries.find((e) => e.name === `${projectBEntry.target}/project.json`)).toBeDefined();
+			expect(manifest.folders!.map(({ id }) => id).sort()).toEqual(
+				expect.arrayContaining([dependencyRoot.id, dependencyFolder.id]),
+			);
+			expect(manifest.folders!.some(({ id }) => id === siblingFolder.id)).toBe(false);
+
+			const dependencyFolderEntry = manifest.folders!.find(({ id }) => id === dependencyFolder.id)!;
+			const dependencyEntry = manifest.workflows!.find(({ id }) => id === dependency.id)!;
+			expect(dependencyEntry.target).toMatch(
+				new RegExp(`^${dependencyFolderEntry.target}/workflows/[^/]+$`),
+			);
+
+			const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+			expect(exportedEvents).toHaveLength(1);
+			const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
+			expect(payload.projectIds?.sort()).toEqual([projectA.id, projectB.id].sort());
+			expect(payload.folderIds?.sort()).toEqual([dependencyRoot.id, dependencyFolder.id].sort());
+		} finally {
+			emitSpy.mockRestore();
+		}
 	});
 
 	it('auto-includes a static sub-workflow at another project root', async () => {

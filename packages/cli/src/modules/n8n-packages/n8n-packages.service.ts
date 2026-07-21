@@ -252,12 +252,8 @@ export class N8nPackagesService {
 			...(allWorkflowsInPackage.length
 				? { workflowIds: allWorkflowsInPackage.map(({ id }) => id) }
 				: {}),
-			...(folderExportResult?.entries.length
-				? { folderIds: folderExportResult.entries.map(({ id }) => id) }
-				: {}),
-			...(projectExportResult?.entries.length
-				? { projectIds: projectExportResult.entries.map(({ id }) => id) }
-				: {}),
+			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
+			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
 			counts: {
 				workflows: allWorkflowsInPackage.length,
 				folders: allFolders.length,
