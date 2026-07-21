@@ -301,6 +301,12 @@ describe('build-first workflow guidance', () => {
 		expect(WORKFLOW_SECTION).toContain('write the config with `model: ""`');
 	});
 
+	it('tells the builder to announce auto-picked providers and free-credit claims', () => {
+		expect(WORKFLOW_SECTION).toContain('auto-picked provider or newly provisioned free OpenAI');
+		expect(getLlmSelectionPrompt(null)).toContain('claimedFreeOpenAiCredits');
+		expect(getLlmSelectionPrompt(null)).toContain('autoPicked');
+	});
+
 	it('does not require a real model before the first config write', () => {
 		const prompt = buildBuilderPrompt({
 			agentPreviewPath: '/p',

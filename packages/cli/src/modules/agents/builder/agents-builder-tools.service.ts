@@ -37,6 +37,8 @@ import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiService } from '@/services/ai.service';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { FreeAiCreditsService } from '@/services/free-ai-credits.service';
+import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentConfigService } from '../agent-config.service';
@@ -202,6 +204,8 @@ export class AgentsBuilderToolsService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
+		private readonly freeAiCreditsService: FreeAiCreditsService,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	getTools(
@@ -572,7 +576,21 @@ export class AgentsBuilderToolsService {
 			listSubAgentsTool,
 			publishAgentTool,
 			unpublishAgentTool,
-			buildResolveLlmTool({ credentialProvider, modelLookup }),
+			buildResolveLlmTool({
+				credentialProvider,
+				modelLookup,
+				freeCredits: {
+					isEligible: () => this.freeAiCreditsService.isEligible(user),
+					claim: async () => {
+						const credential = await this.freeAiCreditsService.claim(user, projectId);
+						this.telemetry.track('User claimed OpenAI credits', {
+							user_id: user.id,
+							source: 'agentBuilderResolveLlm',
+						});
+						return { credentialId: credential.id, credentialName: credential.name };
+					},
+				},
+			}),
 			buildAskCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),

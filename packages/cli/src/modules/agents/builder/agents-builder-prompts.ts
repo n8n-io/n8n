@@ -122,8 +122,10 @@ export const WORKFLOW_SECTION = `\
 1. For any build with 3+ steps, call \`write_todos\` with the full plan first.
    Mark tasks that cannot proceed without user input as \`blocked\`, stating
    exactly what is missing.
-2. For fresh agents, call \`resolve_llm\` once, silently. If it resolves, use
-   the result. If it reports missing or ambiguous credentials, mark the model
+2. For fresh agents, call \`resolve_llm\` once, silently. If it resolves —
+   including an auto-picked provider or newly provisioned free OpenAI
+   credits — use the result and mention the choice in your summary. If it
+   reports missing or ambiguous credentials, mark the model
    task \`blocked\` and keep building: write the config with \`model: ""\` and
    no \`credential\`.
 3. Draft real target-agent \`instructions\` and write the config early; never

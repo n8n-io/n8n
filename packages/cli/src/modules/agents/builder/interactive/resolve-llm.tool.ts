@@ -4,7 +4,11 @@ import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
 import { z } from 'zod';
 
 import { BUILDER_TOOLS } from '../builder-tool-names';
-import { LLM_PROVIDER_DEFAULTS, type LlmProviderDefault } from './llm-provider-defaults';
+import {
+	LLM_PROVIDER_DEFAULTS,
+	LLM_PROVIDER_PRIORITY,
+	type LlmProviderDefault,
+} from './llm-provider-defaults';
 
 export interface ModelLookup {
 	list(
@@ -14,12 +18,39 @@ export interface ModelLookup {
 	): Promise<Array<{ name: string; value: string }>>;
 }
 
+/** Provisions free OpenAI credits on demand for a zero-credential builder session. */
+export interface FreeCreditsProvisioner {
+	isEligible(): boolean | Promise<boolean>;
+	claim(): Promise<{ credentialId: string; credentialName: string }>;
+}
+
 export interface ResolveLlmToolDeps {
 	credentialProvider: CredentialProvider;
 	modelLookup: ModelLookup;
+	freeCredits: FreeCreditsProvisioner;
 }
 
 type LlmCredentialEntry = [credentialType: string, defaults: LlmProviderDefault];
+
+const FREE_CREDITS_MODEL = 'gpt-5-mini';
+
+/** Silently claims free OpenAI credits if eligible; never throws. */
+async function tryClaimFreeCredits(freeCredits: FreeCreditsProvisioner) {
+	try {
+		if (!(await freeCredits.isEligible())) return null;
+		const { credentialId, credentialName } = await freeCredits.claim();
+		return {
+			ok: true as const,
+			provider: 'openai',
+			model: FREE_CREDITS_MODEL,
+			credentialId,
+			credentialName,
+			claimedFreeOpenAiCredits: true as const,
+		};
+	} catch {
+		return null;
+	}
+}
 
 function findProviderDefault(provider: string): LlmCredentialEntry | undefined {
 	const requestedProvider = provider.trim();
@@ -101,7 +132,12 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
 				'ask immediately; keep building with model "" and ask via ask_questions in the trailing ' +
 				'batch, then call resolve_llm again with the choice. For a model change on an existing ' +
-				'agent, ask immediately and keep the current model and credential until the new one resolves.',
+				'agent, ask immediately and keep the current model and credential until the new one resolves. ' +
+				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
+				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
+				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When multiple ' +
+				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
+				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it.',
 		)
 		.input(
 			z.object({
@@ -147,6 +183,11 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					return toLlmResolution(credential, defaults);
 				}
 
+				if (matchingCredentials.length === 0 && defaults.provider === 'openai' && !model?.trim()) {
+					const claimed = await tryClaimFreeCredits(deps.freeCredits);
+					if (claimed) return claimed;
+				}
+
 				return {
 					ok: false as const,
 					reason:
@@ -169,6 +210,29 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 				}
 				return toLlmResolution(credential, defaults);
+			}
+
+			if (llmCredentials.length === 0) {
+				const claimed = await tryClaimFreeCredits(deps.freeCredits);
+				if (claimed) return claimed;
+			}
+
+			if (llmCredentials.length > 1 && !model?.trim()) {
+				const byProvider = new Map<string, CredentialListItem[]>();
+				for (const credential of llmCredentials) {
+					const provider = LLM_PROVIDER_DEFAULTS[credential.type].provider;
+					byProvider.set(provider, [...(byProvider.get(provider) ?? []), credential]);
+				}
+
+				const topProvider = LLM_PROVIDER_PRIORITY.find((provider) => byProvider.has(provider));
+				const topCredentials = topProvider ? byProvider.get(topProvider) : undefined;
+				if (topProvider && topCredentials?.length === 1) {
+					return {
+						...toLlmResolution(topCredentials[0], LLM_PROVIDER_DEFAULTS[topCredentials[0].type]),
+						autoPicked: true as const,
+						otherProviders: [...byProvider.keys()].filter((provider) => provider !== topProvider),
+					};
+				}
 			}
 
 			return {

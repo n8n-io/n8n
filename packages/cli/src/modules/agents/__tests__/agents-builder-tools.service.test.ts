@@ -20,6 +20,8 @@ import type { CredentialTypes } from '@/credential-types';
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { NodeTypes } from '@/node-types';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
+import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -111,6 +113,8 @@ function makeService() {
 		nodeTypes,
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<SsrfProtectionService>(),
+		mock<FreeAiCreditsService>(),
+		mock<Telemetry>(),
 	);
 
 	return {

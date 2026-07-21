@@ -13,7 +13,7 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 ### Workflow
 
 1. For fresh agents, call \`resolve_llm\` once, silently, before the first config write — with provider/model when the user named them, otherwise with no arguments.
-2. If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
+2. If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`. If the result has \`claimedFreeOpenAiCredits: true\`, tell the user you set them up with free OpenAI credits. If it has \`autoPicked: true\`, tell the user which provider and model you picked and that they can ask to change it — do not ask for confirmation and do not raise a trailing model question.
 3. If the user asks to pick, change, confirm, or configure a model or main credential, ask via \`ask_questions\`; do not ask in prose.
 4. During an initial build, if \`resolve_llm\` reports missing or ambiguous credentials/provider, do not ask immediately: mark the model task \`blocked\`, keep building with \`model: ""\` and no \`credential\`, and ask via \`ask_questions\` only in the trailing batch once no unblocked work remains; then retry \`resolve_llm\` with the answer and patch \`/model\` and \`/credential\`. For a model change on an existing agent, ask immediately instead, and never write \`model: ""\` over an existing model — keep the current model and credential until the new one is resolved.
 5. If \`resolve_llm\` reports \`unknown_model\`, retry with a plausible returned model value or ask via \`ask_questions\`.
