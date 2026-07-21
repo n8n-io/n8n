@@ -37,6 +37,7 @@ catalog:
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
   '@daytona/sdk': 0.187.0
+  '@e965/xlsx': 0.20.3
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
   '@joplin/turndown-plugin-gfm': 1.0.64
@@ -71,7 +72,6 @@ catalog:
   '@testcontainers/postgresql': ^11.13.0
   '@testcontainers/redis': ^11.13.0
   '@tiptap/core': 3.27.0
-  '@tiptap/pm': 3.27.0
   '@tiptap/extension-link': 3.27.0
   '@tiptap/extension-placeholder': 3.27.0
   '@tiptap/extension-strike': 3.27.0
@@ -82,6 +82,7 @@ catalog:
   '@tiptap/extension-task-item': 3.27.0
   '@tiptap/extension-task-list': 3.27.0
   '@tiptap/markdown': 3.27.0
+  '@tiptap/pm': 3.27.0
   '@tiptap/starter-kit': 3.27.0
   '@tiptap/vue-3': 3.27.0
   '@types/basic-auth': ^1.1.3
@@ -111,7 +112,6 @@ catalog:
   '@types/xml2js': ^0.4.14
   '@vitest/browser-playwright': ^4.1.9
   '@vitest/coverage-v8': 4.1.9
-  '@e965/xlsx': 0.20.3
   agent-browser: 0.26.0
   ai: ^6.0.197
   axios: 1.18.0
@@ -130,8 +130,8 @@ catalog:
   electron: 41.9.1
   esbuild: ^0.28.1
   eslint: 9.29.0
-  eslint-plugin-oxlint: ^1.61.0
   eslint-plugin-n8n-nodes-base: ^1.16.7
+  eslint-plugin-oxlint: ^1.61.0
   express: 5.1.0
   fast-check: ^3.23.2
   fast-glob: 3.2.12
@@ -192,6 +192,7 @@ catalog:
   ssh2: 1.15.0
   stream-json: 1.9.1
   stylelint: ^16.23.0
+  syncpack: ^15.3.2
   tar: 7.5.17
   testcontainers: ^11.13.0
   ts-morph: ^27.0.2
@@ -215,16 +216,6 @@ catalog:
 catalogMode: strict
 
 catalogs:
-  typescript:
-    typescript: 7.0.2
-    tsdown: ^0.22.8
-  # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
-  # (as `typescript`) for tooling that needs the programmatic compiler API —
-  # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
-  # See scripts/typescript-migration/README.md "Choosing the TypeScript catalog".
-  typescript-tooling:
-    '@typescript/native': 'npm:typescript@7.0.2'
-    typescript: 'npm:@typescript/typescript6@6.0.2'
   e2e:
     '@currents/playwright': ^2.0.0
     '@playwright/cli': 0.1.0
@@ -235,8 +226,8 @@ catalogs:
   frontend:
     '@internationalized/date': ^3.9.0
     '@sentry/vue': ^10.36.0
-    '@testing-library/jest-dom': ^6.6.3
     '@testing-library/dom': ^10.4.0
+    '@testing-library/jest-dom': ^6.6.3
     '@testing-library/user-event': ^14.6.1
     '@testing-library/vue': ^8.1.0
     '@vitejs/plugin-vue': ^5.2.4
@@ -268,6 +259,16 @@ catalogs:
     '@storybook/vue3-vite': ^10.1.11
     eslint-plugin-storybook: ^10.1.11
     storybook: ^10.1.11
+  typescript:
+    tsdown: ^0.22.8
+    typescript: 7.0.2
+  # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
+  # (as `typescript`) for tooling that needs the programmatic compiler API —
+  # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
+  # See scripts/typescript-migration/README.md "Choosing the TypeScript catalog".
+  typescript-tooling:
+    '@typescript/native': 'npm:typescript@7.0.2'
+    typescript: 'npm:@typescript/typescript6@6.0.2'
   undici-v6:
     undici: ^6.27.0
   undici-v7:

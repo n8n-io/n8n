@@ -93,6 +93,7 @@
     "rimraf": "^5.0.1",
     "stylelint": "catalog:",
     "supertest": "^7.1.1",
+    "syncpack": "catalog:",
     "tsc-alias": "^1.8.10",
     "tsc-watch": "^6.2.0",
     "turbo": "2.9.15",
