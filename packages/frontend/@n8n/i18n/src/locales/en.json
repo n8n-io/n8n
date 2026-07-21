@@ -4426,6 +4426,8 @@
 	"workflowHistory.tab.history": "Versions",
 	"workflowHistory.tab.publishTimeline": "Publish Timeline",
 	"workflowHistory.action.viewTimeline": "View timeline",
+	"workflowReviews.reviewRequired.title": "Review required",
+	"workflowReviews.reviewRequired.description": "Require changes to be reviewed and approved before publishing.",
 	"workflowHistory.content.actions": "Actions",
 	"workflowHistory.item.id": "ID: {id}",
 	"workflowHistory.item.createdAt": "{date} at {time}",
