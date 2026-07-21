@@ -180,7 +180,7 @@ export class InstanceAiSettingsService {
 			this.isCloud || this.aiService.isProxyEnabled()
 				? null
 				: await this.instanceCredentialBroker.getAssignedCredentialId(
-						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 					);
 		return {
 			enabled: this.enabled,
@@ -222,12 +222,12 @@ export class InstanceAiSettingsService {
 				this.validateAdminSettingsUpdate(settingsUpdate, current);
 				if (modelCredentialId === null) {
 					await this.instanceCredentialBroker.clearForUse(
-						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 						transactionManager,
 					);
 				} else if (modelCredentialId !== undefined) {
 					const credential = await this.instanceCredentialBroker.assignForUse(
-						INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 						modelCredentialId,
 						transactionManager,
 					);
@@ -321,7 +321,7 @@ export class InstanceAiSettingsService {
 	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
 		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
 		const instanceCredentials = await this.instanceCredentialBroker.listForUse(
-			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 		);
 		return instanceCredentials.map((c) => ({
 			id: c.id,
@@ -532,9 +532,7 @@ export class InstanceAiSettingsService {
 	}
 
 	private async resolveModelCredential() {
-		return await this.instanceCredentialBroker.resolveForUse(
-			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
-		);
+		return await this.instanceCredentialBroker.resolveForUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
 	}
 
 	private ensureCredentialMatchesConfiguredModel(credentialType: string): void {

@@ -462,6 +462,21 @@ describe('OauthService', () => {
 
 			expect(result).toBeNull();
 		});
+
+		it('should restrict the lookup to workflow credentials when requested', async () => {
+			credentialsRepository.findOneBy.mockResolvedValue(null);
+
+			const result = await (service as any).getCredentialWithoutUser('1', {
+				onlyWorkflowCredentials: true,
+			});
+
+			// An instance credential never matches the availability filter.
+			expect(result).toBeNull();
+			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
+				id: '1',
+				availability: 'workflow',
+			});
+		});
 	});
 
 	describe('createCsrfState', () => {

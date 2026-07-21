@@ -18,6 +18,8 @@ import {
 	type InstanceCredentialUse,
 } from './instance-credential-use.registry';
 
+export type { InstanceCredentialUse } from './instance-credential-use.registry';
+
 export type InstanceCredentialSummary = Pick<CredentialsEntity, 'id' | 'name' | 'type'>;
 
 export interface ResolvedInstanceCredential extends InstanceCredentialSummary {
@@ -38,35 +40,40 @@ export class InstanceCredentialBroker {
 		this.useRegistry.register(credentialUse);
 	}
 
-	async listForUse(credentialUseId: string): Promise<InstanceCredentialSummary[]> {
-		const credentialUse = this.useRegistry.get(credentialUseId);
+	async listForUse(credentialUse: InstanceCredentialUse): Promise<InstanceCredentialSummary[]> {
+		const registeredUse = this.useRegistry.get(credentialUse.id);
 		return await this.credentialsRepository.find({
 			select: ['id', 'name', 'type'],
 			where: {
 				availability: 'instance',
-				type: In([...credentialUse.credentialTypes]),
+				type: In([...registeredUse.credentialTypes]),
 			},
 			order: { name: 'ASC' },
 		});
 	}
 
 	async assignForUse(
-		credentialUseId: string,
+		credentialUse: InstanceCredentialUse,
 		credentialId: string,
 		transactionManager?: EntityManager,
 	): Promise<InstanceCredentialSummary> {
-		const credentialUse = this.useRegistry.get(credentialUseId);
+		const registeredUse = this.useRegistry.get(credentialUse.id);
+		const credentialUseId = registeredUse.id;
 		const em = transactionManager ?? this.assignmentRepository.manager;
-		const credential = await this.findCredential(credentialUse, credentialId, em);
+		const credential = await this.findCredential(registeredUse, credentialId, em);
 		if (!credential) throw this.invalidCredentialError(credentialUseId, credentialId);
 		try {
 			await em.upsert(InstanceCredentialAssignment, { credentialUseId, credentialId }, [
 				'credentialUseId',
 			]);
 		} catch (error) {
-			// The credential can be deleted between the check above and the upsert; the FK rejects that
+			// The credential can be deleted between the check above and the upsert; the FK rejects that.
+			// Re-check so transient DB failures (deadlocks) are not misreported as an invalid credential.
 			if (error instanceof QueryFailedError) {
-				throw this.invalidCredentialError(credentialUseId, credentialId);
+				const stillExists = await this.findCredential(registeredUse, credentialId, em)
+					.then((found) => Boolean(found))
+					.catch(() => true);
+				if (!stillExists) throw this.invalidCredentialError(credentialUseId, credentialId);
 			}
 			throw error;
 		}
@@ -74,32 +81,38 @@ export class InstanceCredentialBroker {
 		return { id: credential.id, name: credential.name, type: credential.type };
 	}
 
-	async clearForUse(credentialUseId: string, transactionManager?: EntityManager): Promise<void> {
-		this.useRegistry.get(credentialUseId);
+	async clearForUse(
+		credentialUse: InstanceCredentialUse,
+		transactionManager?: EntityManager,
+	): Promise<void> {
+		this.useRegistry.get(credentialUse.id);
 		const em = transactionManager ?? this.assignmentRepository.manager;
-		await em.delete(InstanceCredentialAssignment, { credentialUseId });
+		await em.delete(InstanceCredentialAssignment, { credentialUseId: credentialUse.id });
 	}
 
 	async getAssignedCredentialId(
-		credentialUseId: string,
+		credentialUse: InstanceCredentialUse,
 		transactionManager?: EntityManager,
 	): Promise<string | null> {
-		this.useRegistry.get(credentialUseId);
+		this.useRegistry.get(credentialUse.id);
 		const em = transactionManager ?? this.assignmentRepository.manager;
-		const assignment = await em.findOneBy(InstanceCredentialAssignment, { credentialUseId });
+		const assignment = await em.findOneBy(InstanceCredentialAssignment, {
+			credentialUseId: credentialUse.id,
+		});
 		return assignment?.credentialId ?? null;
 	}
 
 	async resolveForUse(
-		credentialUseId: string,
+		credentialUse: InstanceCredentialUse,
 		transactionManager?: EntityManager,
 	): Promise<ResolvedInstanceCredential | null> {
-		const credentialUse = this.useRegistry.get(credentialUseId);
+		const registeredUse = this.useRegistry.get(credentialUse.id);
+		const credentialUseId = registeredUse.id;
 		const em = transactionManager ?? this.assignmentRepository.manager;
 		const assignment = await em.findOneBy(InstanceCredentialAssignment, { credentialUseId });
 		if (!assignment) return null;
 
-		const credential = await this.findCredential(credentialUse, assignment.credentialId, em);
+		const credential = await this.findCredential(registeredUse, assignment.credentialId, em);
 		if (!credential) throw this.invalidCredentialError(credentialUseId, assignment.credentialId);
 
 		const resolved = {

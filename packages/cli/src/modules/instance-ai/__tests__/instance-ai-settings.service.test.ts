@@ -267,7 +267,7 @@ describe('InstanceAiSettingsService', () => {
 				'Invalid instance credential',
 			);
 			expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
-				'instance-ai:model',
+				expect.objectContaining({ id: 'instance-ai:model' }),
 				'cred-1',
 				transactionManager,
 			);
@@ -302,7 +302,9 @@ describe('InstanceAiSettingsService', () => {
 			);
 
 			expect(result).toEqual({ id: 'openai/gpt-4.1', url: '', apiKey: 'admin-key' });
-			expect(instanceCredentialBroker.resolveForUse).toHaveBeenCalledWith('instance-ai:model');
+			expect(instanceCredentialBroker.resolveForUse).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'instance-ai:model' }),
+			);
 			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalled();
 			expect(settingsRepository.upsert).toHaveBeenCalledWith(
 				expect.objectContaining({ value: expect.not.stringContaining('modelCredentialId') }),
