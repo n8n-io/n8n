@@ -1,5 +1,6 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
+import { computed, ref } from 'vue';
 
 import N8nMarkdownEditor from './MarkdownEditor.vue';
 
@@ -63,15 +64,7 @@ Escalate to a human when:
 
 When a workflow error is provided, identify the failing node, summarize the likely cause, and suggest the smallest next diagnostic step.`;
 
-const methods = {
-	onUpdateModelValue: action('update:modelValue'),
-	onInput: action('input'),
-	onFocus: action('focus'),
-	onBlur: action('blur'),
-	onReady: action('ready'),
-};
-
-export default {
+const meta: Meta<typeof N8nMarkdownEditor> = {
 	title: 'Core/Markdown Editor',
 	component: N8nMarkdownEditor,
 	argTypes: {
@@ -107,108 +100,126 @@ export default {
 			},
 		},
 	},
-};
+	render: (args) => ({
+		components: { N8nMarkdownEditor },
+		setup() {
+			// Per story-instance local state. Never bind Storybook's args.modelValue
+			// into the editor — the theme decorator mounts this twice, and the shared
+			// args value stays stale while typing, which resets the editor content.
+			const value = ref(args.modelValue);
+			const editorArgs = computed(() => {
+				const { modelValue: _modelValue, ...rest } = args;
+				return rest;
+			});
 
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({ args }),
-	props: Object.keys(argTypes),
-	components: {
-		N8nMarkdownEditor,
-	},
-	data() {
-		return {
-			value: args.modelValue,
-		};
-	},
-	watch: {
-		'args.modelValue'(value: string) {
-			this.value = value;
+			return {
+				value,
+				editorArgs,
+				onUpdateModelValue: action('update:modelValue'),
+				onInput: action('input'),
+				onFocus: action('focus'),
+				onBlur: action('blur'),
+				onReady: action('ready'),
+			};
 		},
+		template: `
+			<div style="max-width: 760px; display: flex; flex-direction: column; gap: 16px;">
+				<n8n-markdown-editor
+					v-bind="editorArgs"
+					v-model="value"
+					@update:modelValue="onUpdateModelValue"
+					@input="onInput"
+					@focus="onFocus"
+					@blur="onBlur"
+					@ready="onReady"
+				/>
+			</div>
+		`,
+	}),
+};
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+	args: {
+		modelValue: defaultMarkdown,
+		variant: 'contained',
+		placeholder: 'Write Markdown...',
+		showToolbar: 'always',
+		maxHeight: '480px',
+		disabled: false,
+		readonly: false,
 	},
-	template: `
-		<div style="max-width: 760px; display: flex; flex-direction: column; gap: 16px;">
-			<n8n-markdown-editor
-				v-bind="args"
-				v-model="value"
-				@update:modelValue="onUpdateModelValue"
-				@input="onInput"
-				@focus="onFocus"
-				@blur="onBlur"
-				@ready="onReady"
-			/>
-		</div>
-	`,
-	methods,
-});
-
-export const Default = Template.bind({});
-Default.args = {
-	modelValue: defaultMarkdown,
-	variant: 'contained',
-	placeholder: 'Write Markdown...',
-	showToolbar: 'always',
-	maxHeight: '480px',
-	disabled: false,
-	readonly: false,
 };
 
-export const Contained = Template.bind({});
-Contained.args = {
-	...Default.args,
-	variant: 'contained',
+export const Contained: Story = {
+	args: {
+		...Default.args,
+		variant: 'contained',
+	},
 };
 
-export const Ghost = Template.bind({});
-Ghost.args = {
-	...Default.args,
-	variant: 'ghost',
+export const Ghost: Story = {
+	args: {
+		...Default.args,
+		variant: 'ghost',
+	},
 };
 
-export const WithoutToolbar = Template.bind({});
-WithoutToolbar.args = {
-	...Default.args,
-	showToolbar: 'never',
+export const WithoutToolbar: Story = {
+	args: {
+		...Default.args,
+		showToolbar: 'never',
+	},
 };
 
-export const AlwaysVisibleToolbar = Template.bind({});
-AlwaysVisibleToolbar.args = {
-	...Default.args,
-	showToolbar: 'always',
+export const AlwaysVisibleToolbar: Story = {
+	args: {
+		...Default.args,
+		showToolbar: 'always',
+	},
 };
 
-export const GfmContent = Template.bind({});
-GfmContent.args = {
-	...Default.args,
-	modelValue: gfmMarkdown,
-	variant: 'contained',
+export const GfmContent: Story = {
+	args: {
+		...Default.args,
+		modelValue: gfmMarkdown,
+		variant: 'contained',
+	},
 };
 
-export const Disabled = Template.bind({});
-Disabled.args = {
-	...Default.args,
-	disabled: true,
-	variant: 'contained',
+export const Disabled: Story = {
+	args: {
+		...Default.args,
+		disabled: true,
+		variant: 'contained',
+	},
 };
 
-export const Readonly = Template.bind({});
-Readonly.args = {
-	...Default.args,
-	readonly: true,
-	variant: 'contained',
+export const Readonly: Story = {
+	args: {
+		...Default.args,
+		readonly: true,
+		variant: 'contained',
+	},
 };
 
-export const LongInstructions = Template.bind({});
-LongInstructions.args = {
-	...Default.args,
-	modelValue: longInstructionsMarkdown,
-	variant: 'contained',
+export const LongInstructions: Story = {
+	args: {
+		...Default.args,
+		modelValue: longInstructionsMarkdown,
+		variant: 'contained',
+	},
 };
 
-export const Empty = Template.bind({});
-Empty.args = {
-	...Default.args,
-	modelValue: '',
-	showToolbar: 'never',
-	variant: 'contained',
-	placeholder: 'Write instructions...',
+export const Empty: Story = {
+	args: {
+		...Default.args,
+		modelValue: '',
+		showToolbar: 'never',
+		variant: 'contained',
+		placeholder: 'Write instructions...',
+	},
 };
