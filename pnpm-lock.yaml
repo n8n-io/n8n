@@ -4897,15 +4897,24 @@ importers:
 
   packages/frontend/@n8n/composables:
     dependencies:
+      '@n8n/api-types':
+        specifier: workspace:*
+        version: link:../../../@n8n/api-types
       '@vueuse/core':
         specifier: catalog:frontend
         version: 14.3.0(vue@3.5.26(typescript@6.0.2))
       lodash:
         specifier: 4.18.1
         version: 4.18.1
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../../workflow
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
+      vue-router:
+        specifier: catalog:frontend
+        version: 4.5.0(vue@3.5.26(typescript@6.0.2))
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
