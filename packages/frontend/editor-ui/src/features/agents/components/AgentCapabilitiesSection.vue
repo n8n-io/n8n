@@ -86,8 +86,6 @@ type TaskRow = AgentTaskDto & {
 };
 
 const mcpServers = computed(() => props.config?.mcpServers ?? []);
-const hasTools = computed(() => props.tools.length + mcpServers.value.length > 0);
-const hasSkills = computed(() => props.skills.length > 0);
 const selectedSubAgentRefs = computed(() => props.config?.subAgents?.agents ?? []);
 const selectedSubAgentIds = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId }) => agentId),
@@ -114,7 +112,6 @@ const selectedSubAgents = computed(() =>
 		};
 	}),
 );
-const hasSubAgents = computed(() => selectedSubAgents.value.length > 0);
 const taskBodies = ref<AgentTaskDto[]>([]);
 const taskErrorMessage = ref('');
 
@@ -134,7 +131,6 @@ const taskRows = computed<TaskRow[]>(() => {
 		})
 		.filter((task): task is TaskRow => task !== null);
 });
-const hasTasks = computed(() => taskRows.value.length > 0);
 
 // `as BaseTextKey`: these keys are new (see en.json) and not yet reflected in
 // @n8n/i18n's built type declarations — matches the same workaround already
@@ -514,7 +510,11 @@ function openExistingSubAgentModal(subAgent: {
 				</N8nText>
 
 				<div :class="$style.chips">
-					<template v-for="tool in toolRows" :key="`tool-${tool.index}`">
+					<div
+						v-for="(tool, toolIndex) in toolRows"
+						:key="`tool-${tool.index}`"
+						:class="$style.chipGroup"
+					>
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
 							:items="toolMenuItems(tool)"
@@ -571,31 +571,46 @@ function openExistingSubAgentModal(subAgent: {
 						>
 							{{ tool.label }}
 						</AgentChipButton>
-					</template>
 
-					<N8nTooltip
-						v-if="!props.disabled"
-						:disabled="!hasTools"
-						:content="i18n.baseText('agents.builder.tools.add')"
-						placement="top"
-					>
-						<N8nButton
-							:class="!hasTools && $style.addButtonEmpty"
-							variant="ghost"
-							size="medium"
-							:icon-only="hasTools"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-tool"
-							@click="emit('add-tool')"
+						<N8nTooltip
+							v-if="!props.disabled && toolIndex === toolRows.length - 1"
+							:content="i18n.baseText('agents.builder.tools.add')"
+							placement="top"
 						>
-							<template v-if="hasTools" #icon>
-								<N8nIcon icon="plus" :size="16" color="text-light" />
-							</template>
-							<template v-if="!hasTools">
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-tool"
+								@click="emit('add-tool')"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="toolRows.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							v-if="!props.disabled"
+							disabled
+							:content="i18n.baseText('agents.builder.tools.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-tool"
+								@click="emit('add-tool')"
+							>
 								{{ i18n.baseText('agents.builder.tools.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 				</div>
 			</div>
 
@@ -605,42 +620,57 @@ function openExistingSubAgentModal(subAgent: {
 				</N8nText>
 
 				<div :class="$style.chips">
-					<AgentChipButton
-						v-for="{ id, skill } in skills"
-						:key="id"
-						icon="sparkles"
-						:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
-						:invalid-reasons="skillIssueMessages.get(id) ?? []"
-						:class="$style.capabilityChip"
-						data-testid="agent-capabilities-skill-row"
-						@click="emit('open-skill', id)"
-					>
-						{{ skill.name || id }}
-					</AgentChipButton>
-
-					<N8nTooltip
-						v-if="!props.disabled"
-						:disabled="!hasSkills"
-						:content="i18n.baseText('agents.builder.skills.add')"
-						placement="top"
-					>
-						<N8nButton
-							:class="!hasSkills && $style.addButtonEmpty"
-							variant="ghost"
-							size="medium"
-							:icon-only="hasSkills"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-skill"
-							@click="emit('add-skill')"
+					<div v-for="({ id, skill }, skillIndex) in skills" :key="id" :class="$style.chipGroup">
+						<AgentChipButton
+							icon="sparkles"
+							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
+							:invalid-reasons="skillIssueMessages.get(id) ?? []"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-skill-row"
+							@click="emit('open-skill', id)"
 						>
-							<template v-if="hasSkills" #icon>
-								<N8nIcon icon="plus" :size="16" color="text-light" />
-							</template>
-							<template v-if="!hasSkills">
+							{{ skill.name || id }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="!props.disabled && skillIndex === skills.length - 1"
+							:content="i18n.baseText('agents.builder.skills.add')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-skill"
+								@click="emit('add-skill')"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="skills.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							v-if="!props.disabled"
+							disabled
+							:content="i18n.baseText('agents.builder.skills.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-skill"
+								@click="emit('add-skill')"
+							>
 								{{ i18n.baseText('agents.builder.skills.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 				</div>
 			</div>
 			<div v-if="showSection('subAgents')" :class="$style.capabilityRow">
@@ -649,41 +679,60 @@ function openExistingSubAgentModal(subAgent: {
 				</N8nText>
 
 				<div :class="$style.chips">
-					<AgentChipButton
-						v-for="subAgent in selectedSubAgents"
+					<div
+						v-for="(subAgent, subAgentIndex) in selectedSubAgents"
 						:key="subAgent.id"
-						icon="bot"
-						:invalid="subAgent.invalid"
-						:invalid-reasons="subAgent.invalidReasons"
-						:class="$style.capabilityChip"
-						data-testid="agent-capabilities-sub-agent-row"
-						@click="openExistingSubAgentModal(subAgent)"
+						:class="$style.chipGroup"
 					>
-						{{ subAgent.name }}
-					</AgentChipButton>
-
-					<N8nTooltip
-						:disabled="!hasSubAgents"
-						:content="i18n.baseText('agents.builder.subAgents.modal.title')"
-						placement="top"
-					>
-						<N8nButton
-							:class="!hasSubAgents && $style.addButtonEmpty"
-							variant="ghost"
-							size="medium"
-							:icon-only="hasSubAgents"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-sub-agent"
-							@click="openSubAgentsModal"
+						<AgentChipButton
+							icon="bot"
+							:invalid="subAgent.invalid"
+							:invalid-reasons="subAgent.invalidReasons"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-sub-agent-row"
+							@click="openExistingSubAgentModal(subAgent)"
 						>
-							<template v-if="hasSubAgents" #icon>
-								<N8nIcon icon="plus" :size="16" color="text-light" />
-							</template>
-							<template v-if="!hasSubAgents">
+							{{ subAgent.name }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="subAgentIndex === selectedSubAgents.length - 1"
+							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-sub-agent"
+								@click="openSubAgentsModal"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="selectedSubAgents.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.subAgents.modal.title')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-sub-agent"
+								@click="openSubAgentsModal"
+							>
 								{{ i18n.baseText('agents.builder.subAgents.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 				</div>
 			</div>
 			<div v-if="showSection('tasks')" :class="$style.capabilityRow">
@@ -692,41 +741,56 @@ function openExistingSubAgentModal(subAgent: {
 				</N8nText>
 
 				<div :class="$style.chips">
-					<AgentChipButton
-						v-for="task in taskRows"
-						:key="task.id"
-						icon="clipboard-list"
-						:invalid="task.invalid"
-						:invalid-reasons="task.invalidReasons"
-						:class="$style.capabilityChip"
-						data-testid="agent-capabilities-task-row"
-						@click="openTaskModal(task)"
-					>
-						{{ task.name }}
-					</AgentChipButton>
-
-					<N8nTooltip
-						:disabled="!hasTasks"
-						:content="i18n.baseText('agents.builder.tasks.add')"
-						placement="top"
-					>
-						<N8nButton
-							:class="!hasTasks && $style.addButtonEmpty"
-							variant="ghost"
-							size="medium"
-							:icon-only="hasTasks"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-task"
-							@click="openTaskModal(null)"
+					<div v-for="(task, taskIndex) in taskRows" :key="task.id" :class="$style.chipGroup">
+						<AgentChipButton
+							icon="clipboard-list"
+							:invalid="task.invalid"
+							:invalid-reasons="task.invalidReasons"
+							:class="$style.capabilityChip"
+							data-testid="agent-capabilities-task-row"
+							@click="openTaskModal(task)"
 						>
-							<template v-if="hasTasks" #icon>
-								<N8nIcon icon="plus" :size="16" color="text-light" />
-							</template>
-							<template v-if="!hasTasks">
+							{{ task.name }}
+						</AgentChipButton>
+
+						<N8nTooltip
+							v-if="taskIndex === taskRows.length - 1"
+							:content="i18n.baseText('agents.builder.tasks.add')"
+							placement="top"
+						>
+							<N8nButton
+								variant="ghost"
+								size="medium"
+								icon-only
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-task"
+								@click="openTaskModal(null)"
+							>
+								<template #icon>
+									<N8nIcon icon="plus" :size="16" color="text-light" />
+								</template>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
+
+					<div v-if="taskRows.length === 0" :class="$style.chipGroup">
+						<N8nTooltip
+							disabled
+							:content="i18n.baseText('agents.builder.tasks.add')"
+							placement="top"
+						>
+							<N8nButton
+								:class="$style.addButtonEmpty"
+								variant="ghost"
+								size="medium"
+								:disabled="props.disabled"
+								data-testid="agent-capabilities-add-task"
+								@click="openTaskModal(null)"
+							>
 								{{ i18n.baseText('agents.builder.tasks.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
+							</N8nButton>
+						</N8nTooltip>
+					</div>
 
 					<N8nText v-if="taskErrorMessage" size="small" :class="$style.error">
 						{{ taskErrorMessage }}
@@ -764,15 +828,20 @@ function openExistingSubAgentModal(subAgent: {
 	flex-wrap: wrap;
 	gap: var(--spacing--3xs);
 	min-width: 0;
+}
 
-	& > *:last-child {
-		margin-left: calc(calc(-1 * var(--spacing--3xs)) + 1px);
-	}
+.chipGroup {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	gap: var(--spacing--3xs);
+	max-width: 100%;
+	min-width: 0;
 }
 
 .addButtonEmpty {
 	--button--color: var(--text-color--subtler);
-	margin-left: calc(-1 * var(--spacing--2xs));
+	margin-left: calc(-1 * var(--spacing--xs));
 	margin-top: calc(-1 * var(--spacing--4xs));
 }
 
