@@ -291,7 +291,7 @@ function onInput(event: Event) {
 			>
 				<Icon icon="x" size="small" />
 			</button>
-			<ComboboxTrigger :class="$style.comboboxTrigger" tabindex="-1">
+			<ComboboxTrigger :class="$style.comboboxTrigger" tabindex="-1" @mousedown.prevent>
 				<Icon icon="chevron-down" :class="$style.trailingIcon" />
 			</ComboboxTrigger>
 		</ComboboxAnchor>
