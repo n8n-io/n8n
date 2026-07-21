@@ -13,6 +13,7 @@ export declare namespace Cloud {
 		metadata: PlanMetadata;
 		userIsTrialing?: boolean;
 		bannerConfig?: BannerConfig;
+		licenseFeatures?: Record<string, number>;
 	}
 
 	export interface PlanMetadata {
@@ -56,6 +57,23 @@ export declare namespace Cloud {
 		forceShow?: boolean; // Override localStorage dismissal
 	}
 
+	export interface UpgradeOfferPlan {
+		slug: string;
+		displayName: string;
+		quotas: { monthlyExecutionsLimit: number; instanceAiCredits: number };
+		prices?: {
+			monthly: number;
+			yearlyPerMonth: number;
+			yearlyTotal: number;
+			discountPct: number;
+		};
+	}
+
+	export interface UpgradeOffer {
+		currency?: { code: string; symbol: string; position: 'prefix' | 'suffix' };
+		plans: UpgradeOfferPlan[];
+	}
+
 	export type UserAccount = {
 		confirmed: boolean;
 		username: string;
@@ -66,6 +84,7 @@ export declare namespace Cloud {
 		information?: {
 			[key: string]: string | string[];
 		};
+		upgradeOffer?: UpgradeOffer;
 	};
 }
 
