@@ -140,3 +140,22 @@ jobs:
     secrets: inherit
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
+
+  # Full npm-install duplication check across all publishable packages, as a
+  # release-prep signal: root overrides don't travel in published tarballs, so a
+  # curated library can resolve to a second copy on `npm install n8n`. Heavy (packs
+  # every publishable package + installs the full graph); runs in parallel and is
+  # non-blocking initially — promote to a hard gate after it proves stable.
+  verify-single-instance-npm-full:
+    name: Verify single-instance deps (npm-install, full)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm build
+      - name: Verify full npm-install closure
+        run: node scripts/verify-single-instance-npm-install.mjs --all

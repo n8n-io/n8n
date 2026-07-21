@@ -228,6 +228,17 @@ echo(
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
+// Gate the production closure on single-instance dependency integrity. A curated
+// library resolving to more than one physical copy silently breaks instanceof /
+// singletons at runtime. Known, allowlisted duplicates are reported but pass; a new
+// duplicate fails the build. `pnpm deploy` applies workspace overrides, so this path
+// dedupes cleanly today — the `npm install` graph is covered separately in CI.
+echo(chalk.yellow('INFO: Verifying single-instance dependency integrity in the production closure...'));
+const verifyProcess = $`cd ${config.rootDir} && node scripts/verify-single-instance-deps.mjs ${config.compiledAppDir}`;
+verifyProcess.pipe(process.stdout);
+await verifyProcess;
+echo(chalk.green('✅ Single-instance dependency check passed'));
+
 const packageDeployTime = getElapsedTime('package_deploy');
 
 // Generate SBOM + render THIRD_PARTY_LICENSES.md from the deployed runtime closure.

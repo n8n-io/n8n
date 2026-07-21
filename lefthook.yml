@@ -32,9 +32,9 @@ pre-commit:
       skip:
         - merge
         - rebase
-    single_instance_peers_check:
+    single_instance_check:
       glob: '**/package.json'
-      run: node scripts/check-single-instance-peers.mjs
+      run: pnpm check:single-instance
       skip:
         - merge
         - rebase
