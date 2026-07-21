@@ -555,6 +555,23 @@ describe('v2/components/Combobox', () => {
 			});
 		});
 
+		it('should toggle the dropdown when the chevron is clicked', async () => {
+			const wrapper = render(Combobox, {
+				props: {
+					items: ['Option 1', 'Option 2', 'Option 3'],
+				},
+			});
+
+			const trigger = wrapper.getByRole('button', { name: 'Show popup' });
+			await userEvent.click(trigger);
+			await getPopoverContainer();
+
+			await userEvent.click(trigger);
+			await waitFor(() => {
+				expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
+			});
+		});
+
 		it('should emit update:open when dropdown opens', async () => {
 			const wrapper = render(Combobox, {
 				props: {
