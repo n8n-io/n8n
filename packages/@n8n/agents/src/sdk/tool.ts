@@ -6,6 +6,7 @@ import { AgentEvent } from '../types/runtime/event';
 import type { AgentMessage } from '../types/sdk/message';
 import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
+import { assertToolInputSchemaIsObject } from '../utils/tool-input-schema';
 import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 
 const APPROVAL_SUSPEND_SCHEMA = z.object({
@@ -189,7 +190,10 @@ export class Tool<
 		return this;
 	}
 
-	/** Set the input Zod schema. Required before building. */
+	/**
+	 * Set the input schema. Required before building and must serialize to a top-level JSON object.
+	 * For operation variants, use a root `z.object()` with `superRefine()` instead of a root union.
+	 */
 	input<S extends ZodOrJsonSchema>(schema: S): Tool<S, TOutput, TSuspend, TResume> {
 		const self = this as unknown as Tool<S, TOutput, TSuspend, TResume>;
 		self.inputSchema = schema;
@@ -299,6 +303,7 @@ export class Tool<
 		if (!this.handlerFn) {
 			throw new Error(`Tool "${this.name}" requires a handler`);
 		}
+		assertToolInputSchemaIsObject(this.name, this.inputSchema);
 
 		const hasSuspend = this.suspendSchemaValue !== undefined;
 		const hasResume = this.resumeSchemaValue !== undefined;
@@ -355,6 +360,7 @@ export class Tool<
 		if (!this.name) throw new Error('Tool name is required');
 		if (!this.desc) throw new Error(`Tool "${this.name}" requires a description`);
 		if (!this.inputSchema) throw new Error(`Tool "${this.name}" requires an input schema`);
+		assertToolInputSchemaIsObject(this.name, this.inputSchema);
 
 		const inputSchema = isZodSchema(this.inputSchema)
 			? zodToJsonSchema(this.inputSchema)

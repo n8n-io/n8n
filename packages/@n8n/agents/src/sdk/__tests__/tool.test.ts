@@ -127,6 +127,27 @@ describe('Tool builder — without approval', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Tool builder — input schema
+// ---------------------------------------------------------------------------
+
+describe('Tool builder — input schema', () => {
+	it('rejects a root discriminated union before calling a model provider', () => {
+		const inputSchema = z.discriminatedUnion('operation', [
+			z.object({ operation: z.literal('search'), query: z.string() }),
+			z.object({ operation: z.literal('save'), content: z.string() }),
+		]);
+
+		expect(() =>
+			new Tool('memory')
+				.description('Search or save memory')
+				.input(inputSchema)
+				.handler(async (input) => await Promise.resolve(input))
+				.build(),
+		).toThrow('must serialize to a top-level JSON object');
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Tool builder — .systemInstruction()
 // ---------------------------------------------------------------------------
 

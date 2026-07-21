@@ -129,6 +129,14 @@ describe('Tool.describe()', () => {
 		expect(() => tool.describe()).toThrow('"no-input" requires an input schema');
 	});
 
+	it('rejects a root union before serializing the tool descriptor', () => {
+		const tool = new Tool('lookup')
+			.description('Look up a value')
+			.input(z.union([z.object({ id: z.string() }), z.object({ query: z.string() })]));
+
+		expect(() => tool.describe()).toThrow('must serialize to a top-level JSON object');
+	});
+
 	it('inputSchema conforms to JSON Schema format', () => {
 		const tool = new Tool('typed')
 			.description('Typed tool')

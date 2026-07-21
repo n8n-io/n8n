@@ -95,6 +95,17 @@ describe('toAiSdkTools — Zod schemas', () => {
 		]);
 		expect((result['search'] as { inputSchema: unknown }).inputSchema).toBe(zodSchema);
 	});
+
+	it('rejects a root union before registering the tool with the AI SDK', () => {
+		const inputSchema = z.discriminatedUnion('operation', [
+			z.object({ operation: z.literal('search'), query: z.string() }),
+			z.object({ operation: z.literal('save'), content: z.string() }),
+		]);
+
+		expect(() =>
+			toAiSdkTools([{ name: 'memory', description: 'Search or save memory', inputSchema }]),
+		).toThrow('must serialize to a top-level JSON object');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -142,12 +153,12 @@ describe('toAiSdkTools — JSON Schema / fixSchema', () => {
 		expect(received.type).toBe('object');
 	});
 
-	it('fixSchema: does not add type when properties is absent', () => {
+	it('rejects a raw schema without a top-level object type or properties', () => {
 		const rawSchema: JSONSchema7 = { description: 'no properties' };
-		toAiSdkTools([makeJsonSchemaTool(rawSchema)]);
 
-		const received = jsonSchemaMock.mock.calls[0][0];
-		expect(received).not.toHaveProperty('type');
+		expect(() => toAiSdkTools([makeJsonSchemaTool(rawSchema)])).toThrow(
+			'must serialize to a top-level JSON object',
+		);
 	});
 
 	it('fixSchema: does not mutate the original schema object', () => {

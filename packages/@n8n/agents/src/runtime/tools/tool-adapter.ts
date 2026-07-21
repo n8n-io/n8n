@@ -11,6 +11,7 @@ import {
 	type ToolContext,
 } from '../../types';
 import { fixSchema } from '../../utils/json-schema';
+import { assertToolInputSchemaIsObject } from '../../utils/tool-input-schema';
 import { isZodSchema } from '../../utils/zod';
 import { loadAi } from '../model/lazy-ai';
 import { applyToolProviderOptionDefaults } from '../model/provider-quirks';
@@ -71,6 +72,7 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	const result: Record<string, AiSdkTool> = {};
 	for (const t of tools) {
 		if (t.inputSchema) {
+			assertToolInputSchemaIsObject(t.name, t.inputSchema);
 			const ai = loadAi();
 			const providerOptions = applyToolProviderOptionDefaults(t.providerOptions);
 			if (isZodSchema(t.inputSchema)) {

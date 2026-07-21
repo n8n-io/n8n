@@ -13,6 +13,14 @@ Conventions for the `@n8n/agents` package.
   class, which lazy-build via `ensureBuilt()` on first call. `build()` is
   `protected` on Agent to keep it out of the public API.
 - **Zod for schemas** — all input/output schemas use Zod.
+- **Tool inputs must be root objects** — schemas passed to `Tool.input()` must
+  serialize with top-level `type: "object"`, as required by model-provider tool
+  APIs. Do not use `z.union()` or `z.discriminatedUnion()` at the root: they
+  serialize as top-level `anyOf` without an object type. For operation variants,
+  start with `z.object()` containing a discriminator and optional operation
+  fields, enforce the matching field with `superRefine()`, and use `transform()`
+  if the handler needs a discriminated output type. The tool builder validates
+  this and fails locally before any provider request.
 
 ## Package Structure
 
