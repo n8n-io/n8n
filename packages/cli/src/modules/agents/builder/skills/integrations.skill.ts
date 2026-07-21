@@ -1,5 +1,7 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
+import { INITIAL_BUILD_NOTE } from '../prompts/initial-build.prompt';
+
 export function integrationsSkill(): RuntimeSkill {
 	return {
 		id: 'agent-builder-integrations',
@@ -75,6 +77,13 @@ The \`integrations\` array controls how the target agent is triggered.
   credentials — never \`ask_credential\` or a raw config write. The setup UI it
   shows creates and persists the credential/connection itself; do not follow up
   with \`patch_config\`/\`write_config\` to write the credential.
+- ${INITIAL_BUILD_NOTE} Instead of \`configure_channel\`: after
+  \`list_integration_types\` returns the matching type, \`read_config()\` then
+  \`patch_config\` adding \`{ "type": "<integrationType>", "credentialId": "" }\`
+  to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
+  telegram) so the channel appears in the agent panel as needing setup. Use
+  \`configure_channel\` when the user asks to connect the channel in a
+  follow-up turn.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`read_config\` and inspect
   \`config.integrations\`.

@@ -694,8 +694,9 @@ export class AgentsBuilderToolsService {
 					'runtime uses to decide when to load the skill; the instructions must follow the required ' +
 					'structured Markdown template (Overview, Inputs, Steps, Rules, Example, Gotchas) with each ' +
 					'applicable section filled in with concrete, specific content. If you do not have enough domain ' +
-					'detail to write a genuinely useful skill, ask the user clarifying questions until you do before ' +
-					'calling create_skills. Use allowedTools only with exact target-agent tool names. Use references ' +
+					"detail to write a genuinely useful skill, derive it from the user's goal as stated assumptions " +
+					'listed in your summary; ask the user clarifying questions only when even a reasonable ' +
+					'assumption is impossible. Use allowedTools only with exact target-agent tool names. Use references ' +
 					'only for markdown supporting files under the references/ directory — references are not ' +
 					'automatically loaded, so instructions must say exactly when to load each one by path; scripts and ' +
 					'non-markdown linked files are not supported. Do not invent tool names or reference paths. Batch ' +
@@ -744,8 +745,9 @@ export class AgentsBuilderToolsService {
 					'required section, or an unclear schedule. Each objective must follow the required structured ' +
 					'Markdown template (Objective, Context, Steps, Output, Constraints, Success criteria) with every ' +
 					'section filled in with concrete content — it is the exact, self-contained message the agent ' +
-					'receives on each unattended run. If anything is ambiguous, ask the user clarifying questions with ' +
-					'ask_questions before calling ' +
+					"receives on each unattended run. If anything is ambiguous, derive it from the user's goal as " +
+					'stated assumptions listed in your summary; ask the user clarifying questions with ask_questions ' +
+					'only when even a reasonable assumption is impossible, before calling ' +
 					'create_tasks. A task can only use tools the agent already has: if any step in an objective ' +
 					'requires a tool, integration, or web search the agent is missing, you MUST add it to the agent ' +
 					'config (patch_config/write_config) BEFORE calling create_tasks — otherwise the task will fail at ' +

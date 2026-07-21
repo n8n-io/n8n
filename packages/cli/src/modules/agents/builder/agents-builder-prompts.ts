@@ -1,4 +1,5 @@
 import { getConfigMutationPrompt } from './prompts/config-mutation.prompt';
+import { INITIAL_BUILD_SECTION } from './prompts/initial-build.prompt';
 import { getLlmSelectionPrompt } from './prompts/llm-selection.prompt';
 import { MEMORY_PROMPT } from './prompts/memory.prompt';
 import { TOOLS_PROMPT } from './prompts/tools.prompt';
@@ -26,8 +27,9 @@ agent in this Build chat, do not call tools. Reply exactly:
 "Head to the [Preview](${agentPreviewPath}) section to chat with your agent."
 Do not say anything else. Keep the Preview link as a relative app path.
 
-Never write empty, placeholder, or guessed \`instructions\`. If you do not have
-enough detail to write meaningful instructions, ask the user first.`;
+Never write empty or placeholder \`instructions\`. When the user gave a
+concrete goal, write real instructions from it and fill gaps with sensible assumptions
+stated in your summary. Only ask first when the overall goal itself is missing.`;
 }
 
 export const INTERACTIVE_TOOLS_SECTION = `\
@@ -47,23 +49,23 @@ Exception: the opening reply to a greeting, a "what do you do", or a vague
 intent — there you reply conversationally and ask for the overall goal, per
 "When To Build vs When To Converse".
 
-"Initial build" means the first build pass on a fresh agent, up to and
-including its trailing batch of blocked decisions. Everything after that is an
-addition to an existing agent: ask before the related config mutation,
-batching what you can.
+"Initial build" means the first build pass on a fresh agent; per the Initial
+Build section, never suspend during it. Interactive tools are for everything
+after that — additions or changes to an existing agent (ask before the
+related config mutation, batching what you can) and follow-up turns where the
+user asked to do setup in chat.
 
 - \`ask_credential\`: use once per required node-tool, MCP-server, or fallback
-  web-search credential slot. During an initial build, do not suspend for it
-  mid-build: add a plain node tool first with the credential slot omitted and
-  ask in the trailing batch; when setup needs the credential to complete (MCP
-  verification, resource-locator resolution, fallback web-search config), run
-  that whole unit in the trailing batch instead. For an addition to an existing
+  web-search credential slot. During an initial build, never call it
+  (see Initial Build). For an addition to an existing
   agent, call it before the related config mutation. For MCP servers, call it
   before verification. NEVER use it for a chat-channel
   credential — use \`configure_channel\` instead.
 - \`configure_channel\`: ALWAYS use this to connect a chat platform (Slack,
   Telegram, ...) as an agent channel, with a type from \`list_integration_types\`.
-  The setup UI creates and persists the credential itself.
+  The setup UI creates and persists the credential itself. During an initial
+  build, do not call it — write the draft integration instead (see Initial
+  Build and the integrations skill).
 - \`ask_questions\`: the default way to ask the user anything that isn't a
   node-tool credential, MCP-server credential, fallback web-search credential,
   or channel choice, including when the user must choose, confirm, configure, or
@@ -72,10 +74,10 @@ batching what you can.
   question you currently need into a single call instead of asking one at a
   time. Each question is single-select, multi-select, or free-text; pass
   discrete \`options\` for a known small set of choices, or \`type: "text"\` for
-  an open-ended question.
+  an open-ended question. Never call it during an initial build
+  (see Initial Build).
 - Never call two interactive tools in parallel. The run suspends on the first.
-- Do not suspend for setup while unblocked build tasks remain. Build first;
-  resolve every remaining blocked decision in the trailing batch.
+- Never suspend during an initial build; see the Initial Build section.
 - Never re-ask a question the user already answered in this thread.
 - After resume, continue with the next concrete tool action. Do not narrate the
   answer back to the user.`;
@@ -114,14 +116,17 @@ export const RESPONSE_STYLE_SECTION = `\
 
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
-calls, reprint JSON, or list what is already visible in the sidebar.`;
+calls, reprint JSON, or list what is already visible in the sidebar. When a
+build finishes with blocked setup, end with the setup checklist per the
+Initial Build section; keep it to one line per item.`;
 
 export const WORKFLOW_SECTION = `\
 ## Workflow
 
-1. For any build with 3+ steps, call \`write_todos\` with the full plan first.
-   Mark tasks that cannot proceed without user input as \`blocked\`, stating
-   exactly what is missing.
+1. For every request that builds or changes the agent, call \`write_todos\`
+   with the full plan first — even short ones. Mark tasks that cannot
+   proceed without user input as \`blocked\`, stating exactly what is
+   missing.
 2. For fresh agents, call \`resolve_llm\` once, silently. If it resolves —
    including an auto-picked provider or newly provisioned free OpenAI
    credits — use the result and mention the choice in your summary. If it
@@ -137,11 +142,9 @@ export const WORKFLOW_SECTION = `\
 7. When both skill and task batches are fully specified, call \`create_skills\`
    and \`create_tasks\` in the same assistant response. Do not combine either
    with an interactive tool or \`write_config\`/\`patch_config\` in that response.
-8. When only blocked tasks remain, run the trailing batch:
-   batch all missing decisions into the fewest interactive tool calls —
-   \`ask_questions\` for the model/credential choice and open decisions,
-   \`ask_credential\` per credential slot, \`configure_channel\` per channel.
-   Resolve the answers and finish the plan.
+8. When only blocked tasks remain, stop and end your reply with the setup
+   checklist per the Initial Build section. Resolve items in later turns —
+   re-check with \`read_config\` first.
 9. When the user asks to publish, activate, or make the agent live/usable, call
    \`publish_agent\`. Never tell them to click Publish in the editor. Do not
    auto-publish without that intent. Use \`unpublish_agent\` when they ask to
@@ -157,26 +160,28 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 3. \`write_config(...)\` with the instructions, and the resolved model and
    credential — or \`model: ""\` and no \`credential\` while the model task
    is blocked.
-4. Load \`agent-builder-integrations\`, call \`list_integration_types()\`, and
-   select the returned Slack type.
-5. With building done, handle blocked tasks: \`ask_questions\` for the model
-   choice, \`resolve_llm({ provider, model })\` with the answer,
-   \`read_config()\`, then \`patch_config(...)\` replacing \`/model\` and
-   \`/credential\`.
-6. \`configure_channel({ integrationType: "slack" })\`. The setup UI persists or
-   skips the channel; do not follow it with a config read or mutation.
+4. Load \`agent-builder-integrations\`, call \`list_integration_types()\`,
+   \`read_config()\`, then \`patch_config(...)\` adding the returned Slack type
+   to \`/integrations/-\` with \`credentialId: ""\`.
+5. End the turn with the setup checklist: pick a model, connect Slack — in
+   the panel or here in chat. If the user later asks to connect Slack in
+   chat, call \`configure_channel({ integrationType: "slack" })\`; the setup
+   UI persists or skips the channel — do not follow it with a config
+   mutation.
 
 ### New agent: "Use Anthropic via OpenRouter"
-1. \`resolve_llm({ provider: "openrouter" })\`.
-2. \`read_config()\`.
-3. \`write_config(...)\` with \`model: "openrouter/{resolvedModel}"\`,
+1. \`write_todos\` with the plan.
+2. \`resolve_llm({ provider: "openrouter" })\`.
+3. \`read_config()\`.
+4. \`write_config(...)\` with \`model: "openrouter/{resolvedModel}"\`,
    \`credential\`, and requested instructions.
 
 ### Change the existing model
-1. \`ask_questions({ ... })\` for the new model choice, then
+1. \`write_todos\` with the plan.
+2. \`ask_questions({ ... })\` for the new model choice, then
    \`resolve_llm({ provider, model })\`.
-2. \`read_config()\`.
-3. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
+3. \`read_config()\`.
+4. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
 
 ### Add an explicitly requested n8n node tool to an existing agent
 1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
@@ -196,8 +201,10 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 
 ### Add MCP integration: "Connect Notion MCP"
 This flow is user-initiated on an existing agent, so the credential ask is
-immediate. During an initial build, mark the task \`blocked\` and run steps 3-8
-as one unit in the trailing batch.
+immediate. During an initial build, pick the best candidate as a stated
+assumption, write the draft \`/mcpServers/-\` entry with \`credential\` omitted,
+skip verification, and put the credential in the setup checklist; run the ask
++ verify steps in the follow-up turn where the user provides it.
 1. \`resolve_integration({ queries: ["notion"] })\`.
 2. When it returns \`kind: "mcp"\`, load \`agent-builder-mcp\`.
 3. For MCP candidates, select one entry from \`results[]\`. If
@@ -252,6 +259,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		MEMORY_PROMPT,
 		TOOLS_PROMPT,
 		INTERACTIVE_TOOLS_SECTION,
+		INITIAL_BUILD_SECTION,
 		READ_CONFIG_FRESHNESS_SECTION,
 		WORKFLOW_SECTION,
 		FEW_SHOT_FLOWS_SECTION,

@@ -8,6 +8,7 @@ import {
 	buildBuilderPrompt,
 } from '../agents-builder-prompts';
 import { getConfigMutationPrompt } from '../prompts/config-mutation.prompt';
+import { INITIAL_BUILD_NOTE, INITIAL_BUILD_SECTION } from '../prompts/initial-build.prompt';
 import { getLlmSelectionPrompt } from '../prompts/llm-selection.prompt';
 import { TOOLS_PROMPT } from '../prompts/tools.prompt';
 import { getBuilderRuntimeSkills } from '../skills';
@@ -182,7 +183,7 @@ describe('chat-channel credential guidance', () => {
 	});
 
 	it('references ask_questions in the batching guidance', () => {
-		expect(WORKFLOW_SECTION).toContain('batch all missing decisions into the fewest');
+		expect(WORKFLOW_SECTION).toContain('setup\n   checklist per the Initial Build section');
 		expect(INTERACTIVE_TOOLS_SECTION).toContain(
 			'Batch every\n  question you currently need into a single call',
 		);
@@ -259,22 +260,23 @@ describe('external integration routing guidance', () => {
 		expect(notionFlow).toContain('`credentialId` as `credential`');
 	});
 
-	it('defers MCP candidate selection to the trailing batch during an initial build', () => {
+	it('writes an MCP draft with the credential omitted during an initial build', () => {
 		const mcpSkill = getBuilderRuntimeSkills().find((skill) => skill.id === 'agent-builder-mcp');
 		const mcpInstructions = normalizeWhitespace(mcpSkill?.instructions);
 
-		expect(mcpInstructions).toContain(
-			'During an initial build, defer this call to the trailing batch together with steps 1-4',
-		);
-		expect(mcpInstructions).toContain('mark the MCP task `blocked` when setup still needs');
-		expect(mcpInstructions).toContain('do not call `ask_questions` or `ask_credential` mid-build');
+		expect(mcpInstructions).toContain(INITIAL_BUILD_NOTE);
+		expect(mcpInstructions).toContain('pick the best candidate by');
+		expect(mcpInstructions).toContain('with `credential` omitted');
+		expect(mcpInstructions).toContain('skip `verify_mcp_server`');
+		expect(mcpInstructions).not.toContain('trailing batch');
 
 		const notionFlow = normalizeWhitespace(
 			FEW_SHOT_FLOWS_SECTION.split('### Add MCP integration:')[1]?.split(
 				'### Ambiguous request:',
 			)[0],
 		);
-		expect(notionFlow).toContain('mark the task `blocked` and run steps 3-8');
+		expect(notionFlow).toContain('pick the best candidate as a stated assumption');
+		expect(notionFlow).not.toContain('trailing batch');
 	});
 
 	it('stops after channel setup and mutates config only for the non-chat branch', () => {
@@ -301,6 +303,27 @@ describe('build-first workflow guidance', () => {
 		expect(WORKFLOW_SECTION).toContain('write the config with `model: ""`');
 	});
 
+	it('mandates write_todos for every build or change request, not just complex ones', () => {
+		expect(WORKFLOW_SECTION).toContain('For every request that builds or changes the agent');
+		expect(WORKFLOW_SECTION).toContain('per the Initial Build section');
+
+		const prompt = buildBuilderPrompt({
+			agentPreviewPath: '/p',
+			modelRecommendationsSection: null,
+		});
+		expect(prompt).toContain('## Initial Build');
+		expect(prompt).not.toContain('## Assumptions Over Questions');
+		expect(prompt).toContain('fill gaps with sensible assumptions');
+
+		const integrationsSkill = getBuilderRuntimeSkills().find(
+			(skill) => skill.id === 'agent-builder-integrations',
+		);
+		expect(integrationsSkill?.instructions).toContain('"credentialId": ""');
+
+		const mcpSkill = getBuilderRuntimeSkills().find((skill) => skill.id === 'agent-builder-mcp');
+		expect(mcpSkill?.instructions).not.toContain('trailing batch');
+	});
+
 	it('tells the builder to announce auto-picked providers and free-credit claims', () => {
 		expect(WORKFLOW_SECTION).toContain('auto-picked provider or newly provisioned free OpenAI');
 		expect(getLlmSelectionPrompt(null)).toContain('claimedFreeOpenAiCredits');
@@ -321,16 +344,45 @@ describe('build-first workflow guidance', () => {
 		expect(getConfigMutationPrompt()).not.toContain('Create Or Replace A Fresh Runnable Agent');
 	});
 
-	it('scopes credential asks and model recommendations to the trailing batch', () => {
-		expect(INTERACTIVE_TOOLS_SECTION).toContain(
-			'During an initial build, do not suspend for it\n  mid-build',
-		);
+	it('never suspends for setup during an initial build; defers to the closing checklist', () => {
+		expect(INTERACTIVE_TOOLS_SECTION).toContain('During an initial build, never call it');
 		expect(INTERACTIVE_TOOLS_SECTION).toContain(
 			'"Initial build" means the first build pass on a fresh agent',
 		);
+		expect(INTERACTIVE_TOOLS_SECTION).toContain('Never suspend during an initial build');
+		expect(INTERACTIVE_TOOLS_SECTION).not.toContain('trailing batch');
 		expect(getLlmSelectionPrompt(null)).toContain('leave the draft with `model: ""`');
 		expect(getLlmSelectionPrompt(null)).toContain('never write `model: ""` over an existing model');
 		expect(getLlmSelectionPrompt(null)).toContain('During an initial build, if `resolve_llm`');
+		expect(getLlmSelectionPrompt(null)).not.toContain('trailing batch');
+	});
+});
+
+describe('canonical initial-build section', () => {
+	it('defines the full initial-build contract once', () => {
+		expect(INITIAL_BUILD_SECTION).toContain('NEVER suspend on an interactive tool');
+		expect(INITIAL_BUILD_SECTION).toContain('credentialId: ""');
+		expect(INITIAL_BUILD_SECTION).toContain('short setup\n  checklist');
+		expect(INITIAL_BUILD_SECTION).toContain('sensible assumptions');
+	});
+
+	it('exposes a shared one-line deferral note for skills to interpolate', () => {
+		expect(INITIAL_BUILD_NOTE).toContain('never suspend mid-build');
+		expect(INITIAL_BUILD_NOTE).toContain('defer pending setup to the end of the build');
+	});
+
+	it('has every deferring skill reference the note exactly once', () => {
+		const skills = getBuilderRuntimeSkills();
+		for (const id of [
+			'agent-builder-integrations',
+			'agent-builder-mcp',
+			'agent-builder-node-tools',
+			'agent-builder-resource-locators',
+			'agent-builder-memory',
+		]) {
+			const skill = skills.find((s) => s.id === id);
+			expect(skill?.instructions).toContain(INITIAL_BUILD_NOTE);
+		}
 	});
 });
 

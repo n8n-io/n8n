@@ -140,7 +140,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 - Removing an integration means deleting its entry from \`integrations[]\`; do
   not call \`configure_channel\` for removal.
 - Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
-- Empty, placeholder, or guessed \`instructions\` values are rejected; ask for details instead.
+- Empty or placeholder \`instructions\` values are rejected; derive real instructions from the stated goal instead.
 
 ### Verify
 

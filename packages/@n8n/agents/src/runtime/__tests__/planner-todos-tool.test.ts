@@ -24,6 +24,15 @@ describe('createPlannerTodosTool', () => {
 		expect(tool.systemInstruction).toContain('blocked');
 	});
 
+	it('mandates use for every build or change request, not just complex ones', () => {
+		const tool = createPlannerTodosTool();
+
+		expect(tool.systemInstruction).toContain('Every request that builds or changes the agent');
+		expect(tool.systemInstruction).not.toContain('3+');
+		expect(tool.systemInstruction).not.toContain('trailing batch');
+		expect(tool.description).not.toContain('trailing batch');
+	});
+
 	it('accepts bare items including blocked status and echoes them with a count', async () => {
 		const tool = createPlannerTodosTool();
 

@@ -1,5 +1,7 @@
 import type { RuntimeSkill } from '@n8n/agents';
 
+import { INITIAL_BUILD_NOTE } from '../prompts/initial-build.prompt';
+
 export function resourceLocatorsSkill(): RuntimeSkill {
 	return {
 		id: 'agent-builder-resource-locators',
@@ -43,10 +45,11 @@ locator values that the target agent cannot reliably guess at runtime.
 
 ## Initial-build timing
 
-During an initial build, run this whole workflow — the credential ask, option
-lookup, and the config mutation for the affected tool — as one unit in the
-trailing batch. Do not suspend for the credential mid-build; build everything
-that does not depend on this tool first.
+${INITIAL_BUILD_NOTE} If the tool needs a credential to resolve a stable
+selector, skip adding that tool for now instead of blocking the rest of the
+build. Run the credential ask, option lookup, and config mutation together in
+the follow-up turn where the user provides the credential, or in an addition
+to an existing agent.
 
 ## Workflow
 

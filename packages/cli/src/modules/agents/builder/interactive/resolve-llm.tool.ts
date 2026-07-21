@@ -130,9 +130,9 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'provider default model. For "Anthropic via OpenRouter", pass provider="openrouter" ' +
 				'and omit model unless the user named a concrete OpenRouter model id. Returns ok=false ' +
 				'when credentials are missing, unsupported, or ambiguous — during an initial build, do not ' +
-				'ask immediately; keep building with model "" and ask via ask_questions in the trailing ' +
-				'batch, then call resolve_llm again with the choice. For a model change on an existing ' +
-				'agent, ask immediately and keep the current model and credential until the new one resolves. ' +
+				'ask; keep building with model "" and list the model choice in your closing setup ' +
+				'checklist, then call resolve_llm again when the user picks in a follow-up. For a model ' +
+				'change on an existing agent, ask immediately and keep the current model and credential until the new one resolves. ' +
 				'When no matching credential exists and the user is eligible for free OpenAI credits, the tool ' +
 				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
 				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When multiple ' +
