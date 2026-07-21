@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { PopOutWindowKey } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, ref } from 'vue';
 

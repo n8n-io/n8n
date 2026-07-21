@@ -3,9 +3,10 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import type { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -32,13 +33,15 @@ describe('AiService', () => {
 		aiAssistant: { baseUrl },
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId });
+	const logger = mock<Logger>();
+	const errorReporter = mock<ErrorReporter>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		(AiAssistantClient as Mock).mockImplementation(function () {
 			return client;
 		});
-		aiService = new AiService(license, globalConfig, instanceSettings);
+		aiService = new AiService(license, globalConfig, instanceSettings, logger, errorReporter);
 	});
 
 	afterEach(() => {
@@ -202,7 +205,13 @@ describe('AiService', () => {
 				logging: { level: 'info' },
 				aiAssistant: { baseUrl: '' },
 			});
-			const serviceNoUrl = new AiService(license, configWithoutUrl, instanceSettings);
+			const serviceNoUrl = new AiService(
+				license,
+				configWithoutUrl,
+				instanceSettings,
+				logger,
+				errorReporter,
+			);
 
 			expect(serviceNoUrl.isProxyEnabled()).toBe(false);
 		});
@@ -234,6 +243,57 @@ describe('AiService', () => {
 			await aiService.getClient();
 
 			expect(AiAssistantClient).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('createFreeAiCredits', () => {
+		const credits = mock<AiAssistantSDK.AiCreditResponsePayload>();
+
+		beforeEach(() => {
+			license.isAiAssistantEnabled.mockReturnValue(true);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should retry transient upstream errors before succeeding', async () => {
+			vi.useFakeTimers();
+			const transient = Object.assign(new Error('Bad Gateway'), { statusCode: 502 });
+			client.generateAiCreditsCredentials
+				.mockRejectedValueOnce(transient)
+				.mockResolvedValue(credits);
+
+			const promise = aiService.createFreeAiCredits(user);
+			await vi.runAllTimersAsync();
+
+			await expect(promise).resolves.toEqual(credits);
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledTimes(2);
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledWith(user);
+		});
+
+		it('should not retry timed-out credential generation', async () => {
+			vi.useFakeTimers();
+			client.generateAiCreditsCredentials.mockImplementation(
+				async () => await new Promise<never>(() => {}),
+			);
+
+			const promise = aiService.createFreeAiCredits(user);
+			const assertion = expect(promise).rejects.toThrow(
+				'The AI assistant service is temporarily unavailable',
+			);
+			await vi.runAllTimersAsync();
+
+			await assertion;
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not retry definite client errors', async () => {
+			const alreadyClaimed = Object.assign(new Error('Already claimed'), { statusCode: 400 });
+			client.generateAiCreditsCredentials.mockRejectedValue(alreadyClaimed);
+
+			await expect(aiService.createFreeAiCredits(user)).rejects.toBe(alreadyClaimed);
+			expect(client.generateAiCreditsCredentials).toHaveBeenCalledTimes(1);
 		});
 	});
 });

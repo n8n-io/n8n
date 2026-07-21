@@ -25,6 +25,7 @@ import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import {
 	collectConfirmationRequestIds,
@@ -82,12 +83,54 @@ function messageCreatedAtMs(message: AgentDbMessage): number {
 	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
+function collectInFlightCheckpointMessages(checkpoints: InstanceAiCheckpoint[]): AgentDbMessage[] {
+	const merged: AgentDbMessage[] = [];
+	const seen = new Set<string>();
+	for (const checkpoint of checkpoints) {
+		const stateMessages = checkpoint.state?.messageList?.messages ?? [];
+		for (const candidate of stateMessages) {
+			if (!isAgentMessageLike(candidate) || seen.has(candidate.id)) continue;
+			seen.add(candidate.id);
+			merged.push({
+				...candidate,
+				createdAt:
+					candidate.createdAt instanceof Date ? candidate.createdAt : new Date(candidate.createdAt),
+			});
+		}
+	}
+	return merged;
+}
+
 function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): AgentDbMessage[] {
 	if (extras.length === 0) return stored;
 	const byId = new Map<string, AgentDbMessage>();
 	for (const message of stored) byId.set(message.id, message);
 	for (const message of extras) if (!byId.has(message.id)) byId.set(message.id, message);
 	return [...byId.values()].sort((a, b) => messageCreatedAtMs(a) - messageCreatedAtMs(b));
+}
+
+/** Runs with a `run-start` fact but no terminal `run-finish` in the log. */
+function collectUnfinishedRunIds(rows: Array<{ runId: string; event: InstanceAiEvent }>) {
+	const unfinished = new Set<string>();
+	for (const row of rows) {
+		if (row.event.type === 'run-start') unfinished.add(row.runId);
+		else if (row.event.type === 'run-finish') unfinished.delete(row.runId);
+	}
+	return unfinished;
+}
+
+/** Host run ids whose own checkpoint is HITL-suspended — the same predicate the
+ *  interrupted-run sweeper uses to spare a run, so "keeps folding" and "won't
+ *  be swept" stay one definition. Sub-agent and legacy rows carry a null
+ *  hostRunId and never match. */
+function collectSuspendedHostRunIds(checkpoints: InstanceAiCheckpoint[]): Set<string> {
+	const suspended = new Set<string>();
+	for (const checkpoint of checkpoints) {
+		if (checkpoint.state?.status === 'suspended' && checkpoint.hostRunId) {
+			suspended.add(checkpoint.hostRunId);
+		}
+	}
+	return suspended;
 }
 
 /** Snapshot-shaped entries derived from the log, grouped the way the snapshot
@@ -349,6 +392,10 @@ export class InstanceAiMemoryService {
 			return snapshots;
 		};
 
+		// Loaded once, shared by the fold's suspension carve-out and the
+		// in-flight message merge below.
+		const activeCheckpoints = await this.loadActiveCheckpoints(threadId);
+
 		// Durable-log flag (fold-on-read): history trees derive from the event
 		// log; the stored snapshots (the flag-off and rollback path) are only
 		// loaded when the fold needs its pre-log/failure fallback, keeping the
@@ -357,6 +404,7 @@ export class InstanceAiMemoryService {
 			? await this.foldSnapshotsFromLog(
 					threadId,
 					loadStoredSnapshots,
+					collectSuspendedHostRunIds(activeCheckpoints),
 					options?.excludeRunIds,
 					options?.excludeMessageGroupIds,
 				)
@@ -369,7 +417,7 @@ export class InstanceAiMemoryService {
 		// only inside the checkpoint blob. Without merging them in, a thread
 		// waiting on a confirmation renders without those in-flight artifacts
 		// after a page reload.
-		const checkpointMessages = await this.loadInFlightCheckpointMessages(threadId);
+		const checkpointMessages = collectInFlightCheckpointMessages(activeCheckpoints);
 		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
 
 		const fallbacksBefore = messageParserStats.fallbackActivations;
@@ -393,6 +441,7 @@ export class InstanceAiMemoryService {
 	private async foldSnapshotsFromLog(
 		threadId: string,
 		loadStoredSnapshots: () => Promise<AgentTreeSnapshot[]>,
+		suspendedRunIds: ReadonlySet<string>,
 		excludeRunIds?: string[],
 		excludeMessageGroupIds?: string[],
 	): Promise<AgentTreeSnapshot[]> {
@@ -412,9 +461,23 @@ export class InstanceAiMemoryService {
 		// (INS-851), so this branch is a dev-instance safety, not a design.
 		if (rows.length === 0) return await loadStoredSnapshots();
 
+		// Multi-main backstop (INS-913): the caller's exclusions come from
+		// per-process run state, which is empty on a main that is not driving
+		// the run — the log knows main-agnostically that a run without a
+		// terminal run-finish is in flight, and its group must stay out of
+		// history (SSE renders it live). HITL-suspended runs are the exception:
+		// they legitimately lack a run-finish and their turn folds, paired with
+		// the checkpoint-surfaced messages. A crashed run stays hidden until the
+		// startup sweep terminalizes it — hidden beats a forever-spinning
+		// partial tree.
+		const skipRunIds = new Set(excludeRunIds ?? []);
+		for (const runId of collectUnfinishedRunIds(rows)) {
+			if (!suspendedRunIds.has(runId)) skipRunIds.add(runId);
+		}
+
 		const { entries, skippedInFlight } = buildLogDerivedSnapshots(
 			rows,
-			new Set(excludeRunIds ?? []),
+			skipRunIds,
 			new Set(excludeMessageGroupIds ?? []),
 		);
 		if (entries.length === 0) {
@@ -452,35 +515,18 @@ export class InstanceAiMemoryService {
 		}
 	}
 
-	private async loadInFlightCheckpointMessages(threadId: string): Promise<AgentDbMessage[]> {
-		let checkpoints;
+	/** Live checkpoints for the thread; [] on failure — the consumers (suspension
+	 *  carve-out, in-flight message merge) degrade rather than fail the read. */
+	private async loadActiveCheckpoints(threadId: string): Promise<InstanceAiCheckpoint[]> {
 		try {
-			checkpoints = await this.checkpointRepository.findActiveByThreadId(threadId);
+			return await this.checkpointRepository.findActiveByThreadId(threadId);
 		} catch (error) {
-			this.logger.warn('Failed to load in-flight checkpoint messages', {
+			this.logger.warn('Failed to load in-flight checkpoints', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 			return [];
 		}
-
-		const merged: AgentDbMessage[] = [];
-		const seen = new Set<string>();
-		for (const checkpoint of checkpoints) {
-			const stateMessages = checkpoint.state?.messageList?.messages ?? [];
-			for (const candidate of stateMessages) {
-				if (!isAgentMessageLike(candidate) || seen.has(candidate.id)) continue;
-				seen.add(candidate.id);
-				merged.push({
-					...candidate,
-					createdAt:
-						candidate.createdAt instanceof Date
-							? candidate.createdAt
-							: new Date(candidate.createdAt),
-				});
-			}
-		}
-		return merged;
 	}
 
 	async getLatestRunSnapshot(

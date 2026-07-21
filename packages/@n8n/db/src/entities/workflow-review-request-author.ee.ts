@@ -1,13 +1,10 @@
-import { Column, Entity, Unique } from '@n8n/typeorm';
-
-import { WithStringId } from './abstract-entity';
+import { Entity, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'workflow_review_request_authors' })
-@Unique('UQ_workflow_review_request_authors_request_user', ['workflowReviewRequestId', 'userId'])
-export class WorkflowReviewRequestAuthor extends WithStringId {
-	@Column({ type: 'varchar', length: 36 })
+export class WorkflowReviewRequestAuthor {
+	@PrimaryColumn({ type: 'varchar', length: 36 })
 	workflowReviewRequestId: string;
 
-	@Column({ type: 'uuid' })
+	@PrimaryColumn({ type: 'uuid' })
 	userId: string;
 }

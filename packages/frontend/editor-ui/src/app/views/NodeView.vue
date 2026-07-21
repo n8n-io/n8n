@@ -110,7 +110,7 @@ import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/compon
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
@@ -377,6 +377,18 @@ function initializeRoute() {
 			source: 'empty_state',
 		});
 		evaluationsWizardSidepanelStore.open(0);
+	}
+
+	// A test case seeded from the executions page hands off a pending execution
+	// via the wizard store, then navigates here. Open the Tests panel from the
+	// editor route — the only route that renders the focus panel — so the handoff
+	// doesn't depend on focus-panel state set before navigation.
+	if (
+		evaluationsWizardSidepanelStore.pendingSeedExecution &&
+		isEvaluationsWizardSidepanelEnabled.value
+	) {
+		focusPanelStore.setSelectedTab('evaluations');
+		focusPanelStore.openFocusPanel();
 	}
 
 	// Handle debug mode event binding (data loading is handled by WorkflowLayout)
@@ -1035,9 +1047,9 @@ function onCreateSticky() {
 
 function onClickConnectionAdd(connection: Connection) {
 	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
-	const isAddBetwenTool =
+	const isAddBetweenTool =
 		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
-	if (isAddBetwenTool) {
+	if (isAddBetweenTool) {
 		nodeCreatorStore.openNodeCreatorForConnectingNode({
 			workflowId: workflowId.value,
 			connection,

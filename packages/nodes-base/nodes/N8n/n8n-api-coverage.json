@@ -190,6 +190,9 @@
 		"GET /settings/sso/saml": {
 			"status": "gap"
 		},
+		"PUT /settings/sso/saml": {
+			"status": "gap"
+		},
 		"GET /settings/log-streaming/event-types": {
 			"status": "gap"
 		},

@@ -1,5 +1,11 @@
 import { AgentEvent, filterRuntimeSkillSource } from '@n8n/agents';
-import type { Message, Workspace, ScopedMemoryTaskEvent, AgentEventData } from '@n8n/agents';
+import type {
+	Message,
+	Workspace,
+	ScopedMemoryTaskEvent,
+	AgentEventData,
+	MemoryTaskUsageReport,
+} from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
@@ -54,6 +60,8 @@ import {
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
+	shutdownProductTelemetryProviders,
+	tokenUsageToBuilderUsageItems,
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
@@ -64,6 +72,8 @@ import {
 	createOrchestratorRunControl,
 	createOrchestratorRunControlForState,
 	orchestratorAgentId,
+	resolveAgentPreviewSession,
+	saveAgentBuilderTarget,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -82,6 +92,7 @@ import {
 	type ServiceProxyConfig,
 	type StreamableAgent,
 	type SuspendedRunState,
+	type SuspensionInfo,
 	type WorkflowBuildOutcome,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
@@ -94,6 +105,7 @@ import {
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
+import type { Scope } from '@n8n/permissions';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -101,8 +113,10 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -111,6 +125,7 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 
+import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -176,9 +191,25 @@ import {
 	WorkflowVerificationObligationService,
 } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
+import { AgentExecutionService } from '../agents/agent-execution.service';
+import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
+function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
+	const rawMessage = suspension?.suspendPayload.message;
+	const message = typeof rawMessage === 'string' && rawMessage ? rawMessage : undefined;
+	return {
+		status: 'suspended',
+		runId,
+		...(suspension?.requestId ? { requestId: suspension.requestId } : {}),
+		...(suspension?.toolCallId ? { pendingToolCallId: suspension.toolCallId } : {}),
+		...(suspension?.toolName ? { toolName: suspension.toolName } : {}),
+		...(message ? { message } : {}),
+	};
 }
 
 /**
@@ -218,7 +249,7 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
-	if (!context) return '';
+	if (!context || context.source !== 'credential-modal') return '';
 
 	const { credential } = context;
 	const lines = [
@@ -314,6 +345,37 @@ export function getUserFacingErrorMessage(error: unknown): string {
 	}
 
 	return 'Something went wrong before I could finish that response. Please try again.';
+}
+
+/**
+ * Masked terminal failures whose real cause is unrecoverable from the error
+ * object: the ai-sdk's flush wrapper when zero steps were recorded (created
+ * without `cause`), and undici's `TypeError: terminated` when the upstream
+ * connection is killed mid-stream. When the credit wall hits at the model call
+ * instead of the token endpoint, the run dies with one of these rather than a
+ * classified quota error — see `reclassifyMaskedStreamFailure`.
+ */
+export function isMaskedStreamFailure(error: unknown): error is Error {
+	if (!(error instanceof Error)) return false;
+	if (error.name === 'AI_NoOutputGeneratedError') return true;
+	return error.name === 'TypeError' && error.message === 'terminated';
+}
+
+/**
+ * Substituted for a masked stream failure once the credit re-check confirms
+ * the user is out of credits. Carries the machine-readable quota code so the
+ * run is classified exactly like a quota error surfaced by the proxy (credits
+ * message + structured `errorCode`, not reported to Sentry), and keeps the
+ * masked original as `cause` for tracing and telemetry.
+ */
+export class QuotaExhaustedStreamError extends UserError {
+	readonly errorCode = 'quota_exhausted';
+
+	constructor(maskedError: Error) {
+		super(`AI credits exhausted (${maskedError.name}: ${maskedError.message})`, {
+			cause: maskedError,
+		});
+	}
 }
 
 function createInertAbortSignal(): AbortSignal {
@@ -733,6 +795,39 @@ export class InstanceAiService {
 		return await this.modelService.getCredits(user);
 	}
 
+	/**
+	 * When the credit wall hits at the model call (rather than the token
+	 * endpoint at sandbox start), the proxy failure surfaces as a masked
+	 * generic error. For those signatures, re-check the user's remaining
+	 * credits and substitute a quota-exhausted error so the run resolves to
+	 * the credits message instead of a generic failure. Best-effort: any
+	 * re-check failure keeps the original error, so genuinely unexplained
+	 * stream deaths stay visible.
+	 */
+	private async reclassifyMaskedStreamFailure(
+		error: unknown,
+		user: User,
+		context: { threadId: string; runId: string },
+	): Promise<unknown> {
+		if (!isMaskedStreamFailure(error)) return error;
+		try {
+			const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
+			// A negative quota is the unlimited sentinel (e.g. proxy disabled).
+			if (creditsQuota < 0 || creditsClaimed < creditsQuota) return error;
+		} catch (creditsError) {
+			this.logger.debug('Masked stream failure credit re-check failed; keeping original error', {
+				error: getErrorMessage(creditsError),
+				...context,
+			});
+			return error;
+		}
+		this.logger.info('Reclassified masked stream failure as quota-exhausted', {
+			maskedError: getErrorMessage(error),
+			...context,
+		});
+		return new QuotaExhaustedStreamError(error);
+	}
+
 	isEnabled(): boolean {
 		return this.settingsService.isAgentEnabled() && !!this.instanceAiConfig.model;
 	}
@@ -762,8 +857,15 @@ export class InstanceAiService {
 		return { ...status, memoryTasks };
 	}
 
-	private memoryTaskObserverFor(threadId: string): (event: ScopedMemoryTaskEvent) => void {
+	private memoryTaskObserverFor(
+		threadId: string,
+		tracing: InstanceAiTraceContext | undefined,
+	): (event: ScopedMemoryTaskEvent) => void {
 		return (event) => {
+			// Retains/releases the trace's telemetry provider lease so the
+			// task's LLM span can still export after the root trace finalizes
+			// (see InstanceAiTraceContext.onMemoryTaskEvent).
+			tracing?.onMemoryTaskEvent?.(event);
 			this.memoryTaskRegistry.handleEvent(threadId, event);
 			const pendingTasks = this.memoryTaskRegistry.getTasks(threadId);
 			const logContext = {
@@ -1499,6 +1601,11 @@ export class InstanceAiService {
 
 		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
+
+		// Final drain of every trace's LangSmith provider so spans still sitting
+		// in the batch exporter (e.g. from late memory tasks) are not lost on
+		// shutdown. Best-effort by contract — never throws.
+		await shutdownProductTelemetryProviders();
 		this.logger.debug('Instance AI service shut down');
 	}
 
@@ -1685,11 +1792,34 @@ export class InstanceAiService {
 		}
 	}
 
-	private createAgentMemoryOptions() {
+	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
 		return {
 			observationalMemory: {
 				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
+				// Observer/reflector calls run in the background outside the run's
+				// finish-chunk usage, so they are claimed here per report. Best-effort:
+				// a billing failure must never block observation persistence.
+				onTaskUsage: async (report: MemoryTaskUsageReport) => {
+					try {
+						const items = tokenUsageToBuilderUsageItems(report.model, report.usage);
+						if (items.length === 0) return;
+						await this.creditService.claimRunUsage(
+							user,
+							threadId,
+							`${runId}:memory:${report.task}:${report.reportId}`,
+							items,
+							'completed',
+						);
+					} catch (error) {
+						this.logger.warn('Failed to claim observational-memory usage', {
+							threadId,
+							runId,
+							task: report.task,
+							error: getErrorMessage(error),
+						});
+					}
+				},
 			},
 		};
 	}
@@ -2144,9 +2274,32 @@ export class InstanceAiService {
 			},
 			// Aggregate on the instance-AI thread (not the `ia-builder:` session
 			// thread) so the credit service's per-thread display total and FE push
-			// attribute builder tokens to the conversation the user sees.
-			claimSubAgentUsage: (dedupeId, usage, status) => {
-				void this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
+			// attribute builder tokens to the conversation the user sees. The tool
+			// awaits this before returning/cascading a terminal segment outcome, so
+			// a billing failure must never propagate — best-effort by contract.
+			claimSubAgentUsage: async (dedupeId, usage, status) => {
+				try {
+					await this.creditService.claimRunUsage(user, threadId, dedupeId, usage, status);
+				} catch (error) {
+					// claimRunUsage() handles ordinary claim failures (network, retries)
+					// internally and only throws for exceptional contract violations
+					// (e.g. a negative quota) — those must still reach centralized
+					// Instance AI error reporting even though billing stays best-effort.
+					this.instanceAiErrorReporter.report(error, {
+						component: 'instance-ai-agent-builder-usage',
+						threadId,
+						runId,
+						userId: user.id,
+						...(boundProjectId ? { projectId: boundProjectId } : {}),
+						...(messageGroupId ? { messageGroupId } : {}),
+					});
+					this.logger.warn('Failed to claim agent-builder usage', {
+						threadId,
+						runId,
+						dedupeId,
+						error: getErrorMessage(error),
+					});
+				}
 			},
 			domainTools,
 			abortSignal,
@@ -2215,6 +2368,56 @@ export class InstanceAiService {
 			plannedTaskService,
 			modelId,
 			orchestrationContext,
+		};
+	}
+
+	/**
+	 * Resolve the agents execution service only when the `agents` module is
+	 * active. Mirrors the builder-delegate gate so agent-preview handoff is
+	 * absent (rather than exploding) when agents are disabled.
+	 */
+	private getAgentExecutionService(): AgentExecutionService | null {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return null;
+		try {
+			return Container.get(AgentExecutionService);
+		} catch {
+			return null;
+		}
+	}
+
+	/**
+	 * Hydrate the thread-persisted preview-session reference (if any) and wire
+	 * the on-demand transcript resolver. Must run before createInstanceAgent so
+	 * createOrchestrationTools can register get-session on follow-up turns.
+	 */
+	private async bindAgentPreviewSession(
+		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+		user: User,
+	): Promise<void> {
+		await resolveAgentPreviewSession(context);
+		const projectId = context.projectId;
+		if (!context.agentPreviewSession || !projectId) return;
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
+			context.agentPreviewSession = undefined;
+			return;
+		}
+
+		context.resolvePreviewSession = async (ref) => {
+			const service = this.getAgentExecutionService();
+			if (!service) return null;
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			if (!detail) return null;
+			const transcript = formatPreviewSessionContext(
+				detail.thread,
+				detail.executions,
+				ref.executionId,
+			);
+			if (transcript === null) return null;
+			return {
+				title: detail.thread.title?.trim() || `Session #${detail.thread.sessionNumber}`,
+				sessionNumber: detail.thread.sessionNumber,
+				transcript,
+			};
 		};
 	}
 
@@ -3182,13 +3385,52 @@ export class InstanceAiService {
 				}
 			}
 
+			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
+			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
+
+			let handoffContextBlock = '';
+			let agentPreviewTitleFallback: string | undefined;
+			if (handoffContext?.source === 'agent-preview') {
+				const projectId = context.projectId;
+				if (!projectId) {
+					throw new UnexpectedError(
+						`Instance AI thread "${threadId}" has no bound project; agent-preview handoff requires a project`,
+					);
+				}
+				await this.assertAgentPreviewHandoffScopes(user, projectId);
+				const agentExecutionService = this.getAgentExecutionService();
+				if (!agentExecutionService) {
+					throw new UserError('Agent preview handoff is not available');
+				}
+				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
+					projectId,
+					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
+				});
+				handoffContextBlock = resolved.block;
+				agentPreviewTitleFallback = resolved.titleFallback;
+
+				context.agentBuilderTarget = resolved.target;
+				context.agentPreviewSession = {
+					agentId: handoffContext.agentId,
+					threadId: handoffContext.threadId,
+					...(handoffContext.executionId ? { executionId: handoffContext.executionId } : {}),
+				};
+				await saveAgentBuilderTarget(context, resolved.target, {
+					previewSession: context.agentPreviewSession,
+				});
+			} else {
+				handoffContextBlock = buildHandoffContextBlock(handoffContext);
+			}
+
 			// Set heuristic title before agent starts — thread always has a title.
 			// For an editor hand-off the user text is empty (the workflow is the
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
-				const handoffTitle = contextAttachments.find((attachment) => attachment.name)?.name;
+				const handoffTitle =
+					contextAttachments.find((attachment) => attachment.name)?.name ??
+					agentPreviewTitleFallback;
 				await patchThread(memory, {
 					threadId,
 					update: ({ metadata }) =>
@@ -3210,10 +3452,6 @@ export class InstanceAiService {
 					payload: { tasks: existingTasks },
 				});
 			}
-
-			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-			const contextResourcesBlock = buildContextResourcesBlock(contextAttachments);
-			const handoffContextBlock = buildHandoffContextBlock(handoffContext);
 
 			let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 			let attachmentManifest = '';
@@ -3462,15 +3700,7 @@ export class InstanceAiService {
 				// The tree is rebuilt from in-memory events and includes the
 				// confirmation-request data that the frontend needs.
 				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-				const suspensionOutputs = {
-					status: 'suspended',
-					runId,
-					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
-					...(result.suspension?.toolCallId
-						? { pendingToolCallId: result.suspension.toolCallId }
-						: {}),
-					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
-				};
+				const suspensionOutputs = buildSuspensionTraceOutputs(runId, result.suspension);
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
@@ -3513,9 +3743,13 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const terminalError =
+				result.status === 'errored'
+					? await this.reclassifyMaskedStreamFailure(result.error, user, { threadId, runId })
+					: undefined;
 			if (result.status === 'errored') {
 				this.instanceAiErrorReporter.report(
-					result.error ?? new Error('Instance AI stream errored'),
+					terminalError ?? new Error('Instance AI stream errored'),
 					{
 						component: 'instance-ai-stream',
 						threadId,
@@ -3529,9 +3763,9 @@ export class InstanceAiService {
 				);
 			}
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
 			const userFacingErrorCode =
-				result.status === 'errored' ? getUserFacingErrorCode(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
@@ -3572,8 +3806,8 @@ export class InstanceAiService {
 				...(result.status === 'errored'
 					? {
 							errorInfo: {
-								errorMessage: result.error
-									? getErrorMessage(result.error)
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
 									: 'Instance AI stream errored',
 								errorSource: 'stream' as const,
 							},
@@ -3658,9 +3892,13 @@ export class InstanceAiService {
 				return;
 			}
 
-			const errorMessage = getErrorMessage(error);
-			const userFacingErrorMessage = getUserFacingErrorMessage(error);
-			const userFacingErrorCode = getUserFacingErrorCode(error);
+			const terminalError = await this.reclassifyMaskedStreamFailure(error, user, {
+				threadId,
+				runId,
+			});
+			const errorMessage = getErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const errCtx: InstanceAiObservabilityContext = {
 				threadId,
@@ -3675,7 +3913,10 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
+			this.instanceAiErrorReporter.report(terminalError, {
+				component: 'instance-ai-run',
+				...errCtx,
+			});
 			await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
 				correlationId: messageId,
@@ -4087,6 +4328,7 @@ export class InstanceAiService {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
+		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,
 			threadId,
@@ -4100,10 +4342,10 @@ export class InstanceAiService {
 			orchestrationContext: environment.orchestrationContext,
 			mcpServers,
 			mcpManager: this.mcpClientManager,
-			memoryConfig: this.createAgentMemoryOptions(),
+			memoryConfig: this.createAgentMemoryOptions(user, threadId, runId),
 			memory: environment.memory,
 			checkpointStore: this.checkpointStore,
-			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 		});
 		this.subscribeToAgentErrors(agent, threadId, runId);
@@ -4245,6 +4487,19 @@ export class InstanceAiService {
 		}
 	}
 
+	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
+		const requiredScopes: Scope[] = ['agent:read', 'agent:update'];
+		return await userHasScopes(user, requiredScopes, false, { projectId });
+	}
+
+	private async assertAgentPreviewHandoffScopes(user: User, projectId: string): Promise<void> {
+		if (!(await this.canAccessAgentPreviewHandoff(user, projectId))) {
+			throw new ForbiddenError(
+				'You do not have permission to load or edit agent previews in this project.',
+			);
+		}
+	}
+
 	private async rebuildAgentForAutoSetupResume(
 		user: User,
 		threadId: string,
@@ -4361,6 +4616,10 @@ export class InstanceAiService {
 				toolCallId,
 				approved: data.approved,
 				resumeFields: Object.keys(resumeData),
+				...(data.userInput ? { userInput: data.userInput } : {}),
+				...(data.action ? { action: data.action } : {}),
+				...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+				...(data.answers ? { answers: data.answers } : {}),
 			},
 			resumeReason: 'approval',
 			metadata: {
@@ -4601,15 +4860,7 @@ export class InstanceAiService {
 				// Persist the refreshed agent tree so repeated HITL waits
 				// survive page refresh after a resume as well.
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
-				const suspensionOutputs = {
-					status: 'suspended',
-					runId: opts.runId,
-					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
-					...(result.suspension?.toolCallId
-						? { pendingToolCallId: result.suspension.toolCallId }
-						: {}),
-					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
-				};
+				const suspensionOutputs = buildSuspensionTraceOutputs(opts.runId, result.suspension);
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
@@ -4648,9 +4899,16 @@ export class InstanceAiService {
 
 			const outputText = await (result.text ?? Promise.resolve(''));
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
+			const terminalError =
+				result.status === 'errored'
+					? await this.reclassifyMaskedStreamFailure(result.error, opts.user, {
+							threadId: opts.threadId,
+							runId: opts.runId,
+						})
+					: undefined;
 			if (result.status === 'errored') {
 				this.instanceAiErrorReporter.report(
-					result.error ?? new Error('Instance AI resumed stream errored'),
+					terminalError ?? new Error('Instance AI resumed stream errored'),
 					{
 						component: 'instance-ai-stream',
 						threadId: opts.threadId,
@@ -4663,9 +4921,9 @@ export class InstanceAiService {
 				);
 			}
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
 			const userFacingErrorCode =
-				result.status === 'errored' ? getUserFacingErrorCode(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				await this.terminalOutcome.evaluateTerminalResponse(
 					opts.threadId,
@@ -4712,8 +4970,8 @@ export class InstanceAiService {
 				...(result.status === 'errored'
 					? {
 							errorInfo: {
-								errorMessage: result.error
-									? getErrorMessage(result.error)
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
 									: 'Instance AI resumed stream errored',
 								errorSource: 'stream' as const,
 							},
@@ -4795,9 +5053,13 @@ export class InstanceAiService {
 				return;
 			}
 
-			const errorMessage = getErrorMessage(error);
-			const userFacingErrorMessage = getUserFacingErrorMessage(error);
-			const userFacingErrorCode = getUserFacingErrorCode(error);
+			const terminalError = await this.reclassifyMaskedStreamFailure(error, opts.user, {
+				threadId: opts.threadId,
+				runId: opts.runId,
+			});
+			const errorMessage = getErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			const errCtx: InstanceAiObservabilityContext = {
@@ -4812,7 +5074,10 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
+			this.instanceAiErrorReporter.report(terminalError, {
+				component: 'instance-ai-run',
+				...errCtx,
+			});
 			await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
 				messageGroupId,
 				errorMessage: userFacingErrorMessage,

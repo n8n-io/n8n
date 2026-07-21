@@ -4,7 +4,6 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| id | varchar(36) |  | false |  |  |  |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 | workflowReviewRequestId | varchar(36) |  | false |  | [public.workflow_review_request](public.workflow_review_request.md) |  |
 
@@ -14,17 +13,16 @@
 | ---- | ---- | ---------- |
 | FK_81d0a2584aa4e8e5e0d6aa68f32 | FOREIGN KEY | FOREIGN KEY ("userId") REFERENCES "user"(id) ON DELETE CASCADE |
 | FK_ba29e1cc5cdba43ce7b810b3ddd | FOREIGN KEY | FOREIGN KEY ("workflowReviewRequestId") REFERENCES workflow_review_request(id) ON DELETE CASCADE |
-| PK_5eb06e782c1ac3f363abc52e120 | PRIMARY KEY | PRIMARY KEY (id) |
+| PK_4715c6035e0ebc4f3e8716f1e34 | PRIMARY KEY | PRIMARY KEY ("workflowReviewRequestId", "userId") |
 | workflow_review_request_review_workflowReviewRequestId_not_null | n | NOT NULL "workflowReviewRequestId" |
-| workflow_review_request_reviewers_id_not_null | n | NOT NULL id |
 | workflow_review_request_reviewers_userId_not_null | n | NOT NULL "userId" |
 
 ## Indexes
 
 | Name | Definition |
 | ---- | ---------- |
-| PK_5eb06e782c1ac3f363abc52e120 | CREATE UNIQUE INDEX "PK_5eb06e782c1ac3f363abc52e120" ON public.workflow_review_request_reviewers USING btree (id) |
-| UQ_workflow_review_request_reviewers_request_user | CREATE UNIQUE INDEX "UQ_workflow_review_request_reviewers_request_user" ON public.workflow_review_request_reviewers USING btree ("workflowReviewRequestId", "userId") |
+| IDX_workflow_review_request_reviewers_user | CREATE INDEX "IDX_workflow_review_request_reviewers_user" ON public.workflow_review_request_reviewers USING btree ("userId", "workflowReviewRequestId") |
+| PK_4715c6035e0ebc4f3e8716f1e34 | CREATE UNIQUE INDEX "PK_4715c6035e0ebc4f3e8716f1e34" ON public.workflow_review_request_reviewers USING btree ("workflowReviewRequestId", "userId") |
 
 ## Relations
 
@@ -35,7 +33,6 @@ erDiagram
 "public.workflow_review_request_reviewers" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 
 "public.workflow_review_request_reviewers" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }

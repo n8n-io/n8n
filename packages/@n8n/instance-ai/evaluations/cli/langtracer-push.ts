@@ -3,8 +3,8 @@
 // leave unchanged, skip unsupported. The inverse of `--source langtracer` (which
 // pulls a suite down). Env: LANGTRACER_URL + LANGTRACER_API_KEY (repo-root .env.local).
 //
-//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite n8n-workflows --changed
-//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite n8n-workflows my-new-case ...
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline --changed
+//   dotenvx run -f ../../../.env.local -- pnpm eval:langtracer-push --suite baseline my-new-case ...
 //   ... --dry-run   # plan only, no writes
 
 import { execFileSync } from 'node:child_process';

@@ -163,8 +163,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const runWithData = getMockRun({
 			lastNodeOutput: [[{ json: { test: 1 } }]],
 		});
+		const ownershipService = mockInstance(OwnershipService);
 
 		beforeEach(() => {
+			// Both this and the executeAgent describe call mockInstance(OwnershipService),
+			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
+			Container.set(OwnershipService, ownershipService);
 			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({
 					id: EXECUTION_ID,
@@ -182,6 +186,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
 			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-id-1', name: 'Mock Project' }),
+			);
 		});
 
 		it('should execute workflow, return data and execution id', async () => {
@@ -1241,6 +1248,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		beforeEach(() => {
 			vi.clearAllMocks();
+			// Both this and the getBase describe call mockInstance(OwnershipService),
+			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
+			Container.set(OwnershipService, ownershipService);
 			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>(),
 			);

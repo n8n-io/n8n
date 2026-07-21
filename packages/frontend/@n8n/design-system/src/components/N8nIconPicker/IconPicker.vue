@@ -42,6 +42,7 @@ defineOptions({ name: 'N8nIconPicker' });
 
 const SKIN_TONE_STORAGE_KEY = 'n8n-emoji-skin-tone';
 const VIRTUAL_ROW_SIZE = 32;
+const VIRTUAL_ROW_STYLE = { minHeight: 'var(--height--md)' };
 
 type Props = {
 	buttonTooltip: string;
@@ -358,7 +359,11 @@ function humanizeIconName(name: string): string {
 								{{ t(item.labelKey) }}
 							</div>
 						</div>
-						<div v-else-if="item.type === 'icon-row'" :class="$style.iconGridRow">
+						<div
+							v-else-if="item.type === 'icon-row'"
+							:class="$style.iconGridRow"
+							:style="VIRTUAL_ROW_STYLE"
+						>
 							<button
 								v-for="name in item.iconNames"
 								:key="name"
@@ -397,7 +402,11 @@ function humanizeIconName(name: string): string {
 								{{ t(item.labelKey) }}
 							</div>
 						</div>
-						<div v-else-if="item.type === 'emoji-row'" :class="$style.emojiGridRow">
+						<div
+							v-else-if="item.type === 'emoji-row'"
+							:class="$style.emojiGridRow"
+							:style="VIRTUAL_ROW_STYLE"
+						>
 							<button
 								v-for="emoji in item.emojis"
 								:key="emoji.u"

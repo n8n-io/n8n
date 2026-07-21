@@ -40,6 +40,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_workflow_review_request_project_state | CREATE INDEX "IDX_workflow_review_request_project_state" ON public.workflow_review_request USING btree ("projectId", state) |
 | PK_ae17b90023bcd05e003cd8f64dc | CREATE UNIQUE INDEX "PK_ae17b90023bcd05e003cd8f64dc" ON public.workflow_review_request USING btree (id) |
 
 ## Relations
@@ -87,12 +88,10 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.workflow_review_request_authors" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "public.workflow_review_request_reviewers" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }

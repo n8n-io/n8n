@@ -45,6 +45,7 @@ CREATE TABLE "workflow_review_request" ("id" varchar(36) PRIMARY KEY NOT NULL, "
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_workflow_review_request_project_state | CREATE INDEX "IDX_workflow_review_request_project_state"<br />			ON "workflow_review_request"("projectId", "state") |
 | sqlite_autoindex_workflow_review_request_1 | PRIMARY KEY (id) |
 
 ## Relations
@@ -54,8 +55,8 @@ erDiagram
 
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (closedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
-"workflow_review_request_authors" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"workflow_review_request_reviewers" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_authors" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_review_request_reviewers" |o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request_workflow" }o--|| "workflow_review_request" : "FOREIGN KEY (workflowReviewRequestId) REFERENCES workflow_review_request (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_review_request" }o--o| "user" : "FOREIGN KEY (updatedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -92,14 +93,12 @@ erDiagram
   datetime_3_ updatedAt
 }
 "workflow_review_request_authors" {
-  varchar_36_ id PK
-  varchar userId FK
-  varchar_36_ workflowReviewRequestId FK
+  varchar userId PK
+  varchar_36_ workflowReviewRequestId PK
 }
 "workflow_review_request_reviewers" {
-  varchar_36_ id PK
-  varchar userId FK
-  varchar_36_ workflowReviewRequestId FK
+  varchar userId PK
+  varchar_36_ workflowReviewRequestId PK
 }
 "workflow_review_request_workflow" {
   varchar_36_ id PK

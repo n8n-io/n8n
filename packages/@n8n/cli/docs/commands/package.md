@@ -16,6 +16,7 @@ n8n-cli package export -w abc -w def -o team.n8np
 n8n-cli package export --folder-id=xyz -o folders.n8np
 n8n-cli package export --project-id=abc -o project.n8np
 n8n-cli package export -p abc -p def -o projects.n8np
+n8n-cli package export -w abc --include-variable-values=false -o export.n8np
 ```
 
 | Flag | Description |
@@ -24,6 +25,7 @@ n8n-cli package export -p abc -p def -o projects.n8np
 | `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
+| `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
 | `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail`, `reference-only`, or `include-in-package`. Currently only `fail` is supported. |
 
 Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
@@ -53,6 +55,7 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"c
 | `--conflict-policy` | What to do when a workflow already exists by source ID: `new-version`, `fail`, or `skip`. (required) |
 | `--project` | Target project ID. Defaults to your personal project. |
 | `--folder` | Target folder ID within the project. Defaults to the project root. |
+| `--workflow-publishing-policy` | Whether imported workflows end up published. `preserve-published-state` (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; `match-source` follows the package workflow's published flag; `publish-all` publishes every imported workflow; `unpublish-all` leaves new workflows unpublished and unpublishes updated ones. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
 | `--folder-conflict-policy` | What to do when a package folder already exists in the target project: `merge` (default, reuse the existing folder and merge the package's children into it) or `fail`. Requires a folders-enabled license when the package contains folders. |
 | `--credential-matching-mode` | How credential references are matched on the target instance: `id-only` (default, match by id), `name-and-type` (match by exact name and type), or `type-only` (match by type). For `name-and-type` and `type-only`, candidates are ranked by scope — owned by the target project, then shared into it, then global — and ties within a scope use the most recently updated credential. |

@@ -40,6 +40,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
@@ -88,6 +89,11 @@ export class WorkflowExecutionService {
 			},
 		});
 
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflowData.id,
+		);
+
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
 			userId: additionalData.userId,
@@ -95,6 +101,8 @@ export class WorkflowExecutionService {
 			executionData,
 			workflowData,
 			deduplicationKey,
+			projectId,
+			projectName,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
@@ -229,9 +237,12 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
-			data.projectId = project.id;
-			data.projectName = project.name;
+			const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+				this.ownershipService,
+				workflowData.id,
+			);
+			data.projectId = projectId;
+			data.projectName = projectName;
 
 			data.encryptedRunnerIdentity = n8nAuthCookie
 				? await this.executionContextService.buildManualExecutionCredentials(n8nAuthCookie)
@@ -290,7 +301,10 @@ export class WorkflowExecutionService {
 		executionMode: WorkflowExecuteMode = 'chat',
 		pushRef?: string,
 	) {
-		const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+		const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+			this.ownershipService,
+			workflowData.id,
+		);
 
 		const data: IWorkflowExecutionDataProcess = {
 			userId: user.id,
@@ -300,8 +314,8 @@ export class WorkflowExecutionService {
 			streamingEnabled,
 			httpResponse,
 			pushRef,
-			projectId: project.id,
-			projectName: project.name,
+			projectId,
+			projectName,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
@@ -311,6 +325,8 @@ export class WorkflowExecutionService {
 			workflowId: workflowData.id,
 			workflowName: workflowData.name,
 			executionId,
+			projectId,
+			projectName,
 			source: 'chat',
 		});
 
@@ -506,6 +522,8 @@ export class WorkflowExecutionService {
 				workflowId,
 				workflowName: workflowData.name,
 				executionId,
+				projectId: runningProject.id,
+				projectName: runningProject.name,
 				source: 'error',
 			});
 		} catch (error) {

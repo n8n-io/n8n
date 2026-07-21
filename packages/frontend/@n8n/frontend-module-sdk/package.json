@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/frontend-module-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "exports": {
@@ -18,6 +18,7 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
+    "@n8n/api-types": "workspace:*",
     "@n8n/design-system": "workspace:*",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"

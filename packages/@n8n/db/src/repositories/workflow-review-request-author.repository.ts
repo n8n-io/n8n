@@ -12,7 +12,6 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 
 	async addAuthor(
 		input: {
-			id?: string;
 			workflowReviewRequestId: string;
 			userId: string;
 		},
@@ -20,7 +19,6 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 	): Promise<WorkflowReviewRequestAuthor> {
 		const manager = trx ?? this.manager;
 		const entity = this.create({
-			id: input.id,
 			workflowReviewRequestId: input.workflowReviewRequestId,
 			userId: input.userId,
 		});
@@ -31,7 +29,7 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 	async findByRequestId(requestId: string): Promise<WorkflowReviewRequestAuthor[]> {
 		return await this.find({
 			where: { workflowReviewRequestId: requestId },
-			order: { id: 'ASC' },
+			order: { userId: 'ASC' },
 		});
 	}
 
@@ -42,7 +40,7 @@ export class WorkflowReviewRequestAuthorRepository extends Repository<WorkflowRe
 
 		return await this.find({
 			where: { workflowReviewRequestId: In(requestIds) },
-			order: { id: 'ASC' },
+			order: { userId: 'ASC' },
 		});
 	}
 }

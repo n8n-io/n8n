@@ -180,18 +180,8 @@ function getMessageAnAgentNode(
 	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
 	if (!node) return [];
 
-	const view = getNodeView(node);
-	return [
-		{
-			...view,
-			properties: {
-				...view.properties,
-				tag: {
-					preview: true,
-				},
-			},
-		},
-	];
+	// The early-preview tag is attached centrally in `applyNodeTags`.
+	return [getNodeView(node)];
 }
 
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {

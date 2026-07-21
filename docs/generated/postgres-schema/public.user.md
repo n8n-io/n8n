@@ -304,12 +304,10 @@ erDiagram
   uuid updatedById FK
 }
 "public.workflow_review_request_authors" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }
 "public.workflow_review_request_reviewers" {
-  varchar_36_ id
   uuid userId FK
   varchar_36_ workflowReviewRequestId FK
 }

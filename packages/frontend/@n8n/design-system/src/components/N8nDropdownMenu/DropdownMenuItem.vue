@@ -414,6 +414,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style module lang="scss">
+@use '../../css/common/var';
+
 .wrapper {
 	display: contents;
 }
@@ -497,7 +499,7 @@ onBeforeUnmount(() => {
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
-	z-index: 999999;
+	z-index: var.$index-popper;
 	width: fit-content;
 	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
 	max-width: var(--n8n--dropdown-menu-width);

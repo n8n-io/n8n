@@ -23,13 +23,9 @@ describe('WorkflowReviewRequestAuthorRepository', () => {
 			const trx = mock<EntityManager>();
 			trx.save.mockImplementation(async (_target, entity) => entity);
 
-			await repo.addAuthor(
-				{ id: 'author-1', workflowReviewRequestId: 'req-1', userId: 'user-1' },
-				trx,
-			);
+			await repo.addAuthor({ workflowReviewRequestId: 'req-1', userId: 'user-1' }, trx);
 
 			expect(trx.save.mock.calls[0]?.[1]).toMatchObject({
-				id: 'author-1',
 				workflowReviewRequestId: 'req-1',
 				userId: 'user-1',
 			});

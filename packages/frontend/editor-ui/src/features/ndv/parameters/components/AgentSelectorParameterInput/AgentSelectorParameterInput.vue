@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { onClickOutside } from '@vueuse/core';
+import { useRouter } from 'vue-router';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import ExpressionParameterInput from '../ExpressionParameterInput.vue';
 import ResourceLocatorDropdown from '../ResourceLocator/ResourceLocatorDropdown.vue';
@@ -20,11 +21,21 @@ import { useResourceLocatorModes } from '../../composables/useResourceLocatorMod
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useAgentProjectNameResolver } from '@/features/agents/composables/useAgentProjectNameResolver';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nLink,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+} from '@n8n/design-system';
 
 export interface Props {
 	modelValue: INodeParameterResourceLocator;
@@ -64,6 +75,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const { onDocumentVisible } = useDocumentVisibility();
 const { debounce } = useDebounce();
 
@@ -124,6 +136,23 @@ const placeholder = computed(() => {
 
 	return i18n.baseText('resourceLocator.id.placeholder');
 });
+
+// Mirror the generic RLC's open-resource affordance: link the selected agent
+// to its builder page. Only a concrete list-mode selection can resolve — free
+// text / expressions in id mode may not reference a real agent.
+const agentUrl = computed(() => {
+	if (!isListMode.value || !projectId.value) return null;
+	const agentId = props.modelValue?.value;
+	if (typeof agentId !== 'string' || !agentId) return null;
+	return router.resolve({
+		name: AGENT_BUILDER_VIEW,
+		params: { projectId: projectId.value, agentId },
+	}).href;
+});
+
+function openAgentLink() {
+	if (agentUrl.value) openSafeUrl(agentUrl.value);
+}
 
 function setWidth() {
 	const containerRef = container.value as HTMLElement | undefined;
@@ -390,6 +419,11 @@ defineExpose({ showDropdown });
 						:issues="parameterIssues"
 						:class="$style['parameter-issues']"
 					/>
+					<div v-else-if="agentUrl" :class="$style.openResourceLink">
+						<N8nLink theme="text" data-test-id="rlc-open-resource-link" @click.stop="openAgentLink">
+							<N8nIcon icon="external-link" :title="i18n.baseText('agentNode.card.openAgent')" />
+						</N8nLink>
+					</div>
 				</div>
 			</div>
 		</ResourceLocatorDropdown>

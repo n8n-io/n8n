@@ -76,6 +76,56 @@ export async function buildWorkflowReferencingCredential({
 	});
 }
 
+interface BuildWorkflowReferencingVariablesOptions {
+	name: string;
+	project: Project;
+	variableNames: string[];
+	/** Places the workflow inside a folder, so folder-with-workflows export can pick it up. */
+	parentFolder?: Folder;
+}
+
+/**
+ * Creates a one-node workflow whose Set node references the given variables via
+ * `$vars.<name>` expressions. The variable rows do not need to exist.
+ */
+export async function buildWorkflowReferencingVariables({
+	name,
+	project,
+	variableNames,
+	parentFolder,
+}: BuildWorkflowReferencingVariablesOptions): Promise<WorkflowEntity> {
+	return await createWorkflow(
+		{
+			name,
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [0, 0],
+					parameters: {
+						assignments: {
+							assignments: variableNames.map((variableName, index) => ({
+								id: `a${index}`,
+								name: `field${index}`,
+								type: 'string',
+								// Legacy keys that aren't valid identifiers are only reachable via brackets.
+								value: /^[A-Za-z_][A-Za-z0-9_]*$/.test(variableName)
+									? `={{ $vars.${variableName} }}`
+									: `={{ $vars['${variableName}'] }}`,
+							})),
+						},
+					},
+				},
+			],
+			connections: {},
+			parentFolder,
+		},
+		project,
+	);
+}
+
 interface BuildWorkflowCallingSubWorkflowOptions {
 	name: string;
 	project: Project;
@@ -94,6 +144,31 @@ export async function buildWorkflowCallingSubWorkflow({
 			name,
 			nodes: [executeWorkflowNode(subWorkflowId)],
 			connections: {},
+			parentFolder,
+		},
+		project,
+	);
+}
+
+interface BuildWorkflowUsingErrorWorkflowOptions {
+	name: string;
+	project: Project;
+	errorWorkflowId: string;
+	parentFolder?: Folder;
+}
+
+export async function buildWorkflowUsingErrorWorkflow({
+	name,
+	project,
+	errorWorkflowId,
+	parentFolder,
+}: BuildWorkflowUsingErrorWorkflowOptions): Promise<WorkflowEntity> {
+	return await createWorkflow(
+		{
+			name,
+			nodes: [],
+			connections: {},
+			settings: { errorWorkflow: errorWorkflowId },
 			parentFolder,
 		},
 		project,

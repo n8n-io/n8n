@@ -284,9 +284,11 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			// Replace requires a PRESENT, matching responseId: id-less blocks
 			// (synthetic markers, backfill) have no identity to match on, so they
 			// always append — two of them can never overwrite each other. The
-			// block must also textually extend the entry (deltas stream in order,
-			// so a genuine partial is always a prefix); the same id reused with
-			// unrelated text is a new message, not the open segment.
+			// block must also textually contain the entry at one end: a genuine
+			// partial is a prefix when the client streamed the segment from its
+			// start (mid-block reconnect) and a suffix when it attached mid-segment
+			// (refresh served by a main without the coalescer buffer); the same id
+			// reused with unrelated text is a new message, not the open segment.
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				const last = agent.timeline.at(-1);
@@ -294,7 +296,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					last?.type === 'text' &&
 					event.responseId !== undefined &&
 					last.responseId === event.responseId &&
-					event.payload.text.startsWith(last.content);
+					(event.payload.text.startsWith(last.content) ||
+						event.payload.text.endsWith(last.content));
 				if (isOpenSegment && agent.textContent.endsWith(last.content)) {
 					agent.textContent =
 						agent.textContent.slice(0, agent.textContent.length - last.content.length) +
@@ -310,8 +313,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'reasoning-block': {
 			// Coalesced reasoning segment from the durable log (replay path). Same
-			// replace semantics as text-block (present matching responseId plus
-			// textual extension): the segment's open streamed deltas are its
+			// replace semantics as text-block (present matching responseId plus a
+			// prefix or suffix match): the segment's open streamed deltas are its
 			// timeline entry, so REPLACE that entry and strip the partial text
 			// from the aggregate — no text renders twice.
 			const agent = ensureAgent(state, event.agentId);
@@ -321,7 +324,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					last?.type === 'reasoning' &&
 					event.responseId !== undefined &&
 					last.responseId === event.responseId &&
-					event.payload.text.startsWith(last.content);
+					(event.payload.text.startsWith(last.content) ||
+						event.payload.text.endsWith(last.content));
 				if (isOpenSegment && agent.reasoning.endsWith(last.content)) {
 					agent.reasoning =
 						agent.reasoning.slice(0, agent.reasoning.length - last.content.length) +
@@ -402,9 +406,22 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 
 		case 'agent-spawned': {
 			if (!isSafeObjectKey(event.agentId) || !isSafeObjectKey(event.payload.parentId)) break;
-			// Idempotency guard: a replayed agent-spawned for an existing agent
-			// must not create a second node for the same id.
-			if (state.agentsById[event.agentId]) break;
+			// A repeated agent-spawned for a known agent is an upsert of display
+			// metadata, never a second node or timeline entry: the builder
+			// republishes the event when the target agent's name changes, so
+			// refresh targetResource — but never erase a known name with an
+			// unnamed replay.
+			const existingNode = state.agentsById[event.agentId];
+			if (existingNode) {
+				const incoming = event.payload.targetResource;
+				if (incoming && incoming.id === existingNode.targetResource?.id) {
+					existingNode.targetResource = {
+						...incoming,
+						name: incoming.name ?? existingNode.targetResource?.name,
+					};
+				}
+				break;
+			}
 			const parentAgent = ensureAgent(state, event.payload.parentId);
 			if (parentAgent) {
 				const child: InstanceAiAgentNode = {
