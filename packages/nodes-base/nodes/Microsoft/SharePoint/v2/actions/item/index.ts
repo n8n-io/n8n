@@ -4,8 +4,9 @@ import * as create from './create.operation';
 // `delete` is reserved — alias as `del`.
 import * as del from './delete.operation';
 import * as get from './get.operation';
+import * as getAll from './getAll.operation';
 
-export { create, get, del as delete };
+export { create, get, getAll, del as delete };
 
 export const description: INodeProperties[] = [
 	{
@@ -37,11 +38,18 @@ export const description: INodeProperties[] = [
 				description: 'Retrieve details of a single item',
 				action: 'Get item',
 			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get specific items in a list or list many items',
+				action: 'Get many items',
+			},
 		],
-		default: 'get',
+		default: 'getAll',
 	},
 
 	...create.description,
 	...get.description,
+	...getAll.description,
 	...del.description,
 ];

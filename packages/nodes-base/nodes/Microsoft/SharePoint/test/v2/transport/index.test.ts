@@ -365,6 +365,37 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			expect(result).toEqual([{ id: '1' }, { id: '2' }]);
 			expect(mockRequestOAuth2).toHaveBeenCalledTimes(3);
 		});
+
+		it('re-sends custom headers on every page, unlike qs', async () => {
+			mockRequestOAuth2
+				.mockResolvedValueOnce({
+					value: [{ id: '1' }],
+					'@odata.nextLink': 'https://graph.microsoft.com/v1.0/sites/s/lists?$skiptoken=p2',
+				})
+				.mockResolvedValueOnce({ value: [{ id: '2' }] });
+
+			await microsoftApiRequestAllItems.call(
+				ctx,
+				'value',
+				'GET',
+				'/v1.0/sites/s/lists',
+				{},
+				{ $select: 'id' },
+				undefined,
+				{ Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' },
+			);
+
+			for (const call of mockRequestOAuth2.mock.calls) {
+				expect(call[1]).toEqual(
+					expect.objectContaining({
+						headers: expect.objectContaining({
+							Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
+						}),
+					}),
+				);
+			}
+			expect(mockRequestOAuth2.mock.calls[1][1]).toEqual(expect.objectContaining({ qs: {} }));
+		});
 	});
 
 	describe('permission refusals', () => {

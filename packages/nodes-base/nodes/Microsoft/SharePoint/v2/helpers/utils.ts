@@ -1,12 +1,22 @@
-import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 /** v1's Simplify $select list — the exact trimmed fields v2 keeps returning; Get Many reuses it. */
 export const LIST_SIMPLIFY_SELECT =
 	'id,name,displayName,description,createdDateTime,lastModifiedDateTime,webUrl';
 
-/** v1's item Simplify $select list — the trimmed top-level fields v2 keeps for an item Get. */
+/** v1's item Simplify request shape — the trimmed top-level fields v2 keeps returning. */
 export const ITEM_SIMPLIFY_SELECT = 'id,createdDateTime,lastModifiedDateTime,webUrl';
+export const ITEM_SIMPLIFY_EXPAND = 'fields(select=Title)';
+
+/** Match v1's simplifyItemPostReceive exactly: only these annotation keys are stripped. */
+export function simplifyItem(item: IDataObject): IDataObject {
+	delete item['@odata.context'];
+	delete item['@odata.etag'];
+	delete item['fields@odata.navigationLink'];
+	delete (item.fields as IDataObject | undefined)?.['@odata.etag'];
+	return item;
+}
 
 /**
  * Validates and trims a value used verbatim as a URL path segment. Rejects
