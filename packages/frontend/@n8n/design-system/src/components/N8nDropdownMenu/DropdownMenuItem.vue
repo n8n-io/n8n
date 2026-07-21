@@ -376,9 +376,6 @@ watch(
 	border-radius: var(--radius--xs);
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	background-color: var(--background--surface);
-<<<<<<< HEAD
-	z-index: 999999;
-=======
 	z-index: var.$index-popper;
 	width: fit-content;
 	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
@@ -391,7 +388,6 @@ watch(
 	&::-webkit-scrollbar {
 		display: none;
 	}
->>>>>>> 051eee19 (fix(editor): Keep dropdown tooltips above menus (#34547))
 }
 
 .item-leading {
