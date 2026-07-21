@@ -1,7 +1,7 @@
+import { AzureBlobService } from '@n8n/blob-storage/azure-blob';
 import fs from 'node:fs/promises';
 import { Readable } from 'node:stream';
 
-import { AzureBlobService } from '@/binary-data/azure-blob/azure-blob.service.ee';
 import { AzureBlobManager } from '@/binary-data/azure-blob.manager';
 import type { BinaryData } from '@/binary-data/types';
 import { mockInstance, toFileId, toStream } from '@test/utils';

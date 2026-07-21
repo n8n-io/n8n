@@ -51,6 +51,8 @@ export type WorkflowPublicationMetricsEventMap = {
 		result: PublicationOperationResult;
 		/** Workflows re-enqueued because their in-memory triggers were missing. */
 		deficientCount: number;
+		/** Registered workflows torn down because they are no longer published. */
+		surplusCount: number;
 		durationMs: number;
 	};
 };
