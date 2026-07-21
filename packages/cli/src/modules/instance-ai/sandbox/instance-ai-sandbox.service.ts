@@ -107,8 +107,8 @@ export type InstanceAiSandboxBackgroundTasks = {
 
 /** Settings collaborator that resolves provider credentials from admin config. */
 export type InstanceAiSandboxSettings = {
-	resolveDaytonaConfig: (user: User) => Promise<{ apiUrl?: string; apiKey?: string }>;
-	resolveN8nSandboxConfig: (user: User) => Promise<{ serviceUrl?: string; apiKey?: string }>;
+	resolveDaytonaConfig: () => Promise<{ apiUrl?: string; apiKey?: string }>;
+	resolveN8nSandboxConfig: () => Promise<{ serviceUrl?: string; apiKey?: string }>;
 };
 
 /** Proxy collaborator that routes Daytona traffic through the AI assistant service. */
@@ -259,14 +259,14 @@ export class InstanceAiSandboxService {
 			}
 
 			// Direct mode: Daytona credentials from env vars or admin credential
-			const daytona = await this.options.settingsService.resolveDaytonaConfig(user);
+			const daytona = await this.options.settingsService.resolveDaytonaConfig();
 			return {
 				...base,
 				daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
 				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
-		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig(user);
+		const sandbox = await this.options.settingsService.resolveN8nSandboxConfig();
 		return {
 			...base,
 			serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
