@@ -35,6 +35,7 @@ body.sb-show-main {
 }
 
 .theme-side-by-side__panel {
+	position: relative;
 	padding: var(--spacing--md);
 	background: var(--background--surface);
 	color: var(--text-color);
