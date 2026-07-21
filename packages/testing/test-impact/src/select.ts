@@ -18,7 +18,9 @@ import {
 	dropDevDepOnlyDeps,
 	filterImpactfulChanges,
 	forcesBroad,
+	isTsconfig,
 	stripDependencyFiles,
+	tsconfigForcesBroad,
 } from './changes.js';
 import type { WorkspaceImporters } from './dep-graph.js';
 import {
@@ -44,6 +46,9 @@ export interface SelectTestsInput {
 	 *  the lockfile + manifests from selection — a devDep can't reach the runtime
 	 *  bundle the E2E suite exercises. */
 	manifests?: Record<string, { before: string; after: string }>;
+	/** before/after content of each changed tsconfig (caller reads from git).
+	 *  Fed to {@link tsconfigForcesBroad}; omitted (local dev) → conservative broad. */
+	tsconfigs?: Record<string, { before: string; after: string }>;
 	/** Workspace package dir → runtime dependency names it declares (parsed from
 	 *  pnpm-lock.yaml's `importers`). With `manifests`, a changed runtime dep is
 	 *  walked to its declaring packages and scoped via the map instead
@@ -109,6 +114,18 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	// aren't in the map → run the suite (low-churn, so broad is cheap).
 	const forcing = impactful.filter(forcesBroad);
 	if (forcing.length > 0) return broad(forcing);
+
+	// A resolution-changing tsconfig edit forces broad; a resolution-neutral one
+	// is dropped (see tsconfigForcesBroad). No diff metadata → conservative broad.
+	const tsconfigChanges = impactful.filter(isTsconfig);
+	if (tsconfigChanges.length > 0) {
+		const forcingTsconfig = tsconfigChanges.filter((f) => {
+			const diff = input.tsconfigs?.[f];
+			return !diff || tsconfigForcesBroad(diff.before, diff.after);
+		});
+		if (forcingTsconfig.length > 0) return broad(forcingTsconfig);
+		impactful = impactful.filter((f) => !isTsconfig(f));
+	}
 
 	// devDependency-only change can't reach the runtime bundle → dropped.
 	if (input.manifests) impactful = dropDevDepOnlyDeps(impactful, input.manifests);
