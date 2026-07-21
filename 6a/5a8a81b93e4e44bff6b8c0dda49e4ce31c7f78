@@ -1,0 +1,258 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_5d6be4e6bc70a6::t_9837b4a7088a0e 39-40,66,84-85,87-88,100,107,109-110,115,129-130,139-140,199
+packages/@n8n/api-types/src/schemas/__tests__/eval-collections.schema.test.ts
+  s_5d6be4e6bc70a6::t_4423be5b9e55ad 98,112
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/VersionsTable.vue
+  s_5d6be4e6bc70a6::t_3f4a58e49368f8 17,28-29,40-41,232
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.types.ts
+  s_5d6be4e6bc70a6::t_22463961eca5f0 1-2
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.eval-config.test.ts
+  s_5d6be4e6bc70a6::t_159c01f6d4c66f 20
+  s_5d6be4e6bc70a6::t_73ae93d388b46e 189-241
+packages/cli/src/evaluation.ee/test-runner/__tests__/workflow-compiler.service.test.ts
+  s_5d6be4e6bc70a6::t_453eb4917fce9f 283,290-342
+  s_5d6be4e6bc70a6::t_6ba45e542722f7 170-171
+  s_5d6be4e6bc70a6::t_f26aece3d4b2f3 259-261
+  s_5d6be4e6bc70a6::t_7341e81a94207f 230,232
+packages/@n8n/instance-ai/src/tools/evals/eval-config.tool.ts
+  s_5d6be4e6bc70a6::t_7a91500f931f98 137-144
+  s_5d6be4e6bc70a6::t_46749e4336f76b 208-218
+  s_5d6be4e6bc70a6::t_990b751866f6c4 304-306
+  s_5d6be4e6bc70a6::t_21f4c94d172158 317-318
+  s_5d6be4e6bc70a6::t_86c62b7ad5c9e5 60,63
+  s_5d6be4e6bc70a6::t_c52ff375844909 54-55,61-62,68-69
+  s_5d6be4e6bc70a6::t_73d70306e7132e 98-113
+packages/@n8n/instance-ai/src/tools/evals/__tests__/eval-config.tool.test.ts
+  s_5d6be4e6bc70a6::t_bfa3f78a1a28fa 185-215
+  s_5d6be4e6bc70a6::t_7f3cf5a5b889ef 68-97
+  s_5d6be4e6bc70a6::t_2f7a541e420451 5,18
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_5d6be4e6bc70a6::t_d4a298cb54abeb 42
+  s_5d6be4e6bc70a6::t_faba0d10b2ffd1 3011-3032
+  s_5d6be4e6bc70a6::t_6ad3f3bd3df837 1787-1791
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareTabs.vue
+  s_5d6be4e6bc70a6::t_4b746954d6d6cc 25
+  s_5d6be4e6bc70a6::t_5b2e0b460e06e1 65-66
+  s_5d6be4e6bc70a6::t_e5040f457fa502 45,48
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_fd8af3917452ca 440
+  s_5d6be4e6bc70a6::t_15f8c9bcfc5279 41-43
+  s_5d6be4e6bc70a6::t_f60517efd5f1a8 22
+  s_5d6be4e6bc70a6::t_b0e46955c36d4d 255
+  s_5d6be4e6bc70a6::t_007e31cd795f43 195-196
+  s_5d6be4e6bc70a6::t_6e1788f335cd42 310-311
+  s_5d6be4e6bc70a6::t_7eb79a6726d6c1 407-408
+  s_5d6be4e6bc70a6::t_d1757696edf934 146-147
+  s_5d6be4e6bc70a6::t_291da6a3643fba 117
+  s_5d6be4e6bc70a6::t_0aa25145bebe47 130-132
+  s_5d6be4e6bc70a6::t_024af06d5c83b5 152-157
+  s_5d6be4e6bc70a6::t_0d8cd11f16e467 342-343
+packages/@n8n/instance-ai/skills/config-evals/SKILL.md
+  s_5d6be4e6bc70a6::t_7e0f8aa4c1f481 83-88
+  s_5d6be4e6bc70a6::t_e4ab962653e7f9 75,78,81-82,89-101
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.ts
+  s_5d6be4e6bc70a6::t_3107c85cf27c45 38-41
+  s_5d6be4e6bc70a6::t_518278e8060a79 21-22
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_5d6be4e6bc70a6::t_0fa29be8104744 516
+  s_5d6be4e6bc70a6::t_476353ad80f982 926-928
+  s_5d6be4e6bc70a6::t_b84a0783b7cea3 1092-1096
+  s_5d6be4e6bc70a6::t_b68049408343c7 1190
+  s_5d6be4e6bc70a6::t_dd5c7c8c25fe05 76-78
+  s_5d6be4e6bc70a6::t_c066f4db59431c 1255-1258
+  s_5d6be4e6bc70a6::t_960780df91b6f5 396
+  s_5d6be4e6bc70a6::t_66fe5538824c19 1243,1246
+  s_5d6be4e6bc70a6::t_1c04b27c8f64fa 799-802,805
+  s_5d6be4e6bc70a6::t_feba06291a35a9 820-822
+  s_5d6be4e6bc70a6::t_92ec809a3dec17 753
+  s_5d6be4e6bc70a6::t_24cc94ae55ae4d 849-853
+  s_5d6be4e6bc70a6::t_e00a333fa6a897 1208-1210
+  s_5d6be4e6bc70a6::t_e2fbea504d8523 222
+  s_5d6be4e6bc70a6::t_befb4c2f496412 382-383
+  s_5d6be4e6bc70a6::t_be1de33517dbd0 1300-1302
+  s_5d6be4e6bc70a6::t_f287fbe0092694 198
+  s_5d6be4e6bc70a6::t_4fa2dcde953583 870-873
+  s_5d6be4e6bc70a6::t_1ec6d485eb4ef0 110
+  s_5d6be4e6bc70a6::t_6f744d834a6bf9 546-548,551-552
+  s_5d6be4e6bc70a6::t_a9556aea475ccc 651-652
+  s_5d6be4e6bc70a6::t_267a6a86798a70 1075-1076
+  s_5d6be4e6bc70a6::t_8dee6f60f29110 1145,1150-1151
+  s_5d6be4e6bc70a6::t_bbb6de2ccb7e32 776
+  s_5d6be4e6bc70a6::t_1c9c0c2e614751 474
+  s_5d6be4e6bc70a6::t_925f2a7b6b74bd 275
+  s_5d6be4e6bc70a6::t_5895ea8fb14b0c 531
+  s_5d6be4e6bc70a6::t_b71d89f8739bd7 245-246
+  s_5d6be4e6bc70a6::t_750214004bf60a 896-897
+  s_5d6be4e6bc70a6::t_83bc899a89f6ac 1170
+  s_5d6be4e6bc70a6::t_aceee13b83939f 1176-1177
+  s_5d6be4e6bc70a6::t_932f199517c911 1198-1199
+  s_5d6be4e6bc70a6::t_735cfcdec87e4f 735-736
+  s_5d6be4e6bc70a6::t_0de4c593728758 790-791
+  s_5d6be4e6bc70a6::t_eedd8d01b2ec7c 835-836
+  s_5d6be4e6bc70a6::t_419649cd6ed562 1226-1228,1231
+  s_5d6be4e6bc70a6::t_cdfba42de4b109 163
+  s_5d6be4e6bc70a6::t_58360fdd037686 1281-1282,1285,1288,1291
+  s_5d6be4e6bc70a6::t_3c683e676d0da3 616-617
+  s_5d6be4e6bc70a6::t_69c9b010c3b719 232-233
+  s_5d6be4e6bc70a6::t_87b5900c9207f5 458-460
+  s_5d6be4e6bc70a6::t_233bf63221ebcb 486-488
+  s_5d6be4e6bc70a6::t_1d21f477ec907b 143
+  s_5d6be4e6bc70a6::t_44de92f75b4166 324,326-327
+  s_5d6be4e6bc70a6::t_610e6796908ac2 501-502
+  s_5d6be4e6bc70a6::t_6e2081457c1ad5 913-914
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/MetricCriteria.vue
+  s_5d6be4e6bc70a6::t_98744013fec6e2 123
+  s_5d6be4e6bc70a6::t_74f4aeb23b5639 17-18
+  s_5d6be4e6bc70a6::t_4a61717aab6dad 36-37
+  s_5d6be4e6bc70a6::t_ee4fd1b1cde193 10
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/CompareHeader.vue
+  s_5d6be4e6bc70a6::t_646dd86a2bf287 102
+  s_5d6be4e6bc70a6::t_85235a00a25a1a 32
+  s_5d6be4e6bc70a6::t_539451485fcc44 67
+  s_5d6be4e6bc70a6::t_5c78c6cd62557d 128
+  s_5d6be4e6bc70a6::t_924f55b3276606 161
+  s_5d6be4e6bc70a6::t_ef3aeb79460a2b 49
+packages/@n8n/instance-ai/src/index.ts
+  s_5d6be4e6bc70a6::t_27cf4163609a15 600
+packages/cli/src/evaluation.ee/evaluation-collections.controller.ee.ts
+  s_5d6be4e6bc70a6::t_01e97d0be8d695 23-24,26-28
+  s_5d6be4e6bc70a6::t_eb6ca048db6f7c 39-42
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.store.ts
+  s_5d6be4e6bc70a6::t_a8650949deb83c 277-279
+  s_5d6be4e6bc70a6::t_84489a166c5632 44-47
+  s_5d6be4e6bc70a6::t_0277a8095ed190 21
+  s_5d6be4e6bc70a6::t_9b496e0799c5e1 143-145
+  s_5d6be4e6bc70a6::t_13552b1c53f95b 157-159
+  s_5d6be4e6bc70a6::t_5a884e0914d40c 211-213
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_029b13665e068d 137-139
+  s_5d6be4e6bc70a6::t_48cb179594e5b9 15
+  s_5d6be4e6bc70a6::t_60ce61e711635c 63-64,66-67
+  s_5d6be4e6bc70a6::t_1fbad8cb91af1b 51-54
+  s_5d6be4e6bc70a6::t_5744691ef93551 105-107
+  s_5d6be4e6bc70a6::t_7ba578b09e2b7d 175-177
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/shared/RunningIndicator.vue
+  s_5d6be4e6bc70a6::t_ca47cb9b7ff439 5-6
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.api.ts
+  s_5d6be4e6bc70a6::t_bfee0735cf0fe9 14-15
+  s_5d6be4e6bc70a6::t_6980f3eaa61782 19-21
+  s_5d6be4e6bc70a6::t_5c19f64c487718 99-100
+  s_5d6be4e6bc70a6::t_86fd1eaaacd208 59-60
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/SetupCollectionWizard/SetupCollectionWizard.vue
+  s_5d6be4e6bc70a6::t_b691188ca8850f 25,48,60,74,95-96,103,118,126,439-440
+packages/@n8n/instance-ai/src/types.ts
+  s_5d6be4e6bc70a6::t_4d40b063558315 16
+  s_5d6be4e6bc70a6::t_9478d1cfe65acf 714-716
+  s_5d6be4e6bc70a6::t_32894e7bcfc24d 698-700,717-720,726-727
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_5d6be4e6bc70a6::t_03759063d1629f 41,47,51,69,78,108,123,135-136,212,218
+packages/cli/src/evaluation.ee/evaluation-collection.service.ts
+  s_5d6be4e6bc70a6::t_804d0e95745490 48-50
+  s_5d6be4e6bc70a6::t_cde6d1ad7588d1 469-471
+  s_5d6be4e6bc70a6::t_50c30013c58a9b 105-106
+  s_5d6be4e6bc70a6::t_fa6ddd0e82049a 266-268
+  s_5d6be4e6bc70a6::t_8ce79468f41c43 303
+  s_5d6be4e6bc70a6::t_614b061c02715e 412-415
+  s_5d6be4e6bc70a6::t_193905ca0a7a28 599-601
+  s_5d6be4e6bc70a6::t_f9c588ba55e81f 254-255
+  s_5d6be4e6bc70a6::t_63369683db9de2 535-537
+  s_5d6be4e6bc70a6::t_259955d1266207 80-81
+  s_5d6be4e6bc70a6::t_184f4f9a23fdd3 205-206
+  s_5d6be4e6bc70a6::t_da939d8827820a 610-611
+  s_5d6be4e6bc70a6::t_81b0d51c7eec1c 501-502
+  s_5d6be4e6bc70a6::t_fba547f8735862 559-560
+  s_5d6be4e6bc70a6::t_2dc180fceccfde 328-329
+  s_5d6be4e6bc70a6::t_b23b774b982c6a 131-132
+  s_5d6be4e6bc70a6::t_854a430f06d1ca 449-450
+  s_5d6be4e6bc70a6::t_a7159f5d42eddf 121-122
+  s_5d6be4e6bc70a6::t_dd62e9239bd414 462-463
+  s_5d6be4e6bc70a6::t_1eb493aab584b6 655-656
+  s_5d6be4e6bc70a6::t_531e45119bb87e 650
+  s_5d6be4e6bc70a6::t_ab3e8dcaf2d120 426
+  s_5d6be4e6bc70a6::t_f129db3bd3cdf9 70-71
+  s_5d6be4e6bc70a6::t_51347322a1f11a 142
+  s_5d6be4e6bc70a6::t_1a7a0432f4a605 225
+  s_5d6be4e6bc70a6::t_4bac7b77cbbf42 437-438
+  s_5d6be4e6bc70a6::t_2ca19e2b80b45a 114-115
+  s_5d6be4e6bc70a6::t_52663213c56549 429-430
+  s_5d6be4e6bc70a6::t_a01d25f95ceafc 273
+  s_5d6be4e6bc70a6::t_c8ed34a96f5e71 190-194
+  s_5d6be4e6bc70a6::t_8741826e743286 33-34
+  s_5d6be4e6bc70a6::t_b6abea9593ee29 333-334
+  s_5d6be4e6bc70a6::t_3f96e191dda945 150-152
+  s_5d6be4e6bc70a6::t_5a0c64fb9c195a 387
+  s_5d6be4e6bc70a6::t_3382b66c8753a7 379
+  s_5d6be4e6bc70a6::t_4dbdd482c1587d 523-524
+  s_5d6be4e6bc70a6::t_f74ba5eb272b92 405-406
+  s_5d6be4e6bc70a6::t_2b55c0491e8349 237-239
+  s_5d6be4e6bc70a6::t_84ab2825ca0f46 211-212
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_5d6be4e6bc70a6::t_d85f6da55f1ff6 206-208
+  s_5d6be4e6bc70a6::t_4269852e63d50b 18-19
+  s_5d6be4e6bc70a6::t_74c7fdaf84a3c5 72
+  s_5d6be4e6bc70a6::t_9c99b927d3fdc9 24
+  s_5d6be4e6bc70a6::t_0008f1ea41816b 262
+  s_5d6be4e6bc70a6::t_1340508fc91e3f 252
+  s_5d6be4e6bc70a6::t_3c68a539c5c967 153
+  s_5d6be4e6bc70a6::t_32ccd1447bb883 158-160
+  s_5d6be4e6bc70a6::t_c1f68fa38da877 177-178
+  s_5d6be4e6bc70a6::t_b22739e0113fa9 36-39
+  s_5d6be4e6bc70a6::t_244d7f15e956f5 80-85
+  s_5d6be4e6bc70a6::t_3a7396cd0b2736 216-217
+  s_5d6be4e6bc70a6::t_018c68b1d02b8f 58
+  s_5d6be4e6bc70a6::t_3a6c93f3ccf402 30-31
+  s_5d6be4e6bc70a6::t_cf0166c60eb4ed 68-69
+  s_5d6be4e6bc70a6::t_cea4afe1b81030 189-190
+  s_5d6be4e6bc70a6::t_d1312499b16db3 201
+  s_5d6be4e6bc70a6::t_1fd374ca58ef78 106
+  s_5d6be4e6bc70a6::t_8f899aba7b3fd7 296
+packages/cli/src/evaluation.ee/test-runner/workflow-compiler.service.ts
+  s_5d6be4e6bc70a6::t_25c5d74d05d27e 35,40-48
+  s_5d6be4e6bc70a6::t_82a9c81a800bd8 474-478
+  s_5d6be4e6bc70a6::t_9f3a4c08f4f4ad 36-39
+  s_5d6be4e6bc70a6::t_890ce47ee2277e 298,301-310
+  s_5d6be4e6bc70a6::t_ca9b4db94e8e4c 299-300
+  s_5d6be4e6bc70a6::t_477bcd9ebb0dfc 471-473
+packages/@n8n/instance-ai/skills/config-evals/references/config-eval-playbook.md
+  s_5d6be4e6bc70a6::t_8594369f29ffc7 102-103
+  s_5d6be4e6bc70a6::t_fe0183d7085a7f 37-39,43-46
+  s_5d6be4e6bc70a6::t_d23d2af97c30f2 76-77
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/OutputsTab.vue
+  s_5d6be4e6bc70a6::t_2aea51cda744b8 25
+  s_5d6be4e6bc70a6::t_ccb6be276ae637 31
+  s_5d6be4e6bc70a6::t_4e2276c755d50a 54
+  s_5d6be4e6bc70a6::t_3626787ba018eb 183
+packages/@n8n/api-types/src/schemas/eval-collections.schema.ts
+  s_5d6be4e6bc70a6::t_30ee48ca292fda 14-15
+  s_5d6be4e6bc70a6::t_d86ce206e1176a 10-11
+  s_5d6be4e6bc70a6::t_19897db8459305 54-57
+  s_5d6be4e6bc70a6::t_5f03ec7920667c 86-88
+  s_5d6be4e6bc70a6::t_caba20f2a0781b 28-30
+  s_5d6be4e6bc70a6::t_b4c48f28f69cd5 44
+  s_5d6be4e6bc70a6::t_848c7c80b97624 34,36-38
+  s_5d6be4e6bc70a6::t_1af6c8581727dc 23-24
+  s_5d6be4e6bc70a6::t_abbdba0b79c0b8 129-130
+  s_5d6be4e6bc70a6::t_bc737f06b6f6b6 156-157
+  s_5d6be4e6bc70a6::t_e4986a48956f67 161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6a5a8a81b93e4e44bff6b8c0dda49e4ce31c7f78",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
