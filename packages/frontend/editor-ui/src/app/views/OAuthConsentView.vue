@@ -13,8 +13,10 @@ import {
 	N8nLogo,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
+import { getClientBrand } from '@/features/ai/mcpAccess/clients.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
@@ -45,16 +47,30 @@ const errorMessage = computed(() => {
 });
 
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+// Known clients get their brand mark on the left tile, like the demo's authorize view.
+const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
 const hasScopes = computed(() => availableScopes.value.length > 0);
+const trustRequired = computed(() => !!clientDetails.value?.redirectUri);
+const noScopesSelected = computed(() => hasScopes.value && selectedScopes.value.length === 0);
 const allowDisabled = computed(
 	() =>
 		loading.value ||
 		error.value !== null ||
 		!clientDetails.value ||
-		!redirectUriTrusted.value ||
-		(hasScopes.value && selectedScopes.value.length === 0),
+		(trustRequired.value && !redirectUriTrusted.value) ||
+		noScopesSelected.value,
 );
+// Why Allow is disabled, surfaced as a tooltip on the button.
+const allowDisabledReason = computed(() => {
+	if (noScopesSelected.value) {
+		return i18n.baseText('oauth.consentView.allowDisabled.noScopes');
+	}
+	if (trustRequired.value && !redirectUriTrusted.value) {
+		return i18n.baseText('oauth.consentView.allowDisabled.trust');
+	}
+	return null;
+});
 
 watch(
 	() => clientDetails.value?.redirectUri,
@@ -130,7 +146,8 @@ onMounted(async () => {
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
 				<div :class="$style.logo">
-					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
+					<component :is="clientBrandIcon" v-if="clientBrandIcon" :class="$style['brand-icon']" />
+					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
 				</div>
 				<!-- Pending-connection connector (ported from the prototype's authorize view): a dashed
 				     SVG line marching toward the n8n tile with a slow muted spinner badge. Decorative. -->
@@ -221,6 +238,7 @@ onMounted(async () => {
 						:available-scopes="availableScopes"
 						:groups="MCP_SCOPE_GROUPS"
 						:scope-tools="clientDetails?.scopeTools"
+						modes-layout="columns"
 						i18n-key-prefix="oauth.consentView.scopes"
 						root-test-id="consent-scopes"
 					/>
@@ -236,24 +254,20 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<!-- Redirect warning + its trust checkbox live together, right above the CTAs. -->
+				<!-- The trust acknowledgment lives inside the warning itself so it can't be missed:
+				     one block that says where access goes, shows the URL, and asks for the check. -->
 				<N8nCallout
 					v-if="!error && clientDetails?.redirectUri"
 					theme="warning"
-					:class="$style['redirect-warning']"
 					data-test-id="consent-redirect-warning"
 				>
 					<div :class="$style['redirect-warning-content']">
-						<N8nText :bold="true">
+						<N8nText :bold="true" size="small">
 							{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
 						</N8nText>
-						<N8nText
-							:bold="true"
-							:class="$style['redirect-warning-url']"
-							data-test-id="consent-redirect-uri"
-						>
+						<code :class="$style['redirect-warning-url']" data-test-id="consent-redirect-uri">
 							{{ clientDetails.redirectUri }}
-						</N8nText>
+						</code>
 					</div>
 				</N8nCallout>
 				<div :class="$style['footer-actions']">
@@ -262,6 +276,7 @@ onMounted(async () => {
 						v-model="redirectUriTrusted"
 						:class="$style['footer-confirm']"
 						:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+						data-test-id="consent-redirect-confirm"
 					/>
 					<div :class="$style['button-group']">
 						<N8nButton
@@ -275,7 +290,7 @@ onMounted(async () => {
 						</N8nButton>
 						<template v-else>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								:data-test-id="'consent-deny-button'"
 								:size="'large'"
 								:loading="loading"
@@ -284,16 +299,19 @@ onMounted(async () => {
 							>
 								{{ i18n.baseText('generic.deny') }}
 							</N8nButton>
-							<N8nButton
-								variant="solid"
-								:data-test-id="'consent-allow-button'"
-								:size="'large'"
-								:loading="loading"
-								:disabled="allowDisabled"
-								@click="handleAllow"
-							>
-								{{ i18n.baseText('generic.allow') }}
-							</N8nButton>
+							<N8nTooltip :disabled="!allowDisabled || !allowDisabledReason">
+								<template #content>{{ allowDisabledReason }}</template>
+								<N8nButton
+									variant="solid"
+									:data-test-id="'consent-allow-button'"
+									:size="'large'"
+									:loading="loading"
+									:disabled="allowDisabled"
+									@click="handleAllow"
+								>
+									{{ i18n.baseText('oauth.consentView.allow') }}
+								</N8nButton>
+							</N8nTooltip>
 						</template>
 					</div>
 				</div>
@@ -305,14 +323,14 @@ onMounted(async () => {
 <style module lang="scss">
 .overlay {
 	position: fixed;
+	inset: 0;
 	display: flex;
 	justify-content: center;
-	align-items: center;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background-color: rgba(71, 69, 84, 0.75);
+	/* Top-aligned so a tall consent card scrolls within the page instead of clipping. */
+	align-items: flex-start;
+	padding: var(--spacing--xl) var(--spacing--sm);
+	overflow-y: auto;
+	background: var(--background--subtle);
 	z-index: 1000;
 }
 
@@ -320,13 +338,15 @@ onMounted(async () => {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
+	gap: var(--spacing--md);
 	width: 100%;
-	max-width: 40rem;
-	padding: var(--spacing--lg);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
+	max-width: 36rem;
+	margin-block-start: clamp(var(--spacing--sm), 10vh, var(--spacing--4xl));
+	padding: var(--spacing--xl);
+	background: var(--background--surface);
+	border: var(--border-width, 1px) solid var(--border-color--subtle);
 	border-radius: var(--radius--lg);
+	box-shadow: var(--shadow--sm);
 }
 
 .header {
@@ -340,15 +360,25 @@ onMounted(async () => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	width: var(--spacing--2xl);
-	height: var(--spacing--2xl);
-	border: var(--border);
-	border-radius: var(--radius);
+	flex: 0 0 auto;
+	width: calc(var(--spacing--md) * 2);
+	height: calc(var(--spacing--md) * 2);
+	border: var(--border-width, 1px) solid var(--border-color--subtle);
+	border-radius: var(--radius--xs);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--xs);
+	font-size: var(--font-size--xl);
+	color: var(--text-color--subtle);
 
 	&.n8n > div {
 		position: relative;
 		bottom: var(--spacing--5xs);
 	}
+}
+
+.brand-icon {
+	width: 1em;
+	height: 1em;
 }
 
 .connector {
@@ -416,7 +446,6 @@ onMounted(async () => {
 }
 
 .content {
-	padding: var(--spacing--lg);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
@@ -450,6 +479,13 @@ onMounted(async () => {
 	}
 }
 
+.footer {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
 .redirect-warning-content {
 	display: flex;
 	flex-direction: column;
@@ -457,21 +493,17 @@ onMounted(async () => {
 }
 
 .redirect-warning-url {
+	font-size: var(--font-size--2xs);
 	word-break: break-all;
 }
 
-.footer {
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-
-	:global(.notice) {
-		margin: 0;
-	}
+/* The trust checkbox anchors the left edge of the actions row; CTAs stay right. */
+.footer-confirm {
+	margin-right: auto;
+	margin-bottom: 0;
 }
 
-/* CTAs sit at the right; the trust-URL checkbox is pushed to the left. */
+/* CTAs sit at the right, like the demo's authorize actions. */
 .footer-actions {
 	display: flex;
 	flex-direction: row;
@@ -484,9 +516,5 @@ onMounted(async () => {
 		justify-content: flex-end;
 		gap: var(--spacing--2xs);
 	}
-}
-
-.footer-confirm {
-	margin-right: auto;
 }
 </style>

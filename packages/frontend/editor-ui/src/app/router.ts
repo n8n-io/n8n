@@ -553,6 +553,8 @@ export const routes: RouteRecordRaw[] = [
 		name: VIEWS.OAUTH_CONSENT,
 		component: OAuthConsentView,
 		meta: {
+			// Standalone screen like the demo's authorize page — no app sidebar.
+			layout: 'auth',
 			middleware: ['authenticated'],
 		},
 	},
