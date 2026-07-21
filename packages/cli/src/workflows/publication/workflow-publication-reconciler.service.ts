@@ -4,15 +4,23 @@ import { Time } from '@n8n/constants';
 import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
+import {
+	ActiveWorkflowTriggers,
+	ErrorReporter,
+	InstanceSettings,
+	SpanStatus,
+	Tracing,
+} from 'n8n-core';
 import type { WorkflowId } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { NonWebhookTriggerRegistrar } from '@/workflows/triggers/non-webhook-trigger-registrar';
 
+import { WorkflowPublicationLifecycleLock } from './workflow-publication-lifecycle-lock';
 import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox-consumer';
 
 /**
@@ -48,6 +56,9 @@ export class WorkflowPublicationReconciler {
 		private readonly errorReporter: ErrorReporter,
 		private readonly tracing: Tracing,
 		private readonly eventService: EventService,
+		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly activeWorkflowTriggers: ActiveWorkflowTriggers,
 	) {
 		this.logger = logger.scoped('workflow-publication');
 	}
@@ -108,25 +119,19 @@ export class WorkflowPublicationReconciler {
 			async (span) => {
 				const startedAt = Date.now();
 				try {
-					const missing = await this.findMissingActiveWorkflows();
+					const surplus = await this.removeGhostTriggers(await this.findSurplusWorkflowIds());
+					const missing = await this.republishMissingWorkflows(
+						await this.findMissingActiveWorkflows(),
+					);
 
-					span.setAttribute('n8n.publication.deficient_workflows', missing.length);
-
-					if (missing.length > 0) {
-						this.logger.debug('Re-publishing workflows with missing in-memory triggers', {
-							workflowIds: missing,
-						});
-						await this.outboxRepository.enqueueByWorkflowIds(missing);
-						// Drain directly rather than waiting for the next poll cycle. These are
-						// safe to call here, to recover more quickly.
-						this.outboxConsumer.startPolling();
-						await this.outboxConsumer.drainPending();
-					}
+					span.setAttribute('n8n.publication.deficient_workflows', missing);
+					span.setAttribute('n8n.publication.surplus_workflows', surplus);
 
 					span.setStatus({ code: SpanStatus.ok });
 					this.eventService.emit('workflow-publication-reconciliation', {
 						result: 'success',
-						deficientCount: missing.length,
+						deficientCount: missing,
+						surplusCount: surplus,
 						durationMs: Date.now() - startedAt,
 					});
 				} catch (error) {
@@ -135,11 +140,40 @@ export class WorkflowPublicationReconciler {
 					this.eventService.emit('workflow-publication-reconciliation', {
 						result: 'failure',
 						deficientCount: 0,
+						surplusCount: 0,
 						durationMs: Date.now() - startedAt,
 					});
 				}
 			},
 		);
+	}
+
+	private async findSurplusWorkflowIds(): Promise<WorkflowId[]> {
+		const registered = this.activeWorkflowTriggers.getNonWebhookTriggerWorkflowIds();
+		if (registered.length === 0) return [];
+
+		const desired = new Set(await this.workflowRepository.getActiveIds());
+
+		const candidates = registered.filter((workflowId) => !desired.has(workflowId));
+
+		return candidates;
+	}
+
+	private async removeGhostTriggers(workflowIds: WorkflowId[]): Promise<number> {
+		let surplusRepairs = 0;
+		for (const workflowId of workflowIds) {
+			await this.lifecycleLock.runExclusive(workflowId, async () => {
+				const workflow = await this.workflowRepository.findOneBy({ id: workflowId });
+
+				if (workflow?.activeVersionId) return;
+				if (await this.outboxRepository.findInFlightByWorkflowId(workflowId)) return;
+
+				await this.activeWorkflowTriggers.remove(workflowId);
+				surplusRepairs++;
+			});
+		}
+
+		return surplusRepairs;
 	}
 
 	/**
@@ -161,6 +195,21 @@ export class WorkflowPublicationReconciler {
 		}
 
 		return missing;
+	}
+
+	private async republishMissingWorkflows(workflowIds: WorkflowId[]): Promise<number> {
+		if (workflowIds.length > 0) {
+			this.logger.debug('Re-publishing workflows with missing in-memory triggers', {
+				workflowIds,
+			});
+			await this.outboxRepository.enqueueByWorkflowIds(workflowIds);
+			// Drain directly rather than waiting for the next poll cycle. These are
+			// safe to call here, to recover more quickly.
+			this.outboxConsumer.startPolling();
+			await this.outboxConsumer.drainPending();
+		}
+
+		return workflowIds.length;
 	}
 
 	private groupByWorkflow(rows: Array<{ workflowId: WorkflowId; nodeId: string }>) {
