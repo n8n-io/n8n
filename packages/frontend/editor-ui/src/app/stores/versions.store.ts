@@ -22,8 +22,15 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 
 type SetVersionParams = { versions: Version[]; currentVersion: string };
 
-type OpenModalFn = (name: ModalKey) => void;
-type OpenModalWithDataFn = (payload: { name: ModalKey; data: Record<string, unknown> }) => void;
+/**
+ * Modal-open actions this store needs. The concrete implementation lives in
+ * `ui.store`; it is registered at app bootstrap via {@link useVersionsStore.registerModalOpeners}
+ * so the store carries no dependency on `ui.store`.
+ */
+export interface VersionsModalOpeners {
+	openModal: (name: ModalKey) => void;
+	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) => void;
+}
 
 /**
  * Semantic versioning 2.0.0, Regex from https://semver.org/
@@ -56,6 +63,24 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	const { showToast, showMessage } = useToast();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
+
+	// Modal-open actions, registered at app bootstrap (see app/init.ts). Until then
+	// they no-op — warning in dev — so the store never reaches into `ui.store`.
+	const warnModalOpenerMissing = (action: string) => {
+		if (import.meta.env.DEV) {
+			console.warn(
+				`[versions.store] ${action} called before modal openers were registered; ignoring. Call registerModalOpeners() at app bootstrap.`,
+			);
+		}
+	};
+	const modalOpeners = ref<VersionsModalOpeners>({
+		openModal: (name) => warnModalOpenerMissing(`openModal(${String(name)})`),
+		openModalWithData: (payload) =>
+			warnModalOpenerMissing(`openModalWithData(${String(payload.name)})`),
+	});
+	const registerModalOpeners = (openers: VersionsModalOpeners) => {
+		modalOpeners.value = openers;
+	};
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
 	const lastDismissedWhatsNewCalloutStorage = useStorage(LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT);
 
@@ -191,7 +216,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		return hasNewArticle && !allArticlesDismissed;
 	};
 
-	const fetchWhatsNew = async (openModalWithData: OpenModalWithDataFn) => {
+	const fetchWhatsNew = async () => {
 		try {
 			const { enabled, whatsNewEnabled, whatsNewEndpoint } = versionNotificationSettings.value;
 			if (enabled && whatsNewEnabled && whatsNewEndpoint) {
@@ -215,7 +240,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 								telemetry.track("User clicked on what's new notification", {
 									article_id: articleId,
 								});
-								openModalWithData({
+								modalOpeners.value.openModalWithData({
 									name: WHATS_NEW_MODAL_KEY,
 									data: { articleId },
 								});
@@ -237,16 +262,13 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		versionNotificationSettings.value = settings;
 	};
 
-	const checkForNewVersions = async (modalOpeners: {
-		openModal: OpenModalFn;
-		openModalWithData: OpenModalWithDataFn;
-	}) => {
+	const checkForNewVersions = async () => {
 		const enabled = areNotificationsEnabled.value;
 		if (!enabled) {
 			return;
 		}
 
-		await Promise.all([fetchVersions(), fetchWhatsNew(modalOpeners.openModalWithData)]);
+		await Promise.all([fetchVersions(), fetchWhatsNew()]);
 
 		if (
 			currentVersion.value &&
@@ -264,7 +286,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 				title: 'Critical update available',
 				message,
 				onClick: () => {
-					modalOpeners.openModal(VERSIONS_MODAL_KEY);
+					modalOpeners.value.openModal(VERSIONS_MODAL_KEY);
 				},
 				closeOnClick: true,
 				customClass: 'clickable',
@@ -287,6 +309,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		fetchVersions,
 		setVersions,
 		initialize,
+		registerModalOpeners,
 		checkForNewVersions,
 		fetchWhatsNew,
 		whatsNew,

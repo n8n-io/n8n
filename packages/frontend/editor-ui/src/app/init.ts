@@ -124,6 +124,14 @@ export async function initializeAuthenticatedFeatures(
 	const favoritesStore = useFavoritesStore();
 	const uiStore = useUIStore();
 
+	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
+	// so they can open modals without importing it.
+	usersStore.registerModalOpener(uiStore.openModal);
+	versionsStore.registerModalOpeners({
+		openModal: uiStore.openModal,
+		openModalWithData: uiStore.openModalWithData,
+	});
+
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
 	}
@@ -198,10 +206,7 @@ export async function initializeAuthenticatedFeatures(
 	// Don't check for new versions in preview mode or demo view (ex: executions iframe)
 	if (!settingsStore.isPreviewMode && routeName !== VIEWS.DEMO) {
 		versionsStore.initialize(settingsStore.settings.versionNotifications);
-		void versionsStore.checkForNewVersions({
-			openModal: uiStore.openModal,
-			openModalWithData: uiStore.openModalWithData,
-		});
+		void versionsStore.checkForNewVersions();
 	}
 
 	await Promise.all([

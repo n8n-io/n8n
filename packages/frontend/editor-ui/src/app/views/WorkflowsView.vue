@@ -735,7 +735,7 @@ const showTemplateRecommendationV3 = computed(() => {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 
-	void usersStore.showPersonalizationSurvey(uiStore.openModal);
+	void usersStore.showPersonalizationSurvey();
 
 	// ResourcesListLayout's own onMounted fetch can't run while chrome is
 	// deferred (it isn't mounted), so trigger it here or the skeleton never resolves.

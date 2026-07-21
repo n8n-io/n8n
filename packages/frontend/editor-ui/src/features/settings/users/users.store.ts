@@ -42,6 +42,9 @@ const _isAdmin = (user: IUserResponse | null) => user?.role === ROLE.Admin;
 export type LoginHook = (user: CurrentUserResponse) => void | Promise<void>;
 type LogoutHook = () => void | Promise<void>;
 
+/** Modal-open action this store needs, registered at app bootstrap (see app/init.ts). */
+export type OpenModalFn = (name: ModalKey) => void;
+
 export const useUsersStore = defineStore(STORES.USERS, () => {
 	const initialized = ref(false);
 	const currentUserId = ref<string | null>(null);
@@ -50,6 +53,19 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 
 	const loginHooks = ref<LoginHook[]>([]);
 	const logoutHooks = ref<LogoutHook[]>([]);
+
+	// Modal-open action, registered at app bootstrap (see app/init.ts). Until then it
+	// no-ops — warning in dev — so the store never reaches into `ui.store`.
+	const openModal = ref<OpenModalFn>((name) => {
+		if (import.meta.env.DEV) {
+			console.warn(
+				`[users.store] openModal(${String(name)}) called before a modal opener was registered; ignoring. Call registerModalOpener() at app bootstrap.`,
+			);
+		}
+	});
+	const registerModalOpener = (opener: OpenModalFn) => {
+		openModal.value = opener;
+	};
 
 	// Stores
 
@@ -370,10 +386,10 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setPersonalizationAnswers(results);
 	};
 
-	const showPersonalizationSurvey = async (openModal: (name: ModalKey) => void) => {
+	const showPersonalizationSurvey = async () => {
 		const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
 		if (surveyEnabled && currentUser.value && !currentUser.value.personalizationAnswers) {
-			openModal(PERSONALIZATION_MODAL_KEY);
+			openModal.value(PERSONALIZATION_MODAL_KEY);
 		}
 	};
 
@@ -472,6 +488,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		logout,
 		registerLoginHook,
 		registerLogoutHook,
+		registerModalOpener,
 		createOwner,
 		validateSignupToken,
 		acceptInvitation,
