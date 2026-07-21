@@ -194,6 +194,70 @@ describe('Ollama Transport', () => {
 			);
 		});
 
+		it('should preserve subpath in baseUrl when endpoint has a leading slash (subpath preservation)', async () => {
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				baseUrl: 'https://proxy.com/ollama',
+			});
+			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+			await apiRequest.call(executeFunctionsMock, 'POST', '/api/chat');
+
+			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'ollamaApi',
+				expect.objectContaining({
+					url: 'https://proxy.com/ollama/api/chat',
+				}),
+			);
+		});
+
+		it('should produce a single slash separator when baseUrl has a trailing slash and endpoint has a leading slash (slash collision)', async () => {
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				baseUrl: 'https://proxy.com/ollama/',
+			});
+			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+			await apiRequest.call(executeFunctionsMock, 'POST', '/api/chat');
+
+			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'ollamaApi',
+				expect.objectContaining({
+					url: 'https://proxy.com/ollama/api/chat',
+				}),
+			);
+		});
+
+		it('should trim accidental whitespace from baseUrl and endpoint (input resilience)', async () => {
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				baseUrl: ' http://localhost:11434 ',
+			});
+			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+			await apiRequest.call(executeFunctionsMock, 'GET', ' /api/tags ');
+
+			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'ollamaApi',
+				expect.objectContaining({
+					url: 'http://localhost:11434/api/tags',
+				}),
+			);
+		});
+
+		it('should correctly join a simple host with a standard endpoint (standard path)', async () => {
+			executeFunctionsMock.getCredentials.mockResolvedValue({
+				baseUrl: 'http://localhost:11434',
+			});
+			executeFunctionsMock.helpers.httpRequestWithAuthentication.mockResolvedValue({});
+
+			await apiRequest.call(executeFunctionsMock, 'GET', '/api/tags');
+
+			expect(executeFunctionsMock.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'ollamaApi',
+				expect.objectContaining({
+					url: 'http://localhost:11434/api/tags',
+				}),
+			);
+		});
+
 		it('should handle empty parameters object', async () => {
 			executeFunctionsMock.getCredentials.mockResolvedValue({
 				baseUrl: 'http://localhost:11434',
