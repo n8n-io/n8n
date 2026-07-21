@@ -65,6 +65,15 @@ only on curated ones. Run it against the pruned `compiled/` closure or an `npm i
 tree — **not** the dev `.pnpm` store, which over-reports peer-context entries that are
 never co-loaded.
 
+It covers curated **third-party** libraries. Our **own workspace packages** are covered
+by a complementary check — `runWorkspaceDedupCheck` in
+[`scripts/smoke-n8n-image.mjs`](../scripts/smoke-n8n-image.mjs), which fails if a
+`file:`-injected workspace package (e.g. `n8n-core`) is materialized more than once in
+the docker image. The two are deliberately split by domain (third-party vs workspace) and
+each keeps its own migration-window allowlist (`EXPECTED_DUPLICATES` here,
+`KNOWN_DUPLICATED` there); both track symptoms of the same langchain/langsmith
+peer-context split. When investigating "is anything else duplicated?", read both.
+
 ## Report-first rollout (no breaking changes on master)
 
 Moving a published package's curated library from `dependencies` to `peerDependencies`
@@ -117,3 +126,10 @@ instances it twice). Options, in order of preference:
 
 Whichever is used, once resolved, remove the entry from the verifier's
 `EXPECTED_DUPLICATES` allowlist so a regression re-fails.
+
+**Tactical escape hatch (a class we own that gets `instanceof`-checked across copies).**
+When a duplicate can't be removed immediately but is actively breaking an `instanceof`
+check, give the class a `[Symbol.hasInstance]` so the check recognises instances from any
+copy (as done for `StructuredToolkit` in `n8n-core`). This is a runtime workaround for a
+specific class, not a substitute for de-duplicating the dependency graph — prefer the
+options above.
