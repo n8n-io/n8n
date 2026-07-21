@@ -156,4 +156,34 @@ describe('AgentChatController SSE done payload', () => {
 			executionId: 'exec-99',
 		});
 	});
+
+	it('includes executionId on resume done when recorded', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onExecutionRecorded?.('exec-resume-1');
+		});
+
+		const writes: string[] = [];
+		const res = mock<FlushableResponse>();
+		res.write.mockImplementation((chunk: string) => {
+			writes.push(String(chunk));
+			return true;
+		});
+
+		await controller.chatResume(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			res,
+			'agent-1',
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+
+		expect(events).toContainEqual({
+			type: 'done',
+			executionId: 'exec-resume-1',
+		});
+	});
 });
