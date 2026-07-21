@@ -643,6 +643,148 @@ describe('Send and Wait utils tests', () => {
 				expect(mockRender).toHaveBeenCalled();
 			},
 		);
+
+		describe('confirmationPage option', () => {
+			const mockParams = (params: Record<string, unknown>) => {
+				mockWebhookFunctions.getNodeParameter.mockImplementation(
+					(parameterName: string, fallbackValue?: any) => params[parameterName] ?? fallbackValue,
+				);
+			};
+
+			it('should render confirmation page on GET when the option is enabled', async () => {
+				const send = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+					'approvalOptions.values': { approveLabel: 'Yes, approve' },
+					subject: 'Approval required',
+					message: 'Please review the request',
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				const page = send.mock.calls[0][0] as string;
+				expect(page).toContain("<form method='POST'>");
+				expect(page).toContain('Yes, approve');
+				expect(page).toContain('Approval required');
+				expect(page).toContain('Please review the request');
+			});
+
+			it('should use the disapprove label on the confirmation page when approved=false', async () => {
+				const send = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'false' },
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+					'approvalOptions.values': { approveLabel: 'Yes, approve', disapproveLabel: 'Reject it' },
+					subject: 'Approval required',
+					message: 'Please review the request',
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				const page = send.mock.calls[0][0] as string;
+				expect(page).toContain('Reject it');
+				expect(page).not.toContain('Yes, approve');
+			});
+
+			it('should record the response on POST when the option is enabled', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({
+					webhookResponse: expect.any(String),
+					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
+				});
+			});
+
+			it('should record the response on GET when the option is disabled', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: false,
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({
+					webhookResponse: expect.any(String),
+					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
+				});
+			});
+
+			it('should return noWebhookResponse for bot user-agent on POST', async () => {
+				const send = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					headers: {
+						'user-agent':
+							'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+					},
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(send).toHaveBeenCalledWith('');
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('should escape HTML in the confirmation page content', async () => {
+				const send = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+					'approvalOptions.values': {},
+					subject: '<script>alert(1)</script>',
+					message: '<img src=x onerror=alert(1)>',
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				const page = send.mock.calls[0][0] as string;
+				expect(page).not.toContain('<script>');
+				expect(page).not.toContain('<img');
+				expect(page).toContain('&lt;script&gt;');
+			});
+		});
 	});
 });
 

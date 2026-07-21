@@ -45,11 +45,11 @@ export const FolderConflictPolicy = {
 } as const;
 
 export const MissingWorkflowDependencyPolicy = {
-	/** Fails the export when a static sub-workflow dependency is not included. */
+	/** Fails the export when a workflow dependency is not included. */
 	Fail: 'fail',
-	/** Reserved for exporting missing static sub-workflows as requirements only. */
+	/** Reserved for exporting missing workflow dependencies as requirements only. */
 	ReferenceOnly: 'reference-only',
-	/** Reserved for automatically adding missing static sub-workflows to the package. */
+	/** Reserved for automatically adding missing workflow dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
@@ -98,6 +98,8 @@ export interface ExportPackageRequest {
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
+	includeVariableValues?: boolean;
+	canExportVariableValues?: boolean;
 	missingWorkflowDependencyPolicy?: MissingWorkflowDependencyPolicy;
 }
 
@@ -186,6 +188,7 @@ export type ExportPackageEventCounts = {
 	folders: number;
 	credentials: number;
 	dataTables: number;
+	variables: number;
 };
 
 export interface ImportedWorkflowSummary {
@@ -263,6 +266,14 @@ export function createBindings(seed: Partial<PackageImportBindings> = {}): Packa
 		workflows: new Map(),
 		credentials: new Map(),
 		...seed,
+	};
+}
+
+/** Combines per-scope binding maps into one — used when a project package imports several scopes. */
+export function mergeBindings(...bindings: PackageImportBindings[]): PackageImportBindings {
+	return {
+		workflows: new Map(bindings.flatMap(({ workflows }) => [...workflows])),
+		credentials: new Map(bindings.flatMap(({ credentials }) => [...credentials])),
 	};
 }
 

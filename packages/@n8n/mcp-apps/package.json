@@ -1,6 +1,6 @@
 {
   "name": "@n8n/mcp-apps",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "MCP Apps UI resources and server helpers for n8n",
   "main": "dist/server/index.js",
   "types": "dist/server/index.d.ts",
@@ -55,7 +55,8 @@
     "@vue/test-utils": "catalog:frontend",
     "rimraf": "catalog:",
     "semver": "catalog:",
-    "typescript": "catalog:",
+    "@typescript/native": "catalog:typescript-tooling",
+    "typescript": "catalog:typescript-tooling",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-plugin-singlefile": "catalog:",

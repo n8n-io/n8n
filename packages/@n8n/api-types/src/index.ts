@@ -3,7 +3,7 @@ export type * from './datetime';
 export * from './dto';
 export type * from './push';
 export type * from './scaling';
-export type * from './frontend-settings';
+export * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
@@ -108,6 +108,7 @@ export type {
 } from './push/chat-hub';
 
 export type { Collaborator } from './push/collaboration';
+export type { WorkflowPublicationStatusMessage } from './push/workflow';
 export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
@@ -177,6 +178,7 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UserProject,
 	usersListSchema,
 	userBaseSchema,
 	userDetailSchema,
@@ -335,10 +337,12 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalSeedDataTableRowsRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -355,6 +359,7 @@ export {
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
+	instanceAiEvalSeedDataTableSchema,
 	applyBranchReadOnlyOverrides,
 	normalizeInstanceAiThreadSource,
 } from './schemas/instance-ai.schema';
@@ -462,6 +467,11 @@ export type {
 	InstanceAiEvalMockedCredential,
 	InstanceAiEvalRewrittenCredential,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalAgentToolCallRecord,
+	InstanceAiEvalAgentModelTurnRecord,
+	InstanceAiEvalAgentScenarioSeed,
+	InstanceAiEvalAgentSkippedFeature,
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalSeedWorkflow,
 	InstanceAiEvalSeedDataTable,
 } from './schemas/instance-ai.schema';
@@ -510,11 +520,23 @@ export {
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
 	MCP_INSTANCE_SCOPES,
+	MCP_CLIENT_BRAND_MATCHERS,
+	MCP_CLIENT_TYPE_FILTERS,
+	MCP_CLIENT_TYPE_FILTER_BUCKETS,
+	MCP_CLIENT_CONNECTED_PERIODS,
+	getMcpClientType,
 	type McpScope,
+	type McpClientType,
+	type McpClientBrandName,
+	type McpClientTypeFilter,
+	type McpClientConnectedPeriod,
 } from './schemas/mcp.schema';
 
 export {
 	EVAL_COLLECTIONS_FLAG,
+	RESERVED_METRIC_KEYS,
+	ONE_TO_FIVE_METRIC_KEYS,
+	normalizeMetricScore,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,
 	CreateEvaluationCollectionDto,
