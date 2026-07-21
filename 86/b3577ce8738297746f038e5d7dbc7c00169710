@@ -1,0 +1,30 @@
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_b1ae3677d6bc36::t_56514d3460fa45 229,461
+packages/cli/src/workflows/publication/__tests__/workflow-publication-status.service.test.ts
+  s_b1ae3677d6bc36::t_d092ed2e11e3bb 68,83,98
+packages/@n8n/db/src/migrations/common/1784564167057-DropPublishedVersionIdFromWorkflowPublicationOutbox.ts
+  s_b1ae3677d6bc36::t_aff4cbd107a08b 6-44
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_b1ae3677d6bc36::t_56514d3460fa45 221,443
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_b1ae3677d6bc36::t_f07479af0002f0 224-228
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_82a570060839a6 66
+  s_b1ae3677d6bc36::t_3262ef573c75f7 448-449,606-612
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "86b3577ce8738297746f038e5d7dbc7c00169710",
+  "prompts": {},
+  "sessions": {
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
