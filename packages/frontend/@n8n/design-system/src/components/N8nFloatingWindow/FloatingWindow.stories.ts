@@ -1,10 +1,10 @@
-import type { StoryFn } from '@storybook/vue3-vite';
+import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
 import N8nFloatingWindow from './FloatingWindow.vue';
 import N8nIcon from '../N8nIcon';
 
-export default {
+const meta: Meta<typeof N8nFloatingWindow> = {
 	title: 'Core/FloatingWindow',
 	component: N8nFloatingWindow,
 	argTypes: {
@@ -31,40 +31,56 @@ export default {
 				iframeHeight: 500,
 			},
 		},
+		themePreview: {
+			minHeight: 520,
+		},
 	},
+	render: (args) => ({
+		components: {
+			N8nFloatingWindow,
+			N8nIcon,
+		},
+		setup: () => ({
+			args,
+			onClose: action('close'),
+			onResize: action('resize'),
+			onMove: action('move'),
+		}),
+		template: `
+			<div style="position: relative; width: 100%; height: 480px; overflow: hidden;">
+				<n8n-floating-window
+					v-bind="args"
+					contained
+					@close="onClose"
+					@resize="onResize"
+					@move="onMove"
+				>
+					<template #header-icon>
+						<n8n-icon icon="comment-dots" size="medium" />
+					</template>
+					<template #header>Floating Window</template>
+					<template #header-actions>
+						<n8n-icon icon="expand" size="small" style="cursor: pointer;" />
+					</template>
+					<div style="padding: 16px;">
+						<p>This is the default slot content. The window can be dragged by its header and resized from any edge or corner.</p>
+					</div>
+				</n8n-floating-window>
+			</div>
+		`,
+	}),
 };
 
-const Template: StoryFn = (args, { argTypes }) => ({
-	setup: () => ({
-		args,
-		onClose: action('close'),
-		onResize: action('resize'),
-		onMove: action('move'),
-	}),
-	props: Object.keys(argTypes),
-	components: {
-		N8nFloatingWindow,
-		N8nIcon,
-	},
-	template: `<n8n-floating-window v-bind="args" @close="onClose" @resize="onResize" @move="onMove">
-		<template #header-icon>
-			<n8n-icon icon="comment-dots" size="medium" />
-		</template>
-		<template #header>Floating Window</template>
-		<template #header-actions>
-			<n8n-icon icon="expand" size="small" style="cursor: pointer;" />
-		</template>
-		<div style="padding: 16px;">
-			<p>This is the default slot content. The window can be dragged by its header and resized from any edge or corner.</p>
-		</div>
-	</n8n-floating-window>`,
-});
+export default meta;
 
-export const Default = Template.bind({});
-Default.args = {
-	width: 560,
-	height: 400,
-	minWidth: 400,
-	minHeight: 300,
-	initialPosition: { x: 0, y: 0 },
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+	args: {
+		width: 360,
+		height: 280,
+		minWidth: 240,
+		minHeight: 180,
+		initialPosition: { x: 16, y: 16 },
+	},
 };
