@@ -26,6 +26,9 @@ export class AgentRepository extends Repository<Agent> {
 
 		const query = this.createQueryBuilder('agent')
 			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			// The home project rides along so cross-project lists (overview page,
+			// MCP settings) can label each agent without extra lookups.
+			.leftJoinAndSelect('agent.project', 'project')
 			.where('agent.projectId IN (:...projectIds)', { projectIds });
 
 		this.applyFilters(query, options.filter);

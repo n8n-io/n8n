@@ -218,7 +218,6 @@ import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/17840000000
 import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
 import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
-import { AddAvailableInMcpToAgents1784654971796 } from './1784654971796-AddAvailableInMcpToAgents';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -440,7 +439,6 @@ const sqliteMigrations: Migration[] = [
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000052,
-	AddAvailableInMcpToAgents1784654971796,
 ];
 
 export { sqliteMigrations };

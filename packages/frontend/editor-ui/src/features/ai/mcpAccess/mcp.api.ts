@@ -7,6 +7,7 @@ import type {
 	McpClientTypeFilter,
 } from '@n8n/api-types';
 import type { WorkflowListItem } from '@/Interface';
+import type { Agent } from '@/features/agents/agent.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest, getFullApiResponse } from '@n8n/rest-api-client';
 
@@ -28,6 +29,13 @@ export type ToggleWorkflowsMcpAccessResponse = {
 	updatedIds?: string[];
 	unchangedIds?: string[];
 };
+
+export type ToggleAgentsMcpAccessTarget =
+	| { agentIds: string[] }
+	| { projectId: string }
+	| { allAgents: true };
+
+export type ToggleAgentsMcpAccessResponse = ToggleWorkflowsMcpAccessResponse;
 
 export async function getMcpSettings(context: IRestApiContext): Promise<McpSettingsResponse> {
 	return await makeRestApiRequest(context, 'GET', '/mcp/settings');
@@ -140,4 +148,38 @@ export async function fetchMcpEligibleWorkflows(
 	}
 
 	return await getFullApiResponse<WorkflowListItem[]>(context, 'GET', '/mcp/workflows', params);
+}
+
+/**
+ * Bulk-toggles MCP availability for a set of agents scoped by either an
+ * explicit id list, a project, or all agents the user can update.
+ */
+export async function toggleAgentsMcpAccessApi(
+	context: IRestApiContext,
+	target: ToggleAgentsMcpAccessTarget,
+	availableInMCP: boolean,
+): Promise<ToggleAgentsMcpAccessResponse> {
+	return await makeRestApiRequest(context, 'PATCH', '/mcp/agents/toggle-access', {
+		availableInMCP,
+		...target,
+	});
+}
+
+export async function fetchMcpEligibleAgents(
+	context: IRestApiContext,
+	options?: { take?: number; skip?: number; query?: string },
+): Promise<{ count: number; data: Agent[] }> {
+	const params: Record<string, string | number> = {};
+
+	if (options?.take !== undefined) {
+		params.take = options.take;
+	}
+	if (options?.skip !== undefined) {
+		params.skip = options.skip;
+	}
+	if (options?.query) {
+		params.filter = JSON.stringify({ query: options.query });
+	}
+
+	return await getFullApiResponse<Agent[]>(context, 'GET', '/mcp/agents', params);
 }

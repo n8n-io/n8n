@@ -227,7 +227,6 @@ import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
 import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
 import type { Migration } from '../migration-types';
-import { AddAvailableInMcpToAgents1784654971796 } from '../common/1784654971796-AddAvailableInMcpToAgents';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -458,5 +457,4 @@ export const postgresMigrations: Migration[] = [
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
 	BackfillInstanceAiEventLog1784000000051,
 	CreateWorkflowReviewRequestTables1784000000052,
-	AddAvailableInMcpToAgents1784654971796,
 ];

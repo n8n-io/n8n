@@ -25,11 +25,13 @@ import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnec
 import McpStatusControl from '@/features/ai/mcpAccess/components/McpStatusControl.vue';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import {
+	MCP_AGENTS_VIEW,
 	MCP_CLIENTS_VIEW,
 	MCP_DOCS_PAGE_URL,
 	MCP_WORKFLOWS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
@@ -39,7 +41,10 @@ const mcp = useMcp();
 const router = useRouter();
 
 const mcpStore = useMCPStore();
+const settingsStore = useSettingsStore();
 const { offerToExposeAllWorkflows } = useExposeAllWorkflowsToMcpOffer();
+
+const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents'));
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
@@ -73,6 +78,15 @@ const workflowsExposedValue = computed(() =>
 	}),
 );
 
+const exposedAgentsCount = ref(0);
+
+const agentsExposedValue = computed(() =>
+	i18n.baseText('settings.mcp.agentsExposed.count', {
+		adjustToNumber: exposedAgentsCount.value,
+		interpolate: { count: String(exposedAgentsCount.value) },
+	}),
+);
+
 const callbackUrlsValue = computed(() =>
 	mcpStore.allowedRedirectUris.length === 0
 		? i18n.baseText('settings.mcp.callbackUrls.value.all')
@@ -91,18 +105,34 @@ const fetchExposedWorkflowsCount = async () => {
 	}
 };
 
+const fetchExposedAgentsCount = async () => {
+	if (!agentsModuleActive.value) return;
+	try {
+		const response = await mcpStore.fetchAgentsAvailableForMCP(1, 1);
+		exposedAgentsCount.value = response.count;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.mcp.agents.list.error.fetching'));
+	}
+};
+
 const onToggleMCPAccess = async (enabled: boolean) => {
 	try {
 		mcpStatusLoading.value = true;
 		const updated = await mcpStore.setMcpAccessEnabled(enabled);
 		if (updated) {
-			await Promise.all([fetchExposedWorkflowsCount(), fetchoAuthCLients()]);
+			await Promise.all([
+				fetchExposedWorkflowsCount(),
+				fetchExposedAgentsCount(),
+				fetchoAuthCLients(),
+			]);
 		}
 		mcp.trackUserToggledMcpAccess(enabled);
 		if (enabled && updated) {
 			// Best-effort expose-all offer for enrolled users; enabling MCP no longer
 			// auto-opens the connect dialog (the user connects a client when ready).
-			void offerToExposeAllWorkflows(fetchExposedWorkflowsCount);
+			void offerToExposeAllWorkflows(async () => {
+				await Promise.all([fetchExposedWorkflowsCount(), fetchExposedAgentsCount()]);
+			});
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
@@ -138,6 +168,10 @@ const openWorkflowsView = () => {
 	void router.push({ name: MCP_WORKFLOWS_VIEW });
 };
 
+const openAgentsView = () => {
+	void router.push({ name: MCP_AGENTS_VIEW });
+};
+
 const loadRedirectUris = async () => {
 	try {
 		await mcpStore.fetchAllowedRedirectUris();
@@ -167,7 +201,11 @@ onMounted(async () => {
 	if (!mcpStore.mcpAccessEnabled) {
 		return;
 	}
-	const fetches: Array<Promise<unknown>> = [fetchExposedWorkflowsCount(), fetchoAuthCLients()];
+	const fetches: Array<Promise<unknown>> = [
+		fetchExposedWorkflowsCount(),
+		fetchExposedAgentsCount(),
+		fetchoAuthCLients(),
+	];
 	if (canManageMcpInstance.value) {
 		fetches.push(loadRedirectUris());
 		fetches.push(mcpStore.getInstanceClientStats());
@@ -248,6 +286,18 @@ onMounted(async () => {
 					>
 						<template #action>
 							<N8nSettingsRowConfigure :value="workflowsExposedValue" />
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						v-if="agentsModuleActive"
+						:title="i18n.baseText('settings.mcp.agentsExposed.title')"
+						:description="i18n.baseText('settings.mcp.agentsExposed.description')"
+						clickable
+						data-test-id="mcp-agents-exposed-row"
+						@click="openAgentsView"
+					>
+						<template #action>
+							<N8nSettingsRowConfigure :value="agentsExposedValue" />
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
