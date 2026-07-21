@@ -85,6 +85,18 @@ describe('collectMissingNodeTypes', () => {
 			{ type: 'n8n-nodes-base.unknown', typeVersion: 2, usedByWorkflows: ['wf-2'] },
 		]);
 	});
+
+	it('dedupes a workflow id that reappears non-adjacently in the input', () => {
+		const workflows = [
+			prepared('wf-1', [{ type: 'n8n-nodes-base.unknown', typeVersion: 1 }]),
+			prepared('wf-2', [{ type: 'n8n-nodes-base.unknown', typeVersion: 1 }]),
+			prepared('wf-1', [{ type: 'n8n-nodes-base.unknown', typeVersion: 1 }]),
+		];
+
+		expect(collectMissingNodeTypes(workflows, getSupportedVersions)).toEqual([
+			{ type: 'n8n-nodes-base.unknown', typeVersion: 1, usedByWorkflows: ['wf-1', 'wf-2'] },
+		]);
+	});
 });
 
 describe('missingNodeTypeBlockingFailures', () => {

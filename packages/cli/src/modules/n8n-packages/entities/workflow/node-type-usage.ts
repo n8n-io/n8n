@@ -19,27 +19,28 @@ export interface NodeTypeUsage {
  * render on canvas and are part of the content. Pure — no registry lookups.
  */
 export function collectNodeTypeUsage(workflows: WorkflowNodeTypeSource[]): NodeTypeUsage[] {
-	const usage = new Map<string, NodeTypeUsage>();
+	const usage = new Map<string, { type: string; typeVersion: number; workflowIds: Set<string> }>();
 
 	for (const { workflowId, nodes } of workflows) {
 		for (const node of nodes) {
 			const key = `${node.type}@${node.typeVersion}`;
 			const entry = usage.get(key);
 			if (entry) {
-				// Workflows fold sequentially, so a duplicate id can only be the last pushed.
-				if (entry.usedByWorkflows.at(-1) !== workflowId) {
-					entry.usedByWorkflows.push(workflowId);
-				}
+				entry.workflowIds.add(workflowId);
 				continue;
 			}
 
 			usage.set(key, {
 				type: node.type,
 				typeVersion: node.typeVersion,
-				usedByWorkflows: [workflowId],
+				workflowIds: new Set([workflowId]),
 			});
 		}
 	}
 
-	return [...usage.values()];
+	return [...usage.values()].map(({ type, typeVersion, workflowIds }) => ({
+		type,
+		typeVersion,
+		usedByWorkflows: [...workflowIds],
+	}));
 }
