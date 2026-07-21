@@ -21,7 +21,7 @@ const SITE_ID = 'contoso.sharepoint.com,g1,g2';
 const ENCODED_SITE_ID = encodeURIComponent(SITE_ID);
 const LIST_ID = 'list1';
 const ITEMS_ENDPOINT = `/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items`;
-const ITEMS_QS = { $expand: 'fields($select=Title)', $select: 'id,fields' };
+const ITEMS_QS = { $expand: 'fields($select=Title,FileLeafRef)', $select: 'id,fields' };
 
 describe('Microsoft SharePoint v2 — item search', () => {
 	let ctx: DeepMockProxy<ILoadOptionsFunctions>;
@@ -51,7 +51,7 @@ describe('Microsoft SharePoint v2 — item search', () => {
 		setParams({ site: { mode: 'id', value: SITE_ID }, list: LIST_ID });
 	});
 
-	it("requests a list's items expanding the Title field, without a server-side filter", async () => {
+	it("requests a list's items expanding the Title and FileLeafRef fields, without a server-side filter", async () => {
 		apiRequest.mockResolvedValue({ value: [] });
 
 		await getItems.call(ctx);
@@ -75,9 +75,25 @@ describe('Microsoft SharePoint v2 — item search', () => {
 		]);
 	});
 
-	it('labels an item with an empty Title by its ID', async () => {
+	it('labels a document-library item by its FileLeafRef when Title is empty', async () => {
 		apiRequest.mockResolvedValue({
-			value: [{ id: '7', fields: { Title: '' } }, { id: '8' }],
+			value: [
+				{ id: '1', fields: { Title: '', FileLeafRef: 'report.pdf' } },
+				{ id: '2', fields: { FileLeafRef: 'notes.txt' } },
+			],
+		});
+
+		const result = await getItems.call(ctx);
+
+		expect(result.results).toEqual([
+			{ name: 'report.pdf', value: '1' },
+			{ name: 'notes.txt', value: '2' },
+		]);
+	});
+
+	it('labels an item with no Title or FileLeafRef by its ID', async () => {
+		apiRequest.mockResolvedValue({
+			value: [{ id: '7', fields: { Title: '', FileLeafRef: '' } }, { id: '8' }],
 		});
 
 		const result = await getItems.call(ctx);
@@ -86,6 +102,19 @@ describe('Microsoft SharePoint v2 — item search', () => {
 			{ name: '7', value: '7' },
 			{ name: '8', value: '8' },
 		]);
+	});
+
+	it('filters by a document-library file name client-side, case-insensitively', async () => {
+		apiRequest.mockResolvedValue({
+			value: [
+				{ id: '1', fields: { FileLeafRef: 'Quarterly.pdf' } },
+				{ id: '2', fields: { FileLeafRef: 'Archive.zip' } },
+			],
+		});
+
+		const result = await getItems.call(ctx, 'quarterly');
+
+		expect(result.results).toEqual([{ name: 'Quarterly.pdf', value: '1' }]);
 	});
 
 	it('filters the fetched items by Title client-side, case-insensitively', async () => {

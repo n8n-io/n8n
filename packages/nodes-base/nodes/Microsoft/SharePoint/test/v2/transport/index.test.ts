@@ -401,6 +401,18 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			);
 		});
 
+		it('should mention Files.Read.All as an alternative on a 403 for item:get', async () => {
+			setParams({ authentication: 'microsoftOAuth2Api', resource: 'item', operation: 'get' });
+			mockRequestOAuth2.mockRejectedValue({
+				statusCode: 403,
+				error: { error: { code: 'accessDenied', message: 'Access denied' } },
+			});
+
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l/items/1'),
+			).rejects.toThrow(/Files\.Read\.All/);
+		});
+
 		it('should set httpCode "403" so callers can catch refusals', async () => {
 			setParams({ authentication: 'microsoftOAuth2Api', resource: 'list', operation: 'get' });
 			mockRequestOAuth2.mockRejectedValue({

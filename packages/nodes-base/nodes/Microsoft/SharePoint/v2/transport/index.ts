@@ -37,12 +37,14 @@ export const REQUIRED_PERMISSIONS: Readonly<
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
 	'item:get': {
-		delegated: 'Sites.Read.All',
-		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+		// Files.* scopes are also accepted for list items (verified against a real tenant).
+		delegated: 'Sites.Read.All (or Files.Read.All)',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site, or Files.Read.All)',
 	},
 	'item:delete': {
-		delegated: 'Sites.ReadWrite.All',
-		application: 'Sites.ReadWrite.All (or Sites.Selected granted for this site)',
+		delegated: 'Sites.ReadWrite.All (or Files.ReadWrite.All)',
+		application:
+			'Sites.ReadWrite.All (or Sites.Selected granted for this site, or Files.ReadWrite.All)',
 	},
 });
 

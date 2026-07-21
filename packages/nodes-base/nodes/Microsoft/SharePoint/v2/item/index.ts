@@ -35,7 +35,11 @@ export const itemRLC: INodeProperties = {
 	],
 };
 
-type ItemSearchReply = GraphSearchReply<{ id?: string; fields?: { Title?: string } }>;
+type ItemSearchReply = GraphSearchReply<{
+	id?: string;
+	// FileLeafRef is a document library's file name; Title is empty there (see label fallback).
+	fields?: { Title?: string; FileLeafRef?: string };
+}>;
 
 /**
  * Searches a list's items by their Title. Resolves `site` via `resolveSiteId`
@@ -70,9 +74,10 @@ export async function getItems(
 			'GET',
 			`/v1.0/sites/${encodeURIComponent(siteId)}/lists/${encodeURIComponent(list)}/items`,
 			{},
-			// Graph requires the `$`-prefixed nested option: fields($select=Title).
+			// Graph requires the `$`-prefixed nested option: fields($select=...).
 			// (v1's legacy endpoint tolerated `select=Title`; Graph's OData parser rejects it.)
-			{ $expand: 'fields($select=Title)', $select: 'id,fields' },
+			// FileLeafRef gives document libraries a file-name label where Title is empty.
+			{ $expand: 'fields($select=Title,FileLeafRef)', $select: 'id,fields' },
 		)) as ItemSearchReply;
 	}
 
@@ -82,13 +87,19 @@ export async function getItems(
 	// Kept in the API's order — a per-page sort would reset at every page
 	// boundary once results span pages (see getLists).
 	const results = (response.value ?? [])
-		.filter(
-			(item) =>
-				item.id && (!filterLower || (item.fields?.Title ?? '').toLowerCase().includes(filterLower)),
-		)
-		// `||` (not `??`) so an empty Title falls back to the item's ID label.
-		// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty Title must fall back to ID, which ?? would not do
-		.map((item) => ({ name: item.fields?.Title || String(item.id), value: String(item.id) }));
+		.filter((item) => {
+			if (!item.id) return false;
+			if (!filterLower) return true;
+			// Match either label so filtering works for document-library file names too.
+			const label = `${item.fields?.Title ?? ''} ${item.fields?.FileLeafRef ?? ''}`;
+			return label.toLowerCase().includes(filterLower);
+		})
+		.map((item) => ({
+			// `||` (not `??`) so an empty Title falls back to FileLeafRef, then the item's ID.
+			// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty Title must fall back, which ?? would not do
+			name: item.fields?.Title || item.fields?.FileLeafRef || String(item.id),
+			value: String(item.id),
+		}));
 
 	return { results, paginationToken: response['@odata.nextLink'] };
 }
