@@ -325,6 +325,74 @@ describe('McpAgentToolsService', () => {
 			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
 		});
 
+		it('rejects a config.replace that carries integrations', async () => {
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({
+					type: 'config.replace',
+					config: { ...baseConfig, integrations: [{ type: 'telegram', credentialId: '' }] },
+				}),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: expect.stringContaining('update_agent_integration'),
+			});
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('rejects a config.patch that targets integrations', async () => {
+			const config = { ...baseConfig, integrations: [] };
+			agentConfigService.getConfig.mockResolvedValue(config);
+
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput(
+					{
+						type: 'config.patch',
+						patch: [
+							{ op: 'add', path: '/integrations/-', value: { type: 'telegram', credentialId: '' } },
+						],
+					},
+					getAgentConfigHash(config) ?? undefined,
+				),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: expect.stringContaining('update_agent_integration'),
+			});
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('rejects a config.patch that injects integrations via a whole-document replace', async () => {
+			const config = { ...baseConfig, integrations: [] };
+			agentConfigService.getConfig.mockResolvedValue(config);
+
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput(
+					{
+						type: 'config.patch',
+						patch: [
+							{
+								op: 'replace',
+								path: '',
+								value: { ...baseConfig, integrations: [{ type: 'telegram', credentialId: '' }] },
+							},
+						],
+					},
+					getAgentConfigHash(config) ?? undefined,
+				),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: expect.stringContaining('update_agent_integration'),
+			});
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+
 		it('creates and attaches a skill when no skillId is given', async () => {
 			agentSkillsService.createAndAttachSkill.mockResolvedValue({ id: 'skill-1' } as never);
 
@@ -698,6 +766,21 @@ describe('McpAgentToolsService', () => {
 				],
 				customTools: [{ id: 'my_tool', descriptor: { name: 'my_tool' } }],
 			});
+		});
+
+		it('reports integrations separately and omits them from the editable config', async () => {
+			const integration = { type: 'telegram', credentialId: 'cred-1' };
+			agentsService.findById.mockResolvedValue(
+				agentEntity({ activeVersionId: 'v1', integrations: [integration] }),
+			);
+			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentSkillsService.listSkills.mockResolvedValue([] as never);
+			agentTaskService.list.mockResolvedValue([] as never);
+
+			const result = await callTool('get_agent', { projectId: 'project-1', agentId: 'agent-1' });
+
+			expect(result.structuredContent.integrations).toEqual([integration]);
+			expect(result.structuredContent.config).not.toHaveProperty('integrations');
 		});
 
 		it('returns an error result for an unknown agent', async () => {

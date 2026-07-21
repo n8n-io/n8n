@@ -58,6 +58,26 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
 
+const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
+	'Integrations are a published runtime surface, not editable config. Use update_agent_integration to connect or disconnect Slack, Telegram, or Linear.';
+
+function integrationsField(config: unknown): unknown {
+	return typeof config === 'object' && config !== null && !Array.isArray(config)
+		? (config as Record<string, unknown>).integrations
+		: undefined;
+}
+
+/**
+ * True when `next` alters the integrations array relative to `current`. Compared
+ * structurally rather than by patch path so no operation — including an
+ * ancestor or whole-document replace — can slip an integrations change through.
+ */
+function integrationsChanged(current: AgentJsonConfig, next: unknown): boolean {
+	return (
+		JSON.stringify(current.integrations ?? []) !== JSON.stringify(integrationsField(next) ?? [])
+	);
+}
+
 const TELEGRAM_SETTINGS_JSON_SCHEMA = zodToJsonSchema(AgentTelegramSettingsSchema);
 
 const httpUrlSchema = z
@@ -82,6 +102,8 @@ const initialAgentConfigSchema = AgentJsonConfigSchema.omit({
 	name: true,
 	skills: true,
 	tasks: true,
+	// Integrations are managed only through update_agent_integration.
+	integrations: true,
 }).superRefine((config, ctx) => {
 	if (config.tools?.some((tool) => tool.type === 'custom')) {
 		ctx.addIssue({
@@ -641,7 +663,7 @@ export class McpAgentToolsService {
 			name: 'update_agent_integration',
 			config: {
 				description:
-					'Connect or disconnect a Slack, Telegram, or Linear conversation integration. Connecting publishes the current Agent draft, so only connect after explicit user confirmation.',
+					'Connect or disconnect a Slack, Telegram, or Linear conversation integration. This is the only way to manage integrations; config.replace and config.patch cannot touch them. Connecting publishes the current Agent draft, so only connect after explicit user confirmation.',
 				inputSchema: updateIntegrationInput,
 				annotations: {
 					title: 'Update Agent Integration',
@@ -719,6 +741,12 @@ export class McpAgentToolsService {
 		]);
 		const taskEnabled = new Map((config.tasks ?? []).map((task) => [task.id, task.enabled]));
 
+		// The hash covers the full persisted config (integrations included) so it
+		// stays consistent with mutate_agent and update_agent_integration, but the
+		// config exposed to the client omits integrations: they are a read-only
+		// runtime surface reported separately, not part of the editable config.
+		const { integrations: _integrations, ...editableConfig } = config;
+
 		return {
 			agent: {
 				id: agent.id,
@@ -730,7 +758,7 @@ export class McpAgentToolsService {
 				createdAt: agent.createdAt.toISOString(),
 				updatedAt: agent.updatedAt.toISOString(),
 			},
-			config,
+			config: editableConfig,
 			configHash: getAgentConfigHash(config),
 			isRunnable: runnable.missing.length === 0,
 			missing: runnable.missing,
@@ -778,6 +806,9 @@ export class McpAgentToolsService {
 		const { projectId, agentId, operation } = input;
 		switch (operation.type) {
 			case 'config.replace': {
+				if (operation.config.integrations !== undefined) {
+					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
+				}
 				const result = await this.agentConfigService.updateConfig(
 					agentId,
 					projectId,
@@ -794,6 +825,9 @@ export class McpAgentToolsService {
 					jsonpatch.deepClone(config),
 					operation.patch,
 				).newDocument;
+				if (integrationsChanged(config, patched)) {
+					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
+				}
 				const result = await this.agentConfigService.updateConfig(
 					agentId,
 					projectId,

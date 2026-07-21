@@ -3,7 +3,12 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
 
-export const AGENT_CONFIG_JSON_SCHEMA = zodToJsonSchema(AgentJsonConfigSchema, {
+// Integrations are a published runtime surface managed only through
+// update_agent_integration, so they are never part of the editable draft
+// config the model reads and writes.
+const EditableAgentJsonConfigSchema = AgentJsonConfigSchema.omit({ integrations: true });
+
+export const AGENT_CONFIG_JSON_SCHEMA = zodToJsonSchema(EditableAgentJsonConfigSchema, {
 	name: 'AgentJsonConfig',
 });
 
@@ -60,9 +65,11 @@ answer before calling publish_agent or connecting an integration.
 
 ## mutate_agent operations
 
-- config.replace: Replace the complete Agent JSON configuration with value.config.
+- config.replace: Replace the editable Agent JSON configuration with value.config. Must not include
+  integrations; use update_agent_integration for those.
 - config.patch: Apply value.patch as RFC 6902 operations. Supported operations are add, remove,
-  replace, move, copy, and test.
+  replace, move, copy, and test. Paths under /integrations are rejected; use
+  update_agent_integration for those.
 - skill.upsert: Create and attach a skill when value.skillId is absent, or replace an existing skill
   body when it is present. Pass the complete skill body.
 - skill.delete: Delete a skill body and remove its config reference.
@@ -80,8 +87,8 @@ stale_config response, call get_agent and retry against the returned snapshot.
 ## Agent JSON configuration
 
 The required runnable fields are name, model, credential, and instructions. Common optional fields
-include tools, skills, tasks, integrations, memory, subAgents, providerTools, mcpServers,
-vectorStores, personalisation, and config.
+include tools, skills, tasks, memory, subAgents, providerTools, mcpServers, vectorStores,
+personalisation, and config. Integrations are not part of this config (see below).
 
 Tool references use these forms:
 
@@ -101,6 +108,12 @@ Use discover_agent_assets with kind=subagents to obtain valid IDs.
 Chat integrations are conversation surfaces, not ordinary node tools. Use an integration when users
 should invoke and converse with the Agent in Slack, Telegram, or Linear. Use a node/workflow tool
 when the Agent only needs to call that service as an API.
+
+Integrations are a published runtime surface, not editable config. get_agent reports them in a
+read-only integrations field, but config.replace and config.patch cannot add, change, or remove
+them, and they never appear in the config schema above. Manage them exclusively with
+update_agent_integration, which validates the credential and connects the live channel. Connecting
+publishes the current draft, so it needs the same explicit publication confirmation as publish_agent.
 `;
 
 export const AGENT_BUILDER_REFERENCE = `${AGENT_BUILDER_GUIDE}
