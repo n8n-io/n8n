@@ -115,6 +115,7 @@ describe('SettingsInstanceAiView', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(fetchSettings).mockResolvedValue(null);
 		vi.mocked(hasPermission).mockReturnValue(true);
 		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
@@ -369,6 +370,67 @@ describe('SettingsInstanceAiView', () => {
 
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
 			expect(queryByTestId('n8n-agent-sandbox-dialog-back')).toBeVisible();
+		});
+
+		it('enables only after the required setup completes', async () => {
+			const disabledSettings = { ...store.settings!, enabled: false };
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			const { findByTestId, findByText, getByRole, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
+			expect(await findByTestId('n8n-agent-model-dialog-step')).toBeVisible();
+			expect(persistEnabled).not.toHaveBeenCalled();
+
+			await completeModelStep(findByTestId, getByTestId, findByText);
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+			expect(persistEnabled).not.toHaveBeenCalled();
+
+			const apiKeyField = getByTestId('n8n-agent-sandbox-api-key-input');
+			const apiKeyInput =
+				apiKeyField.tagName === 'INPUT'
+					? (apiKeyField as HTMLInputElement)
+					: apiKeyField.querySelector('input')!;
+			await fireEvent.update(apiKeyInput, 'sk-test');
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
+		});
+
+		it('stays disabled when setup is cancelled', async () => {
+			const disabledSettings = { ...store.settings!, enabled: false };
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			const { findByTestId, getByRole, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
+			await findByTestId('n8n-agent-model-dialog-step');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-cancel'));
+
+			expect(persistEnabled).not.toHaveBeenCalled();
+			expect(store.settings?.enabled).toBe(false);
+		});
+
+		it('enables immediately when required setup is already complete', async () => {
+			const disabledSettings = {
+				...store.settings!,
+				enabled: false,
+				modelEnvConfigured: true,
+				sandboxEnvConfigured: true,
+			};
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			const { getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-enable-button'));
+
+			expect(persistEnabled).toHaveBeenCalledWith(true);
 		});
 
 		it('lets the user go back to step one and continue without changes', async () => {

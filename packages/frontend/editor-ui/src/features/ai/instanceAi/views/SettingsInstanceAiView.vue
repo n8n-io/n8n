@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
@@ -250,6 +250,17 @@ const modelDialogOpen = ref(false);
 const sandboxDialogOpen = ref(false);
 const searchDialogOpen = ref(false);
 const setupChain = ref(false);
+const enableAfterSetup = ref(false);
+
+watch(
+	[modelDialogOpen, sandboxDialogOpen],
+	([isModelOpen, isSandboxOpen]) => {
+		if (isModelOpen || isSandboxOpen) return;
+		setupChain.value = false;
+		enableAfterSetup.value = false;
+	},
+	{ flush: 'post' },
+);
 
 function openModelDialog() {
 	setupChain.value = false;
@@ -266,16 +277,24 @@ function openSandboxDialog() {
 	sandboxDialogOpen.value = true;
 }
 
-function handleModelSaved() {
+async function finishSetup() {
+	setupChain.value = false;
+	if (!enableAfterSetup.value) return;
+
+	enableAfterSetup.value = false;
+	await store.persistEnabled(true);
+}
+
+async function handleModelSaved() {
 	if (setupChain.value && !isSandboxConfigured.value) {
 		sandboxDialogOpen.value = true;
 		return;
 	}
-	setupChain.value = false;
+	await finishSetup();
 }
 
-function handleSandboxSaved() {
-	setupChain.value = false;
+async function handleSandboxSaved() {
+	await finishSetup();
 }
 
 function handleSandboxBack() {
@@ -292,8 +311,12 @@ onMounted(() => {
 });
 
 async function handleEnable() {
-	if (!(await store.persistEnabled(true))) return;
-	if (!showCredentialsRows.value) return;
+	if (!showCredentialsRows.value || (isModelConfigured.value && isSandboxConfigured.value)) {
+		await store.persistEnabled(true);
+		return;
+	}
+
+	enableAfterSetup.value = true;
 	if (!isModelConfigured.value) openModelSetup();
 	else if (!isSandboxConfigured.value) openSandboxDialog();
 }
@@ -670,21 +693,21 @@ function openAiUsageSettings() {
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
+		</template>
 
-			<template v-if="showCredentialsRows">
-				<ModelCredentialDialog
-					v-model:open="modelDialogOpen"
-					:setup="setupChain"
-					@saved="handleModelSaved"
-				/>
-				<SandboxCredentialDialog
-					v-model:open="sandboxDialogOpen"
-					:setup="setupChain"
-					@saved="handleSandboxSaved"
-					@back="handleSandboxBack"
-				/>
-				<SearchCredentialDialog v-model:open="searchDialogOpen" />
-			</template>
+		<template v-if="showCredentialsRows">
+			<ModelCredentialDialog
+				v-model:open="modelDialogOpen"
+				:setup="setupChain"
+				@saved="handleModelSaved"
+			/>
+			<SandboxCredentialDialog
+				v-model:open="sandboxDialogOpen"
+				:setup="setupChain"
+				@saved="handleSandboxSaved"
+				@back="handleSandboxBack"
+			/>
+			<SearchCredentialDialog v-model:open="searchDialogOpen" />
 		</template>
 	</N8nSettingsLayout>
 </template>

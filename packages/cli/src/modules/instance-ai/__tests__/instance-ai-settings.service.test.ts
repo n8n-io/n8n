@@ -207,27 +207,28 @@ describe('InstanceAiSettingsService', () => {
 
 			it('should create and assign a credential for a new connection', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
-				credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'new-cred' } as never);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
 
 				await service.updateAdminSettings(
 					{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
 					adminUser,
 				);
 
-				expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
+				expect(credentialsService.createInstanceCredential).toHaveBeenCalledWith(
 					expect.objectContaining({
 						type: 'openAiApi',
 						availability: 'instance',
 						name: 'AI Assistant model',
 					}),
 					adminUser,
+					operationContext,
 				);
 				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'instance-ai:model' }),
 					'new-cred',
 					operationContext,
 				);
-				expect(credentialsService.delete).not.toHaveBeenCalled();
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).not.toHaveBeenCalled();
 			});
 
 			it('should update the existing credential in place when the type is unchanged', async () => {
@@ -237,28 +238,23 @@ describe('InstanceAiSettingsService', () => {
 					type: 'openAiApi',
 					data: {},
 				});
-				credentialsFinderService.findCredentialForUser.mockResolvedValue(
-					mock<CredentialsEntity>({ id: 'cred-1', name: 'AI Assistant model', type: 'openAiApi' }),
-				);
-				credentialsService.prepareUpdateData.mockResolvedValue(
-					mock<CredentialsEntity>({ name: 'AI Assistant model', type: 'openAiApi' }),
-				);
-				credentialsService.createEncryptedData.mockResolvedValue(
-					mock<CredentialsEntity>({ id: 'cred-1' }),
-				);
-
 				await service.updateAdminSettings(
 					{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k2' } }, modelName: 'gpt-5' },
 					adminUser,
 				);
 
-				expect(credentialsService.update).toHaveBeenCalledWith(
+				expect(credentialsService.updateInstanceCredential).toHaveBeenCalledWith(
+					adminUser,
 					'cred-1',
-					expect.anything(),
-					expect.anything(),
+					{
+						name: 'AI Assistant model',
+						type: 'openAiApi',
+						data: { apiKey: 'k2' },
+					},
+					operationContext,
 				);
-				expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
-				expect(credentialsService.delete).not.toHaveBeenCalled();
+				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).not.toHaveBeenCalled();
 				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'instance-ai:model' }),
 					'cred-1',
@@ -273,7 +269,7 @@ describe('InstanceAiSettingsService', () => {
 					type: 'openAiApi',
 					data: {},
 				});
-				credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'new-cred' } as never);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
 
 				await service.updateAdminSettings(
 					{
@@ -288,9 +284,11 @@ describe('InstanceAiSettingsService', () => {
 					'new-cred',
 					operationContext,
 				);
-				expect(credentialsService.delete).toHaveBeenCalledWith(adminUser, 'old-cred', {
-					includeInstanceCredentials: true,
-				});
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
+					adminUser,
+					'old-cred',
+					operationContext,
+				);
 			});
 
 			it('should switch the sandbox provider and clear the other slot', async () => {
@@ -299,7 +297,7 @@ describe('InstanceAiSettingsService', () => {
 						? { id: 'old-n8n', name: 'AI Assistant sandbox', type: 'httpHeaderAuth', data: {} }
 						: null,
 				);
-				credentialsService.createUnmanagedCredential.mockResolvedValue({
+				credentialsService.createInstanceCredential.mockResolvedValue({
 					id: 'new-daytona',
 				} as never);
 
@@ -317,9 +315,11 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
 					operationContext,
 				);
-				expect(credentialsService.delete).toHaveBeenCalledWith(adminUser, 'old-n8n', {
-					includeInstanceCredentials: true,
-				});
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
+					adminUser,
+					'old-n8n',
+					operationContext,
+				);
 				expect(result.sandboxProvider).toBe('daytona');
 			});
 
@@ -335,7 +335,7 @@ describe('InstanceAiSettingsService', () => {
 						adminUser,
 					),
 				).rejects.toThrow(/x-api-key/);
-				expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
 			});
 
 			it('should clear a connection and delete the replaced credential', async () => {
@@ -352,9 +352,11 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({ id: 'instance-ai:search' }),
 					operationContext,
 				);
-				expect(credentialsService.delete).toHaveBeenCalledWith(adminUser, 'old-search', {
-					includeInstanceCredentials: true,
-				});
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
+					adminUser,
+					'old-search',
+					operationContext,
+				);
 			});
 
 			it('should reject connection payloads without the provider connection scope', async () => {
@@ -388,6 +390,42 @@ describe('InstanceAiSettingsService', () => {
 						adminUser,
 					),
 				).rejects.toThrow(/not supported/);
+			});
+
+			it('should stop when the current connection cannot be resolved', async () => {
+				instanceCredentialBroker.resolveForUse.mockRejectedValue(new Error('database unavailable'));
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).rejects.toThrow('database unavailable');
+				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
+			});
+
+			it('should fail the settings transaction when replacement cleanup fails', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'old-cred',
+					name: 'AI Assistant model',
+					type: 'openAiApi',
+					data: {},
+				});
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+				credentialsService.deleteInstanceCredentialIfUnassigned.mockRejectedValue(
+					new Error('delete failed'),
+				);
+
+				await expect(
+					service.updateAdminSettings(
+						{
+							modelConnection: { type: 'anthropicApi', data: { apiKey: 'k' } },
+							modelName: 'claude-sonnet-5',
+						},
+						adminUser,
+					),
+				).rejects.toThrow('delete failed');
+				expect(dbLockService.withLockContext).toHaveBeenCalledOnce();
 			});
 		});
 

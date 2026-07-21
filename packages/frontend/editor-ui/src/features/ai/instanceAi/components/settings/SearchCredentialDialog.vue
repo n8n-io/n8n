@@ -10,6 +10,7 @@ import {
 	N8nSelect,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { IUpdateInformation } from '@/Interface';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { INSTANCE_SEARCH_CREDENTIAL_TYPES } from '../../constants';
@@ -90,7 +91,7 @@ function selectType(nextType: string) {
 	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
 }
 
-function setFieldValue(name: string, value: unknown) {
+function setFieldValue(name: string, value: IUpdateInformation['value']) {
 	fieldsData.value = { ...fieldsData.value, [name]: value } as ICredentialDataDecryptedObject;
 }
 

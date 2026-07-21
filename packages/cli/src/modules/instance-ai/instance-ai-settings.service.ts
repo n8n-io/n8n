@@ -246,20 +246,22 @@ export class InstanceAiSettingsService {
 			);
 			this.rejectManagedFields(update, ['modelName', 'sandboxProvider'], this.deploymentLabel());
 		}
-		let {
-			// eslint-disable-next-line prefer-const
-			modelCredentialId,
-			daytonaCredentialId,
-			n8nSandboxCredentialId,
-			searchCredentialId,
+		const {
+			modelCredentialId: initialModelCredentialId,
+			daytonaCredentialId: initialDaytonaCredentialId,
+			n8nSandboxCredentialId: initialN8nSandboxCredentialId,
+			searchCredentialId: initialSearchCredentialId,
 			modelConnection,
 			sandboxConnection,
 			searchConnection,
 			...settingsUpdate
 		} = update;
+		let modelCredentialId = initialModelCredentialId;
+		let daytonaCredentialId = initialDaytonaCredentialId;
+		let n8nSandboxCredentialId = initialN8nSandboxCredentialId;
+		let searchCredentialId = initialSearchCredentialId;
 		this.rejectConnectionConflicts(update);
 
-		const replacedCredentialIds: string[] = [];
 		if (
 			modelConnection !== undefined ||
 			sandboxConnection !== undefined ||
@@ -268,38 +270,43 @@ export class InstanceAiSettingsService {
 			if (!user || !hasGlobalScope(user, 'credential:manageInstance')) {
 				throw new ForbiddenError('You do not have permission to manage provider connections');
 			}
-			if (modelConnection !== undefined) {
-				modelCredentialId = await this.upsertConnection(
-					user,
-					INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-					'AI Assistant model',
-					modelConnection,
-					replacedCredentialIds,
-				);
-			}
-			if (searchConnection !== undefined) {
-				searchCredentialId = await this.upsertConnection(
-					user,
-					INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-					'AI Assistant web search',
-					searchConnection,
-					replacedCredentialIds,
-				);
-			}
-			if (sandboxConnection !== undefined) {
-				const sandbox = await this.upsertSandboxConnection(
-					user,
-					sandboxConnection,
-					replacedCredentialIds,
-				);
-				daytonaCredentialId = sandbox.daytonaCredentialId;
-				n8nSandboxCredentialId = sandbox.n8nSandboxCredentialId;
-				if (sandbox.sandboxProvider) settingsUpdate.sandboxProvider = sandbox.sandboxProvider;
-			}
 		}
 		const { previous, next } = await this.dbLockService.withLockContext(
 			DbLock.INSTANCE_AI_SETTINGS,
 			async (ctx) => {
+				const replacedCredentialIds: string[] = [];
+				if (user && modelConnection !== undefined) {
+					modelCredentialId = await this.upsertConnection(
+						user,
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+						'AI Assistant model',
+						modelConnection,
+						replacedCredentialIds,
+						ctx,
+					);
+				}
+				if (user && searchConnection !== undefined) {
+					searchCredentialId = await this.upsertConnection(
+						user,
+						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+						'AI Assistant web search',
+						searchConnection,
+						replacedCredentialIds,
+						ctx,
+					);
+				}
+				if (user && sandboxConnection !== undefined) {
+					const sandbox = await this.upsertSandboxConnection(
+						user,
+						sandboxConnection,
+						replacedCredentialIds,
+						ctx,
+					);
+					daytonaCredentialId = sandbox.daytonaCredentialId;
+					n8nSandboxCredentialId = sandbox.n8nSandboxCredentialId;
+					if (sandbox.sandboxProvider) settingsUpdate.sandboxProvider = sandbox.sandboxProvider;
+				}
+
 				const updateCredentialAssignment = async (
 					credentialUse: InstanceCredentialUse,
 					credentialId: string | null | undefined,
@@ -366,14 +373,14 @@ export class InstanceAiSettingsService {
 					true,
 					ctx,
 				);
+				if (user) {
+					await this.deleteReplacedCredentials(user, replacedCredentialIds, ctx);
+				}
 				return { previous, next };
 			},
 		);
 		this.applyAdminSettings(next);
 		this.emitSettingsUpdated(previous, next);
-		if (user && replacedCredentialIds.length > 0) {
-			await this.deleteReplacedCredentials(user, replacedCredentialIds);
-		}
 
 		return await this.getAdminSettings();
 	}
@@ -398,8 +405,8 @@ export class InstanceAiSettingsService {
 
 	/**
 	 * Creates or replaces the single credential behind a connection. Returns the
-	 * credential id to assign (null clears). A replaced credential is deleted
-	 * after the settings transaction commits, once its assignment is re-pointed.
+	 * credential id to assign (null clears). The credential, assignment, and
+	 * settings changes share one transaction.
 	 */
 	private async upsertConnection(
 		user: User,
@@ -407,10 +414,9 @@ export class InstanceAiSettingsService {
 		name: string,
 		connection: InstanceAiConnectionUpdate | null,
 		replacedCredentialIds: string[],
+		ctx: OperationContext,
 	): Promise<string | null> {
-		const current = await this.instanceCredentialBroker
-			.resolveForUse(policy)
-			.catch(() => null as ResolvedInstanceCredential | null);
+		const current = await this.instanceCredentialBroker.resolveForUse(policy, ctx);
 
 		if (connection === null) {
 			if (current) replacedCredentialIds.push(current.id);
@@ -425,32 +431,13 @@ export class InstanceAiSettingsService {
 
 		const data = connection.data as ICredentialDataDecryptedObject;
 		if (current && current.type === connection.type) {
-			const entity = await this.credentialsFinderService.findCredentialForUser(
+			await this.credentialsService.updateInstanceCredential(
+				user,
 				current.id,
-				user,
-				['credential:update'],
-				{ includeInstanceCredentials: true },
+				{ name: current.name, type: current.type, data },
+				ctx,
 			);
-			if (!entity) {
-				throw new ForbiddenError('You do not have permission to update this provider connection');
-			}
-			const prepared = await this.credentialsService.prepareUpdateData(
-				user,
-				{ name: entity.name, type: entity.type, data },
-				entity,
-			);
-			const encrypted = await this.credentialsService.createEncryptedData({
-				id: entity.id,
-				name: prepared.name,
-				type: prepared.type,
-				data: prepared.data as unknown as ICredentialDataDecryptedObject,
-			});
-			await this.credentialsService.update(
-				entity.id,
-				encrypted,
-				prepared.data as unknown as ICredentialDataDecryptedObject,
-			);
-			return entity.id;
+			return current.id;
 		}
 
 		const dto: CreateCredentialDto = {
@@ -459,7 +446,7 @@ export class InstanceAiSettingsService {
 			data: connection.data,
 			availability: 'instance',
 		};
-		const created = await this.credentialsService.createUnmanagedCredential(dto, user);
+		const created = await this.credentialsService.createInstanceCredential(dto, user, ctx);
 		if (current) replacedCredentialIds.push(current.id);
 		return created.id;
 	}
@@ -469,6 +456,7 @@ export class InstanceAiSettingsService {
 		user: User,
 		connection: InstanceAiConnectionUpdate | null,
 		replacedCredentialIds: string[],
+		ctx: OperationContext,
 	): Promise<{
 		daytonaCredentialId: string | null;
 		n8nSandboxCredentialId: string | null;
@@ -483,6 +471,7 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					replacedCredentialIds,
+					ctx,
 				),
 				n8nSandboxCredentialId: await this.upsertConnection(
 					user,
@@ -490,6 +479,7 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					replacedCredentialIds,
+					ctx,
 				),
 			};
 		}
@@ -501,6 +491,7 @@ export class InstanceAiSettingsService {
 					name,
 					connection,
 					replacedCredentialIds,
+					ctx,
 				),
 				n8nSandboxCredentialId: await this.upsertConnection(
 					user,
@@ -508,6 +499,7 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					replacedCredentialIds,
+					ctx,
 				),
 				sandboxProvider: 'daytona',
 			};
@@ -527,6 +519,7 @@ export class InstanceAiSettingsService {
 					name,
 					connection,
 					replacedCredentialIds,
+					ctx,
 				),
 				daytonaCredentialId: await this.upsertConnection(
 					user,
@@ -534,6 +527,7 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					replacedCredentialIds,
+					ctx,
 				),
 				sandboxProvider: 'n8n-sandbox',
 			};
@@ -543,21 +537,13 @@ export class InstanceAiSettingsService {
 		);
 	}
 
-	/** Best-effort: the replaced credential is already unassigned; an orphan is invisible but logged. */
-	private async deleteReplacedCredentials(user: User, credentialIds: string[]): Promise<void> {
-		for (const credentialId of credentialIds) {
-			try {
-				await this.credentialsService.delete(user, credentialId, {
-					includeInstanceCredentials: true,
-				});
-			} catch (error) {
-				Container.get(Logger)
-					.scoped('instance-ai')
-					.warn('Failed to delete a replaced provider connection credential', {
-						credentialId,
-						error: ensureError(error).message,
-					});
-			}
+	private async deleteReplacedCredentials(
+		user: User,
+		credentialIds: string[],
+		ctx: OperationContext,
+	): Promise<void> {
+		for (const credentialId of new Set(credentialIds)) {
+			await this.credentialsService.deleteInstanceCredentialIfUnassigned(user, credentialId, ctx);
 		}
 	}
 

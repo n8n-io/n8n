@@ -10,7 +10,7 @@ const props = defineProps<{
 	data: ICredentialDataDecryptedObject;
 }>();
 
-const emit = defineEmits<{ update: [name: string, value: unknown] }>();
+const emit = defineEmits<{ update: [name: string, value: IUpdateInformation['value']] }>();
 
 const credentialsStore = useCredentialsStore();
 
