@@ -155,30 +155,42 @@ function main() {
 		process.exit(failures.length > 0 ? 1 : 0);
 	}
 
-	console.log(
-		`\nSingle-instance dependency verifier — root: ${root}${strict ? ' (strict)' : ''}\n`,
-	);
+	console.log(`\nSingle-instance dependency verifier — root: ${root}${strict ? ' (strict)' : ''}`);
 
+	// The enforced verdict: each curated library, with full paths when duplicated.
+	const curatedDups = new Map(duplicates.filter((d) => d.isCurated).map((d) => [d.name, d]));
+	console.log('\nCurated single-instance libraries (enforced):');
 	for (const lib of CURATED_LIBS) {
-		const copies = found.has(lib) ? distinctCopies(found.get(lib)) : [];
-		if (copies.length === 0) console.log(`  ${lib}: not present`);
-		else if (copies.length === 1) console.log(`  ${lib}: OK (1 copy, v${copies[0].version})`);
+		const dup = curatedDups.get(lib);
+		if (!dup) {
+			const copies = found.has(lib) ? distinctCopies(found.get(lib)) : [];
+			console.log(
+				`  ${lib}: ${copies.length === 0 ? 'not present' : `OK (1 copy, v${copies[0].version})`}`,
+			);
+			continue;
+		}
+		console.log(
+			`  ${lib}: ${dup.allowed ? 'ALLOWED DUP' : 'FAIL'} — ${dup.copies.length} physical copies:`,
+		);
+		for (const c of dup.copies) console.log(`      v${c.version}  ${c.realPath}`);
+		if (dup.allowed) console.log(`      allowlisted: ${EXPECTED_DUPLICATES[lib]}`);
 	}
 
-	for (const d of duplicates) {
-		const tag = d.isCurated ? (d.allowed ? 'ALLOWED DUP' : 'FAIL') : 'dup (report)';
-		console.log(`\n  ${d.name}: ${tag} — ${d.copies.length} physical copies:`);
-		for (const c of d.copies) {
-			console.log(`      v${c.version}  ${c.realPath}`);
-			console.log(`         via ${c.foundAt}`);
+	// Everything else is a discovery aid only — never fails the build. One line each.
+	const otherDups = duplicates.filter((d) => !d.isCurated);
+	if (otherDups.length > 0) {
+		console.log(`\nOther duplicated packages (report-only, NOT enforced — ${otherDups.length}):`);
+		for (const d of otherDups) {
+			console.log(
+				`  ${d.name}: ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
+			);
 		}
-		if (d.allowed) console.log(`      allowlisted: ${EXPECTED_DUPLICATES[d.name]}`);
 	}
 
 	console.log('');
 	if (failures.length > 0) {
 		console.error(
-			`FAIL: ${failures.length} curated ${failures.length === 1 ? 'library resolves' : 'libraries resolve'} to multiple physical copies.`,
+			`FAIL: curated ${failures.length === 1 ? 'library resolves' : 'libraries resolve'} to multiple physical copies: ${failures.map((f) => f.name).join(', ')}`,
 		);
 		process.exit(1);
 	}
