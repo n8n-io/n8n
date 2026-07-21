@@ -322,9 +322,8 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* The settings shell pads the page top (70.5px); collapse it so the page
-   header starts at the layout's own 24px inset, like the prototype. */
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
-	margin-top: -70.5px;
+	padding-top: 0;
 }
 </style>
