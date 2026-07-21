@@ -498,7 +498,7 @@ describe('runObservationLogReflector', () => {
 
 		expect(result).toMatchObject({ status: 'ran' });
 		if (result.status !== 'ran') throw new Error('expected reflector to run');
-		expect(result.reflection.merge[0].text).toContain('[redacted]');
+		expect(result.reflection.merge[0].text).toContain('[REDACTED]');
 		expect(result.reflection.merge[0].text).not.toContain('xoxb-1234567890-abcdefghij');
 
 		const merged = await store.getObservationLog({
@@ -506,6 +506,6 @@ describe('runObservationLogReflector', () => {
 			status: 'active',
 		});
 		expect(merged.some((entry) => entry.text.includes('xoxb-1234567890-abcdefghij'))).toBe(false);
-		expect(merged.some((entry) => entry.text.includes('[redacted]'))).toBe(true);
+		expect(merged.some((entry) => entry.text.includes('[REDACTED]'))).toBe(true);
 	});
 });

@@ -1,7 +1,7 @@
 import { SECRET_KEYS } from '@n8n/utils/scrub-secrets';
 
-import { redactMemoryText } from './memory-redaction';
 import { renderObservationLog } from './observation-log-renderer';
+import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type { BuiltMemory } from '../../types/sdk/memory';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
@@ -32,7 +32,7 @@ const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
 const DEFAULT_MAX_OBJECT_KEYS = 40;
-const REDACTED_VALUE = '[redacted]';
+const REDACTED_VALUE = '[REDACTED]';
 // Built from the shared secret-key vocabulary (@n8n/utils/scrub-secrets) plus
 // a few key names that vocabulary doesn't cover (bare `token`, private keys,
 // client secrets, session cookies) — catches secrets sitting under a
@@ -140,7 +140,7 @@ export function renderObserverTranscript(
 			.join('\n');
 		if (text) {
 			lines.push(`[${timestamp}] ${message.role}:`);
-			lines.push(redactMemoryText(text));
+			lines.push(redactText(text).text);
 		}
 
 		for (const toolCall of message.content.filter(isToolCallContent)) {
@@ -220,7 +220,7 @@ export async function runObservationLogObserver(
 			{
 				observationScopeId,
 				marker: entry.marker,
-				text: redactMemoryText(entry.text),
+				text: redactText(entry.text).text,
 				parentId,
 				createdAt: new Date(now.getTime() + inserted.length),
 			},
@@ -274,7 +274,7 @@ function serializeErrorForObserver(
 	options: RenderObserverTranscriptOptions,
 ): string {
 	return truncateString(
-		redactMemoryText(error),
+		redactText(error).text,
 		options.maxStringChars ?? DEFAULT_MAX_STRING_CHARS,
 		'string',
 	);
@@ -286,7 +286,7 @@ function compactForObserver(value: unknown, options: RenderObserverTranscriptOpt
 	const maxObjectKeys = options.maxObjectKeys ?? DEFAULT_MAX_OBJECT_KEYS;
 
 	if (typeof value === 'string') {
-		return truncateString(redactMemoryText(value), maxStringChars, 'string');
+		return truncateString(redactText(value).text, maxStringChars, 'string');
 	}
 	if (value === null || typeof value !== 'object') return value;
 

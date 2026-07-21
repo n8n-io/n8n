@@ -304,7 +304,7 @@ describe('renderObserverTranscript', () => {
 			},
 		]);
 
-		expect(transcript).toContain('[redacted]');
+		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).toContain('"x-safe-header":"keep-me"');
 		expect(transcript).toContain('safe=1');
 		expect(transcript).not.toContain('sk-live-input-secret');
@@ -339,7 +339,7 @@ describe('renderObserverTranscript', () => {
 		);
 
 		expect(transcript).toContain('tool_result call_api error=');
-		expect(transcript).toContain('[redacted]');
+		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).not.toContain('rejected-token');
 		expect(transcript).not.toContain('rejected-key');
 		expect(transcript).not.toContain('rejected-password');
@@ -368,7 +368,7 @@ describe('renderObserverTranscript', () => {
 
 		expect(transcript).toContain('for the integration.');
 		expect(transcript).toContain('Got it, I will use');
-		expect(transcript).toContain('[redacted]');
+		expect(transcript).toContain('[REDACTED]');
 		expect(transcript).not.toContain('46FR7-5877E26C078D640');
 		expect(transcript).not.toContain('sk-live-assistant-echo-secret');
 	});
@@ -505,7 +505,7 @@ describe('runObservationLogObserver', () => {
 
 		const observations = await store.getActiveObservationLog({ observationScopeId: 'thread-1' });
 		expect(observations).toHaveLength(1);
-		expect(observations[0].text).toContain('[redacted]');
+		expect(observations[0].text).toContain('[REDACTED]');
 		expect(observations[0].text).not.toContain('46FR7-5877E26C078D640');
 	});
 });

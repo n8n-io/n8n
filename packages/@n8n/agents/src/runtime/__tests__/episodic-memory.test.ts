@@ -406,7 +406,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			'Slack bot token integration',
 			{ queryEmbedding: [1, 0] },
 		);
-		expect(stored.content).toContain('[redacted]');
+		expect(stored.content).toContain('[REDACTED]');
 		expect(stored.content).not.toContain('xoxb-1234567890-abcdefghij');
 
 		const sources = Reflect.get(memory, 'episodicMemorySources') as Array<{
@@ -414,7 +414,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			evidenceText: string;
 		}>;
 		const source = sources.find((s) => s.observationId === observation.id);
-		expect(source?.evidenceText).toContain('[redacted]');
+		expect(source?.evidenceText).toContain('[REDACTED]');
 		expect(source?.evidenceText).not.toContain('xoxb-1234567890-abcdefghij');
 	});
 

@@ -1,7 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 
 import { uniqueStrings } from './memory-lifecycle';
-import { redactMemoryText } from './memory-redaction';
+import { redactText } from '../../sdk/guardrails';
 import type { AgentExecutionCounter } from '../../types/sdk/agent';
 import type {
 	BuiltObservationLogStore,
@@ -195,7 +195,7 @@ export async function runObservationLogReflector(
 	);
 	const reflection = {
 		...normalized,
-		merge: normalized.merge.map((merge) => ({ ...merge, text: redactMemoryText(merge.text) })),
+		merge: normalized.merge.map((merge) => ({ ...merge, text: redactText(merge.text).text })),
 	};
 	const result = await memory.applyObservationLogReflection({ observationScopeId }, reflection);
 
