@@ -649,8 +649,6 @@ describe('AgentCapabilitiesSection', () => {
 		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(false);
 	});
 
-
-
 	describe('validation issues', () => {
 		it('marks node-tool, MCP-server, and task chips invalid when matching issues are present', async () => {
 			getAgentTasksSpy.mockResolvedValue([makeTask()]);
@@ -777,7 +775,6 @@ describe('AgentCapabilitiesSection', () => {
 		});
 	});
 
-
 	describe('sections allowlist', () => {
 		it('renders every capability section by default', () => {
 			const wrapper = mountSection([]);
@@ -811,9 +808,7 @@ describe('AgentCapabilitiesSection', () => {
 						},
 						N8nIcon: { template: '<span />' },
 						N8nText: { template: '<span><slot /></span>' },
-
 						N8nTooltip: { template: '<span><slot /></span>' },
-
 					},
 				},
 			});
