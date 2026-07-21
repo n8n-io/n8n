@@ -1,6 +1,6 @@
-// `VIEWS` moved to `@n8n/stores/views` so package-level stores can key state by
-// view without an app back-dependency. Re-exported here for existing importers.
-import { VIEWS } from '@n8n/stores/views';
+// `VIEWS` moved to `@n8n/frontend-constants/views` so package-level code can key
+// state by view without an app back-dependency. Re-exported here for existing importers.
+import { VIEWS } from '@n8n/frontend-constants/views';
 
 export { VIEWS };
 

@@ -1,11 +1,23 @@
 /**
  * Router view identifiers, shared across the frontend.
  *
- * Relocated here from `editor-ui` so package-level stores (e.g. the
- * notifications store) can key state by view without an app back-dependency.
+ * Declared as a plain `enum` (not a `const enum`) so this package's emitted
+ * `dist` declarations contain a regular `declare enum` backed by a real runtime
+ * object. A `const enum` would emit an *ambient* const enum, which downstream
+ * packages compiled with `isolatedModules: true` cannot read (TS2748) — and being
+ * consumed from `dist` across the package boundary is this package's entire
+ * purpose. A plain `enum` also preserves the nominal enum-member types the rest of
+ * the frontend relies on, so relocating `VIEWS` here is behavior-preserving.
+ *
+ * The repo's default lint bans raw enums in favor of `const enum` for runtime
+ * overhead; that guidance is inverted here because `const enum` is precisely what
+ * breaks dist consumption. The `no-restricted-syntax` rule (and the camelCase
+ * naming-convention rule, since view identifiers are UPPER_CASE by convention)
+ * are relaxed for this file in `eslint.config.mjs`.
+ *
  * `editor-ui` re-exports this from `@/app/constants` for existing importers.
  */
-export const enum VIEWS {
+export enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',

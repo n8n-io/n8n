@@ -1,8 +1,8 @@
+import type { VIEWS } from '@n8n/frontend-constants/views';
 import { defineStore } from 'pinia';
 import { ref, type Component, type Ref, type VNode } from 'vue';
 
 import { STORES } from './constants';
-import type { VIEWS } from './views';
 
 type NotificationType = '' | 'success' | 'warning' | 'error' | 'info';
 type NotificationPosition = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';

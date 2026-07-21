@@ -1,7 +1,7 @@
+import { VIEWS } from '@n8n/frontend-constants/views';
 import { createPinia, setActivePinia } from 'pinia';
 
 import { useNotificationsStore } from './notifications.store';
-import { VIEWS } from './views';
 
 let notificationsStore: ReturnType<typeof useNotificationsStore>;
 
