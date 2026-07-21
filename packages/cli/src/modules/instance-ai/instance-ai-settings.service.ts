@@ -11,15 +11,16 @@ import type {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
-import { SettingsRepository, UserRepository } from '@n8n/db';
-import type { User } from '@n8n/db';
+import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
+import type { CredentialsEntity, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
-import type { IUserSettings } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { AiService } from '@/services/ai.service';
@@ -55,7 +56,10 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	cohereApi: 'cohere',
 };
 
-const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
+export const INSTANCE_AI_MODEL_CREDENTIAL_POLICY = {
+	id: 'instance-ai:model',
+	credentialTypes: Object.keys(CREDENTIAL_TO_MODEL_PROVIDER),
+};
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -115,12 +119,14 @@ export class InstanceAiSettingsService {
 
 	constructor(
 		globalConfig: GlobalConfig,
+		private readonly dbLockService: DbLockService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly userRepository: UserRepository,
 		private readonly userService: UserService,
 		private readonly aiService: AiService,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly eventService: EventService,
 	) {
 		this.config = globalConfig.instanceAi;
@@ -145,14 +151,7 @@ export class InstanceAiSettingsService {
 			sandboxProvider: this.config.sandboxProvider,
 		};
 
-		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
-		if (row) {
-			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
-				fallbackValue: {},
-			});
-			this.applyAdminSettings(persisted);
-		}
-
+		await this.reloadFromDb();
 		// Surface the effective sandbox config so operators (and CI) can tell whether env vars
 		// or a persisted DB setting are in effect — these can silently disagree.
 		const c = this.config;
@@ -174,8 +173,14 @@ export class InstanceAiSettingsService {
 
 	// ── Admin settings ────────────────────────────────────────────────────
 
-	getAdminSettings(): InstanceAiAdminSettingsResponse {
+	async getAdminSettings(): Promise<InstanceAiAdminSettingsResponse> {
 		const c = this.config;
+		const modelCredentialId =
+			this.isCloud || this.aiService.isProxyEnabled()
+				? null
+				: await this.instanceCredentialBroker.getAssignedCredentialId(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+					);
 		return {
 			enabled: this.enabled,
 			permissions: { ...this.permissions },
@@ -188,6 +193,7 @@ export class InstanceAiSettingsService {
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
+			modelCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 			browserUseEnabled: this.isBrowserUseEnabled(),
 		};
@@ -201,37 +207,52 @@ export class InstanceAiSettingsService {
 			InstanceAiSettingsService.MANAGED_ADMIN_FIELDS,
 			this.deploymentLabel(),
 		);
-		this.validateAdminSettingsUpdate(update);
-		const c = this.config;
-		const previousMcpServers = c.mcpServers;
-		const previousMcpAccessEnabled = this.mcpAccessEnabled;
-		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.permissions) {
-			this.permissions = { ...this.permissions, ...update.permissions };
+		if (this.isCloud || this.aiService.isProxyEnabled()) {
+			this.rejectManagedFields(update, ['modelCredentialId'], this.deploymentLabel());
 		}
-		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
-		if (update.mcpAccessEnabled !== undefined) this.mcpAccessEnabled = update.mcpAccessEnabled;
-		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
-		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
-		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
-		if (update.sandboxTimeout !== undefined) c.sandboxTimeout = update.sandboxTimeout;
-		if (update.daytonaCredentialId !== undefined)
-			this.adminDaytonaCredentialId = update.daytonaCredentialId;
-		if (update.n8nSandboxCredentialId !== undefined)
-			this.adminN8nSandboxCredentialId = update.n8nSandboxCredentialId;
-		if (update.searchCredentialId !== undefined)
-			this.adminSearchCredentialId = update.searchCredentialId;
-		if (update.localGatewayDisabled !== undefined)
-			c.localGatewayDisabled = update.localGatewayDisabled;
-		if (update.browserUseEnabled !== undefined) c.browserUseEnabled = update.browserUseEnabled;
-		await this.persistAdminSettings();
+		const { modelCredentialId, ...settingsUpdate } = update;
+		const { previous, next } = await this.dbLockService.withLockContext(
+			DbLock.INSTANCE_AI_SETTINGS,
+			async (ctx) => {
+				const persisted = await this.settingsRepository.findByKeyInContext(ADMIN_SETTINGS_KEY, ctx);
+				const current = this.mergeAdminSettings(
+					this.snapshotAdminSettings(),
+					this.parsePersistedAdminSettings(persisted?.value),
+				);
+				this.validateAdminSettingsUpdate(settingsUpdate, current);
+				if (modelCredentialId === null) {
+					await this.instanceCredentialBroker.clearForUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY, ctx);
+				} else if (modelCredentialId !== undefined) {
+					const credential = await this.instanceCredentialBroker.assignForUse(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+						modelCredentialId,
+						ctx,
+					);
+					this.ensureCredentialMatchesConfiguredModel(credential.type);
+				}
 
-		this.eventService.emit('instance-ai-settings-updated', {
-			mcpSettingsChanged:
-				c.mcpServers !== previousMcpServers || this.mcpAccessEnabled !== previousMcpAccessEnabled,
-		});
+				const previous = this.snapshotAdminSettings();
+				const next = this.mergeAdminSettings(current, settingsUpdate);
+				await this.settingsRepository.upsertByKey(
+					ADMIN_SETTINGS_KEY,
+					JSON.stringify(next),
+					true,
+					ctx,
+				);
+				return { previous, next };
+			},
+		);
+		this.applyAdminSettings(next);
+		this.emitSettingsUpdated(previous, next);
 
-		return this.getAdminSettings();
+		return await this.getAdminSettings();
+	}
+
+	async reloadFromDb(): Promise<void> {
+		const previous = this.snapshotAdminSettings();
+		const persisted = await this.readPersistedAdminSettings();
+		this.applyAdminSettings(persisted);
+		this.emitSettingsUpdated(previous, this.snapshotAdminSettings());
 	}
 
 	// ── User preferences ──────────────────────────────────────────────────
@@ -290,13 +311,26 @@ export class InstanceAiSettingsService {
 			'credential:read',
 		]);
 		return allCredentials
-			.filter((c) => SUPPORTED_CREDENTIAL_TYPES.includes(c.type))
+			.filter((c) => INSTANCE_AI_MODEL_CREDENTIAL_POLICY.credentialTypes.includes(c.type))
 			.map((c) => ({
 				id: c.id,
 				name: c.name,
 				type: c.type,
 				provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
 			}));
+	}
+
+	async listInstanceModelCredentials(): Promise<InstanceAiModelCredential[]> {
+		if (this.isCloud || this.aiService.isProxyEnabled()) return [];
+		const instanceCredentials = await this.instanceCredentialBroker.listForUse(
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+		);
+		return instanceCredentials.map((c) => ({
+			id: c.id,
+			name: c.name,
+			type: c.type,
+			provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
+		}));
 	}
 
 	/** List credentials the user can access that are usable as sandbox/search services. */
@@ -461,9 +495,15 @@ export class InstanceAiSettingsService {
 		return prefs.modelName ?? this.extractModelName(this.config.model);
 	}
 
-	/** Resolve the current model configuration for an agent run. */
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
 		const prefs = this.readUserPreferences(user);
+		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
+
+		const adminModelConfig = await this.resolveAdminModelConfig(modelName);
+		if (adminModelConfig) {
+			return adminModelConfig;
+		}
+
 		const credentialId = prefs.credentialId ?? null;
 
 		if (!credentialId) {
@@ -480,17 +520,57 @@ export class InstanceAiSettingsService {
 			return this.envVarModelConfig();
 		}
 
-		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credential.type];
+		return (
+			(await this.buildModelConfigFromCredential(credential, modelName)) ?? this.envVarModelConfig()
+		);
+	}
+
+	private async resolveAdminModelConfig(modelName: string): Promise<ModelConfig | null> {
+		if (this.isCloud || this.aiService.isProxyEnabled()) return null;
+		const resolved = await this.resolveModelCredential();
+		if (!resolved) return null;
+
+		return this.buildModelConfig(resolved.type, resolved.data, modelName);
+	}
+
+	private async resolveModelCredential() {
+		return await this.instanceCredentialBroker.resolveForUse(INSTANCE_AI_MODEL_CREDENTIAL_POLICY);
+	}
+
+	private ensureCredentialMatchesConfiguredModel(credentialType: string): void {
+		const slash = this.config.model.indexOf('/');
+		if (slash < 0) return;
+		const configuredProvider = this.config.model.slice(0, slash);
+		const credentialProvider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
+		if (credentialProvider !== configuredProvider) {
+			throw new UnprocessableRequestError(
+				`This credential is for "${credentialProvider}" but the configured model "${this.config.model}" requires a "${configuredProvider}" credential. Select a matching credential or set N8N_INSTANCE_AI_MODEL to a "${credentialProvider}" model.`,
+			);
+		}
+	}
+
+	private async buildModelConfigFromCredential(
+		credential: CredentialsEntity,
+		modelName: string,
+	): Promise<ModelConfig | null> {
+		const data = await this.credentialsService.decrypt(credential, true);
+		return this.buildModelConfig(credential.type, data, modelName);
+	}
+
+	private buildModelConfig(
+		credentialType: string,
+		data: ICredentialDataDecryptedObject,
+		modelName: string,
+	): ModelConfig | null {
+		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credentialType];
 		if (!provider) {
-			return this.envVarModelConfig();
+			return null;
 		}
 
-		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
-		const urlField = URL_FIELD_MAP[credential.type];
+		const urlField = URL_FIELD_MAP[credentialType];
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = prefs.modelName ?? this.extractModelName(this.config.model);
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 
 		if (baseUrl) {
@@ -551,8 +631,10 @@ export class InstanceAiSettingsService {
 		}
 	}
 
-	private validateAdminSettingsUpdate(update: InstanceAiAdminSettingsUpdateRequest): void {
-		const c = this.config;
+	private validateAdminSettingsUpdate(
+		update: InstanceAiAdminSettingsUpdateRequest,
+		current: PersistedAdminSettings,
+	): void {
 		const touchesSandboxSettings =
 			update.sandboxEnabled !== undefined ||
 			update.sandboxProvider !== undefined ||
@@ -567,8 +649,10 @@ export class InstanceAiSettingsService {
 		// `update.sandboxProvider` is already enum-validated by the request DTO; we only
 		// need the resolved provider here to enforce the cross-field service-URL rule,
 		// which spans the request body and env-backed config and can't live in the schema.
-		const sandboxProvider = update.sandboxProvider ?? normalizeSandboxProvider(c.sandboxProvider);
-		const sandboxEnabled = update.sandboxEnabled ?? c.sandboxEnabled;
+		const sandboxProvider = normalizeSandboxProvider(
+			update.sandboxProvider ?? current.sandboxProvider,
+		);
+		const sandboxEnabled = update.sandboxEnabled ?? current.sandboxEnabled ?? false;
 		const unavailableReason = this.getSandboxUnavailableReason(sandboxEnabled, sandboxProvider);
 		if (unavailableReason) {
 			throw new UnprocessableRequestError(unavailableReason);
@@ -649,9 +733,9 @@ export class InstanceAiSettingsService {
 		return user.settings?.instanceAi ?? {};
 	}
 
-	private async persistAdminSettings(): Promise<void> {
+	private snapshotAdminSettings(): PersistedAdminSettings {
 		const c = this.config;
-		const value: PersistedAdminSettings = {
+		return {
 			enabled: this.enabled,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
@@ -666,10 +750,44 @@ export class InstanceAiSettingsService {
 			localGatewayDisabled: c.localGatewayDisabled,
 			browserUseEnabled: c.browserUseEnabled,
 		};
+	}
 
-		await this.settingsRepository.upsert(
-			{ key: ADMIN_SETTINGS_KEY, value: JSON.stringify(value), loadOnStartup: true },
-			['key'],
+	private mergeAdminSettings(
+		base: PersistedAdminSettings,
+		update: PersistedAdminSettings,
+	): PersistedAdminSettings {
+		return {
+			...base,
+			...update,
+			permissions: update.permissions
+				? { ...(base.permissions ?? DEFAULT_INSTANCE_AI_PERMISSIONS), ...update.permissions }
+				: base.permissions,
+		};
+	}
+
+	private async readPersistedAdminSettings(): Promise<PersistedAdminSettings> {
+		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
+		return this.parsePersistedAdminSettings(row?.value);
+	}
+
+	private parsePersistedAdminSettings(value: string | undefined): PersistedAdminSettings {
+		if (value === undefined) return {};
+		const settings = jsonParse<PersistedAdminSettings & { modelCredentialId?: string | null }>(
+			value,
+			{ fallbackValue: {} },
 		);
+		delete settings.modelCredentialId;
+		return settings;
+	}
+
+	private emitSettingsUpdated(
+		previous: PersistedAdminSettings,
+		current: PersistedAdminSettings,
+	): void {
+		this.eventService.emit('instance-ai-settings-updated', {
+			mcpSettingsChanged:
+				current.mcpServers !== previous.mcpServers ||
+				current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+		});
 	}
 }

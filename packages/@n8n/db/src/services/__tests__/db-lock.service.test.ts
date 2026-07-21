@@ -5,6 +5,7 @@ import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DbLockService } from '../db-lock.service';
+import { TypeOrmTransaction } from '../typeorm-transaction';
 
 describe('DbLockService', () => {
 	const mockTx = mock<EntityManager>();
@@ -174,6 +175,16 @@ describe('DbLockService', () => {
 
 			await expect(service.withLock(1001, fn)).rejects.toThrow('connection lost');
 			expect(fn).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('withLockContext', () => {
+		it('provides an opaque context for the locked transaction', async () => {
+			databaseConfig.type = 'sqlite';
+			const fn = vi.fn().mockResolvedValue('result');
+
+			await expect(service.withLockContext(1001, fn)).resolves.toBe('result');
+			expect(fn).toHaveBeenCalledWith({ trx: expect.any(TypeOrmTransaction) });
 		});
 	});
 
