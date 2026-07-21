@@ -111,7 +111,7 @@ export class CreateAgentEvalTables1784000000060 implements ReversibleMigration {
 				column('metrics').json.comment('Per-case judge scores'),
 				column('runAt').timestampTimezone(),
 				column('completedAt').timestampTimezone(),
-				column('errorCode').varchar(),
+				column('errorCode').varchar(255),
 				column('errorDetails').json,
 			)
 			.withIndexOn('runId')

@@ -122,7 +122,7 @@ erDiagram
 "agent_eval_result" {
   datetime_3_ completedAt
   datetime_3_ createdAt
-  varchar errorCode
+  varchar_255_ errorCode
   TEXT errorDetails
   varchar_36_ id PK
   TEXT input

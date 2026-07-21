@@ -56,7 +56,7 @@ export class AgentEvalResult extends WithTimestampsAndStringId {
 	@DateTimeColumn({ nullable: true })
 	completedAt: Date | null;
 
-	@Column('varchar', { nullable: true })
+	@Column('varchar', { length: 255, nullable: true })
 	errorCode: string | null;
 
 	@JsonColumn({ nullable: true })
