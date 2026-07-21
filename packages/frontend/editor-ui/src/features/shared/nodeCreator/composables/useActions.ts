@@ -11,6 +11,7 @@ import type {
 	AddedNodeConnection,
 	AddedNodesAndConnections,
 	INodeCreateElement,
+	INodeUi,
 	IUpdateInformation,
 	LabelCreateElement,
 	NodeCreateElement,
@@ -40,6 +41,7 @@ import type { Telemetry } from '@/app/plugins/telemetry';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 
 import {
@@ -55,6 +57,7 @@ export const useActions = () => {
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const nodeCreatorStore = useNodeCreatorStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const uiStore = useUIStore();
 	const i18n = useI18n();
 	const singleNodeOpenSources = [
 		NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
@@ -277,8 +280,8 @@ export const useActions = () => {
 
 		const isCompatibleNode = addedNodes.some((node) => COMPATIBLE_CHAT_NODES.includes(node.type));
 		if (!isCompatibleNode) return false;
-
 		const allNodes = workflowDocumentStore.value.allNodes;
+
 		return allNodes.filter((x) => x.type !== MANUAL_TRIGGER_NODE_TYPE).length === 0;
 	}
 
@@ -295,6 +298,22 @@ export const useActions = () => {
 		});
 	}
 
+	/**
+	 * Returns the trigger the node creator was opened from when connecting to
+	 * an existing node (e.g. dragging a connection out of a trigger's output),
+	 * or undefined if the creator wasn't opened in that context, the
+	 * last-interacted-with node isn't a trigger, or a node-replacement is in
+	 * progress (the "last interacted" node there is the one being removed).
+	 */
+	function getConnectionTriggerNode(): INodeUi | undefined {
+		if (nodeCreatorStore.openingContext === 'replacement') return undefined;
+
+		const nodeId = uiStore.lastInteractedWithNodeId;
+		const node = nodeId ? workflowDocumentStore.value.getNodeById(nodeId) : undefined;
+
+		return node && nodeTypesStore.isTriggerNode(node.type) ? node : undefined;
+	}
+
 	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
 		if (addedNodes.length === 0) {
 			return { nodes: [], connections: [] };
@@ -309,7 +328,17 @@ export const useActions = () => {
 			nodeToAutoOpen.openDetail = true;
 		}
 
-		if (shouldPrependLLMChain(addedNodes) || shouldPrependChatTrigger(addedNodes)) {
+		// If the node creator was opened by connecting from an existing trigger,
+		// that trigger should receive the connection instead of prepending a
+		// duplicate Chat Trigger. The LLM Chain prepend still runs regardless:
+		// a language model node can't take a Main connection from the existing
+		// trigger anyway, so it always needs its own Chat Trigger + Chain wrapper.
+		const isConnectingToExistingTrigger = !!getConnectionTriggerNode();
+
+		if (
+			shouldPrependLLMChain(addedNodes) ||
+			(!isConnectingToExistingTrigger && shouldPrependChatTrigger(addedNodes))
+		) {
 			if (shouldPrependLLMChain(addedNodes)) {
 				addedNodes.unshift({ type: CHAIN_LLM_LANGCHAIN_NODE_TYPE, isAutoAdd: true });
 				connections.push({
@@ -407,6 +436,7 @@ export const useActions = () => {
 		getPlaceholderTriggerActions,
 		parseCategoryActions,
 		getAddedNodesAndConnections,
+		getConnectionTriggerNode,
 		getActionData,
 		setAddedNodeActionParameters,
 		shouldPrependChatTrigger,

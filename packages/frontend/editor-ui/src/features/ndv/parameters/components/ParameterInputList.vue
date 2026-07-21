@@ -24,6 +24,7 @@ import {
 	AGENT_NODE_TYPE,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	GOOGLE_GMAIL_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
 	SLACK_NODE_TYPE,
@@ -45,6 +46,10 @@ import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import {
+	filterGmailHitlParameters,
+	useEnhancedHitlGmailExperiment,
+} from '@/experiments/enhancedHitlGmail';
 import {
 	filterTelegramHitlParameters,
 	useEnhancedHitlTelegramExperiment,
@@ -125,6 +130,7 @@ const i18n = useI18n();
 const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const { isFeatureEnabled: isEnhancedHitlTelegramEnabled } = useEnhancedHitlTelegramExperiment();
 const { isFeatureEnabled: isEnhancedHitlSlackEnabled } = useEnhancedHitlSlackExperiment();
+const { isFeatureEnabled: isEnhancedHitlGmailEnabled } = useEnhancedHitlGmailExperiment();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -200,6 +206,7 @@ throttledWatch(
 		hasChatParent,
 		isEnhancedHitlTelegramEnabled,
 		isEnhancedHitlSlackEnabled,
+		isEnhancedHitlGmailEnabled,
 	],
 	async () => {
 		// Pre-calculate disabled state map
@@ -254,6 +261,13 @@ throttledWatch(
 			!isEnhancedHitlSlackEnabled.value
 		) {
 			filteredParameters = filterSlackHitlParameters(parameters);
+		} else if (
+			node.value &&
+			(node.value.type === GOOGLE_GMAIL_NODE_TYPE ||
+				node.value.type === `${GOOGLE_GMAIL_NODE_TYPE}Tool`) &&
+			!isEnhancedHitlGmailEnabled.value
+		) {
+			filteredParameters = filterGmailHitlParameters(parameters);
 		} else {
 			filteredParameters = parameters;
 		}

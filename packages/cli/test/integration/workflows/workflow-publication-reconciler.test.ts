@@ -5,7 +5,12 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
-import { WorkflowPublicationOutboxRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
+import {
+	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationTriggerStatusRepository,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ActiveWorkflowTriggers, ExternalSecretsProxy, InstanceSettings } from 'n8n-core';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -40,6 +45,7 @@ let consumer: WorkflowPublicationOutboxConsumer;
 let activeWorkflowTriggers: ActiveWorkflowTriggers;
 let outboxRepository: WorkflowPublicationOutboxRepository;
 let publishedVersionRepository: WorkflowPublishedVersionRepository;
+let triggerStatusRepository: WorkflowPublicationTriggerStatusRepository;
 let originalUseWorkflowPublicationService: boolean;
 
 const scheduleNode = (suffix: string): INode => ({
@@ -69,6 +75,7 @@ beforeAll(async () => {
 	activeWorkflowTriggers = Container.get(ActiveWorkflowTriggers);
 	outboxRepository = Container.get(WorkflowPublicationOutboxRepository);
 	publishedVersionRepository = Container.get(WorkflowPublishedVersionRepository);
+	triggerStatusRepository = Container.get(WorkflowPublicationTriggerStatusRepository);
 });
 
 afterEach(async () => {
@@ -123,6 +130,38 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 			workflow.id,
 		);
 		expect(published?.publishedVersionId).toBe(workflow.versionId);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
+	test('clears orphaned trigger-status rows of an unpublished workflow by re-running the unpublish', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('orphaned');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		// Publish through the real pipeline so the reporter persists the
+		// `activated` trigger-status rows.
+		await outboxRepository.enqueue(workflow.id, workflow.versionId);
+		const record = await outboxRepository.claimNextPendingRecord();
+		await consumer.processRecord(record!);
+
+		// An unpublish interrupted after removing the published-version mapping
+		// but before the reporter cleared the trigger-status rows, with its outbox
+		// record already terminal: triggers down, mapping gone, workflow
+		// unpublished — only the `activated` rows remain, claiming a trigger that
+		// no longer exists.
+		await Container.get(WorkflowRepository).update(workflow.id, { activeVersionId: null });
+		await activeWorkflowTriggers.remove(workflow.id);
+		await publishedVersionRepository.removePublishedVersion(workflow.id);
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toHaveLength(1);
+
+		// One reconcile pass surfaces the orphaned rows as a deficit, enqueues the
+		// workflow, and the drained unpublish clears the rows and completes.
+		await reconciler.reconcile();
+
+		expect(await triggerStatusRepository.findByWorkflowId(workflow.id)).toHaveLength(0);
+		expect(activeWorkflowTriggers.get(workflow.id)).toBeUndefined();
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
