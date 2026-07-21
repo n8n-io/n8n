@@ -21,6 +21,11 @@ flowchart LR
 ### Importer rules
 - Importers **plan and decide**; they must never touch a repository directly. All persistence and
   lookups go through a **service**.
+- **Manifest requirements are an index, not a gate.** A requirement claim that backs a hard import
+  guarantee must be re-derived from entity content at import time — node types are the precedent
+  (`collectMissingNodeTypes` traverses the workflow JSONs; the manifest `nodeTypes` section is
+  advisory). Credential/data-table requirements are currently manifest-trusted (index role, soft
+  degradation); don't extend that trusting pattern to anything gate-like.
 - Prefer an **existing** domain service from the main n8n codebase (`FolderService`, `ProjectService`,
   `WorkflowService`, …). When the importer needs a capability the service lacks — reusing a source id,
   or a fetch-by-ids for matching — **extend that existing service with a general method** rather than
