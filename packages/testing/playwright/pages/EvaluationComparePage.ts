@@ -51,10 +51,6 @@ export class EvaluationComparePage extends BasePage {
 		return this.page.getByTestId('compare-outputs-tab');
 	}
 
-	getOutputColumns(): Locator {
-		return this.page.getByTestId('compare-outputs-column');
-	}
-
 	/** Click a case row to drill into its side-by-side outputs. */
 	async openCase(index: number): Promise<void> {
 		await this.getCaseRows().nth(index).click();

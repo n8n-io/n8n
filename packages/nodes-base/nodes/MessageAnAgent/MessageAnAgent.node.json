@@ -6,7 +6,7 @@
 	"resources": {
 		"primaryDocumentation": []
 	},
-	"alias": ["agent", "ai", "sdk"],
+	"alias": ["agent", "ai", "sdk", "Message an Agent"],
 	"subcategories": {
 		"AI": ["Agents", "Root Nodes"]
 	}

@@ -692,10 +692,13 @@ export function buildSmithyHttpRequest(
 	const { hostname, port } = splitHostPort(signOpts.host ?? '');
 
 	// Drop host; smithy derives it from hostname.
+	// smithy calls .trim() on each one — so coerce to
+	// strings like aws4 did: stringify scalars, join arrays, drop undefined.
 	const headers: Record<string, string> = { host: signOpts.host ?? hostname };
-	for (const [k, v] of Object.entries((signOpts.headers ?? {}) as Record<string, string>)) {
+	for (const [k, v] of Object.entries(signOpts.headers ?? {})) {
 		const lower = k.toLowerCase();
-		if (lower !== 'host') headers[lower] = v;
+		if (lower === 'host' || v === undefined || v === null) continue;
+		headers[lower] = Array.isArray(v) ? v.join(',') : String(v);
 	}
 
 	// aws4 defaults the Content-Type to 'application/x-www-form-urlencoded; charset=utf-8'
