@@ -178,6 +178,7 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UserProject,
 	usersListSchema,
 	userBaseSchema,
 	userDetailSchema,
