@@ -108,7 +108,10 @@ export class CredentialsRiskReporter implements RiskReporter {
 	}
 
 	private async getAllExistingCreds() {
-		const credentials = await this.credentialsRepository.find({ select: ['id', 'name'] });
+		const credentials = await this.credentialsRepository.find({
+			select: ['id', 'name'],
+			where: { availability: 'workflow' },
+		});
 
 		return credentials.map(({ id, name }) => ({ kind: 'credential' as const, id, name }));
 	}

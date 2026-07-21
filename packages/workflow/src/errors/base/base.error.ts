@@ -21,7 +21,7 @@ export abstract class BaseError extends Error {
 	 */
 	readonly shouldReport: boolean;
 
-	readonly description: string | null | undefined;
+	description: string | null | undefined;
 
 	readonly tags: ErrorTags;
 

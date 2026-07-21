@@ -10,11 +10,13 @@ import type {
 	WorkflowEntity,
 } from '@n8n/db';
 import {
+	CredentialsEntity,
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
+	SharedCredentials,
 	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
@@ -24,8 +26,8 @@ import {
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { In, type DataSourceOptions } from '@n8n/typeorm';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG, hasGlobalScope } from '@n8n/permissions';
+import { In, type DataSourceOptions, type EntityManager } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
@@ -323,10 +325,27 @@ export class SourceControlImportService {
 			},
 		);
 
+		const remoteIds = remoteCredentialFilesRead.flatMap((remote) =>
+			remote?.id ? [remote.id] : [],
+		);
+		const localAvailability = new Map(
+			remoteIds.length === 0
+				? []
+				: (
+						await this.credentialsRepository.find({
+							where: { id: In(remoteIds) },
+							select: ['id', 'availability'],
+						})
+					).map((local) => [local.id, local.availability]),
+		);
+
 		const remoteCredentialFilesParsed = remoteCredentialFilesRead
 			.filter((remote) => {
 				if (!remote?.id) {
 					return false;
+				}
+				if (remote.availability === 'instance' || localAvailability.get(remote.id) === 'instance') {
+					return hasGlobalScope(context.user, 'credential:manageInstance');
 				}
 				const owner = remote.ownedBy;
 				return (
@@ -372,6 +391,7 @@ export class SourceControlImportService {
 				isGlobal: true,
 				isResolvable: true,
 				resolvableAllowFallback: true,
+				availability: true,
 				shared: {
 					project: {
 						id: true,
@@ -414,6 +434,7 @@ export class SourceControlImportService {
 					isGlobal: local.isGlobal,
 					isResolvable: local.isResolvable,
 					resolvableAllowFallback: local.resolvableAllowFallback,
+					availability: local.availability,
 				};
 			},
 		)) as StatusExportableCredential[];
@@ -969,8 +990,11 @@ export class SourceControlImportService {
 			where: {
 				id: In(candidateIds),
 			},
-			select: ['id', 'name', 'type', 'data'],
+			select: ['id', 'name', 'type', 'data', 'availability'],
 		});
+		const existingCredentialsById = new Map(
+			existingCredentials.map((credential) => [credential.id, credential]),
+		);
 		const existingSharedCredentials = await this.sharedCredentialsRepository.find({
 			select: ['credentialsId', 'projectId', 'role'],
 			where: {
@@ -986,9 +1010,17 @@ export class SourceControlImportService {
 				const credential = jsonParse<ExportableCredential>(
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				);
-				const existingCredential = existingCredentials.find(
-					(e) => e.id === credential.id && e.type === credential.type,
-				);
+				const existingCredentialById = existingCredentialsById.get(credential.id);
+				if (
+					existingCredentialById?.availability === 'instance' &&
+					existingCredentialById.type !== credential.type
+				) {
+					throw new UserError(
+						'Provider connection type cannot be changed. Create a new connection instead.',
+					);
+				}
+				const existingCredential =
+					existingCredentialById?.type === credential.type ? existingCredentialById : undefined;
 
 				// Carry the "private"/resolvable nature across environments. resolverId is
 				// instance-local and handled separately (see IAM-906).
@@ -1000,8 +1032,13 @@ export class SourceControlImportService {
 					isGlobal = false,
 					isResolvable = false,
 					resolvableAllowFallback = false,
+					availability: remoteAvailability = 'workflow',
 				} = credential;
+				const availability = existingCredentialById?.availability ?? remoteAvailability;
 				const newCredentialObject = new Credentials({ id, name }, type);
+				if (availability === 'instance' && (isGlobal || isResolvable || resolvableAllowFallback)) {
+					throw new UserError('Provider connections cannot be global or dynamically resolved');
+				}
 
 				if (existingCredential?.data) {
 					// Credential exists - merge expressions from remote while preserving local plain values
@@ -1022,23 +1059,51 @@ export class SourceControlImportService {
 					const sanitizedData = sanitizeCredentialData(data);
 					await newCredentialObject.setData(sanitizedData);
 				}
+				if (availability === 'instance') {
+					this.credentialsService.validateInstanceCredentialData(
+						await newCredentialObject.getData(),
+					);
+				}
+				const targetOwnerProject =
+					availability === 'workflow'
+						? await this.resolveTargetOwnerProject(credential.ownedBy, personalProject)
+						: undefined;
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert(
-					{ ...newCredentialObject, isGlobal, isResolvable, resolvableAllowFallback },
-					['id'],
-				);
+				await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+					await transactionManager.upsert(
+						CredentialsEntity,
+						{
+							...newCredentialObject,
+							isGlobal,
+							isResolvable,
+							resolvableAllowFallback,
+							availability,
+							...(availability === 'instance' ? { isManaged: false, resolverId: null } : {}),
+						},
+						['id'],
+					);
 
-				const localOwner = existingSharedCredentials.find(
-					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
-				);
+					if (availability === 'instance') {
+						await transactionManager.delete(SharedCredentials, {
+							credentialsId: credential.id,
+						});
+						return;
+					}
 
-				await this.syncResourceOwnership({
-					resourceId: credential.id,
-					remoteOwner: credential.ownedBy,
-					localOwner,
-					fallbackProject: personalProject,
-					repository: this.sharedCredentialsRepository,
+					const localOwner = existingSharedCredentials.find(
+						(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
+					);
+
+					await this.syncResourceOwnership({
+						resourceId: credential.id,
+						remoteOwner: credential.ownedBy,
+						localOwner,
+						fallbackProject: personalProject,
+						repository: this.sharedCredentialsRepository,
+						transactionManager,
+						targetOwnerProject,
+					});
 				});
 
 				return {
@@ -1681,7 +1746,9 @@ export class SourceControlImportService {
 
 	async deleteCredentialsNotInWorkfolder(user: User, candidates: SourceControlledFile[]) {
 		for (const candidate of candidates) {
-			await this.credentialsService.delete(user, candidate.id);
+			await this.credentialsService.delete(user, candidate.id, {
+				includeInstanceCredentials: true,
+			});
 		}
 	}
 
@@ -1829,24 +1896,20 @@ export class SourceControlImportService {
 		localOwner,
 		fallbackProject,
 		repository,
+		transactionManager,
+		targetOwnerProject,
 	}: {
 		resourceId: string;
 		remoteOwner: RemoteResourceOwner | null | undefined;
 		localOwner: { projectId: string } | undefined;
 		fallbackProject: Project;
 		repository: SharedWorkflowRepository | SharedCredentialsRepository;
+		transactionManager?: EntityManager;
+		targetOwnerProject?: Project;
 	}): Promise<void> {
-		let targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
-		if (!targetOwnerProject) {
-			const isSharedResource =
-				remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
+		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
 
-			targetOwnerProject = isSharedResource
-				? await this.createTeamProject(remoteOwner)
-				: fallbackProject;
-		}
-
-		const trx = this.workflowRepository.manager;
+		const trx = transactionManager ?? this.workflowRepository.manager;
 
 		// remove old ownership if it changed
 		const shouldRemoveOldOwner = localOwner && localOwner.projectId !== targetOwnerProject.id;
@@ -1856,6 +1919,18 @@ export class SourceControlImportService {
 
 		// Set new ownership
 		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
+	}
+
+	private async resolveTargetOwnerProject(
+		remoteOwner: RemoteResourceOwner | null | undefined,
+		fallbackProject: Project,
+	): Promise<Project> {
+		const targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
+		if (targetOwnerProject) return targetOwnerProject;
+
+		const isSharedResource =
+			remoteOwner && typeof remoteOwner !== 'string' && remoteOwner.type === 'team';
+		return isSharedResource ? await this.createTeamProject(remoteOwner) : fallbackProject;
 	}
 
 	private async findOwnerProjectInLocalDb(owner: RemoteResourceOwner | IWorkflowToImport['owner']) {

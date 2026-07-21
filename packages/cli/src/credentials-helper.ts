@@ -33,6 +33,7 @@ import {
 	NodeHelpers,
 	Workflow,
 	UnexpectedError,
+	UserError,
 	isExpression,
 } from 'n8n-workflow';
 
@@ -306,6 +307,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			}
 
 			throw error;
+		}
+
+		// Keep non-workflow credentials blocked even if an earlier access check is bypassed.
+		if ((credential.availability ?? 'workflow') !== 'workflow') {
+			throw new UserError('This credential cannot be used in workflows');
 		}
 
 		return credential;

@@ -314,7 +314,7 @@ export class WorkflowValidationService {
 		}
 
 		const resolvableCredentials = await this.credentialsRepository.find({
-			where: { id: In([...credentialIds]), isResolvable: true },
+			where: { id: In([...credentialIds]), isResolvable: true, availability: 'workflow' },
 			select: ['id', 'name'],
 		});
 

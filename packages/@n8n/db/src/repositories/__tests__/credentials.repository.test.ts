@@ -1,6 +1,6 @@
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsEntity } from '../../entities';
@@ -13,6 +13,17 @@ describe('CredentialsRepository', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+	});
+
+	it('finds non-workflow credentials by ID', async () => {
+		entityManager.find.mockResolvedValueOnce([]);
+
+		await credentialsRepository.findNonWorkflowCredentialsByIds(['credential-id']);
+
+		expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+			where: { id: In(['credential-id']), availability: Not('workflow') },
+			select: ['id'],
+		});
 	});
 
 	describe('findManyAndCount', () => {

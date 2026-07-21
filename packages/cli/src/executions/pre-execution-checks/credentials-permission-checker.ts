@@ -96,6 +96,14 @@ export class CredentialsPermissionChecker {
 	 */
 	async check(workflowId: string, nodes: INode[]) {
 		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
+
+		const workflowCredIds = Object.keys(credIdsToNodes);
+
+		if (workflowCredIds.length === 0) return;
+
+		await this.ensureOnlyWorkflowCredentials(workflowCredIds, credIdsToNodes, homeProject);
+
 		const homeProjectOwner = await this.ownershipService.getPersonalProjectOwnerCached(
 			homeProject.id,
 		);
@@ -109,11 +117,6 @@ export class CredentialsPermissionChecker {
 			return;
 		}
 		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
-		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
-
-		const workflowCredIds = Object.keys(credIdsToNodes);
-
-		if (workflowCredIds.length === 0) return;
 
 		const accessible = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
 			projectIds,
@@ -130,6 +133,19 @@ export class CredentialsPermissionChecker {
 		}
 	}
 
+	private async ensureOnlyWorkflowCredentials(
+		workflowCredIds: string[],
+		credIdsToNodes: { [credentialId: string]: INode[] },
+		homeProject: Project,
+	) {
+		const unavailableCredentials =
+			await this.credentialsRepository.findNonWorkflowCredentialsByIds(workflowCredIds);
+		if (unavailableCredentials.length > 0) {
+			const nodeToFlag = credIdsToNodes[unavailableCredentials[0].id][0];
+			throw new InaccessibleCredentialError(nodeToFlag, homeProject);
+		}
+	}
+
 	/**
 	 * Adds global credentials (isGlobal: true) to the set of accessible credentials.
 	 */
@@ -138,7 +154,7 @@ export class CredentialsPermissionChecker {
 	): Promise<Set<string>> {
 		const accessibleSet = new Set(accessibleCredentialIds);
 		const globalCredentials = await this.credentialsRepository.find({
-			where: { isGlobal: true },
+			where: { isGlobal: true, availability: 'workflow' },
 			select: ['id'],
 		});
 		for (const globalCred of globalCredentials) {

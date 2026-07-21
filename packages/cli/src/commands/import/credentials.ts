@@ -15,10 +15,11 @@ import fs from 'fs';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { Cipher } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse, UserError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -152,10 +153,59 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
+		// Availability is instance-local state; imports never change it for existing credentials.
+		if (credential.id) {
+			const existing = await this.transactionManager.findOne(CredentialsEntity, {
+				where: { id: credential.id },
+				select: ['availability', 'type'],
+			});
+			if (existing) {
+				credential.availability = existing.availability;
+				if (
+					existing.availability === 'instance' &&
+					credential.type !== undefined &&
+					credential.type !== existing.type
+				) {
+					throw new UserError(
+						'Provider connection type cannot be changed. Create a new connection instead.',
+					);
+				}
+			}
+		}
+		credential.availability ??= 'workflow';
+
+		if (credential.availability === 'instance') {
+			if (
+				credential.isGlobal ||
+				credential.isResolvable ||
+				credential.isManaged ||
+				credential.resolvableAllowFallback ||
+				credential.resolverId
+			) {
+				throw new UserError(
+					'Provider connections cannot be global, managed, or dynamically resolved',
+				);
+			}
+			Object.assign(credential, {
+				isGlobal: false,
+				isResolvable: false,
+				isManaged: false,
+				resolvableAllowFallback: false,
+				resolverId: null,
+			});
+			await this.validateInstanceCredentialData(credential);
+		}
+
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+		const credentialsId = credential.id ?? (result.identifiers[0].id as string);
+
+		if (credential.availability === 'instance') {
+			await this.transactionManager.delete(SharedCredentials, { credentialsId });
+			return;
+		}
 
 		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
-			credentialsId: credential.id,
+			credentialsId,
 			role: 'credential:owner',
 		});
 
@@ -163,13 +213,32 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			await this.transactionManager.upsert(
 				SharedCredentials,
 				{
-					credentialsId: result.identifiers[0].id as string,
+					credentialsId,
 					role: 'credential:owner',
 					projectId: project.id,
 				},
 				['credentialsId', 'projectId'],
 			);
 		}
+	}
+
+	private async validateInstanceCredentialData(credential: Partial<CredentialsEntity>) {
+		let data = credential.data;
+		if (!data && credential.id) {
+			data = (
+				await this.transactionManager.findOne(CredentialsEntity, {
+					where: { id: credential.id },
+					select: { data: true },
+				})
+			)?.data;
+		}
+		if (!data) return;
+
+		const decrypted =
+			typeof data === 'string'
+				? jsonParse<ICredentialDataDecryptedObject>(await Container.get(Cipher).decryptV2(data))
+				: data;
+		Container.get(CredentialsService).validateInstanceCredentialData(decrypted);
 	}
 
 	private async checkRelations(
@@ -350,6 +419,7 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			isResolvable: true,
 			resolvableAllowFallback: true,
 			resolverId: true,
+			availability: true,
 		} satisfies Record<ImportableCredentialProperty, true>;
 
 		return property in importableProperties;
