@@ -42,6 +42,7 @@ import {
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
+	TRIAL_INTRO_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -143,6 +144,11 @@ import InstanceAiCredentialSetupModal, {
 	type InstanceAiCredentialSetupModalData,
 } from '@/features/ai/instanceAi/components/InstanceAiCredentialSetupModal.vue';
 import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue';
+import { defineAsyncComponent } from 'vue';
+
+const TrialIntroModal = defineAsyncComponent(
+	async () => await import('@/experiments/trialIntroModal/components/TrialIntroModal.vue'),
+);
 </script>
 
 <template>
@@ -549,6 +555,12 @@ import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/comp
 
 		<ModalRoot :name="AI_GATEWAY_TOP_UP_MODAL_KEY">
 			<AiGatewayTopUpModal />
+		</ModalRoot>
+
+		<ModalRoot :name="TRIAL_INTRO_MODAL_KEY">
+			<template #default="{ modalName }">
+				<TrialIntroModal :modal-name="modalName" />
+			</template>
 		</ModalRoot>
 
 		<!-- Dynamic modals from modules -->
