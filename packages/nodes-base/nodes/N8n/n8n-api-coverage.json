@@ -125,6 +125,9 @@
 			"status": "covered",
 			"nodeOperation": "workflow:getVersion"
 		},
+		"GET /workflows/{id}/history": {
+			"status": "gap"
+		},
 		"POST /workflows/{id}/activate": {
 			"status": "covered",
 			"nodeOperation": "workflow:activate"

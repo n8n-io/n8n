@@ -1,3 +1,4 @@
+import { PaginationDto } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,24 +9,26 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
-
 import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
 import type { WorkflowRequest } from '../../../types';
-import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
+
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
+import { EventService } from '@/events/event.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 const handleError = (error: unknown) => {
 	if (error instanceof FolderNotFoundError) {
@@ -46,6 +49,7 @@ type WorkflowHandlers = {
 	deleteWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflow: PublicAPIEndpoint<WorkflowRequest.Get>;
 	getWorkflowVersion: PublicAPIEndpoint<WorkflowRequest.GetVersion>;
+	getWorkflowHistory: PublicAPIEndpoint<WorkflowRequest.GetHistory>;
 	getWorkflows: PublicAPIEndpoint<WorkflowRequest.GetAll>;
 	updateWorkflow: PublicAPIEndpoint<WorkflowRequest.Update>;
 	activateWorkflow: PublicAPIEndpoint<WorkflowRequest.Activate>;
@@ -157,6 +161,37 @@ const workflowHandlers: WorkflowHandlers = {
 				return res.json(versionWithoutInternalFields);
 			} catch {
 				throw new NotFoundError('Version not found');
+			}
+		},
+	],
+	getWorkflowHistory: [
+		publicApiScope('workflow:read'),
+		projectScope('workflow:read', 'workflow'),
+		async (req, res) => {
+			const query = PaginationDto.safeParse(req.query);
+			if (query.error) {
+				throw new BadRequestError(query.error.errors[0].message);
+			}
+
+			try {
+				const versions = await Container.get(WorkflowHistoryService).getList(
+					req.user,
+					req.params.id,
+					query.data.take,
+					query.data.skip,
+				);
+
+				return res.json(
+					versions.map((version) => {
+						const { autosaved, workflowPublishHistory, ...publicVersion } = version;
+						return publicVersion;
+					}),
+				);
+			} catch (error) {
+				if (error instanceof SharedWorkflowNotFoundError) {
+					throw new NotFoundError('Not Found');
+				}
+				throw error;
 			}
 		},
 	],

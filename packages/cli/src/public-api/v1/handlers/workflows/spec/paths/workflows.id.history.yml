@@ -1,0 +1,37 @@
+get:
+  x-eov-operation-id: getWorkflowHistory
+  x-required-scope: workflow:read
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Retrieve workflow version history
+  description: Returns a paginated list of workflow versions (version IDs and metadata) for a workflow.
+  parameters:
+    - $ref: '../schemas/parameters/workflowId.yml'
+    - name: take
+      in: query
+      required: false
+      description: Number of items to return. Defaults to 10. Maximum 250.
+      schema:
+        type: string
+    - name: skip
+      in: query
+      required: false
+      description: Number of items to skip for pagination. Defaults to 0.
+      schema:
+        type: string
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../schemas/workflowVersionListItem.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

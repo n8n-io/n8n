@@ -892,6 +892,111 @@ describe('GET /workflows/:id/:versionId', () => {
 	});
 });
 
+describe('GET /workflows/:id/history', () => {
+	test('should fail due to missing API Key', testWithAPIKey('get', '/workflows/123/history', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('get', '/workflows/123/history', 'abcXYZ'),
+	);
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.get('/workflows/non-existing/history');
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return empty list when workflow has no versions', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toEqual([]);
+	});
+
+	test('should retrieve workflow version history', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const versions = await Promise.all(
+			new Array(5).fill(undefined).map(
+				async (_, i) =>
+					await createWorkflowHistoryItem(workflow.id, {
+						createdAt: new Date(Date.now() + i),
+						name: `Version ${i}`,
+					}),
+			),
+		);
+
+		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0];
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(5);
+		expect(response.body[0]).toEqual({
+			versionId: last.versionId,
+			workflowId: last.workflowId,
+			authors: last.authors,
+			name: last.name,
+			description: last.description,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			createdAt: expect.any(String),
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			updatedAt: expect.any(String),
+		});
+		expect(response.body[0]).not.toHaveProperty('autosaved');
+		expect(response.body[0]).not.toHaveProperty('workflowPublishHistory');
+		expect(response.body[0]).not.toHaveProperty('nodes');
+		expect(response.body[0]).not.toHaveProperty('connections');
+	});
+
+	test('should paginate with take and skip', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await Promise.all(
+			new Array(5).fill(undefined).map(
+				async (_, i) =>
+					await createWorkflowHistoryItem(workflow.id, {
+						createdAt: new Date(Date.now() + i),
+					}),
+			),
+		);
+
+		const firstPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			take: '2',
+			skip: '0',
+		});
+		expect(firstPage.statusCode).toBe(200);
+		expect(firstPage.body).toHaveLength(2);
+
+		const secondPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			take: '2',
+			skip: '2',
+		});
+		expect(secondPage.statusCode).toBe(200);
+		expect(secondPage.body).toHaveLength(2);
+		expect(secondPage.body[0].versionId).not.toBe(firstPage.body[0].versionId);
+	});
+
+	test('should retrieve history for non-owned workflow when owner', async () => {
+		const workflow = await createWorkflow({}, member);
+		await createWorkflowHistoryItem(workflow.id, { name: 'Member Version' });
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0].name).toBe('Member Version');
+	});
+
+	test('should fail to retrieve history without read permission', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createWorkflowHistoryItem(workflow.id);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/history`);
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
 describe('DELETE /workflows/:id', () => {
 	test('should fail due to missing API Key', testWithAPIKey('delete', '/workflows/2', null));
 
