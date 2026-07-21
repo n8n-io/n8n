@@ -20,40 +20,22 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import {
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	readdirSync,
-	rmSync,
-	writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 import { collectCopies, analyze } from './verify-single-instance-deps.mjs';
+import { loadWorkspaceManifests } from './workspace-manifests.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Scan packages/ for every non-private workspace manifest: name -> { dir, pkg }. */
+/** Every non-private workspace package: name -> { dir, pkg }. */
 function loadWorkspace() {
 	const byName = new Map();
-	const walk = (dir) => {
-		for (const e of readdirSync(dir, { withFileTypes: true })) {
-			if (!e.isDirectory()) continue;
-			if (e.name === 'node_modules' || e.name === 'dist' || e.name.startsWith('.')) continue;
-			const full = join(dir, e.name);
-			const manifest = join(full, 'package.json');
-			if (existsSync(manifest)) {
-				const pkg = JSON.parse(readFileSync(manifest, 'utf8'));
-				if (pkg.name && !pkg.private) byName.set(pkg.name, { dir: full, pkg });
-			}
-			walk(full);
-		}
-	};
-	walk(join(root, 'packages'));
+	for (const { dir, pkg } of loadWorkspaceManifests(join(root, 'packages'))) {
+		if (pkg.name && !pkg.private) byName.set(pkg.name, { dir, pkg });
+	}
 	return byName;
 }
 

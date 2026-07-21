@@ -27,6 +27,7 @@ export const HOST_PACKAGES = ['n8n', '@n8n/task-runner'];
 
 /**
  * Frontend packages that bundle their dependencies (Vite), so runtime-identity
- * duplication does not apply. Path globs, matched against package locations.
+ * duplication does not apply. Repo-relative path prefixes, matched against package
+ * locations.
  */
-export const FRONTEND_GLOBS = ['packages/frontend/**'];
+export const FRONTEND_PATH_PREFIXES = ['packages/frontend/'];

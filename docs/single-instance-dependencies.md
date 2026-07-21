@@ -100,7 +100,8 @@ already what ships. No publish-tooling change is needed for this on master.
 
 | Check | Where |
 |---|---|
-| `catalog:` + dependency shape + verifier self-test (`pnpm check:single-instance`) | `lint:ci` (required PR gate + merge-to-master) and lefthook on any `package.json` change |
+| Repo-state gates: `catalog:` + dependency shape (`pnpm check:single-instance`) | `lint:ci` (required PR gate + merge-to-master) and lefthook on any `package.json` change |
+| Tooling unit tests (`pnpm test:single-instance`) | `lint:ci` only (not the pre-commit hook — they test the tools, not repo state) |
 | Closure verifier against `compiled/` | `scripts/build-n8n.mjs`, after `pnpm deploy` (runs on every `build:deploy`/`build:docker`, incl. nightly Docker + release) |
 | Scoped npm-install verifier (changed packages) | `ci-master.yml`, post-merge (non-blocking initially) |
 | Full npm-install verifier (all publishable packages) | `release-create-pr.yml`, release prep (non-blocking initially) |

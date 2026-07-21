@@ -20,12 +20,11 @@
  * fails immediately — preserving the original guard. The baseline shrinks to empty as
  * the peer migration lands (on 3.x).
  *
- *   node scripts/check-single-instance-peers.mjs            # lint
- *   node scripts/check-single-instance-peers.mjs --write     # regenerate the baseline
- *   node scripts/check-single-instance-peers.mjs --self-test # exercise the core logic
+ *   node scripts/check-single-instance-peers.mjs          # lint
+ *   node scripts/check-single-instance-peers.mjs --write  # regenerate the baseline
  */
 
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,8 +32,9 @@ import {
 	CURATED_LIBS,
 	PIN_ONLY_LIBS,
 	HOST_PACKAGES,
-	FRONTEND_GLOBS,
+	FRONTEND_PATH_PREFIXES,
 } from './single-instance-libs.mjs';
+import { loadWorkspaceManifests } from './workspace-manifests.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BASELINE_FILE = join(root, 'scripts', 'single-instance-peers-baseline.json');
@@ -42,49 +42,23 @@ const BASELINE_FILE = join(root, 'scripts', 'single-instance-peers-baseline.json
 /** Curated libs subject to the peer rule (pin-only libs are exempt). */
 const PEER_LIBS = CURATED_LIBS.filter((l) => !PIN_ONLY_LIBS.includes(l));
 
-/** Turn a `packages/frontend/**`-style glob into a simple path-prefix test. */
-function matchesFrontend(relDir) {
-	return FRONTEND_GLOBS.some((glob) => {
-		const prefix = glob.replace(/\*+$/, '').replace(/\/$/, '');
-		return relDir === prefix || relDir.startsWith(`${prefix}/`);
-	});
-}
-
-/** Collect every workspace package.json under packages/ (skipping node_modules/dist). */
-function findManifests() {
-	const out = [];
-	const walk = (dir) => {
-		for (const e of readdirSync(dir, { withFileTypes: true })) {
-			if (!e.isDirectory()) continue;
-			if (e.name === 'node_modules' || e.name === 'dist' || e.name.startsWith('.')) continue;
-			const full = join(dir, e.name);
-			const manifest = join(full, 'package.json');
-			if (existsSync(manifest)) out.push(manifest);
-			walk(full);
-		}
-	};
-	walk(join(root, 'packages'));
-	return out;
-}
-
 /**
  * Pure core: given a package's name, its relative dir and its manifest, return the
  * curated libs it declares in `dependencies` that ought to be peers (violations).
  */
 export function violationsFor(name, relDir, pkg) {
 	if (HOST_PACKAGES.includes(name)) return [];
-	if (matchesFrontend(relDir)) return [];
+	if (FRONTEND_PATH_PREFIXES.some((prefix) => relDir.startsWith(prefix))) return [];
 	const deps = pkg.dependencies ?? {};
 	return PEER_LIBS.filter((lib) => Object.hasOwn(deps, lib));
 }
 
 function collectViolations() {
 	const found = {}; // pkgName -> sorted lib[]
-	for (const manifest of findManifests()) {
-		const pkg = JSON.parse(readFileSync(manifest, 'utf8'));
+	for (const { dir, pkg } of loadWorkspaceManifests(join(root, 'packages'))) {
 		const name = pkg.name;
 		if (!name) continue;
-		const relDir = relative(root, dirname(manifest));
+		const relDir = relative(root, dir);
 		const libs = violationsFor(name, relDir, pkg);
 		if (libs.length > 0) found[name] = libs.sort();
 	}
@@ -166,49 +140,6 @@ function main() {
 	console.log(
 		`OK: no un-baselined single-instance dependency-shape violations (${reported.length} tracked).`,
 	);
-}
-
-if (process.argv.includes('--self-test')) {
-	// deps-declared curated lib in a normal package -> violation
-	const v1 = violationsFor('pkg-a', 'packages/@n8n/pkg-a', { dependencies: { zod: 'catalog:' } });
-	// peer-declared -> no violation
-	const v2 = violationsFor('pkg-b', 'packages/@n8n/pkg-b', {
-		peerDependencies: { zod: 'catalog:' },
-	});
-	// host exempt
-	const v3 = violationsFor('n8n', 'packages/cli', { dependencies: { zod: 'catalog:' } });
-	// frontend exempt
-	const v4 = violationsFor('n8n-editor-ui', 'packages/frontend/editor-ui', {
-		dependencies: { zod: 'catalog:' },
-	});
-	// pin-only lib exempt
-	const v5 = violationsFor('pkg-c', 'packages/@n8n/pkg-c', {
-		dependencies: { 'reflect-metadata': 'catalog:' },
-	});
-	// baseline diff: baselined -> report, un-baselined -> fail
-	const { reported, failures } = diffBaseline(
-		{ 'pkg-a': ['zod'], 'pkg-new': ['form-data'] },
-		{ 'pkg-a': ['zod'] },
-	);
-
-	const ok =
-		v1.length === 1 &&
-		v1[0] === 'zod' &&
-		v2.length === 0 &&
-		v3.length === 0 &&
-		v4.length === 0 &&
-		v5.length === 0 &&
-		reported.length === 1 &&
-		reported[0].name === 'pkg-a' &&
-		failures.length === 1 &&
-		failures[0].name === 'pkg-new';
-
-	if (ok) {
-		console.log('self-test passed');
-		process.exit(0);
-	}
-	console.error('self-test FAILED', { v1, v2, v3, v4, v5, reported, failures });
-	process.exit(1);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

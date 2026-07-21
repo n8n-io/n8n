@@ -18,6 +18,11 @@ function pkg(relDir, name, version) {
 	writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version }));
 }
 
+// Walked once each in before(); analyze() does not mutate the returned Map, so the
+// tests share these instead of re-walking the immutable fixture per assertion.
+let planted;
+let clean;
+
 before(() => {
 	rmSync(ROOT, { recursive: true, force: true });
 
@@ -39,18 +44,21 @@ before(() => {
 	// clean/: single copy of each curated lib -> passes
 	pkg('clean/node_modules/zod', 'zod', '1.0.0');
 	pkg('clean/node_modules/@langchain/core', '@langchain/core', '1.0.0');
+
+	planted = collectCopies(join(ROOT, 'planted'));
+	clean = collectCopies(join(ROOT, 'clean'));
 });
 
 after(() => rmSync(ROOT, { recursive: true, force: true }));
 
 describe('closure verifier', () => {
 	it('fails on planted duplicates of non-allowlisted curated libs', () => {
-		const { failures } = analyze(collectCopies(join(ROOT, 'planted')));
+		const { failures } = analyze(planted);
 		assert.deepEqual(failures.map((f) => f.name).sort(), ['@langchain/core', 'zod']);
 	});
 
 	it('reports but does not fail on an allowlisted curated duplicate', () => {
-		const { duplicates, failures } = analyze(collectCopies(join(ROOT, 'planted')), {
+		const { duplicates, failures } = analyze(planted, {
 			allowlist: { '@langchain/core': 'test-only allowlist entry' },
 		});
 		const langchain = duplicates.find((d) => d.name === '@langchain/core');
@@ -60,14 +68,14 @@ describe('closure verifier', () => {
 	});
 
 	it('reports non-curated duplicates without failing on them', () => {
-		const { duplicates, failures } = analyze(collectCopies(join(ROOT, 'planted')));
+		const { duplicates, failures } = analyze(planted);
 		const lodash = duplicates.find((d) => d.name === 'lodash');
 		assert.ok(lodash && !lodash.isCurated);
 		assert.ok(!failures.some((f) => f.name === 'lodash'));
 	});
 
 	it('ignores the allowlist under --strict', () => {
-		const { failures } = analyze(collectCopies(join(ROOT, 'planted')), {
+		const { failures } = analyze(planted, {
 			strict: true,
 			allowlist: { '@langchain/core': 'test-only allowlist entry' },
 		});
@@ -75,7 +83,7 @@ describe('closure verifier', () => {
 	});
 
 	it('passes a clean tree with a single copy of each curated lib', () => {
-		const { duplicates, failures } = analyze(collectCopies(join(ROOT, 'clean')));
+		const { duplicates, failures } = analyze(clean);
 		assert.equal(duplicates.length, 0);
 		assert.equal(failures.length, 0);
 	});
