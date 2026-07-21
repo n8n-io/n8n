@@ -193,10 +193,12 @@ type AddNodeOptions = AddNodesBaseOptions & {
 };
 
 /**
- * Rendered width used for horizontal placement math. Mirrors the fixed-width
- * model the placement code assumes elsewhere (agent card / configurable node),
- * so a node placed after a neighbor keeps a constant NODE_X_SPACING gap
- * regardless of that neighbor's width.
+ * Rendered-width estimate for the multi-node sequential placement step, so a
+ * bulk-added node doesn't overlap a wide neighbor. The agent card
+ * (AGENT_NODE_SIZE) and default widths are exact; configurable nodes render at
+ * a dynamic width (see calculateNodeSize) that no constant matches, so
+ * CONFIGURABLE_NODE_SIZE is an overlap-safe estimate only — exact configurable
+ * spacing needs the measured width and is tracked as a follow-up.
  */
 function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
 	if (isAgentNodeV2(node)) {
@@ -1635,9 +1637,8 @@ export function useCanvasOperations() {
 					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
-						// Nodes with scoped (non-main) inputs render at the wider configurable size,
-						// so offset by that width delta to keep the standard gap to their right edge
-						pushOffset += CONFIGURABLE_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+						// If the node has scoped inputs, push it down a bit more
+						pushOffset += 140;
 					}
 					const measuredSourceHeight = isAgentNodeV2(lastInteractedWithNodeObject)
 						? agentNodeCanvasGeometryStore.getNodeHeight(
