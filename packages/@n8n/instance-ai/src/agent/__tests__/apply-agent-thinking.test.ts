@@ -52,13 +52,16 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('enables medium OpenAI reasoning effort for supported models', () => {
-		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openai/gpt-5.6-sol');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-			reasoningEffort: 'medium',
-		});
-	});
+	it.each(['openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna'] as const)(
+		'enables medium OpenAI reasoning effort for %s',
+		(modelId) => {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, modelId);
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+				reasoningEffort: 'medium',
+			});
+		},
+	);
 
 	it('skips providers without thinking support', () => {
 		const agent = new Agent('test');
