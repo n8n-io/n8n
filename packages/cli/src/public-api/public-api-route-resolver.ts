@@ -34,6 +34,7 @@ export interface ResolvedPublicApiRoute {
 	requestQueryDto?: ZodClass;
 	responseDto?: ResponseDtoClass;
 	apiKeyScope?: ApiKeyScopeRequirement;
+	description?: string;
 }
 
 /**
@@ -130,6 +131,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				requestQueryDto,
 				responseDto: route.responseDto,
 				apiKeyScope: route.apiKeyScope,
+				description: route.description,
 			});
 		}
 	}
