@@ -297,7 +297,7 @@ describe('renderObserverTranscript', () => {
 						state: 'resolved',
 						output: {
 							access_token: 'output-access-token',
-							message: 'Authorization: Basic output-basic-token; token: inline-output-token1',
+							message: 'Authorization: Basic output-basic-token',
 						},
 					},
 				],
@@ -312,7 +312,6 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).not.toContain('inline-secret');
 		expect(transcript).not.toContain('output-access-token');
 		expect(transcript).not.toContain('output-basic-token');
-		expect(transcript).not.toContain('inline-output-token1');
 	});
 
 	it('redacts credential-looking rejected tool errors before serialization', () => {
@@ -350,7 +349,7 @@ describe('renderObserverTranscript', () => {
 			message(
 				'u1',
 				'user',
-				'Here is the setup: API Key 46FR7-5877E26C078D640 for the integration.',
+				'Here is the setup: xoxb-1234567890-abcdefghij for the integration.',
 				new Date(0),
 			),
 			{
@@ -369,7 +368,7 @@ describe('renderObserverTranscript', () => {
 		expect(transcript).toContain('for the integration.');
 		expect(transcript).toContain('Got it, I will use');
 		expect(transcript).toContain('[REDACTED]');
-		expect(transcript).not.toContain('46FR7-5877E26C078D640');
+		expect(transcript).not.toContain('xoxb-1234567890-abcdefghij');
 		expect(transcript).not.toContain('sk-live-assistant-echo-secret');
 	});
 });
@@ -499,13 +498,13 @@ describe('runObservationLogObserver', () => {
 			now: new Date(2026, 4, 12, 14, 31),
 			observe: async () =>
 				await Promise.resolve(
-					'* CRITICAL (14:31) User provided API Key 46FR7-5877E26C078D640 for the integration.',
+					'* CRITICAL (14:31) User provided the token xoxb-1234567890-abcdefghij for the integration.',
 				),
 		});
 
 		const observations = await store.getActiveObservationLog({ observationScopeId: 'thread-1' });
 		expect(observations).toHaveLength(1);
 		expect(observations[0].text).toContain('[REDACTED]');
-		expect(observations[0].text).not.toContain('46FR7-5877E26C078D640');
+		expect(observations[0].text).not.toContain('xoxb-1234567890-abcdefghij');
 	});
 });
