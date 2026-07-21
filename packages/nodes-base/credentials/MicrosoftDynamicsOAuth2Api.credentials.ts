@@ -1,5 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+const defaultScopes = ['openid', 'offline_access', 'https://{subdomain}.{region}/.default'];
+
 export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 	name = 'microsoftDynamicsOAuth2Api';
 
@@ -110,7 +112,7 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName:
-				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly.',
+				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly. Use the <code>{subdomain}</code> and <code>{region}</code> placeholders to reference the Subdomain and Region values above.',
 			name: 'customScopesNotice',
 			type: 'notice',
 			default: '',
@@ -121,8 +123,6 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 			},
 		},
 		{
-			// The default scope is built from Subdomain and Region, so it can't prefill
-			// this field — left blank, the computed default applies instead
 			displayName: 'Enabled Scopes',
 			name: 'enabledScopes',
 			type: 'string',
@@ -131,16 +131,18 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 					customScopes: [true],
 				},
 			},
-			default: '',
-			placeholder: 'e.g. openid offline_access https://organization.crm.dynamics.com/.default',
-			description: 'Scopes that should be enabled',
+			default: defaultScopes.join(' '),
+			description:
+				'Scopes that should be enabled. Use <code>{subdomain}</code> and <code>{region}</code> as placeholders that will be replaced with the Subdomain and Region values.',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["customScopes"] && $self["enabledScopes"] ? $self["enabledScopes"] : "openid offline_access https://" + $self["subdomain"] + "." + $self["region"] + "/.default"}}',
+				'={{(($self["customScopes"] && $self["enabledScopes"]) ? $self["enabledScopes"] : "' +
+				defaultScopes.join(' ') +
+				'").replace(/\\{subdomain\\}/g, $self["subdomain"]).replace(/\\{region\\}/g, $self["region"])}}',
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',

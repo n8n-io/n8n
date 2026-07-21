@@ -9,16 +9,18 @@ describe('MicrosoftDynamicsOAuth2Api Credential', () => {
 		expect(credential.extends).toEqual(['microsoftOAuth2Api']);
 	});
 
-	it('should offer custom scopes without a prefill, since the default is built from other fields', () => {
+	it('should offer custom scopes prefilled with the defaults as placeholder tokens', () => {
 		expect(property('customScopes')?.default).toBe(false);
 		expect(property('enabledScopes')?.displayOptions).toEqual({ show: { customScopes: [true] } });
-		expect(property('enabledScopes')?.default).toBe('');
+		expect(property('enabledScopes')?.default).toBe(
+			'openid offline_access https://{subdomain}.{region}/.default',
+		);
 	});
 
-	it('should keep the scope hidden and build the standard scopes when custom scopes are off or left blank', () => {
+	it('should keep the scope hidden, substituting the tokens and falling back to the defaults when custom scopes are off or cleared', () => {
 		expect(property('scope')?.type).toBe('hidden');
 		expect(property('scope')?.default).toBe(
-			'={{$self["customScopes"] && $self["enabledScopes"] ? $self["enabledScopes"] : "openid offline_access https://" + $self["subdomain"] + "." + $self["region"] + "/.default"}}',
+			'={{(($self["customScopes"] && $self["enabledScopes"]) ? $self["enabledScopes"] : "openid offline_access https://{subdomain}.{region}/.default").replace(/\\{subdomain\\}/g, $self["subdomain"]).replace(/\\{region\\}/g, $self["region"])}}',
 		);
 	});
 });

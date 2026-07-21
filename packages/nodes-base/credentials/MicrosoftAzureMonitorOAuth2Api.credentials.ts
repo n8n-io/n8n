@@ -94,7 +94,7 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName:
-				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly.',
+				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly. Use the <code>{resource}</code> placeholder to reference the Resource value above. With the Authorization Code grant, the default scope is empty — the resource travels as a query parameter instead.',
 			name: 'customScopesNotice',
 			type: 'notice',
 			default: '',
@@ -105,8 +105,6 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 			},
 		},
 		{
-			// The default scope is built from Grant Type and Resource, so it can't prefill
-			// this field — left blank, the computed default applies instead
 			displayName: 'Enabled Scopes',
 			name: 'enabledScopes',
 			type: 'string',
@@ -115,16 +113,16 @@ export class MicrosoftAzureMonitorOAuth2Api implements ICredentialType {
 					customScopes: [true],
 				},
 			},
-			default: '',
-			placeholder: 'e.g. https://api.loganalytics.azure.com/.default',
-			description: 'Scopes that should be enabled',
+			default: '{resource}/.default',
+			description:
+				'Scopes that should be enabled. Use <code>{resource}</code> as a placeholder that will be replaced with the Resource value.',
 		},
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'={{$self["customScopes"] && $self["enabledScopes"] ? $self["enabledScopes"] : ($self["grantType"] === "clientCredentials" ? $self["resource"] + "/.default" : "")}}',
+				'={{(($self["customScopes"] && $self["enabledScopes"]) ? $self["enabledScopes"] : ($self["grantType"] === "clientCredentials" ? "{resource}/.default" : "")).replace(/\\{resource\\}/g, $self["resource"])}}',
 		},
 		{
 			displayName: 'Authentication',
