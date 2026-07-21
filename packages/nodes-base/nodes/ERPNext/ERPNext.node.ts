@@ -179,7 +179,7 @@ export class ERPNext implements INodeType {
 					if (filters) {
 						qs.filters = JSON.stringify(
 							filters.customProperty.map((filter) => {
-								return [docType, filter.field, toSQL(filter.operator), filter.value];
+								return [filter.field, toSQL(filter.operator), filter.value];
 							}),
 						);
 					}
