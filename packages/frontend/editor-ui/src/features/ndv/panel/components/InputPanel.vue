@@ -35,7 +35,7 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
-import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
@@ -449,7 +449,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				>
 					{{ i18n.baseText('ndv.input') }}
 				</N8nText>
-				<N8nRadioButtons
+				<N8nSegmentControl
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
 					:options="inputModes"

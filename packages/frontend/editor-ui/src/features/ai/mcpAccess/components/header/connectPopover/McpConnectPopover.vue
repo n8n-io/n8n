@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
+import { ref, watch } from 'vue';
+import { N8nButton, N8nPopover, N8nSegmentControl } from '@n8n/design-system';
 import { computed, ref } from 'vue';
-import { N8nButton, N8nPopover, N8nRadioButtons } from '@n8n/design-system';
 import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPOAuthPopoverTab.vue';
 import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -85,7 +86,7 @@ const trackCopyEvent = (payload: {
 			<template #content>
 				<div :class="$style['popper-content']" data-test-id="mcp-connect-popover-content">
 					<header>
-						<N8nRadioButtons
+						<N8nSegmentControl
 							data-test-id="mcp-connect-popover-tabs"
 							:model-value="activeTab"
 							:options="tabItems"
