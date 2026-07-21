@@ -47,10 +47,16 @@ const meta: Meta<typeof N8nFloatingWindow> = {
 			onMove: action('move'),
 		}),
 		template: `
-			<div style="position: relative; width: 100%; height: 480px; overflow: hidden;">
+			<div
+				style="
+					position: relative;
+					width: 100%;
+					height: 480px;
+					overflow: hidden;
+				"
+			>
 				<n8n-floating-window
 					v-bind="args"
-					contained
 					@close="onClose"
 					@resize="onResize"
 					@move="onMove"
