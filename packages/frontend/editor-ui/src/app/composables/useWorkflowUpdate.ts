@@ -14,6 +14,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
+import { omitNullNodeFields } from '@/app/utils/nodes/nodeTransforms';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
@@ -342,6 +343,12 @@ export function useWorkflowUpdate() {
 		options?: UpdateWorkflowOptions,
 	): Promise<UpdateWorkflowResult> {
 		try {
+			// AI edit round-trips can emit optional INode fields as null; strip them so
+			// they never reach the canvas store or serializeNode (Object.keys(null)).
+			if (workflowData.nodes) {
+				workflowData.nodes = workflowData.nodes.map((node) => omitNullNodeFields(node));
+			}
+
 			// Apply default credentials to incoming nodes BEFORE adding to store
 			setDefaultCredentialsOnNodes(workflowData.nodes ?? []);
 

@@ -157,6 +157,57 @@ describe('useWorkflowUpdate', () => {
 			expect(builderStore.setBuilderMadeEdits).toHaveBeenCalledWith(true);
 		});
 
+		it('should strip null optional fields from incoming AI nodes before applying', async () => {
+			const newNode = createTestNode({
+				id: 'new-node-1',
+				name: 'New Node',
+				type: 'n8n-nodes-base.httpRequest',
+			});
+			const nodeWithNulls = {
+				...newNode,
+				credentials: null,
+				webhookId: null,
+				notes: null,
+				notesInFlow: null,
+				executeOnce: null,
+				retryOnFail: null,
+				alwaysOutputData: null,
+				onError: null,
+			};
+
+			mockCanvasOperations.addNodes.mockResolvedValue([newNode as INodeUi]);
+
+			const { updateWorkflow } = useWorkflowUpdate();
+
+			await updateWorkflow({
+				nodes: [nodeWithNulls as unknown as INodeUi],
+				connections: {},
+			});
+
+			expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
+				[
+					expect.objectContaining({
+						id: 'new-node-1',
+						name: 'New Node',
+						type: 'n8n-nodes-base.httpRequest',
+					}),
+				],
+				expect.any(Object),
+			);
+			const addedNode = mockCanvasOperations.addNodes.mock.calls[0][0][0] as Record<
+				string,
+				unknown
+			>;
+			expect(addedNode).not.toHaveProperty('credentials');
+			expect(addedNode).not.toHaveProperty('webhookId');
+			expect(addedNode).not.toHaveProperty('notes');
+			expect(addedNode).not.toHaveProperty('notesInFlow');
+			expect(addedNode).not.toHaveProperty('executeOnce');
+			expect(addedNode).not.toHaveProperty('retryOnFail');
+			expect(addedNode).not.toHaveProperty('alwaysOutputData');
+			expect(addedNode).not.toHaveProperty('onError');
+		});
+
 		describe('node categorization', () => {
 			it('should add new nodes that do not exist in current workflow', async () => {
 				const newNode = createTestNode({

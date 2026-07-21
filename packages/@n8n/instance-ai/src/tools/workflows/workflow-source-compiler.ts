@@ -64,8 +64,24 @@ export function isWorkflowJsonSourceFile(filePath: string): boolean {
 	return filePath.toLowerCase().endsWith('.json');
 }
 
-function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
+/**
+ * Normalizes compiled workflow nodes for INode persistence.
+ *
+ * Optional top-level INode fields must be omitted, never null. LLM-authored
+ * WorkflowJSON and sandbox BUILD_MJS output can still carry `"credentials": null`
+ * etc.; strip those before validation/persist. Nested nulls (e.g. credential id)
+ * are preserved.
+ */
+function normalizeWorkflowNodes(json: WorkflowJSON): void {
 	for (const node of json.nodes ?? []) {
+		if (!isRecord(node)) continue;
+
+		for (const key of Object.keys(node)) {
+			if (node[key] === null) {
+				delete node[key];
+			}
+		}
+
 		if (!isRecord(node.parameters)) {
 			node.parameters = {};
 		}
@@ -77,7 +93,7 @@ function validateCompiledWorkflow(
 	context: InstanceAiContext,
 	compilerWarnings: ValidationWarning[] = [],
 ): ValidationWarning[] {
-	normalizeWorkflowNodeParameters(json);
+	normalizeWorkflowNodes(json);
 
 	const schemaValidation = validateWorkflow(json, {
 		nodeTypesProvider: context.nodeTypesProvider,

@@ -163,6 +163,24 @@ export function getParameterDisplayableOptions(
 }
 
 /**
+ * Drops null-valued keys from a node object.
+ *
+ * Optional INode fields are `.optional()`, never `.nullable()`. Sources such as
+ * the AI Assistant edit round-trip can still emit `"credentials": null` etc.;
+ * those are equivalent to the key being omitted and must be stripped before the
+ * node is applied to the canvas or persisted.
+ */
+export function omitNullNodeFields<T extends object>(node: T): T {
+	const cleaned = { ...node };
+	for (const key of Object.keys(cleaned) as Array<keyof T>) {
+		if (cleaned[key] === null) {
+			delete cleaned[key];
+		}
+	}
+	return cleaned;
+}
+
+/**
  * Serializes a node for persistence: strips transient UI state, resolves
  * default parameters via the node type definition, and retains only the
  * credentials that are currently displayable.
@@ -186,15 +204,18 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 	};
 
 	for (const key in node) {
-		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
+		// Skip nulls: optional INode fields must be omitted, never null (see omitNullNodeFields).
+		const value = (node as unknown as Record<string, unknown>)[key];
+		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1 && value !== null) {
 			// @ts-ignore
-			nodeData[key] = node[key];
+			nodeData[key] = value;
 		}
 	}
 
 	// Get the data of the node type that we can get the default values
 	// TODO: Later also has to care about the node-type-version as defaults could be different
 	const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+	const nodeParametersInput = node.parameters ?? {};
 
 	if (nodeType !== null) {
 		const isCredentialOnly = isCredentialOnlyNodeType(nodeType.name);
@@ -207,7 +228,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		// Node-Type is known so we can save the parameters correctly
 		const nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType.properties,
-			node.parameters,
+			nodeParametersInput,
 			isCredentialOnly,
 			false,
 			node,
@@ -216,17 +237,23 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
 		// Add the node credentials if there are some set and if they should be displayed
-		if (node.credentials !== undefined && nodeType.credentials !== undefined) {
+		if (
+			node.credentials !== undefined &&
+			node.credentials !== null &&
+			nodeType.credentials !== undefined
+		) {
 			const saveCredentials: INodeCredentials = {};
 			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-				if (hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+				if (hasProxyAuth(node) || Object.keys(nodeParametersInput).includes('genericAuthType')) {
 					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 					continue;
 				}
 
 				const credentialTypeDescription = nodeType.credentials
 					// filter out credentials with same name in different node versions
-					.filter((c) => NodeHelpers.displayParameterPath(node.parameters, c, '', node, nodeType))
+					.filter((c) =>
+						NodeHelpers.displayParameterPath(nodeParametersInput, c, '', node, nodeType),
+					)
 					.find((c) => c.name === nodeCredentialTypeName);
 
 				if (credentialTypeDescription === undefined) {
@@ -236,7 +263,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 
 				if (
 					!NodeHelpers.displayParameterPath(
-						node.parameters,
+						nodeParametersInput,
 						credentialTypeDescription,
 						'',
 						node,
@@ -256,9 +283,11 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 			}
 		}
 	} else {
-		// Node-Type is not known so save the data as it is
-		nodeData.credentials = node.credentials;
-		nodeData.parameters = node.parameters;
+		// Node-Type is not known so save the data as it is (omit nulls)
+		if (node.credentials !== undefined && node.credentials !== null) {
+			nodeData.credentials = node.credentials;
+		}
+		nodeData.parameters = nodeParametersInput;
 		if (nodeData.color !== undefined) {
 			nodeData.color = node.color;
 		}
@@ -271,11 +300,11 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 	if (node.continueOnFail === true) {
 		nodeData.continueOnFail = true;
 	}
-	if (node.onError !== 'stopWorkflow') {
+	if (node.onError !== undefined && node.onError !== null && node.onError !== 'stopWorkflow') {
 		nodeData.onError = node.onError;
 	}
 	// Save the notes only if when they contain data
-	if (![undefined, ''].includes(node.notes)) {
+	if (node.notes !== undefined && node.notes !== null && node.notes !== '') {
 		nodeData.notes = node.notes;
 	}
 

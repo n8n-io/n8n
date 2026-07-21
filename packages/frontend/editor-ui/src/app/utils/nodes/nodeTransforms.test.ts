@@ -4,7 +4,11 @@ import { setActivePinia } from 'pinia';
 import { NodeHelpers } from 'n8n-workflow';
 import type { INodePropertyOptions, INodeTypeDescription } from 'n8n-workflow';
 
-import { getParameterDisplayableOptions, serializeNode } from './nodeTransforms';
+import {
+	getParameterDisplayableOptions,
+	omitNullNodeFields,
+	serializeNode,
+} from './nodeTransforms';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -258,6 +262,30 @@ describe('getParameterDisplayableOptions', () => {
 	});
 });
 
+describe('omitNullNodeFields', () => {
+	it('removes null-valued keys and leaves other values intact', () => {
+		const result = omitNullNodeFields({
+			id: '1',
+			name: 'Node',
+			credentials: null,
+			webhookId: null,
+			parameters: {},
+			retryOnFail: false,
+			notes: undefined,
+		});
+
+		expect(result).toEqual({
+			id: '1',
+			name: 'Node',
+			parameters: {},
+			retryOnFail: false,
+			notes: undefined,
+		});
+		expect('credentials' in result).toBe(false);
+		expect('webhookId' in result).toBe(false);
+	});
+});
+
 describe('serializeNode', () => {
 	const nodeTypeProvider = { getNodeType: vi.fn().mockReturnValue(null) };
 
@@ -275,6 +303,7 @@ describe('serializeNode', () => {
 
 	beforeEach(() => {
 		nodeTypeProvider.getNodeType.mockReturnValue(null);
+		vi.mocked(NodeHelpers.getNodeParameters).mockReturnValue({});
 	});
 
 	it('passes parameters + credentials through when node type is unknown', () => {
@@ -318,5 +347,70 @@ describe('serializeNode', () => {
 		expect(resultWithout.continueOnFail).toBeUndefined();
 		expect(resultWithout.onError).toBeUndefined();
 		expect(resultWithout.notes).toBeUndefined();
+	});
+
+	it('does not throw and omits null optional fields when node type is unknown', () => {
+		const node = createNode({
+			credentials: null as unknown as INodeUi['credentials'],
+			webhookId: null as unknown as string,
+			notes: null as unknown as string,
+			notesInFlow: null as unknown as boolean,
+			executeOnce: null as unknown as boolean,
+			retryOnFail: null as unknown as boolean,
+			alwaysOutputData: null as unknown as boolean,
+			onError: null as unknown as INodeUi['onError'],
+		});
+
+		const result = serializeNode(nodeTypeProvider, node);
+
+		expect(result.credentials).toBeUndefined();
+		expect(result.webhookId).toBeUndefined();
+		expect(result.notes).toBeUndefined();
+		expect(result.notesInFlow).toBeUndefined();
+		expect(result.executeOnce).toBeUndefined();
+		expect(result.retryOnFail).toBeUndefined();
+		expect(result.alwaysOutputData).toBeUndefined();
+		expect(result.onError).toBeUndefined();
+		expect(result.parameters).toEqual({});
+	});
+
+	it('does not throw when a known node type has null credentials or parameters', () => {
+		const knownNodeType = {
+			name: 'n8n-nodes-base.httpRequest',
+			displayName: 'HTTP Request',
+			version: 1,
+			description: '',
+			defaults: { name: 'HTTP Request' },
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [],
+			group: ['transform'],
+			credentials: [{ name: 'httpBasicAuth', required: false }],
+		} as INodeTypeDescription;
+
+		nodeTypeProvider.getNodeType.mockReturnValue(knownNodeType);
+		vi.mocked(NodeHelpers.getNodeParameters).mockReturnValue({});
+
+		const node = createNode({
+			type: 'n8n-nodes-base.httpRequest',
+			credentials: null as unknown as INodeUi['credentials'],
+			parameters: null as unknown as INodeUi['parameters'],
+			webhookId: null as unknown as string,
+		});
+
+		expect(() => serializeNode(nodeTypeProvider, node)).not.toThrow();
+		const result = serializeNode(nodeTypeProvider, node);
+
+		expect(result.credentials).toBeUndefined();
+		expect(result.webhookId).toBeUndefined();
+		expect(result.parameters).toEqual({});
+		expect(NodeHelpers.getNodeParameters).toHaveBeenCalledWith(
+			knownNodeType.properties,
+			{},
+			false,
+			false,
+			node,
+			knownNodeType,
+		);
 	});
 });
