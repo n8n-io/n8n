@@ -7,10 +7,13 @@ import {
 	writeGithubOutput,
 } from './github-helpers.mjs';
 
+export const BACKPORT_TO_BETA_LABEL = 'Backport to Beta';
+export const BACKPORT_TO_STABLE_LABEL = 'Backport to Stable';
+
 /** @type { Record<string, import('./github-helpers.mjs').ReleaseTrack> } */
 const BACKPORT_BY_TAG_MAP = {
-	'Backport to Beta': 'beta',
-	'Backport to Stable': 'stable',
+	[BACKPORT_TO_BETA_LABEL]: 'beta',
+	[BACKPORT_TO_STABLE_LABEL]: 'stable',
 };
 
 const BACKPORT_BY_BRANCH_MAP = {

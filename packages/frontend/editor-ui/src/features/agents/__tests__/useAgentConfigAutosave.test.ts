@@ -75,4 +75,21 @@ describe('useAgentConfigAutosave', () => {
 		expect(save).toHaveBeenNthCalledWith(1, { value: 'old' });
 		expect(save).toHaveBeenNthCalledWith(2, { value: 'new' });
 	});
+
+	it('cancelPendingAutosave drops a debounced snapshot without saving it', async () => {
+		vi.useFakeTimers();
+		const save = vi.fn().mockResolvedValue(undefined);
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			debounceMs: 500,
+		});
+
+		autosave.scheduleAutosave({ value: 'pending' });
+		autosave.cancelPendingAutosave();
+
+		await vi.advanceTimersByTimeAsync(500);
+		await autosave.flushAutosave();
+
+		expect(save).not.toHaveBeenCalled();
+	});
 });

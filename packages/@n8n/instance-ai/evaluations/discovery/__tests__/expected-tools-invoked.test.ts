@@ -33,7 +33,7 @@ const slackOauthScenario: DiscoveryTestCase = {
 	id: 'test',
 	userMessage: 'Help me set up Slack credentials',
 	expectedToolInvocations: {
-		anyOf: ['browser-credential-setup', 'spawn_sub_agent:browser-credential-setup'],
+		anyOf: ['load_skill', 'browser_navigate'],
 	},
 };
 
@@ -42,23 +42,27 @@ describe('runExpectedToolsInvokedCheck', () => {
 		it('passes when the expected top-level tool was invoked', () => {
 			const result = runExpectedToolsInvokedCheck(
 				slackOauthScenario,
-				makeOutcome({ toolCalls: [{ toolName: 'browser-credential-setup' }] }),
+				makeOutcome({ toolCalls: [{ toolName: 'load_skill' }] }),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.invokedTools).toContain('browser-credential-setup');
+			expect(result.invokedTools).toContain('load_skill');
 		});
 
-		it('passes when the expected sub-agent was spawned (matched via spawn_sub_agent: prefix)', () => {
+		it('passes when a named sub-agent was spawned (matched via spawn_sub_agent: prefix)', () => {
 			const result = runExpectedToolsInvokedCheck(
-				slackOauthScenario,
+				{
+					id: 'test',
+					userMessage: '',
+					expectedToolInvocations: { anyOf: ['spawn_sub_agent:researcher'] },
+				},
 				makeOutcome({
-					agents: [{ role: 'browser-credential-setup', tools: ['browser_navigate'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.spawnedAgents).toContain('spawn_sub_agent:browser-credential-setup');
+			expect(result.spawnedAgents).toContain('spawn_sub_agent:researcher');
 		});
 
 		it('passes when the spawned sub-agent had the expected tool attached (sub-agent tools list)', () => {
@@ -66,15 +70,15 @@ describe('runExpectedToolsInvokedCheck', () => {
 				{
 					id: 'test',
 					userMessage: '',
-					expectedToolInvocations: { anyOf: ['browser_navigate'] },
+					expectedToolInvocations: { anyOf: ['credentials'] },
 				},
 				makeOutcome({
-					agents: [{ role: 'browser-credential-setup', tools: ['browser_navigate'] }],
+					agents: [{ role: 'researcher', tools: ['credentials'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
-			expect(result.invokedTools).toContain('browser_navigate');
+			expect(result.invokedTools).toContain('credentials');
 		});
 	});
 
@@ -87,7 +91,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 			expect(result.pass).toBe(false);
 			expect(result.comment).toContain('Expected at least one of');
-			expect(result.comment).toContain('browser-credential-setup');
+			expect(result.comment).toContain('browser_navigate');
 		});
 
 		it('fails when the orchestrator only ran research with no browser dispatch', () => {
@@ -107,7 +111,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			id: 'test',
 			userMessage: 'How do I set the timeout on my HTTP node?',
 			expectedToolInvocations: {
-				noneOf: ['browser-credential-setup', 'spawn_sub_agent:browser-credential-setup'],
+				noneOf: ['browser_navigate', 'spawn_sub_agent:credential-helper'],
 			},
 		};
 
@@ -123,19 +127,19 @@ describe('runExpectedToolsInvokedCheck', () => {
 		it('fails when the forbidden tool was invoked', () => {
 			const result = runExpectedToolsInvokedCheck(
 				httpNodeConfigScenario,
-				makeOutcome({ toolCalls: [{ toolName: 'browser-credential-setup' }] }),
+				makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] }),
 			);
 
 			expect(result.pass).toBe(false);
 			expect(result.comment).toContain('Expected none of');
-			expect(result.comment).toContain('browser-credential-setup');
+			expect(result.comment).toContain('browser_navigate');
 		});
 
 		it('fails when the forbidden sub-agent was spawned', () => {
 			const result = runExpectedToolsInvokedCheck(
 				httpNodeConfigScenario,
 				makeOutcome({
-					agents: [{ role: 'browser-credential-setup', tools: ['browser_navigate'] }],
+					agents: [{ role: 'credential-helper', tools: ['browser_navigate'] }],
 				}),
 			);
 
@@ -148,7 +152,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			id: 'test',
 			userMessage: '',
 			expectedToolInvocations: {
-				anyOf: ['browser-credential-setup'],
+				anyOf: ['browser_navigate'],
 				noneOf: ['delegate'],
 			},
 		};
@@ -156,7 +160,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 		it('passes when anyOf matches and noneOf is not violated', () => {
 			const result = runExpectedToolsInvokedCheck(
 				combinedScenario,
-				makeOutcome({ toolCalls: [{ toolName: 'browser-credential-setup' }] }),
+				makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] }),
 			);
 
 			expect(result.pass).toBe(true);
@@ -166,7 +170,7 @@ describe('runExpectedToolsInvokedCheck', () => {
 			const result = runExpectedToolsInvokedCheck(
 				combinedScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'browser-credential-setup' }, { toolName: 'delegate' }],
+					toolCalls: [{ toolName: 'browser_navigate' }, { toolName: 'delegate' }],
 				}),
 			);
 
@@ -176,21 +180,21 @@ describe('runExpectedToolsInvokedCheck', () => {
 	});
 
 	describe('noneOfToolCalls — actual tool-call guard', () => {
-		const plannerScenario: DiscoveryTestCase = {
+		const planningScenario: DiscoveryTestCase = {
 			id: 'test',
 			userMessage: 'Build a Gmail and Calendar workflow',
 			expectedToolInvocations: {
-				anyOf: ['plan', 'spawn_sub_agent:planner'],
+				anyOf: ['create-tasks'],
 				noneOfToolCalls: [{ toolName: 'ask-user', argsContainAny: ['credential'] }],
 			},
 		};
 
-		it('passes when a spawned planner has ask-user available but does not call it', () => {
+		it('passes when ask-user is available to a spawned agent but is not called', () => {
 			const result = runExpectedToolsInvokedCheck(
-				plannerScenario,
+				planningScenario,
 				makeOutcome({
-					toolCalls: [{ toolName: 'plan' }],
-					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+					toolCalls: [{ toolName: 'create-tasks' }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
 				}),
 			);
 
@@ -200,16 +204,16 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('fails when the forbidden tool call happens with matching args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				plannerScenario,
+				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'plan' },
+						{ toolName: 'create-tasks' },
 						{
 							toolName: 'ask-user',
 							args: { question: 'Which Google Calendar credential should I use?' },
 						},
 					],
-					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
 				}),
 			);
 
@@ -220,17 +224,65 @@ describe('runExpectedToolsInvokedCheck', () => {
 
 		it('passes when the same tool is called for unrelated args', () => {
 			const result = runExpectedToolsInvokedCheck(
-				plannerScenario,
+				planningScenario,
 				makeOutcome({
 					toolCalls: [
-						{ toolName: 'plan' },
+						{ toolName: 'create-tasks' },
 						{ toolName: 'ask-user', args: { question: 'Which failure branch should run?' } },
 					],
-					agents: [{ role: 'planner', tools: ['credentials', 'ask-user'] }],
+					agents: [{ role: 'delegate', tools: ['credentials', 'ask-user'] }],
 				}),
 			);
 
 			expect(result.pass).toBe(true);
+		});
+	});
+
+	describe('anyOfToolCalls — actual tool-call alternatives', () => {
+		const credentialSetupScenario: DiscoveryTestCase = {
+			id: 'test',
+			userMessage: 'Help me set up Slack credentials',
+			expectedToolInvocations: {
+				anyOfToolCalls: [
+					{ toolName: 'load_skill', argsContainAny: ['credential-setup-with-computer-use'] },
+					{ toolName: 'browser_navigate' },
+				],
+			},
+		};
+
+		it('passes when one expected actual tool call happened with matching args', () => {
+			const result = runExpectedToolsInvokedCheck(
+				credentialSetupScenario,
+				makeOutcome({
+					toolCalls: [
+						{
+							toolName: 'load_skill',
+							args: { skillId: 'credential-setup-with-computer-use' },
+						},
+					],
+				}),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('passes when a browser fallback tool call happened', () => {
+			const result = runExpectedToolsInvokedCheck(
+				credentialSetupScenario,
+				makeOutcome({ toolCalls: [{ toolName: 'browser_navigate' }] }),
+			);
+
+			expect(result.pass).toBe(true);
+		});
+
+		it('fails when only an unrelated skill was loaded', () => {
+			const result = runExpectedToolsInvokedCheck(
+				credentialSetupScenario,
+				makeOutcome({ toolCalls: [{ toolName: 'load_skill', args: { skillId: 'other-skill' } }] }),
+			);
+
+			expect(result.pass).toBe(false);
+			expect(result.comment).toContain('credential-setup-with-computer-use');
 		});
 	});
 

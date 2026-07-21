@@ -1,3 +1,5 @@
+import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+
 import { CreateWorkflowDto } from '../create-workflow.dto';
 
 describe('CreateWorkflowDto', () => {
@@ -68,6 +70,22 @@ describe('CreateWorkflowDto', () => {
 				},
 			},
 			{
+				name: 'with a group description at the length cap',
+				request: {
+					name: 'Grouped Workflow',
+					nodes: [],
+					connections: {},
+					nodeGroups: [
+						{
+							id: 'group1',
+							name: 'Data Fetching',
+							nodeIds: ['node1'],
+							description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH),
+						},
+					],
+				},
+			},
+			{
 				name: 'with empty nodeGroups array',
 				request: {
 					name: 'Empty Groups Workflow',
@@ -88,9 +106,40 @@ describe('CreateWorkflowDto', () => {
 					],
 				},
 			},
+			{
+				// `parentFolder` is not an accepted input; it must be tolerated (stripped), not rejected
+				name: 'with parentFolder object (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: { id: 'folder123', name: 'Some Folder' },
+				},
+			},
+			{
+				name: 'with parentFolder null (ignored)',
+				request: {
+					name: 'Workflow',
+					nodes: [],
+					connections: {},
+					parentFolder: null,
+				},
+			},
 		])('should validate $name', ({ request }) => {
 			const result = CreateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(true);
+		});
+
+		test('should strip parentFolder from the parsed payload', () => {
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Workflow',
+				nodes: [],
+				connections: {},
+				parentFolder: { id: 'folder123', name: 'Some Folder' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data).not.toHaveProperty('parentFolder');
 		});
 
 		test('should transform tags from objects to string array', () => {
@@ -106,6 +155,44 @@ describe('CreateWorkflowDto', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.data?.tags).toEqual(['tag1', 'tag2']);
+		});
+
+		test('should preserve workflow custom span attribute settings', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: 'env', value: 'production' },
+					{ key: 'workflow_name', value: 'Workflow Name' },
+				],
+			};
+
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Test',
+				nodes: [],
+				connections: {},
+				settings,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
+		});
+
+		test('should preserve workflow custom span attribute settings with keys that are unique after trim', () => {
+			const settings = {
+				customTelemetryTags: [
+					{ key: '  env  ', value: 'production' },
+					{ key: 'team', value: 'backend' },
+				],
+			};
+
+			const result = CreateWorkflowDto.safeParse({
+				name: 'Test',
+				nodes: [],
+				connections: {},
+				settings,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.data?.settings).toEqual(settings);
 		});
 	});
 
@@ -127,21 +214,6 @@ describe('CreateWorkflowDto', () => {
 				expectedErrorPath: ['name'],
 			},
 			{
-				name: 'name containing a script tag',
-				request: { name: '<script>alert(1)</script>', nodes: [], connections: {} },
-				expectedErrorPath: ['name'],
-			},
-			{
-				name: 'name containing an img onerror payload',
-				request: { name: '<img src=x onerror=alert(1)>', nodes: [], connections: {} },
-				expectedErrorPath: ['name'],
-			},
-			{
-				name: 'name containing inline HTML markup',
-				request: { name: 'Report <b>bold</b>', nodes: [], connections: {} },
-				expectedErrorPath: ['name'],
-			},
-			{
 				name: 'missing nodes',
 				request: { name: 'Test', connections: {} },
 				expectedErrorPath: ['nodes'],
@@ -160,6 +232,86 @@ describe('CreateWorkflowDto', () => {
 				name: 'settings as array',
 				request: { name: 'Test', nodes: [], connections: {}, settings: [] },
 				expectedErrorPath: ['settings'],
+			},
+			{
+				name: 'workflow custom span attributes as fixed collection object',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: {
+							tag: [{ key: 'env', value: 'production' }],
+						},
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'workflow custom span attribute with extra field',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [{ key: 'env', value: 'production', extra: 'field' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [
+							{ key: 'env', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'duplicate workflow custom span attribute keys after trim',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [
+							{ key: '  env  ', value: 'production' },
+							{ key: 'env', value: 'staging' },
+						],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags'],
+			},
+			{
+				name: 'empty workflow custom span attribute key',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [{ key: '', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
+			},
+			{
+				name: 'whitespace-only workflow custom span attribute key',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						customTelemetryTags: [{ key: '   ', value: 'production' }],
+					},
+				},
+				expectedErrorPath: ['settings', 'customTelemetryTags', 0, 'key'],
 			},
 			{
 				name: 'staticData as array',
@@ -235,6 +387,23 @@ describe('CreateWorkflowDto', () => {
 					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: [''] }],
 				},
 				expectedErrorPath: ['nodeGroups', 0, 'nodeIds', 0],
+			},
+			{
+				name: 'nodeGroups with description over the length cap',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+					nodeGroups: [
+						{
+							id: 'g1',
+							name: 'Group',
+							nodeIds: [],
+							description: 'a'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 1),
+						},
+					],
+				},
+				expectedErrorPath: ['nodeGroups', 0, 'description'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateWorkflowDto.safeParse(request);

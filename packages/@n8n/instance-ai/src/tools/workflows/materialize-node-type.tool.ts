@@ -10,11 +10,11 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 import { runInSandbox, type SandboxWorkspace } from '../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 const nodeRequestSchema = z.union([
 	z.string().describe('Simple node ID, e.g. "n8n-nodes-base.httpRequest"'),
@@ -74,7 +74,7 @@ export function createMaterializeNodeTypeTool(
 				),
 			}),
 		)
-		.handler(async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>) => {
+		.handler(async ({ nodeIds }: z.infer<typeof materializeNodeTypeInputSchema>, ctx) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
 					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
@@ -133,7 +133,9 @@ export function createMaterializeNodeTypeTool(
 
 				const script = lines.join('\n');
 				const scriptB64 = Buffer.from(script, 'utf-8').toString('base64');
-				const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`);
+				const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`, {
+					abortSignal: ctx.abortSignal,
+				});
 
 				if (result.exitCode !== 0) {
 					// Mark all as failed but still return content (useful for the agent)

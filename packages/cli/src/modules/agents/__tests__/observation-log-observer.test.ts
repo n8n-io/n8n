@@ -7,7 +7,7 @@ import {
 
 describe('n8n observation-log observer policy', () => {
 	it('uses the n8n observer defaults', () => {
-		expect(DEFAULT_OBSERVER_THRESHOLD_TOKENS).toBe(500);
+		expect(DEFAULT_OBSERVER_THRESHOLD_TOKENS).toBe(8_000);
 		expect(DEFAULT_OBSERVATION_LOG_TAIL_LIMIT).toBe(20);
 		expect(DEFAULT_OBSERVER_PROMPT).toContain('Output the new observations only');
 		expect(DEFAULT_OBSERVER_PROMPT).toContain('CRITICAL. Things the agent must not forget');
@@ -28,7 +28,7 @@ describe('n8n observation-log observer policy', () => {
 			transcriptTokenCount: 42,
 			observationLogTail: [],
 			renderedObservationLogTail:
-				'## Memory\n\n* CRITICAL (14:28) User is rebuilding observational memory.',
+				'<observations>\n* CRITICAL (14:28) User is rebuilding observational memory.\n</observations>',
 		});
 
 		expect(prompt).toContain('Current timestamp: 2026-05-12T14:30:00.000Z');

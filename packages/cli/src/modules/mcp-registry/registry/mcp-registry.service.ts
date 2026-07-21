@@ -4,6 +4,7 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { inE2ETests } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -12,6 +13,7 @@ import { McpRegistryServerRepository } from './mcp-registry-server.repository';
 import { McpRegistryNodeLoader } from '../mcp-registry-node-loader';
 import type { McpRegistryServerMetadata } from './mcp-registry-api.client';
 import { McpRegistryApiClient } from './mcp-registry-api.client';
+import { searchMcpRegistryServers, type McpRegistrySearchResult } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
@@ -44,7 +46,10 @@ export class McpRegistryService {
 
 	async init(): Promise<void> {
 		await this.refreshRegistryNodeTypes(false);
-		if (this.instanceSettings.isLeader) {
+		// In E2E the registry is populated deterministically via the test seed
+		// endpoint; skip the remote refresh so tests never reach api.n8n.io and
+		// the background refresh can't race the seed.
+		if (this.instanceSettings.isLeader && !inE2ETests) {
 			// don't want to wait for API calls to block on init
 			void this.refreshFromApi('startup');
 			this.startPeriodicRefresh();
@@ -53,6 +58,7 @@ export class McpRegistryService {
 
 	@OnLeaderTakeover()
 	async onLeaderTakeover(): Promise<void> {
+		if (inE2ETests) return;
 		await this.refreshFromApi('leader-takeover');
 		this.startPeriodicRefresh();
 	}
@@ -88,6 +94,24 @@ export class McpRegistryService {
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
 		return entity ? fromEntity(entity) : undefined;
+	}
+
+	async getBySlugs(slugs: string[]): Promise<McpRegistryServer[]> {
+		if (slugs.length === 0) {
+			return [];
+		}
+
+		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
+		return entities.map(fromEntity);
+	}
+
+	/**
+	 * Match active registry servers against free-text queries and return them in
+	 * the config-ready shape used by the agent-builder tools. Centralizes the
+	 * matching + mapping that used to be re-implemented per call site.
+	 */
+	async search(queries: string[]): Promise<McpRegistrySearchResult[]> {
+		return searchMcpRegistryServers(await this.getAll(), queries);
 	}
 
 	private startPeriodicRefresh(): void {
@@ -156,16 +180,27 @@ export class McpRegistryService {
 	private async refreshUpdatedServers(
 		existingServers: McpRegistryServer[],
 	): Promise<McpRegistryServer[] | null> {
+		const now = new Date().toISOString();
 		const metadata = await this.apiClient.fetchServersMetadata();
-		const existingById = new Map(existingServers.map((server) => [server.id, server]));
-		const idsToFetch = metadata
-			.filter((entry) => this.shouldFetchFullServer(entry, existingById.get(entry.id)))
-			.map(({ id }) => id);
-		if (idsToFetch.length === 0) {
+		const existingBySlug = new Map(existingServers.map((server) => [server.slug, server]));
+		const metadataSlugs = new Set(metadata.map(({ slug }) => slug));
+		const slugsToFetch = metadata
+			.filter((entry) => this.shouldFetchFullServer(entry, existingBySlug.get(entry.slug)))
+			.map(({ slug }) => slug);
+		const serversToDeprecate = existingServers
+			.filter((server) => !metadataSlugs.has(server.slug) && server.status !== 'deprecated')
+			.map((server) => ({ ...server, status: 'deprecated' as const, updatedAt: now }));
+
+		if (slugsToFetch.length === 0 && serversToDeprecate.length === 0) {
 			return null;
 		}
 
-		return await this.apiClient.fetchServersByIds(idsToFetch);
+		if (slugsToFetch.length === 0) {
+			return serversToDeprecate;
+		}
+
+		const updatedServers = await this.apiClient.fetchServersBySlugs(slugsToFetch);
+		return [...updatedServers, ...serversToDeprecate];
 	}
 
 	private shouldFetchFullServer(
@@ -186,7 +221,9 @@ export class McpRegistryService {
 		// it will break workflows that use them.
 		// If we want to stop supporting a server,
 		// we will set its status to 'deprecated' instead.
-		await this.repository.upsert(entities, ['id']);
+		// If a server is removed from the remote API,
+		// it will be marked as deprecated as well.
+		await this.repository.upsert(entities, ['slug']);
 	}
 
 	private async refreshRegistryNodeTypes(releaseTypes: boolean): Promise<void> {

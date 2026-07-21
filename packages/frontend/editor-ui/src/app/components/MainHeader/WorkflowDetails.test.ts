@@ -2,7 +2,6 @@ import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestWorkflow } from '@/__tests__/mocks';
-import type { IWorkflowDb } from '@/Interface';
 import {
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
@@ -23,7 +22,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
-import type { Project } from '@/features/collaboration/projects/projects.types';
+import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { shallowRef, computed } from 'vue';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
@@ -31,14 +30,15 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 
+// No workflow route meta on purpose: the menu renders both on workflow-layout
+// routes and in host-embedded editors without a workflow route (e.g. the AI
+// artifact view), so nothing here may depend on route meta.
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: vi.fn().mockReturnValue({
 		params: { workflowId: 'test' },
 		query: { parentFolderId: '1' },
-		meta: {
-			nodeView: true,
-		},
+		meta: {},
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
@@ -251,16 +251,6 @@ describe('WorkflowDetails', () => {
 	});
 
 	describe('Workflow menu', () => {
-		beforeEach(() => {
-			vi.mocked(useRoute).mockReturnValueOnce({
-				meta: {
-					nodeView: true,
-				},
-				query: { parentFolderId: '1' },
-				params: { workflowId: 'test' },
-			} as unknown as ReturnType<typeof useRoute>);
-		});
-
 		it('should not have workflow duplicate and import when branch is read-only', async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 
@@ -308,10 +298,10 @@ describe('WorkflowDetails', () => {
 
 			await userEvent.click(getByTestId('workflow-menu'));
 
-			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
-			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
+			expect(getByTestId('workflow-menu-item-duplicate')).not.toHaveClass('disabled');
+			expect(getByTestId('workflow-menu-item-import-from-url')).not.toHaveClass('disabled');
+			expect(getByTestId('workflow-menu-item-import-from-file')).not.toHaveClass('disabled');
+			expect(queryByTestId('workflow-menu-item-share')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
@@ -321,9 +311,7 @@ describe('WorkflowDetails', () => {
 			vi.mocked(useRoute)
 				.mockReset()
 				.mockReturnValue({
-					meta: {
-						nodeView: true,
-					},
+					meta: {},
 					query: { parentFolderId: '1', new: 'true' },
 					params: { workflowId: 'test' },
 				} as unknown as ReturnType<typeof useRoute>);
@@ -517,16 +505,11 @@ describe('WorkflowDetails', () => {
 
 		it("should navigate to team project workflows page on 'Archive' for team project workflow", async () => {
 			const teamProjectId = 'team-project-123';
-			const teamWorkflow = {
-				...workflow,
-				homeProject: {
-					id: teamProjectId,
-					name: 'Team Project',
-					type: 'team',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: teamProjectId,
+				name: 'Team Project',
+				type: 'team',
+			} as ProjectSharingData);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -540,24 +523,20 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id, 'test-checksum');
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Archive' for personal project workflow", async () => {
-			const personalWorkflow = {
-				...workflow,
-				homeProject: {
-					id: 'personal-project-123',
-					name: 'Personal Project',
-					type: 'personal',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
+		it("should navigate to personal project workflows page on 'Archive' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-123';
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: personalProjectId,
+				name: 'Personal Project',
+				type: 'personal',
+			} as ProjectSharingData);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -571,12 +550,10 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-archive'));
 
-			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(
-				personalWorkflow.id,
-				'test-checksum',
-			);
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 
@@ -678,17 +655,11 @@ describe('WorkflowDetails', () => {
 
 		it("should navigate to team project workflows page on 'Delete' for team project workflow", async () => {
 			const teamProjectId = 'team-project-456';
-			const teamWorkflow = {
-				...workflow,
-				isArchived: true,
-				homeProject: {
-					id: teamProjectId,
-					name: 'Team Project',
-					type: 'team',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: teamProjectId,
+				name: 'Team Project',
+				type: 'team',
+			} as ProjectSharingData);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -702,25 +673,20 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
 			});
 		});
 
-		it("should navigate to personal workflows page on 'Delete' for personal project workflow", async () => {
-			const personalWorkflow = {
-				...workflow,
-				isArchived: true,
-				homeProject: {
-					id: 'personal-project-456',
-					name: 'Personal Project',
-					type: 'personal',
-				},
-			};
-
-			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
+		it("should navigate to personal project workflows page on 'Delete' for personal project workflow", async () => {
+			const personalProjectId = 'personal-project-456';
+			workflowDocumentStoreRef.value?.setHomeProject({
+				id: personalProjectId,
+				name: 'Personal Project',
+				type: 'personal',
+			} as ProjectSharingData);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -734,9 +700,10 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledWith({
-				name: VIEWS.WORKFLOWS,
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: personalProjectId },
 			});
 		});
 

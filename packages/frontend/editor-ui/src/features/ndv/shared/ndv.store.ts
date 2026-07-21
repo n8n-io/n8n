@@ -20,18 +20,17 @@ import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore, getActivePinia, type Pinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { computed, ref } from 'vue';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { computed, inject, ref, type ShallowRef } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
 
 export type NDVStoreId = WorkflowDocumentId;
-
-const DEFAULT_NDV_STORE_ID = createWorkflowDocumentId('default');
 
 const DEFAULT_MAIN_PANEL_DIMENSIONS = {
 	relativeLeft: 1,
@@ -43,7 +42,7 @@ export function getNDVStoreId(id: NDVStoreId) {
 	return `${STORES.NDV}/${id}`;
 }
 
-function defineNDVStore(id: NDVStoreId, useCurrentWorkflowDocument = false) {
+function defineNDVStore(id: NDVStoreId) {
 	return defineStore(getNDVStoreId(id), () => {
 		const localStorageMappingIsOnboarded = useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED);
 		const localStorageTableHoverIsOnboarded = useStorage(LOCAL_STORAGE_TABLE_HOVER_IS_ONBOARDED);
@@ -105,18 +104,17 @@ function defineNDVStore(id: NDVStoreId, useCurrentWorkflowDocument = false) {
 		const highlightDraggables = ref(false);
 		const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
-		const workflowsStore = useWorkflowsStore();
-		const workflowDocumentStore = computed(() =>
-			useWorkflowDocumentStore(
-				useCurrentWorkflowDocument ? createWorkflowDocumentId(workflowsStore.workflowId) : id,
-			),
-		);
+		const workflowDocumentStore = useWorkflowDocumentStore(id);
+		const executionStateStore = useWorkflowExecutionStateStore(id);
 		const activeNode = computed(() => {
-			return workflowDocumentStore.value.getNodeByName(activeNodeName.value || '') ?? null;
+			return workflowDocumentStore.getNodeByName(activeNodeName.value || '') ?? null;
 		});
 
 		const ndvInputData = computed(() => {
-			const executionData = workflowsStore.getWorkflowExecution;
+			// Touch the timestamp so in-place runData mutations (which keep the
+			// execution object reference) still propagate.
+			void executionStateStore.activeExecutionResultDataLastUpdate;
+			const executionData = executionStateStore.activeExecution;
 			const inputNodeName: string | undefined = input.value.nodeName;
 			const inputRunIndex: number = input.value.run ?? 0;
 			const inputBranchIndex: number = input.value.branch ?? 0;
@@ -144,7 +142,7 @@ function defineNDVStore(id: NDVStoreId, useCurrentWorkflowDocument = false) {
 		const ndvInputDataWithPinnedData = computed(() => {
 			const data = ndvInputData.value;
 			return ndvInputNodeName.value
-				? (workflowDocumentStore.value.pinnedDataByNodeName?.[ndvInputNodeName.value] ?? data)
+				? (workflowDocumentStore.pinnedDataByNodeName?.[ndvInputNodeName.value] ?? data)
 				: data;
 		});
 
@@ -167,7 +165,7 @@ function defineNDVStore(id: NDVStoreId, useCurrentWorkflowDocument = false) {
 		const ndvNodeInputNumber = computed(() => {
 			const returnData: { [nodeName: string]: number[] } = {};
 			const activeNodeConections = (
-				workflowDocumentStore.value.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
+				workflowDocumentStore.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
 			).main;
 
 			if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
@@ -197,7 +195,7 @@ function defineNDVStore(id: NDVStoreId, useCurrentWorkflowDocument = false) {
 			if (!activeNode.value || !inputNodeName) {
 				return false;
 			}
-			const parentNodes = workflowDocumentStore.value.getParentNodes(
+			const parentNodes = workflowDocumentStore.getParentNodes(
 				activeNode.value.name,
 				NodeConnectionTypes.Main,
 				1,
@@ -380,10 +378,10 @@ function defineNDVStore(id: NDVStoreId, useCurrentWorkflowDocument = false) {
 		};
 
 		const updateNodeParameterIssues = (issues: INodeIssues): void => {
-			const node = workflowDocumentStore.value.getNodeByName(activeNodeName.value || '');
+			const node = workflowDocumentStore.getNodeByName(activeNodeName.value || '');
 
 			if (node?.id) {
-				workflowDocumentStore.value.updateNodeById(node.id, {
+				workflowDocumentStore.updateNodeById(node.id, {
 					issues: {
 						...node.issues,
 						...issues,
@@ -469,15 +467,8 @@ type Writable<T> = { -readonly [Key in keyof T]: T[Key] };
 
 export type NDVStore = Writable<ReturnType<ReturnType<typeof defineNDVStore>>>;
 
-export function useNDVStore(id: NDVStoreId): NDVStore;
-export function useNDVStore(pinia: Pinia): NDVStore;
-export function useNDVStore(): NDVStore;
-export function useNDVStore(idOrPinia?: NDVStoreId | Pinia): NDVStore {
-	const pinia = typeof idOrPinia === 'string' ? undefined : idOrPinia;
-	const isExplicitStoreId = typeof idOrPinia === 'string';
-	const storeId = isExplicitStoreId ? idOrPinia : DEFAULT_NDV_STORE_ID;
-
-	return defineNDVStore(storeId, !isExplicitStoreId)(pinia);
+export function useNDVStore(id: NDVStoreId, pinia?: Pinia): NDVStore {
+	return defineNDVStore(id)(pinia);
 }
 
 export function disposeNDVStore(store: NDVStore) {
@@ -489,6 +480,53 @@ export function disposeNDVStore(store: NDVStore) {
 	}
 }
 
-export function injectNDVStore(): ReturnType<typeof useNDVStore> {
-	return useNDVStore();
+/**
+ * Injects the NDV store for the current workflow document.
+ *
+ * Resolves a workflow-scoped NDV store strictly from the injected
+ * `WorkflowDocumentStoreKey`, so it must be called from within the provide
+ * tree below `App.vue` (i.e. inside a component `setup()` whose ancestor
+ * provides the workflow document store). There is intentionally no
+ * `workflowsStore.workflowId` fallback: callers that may run outside the
+ * provide tree (socket/push handlers, router guards, `App.vue` itself) or
+ * before a workflow is loaded must derive the NDV store from
+ * `injectWorkflowDocumentStore().value.documentId` instead.
+ *
+ * Returns a `ShallowRef` so consumers re-derive when the active workflow
+ * document changes.
+ */
+export function injectNDVStore(): ShallowRef<NDVStore> {
+	const workflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
+
+	return computed(() => {
+		const documentStore = workflowDocumentStore.value;
+		if (!documentStore) {
+			throw new Error(
+				'injectNDVStore() was accessed without an active workflow document store. ' +
+					'Derive the NDV store from injectWorkflowDocumentStore().value.documentId in contexts ' +
+					'that can run without a loaded workflow.',
+			);
+		}
+		return useNDVStore(documentStore.documentId);
+	});
+}
+
+/**
+ * Non-throwing variant of {@link injectNDVStore} for parameter-input components
+ * that are reused outside a loaded workflow document (e.g. the credential and
+ * external-secrets settings modals). Resolves the workflow-scoped NDV store when
+ * a workflow document store is provided, and `null` otherwise — so consumers must
+ * guard accesses (`ndvStore.value?.x`). Editor-only components should keep the
+ * strict {@link injectNDVStore}.
+ *
+ * Returns a `ShallowRef` so consumers re-derive when the active workflow document
+ * changes.
+ */
+export function injectNDVStoreIfProvided(): ShallowRef<NDVStore | null> {
+	const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+
+	return computed(() => {
+		const documentStore = workflowDocumentStore?.value;
+		return documentStore ? useNDVStore(documentStore.documentId) : null;
+	});
 }

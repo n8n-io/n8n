@@ -6,7 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -98,10 +98,12 @@ const WorkerView = async () =>
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
 const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
-const EvaluationsView = async () =>
-	await import('@/features/ai/evaluation.ee/views/EvaluationsView.vue');
+const EvaluationsListSwitcher = async () =>
+	await import('@/features/ai/evaluation.ee/views/EvaluationsListSwitcher.vue');
 const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
+const CompareCollectionView = async () =>
+	await import('@/features/ai/evaluation.ee/views/CompareCollectionView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
@@ -389,13 +391,19 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: '',
 				name: VIEWS.EVALUATION_EDIT,
-				component: EvaluationsView,
+				component: EvaluationsListSwitcher,
 				props: true,
 			},
 			{
 				path: 'test-runs/:runId',
 				name: VIEWS.EVALUATION_RUNS_DETAIL,
 				component: TestRunDetailView,
+				props: true,
+			},
+			{
+				path: 'collections/:collectionId/compare',
+				name: VIEWS.EVALUATION_COLLECTION_COMPARE,
+				component: CompareCollectionView,
 				props: true,
 			},
 		],
@@ -801,7 +809,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'project-roles/view/:roleSlug',
 				name: VIEWS.PROJECT_ROLE_VIEW,
-				component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+				component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
 				props: true,
 				meta: {
 					middleware: ['authenticated', 'enterprise'],
@@ -821,23 +829,94 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'roles',
+				name: VIEWS.ROLES_SETTINGS,
+				component: async () => await import('@/features/roles/RolesView.vue'),
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['role:manage', 'role:manageProject'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'roles',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'instance-roles',
+				component: RouterView,
+				children: [
+					{
+						path: '',
+						// Instance roles are listed inside the tabbed Roles shell; the bare
+						// path has no standalone page, so redirect it to the instance tab.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } }),
+					},
+					{
+						path: 'new',
+						name: VIEWS.INSTANCE_NEW_ROLE,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+					},
+					{
+						path: 'edit/:roleSlug',
+						name: VIEWS.INSTANCE_ROLE_SETTINGS,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+						props: true,
+					},
+					{
+						path: 'view/:roleSlug',
+						name: VIEWS.INSTANCE_ROLE_VIEW,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+						props: true,
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+						rbac: {
+							scope: ['role:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'roles',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'project-roles',
 				component: RouterView,
 				children: [
 					{
 						path: '',
 						name: VIEWS.PROJECT_ROLES_SETTINGS,
-						component: async () => await import('@/features/project-roles/ProjectRolesView.vue'),
+						// The standalone project-roles page is superseded by the tabbed Roles shell;
+						// redirect old deep links to the project tab there.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } }),
 					},
 					{
 						path: 'new',
 						name: VIEWS.PROJECT_NEW_ROLE,
-						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
 					},
 					{
 						path: 'edit/:roleSlug',
 						name: VIEWS.PROJECT_ROLE_SETTINGS,
-						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
 						props: true,
 					},
 				],
@@ -845,7 +924,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {
@@ -866,7 +945,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['apiKey:manage'],
+							scope: ['apiKey:list'],
 						},
 					},
 					telemetry: {

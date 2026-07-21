@@ -1,10 +1,10 @@
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
 
@@ -76,5 +76,34 @@ export class AgentHistoryRepository extends Repository<AgentHistory> {
 	): Promise<AgentHistory | null> {
 		const repo = trx?.getRepository(AgentHistory) ?? this;
 		return await repo.findOneBy({ versionId, agentId });
+	}
+
+	/**
+	 * List an agent's publish history, newest first. `schema`/`tools`/`skills`
+	 * are intentionally omitted — the list view only needs metadata.
+	 */
+	async findByAgentId(agentId: string, take: number, skip: number): Promise<AgentHistory[]> {
+		return await this.find({
+			where: { agentId },
+			take,
+			skip,
+			order: { createdAt: 'DESC' },
+			select: {
+				versionId: true,
+				agentId: true,
+				createdAt: true,
+				updatedAt: true,
+				author: true,
+			},
+		});
+	}
+
+	/**
+	 * Whether any history row exists for an agent. Backs the "has the agent
+	 * ever been published" signal — unlike `agent.activeVersionId !== null`,
+	 * this stays true after an unpublish (which preserves the rows).
+	 */
+	async existsForAgent(agentId: string): Promise<boolean> {
+		return await this.existsBy({ agentId });
 	}
 }

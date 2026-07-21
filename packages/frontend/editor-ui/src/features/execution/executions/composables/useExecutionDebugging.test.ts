@@ -2,17 +2,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	injectWorkflowState,
-	useWorkflowState,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
 import { useExecutionDebugging } from './useExecutionDebugging';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionResponse } from '../executions.types';
 import { useToast } from '@/app/composables/useToast';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showToast = vi.fn();
@@ -23,20 +20,15 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/app/composables/useWorkflowState', async () => {
-	const actual = await vi.importActual('@/app/composables/useWorkflowState');
-	return {
-		...actual,
-		injectWorkflowState: vi.fn(),
-	};
-});
-
-const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
+const { mockConfirm, mockWorkflowDocumentStore } = vi.hoisted(() => ({
+	mockConfirm: vi.fn(),
 	mockWorkflowDocumentStore: {
+		documentId: 'test-id@latest',
 		allNodes: [] as INodeUi[],
 		workflowTriggerNodes: [] as INodeUi[],
 		getParentNodes: vi.fn().mockReturnValue([]),
 		pinNodeData: vi.fn(),
+		unpinNodeData: vi.fn(),
 		clearPinnedDataTimestamps: vi.fn(),
 		resetAllNodesIssues: vi.fn(),
 		getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -51,9 +43,13 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 }));
 
-let workflowState: WorkflowState;
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: mockConfirm }),
+}));
+
 let executionDebugging: ReturnType<typeof useExecutionDebugging>;
 let toast: ReturnType<typeof useToast>;
+let executionStateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
 
 describe('useExecutionDebugging()', () => {
 	beforeEach(() => {
@@ -62,14 +58,17 @@ describe('useExecutionDebugging()', () => {
 
 		mockWorkflowDocumentStore.allNodes = [];
 		mockWorkflowDocumentStore.getParentNodes.mockReturnValue([]);
+		mockWorkflowDocumentStore.pinnedDataByNodeName = {};
+		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 
 		const workflowStore = mockedStore(useWorkflowsStore);
 		workflowStore.setWorkflowId('test-workflow');
 
 		toast = useToast();
 
-		workflowState = useWorkflowState();
-		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+		// Production resolves the execution-state store by the injected document
+		// store's `documentId` ('test-id@latest' on the mock above).
+		executionStateStore = useWorkflowExecutionStateStore('test-id@latest');
 
 		executionDebugging = useExecutionDebugging();
 	});
@@ -192,7 +191,7 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.allNodes = [{ name: 'testNode2' }] as INodeUi[];
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 
-		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+		const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 
@@ -220,7 +219,7 @@ describe('useExecutionDebugging()', () => {
 		mockWorkflowDocumentStore.allNodes = [{ name: 'testNode' }] as INodeUi[];
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 
-		const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
+		const setWorkflowExecutionData = vi.spyOn(executionStateStore, 'setWorkflowExecutionData');
 
 		await executionDebugging.applyExecutionData('1');
 
@@ -252,6 +251,56 @@ describe('useExecutionDebugging()', () => {
 
 		await executionDebugging.applyExecutionData('1');
 
+		expect(uiStore.markStateDirty).toHaveBeenCalledTimes(1);
+	});
+
+	it('should unpin workflow data that conflicts with execution pin data without restoring it', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						'When clicking Execute workflow': [
+							{
+								data: {
+									main: [[{ json: { trigger: true } }]],
+								},
+							},
+						],
+					},
+					pinData: {
+						'HTTP Request': [{ json: { fromExecutionPinData: true } }],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		const uiStore = mockedStore(useUIStore);
+		mockWorkflowDocumentStore.allNodes = [
+			{ name: 'When clicking Execute workflow' },
+			{ name: 'HTTP Request' },
+		] as INodeUi[];
+		mockWorkflowDocumentStore.getParentNodes.mockImplementation((nodeName: string) =>
+			nodeName === 'HTTP Request' ? ['When clicking Execute workflow'] : [],
+		);
+		mockWorkflowDocumentStore.pinnedDataByNodeName = {
+			'HTTP Request': [{ json: { existingWorkflowPin: true } }],
+		};
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(mockConfirm).toHaveBeenCalled();
+		expect(mockWorkflowDocumentStore.unpinNodeData).toHaveBeenCalledWith('HTTP Request');
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledTimes(1);
+		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalledWith(
+			'When clicking Execute workflow',
+			[{ json: { trigger: true } }],
+		);
+		expect(mockWorkflowDocumentStore.pinNodeData).not.toHaveBeenCalledWith(
+			'HTTP Request',
+			expect.anything(),
+		);
 		expect(uiStore.markStateDirty).toHaveBeenCalledTimes(1);
 	});
 

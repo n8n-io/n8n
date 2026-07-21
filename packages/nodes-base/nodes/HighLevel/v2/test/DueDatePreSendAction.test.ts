@@ -1,13 +1,14 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { dueDatePreSendAction } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('dueDatePreSendAction', () => {
 	let mockThis: IExecuteSingleFunctions;
 
 	beforeEach(() => {
 		mockThis = {
-			getNode: jest.fn(
+			getNode: vi.fn(
 				() =>
 					({
 						id: 'mock-node-id',
@@ -18,16 +19,16 @@ describe('dueDatePreSendAction', () => {
 						parameters: {},
 					}) as INode,
 			),
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn(),
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn(),
 			helpers: {} as any,
 		} as unknown as IExecuteSingleFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should add formatted dueDate to requestOptions.body if dueDate is provided directly', async () => {
-		(mockThis.getNodeParameter as jest.Mock).mockReturnValueOnce('2024-12-25');
+		(mockThis.getNodeParameter as Mock).mockReturnValueOnce('2024-12-25');
 
 		const requestOptions: IHttpRequestOptions = { url: 'https://example.com/api' };
 
@@ -37,7 +38,7 @@ describe('dueDatePreSendAction', () => {
 	});
 
 	it('should add formatted dueDate to requestOptions.body if dueDate is provided in updateFields', async () => {
-		(mockThis.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+		(mockThis.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 			if (paramName === 'dueDate') return null;
 			if (paramName === 'updateFields') return { dueDate: '2024-12-25' };
 			return undefined;
@@ -51,7 +52,7 @@ describe('dueDatePreSendAction', () => {
 	});
 
 	it('should initialize body as an empty object if it is undefined', async () => {
-		(mockThis.getNodeParameter as jest.Mock).mockReturnValueOnce('2024-12-25');
+		(mockThis.getNodeParameter as Mock).mockReturnValueOnce('2024-12-25');
 
 		const requestOptions: IHttpRequestOptions = { url: 'https://example.com/api', body: undefined };
 

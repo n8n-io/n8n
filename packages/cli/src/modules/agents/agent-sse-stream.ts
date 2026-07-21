@@ -10,21 +10,8 @@ import { LoggerProxy } from 'n8n-workflow';
 
 export type FlushableResponse = Response & { flush?: () => void };
 
-/**
- * Side-effect callbacks for the agent builder. Keyed off discrete tool events
- * — no more `messageId` turn tracking. `toolInputStart` lets the builder
- * remember which tool is currently streaming arguments so it can route
- * `toolInputDelta` text into the right side-effect (e.g. `code-delta`).
- */
-export interface ToolEventCallbacks {
-	toolInputStart?: (toolName: string) => void;
-	toolInputDelta?: (toolCallId: string, delta: string) => void;
-	toolResult?: (toolName: string) => void;
-}
-
 interface ChunkHandlerCtx {
 	send: (e: AgentSseEvent) => void;
-	onToolEvent?: ToolEventCallbacks;
 }
 
 /**
@@ -113,13 +100,14 @@ function emitToolChunk(
 				| 'tool-input-delta'
 				| 'tool-call'
 				| 'tool-execution-start'
+				| 'tool-execution-end'
 				| 'tool-result'
 				| 'tool-call-suspended';
 		}
 	>,
 	ctx: ChunkHandlerCtx,
 ): { suspended: boolean } {
-	const { send, onToolEvent } = ctx;
+	const { send } = ctx;
 
 	switch (chunk.type) {
 		case 'tool-input-start':
@@ -128,12 +116,10 @@ function emitToolChunk(
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 			});
-			onToolEvent?.toolInputStart?.(chunk.toolName);
 			break;
 		case 'tool-input-delta':
 			if (chunk.delta) {
 				send({ type: 'tool-input-delta', toolCallId: chunk.toolCallId, delta: chunk.delta });
-				onToolEvent?.toolInputDelta?.(chunk.toolCallId, chunk.delta);
 			}
 			break;
 		case 'tool-call':
@@ -149,18 +135,30 @@ function emitToolChunk(
 				type: 'tool-execution-start',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
+				startTime: chunk.startTime,
 			});
 			break;
-		case 'tool-result':
+		case 'tool-execution-end':
+			send({
+				type: 'tool-execution-end',
+				toolCallId: chunk.toolCallId,
+				toolName: chunk.toolName,
+				isError: chunk.isError,
+				endTime: chunk.endTime,
+			});
+			break;
+		case 'tool-result': {
+			const toolResultChunk = chunk as typeof chunk & { canceled?: boolean };
 			send({
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
 				output: chunk.output,
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
+				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
-			onToolEvent?.toolResult?.(chunk.toolName);
 			break;
+		}
 		case 'tool-call-suspended': {
 			const payload: ToolSuspendedPayload = {
 				toolCallId: chunk.toolCallId,
@@ -202,6 +200,7 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 		case 'tool-input-delta':
 		case 'tool-call':
 		case 'tool-execution-start':
+		case 'tool-execution-end':
 		case 'tool-result':
 		case 'tool-call-suspended':
 			return emitToolChunk(chunk, ctx);
@@ -238,22 +237,14 @@ function stringifyError(error: unknown): string {
 /**
  * Pump SDK stream chunks through a typed AgentSseEvent stream.
  *
- * Side-effects (`config-updated` / `tool-updated` / `code-delta`) for the
- * agent builder are surfaced via the `onToolEvent` callback so the chat path
- * can ignore them.
- *
  * Returns `true` when a suspension was emitted (the run paused), `false`
  * otherwise.
  */
 export async function pumpChunks(
 	chunks: AsyncIterable<StreamChunk>,
 	send: (e: AgentSseEvent) => void,
-	onToolEvent?: ToolEventCallbacks,
 ): Promise<boolean> {
-	const ctx: ChunkHandlerCtx = {
-		send,
-		onToolEvent,
-	};
+	const ctx: ChunkHandlerCtx = { send };
 
 	for await (const chunk of chunks) {
 		const { suspended } = emitChunkEvents(chunk, ctx);

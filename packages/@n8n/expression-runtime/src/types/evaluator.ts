@@ -81,8 +81,12 @@ export interface IExpressionEvaluator {
 	 * Acquire a bridge for an owner object (e.g. an Expression instance).
 	 * Must be called before evaluate(). The same object must be passed as
 	 * the caller argument to evaluate().
+	 *
+	 * Returns whether a bridge was newly acquired: `false` means the owner
+	 * already held one, so the current scope must not release it (release is
+	 * not reference-counted).
 	 */
-	acquire(owner: object): Promise<void>;
+	acquire(owner: object): Promise<boolean>;
 
 	/**
 	 * Release the bridge held for an owner object.
@@ -111,6 +115,17 @@ export interface NodeProxy {
 	first?: (branchIndex?: number, runIndex?: number) => unknown;
 	last?: (branchIndex?: number, runIndex?: number) => unknown;
 	all?: (branchIndex?: number, runIndex?: number) => unknown;
+	/**
+	 * Paired-item resolvers. All three host-side surface forms exist as
+	 * separate properties on the proxy because the host's closure
+	 * captures which property name was accessed (to choose error
+	 * messages and getter-vs-method semantics). The bridge reads the
+	 * matching property per discriminator.
+	 */
+	pairedItem?: (itemIndex?: number) => unknown;
+	itemMatching?: (itemIndex?: number) => unknown;
+	/** Host getter — accessing it invokes the resolver immediately. */
+	item?: unknown;
 }
 
 /**
@@ -156,6 +171,27 @@ export type FromAi = (
 	defaultValue?: unknown,
 ) => unknown;
 
+/**
+ * Source data describing where an item came from upstream. Mirrors the
+ * `ISourceData` interface from `n8n-workflow` without taking a runtime
+ * dependency on it.
+ */
+export interface SourceData {
+	previousNode: string;
+	previousNodeOutput?: number;
+	previousNodeRun?: number;
+}
+
+/**
+ * Paired-item descriptor. Mirrors the `IPairedItemData` interface from
+ * `n8n-workflow` without taking a runtime dependency on it.
+ */
+export interface PairedItemData {
+	item: number;
+	input?: number;
+	sourceOverwrite?: SourceData;
+}
+
 export interface WorkflowData {
 	$?: (nodeName: string) => NodeProxy | null | undefined;
 	$input?: InputProxy;
@@ -163,6 +199,12 @@ export interface WorkflowData {
 	$fromAI?: FromAi;
 	$fromAi?: FromAi;
 	$fromai?: FromAi;
+	$evaluateExpression?: (expression: string, itemIndex?: number) => unknown;
+	$getPairedItem?: (
+		destinationNodeName: string,
+		incomingSourceData: SourceData | null,
+		initialPairedItem: PairedItemData,
+	) => unknown;
 	[key: string]: unknown;
 }
 

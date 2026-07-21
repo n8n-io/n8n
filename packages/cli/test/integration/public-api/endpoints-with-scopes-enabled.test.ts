@@ -17,12 +17,13 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
+import { mock } from 'vitest-mock-extended';
 
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { CredentialsTester } from '@/services/credentials-tester.service';
-
+import { JwtService } from '@/services/jwt.service';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
 import { createTag } from '@test-integration/db/tags';
@@ -39,8 +40,6 @@ import type { SaveCredentialFunction } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
 import * as utils from '../shared/utils';
-import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
-import { JwtService } from '@/services/jwt.service';
 
 let saveCredential: SaveCredentialFunction;
 
@@ -79,9 +78,9 @@ describe('Public API endpoints with API key scopes', () => {
 		// N8N_ENV_FEAT_TOKEN_EXCHANGE env flag. We register it directly here to test
 		// the auth layer in isolation without triggering the full module boot.
 		const { ScopedJwtStrategy } = await import(
-			'@/modules/token-exchange/services/scoped-jwt.strategy'
+			'@/modules/token-exchange/services/scoped-jwt.strategy.js'
 		);
-		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry');
+		const { AuthStrategyRegistry } = await import('@/services/auth-strategy.registry.js');
 		Container.get(AuthStrategyRegistry).register(Container.get(ScopedJwtStrategy));
 	});
 
@@ -1176,6 +1175,7 @@ describe('Public API endpoints with API key scopes', () => {
 						type: 'team',
 						creatorId: owner.id,
 						description: null,
+						customTelemetryTags: [],
 						id: expect.any(String),
 						createdAt: expect.any(String),
 						updatedAt: expect.any(String),

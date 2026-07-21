@@ -1,6 +1,6 @@
 {
   "name": "@n8n/workflow-sdk",
-  "version": "0.16.0",
+  "version": "0.25.0",
   "description": "TypeScript SDK for programmatically creating n8n workflows",
   "exports": {
     ".": {
@@ -44,15 +44,16 @@
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "extract-workflows": "npx tsx scripts/extract-workflows.ts",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
     "generate-types": "npx tsx src/generate-types/generate-types.ts",
     "fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts",
     "create-workflows-zip": "npx tsx scripts/create-workflows-zip.ts",
@@ -87,15 +88,23 @@
   "devDependencies": {
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/adm-zip": "^0.5.7",
-    "@types/estree": "^1.0.8",
-    "adm-zip": "^0.5.16"
+    "@types/estree": "catalog:",
+    "@types/lodash": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "adm-zip": "^0.5.16",
+    "typescript": "catalog:typescript",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.4",
+    "@n8n/utils": "workspace:*",
     "acorn": "8.14.0",
+    "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",
     "zod": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

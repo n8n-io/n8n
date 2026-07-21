@@ -3,12 +3,22 @@ import { ref, computed } from 'vue';
 import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import type { ButtonSize } from '@n8n/design-system/types';
+import { round2 } from './creditFormatting';
 
-const props = defineProps<{
-	creditsRemaining?: number;
-	creditsQuota?: number;
-	isLowCredits: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		creditsRemaining?: number;
+		creditsQuota?: number;
+		isLowCredits: boolean;
+		buttonSize?: ButtonSize;
+		// Per-thread running total (decimal); optional — shared with the builder UI.
+		creditsUsed?: number;
+	}>(),
+	{
+		buttonSize: 'large',
+	},
+);
 
 const emit = defineEmits<{
 	'upgrade-click': [];
@@ -30,10 +40,27 @@ const hasCredits = computed(() => {
 	return props.creditsQuota !== undefined && props.creditsRemaining !== undefined;
 });
 
+// Usage can cross the quota (the crossing message still finishes and is billed
+// in full), so remaining can go negative. Clamp at the render boundary so the
+// UI never shows a negative balance regardless of caller.
+const creditsRemainingDisplay = computed(() => Math.max(0, props.creditsRemaining ?? 0));
+
 const creditsLeftText = computed(() => {
 	if (props.creditsRemaining === undefined) return '';
 	return i18n.baseText('aiAssistant.builder.settings.creditsLeft', {
-		interpolate: { count: String(props.creditsRemaining) },
+		interpolate: { count: String(round2(creditsRemainingDisplay.value)) },
+	});
+});
+
+// Hide the line when usage rounds to 0 — "used 0 credits so far" is noise.
+const showThreadCreditsUsed = computed(
+	() => props.creditsUsed !== undefined && round2(props.creditsUsed) > 0,
+);
+
+const threadCreditsUsedText = computed(() => {
+	if (props.creditsUsed === undefined) return '';
+	return i18n.baseText('aiAssistant.builder.settings.threadCreditsUsed', {
+		interpolate: { count: String(round2(props.creditsUsed)) },
 	});
 });
 
@@ -45,7 +72,7 @@ const progressPercentage = computed(() => {
 	) {
 		return 0;
 	}
-	return (props.creditsRemaining / props.creditsQuota) * 100;
+	return (creditsRemainingDisplay.value / props.creditsQuota) * 100;
 });
 
 const getNextMonth = () => {
@@ -77,7 +104,7 @@ function onGetMoreCredits() {
 		<N8nButton
 			icon="circle-dollar-sign"
 			variant="ghost"
-			size="large"
+			:size="props.buttonSize"
 			icon-only
 			:class="{ [$style.active]: isOpen }"
 			data-test-id="credits-dropdown-button"
@@ -101,6 +128,13 @@ function onGetMoreCredits() {
 							:style="{ width: `${progressPercentage}%` }"
 						/>
 					</div>
+					<span
+						v-if="showThreadCreditsUsed"
+						:class="$style.threadCreditsUsed"
+						data-test-id="credits-thread-used"
+					>
+						{{ threadCreditsUsedText }}
+					</span>
 					<N8nButton
 						variant="outline"
 						size="small"
@@ -171,6 +205,11 @@ function onGetMoreCredits() {
 	color: var(--color--text--tint-1);
 	margin-left: auto;
 	text-align: right;
+}
+
+.threadCreditsUsed {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .progressBar {

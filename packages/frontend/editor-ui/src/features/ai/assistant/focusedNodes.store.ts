@@ -9,7 +9,8 @@ import {
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounceFn } from '@vueuse/core';
-import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT } from '@/app/constants';
 import type {
 	FocusedNode,
 	FocusedNodeState,
@@ -30,7 +31,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
 	const chatPanelStateStore = useChatPanelStateStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 
 	const isFeatureEnabled = computed(() => {
 		return posthogStore.isVariantEnabled(
@@ -322,7 +323,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	watch(
-		() => ndvStore.activeNode,
+		() => ndvStore.value.activeNode,
 		(node) => {
 			if (!isFeatureEnabled.value || !chatPanelStateStore.isOpen) return;
 			if (node && !focusedNodesMap.value[node.id]) {

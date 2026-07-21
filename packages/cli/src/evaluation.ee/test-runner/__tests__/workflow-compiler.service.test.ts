@@ -1,10 +1,59 @@
 import type { EvaluationConfig } from '@n8n/db';
-import type { IWorkflowBase } from 'n8n-workflow';
+import { createRequire } from 'module';
+import type {
+	INodeType,
+	INodeTypeDescription,
+	IWorkflowBase,
+	NodeLoadingDetails,
+} from 'n8n-workflow';
+import { join } from 'path';
+
+import type { NodeTypes } from '@/node-types';
 
 import { LlmJudgeProviderRegistry } from '../../llm-judge-provider-registry';
 import { WorkflowCompilerService } from '../workflow-compiler.service';
 
 const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
+
+// Load the REAL chat-model node descriptions from the built @n8n/n8n-nodes-langchain
+// package (via absolute-path require, the same mechanism as test-integration's
+// loadNodesFromDist) so these tests bind to the actual node contract the compiler
+// introspects. If a provider node changes its version array or `@version`-gated
+// `model` shape, these tests reflect that change instead of passing against a stale
+// hand-authored replica. Requires the langchain package to be built.
+const nodeRequire = createRequire(__filename);
+const LANGCHAIN_DIR = join(__dirname, '../../../../../@n8n/nodes-langchain');
+
+function realNodeDescription(shortName: string): INodeTypeDescription {
+	const known = nodeRequire(join(LANGCHAIN_DIR, 'dist/known/nodes.json')) as Record<
+		string,
+		NodeLoadingDetails
+	>;
+	const info = known[shortName];
+	const nodeModule = nodeRequire(join(LANGCHAIN_DIR, info.sourcePath)) as Record<
+		string,
+		new () => INodeType
+	>;
+	return new nodeModule[info.className]().description;
+}
+
+// Anthropic exposes `model` as a resource locator on its current (default) version;
+// Ollama keeps it a plain options field on a single version. Any other provider is
+// absent here so the compiler exercises its introspection fallback.
+const ANTHROPIC_DESCRIPTION = realNodeDescription('lmChatAnthropic');
+const OLLAMA_DESCRIPTION = realNodeDescription('lmChatOllama');
+
+const nodeTypes = {
+	getByNameAndVersion: (nodeType: string) => {
+		if (nodeType === '@n8n/n8n-nodes-langchain.lmChatAnthropic') {
+			return { description: ANTHROPIC_DESCRIPTION };
+		}
+		if (nodeType === '@n8n/n8n-nodes-langchain.lmChatOllama') {
+			return { description: OLLAMA_DESCRIPTION };
+		}
+		throw new Error(`unknown node type ${nodeType}`);
+	},
+} as unknown as NodeTypes;
 
 function baseWorkflow(): IWorkflowBase {
 	return {
@@ -59,11 +108,32 @@ function baseConfig(): EvaluationConfig {
 	} as unknown as EvaluationConfig;
 }
 
+function llmJudgeConfig(provider: string, model: string): EvaluationConfig {
+	const config = baseConfig();
+	config.metrics = [
+		{
+			id: 'm-judge',
+			name: 'Correctness',
+			type: 'llm_judge',
+			config: {
+				preset: 'correctness',
+				prompt: 'Judge it',
+				provider,
+				credentialId: 'cred',
+				model,
+				outputType: 'numeric',
+				inputs: { actualAnswer: '={{ $json.a }}', expectedAnswer: '={{ $json.e }}' },
+			},
+		},
+	];
+	return config;
+}
+
 describe('WorkflowCompilerService', () => {
 	let compiler: WorkflowCompilerService;
 
 	beforeEach(() => {
-		compiler = new WorkflowCompilerService(new LlmJudgeProviderRegistry());
+		compiler = new WorkflowCompilerService(new LlmJudgeProviderRegistry(), nodeTypes);
 	});
 
 	it('injects __eval_trigger and leaves the user trigger intact, redirecting the edge to entry', () => {
@@ -172,12 +242,158 @@ describe('WorkflowCompilerService', () => {
 
 		const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
 		expect(model.type).toBe('@n8n/n8n-nodes-langchain.lmChatAnthropic');
-		expect(model.parameters.model).toBe('claude-sonnet-4-6');
+		expect(model.typeVersion).toBe(ANTHROPIC_DESCRIPTION.defaultVersion);
+		expect(model.parameters.model).toEqual({
+			__rl: true,
+			mode: 'list',
+			value: 'claude-sonnet-4-6',
+			cachedResultName: 'claude-sonnet-4-6',
+		});
 		expect(model.credentials).toEqual({ anthropicApi: { id: 'cred-anth', name: '' } });
 
 		expect(compiled.connections['__eval_model_m-judge']).toEqual({
 			ai_languageModel: [[{ node: '__eval_metric_m-judge', type: 'ai_languageModel', index: 0 }]],
 		});
+	});
+
+	it('omits prompt from the compiled llm_judge node when not overridden in the config', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-judge',
+				name: 'Correctness',
+				type: 'llm_judge',
+				config: {
+					preset: 'correctness',
+					// prompt intentionally omitted — node should fall back to the
+					// canned prompt declared on the Set Metrics node schema.
+					provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					credentialId: 'cred',
+					model: 'gpt-4o-mini',
+					outputType: 'numeric',
+					inputs: { actualAnswer: '={{ $json }}', expectedAnswer: '={{ $json.expected }}' },
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-judge')!;
+		expect(metric.parameters).not.toHaveProperty('prompt');
+		expect(metric.parameters.metric).toBe('correctness');
+	});
+
+	describe('llm-judge chat-model sub-node shape', () => {
+		it('emits the sub-node at the provider default version with a resource-locator model when the node expects one', () => {
+			const compiled = compiler.compile(
+				baseWorkflow(),
+				llmJudgeConfig('@n8n/n8n-nodes-langchain.lmChatAnthropic', 'claude-sonnet-4-6'),
+			);
+			const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
+			expect(model.typeVersion).toBe(ANTHROPIC_DESCRIPTION.defaultVersion);
+			expect(model.parameters.model).toEqual({
+				__rl: true,
+				mode: 'list',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'claude-sonnet-4-6',
+			});
+		});
+
+		it('emits a plain-string model at the provider default version when the node model is not a resource locator', () => {
+			const compiled = compiler.compile(
+				baseWorkflow(),
+				llmJudgeConfig('@n8n/n8n-nodes-langchain.lmChatOllama', 'llama3'),
+			);
+			const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
+			expect(model.typeVersion).toBe(OLLAMA_DESCRIPTION.version);
+			expect(model.parameters.model).toBe('llama3');
+		});
+
+		it('falls back to typeVersion 1 with a string model when the provider node type cannot be introspected', () => {
+			// lmChatOpenAi is a registered provider but absent from the node-type double.
+			const compiled = compiler.compile(
+				baseWorkflow(),
+				llmJudgeConfig('@n8n/n8n-nodes-langchain.lmChatOpenAi', 'gpt-4o'),
+			);
+			const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
+			expect(model.typeVersion).toBe(1);
+			expect(model.parameters.model).toBe('gpt-4o');
+		});
+	});
+
+	it('compiles a string_similarity metric to a setMetrics node with metric=stringSimilarity', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-ss',
+				name: 'Edit-distance score',
+				type: 'string_similarity',
+				config: {
+					inputs: {
+						actualAnswer: '={{ $json.output }}',
+						expectedAnswer: '={{ $json.expected }}',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-ss')!;
+		expect(metric.parameters.operation).toBe('setMetrics');
+		expect(metric.parameters.metric).toBe('stringSimilarity');
+		expect(metric.parameters.actualAnswer).toBe('={{ $json.output }}');
+		expect(metric.parameters.expectedAnswer).toBe('={{ $json.expected }}');
+		expect(metric.parameters.options).toEqual({ metricName: 'Edit-distance score' });
+
+		// No chat-model sub-node for deterministic scorers.
+		expect(compiled.nodes.find((n) => n.name === '__eval_model_m-ss')).toBeUndefined();
+	});
+
+	it('compiles a categorization metric to a setMetrics node with metric=categorization', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-cat',
+				name: 'Exact-match category',
+				type: 'categorization',
+				config: {
+					inputs: {
+						actualAnswer: '={{ $json.label }}',
+						expectedAnswer: '={{ $json.expectedLabel }}',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-cat')!;
+		expect(metric.parameters.metric).toBe('categorization');
+		expect(metric.parameters.actualAnswer).toBe('={{ $json.label }}');
+		expect(metric.parameters.expectedAnswer).toBe('={{ $json.expectedLabel }}');
+	});
+
+	it('compiles a tools_used metric to a setMetrics node with metric=toolsUsed', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-tools',
+				name: 'Tools coverage',
+				type: 'tools_used',
+				config: {
+					inputs: {
+						expectedTools: 'Search, Calculator',
+						intermediateSteps: '={{ $("Agent").item.json.intermediateSteps }}',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-tools')!;
+		expect(metric.parameters.metric).toBe('toolsUsed');
+		expect(metric.parameters.expectedTools).toBe('Search, Calculator');
+		expect(metric.parameters.intermediateSteps).toBe(
+			'={{ $("Agent").item.json.intermediateSteps }}',
+		);
 	});
 
 	it('supports startNodeName != endNodeName (middle slice)', () => {
@@ -452,6 +668,76 @@ describe('WorkflowCompilerService', () => {
 			const endMain = compiled.connections.Agent.main;
 			expect(endMain.length).toBe(1);
 			expect(endMain[0]?.[0]?.node).toBe('__eval_metric_m-expr');
+		});
+	});
+
+	describe('pre-existing evaluation nodes (TRUST-166)', () => {
+		// A complete workflow (UserTrigger -> Agent) that also gained evaluation
+		// nodes on top: an EvaluationTrigger feeding the entry, a Set Metrics node
+		// after it, and an "Is evaluation run" check node.
+		function workflowWithExistingEvalNodes(): IWorkflowBase {
+			return {
+				...baseWorkflow(),
+				connections: {
+					UserTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Old Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					Agent: { main: [[{ node: 'Old Set Metrics', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					...baseWorkflow().nodes,
+					{
+						id: 'n-old-trigger',
+						name: 'Old Eval Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: 'n-old-metrics',
+						name: 'Old Set Metrics',
+						type: 'n8n-nodes-base.evaluation',
+						typeVersion: 4.7,
+						position: [400, 0],
+						parameters: { operation: 'setMetrics' },
+					},
+					{
+						id: 'n-is-eval',
+						name: 'Is Eval Run',
+						type: 'n8n-nodes-base.evaluation',
+						typeVersion: 4.7,
+						position: [200, 200],
+						parameters: { operation: 'checkIfEvaluating' },
+					},
+				],
+			} as unknown as IWorkflowBase;
+		}
+
+		it('removes a pre-existing EvaluationTrigger and prunes its connections', () => {
+			const compiled = compiler.compile(workflowWithExistingEvalNodes(), baseConfig());
+
+			expect(compiled.nodes.find((n) => n.name === 'Old Eval Trigger')).toBeUndefined();
+			expect(compiled.connections['Old Eval Trigger']).toBeUndefined();
+			// The workflow's own trigger is rewired to __eval_trigger as usual.
+			expect(compiled.connections.__eval_trigger).toEqual({
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			});
+		});
+
+		it('disables Set Metrics nodes instead of removing them (structure preserved)', () => {
+			const compiled = compiler.compile(workflowWithExistingEvalNodes(), baseConfig());
+
+			const oldMetrics = compiled.nodes.find((n) => n.name === 'Old Set Metrics');
+			expect(oldMetrics).toBeDefined();
+			expect(oldMetrics!.disabled).toBe(true);
+		});
+
+		it('leaves "Is evaluation run" (checkIfEvaluating) nodes untouched', () => {
+			const compiled = compiler.compile(workflowWithExistingEvalNodes(), baseConfig());
+
+			const isEval = compiled.nodes.find((n) => n.name === 'Is Eval Run');
+			expect(isEval).toBeDefined();
+			expect(isEval!.disabled).toBeUndefined();
 		});
 	});
 });

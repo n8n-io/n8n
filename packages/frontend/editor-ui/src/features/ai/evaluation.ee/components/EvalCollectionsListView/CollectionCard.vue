@@ -1,0 +1,271 @@
+<script setup lang="ts">
+import { N8nBadge, N8nButton, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+import { VIEWS } from '@/app/constants';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
+import { useEvalCollectionsStore } from '../../evalCollections.store';
+import type {
+	EvaluationCollectionDetail,
+	EvaluationCollectionRecord,
+} from '../../evalCollections.types';
+import { buildScoreShapedMetricGroups, deriveRunsStatus } from '../../evaluation.utils';
+import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
+import VersionAvatar from '../shared/VersionAvatar.vue';
+
+const props = defineProps<{
+	collection: EvaluationCollectionRecord;
+	detail: EvaluationCollectionDetail | null;
+	workflowId: string;
+	datasetName?: string;
+}>();
+
+const i18n = useI18n();
+const router = useRouter();
+const store = useEvalCollectionsStore();
+
+const openCompare = () => {
+	void router.push({
+		name: VIEWS.EVALUATION_COLLECTION_COMPARE,
+		params: { workflowId: props.workflowId, collectionId: props.collection.id },
+	});
+};
+
+// `null` until the detail (with run statuses) has loaded — the list view only
+// pre-fetches detail for the first few cards and lazy-loads the rest on hover,
+// so we must not assert "Done" for a card whose runs might still be in flight.
+const status = computed<'done' | 'running' | 'error' | null>(() =>
+	props.detail ? deriveRunsStatus(props.detail.runs) : null,
+);
+
+// Badge theme + label per status; `null` while detail is still loading (no badge).
+const statusBadge = computed(() => {
+	switch (status.value) {
+		case 'done':
+			return {
+				theme: 'success' as const,
+				label: i18n.baseText('evaluation.collections.card.done'),
+			};
+		case 'running':
+			return {
+				theme: 'tertiary' as const,
+				label: i18n.baseText('evaluation.collections.card.running'),
+			};
+		case 'error':
+			return {
+				theme: 'warning' as const,
+				label: i18n.baseText('evaluation.collections.card.failed'),
+			};
+		default:
+			return null;
+	}
+});
+
+// Append a right arrow so the CTA reads "Open compare →" the way the
+// Figma mock does. N8nButton doesn't accept a trailing icon prop today,
+// so the arrow lives in the label string.
+const ctaLabel = computed(() => {
+	const key =
+		status.value === 'running'
+			? 'evaluation.compare.viewProgress'
+			: 'evaluation.compare.openCompare';
+	return `${i18n.baseText(key)} →`;
+});
+
+// "today, 09:14" / "May 12, 09:14" — most-recent completed run's timestamp.
+// Falls back to the collection's `updatedAt` if no run has a date yet.
+const lastRunRelative = computed<string | null>(() => {
+	const runs = props.detail?.runs ?? [];
+	const completedAts = runs
+		.map((r) => r.completedAt ?? r.runAt)
+		.filter((v): v is string => !!v)
+		.map((s) => new Date(s).getTime())
+		.filter((n) => !Number.isNaN(n));
+	const ts = completedAts.length
+		? Math.max(...completedAts)
+		: new Date(props.collection.updatedAt ?? 0).getTime();
+	if (!ts || Number.isNaN(ts)) return null;
+	const d = new Date(ts);
+	const today = new Date();
+	const sameDay =
+		d.getFullYear() === today.getFullYear() &&
+		d.getMonth() === today.getMonth() &&
+		d.getDate() === today.getDate();
+	const timeFmt = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+	if (sameDay) {
+		return i18n.baseText('evaluation.collections.card.lastRunToday', {
+			interpolate: { time: timeFmt },
+		});
+	}
+	const dateFmt = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	return i18n.baseText('evaluation.collections.card.lastRunOn', {
+		interpolate: { date: dateFmt, time: timeFmt },
+	});
+});
+
+// `EvaluationCollectionRunSummary` carries `workflowVersionId` (a UUID)
+// but no friendly label — joining the wizard's per-version label would
+// require a backend change. Until then, render a short hash inline next
+// to the colored dot so the chip stays compact and matches the Figma
+// shape (`● <name> <score>`). Identity-by-color is already encoded by
+// the VersionAvatar dot index.
+const shortHash = (id: string) => id.slice(0, 7);
+
+const versionChips = computed(() =>
+	(props.detail?.runs ?? []).map((run, idx) => ({
+		key: run.testRunId,
+		index: idx,
+		label:
+			run.workflowVersionId === null
+				? i18n.baseText('evaluation.collections.card.currentDraft')
+				: shortHash(run.workflowVersionId),
+		score: run.avgScore !== null ? Math.round(run.avgScore * 100) : null,
+	})),
+);
+
+// Score-shaped metrics per version for the mini bar chart. Shares its shaping
+// rule with the compare hero via `buildScoreShapedMetricGroups` so the two
+// surfaces can't drift; the raw metric key doubles as the compact label here.
+const groups = computed(() =>
+	props.detail
+		? buildScoreShapedMetricGroups(props.detail.runs).map(({ key, values }) => ({
+				label: key,
+				values,
+			}))
+		: [],
+);
+
+// Lazy-load detail when the card scrolls into view, so cards past the first
+// few (which the list pre-fetches) populate their status/chips/chart without
+// depending on a pointer — works for touch, keyboard, and scroll alike. The
+// `requested` guard avoids duplicate in-flight fetches while detail is loading;
+// it resets on failure so a re-intersect can retry.
+const cardRef = ref<HTMLElement | null>(null);
+const requested = ref(false);
+
+const ensureDetailLoaded = () => {
+	if (props.detail || requested.value) return;
+	requested.value = true;
+	void store.fetchCollectionDetail(props.workflowId, props.collection.id).catch(() => {
+		requested.value = false;
+	});
+};
+
+const { observe } = useIntersectionObserver({
+	root: ref(null),
+	onIntersect: ensureDetailLoaded,
+	once: false,
+});
+
+onMounted(() => observe(cardRef.value));
+</script>
+
+<template>
+	<article ref="cardRef" :class="$style.card" data-test-id="eval-collections-card">
+		<div :class="$style.cardTopRow">
+			<div :class="$style.cardHeader">
+				<div :class="$style.cardHeading">
+					<N8nText size="medium" bold>{{ collection.name }}</N8nText>
+					<N8nBadge v-if="statusBadge" :theme="statusBadge.theme" size="small">
+						{{ statusBadge.label }}
+					</N8nBadge>
+				</div>
+				<N8nText size="xsmall" color="text-light">
+					<span>{{
+						i18n.baseText('evaluation.collections.card.meta.versions', {
+							adjustToNumber: detail?.runs.length ?? collection.runCount,
+						})
+					}}</span>
+					<span v-if="datasetName"> · {{ datasetName }}</span>
+					<span v-if="lastRunRelative"> · {{ lastRunRelative }}</span>
+				</N8nText>
+			</div>
+			<div :class="$style.cardCta">
+				<N8nButton
+					variant="outline"
+					size="medium"
+					:label="ctaLabel"
+					data-test-id="eval-collections-card-cta"
+					@click="openCompare"
+				/>
+			</div>
+		</div>
+		<div :class="$style.versionsRow">
+			<span v-for="chip in versionChips" :key="chip.key" :class="$style.versionChip">
+				<VersionAvatar :index="chip.index" variant="dot" size="small" />
+				<N8nText size="xsmall" color="text-base">{{ chip.label }}</N8nText>
+				<N8nText v-if="chip.score !== null" size="xsmall" bold>{{ chip.score }}%</N8nText>
+			</span>
+		</div>
+		<div v-if="groups.length > 0" :class="$style.cardChart">
+			<GroupedMetricChart :groups="groups" :max="1" />
+		</div>
+	</article>
+</template>
+
+<style module lang="scss">
+.card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	border: 1px solid var(--border-color--subtle);
+	border-radius: var(--radius--md);
+	background: var(--background--surface);
+	padding: var(--spacing--md) var(--spacing--lg);
+	transition: border-color var(--animation--duration--snappy) var(--animation--easing);
+
+	// Lift on hover so the card reads as an interactive gateway to the
+	// compare view, even though the CTA button is the explicit trigger.
+	&:hover {
+		border-color: var(--border-color--strong);
+	}
+}
+
+// Title + meta on the left, CTA on the right — Figma puts the "Open
+// compare" button on the same horizontal row as the collection name
+// rather than vertically centred against the chart.
+.cardTopRow {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--md);
+}
+
+.cardHeader {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.cardHeading {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.versionsRow {
+	display: inline-flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--xs);
+}
+
+.versionChip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius--full);
+	background: var(--background--subtle);
+}
+
+.cardChart {
+	margin-top: var(--spacing--2xs);
+}
+
+.cardCta {
+	justify-self: end;
+}
+</style>

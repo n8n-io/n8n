@@ -1,4 +1,4 @@
-ARG NODE_VERSION=24.15.0
+ARG NODE_VERSION=24.16.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
@@ -9,7 +9,17 @@ COPY ./dist/task-runner-javascript /app/task-runner-javascript
 
 WORKDIR /app/task-runner-javascript
 
-RUN corepack enable pnpm
+# Pin pnpm to the repo's packageManager version. `pnpm deploy` drops the
+# packageManager field from the deployed package.json, so a bare
+# `corepack enable pnpm` resolves to corepack's bundled latest (pnpm 11.x).
+# pnpm 11 defaults minimumReleaseAge to 1440 (24h), so the `pnpm add` below
+# re-resolves the deployed graph and rejects any dependency published less
+# than a day ago — e.g. a first-party @n8n_io/ai-assistant-sdk bump landed
+# within hours of its npm publish. This container step only re-resolves an
+# already-vetted, already-pinned dependency set; the real supply-chain age
+# policy is enforced by the host install (pnpm-workspace.yaml + SafeChain).
+ARG PNPM_VERSION=10.32.1
+RUN corepack enable pnpm && corepack prepare "pnpm@${PNPM_VERSION}" --activate
 
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
 RUN node -e "const pkg = require('./package.json'); \
@@ -29,12 +39,6 @@ RUN node -e "const pkg = require('./package.json'); \
 # Install moment (special case for backwards compatibility)
 RUN rm -f node_modules/.modules.yaml && \
     pnpm add moment@2.30.1 --prod --no-lockfile
-
-# Rebuild isolated-vm for the container platform. Install build tools as
-# fallback in case prebuild-install cannot find a prebuilt binary.
-RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
-    npm rebuild isolated-vm && \
-    apk del .build-deps
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
@@ -88,7 +92,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.6
+ARG LAUNCHER_VERSION=1.4.7
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \

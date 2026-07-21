@@ -1,13 +1,16 @@
+import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
+import type { NodeCatalogService } from '@/node-catalog';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
+import type { Telemetry } from '@/telemetry';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool';
 
-import type { NodeCatalogService } from '@/node-catalog';
-import type { Telemetry } from '@/telemetry';
-
-jest.mock('@n8n/ai-workflow-builder', () => ({
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: {
 		toolName: 'search_workflow_nodes',
 		displayTitle: 'Search Workflow Nodes',
@@ -26,20 +29,24 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 
 describe('search-workflow-nodes MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let nodeCatalogService: jest.Mocked<NodeCatalogService>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let nodeCatalogService: Mocked<NodeCatalogService>;
+	let telemetry: Mocked<Telemetry>;
+	let aiGatewayService: Mocked<AiGatewayService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeCatalogService = mock<NodeCatalogService>();
 		telemetry = mock<Telemetry>();
+		aiGatewayService = mock<AiGatewayService>();
+		aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 		nodeCatalogService.searchNodes.mockResolvedValue({
 			results: 'search-result',
 			queriesWithNoResults: [],
 		});
 	});
 
-	const createTool = () => createSearchWorkflowNodesTool(user, nodeCatalogService, telemetry);
+	const createTool = () =>
+		createSearchWorkflowNodesTool(user, nodeCatalogService, telemetry, aiGatewayService);
 
 	test('returns search results and tracks queries with no results', async () => {
 		nodeCatalogService.searchNodes.mockResolvedValueOnce({
@@ -109,5 +116,40 @@ describe('search-workflow-nodes MCP tool', () => {
 				},
 			}),
 		);
+	});
+
+	describe('n8nConnect block', () => {
+		test('includes n8nConnect block when gateway is available', async () => {
+			aiGatewayService.isAvailable.mockResolvedValue({
+				available: true,
+				config: {
+					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
+					credentialTypes: ['openAiApi'],
+					providerConfig: {},
+				} as AiGatewayConfigDto,
+			});
+
+			const tool = createTool();
+			const result = await tool.handler({ queries: ['openai'] }, {} as never);
+
+			expect(result.structuredContent).toEqual({
+				results: 'search-result',
+				n8nConnect: {
+					credentialTypes: ['openAiApi'],
+					nodes: ['@n8n/n8n-nodes-langchain.openAi'],
+				},
+			});
+			// Also mirrored into the unstructured content for text-only clients.
+			expect((result.content[0] as { text: string }).text).toBe(
+				'search-result\n\nn8nConnect: {"credentialTypes":["openAiApi"],"nodes":["@n8n/n8n-nodes-langchain.openAi"]}',
+			);
+		});
+
+		test('omits n8nConnect block when unavailable', async () => {
+			const tool = createTool();
+			const result = await tool.handler({ queries: ['openai'] }, {} as never);
+			expect(result.structuredContent).toEqual({ results: 'search-result' });
+			expect((result.content[0] as { text: string }).text).toBe('search-result');
+		});
 	});
 });

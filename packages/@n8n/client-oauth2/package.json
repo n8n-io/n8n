@@ -1,11 +1,12 @@
 {
   "name": "@n8n/client-oauth2",
-  "version": "1.7.0",
+  "version": "1.14.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
@@ -22,13 +23,20 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/backend-network": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "axios": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "https-proxy-agent": "catalog:",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
-  }
+    "vitest-mock-extended": "catalog:",
+    "nock": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -1,8 +1,12 @@
 /**
- * Consolidated executions tool — list, get, run, debug, get-node-output, stop.
+ * Consolidated executions tool — list, get, run, debug, get-node-output,
+ * get-resolved-node-parameters, stop.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	buildRunWorkflowSessionGrantKey,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -59,7 +63,13 @@ const runAction = z.object({
 });
 
 const debugAction = z.object({
-	action: z.literal('debug').describe('Analyze a failed execution with structured diagnostics'),
+	action: z
+		.literal('debug')
+		.describe(
+			'Analyze a failed execution with structured diagnostics. When a node failed, ' +
+				"`failedNode.resolvedParameters` includes that node's raw parameters, the same " +
+				'tree with expressions substituted, and lists of expressions that threw or resolved to empty values',
+		),
 	executionId: z.string().describe('Execution ID'),
 });
 
@@ -68,7 +78,7 @@ const getNodeOutputAction = z.object({
 		.literal('get-node-output')
 		.describe('Retrieve raw output of a specific node from an execution'),
 	executionId: z.string().describe('Execution ID'),
-	nodeName: z.string().describe('Name of the node whose output to retrieve'),
+	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
 	maxItems: z
 		.number()
@@ -77,6 +87,32 @@ const getNodeOutputAction = z.object({
 		.max(50)
 		.optional()
 		.describe('Maximum number of items to return (default 10, max 50)'),
+});
+
+const getResolvedNodeParametersAction = z.object({
+	action: z
+		.literal('get-resolved-node-parameters')
+		.describe(
+			"Replay expression resolution for a node's parameters against a past execution. " +
+				'Returns raw `parameters`, the `resolved` tree, `failedExpressions`, and ' +
+				'`emptyResolutions` (resolved to `null`/`undefined`/`""` — the common silent ' +
+				'cause of empty downstream fields). Use when debugging why a node received an ' +
+				'unexpected value — more precise than guessing from raw expressions or input data.',
+		),
+	executionId: z.string().describe('Execution ID'),
+	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
+	itemIndex: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe('Input item index to resolve against (default 0)'),
+	runIndex: z
+		.number()
+		.int()
+		.min(0)
+		.optional()
+		.describe('Which run of the node to use, if it ran multiple times (default: last run)'),
 });
 
 const stopAction = z.object({
@@ -91,6 +127,7 @@ const inputSchema = sanitizeInputSchema(
 		runAction,
 		debugAction,
 		getNodeOutputAction,
+		getResolvedNodeParametersAction,
 		stopAction,
 	]),
 );
@@ -107,6 +144,9 @@ const suspendSchema = z.object({
 
 const resumeSchema = z.object({
 	approved: z.boolean(),
+	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
+	 *  subsequent runs skip HITL for this action. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 // ── Handlers ───────────────────────────────────────────────────────────────
@@ -124,11 +164,45 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	return await context.executionService.getStatus(input.executionId);
 }
 
+function normalizeWorkflowName(name: string): string {
+	return name.trim().toLowerCase();
+}
+
+function hasWorkflowName(
+	allowList: ReadonlySet<string>,
+	workflowName: string | undefined,
+): boolean {
+	if (!workflowName) return false;
+
+	const normalizedWorkflowName = normalizeWorkflowName(workflowName);
+	for (const allowedName of allowList) {
+		if (normalizeWorkflowName(allowedName) === normalizedWorkflowName) return true;
+	}
+
+	return false;
+}
+
+async function findAllowedWorkflowByName(
+	context: InstanceAiContext,
+	allowList: ReadonlySet<string> | undefined,
+): Promise<{ id: string; name: string } | undefined> {
+	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
+
+	for (const allowedName of allowList) {
+		const workflows = await context.workflowService.list({ query: allowedName, limit: 10 });
+		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
+		if (match) return { id: match.id, name: match.name };
+	}
+
+	return undefined;
+}
+
 async function handleRun(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'run' }>,
 	resumeData: z.infer<typeof resumeSchema> | undefined,
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
 ) {
 	if (context.permissions?.runWorkflow === 'blocked') {
 		return {
@@ -139,22 +213,61 @@ async function handleRun(
 		};
 	}
 
-	// `always_allow` is only honored for the workflow IDs the caller pre-authorized
-	// (e.g. checkpoint follow-ups scope the override to the workflows the checkpoint
-	// is verifying). When the allow-list is unset, `always_allow` applies broadly,
-	// matching the legacy behavior.
+	// `always_allow` is only honored for the workflow IDs the caller pre-authorized.
+	// Checkpoint follow-ups pass an explicit allow-list (the workflows the checkpoint is
+	// verifying). When the allow-list is unset (e.g. planned-build follow-ups, which grant
+	// `runWorkflow: 'always_allow'` without one), the bypass is scoped to the workflows the
+	// agent created during the active plan cycle. Running any other pre-existing workflow
+	// still requires HITL approval, so a prompt injection can't silently run arbitrary
+	// workflows under the user's authority.
 	const allowList = context.allowedRunWorkflowIds;
-	const allowedByScope =
+	const workflowNameAllowList = context.allowedRunWorkflowNames;
+	let workflowName: string | undefined;
+	let workflowId = input.workflowId;
+	const getWorkflowName = async () => {
+		workflowName ??= await context.workflowService
+			.get(workflowId)
+			.then((wf) => wf.name)
+			.catch(() => undefined);
+		return workflowName;
+	};
+	let allowedByName =
 		context.permissions?.runWorkflow === 'always_allow' &&
-		(allowList === undefined || allowList.has(input.workflowId));
-	const needsApproval = !allowedByScope;
+		workflowNameAllowList !== undefined &&
+		hasWorkflowName(workflowNameAllowList, await getWorkflowName());
+	if (
+		context.permissions?.runWorkflow === 'always_allow' &&
+		workflowNameAllowList !== undefined &&
+		!allowedByName &&
+		workflowName === undefined
+	) {
+		const fallbackWorkflow = await findAllowedWorkflowByName(context, workflowNameAllowList);
+		if (fallbackWorkflow) {
+			workflowId = fallbackWorkflow.id;
+			workflowName = fallbackWorkflow.name;
+			allowedByName = true;
+		}
+	}
+	const allowedByList =
+		allowList !== undefined
+			? allowList.has(workflowId)
+			: (context.aiCreatedWorkflowIds?.has(workflowId) ?? false);
+	const allowedByScope =
+		context.requireRunWorkflowApproval !== true &&
+		context.permissions?.runWorkflow === 'always_allow' &&
+		(allowedByList || allowedByName);
+
+	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
+	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
+	const grantKey = buildRunWorkflowSessionGrantKey(workflowId);
+	const allowedBySessionGrant =
+		context.requireRunWorkflowApproval !== true &&
+		context.sessionApprovedToolKeys?.has(grantKey) === true;
+	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const workflowName = await context.workflowService
-			.get(input.workflowId)
-			.then((wf) => wf.name)
-			.catch(() => input.workflowId);
+		const workflowName = (await getWorkflowName()) ?? input.workflowId;
 		return await suspend({
 			requestId: nanoid(),
 			message: `Execute ${workflowName} (ID: ${input.workflowId})`,
@@ -172,9 +285,15 @@ async function handleRun(
 		};
 	}
 
+	// "Always allow" — persist the grant so subsequent runs of this workflow skip HITL.
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(grantKey);
+	}
+
 	// Approved or always_allow — execute
-	return await context.executionService.run(input.workflowId, input.inputData, {
+	return await context.executionService.run(workflowId, input.inputData, {
 		timeout: input.timeout,
+		abortSignal,
 	});
 }
 
@@ -192,6 +311,20 @@ async function handleGetNodeOutput(
 	});
 }
 
+async function handleGetResolvedNodeParameters(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'get-resolved-node-parameters' }>,
+) {
+	return await context.executionService.getResolvedNodeParameters(
+		input.executionId,
+		input.nodeName,
+		{
+			itemIndex: input.itemIndex,
+			runIndex: input.runIndex,
+		},
+	);
+}
+
 async function handleStop(context: InstanceAiContext, input: Extract<Input, { action: 'stop' }>) {
 	return await context.executionService.stop(input.executionId);
 }
@@ -201,7 +334,10 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 export function createExecutionsTool(context: InstanceAiContext) {
 	return new Tool('executions')
 		.description(
-			'Manage workflow executions — list, inspect, run, debug, get node output, and stop.',
+			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
+				'get resolved node parameters for a past run, and stop. ' +
+				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
+				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
@@ -213,12 +349,14 @@ export function createExecutionsTool(context: InstanceAiContext) {
 				case 'get':
 					return await handleGet(context, input);
 				case 'run': {
-					return await handleRun(context, input, ctx.resumeData, ctx.suspend);
+					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
 				}
 				case 'debug':
 					return await handleDebug(context, input);
 				case 'get-node-output':
 					return await handleGetNodeOutput(context, input);
+				case 'get-resolved-node-parameters':
+					return await handleGetResolvedNodeParameters(context, input);
 				case 'stop':
 					return await handleStop(context, input);
 			}

@@ -1,3 +1,4 @@
+import { STICKY_NODE_TYPE } from './constants';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -19,6 +20,18 @@ import { isTriggerNode } from './node-helpers';
 
 type NodeIo = NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration;
 type IODirection = 'inputs' | 'outputs';
+
+/** Character cap on a node group description; keeps it within 3 lines in the collapsed panel. */
+export const GROUP_DESCRIPTION_MAX_LENGTH = 145;
+
+/**
+ * Drops non-string values, caps to the max length, and treats empty as "no description".
+ */
+export function normalizeGroupDescription(description: unknown): string | undefined {
+	if (typeof description !== 'string') return undefined;
+	const capped = description.slice(0, GROUP_DESCRIPTION_MAX_LENGTH);
+	return capped.length > 0 ? capped : undefined;
+}
 
 export type NodeGroupingValidationInput<TNode extends INode = INode> = {
 	nodes: TNode[];
@@ -44,7 +57,6 @@ export type NodeSelectionValidationResult<TNode extends INode = INode> =
 
 export type NodeGroupValidationResult<TNode extends INode = INode> =
 	| NodeSelectionValidationResult<TNode>
-	| { valid: false; reason: 'too-few-nodes' }
 	| { valid: false; reason: 'node-already-grouped'; nodeIds: string[] }
 	| {
 			valid: false;
@@ -52,12 +64,82 @@ export type NodeGroupValidationResult<TNode extends INode = INode> =
 			connection: { source: string; target: string; type: string };
 	  };
 
-export function validateNodeSelectionForExtraction<TNode extends INode>({
+export function validateNodeSelectionForExtraction<TNode extends INode>(
+	input: NodeGroupingValidationInput<TNode>,
+): NodeSelectionValidationResult<TNode> {
+	const subgraphResult = validateNodeSelectionSubgraph(input);
+	if (!subgraphResult.valid) return subgraphResult;
+
+	const { nodes, getNodeType, getNodeInputs, getNodeOutputs } = input;
+	const { start, end } = subgraphResult.subGraphData;
+	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
+
+	if (
+		start &&
+		!hasSingleMainIO(start, 'inputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
+	) {
+		return { valid: false, reason: 'multiple-input-branches', node: start };
+	}
+
+	if (
+		end &&
+		!hasSingleMainIO(end, 'outputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
+	) {
+		return { valid: false, reason: 'multiple-output-branches', node: end };
+	}
+
+	return subgraphResult;
+}
+
+export function validateNodeSelectionForGrouping<TNode extends INode>(
+	input: NodeGroupingValidationInput<TNode>,
+): NodeGroupValidationResult<TNode> {
+	const alreadyGroupedNodeIds = findAlreadyGroupedNodeIds(
+		input.nodes.map((node) => node.id),
+		input.existingNodeGroups ?? [],
+	);
+	if (alreadyGroupedNodeIds.length > 0) {
+		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
+	}
+
+	// Sticky notes have no connections, so the subgraph/connectivity rules
+	// below are checked against connectable nodes only — stickies ride along
+	// as plain members. A sticky-only group is valid *data* (a group can
+	// degenerate to one when its last connectable node is deleted); stricter
+	// rules live with the callers: creation surfaces require at least one
+	// connectable node (see `resolveGroupableNodeIds` in the editor) and
+	// persistence rejects memberless groups (see `validateWorkflowNodeGroups`
+	// in the CLI), which also keeps empty selections out of this fast path.
+	const connectableNodes = input.nodes.filter((node) => node.type !== STICKY_NODE_TYPE);
+	if (connectableNodes.length === 0) {
+		return {
+			valid: true,
+			subGraph: input.nodes,
+			subGraphData: { start: undefined, end: undefined },
+		};
+	}
+
+	const subgraphResult = validateNodeSelectionSubgraph({ ...input, nodes: connectableNodes });
+	if (!subgraphResult.valid) return subgraphResult;
+
+	const nodeNames = new Set(subgraphResult.subGraph.map((node) => node.name));
+	const boundaryConnection = findNonMainBoundaryConnection(
+		nodeNames,
+		input.connectionsBySourceNode,
+	);
+
+	if (boundaryConnection) {
+		return { valid: false, reason: 'non-main-boundary', connection: boundaryConnection };
+	}
+
+	// Report the full selection (stickies included) as the resulting subgraph.
+	return { ...subgraphResult, subGraph: input.nodes };
+}
+
+function validateNodeSelectionSubgraph<TNode extends INode>({
 	nodes,
 	connectionsBySourceNode,
 	getNodeType,
-	getNodeInputs,
-	getNodeOutputs,
 }: NodeGroupingValidationInput<TNode>): NodeSelectionValidationResult<TNode> {
 	const triggers = nodes.filter((node) => {
 		const nodeType = getNodeType(node);
@@ -87,55 +169,7 @@ export function validateNodeSelectionForExtraction<TNode extends INode>({
 		return { valid: false, reason: 'invalid-subgraph', errors: [disconnectedSelectionError] };
 	}
 
-	const nodesByName = new Map(nodes.map((node) => [node.name, node]));
-	const { start, end } = selection;
-
-	if (
-		start &&
-		!hasSingleMainIO(start, 'inputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
-	) {
-		return { valid: false, reason: 'multiple-input-branches', node: start };
-	}
-
-	if (
-		end &&
-		!hasSingleMainIO(end, 'outputs', nodesByName, getNodeType, getNodeInputs, getNodeOutputs)
-	) {
-		return { valid: false, reason: 'multiple-output-branches', node: end };
-	}
-
 	return { valid: true, subGraph: nodes, subGraphData: selection };
-}
-
-export function validateNodeSelectionForGrouping<TNode extends INode>(
-	input: NodeGroupingValidationInput<TNode>,
-): NodeGroupValidationResult<TNode> {
-	if (input.nodes.length < 2) {
-		return { valid: false, reason: 'too-few-nodes' };
-	}
-
-	const alreadyGroupedNodeIds = findAlreadyGroupedNodeIds(
-		input.nodes.map((node) => node.id),
-		input.existingNodeGroups ?? [],
-	);
-	if (alreadyGroupedNodeIds.length > 0) {
-		return { valid: false, reason: 'node-already-grouped', nodeIds: alreadyGroupedNodeIds };
-	}
-
-	const extractableResult = validateNodeSelectionForExtraction(input);
-	if (!extractableResult.valid) return extractableResult;
-
-	const nodeNames = new Set(extractableResult.subGraph.map((node) => node.name));
-	const boundaryConnection = findNonMainBoundaryConnection(
-		nodeNames,
-		input.connectionsBySourceNode,
-	);
-
-	if (boundaryConnection) {
-		return { valid: false, reason: 'non-main-boundary', connection: boundaryConnection };
-	}
-
-	return extractableResult;
 }
 
 function findAlreadyGroupedNodeIds(

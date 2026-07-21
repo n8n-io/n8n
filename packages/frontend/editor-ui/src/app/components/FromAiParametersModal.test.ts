@@ -13,6 +13,8 @@ import { nextTick, shallowRef } from 'vue';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -21,6 +23,7 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		allNodes: [] as Array<{ id: string; name: string; type: string }>,
 		workflowTriggerNodes: [] as Array<{ id: string; name: string; type: string }>,
 		name: '',
+		documentId: 'test-id',
 		workflowId: 'test-workflow',
 		settings: {},
 		getPinDataSnapshot: () => ({}),
@@ -45,6 +48,16 @@ const ModalStub = {
 };
 
 vi.mock('vue-router');
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 vi.mocked(useRouter);
 
@@ -131,7 +144,9 @@ describe('FromAiParametersModal', () => {
 				},
 			},
 		});
-		useWorkflowsStore().setWorkflowExecutionData(mockExecutionResponse);
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(useWorkflowsStore().workflowId),
+		).setWorkflowExecutionData(mockExecutionResponse);
 
 		mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 			switch (name) {

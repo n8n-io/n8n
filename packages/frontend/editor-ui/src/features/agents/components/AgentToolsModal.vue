@@ -3,13 +3,15 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflow } from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { AI_SECTION_RECOMMENDED_TOOLS, DEBOUNCE_TIME } from '@/app/constants';
 import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
@@ -21,16 +23,19 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 import {
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import nodePopularity from 'virtual:node-popularity-data';
 
 import AgentToolItem from './AgentToolItem.vue';
+import AgentToolsSection from './AgentToolsSection.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { AgentJsonToolRef, WorkflowToolRef } from '../types';
+import type { AgentJsonMcpServerConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
@@ -38,17 +43,28 @@ import {
 	toolRefToNode,
 	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
+import {
+	isMcpRelatedNodeType,
+	mcpServerToNode,
+	nodeTypeToNewMcpServer,
+} from '../composables/useMcpServerAdapter';
 import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		tools: AgentJsonToolRef[];
+		mcpServers?: AgentJsonMcpServerConfig[];
 		/** Optional — when present, the Available list will include workflows scoped to this project. */
 		projectId?: string;
 		/** Optional — tagged onto telemetry events for correlation with agent analytics. */
 		agentId?: string;
-		onConfirm: (tools: AgentJsonToolRef[]) => void;
+		/** Inline agents pass false: approval needs suspend/resume, which workflow executions don't support. */
+		supportsToolApproval?: boolean;
+		onConfirm: (props: {
+			tools?: AgentJsonToolRef[];
+			mcpServers?: AgentJsonMcpServerConfig[];
+		}) => void;
 	};
 }>();
 
@@ -72,6 +88,11 @@ interface WorkingToolEntry {
 	ref: AgentJsonToolRef;
 }
 
+interface WorkingMcpServerEntry {
+	localId: string;
+	server: AgentJsonMcpServerConfig;
+}
+
 function toWorkingToolEntries(
 	tools: AgentJsonToolRef[],
 	existingEntries: WorkingToolEntry[] = [],
@@ -79,6 +100,16 @@ function toWorkingToolEntries(
 	return tools.map((ref, index) => ({
 		localId: existingEntries[index]?.localId ?? uuidv4(),
 		ref,
+	}));
+}
+
+function toWorkingMcpServerEntries(
+	servers: AgentJsonMcpServerConfig[],
+	existingEntries: WorkingMcpServerEntry[] = [],
+): WorkingMcpServerEntry[] {
+	return servers.map((server, index) => ({
+		localId: existingEntries[index]?.localId ?? uuidv4(),
+		server,
 	}));
 }
 
@@ -91,10 +122,30 @@ watch(
 	},
 );
 
+const workingMcpServerEntries = ref<WorkingMcpServerEntry[]>(
+	toWorkingMcpServerEntries(props.data.mcpServers ?? []),
+);
+watch(
+	() => props.data.mcpServers ?? [],
+	(servers) => {
+		workingMcpServerEntries.value = toWorkingMcpServerEntries(
+			servers,
+			workingMcpServerEntries.value,
+		);
+	},
+);
+
 const workingTools = computed(() => workingToolEntries.value.map(({ ref }) => ref));
+const workingMcpServers = computed(() => workingMcpServerEntries.value.map(({ server }) => server));
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
+const isConnectedSectionExpanded = ref(true);
+const isAvailableMcpToolsSectionExpanded = ref(true);
+const isAvailableWorkflowsSectionExpanded = ref(true);
+const isAvailableAiToolsSectionExpanded = ref(true);
+const isAvailableN8nToolsSectionExpanded = ref(true);
+const isAvailableExternalToolsSectionExpanded = ref(true);
 const setDebouncedSearch = useDebounceFn((value: string) => {
 	debouncedSearchQuery.value = value;
 }, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
@@ -125,19 +176,48 @@ function needsSetup(nodeType: INodeTypeDescription): boolean {
 	);
 }
 
-function makeUniqueName(baseName: string, existingNames: string[]): string {
+function makeUniqueName(
+	baseName: string,
+	existingNames: string[],
+	format?: (name: string, counter: number) => string,
+): string {
+	const defaultFormat = (name: string, counter: number) => `${name} (${counter})`;
+	const formatFn = format ?? defaultFormat;
 	if (!existingNames.includes(baseName)) return baseName;
 	let counter = 1;
-	while (existingNames.includes(`${baseName} (${counter})`)) {
+	while (existingNames.includes(formatFn(baseName, counter))) {
 		counter++;
 	}
-	return `${baseName} (${counter})`;
+	return formatFn(baseName, counter);
 }
 
 const agentProviderNodeTypes = new Set<string>(AI_VENDOR_NODE_TYPES);
+const hiddenAvailableToolNodeTypes = new Set<string>(
+	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
+);
+// This list moves these nodes from the normal list of nodes into the AI section
+const availableAiUtilityToolNodeTypes = new Set<string>(
+	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
+);
 
 function isAgentProviderNodeType(nodeType: INodeTypeDescription): boolean {
 	return agentProviderNodeTypes.has(nodeType.name);
+}
+
+function isHiddenAvailableToolType(nodeType: INodeTypeDescription): boolean {
+	return hiddenAvailableToolNodeTypes.has(nodeType.name);
+}
+
+function hasToolsSubcategory(nodeType: INodeTypeDescription, subcategory: string): boolean {
+	return nodeType.codex?.subcategories?.Tools?.includes(subcategory) ?? false;
+}
+
+function isAvailableAiToolType(nodeType: INodeTypeDescription): boolean {
+	return isAgentProviderNodeType(nodeType) || availableAiUtilityToolNodeTypes.has(nodeType.name);
+}
+
+function isAvailableN8nToolType(nodeType: INodeTypeDescription): boolean {
+	return hasToolsSubcategory(nodeType, AI_SECTION_RECOMMENDED_TOOLS);
 }
 
 /**
@@ -158,7 +238,10 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 		.map((name) => nodeTypesStore.getNodeType(name))
 		.filter(
 			(nt): nt is INodeTypeDescription =>
-				nt !== null && !nt.hidden && (isAgentProviderNodeType(nt) || !hasInputs(nt)),
+				nt !== null &&
+				!nt.hidden &&
+				!isHiddenAvailableToolType(nt) &&
+				(isAgentProviderNodeType(nt) || !hasInputs(nt)),
 		)
 		.sort((a, b) => {
 			const popA = nodePopularityMap.get(a.name) ?? 0;
@@ -166,6 +249,34 @@ const availableToolTypes = computed<INodeTypeDescription[]>(() => {
 			return popB - popA;
 		});
 });
+
+const availableMcpTypes = computed(() =>
+	availableToolTypes.value.filter((nodeType) => isMcpRelatedNodeType(nodeType.name)),
+);
+
+const availableAiToolTypes = computed(() =>
+	availableToolTypes.value.filter(
+		(nodeType) => !isMcpRelatedNodeType(nodeType.name) && isAvailableAiToolType(nodeType),
+	),
+);
+
+const availableN8nToolTypes = computed(() =>
+	availableToolTypes.value.filter(
+		(nodeType) =>
+			!isMcpRelatedNodeType(nodeType.name) &&
+			!isAvailableAiToolType(nodeType) &&
+			isAvailableN8nToolType(nodeType),
+	),
+);
+
+const availableExternalToolTypes = computed(() =>
+	availableToolTypes.value.filter(
+		(nodeType) =>
+			!isMcpRelatedNodeType(nodeType.name) &&
+			!isAvailableAiToolType(nodeType) &&
+			!isAvailableN8nToolType(nodeType),
+	),
+);
 
 // --- Workflow catalog -------------------------------------------------------
 
@@ -232,6 +343,16 @@ interface ConfiguredToolView {
 	node: INode;
 	nodeType: INodeTypeDescription;
 	missingCredentials: boolean;
+	requireApproval: boolean;
+}
+
+interface ConfiguredMcpServerView {
+	localId: string;
+	server: AgentJsonMcpServerConfig;
+	node: INode;
+	nodeType: INodeTypeDescription;
+	missingCredentials: boolean;
+	requireApproval: boolean;
 }
 
 const configuredTools = computed<ConfiguredToolView[]>(() => {
@@ -252,6 +373,36 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 			node,
 			nodeType,
 			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
+			requireApproval: ref.requireApproval === true,
+		});
+	}
+	return out;
+});
+
+function resolveMcpNodeType(server: AgentJsonMcpServerConfig): INodeTypeDescription | null {
+	const preferredTypeName = server.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
+	return (
+		nodeTypesStore.getNodeType(preferredTypeName) ??
+		nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE)
+	);
+}
+
+const configuredMcpServers = computed<ConfiguredMcpServerView[]>(() => {
+	const out: ConfiguredMcpServerView[] = [];
+	for (const { localId, server } of workingMcpServerEntries.value) {
+		const nodeType = resolveMcpNodeType(server);
+		if (!nodeType) continue;
+		const node = mcpServerToNode(server, nodeType);
+		const issues = nodeHelpers.getNodeCredentialIssues(node as INodeUi, nodeType);
+		out.push({
+			localId,
+			server,
+			node,
+			nodeType,
+			missingCredentials: !!issues?.credentials && Object.keys(issues.credentials).length > 0,
+			requireApproval:
+				server.approval?.mode === 'global' ||
+				(server.approval?.mode === 'selected' && server.approval.tools.length > 0),
 		});
 	}
 	return out;
@@ -263,6 +414,7 @@ interface ConfiguredWorkflowView {
 	ref: AgentJsonToolRef;
 	name: string;
 	description?: string;
+	requireApproval: boolean;
 }
 
 interface WorkingWorkflowEntry extends WorkingToolEntry {
@@ -277,6 +429,7 @@ const configuredWorkflows = computed<ConfiguredWorkflowView[]>(() =>
 			ref,
 			name: ref.name ?? (ref.workflow as string),
 			description: ref.description,
+			requireApproval: ref.requireApproval === true,
 		})),
 );
 
@@ -292,6 +445,16 @@ const filteredConfiguredTools = computed(() => {
 	);
 });
 
+const filteredConfiguredMcpServers = computed(() => {
+	if (!debouncedSearchQuery.value) return configuredMcpServers.value;
+	const query = debouncedSearchQuery.value.toLowerCase();
+	return configuredMcpServers.value.filter(
+		(server) =>
+			server.server.name.toLowerCase().includes(query) ||
+			server.nodeType.displayName.toLowerCase().includes(query),
+	);
+});
+
 const filteredConfiguredWorkflows = computed(() => {
 	if (!debouncedSearchQuery.value) return configuredWorkflows.value;
 	const query = debouncedSearchQuery.value.toLowerCase();
@@ -301,17 +464,31 @@ const filteredConfiguredWorkflows = computed(() => {
 	);
 });
 
-const filteredAvailableTools = computed(() => {
+function filterAvailableToolTypes(nodeTypes: INodeTypeDescription[]): INodeTypeDescription[] {
 	// Duplicates allowed: already-connected node types stay listed so users can
 	// add a 2nd Slack / Gmail / etc. with a different name + config. The config
 	// modal enforces tool-name uniqueness via `existingToolNames`.
-	if (!debouncedSearchQuery.value) return availableToolTypes.value;
+	if (!debouncedSearchQuery.value) return nodeTypes;
 	const query = debouncedSearchQuery.value.toLowerCase();
-	return availableToolTypes.value.filter(
+	return nodeTypes.filter(
 		(nt) =>
 			nt.displayName.toLowerCase().includes(query) || nt.description?.toLowerCase().includes(query),
 	);
-});
+}
+
+const filteredAvailableAiTools = computed(() =>
+	filterAvailableToolTypes(availableAiToolTypes.value),
+);
+
+const filteredAvailableMcpTools = computed(() => filterAvailableToolTypes(availableMcpTypes.value));
+
+const filteredAvailableN8nTools = computed(() =>
+	filterAvailableToolTypes(availableN8nToolTypes.value),
+);
+
+const filteredAvailableExternalTools = computed(() =>
+	filterAvailableToolTypes(availableExternalToolTypes.value),
+);
 
 const filteredAvailableWorkflows = computed(() => {
 	if (!debouncedSearchQuery.value) return availableWorkflows.value;
@@ -335,6 +512,20 @@ function addToolRef(savedRef: AgentJsonToolRef) {
 	});
 }
 
+function addMcpServer(savedServer: AgentJsonMcpServerConfig) {
+	workingMcpServerEntries.value = [
+		...workingMcpServerEntries.value,
+		{ localId: uuidv4(), server: savedServer },
+	];
+	toolTelemetry.trackAddedMcpServer(savedServer);
+	commit();
+	uiStore.closeModal(props.modalName);
+	toast.showMessage({
+		title: i18n.baseText('agents.tools.mcp.added'),
+		type: 'success',
+	});
+}
+
 function openConfigForNewRef(newRef: AgentJsonToolRef) {
 	// Connect → open the config panel first. The ref only enters workingTools
 	// once the user hits Save, so a cancelled config leaves the list untouched.
@@ -344,6 +535,7 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 			toolRef: newRef,
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingToolNames(workingTools.value),
 			onConfirm: (savedRef: AgentJsonToolRef) => {
 				addToolRef(savedRef);
@@ -352,7 +544,50 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 	});
 }
 
+function getExistingMcpServerNames(
+	servers: AgentJsonMcpServerConfig[],
+	exclude?: AgentJsonMcpServerConfig,
+): string[] {
+	return servers.filter((server) => server !== exclude).map((server) => server.name);
+}
+
+function openConfigForNewMcpServer(
+	server: AgentJsonMcpServerConfig,
+	nodeType: INodeTypeDescription,
+) {
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			kind: 'mcpServer',
+			mcpServer: server,
+			initialNode: mcpServerToNode(server, nodeType),
+			projectId: props.data.projectId,
+			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
+			existingToolNames: getExistingMcpServerNames(workingMcpServers.value),
+			onConfirm: (savedServer: AgentJsonMcpServerConfig) => {
+				addMcpServer(savedServer);
+			},
+		},
+	});
+}
+
+function handleAddMcpServer(nodeType: INodeTypeDescription) {
+	const newServer = nodeTypeToNewMcpServer(nodeType);
+	newServer.name = makeUniqueName(
+		newServer.name,
+		getExistingMcpServerNames(workingMcpServers.value),
+		(name, counter) => `${name}-${counter}`,
+	);
+	openConfigForNewMcpServer(newServer, nodeType);
+}
+
 function handleAddTool(nodeType: INodeTypeDescription) {
+	if (isMcpRelatedNodeType(nodeType.name)) {
+		handleAddMcpServer(nodeType);
+		return;
+	}
+
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -421,6 +656,7 @@ function handleConfigureTool(tool: ConfiguredToolView | ConfiguredWorkflowView) 
 			toolRef,
 			projectId: props.data.projectId,
 			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
 			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
 				workingToolEntries.value = workingToolEntries.value.map((entry) =>
@@ -433,8 +669,35 @@ function handleConfigureTool(tool: ConfiguredToolView | ConfiguredWorkflowView) 
 	});
 }
 
+function handleConfigureMcpServer(serverView: ConfiguredMcpServerView) {
+	const nodeType = resolveMcpNodeType(serverView.server);
+	if (!nodeType) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			kind: 'mcpServer',
+			mcpServer: serverView.server,
+			initialNode: mcpServerToNode(serverView.server, nodeType),
+			projectId: props.data.projectId,
+			agentId: props.data.agentId,
+			supportsToolApproval: props.data.supportsToolApproval,
+			existingToolNames: getExistingMcpServerNames(workingMcpServers.value, serverView.server),
+			onConfirm: (updatedServer: AgentJsonMcpServerConfig) => {
+				workingMcpServerEntries.value = workingMcpServerEntries.value.map((entry) =>
+					entry.localId === serverView.localId ? { ...entry, server: updatedServer } : entry,
+				);
+				commit();
+			},
+		},
+	});
+}
+
 function commit() {
-	props.data.onConfirm(workingTools.value);
+	props.data.onConfirm({
+		tools: workingTools.value,
+		mcpServers: workingMcpServers.value,
+	});
 }
 </script>
 
@@ -466,16 +729,36 @@ function commit() {
 
 			<div :class="$style.listWrapper" data-test-id="agent-tools-list">
 				<div
-					v-if="filteredConfiguredTools.length + filteredConfiguredWorkflows.length > 0"
-					:class="$style.section"
+					v-if="
+						filteredConfiguredMcpServers.length +
+							filteredConfiguredTools.length +
+							filteredConfiguredWorkflows.length >
+						0
+					"
 				>
-					<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
+					<AgentToolsSection
+						v-model="isConnectedSectionExpanded"
+						:title="i18n.baseText('agents.tools.connected')"
+						list-test-id="agent-tools-connected-list"
+					>
+						<AgentToolItem
+							v-for="server in filteredConfiguredMcpServers"
+							:key="server.localId"
+							:node-type="server.nodeType"
+							:configured-node="server.node"
+							:missing-credentials="server.missingCredentials"
+							:require-approval="server.requireApproval"
+							mode="configured"
+							:class="$style.toolsListItem"
+							@configure="handleConfigureMcpServer(server)"
+						/>
 						<AgentToolItem
 							v-for="tool in filteredConfiguredTools"
 							:key="tool.localId"
 							:node-type="tool.nodeType"
 							:configured-node="tool.node"
 							:missing-credentials="tool.missingCredentials"
+							:require-approval="tool.requireApproval"
 							mode="configured"
 							:class="$style.toolsListItem"
 							@configure="handleConfigureTool(tool)"
@@ -486,60 +769,125 @@ function commit() {
 							mode="configured"
 							:name="wf.name"
 							:description="wf.description"
+							:require-approval="wf.requireApproval"
 							row-test-id="agent-tools-connected-workflow-row"
 							configure-test-id="agent-tools-connected-workflow-configure"
 							@configure="handleConfigureTool(wf)"
 						/>
-					</div>
+					</AgentToolsSection>
 				</div>
 
-				<div v-if="filteredAvailableTools.length > 0" :class="$style.section">
-					<N8nHeading size="small" color="text-light" tag="h3">
-						{{
-							i18n.baseText('agents.tools.availableTools', {
-								interpolate: { count: filteredAvailableTools.length },
-							})
-						}}
-					</N8nHeading>
-					<div :class="$style.toolsList" data-test-id="agent-tools-available-list">
-						<AgentToolItem
-							v-for="nodeType in filteredAvailableTools"
-							:key="nodeType.name"
-							:node-type="nodeType"
-							mode="available"
-							@add="handleAddTool(nodeType)"
-							:class="$style.toolsListItem"
-						/>
-					</div>
-				</div>
+				<AgentToolsSection
+					v-if="filteredAvailableMcpTools.length > 0"
+					v-model="isAvailableMcpToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableMcpServers', {
+							interpolate: { count: filteredAvailableMcpTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-mcp-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableMcpTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
 
-				<div v-if="filteredAvailableWorkflows.length > 0" :class="$style.section">
-					<N8nHeading size="small" color="text-light" tag="h3">
-						{{
-							i18n.baseText('agents.tools.availableWorkflows', {
-								interpolate: { count: filteredAvailableWorkflows.length },
-							})
-						}}
-					</N8nHeading>
-					<div :class="$style.toolsList" data-test-id="agent-tools-available-workflows-list">
-						<WorkflowToolRow
-							v-for="workflow in filteredAvailableWorkflows"
-							:key="workflow.id"
-							mode="available"
-							:name="workflow.name"
-							:description="workflow.description"
-							row-test-id="agent-tools-available-workflow-row"
-							@add="handleAddWorkflow(workflow)"
-						/>
-					</div>
-				</div>
+				<AgentToolsSection
+					v-if="filteredAvailableAiTools.length > 0"
+					v-model="isAvailableAiToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableAiTools', {
+							interpolate: { count: filteredAvailableAiTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-ai-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableAiTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
+
+				<AgentToolsSection
+					v-if="filteredAvailableN8nTools.length > 0"
+					v-model="isAvailableN8nToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableN8nTools', {
+							interpolate: { count: filteredAvailableN8nTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-n8n-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableN8nTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
+
+				<AgentToolsSection
+					v-if="filteredAvailableExternalTools.length > 0"
+					v-model="isAvailableExternalToolsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableExternalTools', {
+							interpolate: { count: filteredAvailableExternalTools.length },
+						})
+					"
+					list-test-id="agent-tools-available-external-list"
+				>
+					<AgentToolItem
+						v-for="nodeType in filteredAvailableExternalTools"
+						:key="nodeType.name"
+						:node-type="nodeType"
+						mode="available"
+						:class="$style.toolsListItem"
+						@add="handleAddTool(nodeType)"
+					/>
+				</AgentToolsSection>
+
+				<AgentToolsSection
+					v-if="filteredAvailableWorkflows.length > 0"
+					v-model="isAvailableWorkflowsSectionExpanded"
+					:title="
+						i18n.baseText('agents.tools.availableWorkflows', {
+							interpolate: { count: filteredAvailableWorkflows.length },
+						})
+					"
+					list-test-id="agent-tools-available-workflows-list"
+				>
+					<WorkflowToolRow
+						v-for="workflow in filteredAvailableWorkflows"
+						:key="workflow.id"
+						mode="available"
+						:name="workflow.name"
+						:description="workflow.description"
+						row-test-id="agent-tools-available-workflow-row"
+						@add="handleAddWorkflow(workflow)"
+					/>
+				</AgentToolsSection>
 
 				<div
 					v-if="
+						filteredConfiguredMcpServers.length === 0 &&
 						filteredConfiguredTools.length === 0 &&
 						filteredConfiguredWorkflows.length === 0 &&
-						filteredAvailableTools.length === 0 &&
-						filteredAvailableWorkflows.length === 0
+						filteredAvailableMcpTools.length === 0 &&
+						filteredAvailableWorkflows.length === 0 &&
+						filteredAvailableAiTools.length === 0 &&
+						filteredAvailableN8nTools.length === 0 &&
+						filteredAvailableExternalTools.length === 0
 					"
 					:class="$style.emptyState"
 					data-test-id="agent-tools-empty-state"
@@ -582,17 +930,6 @@ function commit() {
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding-right: var(--spacing--lg);
 	padding-top: var(--spacing--sm);
-}
-
-.section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.toolsList {
-	display: flex;
-	flex-direction: column;
 }
 
 .toolsListItem {

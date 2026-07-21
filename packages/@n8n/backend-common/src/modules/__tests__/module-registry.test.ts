@@ -1,15 +1,30 @@
 import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
-import { ModuleRegistry } from '../module-registry';
+import { getModuleEntryUrl, ModuleRegistry } from '../module-registry';
 
 beforeEach(() => {
 	vi.resetAllMocks();
 	process.env = {};
 	Container.reset();
+});
+
+describe('getModuleEntryUrl', () => {
+	it.each([
+		['community module', false, '/insights/insights.module.js'],
+		['enterprise module', true, '/insights.ee/insights.module.js'],
+	])('should return a file URL for a %s', (_, isEnterprise, expectedPathSuffix) => {
+		const url = new URL(
+			getModuleEntryUrl(path.join(process.cwd(), 'dist', 'modules'), 'insights', isEnterprise),
+		);
+
+		expect(url.protocol).toBe('file:');
+		expect(url.pathname.endsWith(expectedPathSuffix)).toBe(true);
+	});
 });
 
 describe('eligibleModules', () => {
@@ -24,6 +39,7 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
 			'provisioning',
 			'breaking-changes',
@@ -57,6 +73,7 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'oauth-server',
 			'mcp',
 			'provisioning',
 			'breaking-changes',

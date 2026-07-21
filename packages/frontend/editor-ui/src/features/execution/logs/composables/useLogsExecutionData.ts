@@ -1,7 +1,13 @@
 import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
+import {
+	Workflow,
+	type IRunExecutionData,
+	type ITaskStartedData,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -16,7 +22,6 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { CHAT_TRIGGER_NODE_TYPE, LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -33,7 +38,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowState = injectWorkflowState();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 	const toast = useToast();
 
 	const state = ref<
@@ -41,8 +47,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		| undefined
 	>();
 	const updateInterval = computed(() =>
-		workflowsStore.workflowExecutionData?.status === 'running' &&
-		Object.keys(workflowsStore.workflowExecutionData.data?.resultData.runData ?? {}).length > 1
+		currentExecution.value?.status === 'running' &&
+		Object.keys(currentExecution.value.data?.resultData.runData ?? {}).length > 1
 			? LOGS_EXECUTION_DATA_THROTTLE_DURATION
 			: 0,
 	);
@@ -51,6 +57,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
 	const subWorkflows = ref<Record<string, Workflow>>({});
+	const subWorkflowNodeGroups = ref<Record<string, IWorkflowGroup[]>>({});
 	const workflow = ref<Workflow>();
 
 	const latestNodeNameById = computed(() =>
@@ -94,21 +101,26 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			throttledState.value.response,
 		);
 
+		// Group membership comes from the execution snapshot so historical executions group too
+		const nodeGroups = mergedExecutionData.workflowData.nodeGroups ?? [];
+
 		return createLogTree(
 			workflow.value,
 			mergedExecutionData,
 			subWorkflows.value,
 			subWorkflowExecData.value,
 			filter?.value,
+			nodeGroups,
+			subWorkflowNodeGroups.value,
 		);
 	});
 
 	function resetExecutionData() {
 		state.value = undefined;
-		workflowState.setWorkflowExecutionData(null);
+		workflowExecutionStateStore.value.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.setChatPartialExecutionDestinationNode(null);
+		workflowExecutionStateStore.value.setChatPartialExecutionDestinationNode(null);
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 
@@ -132,6 +144,8 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 				...subExecution.workflowData,
 				nodeTypes: nodeTypesStore.getAllNodeTypes(),
 			});
+
+			subWorkflowNodeGroups.value[locator.workflowId] = subExecution.workflowData.nodeGroups ?? [];
 		} catch (e) {
 			toast.showError(e, 'Unable to load sub execution');
 		}
@@ -140,26 +154,27 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	watch(
 		// Fields that should trigger update
 		[
-			() => workflowsStore.workflowExecutionData?.id,
-			() => workflowsStore.workflowExecutionData?.workflowData.id,
-			() => workflowsStore.workflowExecutionData?.status,
-			() => workflowsStore.workflowExecutionResultDataLastUpdate,
-			() => workflowsStore.workflowExecutionStartedData,
+			() => currentExecution.value?.id,
+			() => currentExecution.value?.workflowData.id,
+			() => currentExecution.value?.status,
+			() => workflowExecutionStateStore.value.activeExecutionResultDataLastUpdate,
+			() => workflowExecutionStateStore.value.activeExecutionStartedData,
 		],
 		useThrottleFn(
 			([executionId], [previousExecutionId]) => {
 				state.value =
-					workflowsStore.workflowExecutionData === null
+					currentExecution.value === null
 						? undefined
 						: {
-								response: copyExecutionData(workflowsStore.workflowExecutionData),
-								startData: workflowsStore.workflowExecutionStartedData?.[1] ?? {},
+								response: copyExecutionData(currentExecution.value),
+								startData: workflowExecutionStateStore.value.activeExecutionStartedData?.[1] ?? {},
 							};
 
 				if (executionId !== previousExecutionId) {
 					// Reset sub workflow data when top-level execution changes
 					subWorkflowExecData.value = {};
 					subWorkflows.value = {};
+					subWorkflowNodeGroups.value = {};
 				}
 			},
 			updateInterval,
@@ -170,7 +185,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	);
 
 	watch(
-		() => workflowsStore.workflowId,
+		() => workflowDocumentStore.value.workflowId,
 		() => {
 			resetExecutionData();
 		},

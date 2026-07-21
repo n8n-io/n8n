@@ -1094,54 +1094,26 @@ describe('WorkflowCard', () => {
 		expect(queryByTestId('workflow-card-mcp-toggle')).not.toBeInTheDocument();
 	});
 
-	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
+	it('should show private credential indicator when workflow has resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: true,
 		});
 
 		const { getByTestId } = renderComponent({ props: { data } });
 
-		const indicator = getByTestId('workflow-card-dynamic-credentials');
+		const indicator = getByTestId('workflow-card-private-credential');
 		expect(indicator).toBeVisible();
 	});
 
-	it('should hide dynamic credentials indicator when workflow has no resolvable credentials', () => {
+	it('should hide private credential indicator when workflow has no resolvable credentials', () => {
 		const data = createWorkflow({
 			hasResolvableCredentials: false,
 		});
 
 		const { queryByTestId } = renderComponent({ props: { data } });
 
-		const indicator = queryByTestId('workflow-card-dynamic-credentials');
+		const indicator = queryByTestId('workflow-card-private-credential');
 		expect(indicator).toBeNull();
-	});
-
-	it('should show resolver missing badge when workflow has resolvable credentials but no resolver configured', () => {
-		const data = createWorkflow({
-			hasResolvableCredentials: true,
-			settings: {
-				credentialResolverId: undefined,
-			},
-		});
-
-		const { getByTestId } = renderComponent({ props: { data } });
-
-		const badge = getByTestId('workflow-card-resolver-missing');
-		expect(badge).toBeVisible();
-	});
-
-	it('should hide resolver missing badge when workflow has resolver configured', () => {
-		const data = createWorkflow({
-			hasResolvableCredentials: true,
-			settings: {
-				credentialResolverId: 'resolver-123',
-			},
-		});
-
-		const { queryByTestId } = renderComponent({ props: { data } });
-
-		const badge = queryByTestId('workflow-card-resolver-missing');
-		expect(badge).toBeNull();
 	});
 
 	it('should show Archived text on archived workflows', async () => {
@@ -1390,6 +1362,48 @@ describe('WorkflowCard', () => {
 				expect(emitted()['workflow:unpublished']).toBeTruthy();
 				expect(emitted()['workflow:unpublished'][0]).toEqual([{ id: '1' }]);
 			});
+		});
+	});
+
+	describe('metadata divider spacing (ADO-5569)', () => {
+		// The metadata row (`.cardDescription`) lays its items out with
+		// `display: flex; gap`. The flex `gap` only produces even spacing on both
+		// sides of a "|" divider when the "|" is its OWN direct flex child. When a
+		// "|" is baked into the "Last updated ..." / "Created ..." text spans it
+		// gets a plain text space on one side and the flex `gap` on the other,
+		// which makes the spacing around the divider visually uneven.
+		it('should render each "|" divider as its own flex item so spacing is even on both sides', () => {
+			const data = createWorkflow({
+				scopes: ['workflow:update'],
+				settings: {
+					availableInMCP: true,
+				},
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					data,
+					isMcpEnabled: true,
+					isMcpModuleActive: true,
+					canManageInstanceMcp: true,
+					isWorkflowCardMcpToggleEnabled: false,
+				},
+			});
+
+			// The MCP indicator is a direct child of the metadata flex row.
+			const metadataRow = getByTestId('workflow-card-mcp').parentElement;
+			expect(metadataRow).not.toBeNull();
+
+			// Sanity check: the row actually renders divider characters.
+			expect(metadataRow!.textContent).toContain('|');
+
+			// No content span may embed a "|"; every divider must be a dedicated
+			// direct child of the flex row so the `gap` applies symmetrically.
+			const embedsDivider = Array.from(metadataRow!.children).some((el) => {
+				const text = el.textContent ?? '';
+				return text.includes('|') && text.trim() !== '|';
+			});
+			expect(embedsDivider).toBe(false);
 		});
 	});
 });

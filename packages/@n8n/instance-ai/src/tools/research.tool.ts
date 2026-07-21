@@ -80,6 +80,7 @@ type DomainGatingSuspendPayload = z.infer<typeof domainGatingSuspendSchema>;
 interface DomainGatingToolContext {
 	resumeData: DomainGatingResumeData | undefined;
 	suspend?: (payload: DomainGatingSuspendPayload) => Promise<never>;
+	abortSignal?: AbortSignal;
 }
 
 // ── Handlers ────────────────────────────────────────────────────────────────
@@ -97,7 +98,7 @@ async function handleWebSearch(
 
 	// ── Resume path: apply user's decision ─────────────────────────
 	if (resumeData !== undefined && resumeData !== null) {
-		const { proceed } = applyWebSearchAccessResume({
+		const { proceed } = await applyWebSearchAccessResume({
 			resumeData,
 			tracker: context.domainAccessTracker,
 			runId: context.runId,
@@ -127,6 +128,7 @@ async function handleWebSearch(
 	const result = await context.webResearchService.search(input.query, {
 		maxResults: input.maxResults ?? undefined,
 		includeDomains: input.includeDomains ?? undefined,
+		abortSignal: ctx.abortSignal,
 	});
 	// Snippets come from arbitrary third-party pages — sanitize against hidden
 	// payloads, then wrap so the LLM treats the content as data, not instructions.
@@ -164,7 +166,7 @@ async function handleFetchUrl(
 		} catch {
 			host = input.url;
 		}
-		const { proceed } = applyDomainAccessResume({
+		const { proceed } = await applyDomainAccessResume({
 			resumeData,
 			host,
 			tracker: context.domainAccessTracker,
@@ -214,7 +216,7 @@ async function handleFetchUrl(
 	}
 
 	// ── Execute fetch ──────────────────────────────────────────────
-	// eslint-disable-next-line @typescript-eslint/require-await -- must be async to match authorizeUrl signature
+
 	const authorizeUrl = async (targetUrl: string) => {
 		const redirectCheck = checkDomainAccess({
 			url: targetUrl,
@@ -236,6 +238,7 @@ async function handleFetchUrl(
 	const result = await context.webResearchService.fetchUrl(input.url, {
 		maxContentLength: input.maxContentLength ?? undefined,
 		authorizeUrl,
+		abortSignal: ctx.abortSignal,
 	});
 	result.content = wrapUntrustedData(sanitizeWebContent(result.content), result.finalUrl);
 	return result;
@@ -245,7 +248,9 @@ async function handleFetchUrl(
 
 export function createResearchTool(context: InstanceAiContext) {
 	return new Tool('research')
-		.description('Search the web or fetch page content.')
+		.description(
+			'Search the web or fetch page content. Use when node type definitions are insufficient for external documentation.',
+		)
 		.input(inputSchema)
 		.suspend(domainGatingSuspendSchema)
 		.resume(domainGatingResumeSchema)

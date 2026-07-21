@@ -26,6 +26,7 @@ import {
 } from 'n8n-workflow';
 import {
 	buildValueFromOverride,
+	canBeContentOverride,
 	type FromAIOverride,
 	isFromAIOverrideValue,
 	makeOverrideValue,
@@ -100,19 +101,19 @@ const activeNode = computed(() => {
 		return workflowDocumentStore.value.getNodeByName(ctx.nodeName);
 	}
 
-	return ndvStore.activeNode;
+	return ndvStore.value.activeNode;
 });
 const fromAIOverride = ref<FromAIOverride | null>(makeOverrideValue(props, activeNode.value));
 
-const canBeContentOverride = computed(() => {
+const canCreateContentOverride = computed(() => {
 	// The resourceLocator handles overrides separately
 	if (!activeNode.value || isResourceLocator.value) return false;
 
-	return fromAIOverride.value !== null;
+	return canBeContentOverride(props, activeNode.value);
 });
 
 const isContentOverride = computed(
-	() => canBeContentOverride.value && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
+	() => fromAIOverride.value !== null && !!isFromAIOverrideValue(props.value?.toString() ?? ''),
 );
 
 const hint = computed(() =>
@@ -120,7 +121,10 @@ const hint = computed(() =>
 );
 
 const isResourceLocator = computed(
-	() => props.parameter.type === 'resourceLocator' || props.parameter.type === 'workflowSelector',
+	() =>
+		props.parameter.type === 'resourceLocator' ||
+		props.parameter.type === 'workflowSelector' ||
+		props.parameter.type === 'agentSelector',
 );
 const isDropDisabled = computed(
 	() =>
@@ -161,20 +165,20 @@ const showExpressionSelector = computed(() => {
 function onFocus() {
 	focused.value = true;
 	if (!props.parameter.noDataExpression) {
-		ndvStore.setMappableNDVInputFocus(props.parameter.displayName);
+		ndvStore.value.setMappableNDVInputFocus(props.parameter.displayName);
 	}
-	ndvStore.setFocusedInputPath(props.path ?? '');
+	ndvStore.value.setFocusedInputPath(props.path ?? '');
 }
 
 function onBlur() {
 	focused.value = false;
 	if (
 		!props.parameter.noDataExpression &&
-		ndvStore.focusedMappableInput === props.parameter.displayName
+		ndvStore.value.focusedMappableInput === props.parameter.displayName
 	) {
-		ndvStore.setMappableNDVInputFocus('');
+		ndvStore.value.setMappableNDVInputFocus('');
 	}
-	ndvStore.setFocusedInputPath('');
+	ndvStore.value.setFocusedInputPath('');
 	emit('blur');
 }
 
@@ -259,17 +263,17 @@ function onDrop(newParamValue: string) {
 			emit('drop', updatedValue);
 			eventBus.value.emit('drop', updatedValue);
 
-			if (!ndvStore.isMappingOnboarded) {
+			if (!ndvStore.value.isMappingOnboarded) {
 				toast.showMessage({
 					title: i18n.baseText('dataMapping.success.title'),
 					message: i18n.baseText('dataMapping.success.moreInfo'),
 					type: 'success',
 				});
 
-				ndvStore.setMappingOnboarded();
+				ndvStore.value.setMappingOnboarded();
 			}
 
-			ndvStore.setMappingTelemetry({
+			ndvStore.value.setMappingTelemetry({
 				dest_node_type: activeNode.value.type,
 				dest_parameter: props.path,
 				dest_parameter_mode:
@@ -287,7 +291,7 @@ function onDrop(newParamValue: string) {
 }
 
 const showOverrideButton = computed(
-	() => canBeContentOverride.value && !isContentOverride.value && !props.isReadOnly,
+	() => canCreateContentOverride.value && !isContentOverride.value && !props.isReadOnly,
 );
 
 // When switching to read-only mode, reset the value to the default value
@@ -474,7 +478,7 @@ function removeOverride(clearField = false) {
 				<FromAiOverrideField
 					v-if="fromAIOverride && isContentOverride"
 					:is-read-only="isReadOnly"
-					@close="removeOverride"
+					@close="removeOverride(!canCreateContentOverride)"
 				/>
 				<div v-else>
 					<ParameterInputWrapper
@@ -493,7 +497,7 @@ function removeOverride(clearField = false) {
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
-						:can-be-overridden="canBeContentOverride"
+						:can-be-overridden="canCreateContentOverride"
 						:hide-label="hideLabel"
 						input-size="small"
 						@update="valueChanged"
@@ -552,7 +556,7 @@ function removeOverride(clearField = false) {
 			/>
 		</div>
 		<ParameterOverrideSelectableList
-			v-if="isContentOverride && fromAIOverride"
+			v-if="canCreateContentOverride && isContentOverride && fromAIOverride"
 			v-model="fromAIOverride"
 			:parameter="parameter"
 			:path="path"

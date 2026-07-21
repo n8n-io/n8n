@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.15.0",
+  "version": "0.23.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -8,13 +8,16 @@
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
+      "node": "./dist/cjs/index.js",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
     },
     "./*": "./*"
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",
+    "build:unchecked": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --noCheck && pnpm build:runtime",
     "build:runtime": "node esbuild.config.js",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -29,7 +32,7 @@
     "web-worker",
     "security"
   ],
-  "license": "SEE LICENSE IN LICENSE.md",
+  "license": "LicenseRef-n8n-sustainable-use",
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
@@ -49,9 +52,10 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/jmespath": "^0.15.0",
     "@types/lodash": "catalog:",
-    "@types/luxon": "3.2.0",
+    "@types/luxon": "catalog:",
     "@types/md5": "^2.3.5",
-    "typescript": "catalog:",
+    "esbuild": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },
   "files": [

@@ -1,18 +1,33 @@
-import type { User } from '@n8n/db';
+import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
-import { generateSlug } from '../../io/slug.utils';
+import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
+import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+import { DataTableRequirementsExtractor } from '../data-table/data-table-requirements.extractor';
+import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
+import { assertEveryRequestedEntityAccessible } from '../package-export.errors';
+import type { WorkflowExportRequirements } from '../requirements.types';
+import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
+import type { WorkflowVariableRequirement } from '../variable/variable.types';
 
 export interface WorkflowExportRequest {
 	user: User;
 	workflowIds: string[];
 	writer: PackageWriter;
+
+	// Directory the workflow is written under. e.g. folders/{folderId}/
+	basePrefix?: string;
+}
+
+export interface WorkflowExportResult {
+	entries: ManifestEntry[];
+	requirements: WorkflowExportRequirements;
 }
 
 @Service()
@@ -20,9 +35,12 @@ export class WorkflowExporter {
 	constructor(
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly workflowSerializer: WorkflowSerializer,
+		private readonly credentialRequirementsExtractor: CredentialRequirementsExtractor,
+		private readonly dataTableRequirementsExtractor: DataTableRequirementsExtractor,
+		private readonly variableRequirementsExtractor: VariableRequirementsExtractor,
 	) {}
 
-	async export(request: WorkflowExportRequest): Promise<ManifestEntry[]> {
+	async export(request: WorkflowExportRequest): Promise<WorkflowExportResult> {
 		const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
 			request.workflowIds,
 			request.user,
@@ -30,13 +48,25 @@ export class WorkflowExporter {
 			{ includeParentFolder: true },
 		);
 
-		this.assertAllRequestedWorkflowsFound(request.workflowIds, workflows);
+		await assertEveryRequestedEntityAccessible(
+			'workflow',
+			request.workflowIds,
+			workflows,
+			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
+		);
 
+		const workflowsForExport = this.orderWorkflowsByRequest(request.workflowIds, workflows);
 		const entries: ManifestEntry[] = [];
-		const usedTargets = new Set<string>();
+		const credentials: WorkflowCredentialRequirement[] = [];
+		const dataTables: WorkflowDataTableRequirement[] = [];
+		const variables: WorkflowVariableRequirement[] = [];
+		const fileNames = new UniqueFilenameAllocator(
+			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
+			'workflow',
+		);
 
-		for (const workflow of workflows) {
-			const target = this.allocateUniqueFileName(workflow.name, usedTargets);
+		for (const workflow of workflowsForExport) {
+			const target = fileNames.allocate(workflow.name);
 			const serialized = this.workflowSerializer.serialize(workflow);
 
 			request.writer.writeDirectory(target);
@@ -47,47 +77,33 @@ export class WorkflowExporter {
 				name: workflow.name,
 				target,
 			});
+
+			credentials.push(...this.credentialRequirementsExtractor.extract(workflow));
+			dataTables.push(...this.dataTableRequirementsExtractor.extract(workflow));
+			variables.push(...this.variableRequirementsExtractor.extract(workflow));
 		}
 
-		return entries;
+		return { entries, requirements: { credentials, dataTables, variables } };
 	}
 
-	private allocateUniqueFileName(name: string, used: Set<string>): string {
-		const base = `workflows/${generateSlug(name)}`;
+	private orderWorkflowsByRequest(
+		workflowIds: string[],
+		workflows: WorkflowEntity[],
+	): WorkflowEntity[] {
+		const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
+		const seen = new Set<string>();
+		const orderedWorkflows: WorkflowEntity[] = [];
 
-		if (!used.has(base)) {
-			used.add(base);
-			return base;
+		for (const workflowId of workflowIds) {
+			if (seen.has(workflowId)) continue;
+
+			const workflow = workflowsById.get(workflowId);
+			if (!workflow) continue;
+
+			seen.add(workflowId);
+			orderedWorkflows.push(workflow);
 		}
 
-		for (let suffix = 2; ; suffix++) {
-			const candidate = `${base}-${suffix}`;
-			if (!used.has(candidate)) {
-				used.add(candidate);
-				return candidate;
-			}
-		}
-	}
-
-	private assertAllRequestedWorkflowsFound(
-		requestedWorkflowIds: string[],
-		foundWorkflows: Array<{ id: string }>,
-	) {
-		const foundWorkflowIds = new Set(foundWorkflows.map(({ id }) => id));
-		const missingWorkflowIds = requestedWorkflowIds.filter((id) => !foundWorkflowIds.has(id));
-
-		if (missingWorkflowIds.length > 0) {
-			const displayedWorkflowIds = missingWorkflowIds.slice(0, 20);
-			const omittedCount = missingWorkflowIds.length - displayedWorkflowIds.length;
-
-			throw new UserError(
-				`${missingWorkflowIds.length} workflow(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing workflow IDs: ${displayedWorkflowIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
-			);
-		}
+		return orderedWorkflows;
 	}
 }

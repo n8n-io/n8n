@@ -1,9 +1,12 @@
 import {
+	GROUP_DESCRIPTION_MAX_LENGTH,
+	normalizeGroupDescription,
 	validateNodeSelectionForExtraction,
 	validateNodeSelectionForGrouping,
 } from '../src/node-grouping-validation';
 import {
 	NodeConnectionTypes,
+	STICKY_NODE_TYPE,
 	type IConnections,
 	type INode,
 	type INodeTypeDescription,
@@ -35,6 +38,23 @@ function makeNodeType(overrides: Partial<INodeTypeDescription> = {}): INodeTypeD
 		...overrides,
 	};
 }
+
+function makeStickyNode(overrides: Partial<INode> = {}): INode {
+	return makeNode({
+		id: overrides.id ?? 'sticky',
+		name: overrides.name ?? 'Sticky',
+		type: STICKY_NODE_TYPE,
+		parameters: { content: '', width: 240, height: 160 },
+		...overrides,
+	});
+}
+
+const stickyNodeType = makeNodeType({
+	name: STICKY_NODE_TYPE,
+	group: ['input'],
+	inputs: [],
+	outputs: [],
+});
 
 function makeLinearGraph() {
 	const nodes = [
@@ -95,17 +115,6 @@ describe('node grouping validation', () => {
 		if (result.valid) {
 			expect(result.subGraph.map((node) => node.name)).toEqual(['A']);
 		}
-	});
-
-	it('returns too-few-nodes for a single-node grouping selection', () => {
-		const graph = makeLinearGraph();
-
-		const result = validateGrouping({
-			nodes: [graph.nodes[0]],
-			connectionsBySourceNode: graph.connections,
-		});
-
-		expect(result).toEqual({ valid: false, reason: 'too-few-nodes' });
 	});
 
 	it('returns node-already-grouped when a selection id belongs to an existing group', () => {
@@ -266,7 +275,7 @@ describe('node grouping validation', () => {
 		expect(result.valid).toBe(true);
 	});
 
-	it('returns multiple-input-branches for a start node with multiple main inputs', () => {
+	it('allows grouping a start node with multiple main inputs', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.merge';
 
@@ -282,17 +291,36 @@ describe('node grouping validation', () => {
 			},
 		});
 
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-input-branches for extraction when the start node has multiple main inputs', () => {
+		const graph = makeLinearGraph();
+		graph.nodes[1].type = 'n8n-nodes-base.merge';
+
+		const result = validateNodeSelectionForExtraction({
+			nodes: [graph.nodes[1], graph.nodes[2]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) =>
+				node.type === 'n8n-nodes-base.merge'
+					? makeNodeType({
+							name: 'n8n-nodes-base.merge',
+							inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+						})
+					: makeNodeType(),
+		});
+
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-input-branches');
 		}
 	});
 
-	it('uses resolved inputs when checking start node branch count', () => {
+	it('uses resolved inputs when checking start node branch count for extraction', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.merge';
 
-		const result = validateNodeSelectionForGrouping({
+		const result = validateNodeSelectionForExtraction({
 			nodes: [graph.nodes[1], graph.nodes[2]],
 			connectionsBySourceNode: graph.connections,
 			getNodeType: (node) =>
@@ -311,7 +339,7 @@ describe('node grouping validation', () => {
 		}
 	});
 
-	it('returns multiple-output-branches for an end node with multiple main outputs', () => {
+	it('allows grouping an end node with multiple main outputs', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.if';
 
@@ -327,17 +355,36 @@ describe('node grouping validation', () => {
 			},
 		});
 
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-output-branches for extraction when the end node has multiple main outputs', () => {
+		const graph = makeLinearGraph();
+		graph.nodes[1].type = 'n8n-nodes-base.if';
+
+		const result = validateNodeSelectionForExtraction({
+			nodes: [graph.nodes[0], graph.nodes[1]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) =>
+				node.type === 'n8n-nodes-base.if'
+					? makeNodeType({
+							name: 'n8n-nodes-base.if',
+							outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+						})
+					: makeNodeType(),
+		});
+
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
 	});
 
-	it('uses resolved outputs when checking end node branch count', () => {
+	it('uses resolved outputs when checking end node branch count for extraction', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.switch';
 
-		const result = validateNodeSelectionForGrouping({
+		const result = validateNodeSelectionForExtraction({
 			nodes: [graph.nodes[0], graph.nodes[1]],
 			connectionsBySourceNode: graph.connections,
 			getNodeType: (node) =>
@@ -354,5 +401,182 @@ describe('node grouping validation', () => {
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
+	});
+
+	describe('sticky notes', () => {
+		const stickyNodeTypes: Record<string, INodeTypeDescription> = {
+			'n8n-nodes-base.set': makeNodeType(),
+			[STICKY_NODE_TYPE]: stickyNodeType,
+		};
+
+		it('allows grouping a sticky together with a connected selection', () => {
+			const graph = makeLinearGraph();
+			const sticky = makeStickyNode();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], sticky],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(true);
+			if (result.valid) {
+				expect(result.subGraph.map((node) => node.name)).toEqual(['A', 'B', 'Sticky']);
+			}
+		});
+
+		it('allows grouping a sticky with a single connectable node', () => {
+			const graph = makeLinearGraph();
+			const stickies = [makeStickyNode(), makeStickyNode({ id: 'sticky2', name: 'Sticky2' })];
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[1], ...stickies],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(true);
+		});
+
+		it('still rejects disconnected connectable nodes when a sticky is present', () => {
+			const graph = makeLinearGraph();
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[2], makeStickyNode()],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+
+		it('treats sticky-only selections as valid group data', () => {
+			// Sticky-only groups can come to exist when a group's last connectable
+			// node is deleted, so they must validate (creation surfaces enforce at
+			// least one connectable node separately).
+			for (const nodes of [
+				[makeStickyNode()],
+				[makeStickyNode(), makeStickyNode({ id: 'sticky2', name: 'Sticky2' })],
+			]) {
+				const result = validateGrouping({
+					nodes,
+					connectionsBySourceNode: {},
+					nodeTypes: stickyNodeTypes,
+				});
+
+				expect(result.valid).toBe(true);
+				if (result.valid) {
+					expect(result.subGraph).toEqual(nodes);
+					expect(result.subGraphData).toEqual({ start: undefined, end: undefined });
+				}
+			}
+		});
+
+		it('returns node-already-grouped when the sticky belongs to another group', () => {
+			const graph = makeLinearGraph();
+			const sticky = makeStickyNode();
+
+			const result = validateNodeSelectionForGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], sticky],
+				connectionsBySourceNode: graph.connections,
+				getNodeType: (node) => stickyNodeTypes[node.type],
+				existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['sticky'] }],
+			});
+
+			expect(result).toEqual({
+				valid: false,
+				reason: 'node-already-grouped',
+				nodeIds: ['sticky'],
+			});
+		});
+
+		it('returns trigger-selected when a trigger accompanies the sticky', () => {
+			const graph = makeLinearGraph();
+			graph.nodes[0].type = 'n8n-nodes-base.manualTrigger';
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], makeStickyNode()],
+				connectionsBySourceNode: graph.connections,
+				nodeTypes: {
+					...stickyNodeTypes,
+					'n8n-nodes-base.manualTrigger': makeNodeType({
+						name: 'n8n-nodes-base.manualTrigger',
+						group: ['trigger'],
+					}),
+				},
+			});
+
+			expect(result).toEqual({ valid: false, reason: 'trigger-selected', triggers: ['A'] });
+		});
+
+		it('still rejects non-main boundary connections when a sticky is present', () => {
+			const graph = makeLinearGraph();
+			const model = makeNode({ id: 'model', name: 'Model' });
+			const connectionsBySourceNode: IConnections = {
+				...graph.connections,
+				Model: {
+					[NodeConnectionTypes.AiLanguageModel]: [
+						[
+							{ node: 'B', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							{ node: 'C', type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+						],
+					],
+				},
+			};
+
+			const result = validateGrouping({
+				nodes: [graph.nodes[0], graph.nodes[1], model, makeStickyNode()],
+				connectionsBySourceNode,
+				nodeTypes: stickyNodeTypes,
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('non-main-boundary');
+			}
+		});
+
+		it('keeps rejecting stickies in extraction selections', () => {
+			const graph = makeLinearGraph();
+
+			const result = validateNodeSelectionForExtraction({
+				nodes: [graph.nodes[0], graph.nodes[1], makeStickyNode()],
+				connectionsBySourceNode: graph.connections,
+				getNodeType: (node) => stickyNodeTypes[node.type],
+			});
+
+			expect(result.valid).toBe(false);
+			if (!result.valid) {
+				expect(result.reason).toBe('invalid-subgraph');
+			}
+		});
+	});
+});
+
+describe('normalizeGroupDescription', () => {
+	test('keeps a description within the cap unchanged', () => {
+		expect(normalizeGroupDescription('short')).toBe('short');
+	});
+
+	test('caps an over-long description to the max length', () => {
+		const result = normalizeGroupDescription('x'.repeat(GROUP_DESCRIPTION_MAX_LENGTH + 50));
+		expect(result).toHaveLength(GROUP_DESCRIPTION_MAX_LENGTH);
+	});
+
+	test('treats an empty string as no description', () => {
+		expect(normalizeGroupDescription('')).toBeUndefined();
+	});
+
+	test.each([
+		['undefined', undefined],
+		['a number', 42],
+		['an object', { a: 1 }],
+		['an array', [1, 2, 3]],
+		['null', null],
+	])('drops a non-string value (%s)', (_label, value) => {
+		expect(normalizeGroupDescription(value)).toBeUndefined();
 	});
 });

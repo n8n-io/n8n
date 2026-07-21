@@ -1,6 +1,6 @@
-import type { AgentRuntime } from '../../runtime/agent-runtime';
-import { InMemoryMemory } from '../../runtime/memory-store';
-import type { BuiltMemory, MemoryConfig, ObservationalMemoryConfig } from '../../types';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
+import { InMemoryMemory } from '../../runtime/memory/memory-store';
+import type { BuiltMemory, MemoryConfig } from '../../types';
 import { Agent } from '../agent';
 import {
 	DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
@@ -65,8 +65,8 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveObservationalMemoryConfig({}, { defaultModel: 'openai/gpt-4o-mini' });
 
 		expect(resolved).toMatchObject({
-			observerThresholdTokens: 500,
-			reflectorThresholdTokens: 4_000,
+			observerThresholdTokens: 8_000,
+			reflectorThresholdTokens: 12_000,
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 			observationLogTailLimit: 20,
 			lockTtlMs: DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
@@ -106,7 +106,6 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveMemoryConfigDefaults(
 			{
 				memory: new InMemoryMemory(),
-				lastMessages: 10,
 				observationLog: { renderTokenBudget: 123 },
 				observationalMemory: {},
 			} as MemoryConfig,
@@ -121,7 +120,6 @@ describe('Memory builder — observation log memory', () => {
 		const resolved = resolveMemoryConfigDefaults(
 			{
 				memory: new InMemoryMemory(),
-				lastMessages: 10,
 				observationLog: { renderTokenBudget: 123 },
 				observationalMemory: { renderTokenBudget: 456 },
 			} as MemoryConfig,
@@ -139,22 +137,16 @@ describe('Memory builder — observation log memory', () => {
 			.instructions('You are a test assistant.')
 			.memory(memory);
 
-		const runtime = await (agent as unknown as { build(): Promise<AgentRuntime> }).build();
-		const runtimeConfig = (
-			runtime as unknown as {
-				config: {
-					observationLog?: { renderTokenBudget?: number };
-					observationalMemory?: ObservationalMemoryConfig;
-				};
-			}
-		).config;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
 
 		expect(runtimeConfig.observationLog).toEqual({
 			renderTokenBudget: DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		});
 		expect(runtimeConfig.observationalMemory).toMatchObject({
-			observerThresholdTokens: 500,
-			reflectorThresholdTokens: 4_000,
+			observerThresholdTokens: 8_000,
+			reflectorThresholdTokens: 12_000,
 		});
 		expect(typeof runtimeConfig.observationalMemory?.observe).toBe('function');
 		expect(typeof runtimeConfig.observationalMemory?.reflect).toBe('function');
@@ -162,12 +154,12 @@ describe('Memory builder — observation log memory', () => {
 
 	it('rejects backends that do not implement the observation-log store', () => {
 		const minimalBackend = {
-			getThread: jest.fn().mockResolvedValue(null),
-			saveThread: jest.fn().mockResolvedValue({}),
-			deleteThread: jest.fn().mockResolvedValue(undefined),
-			getMessages: jest.fn().mockResolvedValue([]),
-			saveMessages: jest.fn().mockResolvedValue(undefined),
-			deleteMessages: jest.fn().mockResolvedValue(undefined),
+			getThread: vi.fn().mockResolvedValue(null),
+			saveThread: vi.fn().mockResolvedValue({}),
+			deleteThread: vi.fn().mockResolvedValue(undefined),
+			getMessages: vi.fn().mockResolvedValue([]),
+			saveMessages: vi.fn().mockResolvedValue(undefined),
+			deleteMessages: vi.fn().mockResolvedValue(undefined),
 			describe: () => ({
 				name: 'minimal',
 				constructorName: 'MinimalMemory',

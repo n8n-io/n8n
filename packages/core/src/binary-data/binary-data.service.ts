@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { binaryToBuffer } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
@@ -12,7 +13,6 @@ import { ErrorReporter } from '@/errors';
 
 import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
-import { binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
 
 @Service()
@@ -36,7 +36,7 @@ export class BinaryDataService {
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
-		const { FileSystemManager } = await import('./file-system.manager');
+		const { FileSystemManager } = await import('./file-system.manager.js');
 		this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
 		this.managers['filesystem-v2'] = this.managers.filesystem;
 		await this.managers.filesystem.init();

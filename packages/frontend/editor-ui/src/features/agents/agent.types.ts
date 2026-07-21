@@ -16,21 +16,25 @@ export interface CustomToolEntry {
 	descriptor: ToolDescriptor;
 }
 
-import type { AgentVersionDto, AgentSkill } from '@n8n/api-types';
+import type { AgentVersionDto, AgentSkill, AgentJsonConfig } from '@n8n/api-types';
 
 export type AgentVersion = AgentVersionDto;
 
 export type Agent = {
 	id: string;
 	name: string;
-	description: string | null;
 	projectId: string;
 	isCompiled: boolean;
 	isRunnable?: boolean;
+	hasPublishHistory?: boolean;
 	createdAt: string;
 	updatedAt: string;
 	versionId: string | null;
 	activeVersionId: string | null;
+	// Narrow declaration of the agent's draft config, which the REST payloads
+	// already carry in full — only the fields the frontend reads off list
+	// responses are typed here.
+	schema?: Pick<AgentJsonConfig, 'personalisation'> | null;
 	tools: Record<string, CustomToolEntry>;
 	skills: Record<string, AgentSkill>;
 	activeVersion: AgentVersion | null;

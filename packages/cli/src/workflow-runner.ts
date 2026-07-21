@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	ErrorReporter,
@@ -13,10 +12,10 @@ import {
 	InstanceSettings,
 	StorageConfig,
 	WorkflowExecute,
+	WorkflowHasIssuesError,
 } from 'n8n-core';
 import type {
 	ExecutionError,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
@@ -42,6 +41,7 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ExternalHooks } from '@/external-hooks';
@@ -79,6 +79,7 @@ export class WorkflowRunner {
 		private readonly errorReporter: ErrorReporter,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
@@ -376,6 +377,7 @@ export class WorkflowRunner {
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
+		additionalData.evaluationRunId = data.evaluationRunId;
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
@@ -406,6 +408,10 @@ export class WorkflowRunner {
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef: data.pushRef,
 			});
+
+			if (data.configureAdditionalData) {
+				await data.configureAdditionalData(additionalData);
+			}
 
 			if (data.executionData !== undefined) {
 				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
@@ -474,6 +480,11 @@ export class WorkflowRunner {
 						),
 				);
 		} catch (error) {
+			if (error instanceof WorkflowHasIssuesError) {
+				await this.failExecution(data, executionId, error);
+				return;
+			}
+
 			await this.processError(
 				error,
 				new Date(),
@@ -503,6 +514,8 @@ export class WorkflowRunner {
 			restartExecutionId,
 			projectId: data.projectId,
 			projectName: data.projectName,
+			// Carry the manual-execution identity for private credential resolution on the worker.
+			encryptedRunnerIdentity: data.encryptedRunnerIdentity,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
@@ -512,7 +525,7 @@ export class WorkflowRunner {
 		};
 
 		if (!this.scalingService) {
-			const { ScalingService } = await import('@/scaling/scaling.service');
+			const { ScalingService } = await import('@/scaling/scaling.service.js');
 			this.scalingService = Container.get(ScalingService);
 			await this.scalingService.setupQueue();
 		}
@@ -600,7 +613,7 @@ export class WorkflowRunner {
 					!jobResult ||
 					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
 				) {
-					const fullExecutionData = await this.executionRepository.findSingleExecution(
+					const fullExecutionData = await this.executionPersistence.findSingleExecution(
 						executionId,
 						{
 							includeData: true,
@@ -679,7 +692,6 @@ export class WorkflowRunner {
 		forceFullExecutionData?: boolean,
 	): boolean {
 		if (forceFullExecutionData) return true;
-		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
 
 		return (
 			executionMode === 'integrated' ||

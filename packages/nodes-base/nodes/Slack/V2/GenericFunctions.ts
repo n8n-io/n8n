@@ -1,4 +1,6 @@
+import { Container } from '@n8n/di';
 import get from 'lodash/get';
+import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -10,7 +12,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 
-import type { SendAndWaitMessageBody } from './MessageInterface';
+import {
+	HITL_APPROVE_ACTION_ID,
+	HITL_DECLINE_ACTION_ID,
+	type SendAndWaitMessageBody,
+} from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../../utils/utilities';
 
@@ -33,6 +39,26 @@ interface RateLimitOptions {
 
 function isDefined<T>(value: T | undefined | null | ''): value is NonNullable<T> {
 	return value !== undefined && value !== null && value !== '';
+}
+
+// When an expression is wrapped in surrounding text/whitespace, n8n switches to
+// string interpolation and a multiOptions array is coerced to a comma-joined
+// string. Accept both shapes so the Slack node degrades gracefully.
+export function toMultiOptionsCsv(value: unknown): string {
+	if (Array.isArray(value)) {
+		return value
+			.map((entry) => String(entry).trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	if (typeof value === 'string') {
+		return value
+			.split(',')
+			.map((entry) => entry.trim())
+			.filter((entry) => entry.length > 0)
+			.join(',');
+	}
+	return '';
 }
 
 export async function slackApiRequest(
@@ -137,8 +163,8 @@ function hasNextPage(responseData: any, propertyName: string): boolean {
 		isDefined(responseData.paging.page) &&
 		responseData.paging.page < responseData.paging.pages;
 	const morePropertyPagesAvailable =
-		isDefined(responseData[propertyName].paging?.pages) &&
-		isDefined(responseData[propertyName].paging.page) &&
+		isDefined(responseData[propertyName]?.paging?.pages) &&
+		isDefined(responseData[propertyName]?.paging?.page) &&
 		responseData[propertyName].paging.page < responseData[propertyName].paging.pages;
 	return nextCursorDefined || morePagesAvailable || morePropertyPagesAvailable;
 }
@@ -234,7 +260,7 @@ export async function slackApiRequestAllItemsWithRateLimit<TResponseData>(
 		query.page++;
 		returnData.push.apply(
 			returnData,
-			(responseData[propertyName].matches as TResponseData[]) ?? responseData[propertyName],
+			(responseData[propertyName]?.matches as TResponseData[]) ?? responseData[propertyName] ?? [],
 		);
 	} while (hasNextPage(responseData, propertyName));
 
@@ -267,7 +293,7 @@ export async function slackApiRequestAllItems(
 		query.page++;
 		returnData.push.apply(
 			returnData,
-			(responseData[propertyName].matches as IDataObject[]) ?? responseData[propertyName],
+			(responseData[propertyName]?.matches as IDataObject[]) ?? responseData[propertyName] ?? [],
 		);
 	} while (hasNextPage(responseData, propertyName));
 	return returnData;
@@ -407,6 +433,18 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const config = getSendAndWaitConfig(context);
 
+	const responseType = context.getNodeParameter('responseType', 0, 'approval');
+
+	// Capture-responder only works with Approve/Reject buttons. Free-text and custom-form
+	// replies still use the plain link button.
+	const captureResponder =
+		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
+
+	// HMAC secret for the callback reference the CLI layer verifies to prove which execution and
+	// decision to resume (same helper/secret as Telegram). Only needed in capture-responder mode.
+	const executionId = context.getExecutionId();
+	const hmacSecret = captureResponder ? Container.get(InstanceSettings).hmacSignatureSecret : '';
+
 	const body: SendAndWaitMessageBody = {
 		channel: target,
 		blocks: [
@@ -433,18 +471,27 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 			{
 				type: 'actions',
-				elements: config.options.map((option) => {
-					return {
-						type: 'button',
-						style: option.style === 'primary' ? 'primary' : undefined,
-						text: {
-							type: 'plain_text',
-							text: option.label,
-							emoji: true,
-						},
-						url: option.url,
-					};
-				}),
+				elements: config.options.map((option) => ({
+					type: 'button',
+					style: option.style === 'primary' ? 'primary' : undefined,
+					text: {
+						type: 'plain_text',
+						text: option.label,
+						emoji: true,
+					},
+					// A button with a `url` is a plain link. In capture-responder mode we drop
+					// the url so Slack treats it as interactive and POSTs the click to us instead.
+					...(captureResponder
+						? {
+								action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
+								value: buildHitlCallbackReference(
+									executionId,
+									option.approved ? 'a' : 'd',
+									hmacSecret,
+								),
+							}
+						: { url: option.url }),
+				})),
 			},
 		],
 	};

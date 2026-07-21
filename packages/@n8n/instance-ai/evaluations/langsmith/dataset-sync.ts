@@ -3,9 +3,14 @@
 //
 // Syncs JSON test case files from the repo to a LangSmith dataset. Existing
 // examples are found by inputs (testCaseFile + scenarioName) and updated in
-// place; new scenarios get a random UUID. Stale examples are left in place
-// — LangSmith's soft-delete tombstones UUIDs, which historically caused 409
-// conflicts on resurrection; manual orphan cleanup happens via UI or MCP.
+// place; new scenarios get a random UUID. Stale examples (scenario removed
+// from a test case present in the sync) are ARCHIVED: moved to the
+// 'archived' split, never deleted — LangSmith's soft-delete tombstones
+// UUIDs, which historically caused 409 conflicts on resurrection, and
+// deleting also strips the example from the UI. evaluate() selects examples
+// by file-slug/tier splits, so archived examples are excluded from runs; a
+// re-added scenario is found by inputs and restored to its active splits
+// through the normal update path.
 // ---------------------------------------------------------------------------
 
 import { randomUUID } from 'crypto';
@@ -13,7 +18,7 @@ import type { Client } from 'langsmith';
 import type { Example, KVMap } from 'langsmith/schemas';
 import { z } from 'zod';
 
-import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 
 /**
@@ -41,6 +46,14 @@ export const datasetExampleMetadataSchema = z.object({
 export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema>;
 
 /**
+ * Split assigned to examples whose scenario no longer exists in the repo.
+ * Runs select examples by file-slug/tier splits, so this split acts as an
+ * archive: excluded from every run, still inspectable in the UI. (A test
+ * case file named "archived" would collide with it — don't create one.)
+ */
+export const ARCHIVED_SPLIT = 'archived';
+
+/**
  * Sync JSON test cases to a LangSmith dataset.
  *
  * - Creates the dataset if it doesn't exist
@@ -48,8 +61,16 @@ export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema
  * - Creates new scenarios with a random UUID
  * - Orders examples round-robin across test cases for optimal parallelism
  * - Assigns each example to a split (test case file slug) for UI filtering
+ * - Archives stale examples (split → 'archived') so removed scenarios stop
+ *   running — a stale example otherwise fails every attempt and skews the
+ *   experiment's aggregate metrics. Scoped to test cases present in this
+ *   sync: examples of filtered-out or deleted CASES are left alone (the two
+ *   are indistinguishable here — deleted-case cleanup stays manual)
  *
- * Never deletes. Orphan cleanup is manual (LangSmith UI or MCP).
+ * Takes the already-selected test cases (the caller loads them once, from disk
+ * or lang-tracer, and threads them through), so the sync stays source-agnostic.
+ *
+ * Never deletes. Hard removal stays manual (LangSmith UI or MCP).
  *
  * Returns the dataset name for use with evaluate().
  */
@@ -57,11 +78,8 @@ export async function syncDataset(
 	lsClient: Client,
 	datasetName: string,
 	logger: EvalLogger,
-	filter?: string,
-	exclude?: string,
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
 ): Promise<string> {
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(filter, exclude);
-
 	// Round-robin ordering ensures evaluate() triggers diverse builds early
 	// rather than burning all concurrency slots on one test case.
 	const scenarios = buildRoundRobinScenarios(testCasesWithFiles);
@@ -92,9 +110,10 @@ export async function syncDataset(
 		existingByDerivedId.set(`${inputs.data.testCaseFile}/${inputs.data.scenarioName}`, example);
 	}
 
-	// Diff and sync
-	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
-	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
+	// Diff and sync. `split` is multi-valued so a case can belong to multiple
+	// logical groupings (e.g. ['pr', 'full']) in addition to its per-file slug.
+	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
+	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string[] }> = [];
 
 	for (const scenario of scenarios) {
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
@@ -114,17 +133,20 @@ export async function syncDataset(
 			triggerType: scenario.triggerType,
 		};
 
+		const split = [scenario.testCaseFile, ...scenario.datasets];
+
 		const existingExample = existingByDerivedId.get(derivedId);
 		if (existingExample) {
 			if (
 				hasInputsChanged(existingExample.inputs, inputs) ||
-				hasMetadataChanged(existingExample.metadata, metadata)
+				hasMetadataChanged(existingExample.metadata, metadata) ||
+				hasSplitChanged(existingExample.split, split)
 			) {
 				toUpdate.push({
 					id: existingExample.id,
 					inputs,
 					metadata,
-					split: scenario.testCaseFile,
+					split,
 				});
 			}
 		} else {
@@ -132,9 +154,33 @@ export async function syncDataset(
 				id: randomUUID(),
 				inputs,
 				metadata,
-				split: scenario.testCaseFile,
+				split,
 			});
 		}
+	}
+
+	// Archive stale examples: a scenario that was removed from a test case
+	// still has its example matching the case's file-slug split, so evaluate()
+	// keeps running it — failing every attempt and depressing the experiment
+	// aggregates (observed: an `empty-response` example whose scenario had
+	// been removed from the repo burned 3 runs per eval and skewed pass_at_k
+	// in every experiment). Only examples belonging to a test case IN THIS
+	// SYNC are considered: the selection reaching us is already narrowed by
+	// --filter/--exclude/--tier, and a filtered-out case is indistinguishable
+	// from a deleted one — archiving across the whole dataset would wrongly
+	// archive everything unselected. Split-only update: inputs/metadata stay
+	// untouched for forensics.
+	const syncedCaseSlugs = new Set(testCasesWithFiles.map((tc) => tc.fileSlug));
+	const currentDerivedIds = new Set(scenarios.map((s) => `${s.testCaseFile}/${s.scenarioName}`));
+	const toArchive: Array<{ id: string; derivedId: string }> = [];
+	for (const [derivedId, example] of existingByDerivedId) {
+		if (currentDerivedIds.has(derivedId)) continue;
+		// File slugs are path basenames and cannot contain '/'.
+		const exampleCaseSlug = derivedId.slice(0, derivedId.indexOf('/'));
+		if (!syncedCaseSlugs.has(exampleCaseSlug)) continue;
+		// Already archived on a previous sync — keep the operation idempotent.
+		if (!hasSplitChanged(example.split, [ARCHIVED_SPLIT])) continue;
+		toArchive.push({ id: example.id, derivedId });
 	}
 
 	if (toCreate.length > 0) {
@@ -163,7 +209,20 @@ export async function syncDataset(
 		logger.info(`  Updated ${String(toUpdate.length)} example(s)`);
 	}
 
-	if (toCreate.length === 0 && toUpdate.length === 0) {
+	if (toArchive.length > 0) {
+		await lsClient.updateExamples(
+			toArchive.map((e) => ({
+				id: e.id,
+				split: [ARCHIVED_SPLIT],
+				dataset_id: datasetId,
+			})),
+		);
+		logger.info(
+			`  Archived ${String(toArchive.length)} stale example(s): ${toArchive.map((e) => e.derivedId).join(', ')}`,
+		);
+	}
+
+	if (toCreate.length === 0 && toUpdate.length === 0 && toArchive.length === 0) {
 		logger.info('  Dataset up to date');
 	}
 
@@ -174,6 +233,11 @@ export async function syncDataset(
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Scenario name for the single "build-only" row a 0-scenario case emits, so the
+ *  workflow still builds and its process/outcome expectations get judged. Shared
+ *  with target() and reshape so all three agree on the sentinel. */
+export const BUILD_ONLY_SCENARIO_NAME = '__build_only__';
+
 interface FlatScenario {
 	testCaseFile: string;
 	scenarioName: string;
@@ -183,6 +247,8 @@ interface FlatScenario {
 	complexity?: 'simple' | 'medium' | 'complex';
 	tags?: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
+	/** Logical groupings (e.g. ['pr', 'full']) — written into the LangSmith example's splits alongside the file slug. */
+	datasets: string[];
 }
 
 /**
@@ -194,13 +260,13 @@ interface FlatScenario {
 function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]): FlatScenario[] {
 	const result: FlatScenario[] = [];
 	const maxScenarios = Math.max(
-		...testCasesWithFiles.map((tc) => tc.testCase.executionScenarios.length),
+		...testCasesWithFiles.map((tc) => (tc.testCase.executionScenarios ?? []).length),
 		0,
 	);
 
 	for (let i = 0; i < maxScenarios; i++) {
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenario = testCase.executionScenarios[i];
+			const scenario = testCase.executionScenarios?.[i];
 			if (scenario) {
 				result.push({
 					testCaseFile: fileSlug,
@@ -211,8 +277,26 @@ function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]
 					complexity: testCase.complexity,
 					tags: testCase.tags,
 					triggerType: testCase.triggerType,
+					datasets: testCase.datasets,
 				});
 			}
+		}
+	}
+
+	// Build-only cases (0 scenarios) emit one sentinel row so the workflow still builds and its expectations get judged.
+	for (const { testCase, fileSlug } of testCasesWithFiles) {
+		if ((testCase.executionScenarios?.length ?? 0) === 0) {
+			result.push({
+				testCaseFile: fileSlug,
+				scenarioName: BUILD_ONLY_SCENARIO_NAME,
+				scenarioDescription: '',
+				dataSetup: '',
+				successCriteria: '',
+				complexity: testCase.complexity,
+				tags: testCase.tags,
+				triggerType: testCase.triggerType,
+				datasets: testCase.datasets,
+			});
 		}
 	}
 
@@ -265,4 +349,13 @@ function hasMetadataChanged(existing: unknown, incoming: DatasetExampleMetadata)
 		e.triggerType !== (incoming.triggerType ?? '') ||
 		JSON.stringify(e.tags) !== JSON.stringify(incoming.tags ?? [])
 	);
+}
+
+// Split (file slug + datasets/tiers) is order-insensitive — compare as sets so a
+// reorder isn't a change, but adding/removing a tier is and triggers a re-sync.
+function hasSplitChanged(existing: string | string[] | undefined, incoming: string[]): boolean {
+	const current = existing === undefined ? [] : Array.isArray(existing) ? existing : [existing];
+	if (current.length !== incoming.length) return true;
+	const incomingSet = new Set(incoming);
+	return !current.every((s) => incomingSet.has(s));
 }

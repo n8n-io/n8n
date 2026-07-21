@@ -118,7 +118,7 @@ test.describe(
 
 			await n8n.ndv.getParameterInputField('path').clear();
 
-			const webhookUrlsContainer = n8n.ndv.container.getByText('Webhook URLs').locator('..');
+			const webhookUrlsContainer = n8n.ndv.getWebhookUrlsContainer();
 			const urlText = await webhookUrlsContainer.textContent();
 			const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 			expect(urlText).toMatch(uuidRegex);
@@ -153,7 +153,7 @@ test.describe(
 			await n8n.canvas.openNode('Edit Fields (old)');
 			await n8n.ndv.openSettings();
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Set node version 2');
-			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest version: 3.4');
+			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest version: 3.5');
 			await n8n.ndv.close();
 
 			await n8n.canvas.openNode('Edit Fields (latest)');

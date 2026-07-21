@@ -4,15 +4,25 @@ import { useVueFlow, type GraphEdge, type GraphNode, type XYPosition } from '@vu
 import { STICKY_NODE_TYPE } from '@/app/constants';
 import {
 	CanvasNodeRenderType,
+	isCanvasGroupNode,
 	type BoundingBox,
 	type CanvasConnection,
-	type CanvasConnectionPort,
+	type CanvasGroupNode,
 	type CanvasNodeData,
 } from '../canvas.types';
 import { isPresent } from '@/app/utils/typesUtils';
-import { DEFAULT_NODE_SIZE, GRID_SIZE, calculateNodeSize } from '@/app/utils/nodeViewUtils';
+import {
+	AGENT_NODE_SIZE,
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	snapPositionToGridByCenter,
+} from '@/app/utils/nodeViewUtils';
+import {
+	GROUP_HEADER_HEIGHT,
+	GROUP_HEADER_WIDTH_COLLAPSED,
+} from '../stores/canvasNodeGroups.constants';
 import type { ComputedRef, Ref } from 'vue';
-import type { CanvasRenderData } from '../canvas.utils';
+import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -25,6 +35,7 @@ export type CanvasLayoutSource =
 export type CanvasLayoutTargetData = {
 	nodes: Array<GraphNode<CanvasNodeData>>;
 	edges: CanvasConnection[];
+	collapsedGroups: CanvasGroupNode[];
 };
 
 export type NodeLayoutResult = {
@@ -64,11 +75,27 @@ export function useCanvasLayout(
 		nodes: allNodes,
 	} = useVueFlow(canvasId);
 
+	function getSourceNodes(target: CanvasLayoutTarget) {
+		return target === 'selection' ? getSelectedNodes.value : allNodes.value;
+	}
+
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
-		if (target === 'selection') {
-			return { nodes: getSelectedNodes.value, edges: allEdges.value };
-		}
-		return { nodes: allNodes.value, edges: allEdges.value };
+		const source = getSourceNodes(target);
+
+		const collapsedGroups = source
+			.filter(isCanvasGroupNode)
+			.filter((node) => node.data.isCollapsed);
+
+		// Collapsed groups: keep the chip as one unit, discard its hidden members
+		// Expanded groups: discard the chip, keep the members
+		const belongsInGraph = (node: GraphNode<CanvasNodeData>) =>
+			isCanvasGroupNode(node) ? node.data.isCollapsed : !node.hidden;
+
+		return {
+			nodes: source.filter(belongsInGraph),
+			edges: allEdges.value,
+			collapsedGroups,
+		};
 	}
 
 	function sortByPosition(posA: XYPosition, posB: XYPosition): number {
@@ -94,6 +121,14 @@ export function useCanvasLayout(
 	}
 
 	function getNodeDimensions(node: GraphNode<CanvasNodeData>): { width: number; height: number } {
+		// A collapsed group enters the graph as its fixed-size chip
+		if (isCanvasGroupNode(node)) {
+			return {
+				width: node.dimensions?.width || GROUP_HEADER_WIDTH_COLLAPSED,
+				height: node.dimensions?.height || GROUP_HEADER_HEIGHT,
+			};
+		}
+
 		// Check if dimensions exist and have valid values
 		if (
 			node.dimensions &&
@@ -106,40 +141,26 @@ export function useCanvasLayout(
 		}
 
 		// Calculate dimensions based on node data
-		if (node.data && node.data.render) {
-			const isConfiguration =
-				node.data.render.type === CanvasNodeRenderType.Default &&
-				node.data.render.options.configuration === true;
-			const isConfigurable =
-				node.data.render.type === CanvasNodeRenderType.Default &&
-				node.data.render.options.configurable === true;
-
-			// Get input/output counts from render data (single source of truth)
-			const inputs: CanvasConnectionPort[] =
-				renderData.value.nodeInputsByNodeId.get(node.id)?.value ?? [];
-			const outputs: CanvasConnectionPort[] =
-				renderData.value.nodeOutputsByNodeId.get(node.id)?.value ?? [];
-			const mainInputCount = inputs.filter((input) => input.type === 'main').length || 1;
-			const mainOutputCount = outputs.filter((output) => output.type === 'main').length || 1;
-			const nonMainInputCount =
-				inputs.filter((input) => input.type !== 'main').length +
-				outputs.filter((output) => output.type !== 'main').length;
-
-			return calculateNodeSize(
-				isConfiguration,
-				isConfigurable,
-				mainInputCount,
-				mainOutputCount,
-				nonMainInputCount,
+		if (node.data?.render?.type === CanvasNodeRenderType.Default) {
+			return computeNodeDisplaySize(
+				node.id,
+				node.data.render.options,
+				renderData.value,
 				isEmbeddedNdvActive.value,
 			);
+		}
+
+		// The agent card is far larger than the default node — without this the
+		// unmeasured fallback below would feed dagre a 96x96 box for it
+		if (node.data?.render?.type === CanvasNodeRenderType.Agent) {
+			return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
 		}
 
 		// Fallback to default size
 		return { width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
 	}
 
-	function createDagreGraph({ nodes, edges }: CanvasLayoutTargetData) {
+	function createDagreGraph({ nodes, edges }: Pick<CanvasLayoutTargetData, 'nodes' | 'edges'>) {
 		const graph = new dagre.graphlib.Graph();
 		graph.setDefaultEdgeLabel(() => ({}));
 
@@ -346,14 +367,14 @@ export function useCanvasLayout(
 
 	function isAiParentNode(node: CanvasNodeData) {
 		return (
-			node.render.type === CanvasNodeRenderType.Default &&
+			node.render?.type === CanvasNodeRenderType.Default &&
 			node.render.options.configurable &&
 			!node.render.options.configuration
 		);
 	}
 
 	function isAiConfigNode(node: CanvasNodeData) {
-		return node.render.type === CanvasNodeRenderType.Default && node.render.options.configuration;
+		return node.render?.type === CanvasNodeRenderType.Default && node.render.options.configuration;
 	}
 
 	function getAllConnectedAiConfigNodes({
@@ -375,7 +396,9 @@ export function useCanvasLayout(
 	}
 
 	function layout(target: CanvasLayoutTarget): CanvasLayoutResult {
-		const { nodes, edges } = getTargetData(target);
+		// Collapsed groups are laid out as single chips — afterwards we translate
+		// their members so each chip lands where dagre placed it
+		const { nodes, edges, collapsedGroups } = getTargetData(target);
 
 		const nonStickyNodes = nodes
 			.filter((node) => node.data.type !== STICKY_NODE_TYPE)
@@ -528,11 +551,39 @@ export function useCanvasLayout(
 				}
 			});
 
+		// Measure while groups are still chips, to match boundingBoxBefore
+		const boundingBoxAfter = compositeBoundingBox(Object.values(boundingBoxByNodeId));
+
+		// Move hidden nodes by the same offset as their collapsed group chip,
+		// then remove the chip since its position is derived from the nodes
+		for (const groupNode of collapsedGroups) {
+			const chipBox = boundingBoxByNodeId[groupNode.id];
+			if (!chipBox || !groupNode.data) continue;
+
+			const delta = {
+				x: chipBox.x - groupNode.position.x,
+				y: chipBox.y - groupNode.position.y,
+			};
+
+			for (const memberId of groupNode.data.group.nodeIds) {
+				const member = findNode<CanvasNodeData>(memberId);
+				if (!member) continue;
+				const box = boundingBoxFromCanvasNode(member);
+				boundingBoxByNodeId[memberId] = {
+					x: box.x + delta.x,
+					y: box.y + delta.y,
+					width: box.width,
+					height: box.height,
+				};
+			}
+
+			delete boundingBoxByNodeId[groupNode.id];
+		}
+
 		const positionedNodes = Object.entries(boundingBoxByNodeId).map(([id, boundingBox]) => ({
 			id,
 			boundingBox,
 		}));
-		const boundingBoxAfter = compositeBoundingBox(positionedNodes.map((node) => node.boundingBox));
 
 		const anchor = {
 			x: boundingBoxAfter.x - boundingBoxBefore.x,
@@ -576,13 +627,35 @@ export function useCanvasLayout(
 
 		const snapToGrid = (value: number) => Math.round(value / GRID_SIZE) * GRID_SIZE;
 
-		const finalNodes = positionedNodes.concat(positionedStickies).map(({ id, boundingBox }) => {
-			return {
-				id,
-				x: snapToGrid(boundingBox.x - anchor.x),
-				y: snapToGrid(boundingBox.y - anchor.y),
-			};
-		});
+		// Snap by node center, not top-left: dagre aligns node centers and the
+		// connection handles sit at 50% of node height, so snapping the top-left
+		// corner shifts any node whose height isn't a multiple of two grid cells
+		// (e.g. the content-sized agent card) off the shared axis, leaving its
+		// connections slightly inclined. For default-size nodes the two are
+		// equivalent, since half their extent is already grid-aligned.
+		const finalNodes = positionedNodes
+			.map(({ id, boundingBox }) => {
+				const [x, y] = snapPositionToGridByCenter(
+					[boundingBox.x - anchor.x, boundingBox.y - anchor.y],
+					[boundingBox.width, boundingBox.height],
+				);
+				return {
+					id,
+					x,
+					y,
+				};
+			})
+			// Stickies have no connections to keep straight, so their top-left
+			// corner staying on the grid is the better-looking behavior.
+			.concat(
+				positionedStickies.map(({ id, boundingBox }) => {
+					return {
+						id,
+						x: snapToGrid(boundingBox.x - anchor.x),
+						y: snapToGrid(boundingBox.y - anchor.y),
+					};
+				}),
+			);
 
 		return {
 			boundingBox: boundingBoxAfter,

@@ -12,16 +12,16 @@ import {
 	getEpisodicMemoryScope,
 	rankEpisodicMemoryEntries,
 	runEpisodicMemoryIndexer,
-} from '../episodic-memory';
-import { InMemoryMemory } from '../memory-store';
+} from '../memory/episodic-memory';
+import { InMemoryMemory } from '../memory/memory-store';
 
-jest.mock('ai', () => ({
-	embed: jest.fn(),
-	embedMany: jest.fn(),
+vi.mock('ai', () => ({
+	embed: vi.fn(),
+	embedMany: vi.fn(),
 }));
 
-const mockedEmbed = jest.mocked(embed);
-const mockedEmbedMany = jest.mocked(embedMany);
+const mockedEmbed = vi.mocked(embed);
+const mockedEmbedMany = vi.mocked(embedMany);
 const fakeEmbedder = { specificationVersion: 'v2' } as never;
 
 function entry(overrides: Partial<EpisodicMemoryEntry> = {}): EpisodicMemoryEntry {
@@ -219,9 +219,9 @@ describe('createRecallMemoryTool', () => {
 	it('counts recall query embedding tokens when usage is available', async () => {
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 7 } } as never);
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 		const memory = new InMemoryMemory();
 		const tool = createRecallMemoryTool({
@@ -306,7 +306,7 @@ describe('InMemoryMemory episodic source cleanup', () => {
 
 describe('runEpisodicMemoryIndexer', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 1 } } as never);
 		mockedEmbed.mockResolvedValue({ embedding: [1, 0], usage: { tokens: 1 } } as never);
 	});
@@ -365,6 +365,59 @@ describe('runEpisodicMemoryIndexer', () => {
 		).resolves.toEqual({ status: 'skipped', reason: 'no-observations' });
 	});
 
+	it('does not persist secret values in entry content or evidence', async () => {
+		const memory = new InMemoryMemory();
+		const [observation] = await memory.appendObservationLogEntries([
+			{
+				observationScopeId: 'thread-1',
+				marker: 'critical',
+				text: 'User provided the Slack bot token xoxb-1234567890-abcdefghij for the integration.',
+				createdAt: new Date('2026-05-12T10:00:00.000Z'),
+			},
+		]);
+		const extract: EpisodicMemoryExtractFn = async () =>
+			await Promise.resolve({
+				entries: [
+					{
+						content:
+							'User provided the Slack bot token xoxb-1234567890-abcdefghij for the integration.',
+						sources: [
+							{
+								observationId: observation.id,
+								evidence: 'User provided the Slack bot token xoxb-1234567890-abcdefghij',
+							},
+						],
+					},
+				],
+			});
+
+		const result = await runEpisodicMemoryIndexer({
+			memory,
+			config: { embedder: fakeEmbedder, extract },
+			scope: { resourceId: 'user-1' },
+			observationScope: { observationScopeId: 'thread-1' },
+			threadId: 'thread-1',
+			now: new Date('2026-05-12T10:01:00.000Z'),
+		});
+
+		expect(result).toEqual({ status: 'ran', entriesWritten: 1, observationsIndexed: 1 });
+		const [stored] = await memory.episodic.searchEntries(
+			{ resourceId: 'user-1' },
+			'Slack bot token integration',
+			{ queryEmbedding: [1, 0] },
+		);
+		expect(stored.content).toContain('[REDACTED]');
+		expect(stored.content).not.toContain('xoxb-1234567890-abcdefghij');
+
+		const sources = Reflect.get(memory, 'episodicMemorySources') as Array<{
+			observationId: string;
+			evidenceText: string;
+		}>;
+		const source = sources.find((s) => s.observationId === observation.id);
+		expect(source?.evidenceText).toContain('[REDACTED]');
+		expect(source?.evidenceText).not.toContain('xoxb-1234567890-abcdefghij');
+	});
+
 	it('does not leave searchable entries behind when source persistence fails', async () => {
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
@@ -376,7 +429,7 @@ describe('runEpisodicMemoryIndexer', () => {
 			},
 		]);
 		const sourceError = new Error('entry/source write failed');
-		jest.spyOn(memory.episodic, 'saveEntryWithSources').mockRejectedValueOnce(sourceError);
+		vi.spyOn(memory.episodic, 'saveEntryWithSources').mockRejectedValueOnce(sourceError);
 		const extract: EpisodicMemoryExtractFn = async () =>
 			await Promise.resolve({
 				entries: [
@@ -411,9 +464,9 @@ describe('runEpisodicMemoryIndexer', () => {
 	it('counts episodic entry embedding tokens when usage is available', async () => {
 		mockedEmbedMany.mockResolvedValue({ embeddings: [[1, 0]], usage: { tokens: 23 } } as never);
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 		const memory = new InMemoryMemory();
 		const [observation] = await memory.appendObservationLogEntries([
@@ -738,9 +791,9 @@ describe('runEpisodicMemoryIndexer', () => {
 			usage: { tokens: 2 },
 		} as never);
 		const counter = {
-			incrementMessageCount: jest.fn(),
-			incrementToolCallCount: jest.fn(),
-			incrementTokenCount: jest.fn(),
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
 		};
 
 		await runEpisodicMemoryIndexer({

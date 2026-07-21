@@ -5,6 +5,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
+	NodeHelpers,
 	UserError,
 	deepCopy,
 } from 'n8n-workflow';
@@ -12,10 +13,14 @@ import type {
 	IConnection,
 	IConnections,
 	INode,
+	INodeParameterResourceLocator,
 	INodeParameters,
+	INodeTypeDescription,
 	IWorkflowBase,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
+
+import { NodeTypes } from '@/node-types';
 
 import { isCoercibleBooleanExpression } from '../evaluation-config-validator';
 import { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
@@ -40,10 +45,17 @@ type UserTriggerEdge = {
 
 @Service()
 export class WorkflowCompilerService {
-	constructor(private readonly providerRegistry: LlmJudgeProviderRegistry) {}
+	constructor(
+		private readonly providerRegistry: LlmJudgeProviderRegistry,
+		private readonly nodeTypes: NodeTypes,
+	) {}
 
 	compile(workflow: IWorkflowBase, config: EvaluationConfig): IWorkflowBase {
 		this.assertNoReservedNames(workflow);
+
+		// Neutralise evaluation nodes the saved workflow already had so the
+		// compiled output doesn't end up with duplicate triggers / metrics.
+		workflow = this.prepareExistingEvaluationNodes(workflow);
 
 		const entryNodeName = this.resolveEntryNode(workflow, config);
 		const entryPos = this.positionOf(workflow, entryNodeName) ?? [0, 0];
@@ -125,6 +137,65 @@ export class WorkflowCompilerService {
 			...node,
 			parameters: rewriteExpressionRefs(node.parameters, fromName) as INodeParameters,
 		};
+	}
+
+	/**
+	 * Neutralises evaluation nodes the saved workflow already contains so the
+	 * config-compiled workflow doesn't end up with duplicates:
+	 *  - Pre-existing EvaluationTrigger nodes are removed (this method injects its
+	 *    own __eval_trigger; a leftover trigger would fire independently). Their
+	 *    connection edges are pruned so the rest of the graph stays consistent.
+	 *  - Set Metrics / Set Outputs / Set Inputs nodes are *disabled* rather than
+	 *    removed, leaving the workflow structure (and any downstream wiring)
+	 *    intact. The runner already ignores disabled evaluation nodes when
+	 *    collecting metrics, so they can't double-count.
+	 *  - "Is evaluation run" (checkIfEvaluating) nodes are left untouched so their
+	 *    branch still resolves correctly during the compiled run.
+	 *
+	 * This assumes the saved workflow still has its own (non-evaluation) trigger
+	 * feeding the entry node — the normal case for a workflow that gained eval
+	 * nodes on top of a complete flow.
+	 */
+	private prepareExistingEvaluationNodes(workflow: IWorkflowBase): IWorkflowBase {
+		const removedTriggerNames = new Set(
+			workflow.nodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
+		);
+
+		const nodes = workflow.nodes
+			.filter((n) => !removedTriggerNames.has(n.name))
+			.map((n) =>
+				n.type === EVALUATION_NODE_TYPE && n.parameters?.operation !== 'checkIfEvaluating'
+					? { ...n, disabled: true }
+					: n,
+			);
+
+		if (removedTriggerNames.size === 0) {
+			return { ...workflow, nodes };
+		}
+
+		const connections = this.pruneConnectionsTo(workflow.connections, removedTriggerNames);
+		return { ...workflow, nodes, connections };
+	}
+
+	/**
+	 * Returns a copy of `connections` with every reference to a removed node
+	 * gone: the removed node's own outgoing entry is dropped, and any edge
+	 * pointing at a removed node is filtered out.
+	 */
+	private pruneConnectionsTo(connections: IConnections, removed: Set<string>): IConnections {
+		const out: IConnections = {};
+		for (const [sourceNode, byType] of Object.entries(connections)) {
+			if (removed.has(sourceNode)) continue;
+
+			const prunedByType: IConnections[string] = {};
+			for (const [connType, buckets] of Object.entries(byType)) {
+				prunedByType[connType] = buckets.map((bucket) =>
+					bucket === null ? null : bucket.filter((edge) => !removed.has(edge.node)),
+				);
+			}
+			out[sourceNode] = prunedByType;
+		}
+		return out;
 	}
 
 	private assertNoReservedNames(workflow: IWorkflowBase): void {
@@ -242,11 +313,38 @@ export class WorkflowCompilerService {
 				},
 			};
 		}
+		if (metric.type === 'string_similarity') {
+			return {
+				operation: 'setMetrics',
+				metric: 'stringSimilarity',
+				actualAnswer: metric.config.inputs.actualAnswer,
+				expectedAnswer: metric.config.inputs.expectedAnswer,
+				options: { metricName: metric.name },
+			};
+		}
+		if (metric.type === 'categorization') {
+			return {
+				operation: 'setMetrics',
+				metric: 'categorization',
+				actualAnswer: metric.config.inputs.actualAnswer,
+				expectedAnswer: metric.config.inputs.expectedAnswer,
+				options: { metricName: metric.name },
+			};
+		}
+		if (metric.type === 'tools_used') {
+			return {
+				operation: 'setMetrics',
+				metric: 'toolsUsed',
+				expectedTools: metric.config.inputs.expectedTools,
+				intermediateSteps: metric.config.inputs.intermediateSteps,
+				options: { metricName: metric.name },
+			};
+		}
 		const { preset, prompt, inputs } = metric.config;
 		return {
 			operation: 'setMetrics',
 			metric: preset,
-			prompt,
+			...(prompt !== undefined ? { prompt } : {}),
 			actualAnswer: inputs.actualAnswer,
 			...(preset === 'correctness' ? { expectedAnswer: inputs.expectedAnswer ?? '' } : {}),
 			...(preset === 'helpfulness' ? { userQuery: inputs.userQuery ?? '' } : {}),
@@ -262,20 +360,70 @@ export class WorkflowCompilerService {
 		metricY: number,
 	): INode[] {
 		if (metric.type !== 'llm_judge') return [];
+		const { typeVersion, model } = this.resolveChatModelShape(
+			metric.config.provider,
+			metric.config.model,
+		);
 		return [
 			{
 				id: nanoid(),
 				name: `__eval_model_${metric.id}`,
 				type: metric.config.provider,
-				typeVersion: 1,
+				typeVersion,
 				position: [metricX, metricY + MODEL_OFFSET_Y],
 				credentials: this.credentialsForProvider(
 					metric.config.provider,
 					metric.config.credentialId,
 				),
-				parameters: { model: metric.config.model },
+				parameters: { model },
 			},
 		];
+	}
+
+	/**
+	 * Shapes the judge's chat-model sub-node to the provider node's current definition
+	 * instead of pinning it to a legacy version: uses the node's default `typeVersion`
+	 * and emits `model` as a resource locator when that version's `model` property
+	 * expects one (a plain string otherwise). Falls back to the legacy v1 + string form
+	 * if the node type can't be introspected, so judging keeps working.
+	 */
+	private resolveChatModelShape(
+		provider: string,
+		modelId: string,
+	): { typeVersion: number; model: string | INodeParameterResourceLocator } {
+		const legacyShape = { typeVersion: 1, model: modelId };
+		try {
+			const description = this.nodeTypes.getByNameAndVersion(provider).description;
+			const typeVersion = Array.isArray(description.version)
+				? (description.defaultVersion ?? Math.max(...description.version))
+				: description.version;
+			if (!Number.isFinite(typeVersion)) return legacyShape;
+
+			return {
+				typeVersion,
+				model: this.modelExpectsResourceLocator(description, typeVersion)
+					? { __rl: true, mode: 'list', value: modelId, cachedResultName: modelId }
+					: modelId,
+			};
+		} catch {
+			return legacyShape;
+		}
+	}
+
+	/**
+	 * Whether the `model` property shown at `typeVersion` is a resource locator. Chat-model
+	 * nodes gate several `model` variants by `@version`, so pick the one that displays at
+	 * this version and read its declared type.
+	 */
+	private modelExpectsResourceLocator(
+		description: INodeTypeDescription,
+		typeVersion: number,
+	): boolean {
+		const modelProp = description.properties.find(
+			(p) =>
+				p.name === 'model' && NodeHelpers.displayParameter({}, p, { typeVersion }, description),
+		);
+		return modelProp?.type === 'resourceLocator';
 	}
 
 	private credentialsForProvider(provider: string, credentialId: string) {

@@ -1,22 +1,23 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import * as update from '../../../../v2/actions/record/update.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction } from '../helpers';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		apiRequest: jest.fn(async function () {
+		apiRequest: vi.fn(async function () {
 			return {};
 		}),
-		batchUpdate: jest.fn(async function () {
+		batchUpdate: vi.fn(async function () {
 			return {};
 		}),
-		apiRequestAllItems: jest.fn(async function (method: string) {
+		apiRequestAllItems: vi.fn(async function (method: string) {
 			if (method === 'GET') {
 				return {
 					records: [
@@ -45,12 +46,12 @@ describe('Test AirtableV2, update operation', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should skip validation if typecast option is true', async () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
-		mockExecuteFunctions.helpers.constructExecutionMetaData = jest.fn(() => []);
+		mockExecuteFunctions.helpers.constructExecutionMetaData = vi.fn(() => []);
 		mockExecuteFunctions.getNode.mockReturnValue({
 			parameters: { columns: { schema: [] } },
 		} as any);
@@ -85,7 +86,7 @@ describe('Test AirtableV2, update operation', () => {
 
 	it('should coerce attachment JSON string to array and allow new single-select option when typecast is true', async () => {
 		mockExecuteFunctions = mock<IExecuteFunctions>();
-		mockExecuteFunctions.helpers.constructExecutionMetaData = jest.fn(() => []);
+		mockExecuteFunctions.helpers.constructExecutionMetaData = vi.fn(() => []);
 		mockExecuteFunctions.getNode.mockReturnValue({
 			parameters: {
 				columns: {
@@ -212,6 +213,117 @@ describe('Test AirtableV2, update operation', () => {
 			'appYoLbase/tblltable',
 			{ typecast: false },
 			[{ fields: { bar: 'bar 1', foo: 'foo 1', id: 'recXXX' }, id: 'recXXX' }],
+		);
+	});
+
+	it('should update a record by lookup field with array value, autoMapInputData', async () => {
+		vi.mocked(transport.apiRequestAllItems).mockResolvedValueOnce({
+			records: [
+				{
+					id: 'recAAA',
+					fields: {
+						lookupField: ['lookup_val_1'],
+					},
+				},
+				{
+					id: 'recBBB',
+					fields: {
+						lookupField: ['lookup_val_2'],
+					},
+				},
+			],
+		});
+
+		const nodeParameters = {
+			operation: 'update',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['lookupField'],
+			},
+			options: {},
+		};
+
+		const items = [
+			{
+				json: {
+					lookupField: 'lookup_val_1',
+					name: 'updated name',
+				},
+			},
+		];
+
+		await update.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.batchUpdate).toHaveBeenCalledWith(
+			'appYoLbase/tblltable',
+			{ typecast: false },
+			[{ fields: { lookupField: 'lookup_val_1', name: 'updated name' }, id: 'recAAA' }],
+		);
+	});
+
+	it('should update all matches by lookup field with array value, autoMapInputData', async () => {
+		vi.mocked(transport.apiRequestAllItems).mockResolvedValueOnce({
+			records: [
+				{
+					id: 'recAAA',
+					fields: {
+						lookupField: ['shared_val'],
+					},
+				},
+				{
+					id: 'recBBB',
+					fields: {
+						lookupField: ['other_val'],
+					},
+				},
+				{
+					id: 'recCCC',
+					fields: {
+						lookupField: ['shared_val'],
+					},
+				},
+			],
+		});
+
+		const nodeParameters = {
+			operation: 'update',
+			columns: {
+				mappingMode: 'autoMapInputData',
+				matchingColumns: ['lookupField'],
+			},
+			options: {
+				updateAllMatches: true,
+			},
+		};
+
+		const items = [
+			{
+				json: {
+					lookupField: 'shared_val',
+					name: 'updated name',
+				},
+			},
+		];
+
+		await update.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.batchUpdate).toHaveBeenCalledWith(
+			'appYoLbase/tblltable',
+			{ typecast: false },
+			[
+				{ fields: { lookupField: 'shared_val', name: 'updated name' }, id: 'recAAA' },
+				{ fields: { lookupField: 'shared_val', name: 'updated name' }, id: 'recCCC' },
+			],
 		);
 	});
 });

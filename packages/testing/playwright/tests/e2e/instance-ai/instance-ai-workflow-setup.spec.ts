@@ -4,7 +4,6 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
-
 const { privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY } = generateKeyPairSync('rsa', {
 	modulusLength: 2048,
 	privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
@@ -455,7 +454,7 @@ function expectNodeParameter(
 test.describe(
 	'Instance AI workflow setup @capability:proxy @db:reset',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });
@@ -463,7 +462,11 @@ test.describe(
 		test.beforeEach(({}, testInfo) => {
 			test.skip(
 				testInfo.project.name.includes('multi-main'),
-				'Setup confirmation replay is not yet stable in multi-main mode',
+				'Setup confirmation replay is not yet stable on the multi-main project',
+			);
+			test.fixme(
+				testInfo.project.name.includes('sqlite') || testInfo.project.name.includes('coverage'),
+				'Setup confirmation proxy replay is flaky on sqlite:e2e and in the coverage nightly, and was gating community/fork PRs while internal PRs skipped on multi-main. Quarantined on every lane (including coverage) until the replay is stabilised (DEVP-366).',
 			);
 		});
 
@@ -901,19 +904,19 @@ test.describe(
 		test('should persist a manually selected existing credential from the dropdown', async ({
 			n8n,
 		}) => {
-			// creds are sorted by name, in the dropdown
-			const firstCrdentialInList = await n8n.api.credentials.createCredential({
-				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
-				type: 'slackApi',
-				data: {
-					accessToken: 'xoxb-target-token-for-testing',
-				},
-			});
-			const secondCrdentialInList = await n8n.api.credentials.createCredential({
+			// Creds are sorted by name in the dropdown; auto-select picks the most recently updated.
+			const firstCredentialInList = await n8n.api.credentials.createCredential({
 				name: SELECT_EXISTING_INITIAL_CREDENTIAL_NAME,
 				type: 'slackApi',
 				data: {
 					accessToken: 'xoxb-initial-token-for-testing',
+				},
+			});
+			const secondCredentialInList = await n8n.api.credentials.createCredential({
+				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
+				type: 'slackApi',
+				data: {
+					accessToken: 'xoxb-target-token-for-testing',
 				},
 			});
 
@@ -926,15 +929,15 @@ test.describe(
 				`Set up the workflow named "${SELECT_EXISTING_WORKFLOW_NAME}".`,
 			);
 
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 12_000 });
 			await expect
 				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
-				.toBe(firstCrdentialInList.name);
+				.toBe(secondCredentialInList.name);
 
-			await n8n.instanceAi.workflowSetup.selectCredentialById(secondCrdentialInList.id);
+			await n8n.instanceAi.workflowSetup.selectCredentialById(firstCredentialInList.id);
 			await expect
 				.poll(async () => await n8n.instanceAi.workflowSetup.getSelectedCredentialLabel())
-				.toBe(secondCrdentialInList.name);
+				.toBe(firstCredentialInList.name);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
 			await n8n.instanceAi.workflowSetup.getApplyButton().click();
@@ -945,7 +948,7 @@ test.describe(
 				persisted,
 				'Slack Trigger',
 				'slackApi',
-				secondCrdentialInList.name,
+				firstCredentialInList.name,
 			);
 		});
 

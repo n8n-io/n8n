@@ -14,6 +14,7 @@ describe('tracing', () => {
 	beforeEach(() => {
 		mockTracingImplementation = {
 			startSpan: vi.fn(),
+			startNewTraceSpan: vi.fn(),
 		} as unknown as Mocked<Tracer>;
 
 		tracing.setTracingImplementation(noopTracing);
@@ -29,6 +30,31 @@ describe('tracing', () => {
 			await tracing.startSpan(options, callback);
 
 			expect(mockTracingImplementation.startSpan).toHaveBeenCalledWith(options, callback);
+		});
+	});
+
+	describe('startNewTraceSpan', () => {
+		it('should delegate to the current implementation', async () => {
+			mockTracingImplementation.startNewTraceSpan.mockResolvedValue('test-result');
+			tracing.setTracingImplementation(mockTracingImplementation);
+
+			const options: StartSpanOptions = { name: 'test-span' };
+			const callback = vi.fn().mockResolvedValue('callback-result');
+
+			const result = await tracing.startNewTraceSpan(options, callback);
+
+			expect(mockTracingImplementation.startNewTraceSpan).toHaveBeenCalledWith(options, callback);
+			expect(result).toBe('test-result');
+		});
+
+		it('should use NoopTracing by default', async () => {
+			const options: StartSpanOptions = { name: 'test-span' };
+			const callback = vi.fn().mockResolvedValue('callback-result');
+
+			const result = await tracing.startNewTraceSpan(options, callback);
+
+			expect(callback).toHaveBeenCalledWith(expect.any(EmptySpan));
+			expect(result).toBe('callback-result');
 		});
 	});
 

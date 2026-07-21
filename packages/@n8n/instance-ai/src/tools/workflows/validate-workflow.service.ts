@@ -4,6 +4,7 @@
  * issues, missing required input connections, etc.). Mirrors `getNodeIssues` in
  * `packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts`.
  */
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import type {
@@ -16,7 +17,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
+import { isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext, NodeDescription } from '../../types';
+
+const AI_GATEWAY_OPERATION_ONLY_MARKER = '__operation_only__';
 
 export interface ValidateWorkflowResult {
 	workflowId?: string;
@@ -127,18 +131,17 @@ function doNotExistIssue(
  * already references — the editor uses this to suppress the "doesn't exist"
  * issue in shared-workflow proxy-auth scenarios. Empty Set in Phase 1.
  */
-async function computeCredentialIssues(
+type CredentialDescription = NonNullable<NodeDescription['credentials']>[number];
+
+/** HTTP Request generic-auth and proxy-auth special cases (credential type lives in parameters). */
+async function computeHttpAuthCredentialIssue(
 	context: InstanceAiContext,
 	cache: CredentialLookupCache,
 	node: NodeJSON,
 	nodeDesc: NodeDescription,
 	usedCredentialIds: Set<string>,
 ): Promise<INodeIssues | null> {
-	if (node.disabled) return null;
-	if (!nodeDesc.credentials || nodeDesc.credentials.length === 0) return null;
-
 	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
-	const typeVersion = node.typeVersion ?? 1;
 	const authentication = parameters.authentication;
 	const genericAuthType = parameters.genericAuthType;
 	const nodeCredentialType = parameters.nodeCredentialType;
@@ -153,14 +156,14 @@ async function computeCredentialIssues(
 		return { credentials: notSetIssue(genericAuthType, nodeDesc.displayName) };
 	}
 
-	// HTTP Request v2 proxy-auth predefined-credential paths.
-	if (
+	const isPredefinedProxyAuth =
 		hasProxyAuth(node) &&
 		authentication === 'predefinedCredentialType' &&
 		typeof nodeCredentialType === 'string' &&
-		nodeCredentialType !== '' &&
-		node.credentials !== undefined
-	) {
+		nodeCredentialType !== '';
+
+	// HTTP Request v2 proxy-auth predefined-credential paths.
+	if (isPredefinedProxyAuth && node.credentials !== undefined) {
 		const stored = await listCredentialsByType(context, cache, nodeCredentialType);
 		const selectedId = node.credentials[nodeCredentialType]?.id;
 		const isCredentialUsedInWorkflow =
@@ -171,91 +174,232 @@ async function computeCredentialIssues(
 		}
 	}
 
-	if (
-		hasProxyAuth(node) &&
-		authentication === 'predefinedCredentialType' &&
-		typeof nodeCredentialType === 'string' &&
-		nodeCredentialType !== '' &&
-		selectedCredsAreUnusable(node, nodeCredentialType)
-	) {
+	if (isPredefinedProxyAuth && selectedCredsAreUnusable(node, nodeCredentialType)) {
 		return { credentials: notSetIssue(nodeCredentialType, nodeDesc.displayName) };
 	}
 
+	return null;
+}
+
+/** Evaluate one credential-type entry of a node description; returns its issue(s) or null. */
+async function evaluateCredentialEntry(
+	context: InstanceAiContext,
+	cache: CredentialLookupCache,
+	node: NodeJSON,
+	nodeDesc: NodeDescription,
+	credentialTypeDescription: CredentialDescription,
+	parameters: Record<string, unknown>,
+	typeVersion: number,
+	usedCredentialIds: Set<string>,
+): Promise<INodeIssueObjectProperty | null> {
+	if (credentialTypeDescription.displayOptions) {
+		const visible = matchesDisplayOptions(
+			{ parameters, nodeVersion: typeVersion },
+			credentialTypeDescription.displayOptions as DisplayOptions,
+		);
+		if (!visible) return null;
+	}
+
+	const credName = credentialTypeDescription.name;
+	// Without a credential type display name registry on the backend, fall
+	// back to the type name itself — same fallback the frontend uses when
+	// `getCredentialTypeByName` returns undefined.
+	const credentialTypeDisplayName = credName;
+
+	const selected = node.credentials?.[credName];
+
+	if (!selected) {
+		return credentialTypeDescription.required ? notSetIssue(credName, nodeDesc.displayName) : null;
+	}
+
+	// n8n Connect managed credentials have no real DB record — treat as
+	// configured. Recognizes both the resolved `AI_GATEWAY_CREDENTIAL` shape and
+	// the raw builder-emitted `AI_GATEWAY_MANAGED_TAG`, so a node that still
+	// carries the tag isn't flagged missing-credential before the gateway checks.
+	if (isManagedCredentialEntry(selected)) {
+		return null;
+	}
+
+	const selectedRef =
+		typeof selected === 'string'
+			? { id: null, name: selected }
+			: { id: selected.id ?? null, name: selected.name };
+
+	const userCredentials = await listCredentialsByType(context, cache, credName);
+
+	if (selectedRef.id) {
+		const idMatch = userCredentials.find((c) => c.id === selectedRef.id);
+		if (idMatch) return null;
+	}
+
+	const nameMatches = userCredentials.filter((c) => c.name === selectedRef.name);
+	if (nameMatches.length > 1) {
+		return notIdentifiedIssue(credName, selectedRef.name, credentialTypeDisplayName);
+	}
+
+	if (nameMatches.length === 0) {
+		// Frontend suppresses this when the credential ID is in `usedCredentials`
+		// or when the user has global `credential:read` scope. Phase 1 ports the
+		// usedCredentials half (passed in as a Set) and conservatively assumes
+		// the user lacks the global scope — matches the most common case where
+		// the agent is verifying a workflow owned by the user.
+		const isUsedInWorkflow =
+			typeof selectedRef.id === 'string' && usedCredentialIds.has(selectedRef.id);
+		if (!isUsedInWorkflow) {
+			return doNotExistIssue(credName, selectedRef.name, credentialTypeDisplayName);
+		}
+	}
+
+	return null;
+}
+
+async function computeCredentialIssues(
+	context: InstanceAiContext,
+	cache: CredentialLookupCache,
+	node: NodeJSON,
+	nodeDesc: NodeDescription,
+	usedCredentialIds: Set<string>,
+): Promise<INodeIssues | null> {
+	if (node.disabled) return null;
+	if (!nodeDesc.credentials || nodeDesc.credentials.length === 0) return null;
+
+	const httpAuthIssue = await computeHttpAuthCredentialIssue(
+		context,
+		cache,
+		node,
+		nodeDesc,
+		usedCredentialIds,
+	);
+	if (httpAuthIssue) return httpAuthIssue;
+
+	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
+	const typeVersion = node.typeVersion ?? 1;
+
 	const foundIssues: INodeIssueObjectProperty = {};
-
 	for (const credentialTypeDescription of nodeDesc.credentials) {
-		if (credentialTypeDescription.displayOptions) {
-			const visible = matchesDisplayOptions(
-				{ parameters, nodeVersion: typeVersion },
-				credentialTypeDescription.displayOptions as DisplayOptions,
-			);
-			if (!visible) continue;
-		}
+		const entry = await evaluateCredentialEntry(
+			context,
+			cache,
+			node,
+			nodeDesc,
+			credentialTypeDescription,
+			parameters,
+			typeVersion,
+			usedCredentialIds,
+		);
+		if (entry) Object.assign(foundIssues, entry);
+	}
 
-		const credName = credentialTypeDescription.name;
-		// Without a credential type display name registry on the backend, fall
-		// back to the type name itself — same fallback the frontend uses when
-		// `getCredentialTypeByName` returns undefined.
-		const credentialTypeDisplayName = credName;
+	if (Object.keys(foundIssues).length === 0) return null;
+	return { credentials: foundIssues };
+}
 
-		const selected = node.credentials?.[credName];
+/**
+ * True when `entry` represents an AI Gateway managed credential — either the
+ * builder-emitted raw tag (`id === '__AI_GATEWAY_MANAGED__'`) or the resolved
+ * `AI_GATEWAY_CREDENTIAL` shape (`id === null, __aiGatewayManaged: true`).
+ */
+function isManagedCredentialEntry(entry: unknown): boolean {
+	if (isAiGatewayManagedCredential(entry)) return true;
+	return (
+		typeof entry === 'object' &&
+		entry !== null &&
+		Reflect.get(entry, 'id') === AI_GATEWAY_MANAGED_TAG
+	);
+}
 
-		if (!selected) {
-			if (credentialTypeDescription.required) {
-				Object.assign(foundIssues, notSetIssue(credName, nodeDesc.displayName));
-			}
-			continue;
-		}
+/**
+ * Static AI Gateway (n8n Connect) checks over a single node. Fires only for
+ * nodes that opt into the gateway via a managed credential — nodes that use a
+ * stored credential aren't bound by gateway constraints. Returns one entry
+ * per failure kind so the summary lines stay well-scoped.
+ */
+async function computeAiGatewayIssues(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	nodeDesc: NodeDescription,
+): Promise<INodeIssueObjectProperty | null> {
+	const issues: INodeIssueObjectProperty = {};
+	const nodeCredentials = node.credentials as Record<string, unknown> | undefined;
+	if (!nodeCredentials) return null;
 
-		// AI-gateway-managed credentials have no real DB record — treat as configured.
-		if (
-			typeof selected === 'object' &&
-			'__aiGatewayManaged' in selected &&
-			(selected as { __aiGatewayManaged?: boolean }).__aiGatewayManaged === true
-		) {
-			continue;
-		}
-
-		const selectedRef =
-			typeof selected === 'string'
-				? { id: null, name: selected }
-				: { id: selected.id ?? null, name: selected.name };
-
-		const userCredentials = await listCredentialsByType(context, cache, credName);
-
-		if (selectedRef.id) {
-			const idMatch = userCredentials.find((c) => c.id === selectedRef.id);
-			if (idMatch) continue;
-		}
-
-		const nameMatches = userCredentials.filter((c) => c.name === selectedRef.name);
-		if (nameMatches.length > 1) {
-			Object.assign(
-				foundIssues,
-				notIdentifiedIssue(credName, selectedRef.name, credentialTypeDisplayName),
-			);
-			continue;
-		}
-
-		if (nameMatches.length === 0) {
-			// Frontend suppresses this when the credential ID is in `usedCredentials`
-			// or when the user has global `credential:read` scope. Phase 1 ports the
-			// usedCredentials half (passed in as a Set) and conservatively assumes
-			// the user lacks the global scope — matches the most common case where
-			// the agent is verifying a workflow owned by the user.
-			const isUsedInWorkflow =
-				typeof selectedRef.id === 'string' && usedCredentialIds.has(selectedRef.id);
-			if (!isUsedInWorkflow) {
-				Object.assign(
-					foundIssues,
-					doNotExistIssue(credName, selectedRef.name, credentialTypeDisplayName),
+	// E1 — managed credential on a type the gateway does not cover. Runs
+	// once per credential slot; a credential type without gateway support is
+	// a clear rebuild signal.
+	if (context.credentialService.isAiGatewayCredentialType) {
+		for (const [credType, entry] of Object.entries(nodeCredentials)) {
+			if (!isManagedCredentialEntry(entry)) continue;
+			const supported = await context.credentialService
+				.isAiGatewayCredentialType(credType)
+				.catch(() => true);
+			if (!supported) {
+				(issues.unsupportedCredentialType ??= []).push(
+					`Credential type "${credType}" is not supported by n8n credits. Use a stored credential of that type or pick a different node.`,
 				);
 			}
 		}
 	}
 
-	if (Object.keys(foundIssues).length === 0) return null;
-	return { credentials: foundIssues };
+	const usesManagedCredential = Object.values(nodeCredentials).some(isManagedCredentialEntry);
+	if (!usesManagedCredential) {
+		return Object.keys(issues).length > 0 ? issues : null;
+	}
+
+	const gatewayMeta = nodeDesc.aiGateway;
+	if (!gatewayMeta) {
+		return Object.keys(issues).length > 0 ? issues : null;
+	}
+
+	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
+
+	// E2 — typeVersion below the minimum the gateway supports for this node.
+	if (gatewayMeta.minVersion !== undefined) {
+		const typeVersion = node.typeVersion ?? 1;
+		if (typeVersion < gatewayMeta.minVersion) {
+			(issues.belowMinVersion ??= []).push(
+				`n8n credits requires typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
+			);
+		}
+	}
+
+	// E3 — operation not in supportedActions. The gateway config groups
+	// operations by resource; nodes without a resource dimension use the
+	// OPERATION_ONLY marker key (matching the frontend store's convention).
+	if (gatewayMeta.operations) {
+		const operation = typeof parameters.operation === 'string' ? parameters.operation : undefined;
+		if (operation !== undefined) {
+			const resource =
+				typeof parameters.resource === 'string'
+					? parameters.resource
+					: AI_GATEWAY_OPERATION_ONLY_MARKER;
+			const allowed = gatewayMeta.operations[resource];
+			if (!allowed?.includes(operation)) {
+				const scope =
+					resource === AI_GATEWAY_OPERATION_ONLY_MARKER ? '' : ` on resource "${resource}"`;
+				(issues.unsupportedOperation ??= []).push(
+					`Operation "${operation}"${scope} is not supported via n8n credits. Switch to a supported operation or use a stored credential.`,
+				);
+			}
+		}
+	}
+
+	// E4 — property set that the gateway hides for this node. Only user-set
+	// values count; unset/empty properties don't clash with the gateway.
+	if (gatewayMeta.hiddenProperties) {
+		for (const propName of gatewayMeta.hiddenProperties) {
+			const value = parameters[propName];
+			if (value === undefined || value === null || value === '') continue;
+			(issues.hiddenPropertySet ??= []).push(
+				`Property "${propName}" is not supported via n8n credits for this node. Remove it or use a stored credential.`,
+			);
+		}
+	}
+
+	if (Object.keys(issues).length === 0) return null;
+	for (const kind of Object.keys(issues)) {
+		context.trackTelemetry?.('instance_ai_gateway_verifier_failure', { kind });
+	}
+	return issues;
 }
 
 /**
@@ -318,6 +462,40 @@ function getFirstExecutionError(taskData: ITaskData[] | undefined): string | nul
 	return null;
 }
 
+async function computeNodeParameterIssues(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	typeVersion: number,
+	parameters: Record<string, unknown>,
+): Promise<Record<string, string[]> | null> {
+	if (!context.nodeService.getParameterIssues) return null;
+	const parameterIssues = await context.nodeService
+		.getParameterIssues(node.type, typeVersion, parameters)
+		.catch(() => ({}) as Record<string, string[]>);
+	return Object.keys(parameterIssues).length > 0 ? parameterIssues : null;
+}
+
+function computeExecutionIssue(
+	issues: INodeIssues | null,
+	nodeName: string,
+	taskData: ITaskData[] | undefined,
+	executionErrors: Record<string, string>,
+	allowSendingParameterValues: boolean,
+): INodeIssues | null {
+	const errorMessage = getFirstExecutionError(taskData);
+	if (errorMessage === null) return issues;
+	const next = issues ?? {};
+	next.execution = true;
+	// Only retain the message text when the instance permits sending
+	// parameter-derived strings to the LLM. Error messages can embed
+	// parameter values (URLs, headers, payloads), so skip the detail in
+	// the summary when restricted; the `execution: true` flag still flows.
+	if (allowSendingParameterValues) {
+		executionErrors[nodeName] = errorMessage;
+	}
+	return next;
+}
+
 async function computeNodeIssues(
 	context: InstanceAiContext,
 	cache: CredentialLookupCache,
@@ -347,11 +525,14 @@ async function computeNodeIssues(
 
 	let issues: INodeIssues | null = null;
 
-	if (!ignoreIssues.has('parameters') && context.nodeService.getParameterIssues) {
-		const parameterIssues = await context.nodeService
-			.getParameterIssues(node.type, typeVersion, parameters)
-			.catch(() => ({}) as Record<string, string[]>);
-		if (Object.keys(parameterIssues).length > 0) {
+	if (!ignoreIssues.has('parameters')) {
+		const parameterIssues = await computeNodeParameterIssues(
+			context,
+			node,
+			typeVersion,
+			parameters,
+		);
+		if (parameterIssues) {
 			issues = { parameters: parameterIssues };
 		}
 	}
@@ -373,6 +554,14 @@ async function computeNodeIssues(
 		}
 	}
 
+	if (!ignoreIssues.has('aiGateway')) {
+		const gatewayIssues = await computeAiGatewayIssues(context, node, nodeDesc);
+		if (gatewayIssues) {
+			issues = issues ?? {};
+			issues.aiGateway = gatewayIssues;
+		}
+	}
+
 	if (!ignoreIssues.has('input')) {
 		const inputIssues = await computeInputIssues(
 			context,
@@ -390,18 +579,13 @@ async function computeNodeIssues(
 	}
 
 	if (!ignoreIssues.has('execution') && latestRunData) {
-		const errorMessage = getFirstExecutionError(latestRunData[node.name]);
-		if (errorMessage !== null) {
-			issues = issues ?? {};
-			issues.execution = true;
-			// Only retain the message text when the instance permits sending
-			// parameter-derived strings to the LLM. Error messages can embed
-			// parameter values (URLs, headers, payloads), so skip the detail in
-			// the summary when restricted; the `execution: true` flag still flows.
-			if (allowSendingParameterValues) {
-				executionErrors[node.name] = errorMessage;
-			}
-		}
+		issues = computeExecutionIssue(
+			issues,
+			node.name,
+			latestRunData[node.name],
+			executionErrors,
+			allowSendingParameterValues,
+		);
 	}
 
 	return issues;
@@ -416,7 +600,7 @@ function formatSummaryLines(
 	if (issues.typeUnknown) {
 		pushTo.push(`${nodeName}: typeUnknown: Unknown node type`);
 	}
-	for (const category of ['parameters', 'credentials', 'input'] as const) {
+	for (const category of ['parameters', 'credentials', 'input', 'aiGateway'] as const) {
 		const slice = issues[category];
 		if (!slice || typeof slice !== 'object') continue;
 		for (const [key, messages] of Object.entries(slice)) {

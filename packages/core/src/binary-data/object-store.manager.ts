@@ -1,11 +1,11 @@
+import { binaryToBuffer } from '@n8n/backend-network';
+import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { Service } from '@n8n/di';
 import fs from 'node:fs/promises';
 import type { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
-import { ObjectStoreService } from './object-store/object-store.service.ee';
 import type { BinaryData } from './types';
-import { binaryToBuffer } from './utils';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
@@ -59,8 +59,9 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		const targetFileId = this.toFileId(targetLocation);
 
 		const sourceFile = await this.objectStoreService.get(sourceFileId, { mode: 'buffer' });
+		const sourceMetadata = await this.getMetadata(sourceFileId);
 
-		await this.objectStoreService.put(targetFileId, sourceFile);
+		await this.objectStoreService.put(targetFileId, sourceFile, sourceMetadata);
 
 		return targetFileId;
 	}
@@ -83,7 +84,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 
 	async rename(oldFileId: string, newFileId: string) {
 		const oldFile = await this.objectStoreService.get(oldFileId, { mode: 'buffer' });
-		const oldFileMetadata = await this.objectStoreService.getMetadata(oldFileId);
+		const oldFileMetadata = await this.getMetadata(oldFileId);
 
 		await this.objectStoreService.put(newFileId, oldFile, oldFileMetadata);
 		await this.objectStoreService.deleteOne(oldFileId);

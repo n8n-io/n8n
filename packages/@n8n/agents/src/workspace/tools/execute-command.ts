@@ -23,7 +23,7 @@ export function createExecuteCommandTool(sandbox: WorkspaceSandbox): BuiltTool {
 				executionTimeMs: z.number(),
 			}),
 		)
-		.handler(async (input) => {
+		.handler(async (input, ctx) => {
 			if (!sandbox.executeCommand) {
 				throw new Error('Sandbox does not support command execution');
 			}
@@ -32,6 +32,7 @@ export function createExecuteCommandTool(sandbox: WorkspaceSandbox): BuiltTool {
 				cwd: input.cwd,
 				...(env ? { env } : {}),
 				timeout: input.timeout,
+				abortSignal: ctx.abortSignal,
 			});
 			return {
 				success: result.success,
