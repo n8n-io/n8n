@@ -15,14 +15,7 @@ import {
 	ComboboxViewport,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import {
-	computed,
-	getCurrentInstance,
-	nextTick,
-	useAttrs,
-	useCssModule,
-	useTemplateRef,
-} from 'vue';
+import { computed, nextTick, useCssModule, useTemplateRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
@@ -56,10 +49,8 @@ const props = withDefaults(defineProps<ComboboxProps>(), {
 	clearable: false,
 	teleported: true,
 });
-const attrs = useAttrs();
-const instance = getCurrentInstance();
 const emit = defineEmits<ComboboxEmits>();
-const slots = defineSlots<ComboboxSlots>();
+defineSlots<ComboboxSlots>();
 const { t } = useI18n();
 
 const rootProps = useForwardPropsEmits(
