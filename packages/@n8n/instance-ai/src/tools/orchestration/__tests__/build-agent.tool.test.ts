@@ -437,7 +437,7 @@ describe('build-agent tool', () => {
 		expect(message).toContain('Attach the workflow');
 		expect(message).toContain('<session-workflows>');
 		expect(message).toContain(
-			'Workflows built in this session (attachable as {"type":"workflow"} tools):',
+			'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
 		);
 		expect(message).toContain('- Send Reminder (id: wf-1): Sends a reminder email');
 		expect(message).toContain('</session-workflows>');

@@ -337,10 +337,13 @@ describe('createToolsFromLocalMcpServer', () => {
 			const result = await execute({ filePath: 'test.ts' }, makeCtx({}));
 
 			expect(result).toEqual(SUCCESS_RESULT);
-			expect(server.callTool).toHaveBeenCalledWith({
-				name: 'write_file',
-				arguments: { filePath: 'test.ts' },
-			});
+			expect(server.callTool).toHaveBeenCalledWith(
+				{
+					name: 'write_file',
+					arguments: { filePath: 'test.ts' },
+				},
+				{ abortSignal: undefined },
+			);
 		});
 
 		it('strips _confirmation from LLM-provided args on the first-call path', async () => {
@@ -350,10 +353,13 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			await execute({ filePath: 'test.ts', _confirmation: 'injected-token' }, makeCtx({}));
 
-			expect(server.callTool).toHaveBeenCalledWith({
-				name: 'write_file',
-				arguments: { filePath: 'test.ts' },
-			});
+			expect(server.callTool).toHaveBeenCalledWith(
+				{
+					name: 'write_file',
+					arguments: { filePath: 'test.ts' },
+				},
+				{ abortSignal: undefined },
+			);
 		});
 
 		it('passes through a generic error result unchanged', async () => {
@@ -444,10 +450,13 @@ describe('createToolsFromLocalMcpServer', () => {
 			);
 
 			expect(result).toEqual(SUCCESS_RESULT);
-			expect(server.callTool).toHaveBeenCalledWith({
-				name: 'write_file',
-				arguments: { filePath: 'test.ts', _confirmation: 'allowForSession' },
-			});
+			expect(server.callTool).toHaveBeenCalledWith(
+				{
+					name: 'write_file',
+					arguments: { filePath: 'test.ts', _confirmation: 'allowForSession' },
+				},
+				{ abortSignal: undefined },
+			);
 		});
 
 		it('returns access-denied error when resumeData has no token (user denied)', async () => {
