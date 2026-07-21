@@ -22,7 +22,7 @@ export class CredentialsFinderService {
 	private async fetchGlobalCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
 		const em = trx ?? this.credentialsRepository.manager;
 		return await em.find(CredentialsEntity, {
-			where: { isGlobal: true },
+			where: { isGlobal: true, availability: 'workflow' },
 			relations: { shared: true },
 		});
 	}
@@ -46,13 +46,24 @@ export class CredentialsFinderService {
 			where: {
 				id: credentialId,
 				isGlobal: true,
+				availability: 'workflow',
 			},
 			relations,
 		});
 	}
 
-	async findCredentialById(credentialId: string): Promise<CredentialsEntity | null> {
-		return await this.credentialsRepository.findOne({ where: { id: credentialId } });
+	async findCredentialById(
+		credentialId: string,
+		options: { includeInstanceCredentials?: boolean } = {},
+	): Promise<CredentialsEntity | null> {
+		return await this.credentialsRepository.findOne({
+			where: {
+				id: credentialId,
+				availability: options.includeInstanceCredentials
+					? In(['workflow', 'instance'])
+					: 'workflow',
+			},
+		});
 	}
 
 	/**
@@ -81,7 +92,10 @@ export class CredentialsFinderService {
 	 * all scopes the user has for the credential using `RoleService.addScopes`.
 	 **/
 	async findCredentialsForUser(user: User, scopes: Scope[]) {
-		let where: FindOptionsWhere<CredentialsEntity> = { isGlobal: false };
+		let where: FindOptionsWhere<CredentialsEntity> = {
+			isGlobal: false,
+			availability: 'workflow',
+		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const [projectRoles, credentialRoles] = await Promise.all([
@@ -121,7 +135,16 @@ export class CredentialsFinderService {
 		credentialsId: string,
 		user: User,
 		scopes: Scope[],
+		options: { includeInstanceCredentials?: boolean } = {},
 	): Promise<CredentialsEntity | null> {
+		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
+			const instanceCredential = await this.credentialsRepository.findOneBy({
+				id: credentialsId,
+				availability: 'instance',
+			});
+			if (instanceCredential) return instanceCredential;
+		}
+
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
@@ -152,6 +175,7 @@ export class CredentialsFinderService {
 		});
 
 		if (sharedCredential) {
+			if ((sharedCredential.credentials.availability ?? 'workflow') !== 'workflow') return null;
 			return sharedCredential.credentials;
 		}
 
@@ -172,7 +196,9 @@ export class CredentialsFinderService {
 		trx?: EntityManager,
 		options?: { includeGlobalCredentials?: boolean },
 	) {
-		let where: FindOptionsWhere<SharedCredentials> = {};
+		let where: FindOptionsWhere<SharedCredentials> = {
+			credentials: { availability: 'workflow' },
+		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const [projectRoles, credentialRoles] = await Promise.all([
@@ -180,6 +206,7 @@ export class CredentialsFinderService {
 				this.roleService.rolesWithScope('credential', scopes),
 			]);
 			where = {
+				...where,
 				role: In(credentialRoles),
 				project: {
 					projectRelations: {
@@ -232,7 +259,10 @@ export class CredentialsFinderService {
 	): Promise<Set<string>> {
 		if (credentialIds.length === 0) return new Set();
 
-		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: In(credentialIds) };
+		let where: FindOptionsWhere<SharedCredentials> = {
+			credentialsId: In(credentialIds),
+			credentials: { availability: 'workflow' },
+		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const [projectRoles, credentialRoles] = await Promise.all([
@@ -261,7 +291,7 @@ export class CredentialsFinderService {
 		// Also include global credentials if scopes allow read-only access
 		if (this.hasGlobalReadOnlyAccess(scopes)) {
 			const globalCreds = await this.credentialsRepository.find({
-				where: { id: In(credentialIds), isGlobal: true },
+				where: { id: In(credentialIds), isGlobal: true, availability: 'workflow' },
 				select: ['id'],
 			});
 			for (const gc of globalCreds) result.add(gc.id);

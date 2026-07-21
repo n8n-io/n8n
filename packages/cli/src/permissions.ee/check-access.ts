@@ -1,6 +1,8 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { User, EntityManager } from '@n8n/db';
 import {
+	CredentialsEntity,
+	CredentialsRepository,
 	Project,
 	ProjectRepository,
 	SharedCredentials,
@@ -15,6 +17,12 @@ import { UnexpectedError } from 'n8n-workflow';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
+
+const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
+	'credential:read',
+	'credential:update',
+	'credential:delete',
+]);
 
 /**
  * Check if a user has the required scopes. The check can be:
@@ -42,6 +50,24 @@ export async function userHasScopes(
 	entityManager?: EntityManager,
 ): Promise<boolean> {
 	if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return true;
+
+	if (
+		credentialId &&
+		hasGlobalScope(user, 'credential:manageInstance') &&
+		scopes.every((scope) => INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES.has(scope))
+	) {
+		const credentialsRepository = entityManager
+			? entityManager.getRepository(CredentialsEntity)
+			: Container.get(CredentialsRepository);
+		if (
+			await credentialsRepository.existsBy({
+				id: credentialId,
+				availability: 'instance',
+			})
+		) {
+			return true;
+		}
+	}
 
 	if (globalOnly) return false;
 

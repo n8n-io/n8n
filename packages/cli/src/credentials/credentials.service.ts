@@ -5,6 +5,7 @@ import {
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
+	InstanceCredentialAssignmentRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
@@ -14,6 +15,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 import {
 	In,
+	QueryFailedError,
 	type EntityManager,
 	type FindOptionsRelations,
 	type FindOptionsWhere,
@@ -64,6 +66,7 @@ import {
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
 import { CredentialsFinderService } from './credentials-finder.service';
+import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import {
 	validateAccessToReferencedSecretProviders,
 	validateExternalSecretsPermissions,
@@ -140,6 +143,7 @@ export class CredentialsService {
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly instanceCredentialAssignmentRepository: InstanceCredentialAssignmentRepository,
 	) {}
 
 	/**
@@ -677,7 +681,10 @@ export class CredentialsService {
 		globalScopes: Scope[],
 		relations: FindOptionsRelations<SharedCredentials> = { credentials: true },
 	): Promise<SharedCredentials | null> {
-		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
+		let where: FindOptionsWhere<SharedCredentials> = {
+			credentialsId: credentialId,
+			credentials: { availability: 'workflow' },
+		};
 
 		if (!hasGlobalScope(user, globalScopes, { mode: 'allOf' })) {
 			where = {
@@ -706,27 +713,6 @@ export class CredentialsService {
 	): Promise<CredentialsEntity> {
 		const decryptedData = await this.decrypt(existingCredential, true);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
-		const projectOwningCredential = existingCredential.shared?.find(
-			(shared) => shared.role === 'credential:owner',
-		)!;
-
-		await validateExternalSecretsPermissions({
-			user,
-			projectId: projectOwningCredential.projectId,
-			dataToSave: data.data,
-			decryptedExistingData: decryptedData,
-		});
-
-		if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
-			await validateAccessToReferencedSecretProviders(
-				projectOwningCredential.projectId,
-				data.data,
-				this.externalSecretsProviderAccessCheckService,
-				'update',
-			);
-		}
-
 		const mergedData = deepCopy(data);
 		if (mergedData.data) {
 			mergedData.data = this.unredact(
@@ -734,6 +720,32 @@ export class CredentialsService {
 				decryptedData,
 				this.getCredentialTypeProperties(existingCredential.type),
 			);
+		}
+		if (existingCredential.availability === 'instance') {
+			this.validateInstanceCredentialData(mergedData.data ?? decryptedData);
+		} else {
+			const projectOwningCredential = existingCredential.shared?.find(
+				(shared) => shared.role === 'credential:owner',
+			);
+			if (!projectOwningCredential) {
+				throw new NotFoundError(`Could not find owner for credential "${existingCredential.id}"`);
+			}
+
+			await validateExternalSecretsPermissions({
+				user,
+				projectId: projectOwningCredential.projectId,
+				dataToSave: data.data,
+				decryptedExistingData: decryptedData,
+			});
+
+			if (this.externalSecretsConfig.externalSecretsForProjects && data.data) {
+				await validateAccessToReferencedSecretProviders(
+					projectOwningCredential.projectId,
+					data.data,
+					this.externalSecretsProviderAccessCheckService,
+					'update',
+				);
+			}
 		}
 
 		// This saves us a merge but requires some type casting. These
@@ -943,13 +955,18 @@ export class CredentialsService {
 	 * If the user does not have permission to delete the credential this does
 	 * nothing and returns void.
 	 */
-	async delete(user: User, credentialId: string) {
+	async delete(
+		user: User,
+		credentialId: string,
+		options: { includeInstanceCredentials?: boolean } = {},
+	) {
 		await this.externalHooks.run('credentials.delete', [credentialId]);
 
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			user,
 			['credential:delete'],
+			options,
 		);
 
 		if (!credential) {
@@ -962,7 +979,32 @@ export class CredentialsService {
 			await this.ensureCanManageEndUserCredential(user, owningProject?.id);
 		}
 
+		if (credential.availability === 'instance') {
+			await this.ensureInstanceCredentialIsNotInUse(credential.id);
+			try {
+				await this.credentialsRepository.remove(credential);
+			} catch (error) {
+				if (error instanceof QueryFailedError) {
+					await this.ensureInstanceCredentialIsNotInUse(credential.id);
+				}
+				throw error;
+			}
+			return;
+		}
+
 		await this.credentialsRepository.remove(credential);
+	}
+
+	private async ensureInstanceCredentialIsNotInUse(credentialId: string): Promise<void> {
+		const assignment = await this.instanceCredentialAssignmentRepository.findOne({
+			select: ['credentialUseId'],
+			where: { credentialId },
+		});
+		if (assignment) {
+			throw new BadRequestError(
+				`This credential is assigned to credential use "${assignment.credentialUseId}" and cannot be deleted`,
+			);
+		}
 	}
 
 	async test(userId: User['id'], credentials: ICredentialsDecrypted) {
@@ -972,7 +1014,8 @@ export class CredentialsService {
 	async testById(userId: User['id'], credentialId: string) {
 		const storedCredential = await this.credentialsFinderService.findCredentialById(credentialId);
 
-		if (!storedCredential) {
+		// Dynamic-credential flows only; admins test instance credentials via testWithCredentials
+		if (!storedCredential || (storedCredential.availability ?? 'workflow') !== 'workflow') {
 			throw new CredentialNotFoundError(credentialId);
 		}
 
@@ -985,6 +1028,7 @@ export class CredentialsService {
 			credentials.id,
 			user,
 			['credential:read'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!storedCredential) {
@@ -1217,7 +1261,32 @@ export class CredentialsService {
 		return mergedData;
 	}
 
-	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
+	async getOne(
+		user: User,
+		credentialId: string,
+		includeDecryptedData: boolean,
+		options: { includeInstanceCredentials?: boolean } = {},
+	) {
+		if (options.includeInstanceCredentials && hasGlobalScope(user, 'credential:manageInstance')) {
+			const instanceCredential = await this.credentialsRepository.findOneBy({
+				id: credentialId,
+				availability: 'instance',
+			});
+			if (instanceCredential) {
+				const { data: _, ...rest } = instanceCredential;
+				if (includeDecryptedData) {
+					const decryptedData = await this.decrypt(instanceCredential);
+					// We never want to expose the oauthTokenData to the frontend, but it
+					// expects it to check if the credential is already connected.
+					if (decryptedData.oauthTokenData) {
+						decryptedData.oauthTokenData = true;
+					}
+					return { data: decryptedData, ...rest };
+				}
+				return { ...rest };
+			}
+		}
+
 		let sharing: SharedCredentials | null = null;
 		let decryptedData: ICredentialDataDecryptedObject | null = null;
 
@@ -1409,6 +1478,11 @@ export class CredentialsService {
 		user: User,
 		projectId: string,
 	): Promise<void> {
+		this.validateCredentialData(type, data);
+		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
+	}
+
+	private validateCredentialData(type: string, data: ICredentialDataDecryptedObject): void {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
@@ -1433,7 +1507,6 @@ export class CredentialsService {
 				}
 			}
 		}
-		await validateExternalSecretsPermissions({ user, projectId, dataToSave: data });
 		this.validateOAuthCredentialUrls(type, data);
 	}
 
@@ -1507,6 +1580,10 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		if (opts.availability === 'instance') {
+			return await this.createInstanceCredential(opts, user);
+		}
+
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
 
 		if (opts.isResolvable === true) {
@@ -1563,6 +1640,58 @@ export class CredentialsService {
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	private async createInstanceCredential(opts: CreateCredentialOptions, user: User) {
+		if (!hasGlobalScope(user, 'credential:manageInstance')) {
+			throw new ForbiddenError('You do not have permission to create provider connections');
+		}
+		if (opts.isGlobal === true) {
+			throw new BadRequestError('Provider connections cannot be globally shared');
+		}
+		if (opts.isResolvable === true || opts.isManaged) {
+			throw new BadRequestError('Provider connections cannot be end-user or managed credentials');
+		}
+		const data = opts.data as ICredentialDataDecryptedObject;
+		this.validateInstanceCredentialData(data);
+
+		this.validateCredentialData(opts.type, data);
+
+		const encryptedCredential = await this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data,
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+			availability: 'instance' as const,
+		});
+
+		await this.externalHooks.run('credentials.create', [encryptedCredential]);
+
+		const savedCredential = await this.credentialsRepository.save(credentialEntity);
+
+		this.logger.debug('New instance credential created', {
+			credentialId: savedCredential.id,
+			ownerId: user.id,
+		});
+
+		const { shared, ...credential } = savedCredential;
+		const scopes = await this.getCredentialScopes(user, credential.id);
+
+		return { ...credential, scopes };
+	}
+
+	validateInstanceCredentialData(data: ICredentialDataDecryptedObject): void {
+		if (getExternalSecretExpressionPaths(data).length > 0) {
+			throw new BadRequestError(
+				'Provider connections cannot reference project-scoped external secrets',
+			);
+		}
 	}
 
 	/**

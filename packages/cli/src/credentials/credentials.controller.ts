@@ -130,7 +130,9 @@ export class CredentialsController {
 					// to do so.
 					query.includeData,
 				)
-			: await this.credentialsService.getOne(req.user, credentialId, query.includeData);
+			: await this.credentialsService.getOne(req.user, credentialId, query.includeData, {
+					includeInstanceCredentials: true,
+				});
 
 		const scopes = await this.credentialsService.getCredentialScopes(
 			req.user,
@@ -210,6 +212,7 @@ export class CredentialsController {
 			credentialId,
 			user,
 			['credential:update'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -224,6 +227,25 @@ export class CredentialsController {
 
 		if (credential.isManaged) {
 			throw new BadRequestError('Managed credentials cannot be updated');
+		}
+
+		if (
+			credential.availability === 'instance' &&
+			body.type !== undefined &&
+			body.type !== credential.type
+		) {
+			throw new BadRequestError(
+				'Provider connection type cannot be changed. Create a new connection instead.',
+			);
+		}
+
+		if (
+			credential.availability === 'instance' &&
+			(body.isGlobal === true || body.isResolvable === true)
+		) {
+			throw new BadRequestError(
+				'Provider connections cannot be globally shared or converted to end-user credentials',
+			);
 		}
 
 		// We never want to allow users to change the oauthTokenData
@@ -384,6 +406,7 @@ export class CredentialsController {
 			credentialId,
 			req.user,
 			['credential:delete'],
+			{ includeInstanceCredentials: true },
 		);
 
 		if (!credential) {
@@ -396,7 +419,9 @@ export class CredentialsController {
 			);
 		}
 
-		await this.credentialsService.delete(req.user, credential.id);
+		await this.credentialsService.delete(req.user, credential.id, {
+			includeInstanceCredentials: true,
+		});
 
 		this.eventService.emit('credentials-deleted', {
 			user: req.user,

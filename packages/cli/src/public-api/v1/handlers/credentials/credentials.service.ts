@@ -69,7 +69,7 @@ export function buildSharedForCredential(
 
 export async function getCredential(credentialId: string): Promise<CredentialsEntity | null> {
 	return await Container.get(CredentialsRepository).findOne({
-		where: { id: credentialId },
+		where: { id: credentialId, availability: 'workflow' },
 		relations: ['shared', 'shared.project'],
 	});
 }
@@ -96,12 +96,28 @@ export async function getSharedCredentials(
  * resolution, validation, and encryption.
  */
 export async function saveCredential(
-	payload: { type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
+	payload: {
+		type: string;
+		name: string;
+		data: ICredentialDataDecryptedObject;
+		projectId?: string;
+		isResolvable?: boolean;
+	},
 	user: User,
 ): Promise<PublicApiCredentialResponse> {
 	const { scopes: _scopes, ...credential } = await Container.get(
 		CredentialsService,
-	).createUnmanagedCredential({ ...payload, projectId: payload.projectId ?? undefined }, user);
+	).createUnmanagedCredential(
+		{
+			type: payload.type,
+			name: payload.name,
+			data: payload.data,
+			projectId: payload.projectId,
+			isResolvable: payload.isResolvable,
+			availability: 'workflow',
+		},
+		user,
+	);
 
 	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 		credential.id,

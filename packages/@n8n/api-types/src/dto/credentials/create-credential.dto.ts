@@ -10,4 +10,5 @@ export class CreateCredentialDto extends Z.class({
 	uiContext: z.string().optional(),
 	isGlobal: z.boolean().optional(),
 	isResolvable: z.boolean().optional(),
+	availability: z.enum(['workflow', 'instance']).optional(),
 }) {}

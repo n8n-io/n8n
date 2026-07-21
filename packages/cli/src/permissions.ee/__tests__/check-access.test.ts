@@ -21,6 +21,7 @@ describe('userHasScopes', () => {
 	let findByWorkflowMock: Mock;
 	let findByCredentialMock: Mock;
 	let findByGlobalCredentialMock: Mock;
+	let instanceCredentialExistsMock: Mock;
 	let findGlobalCredentialByIdMock: Mock;
 	let hasGlobalReadOnlyAccessMock: Mock;
 	let roleServiceMock: Mock;
@@ -30,6 +31,7 @@ describe('userHasScopes', () => {
 		findByWorkflowMock = vi.fn();
 		findByCredentialMock = vi.fn();
 		findByGlobalCredentialMock = vi.fn();
+		instanceCredentialExistsMock = vi.fn();
 		findGlobalCredentialByIdMock = vi.fn();
 		hasGlobalReadOnlyAccessMock = vi.fn();
 		roleServiceMock = vi.fn();
@@ -52,6 +54,7 @@ describe('userHasScopes', () => {
 			CredentialsRepository,
 			mock<CredentialsRepository>({
 				findBy: findByGlobalCredentialMock,
+				existsBy: instanceCredentialExistsMock,
 			}),
 		);
 
@@ -93,12 +96,50 @@ describe('userHasScopes', () => {
 		findByWorkflowMock.mockReset();
 		findByCredentialMock.mockReset();
 		findByGlobalCredentialMock.mockReset();
+		instanceCredentialExistsMock.mockReset();
 		findGlobalCredentialByIdMock.mockReset();
 		hasGlobalReadOnlyAccessMock.mockReset();
 		roleServiceMock.mockReset();
 
 		// Default mock responses
 		mockQueryBuilder.getRawMany.mockResolvedValue([{ id: 'projectId' }]);
+	});
+
+	describe('instance credential management', () => {
+		it('allows the dedicated global scope through legacy credential route checks', async () => {
+			instanceCredentialExistsMock.mockResolvedValue(true);
+			const user = {
+				id: 'userId',
+				role: {
+					...GLOBAL_MEMBER_ROLE,
+					scopes: [{ slug: 'credential:manageInstance' }],
+				},
+			} as unknown as User;
+
+			await expect(
+				userHasScopes(user, ['credential:update'], false, { credentialId: 'instance-cred' }),
+			).resolves.toBe(true);
+			expect(instanceCredentialExistsMock).toHaveBeenCalledWith({
+				id: 'instance-cred',
+				availability: 'instance',
+			});
+		});
+
+		it('does not use the dedicated scope for sharing operations', async () => {
+			findByCredentialMock.mockResolvedValue([]);
+			const user = {
+				id: 'userId',
+				role: {
+					...GLOBAL_MEMBER_ROLE,
+					scopes: [{ slug: 'credential:manageInstance' }],
+				},
+			} as unknown as User;
+
+			await expect(
+				userHasScopes(user, ['credential:share'], false, { credentialId: 'instance-cred' }),
+			).rejects.toThrow(NotFoundError);
+			expect(instanceCredentialExistsMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('resource not found scenarios', () => {
