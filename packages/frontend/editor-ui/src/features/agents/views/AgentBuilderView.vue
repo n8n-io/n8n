@@ -1430,7 +1430,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	background-color: var(--background--surface);
 }
 
-
 .chatResizer {
 	flex-shrink: 0;
 	min-width: var(--agent-builder-chat-min-width);
@@ -1477,7 +1476,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 		}
 	}
 }
-
 
 .editorColumn {
 	flex: 1 1 auto;

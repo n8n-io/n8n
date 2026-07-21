@@ -85,7 +85,6 @@ type TaskRow = AgentTaskDto & {
 	invalidReasons: string[];
 };
 
-
 const mcpServers = computed(() => props.config?.mcpServers ?? []);
 const hasTools = computed(() => props.tools.length + mcpServers.value.length > 0);
 const hasSkills = computed(() => props.skills.length > 0);
@@ -735,7 +734,6 @@ function openExistingSubAgentModal(subAgent: {
 				</div>
 			</div>
 		</div>
-
 	</div>
 </template>
 

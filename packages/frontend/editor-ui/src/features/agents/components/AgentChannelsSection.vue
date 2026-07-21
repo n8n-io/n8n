@@ -71,7 +71,9 @@ const channelIssueMessages = computed(() => {
 		const message = i18n.baseText(ISSUE_KEYS[issue.code], {
 			interpolate: { id: issue.capability.id },
 		});
-		messages.set(issue.capability.id, [...new Set([...(messages.get(issue.capability.id) ?? []), message])]);
+		messages.set(issue.capability.id, [
+			...new Set([...(messages.get(issue.capability.id) ?? []), message]),
+		]);
 	}
 	return messages;
 });
@@ -172,12 +174,13 @@ const remainingChannelOptionLabels = computed(() => {
 			<button
 				v-for="channel in channelRows"
 				:key="channel.type"
-
-				:class="[$style.channelCard, channel.invalidReasons.length > 0 && $style.channelCardInvalid]"
+				:class="[
+					$style.channelCard,
+					channel.invalidReasons.length > 0 && $style.channelCardInvalid,
+				]"
 				:disabled="props.disabled"
 				:aria-invalid="channel.invalidReasons.length > 0"
 				:title="channel.invalidReasons.join('\n')"
-
 				@click="openChannelEdit(channel.type)"
 			>
 				<N8nIcon v-if="channel.icon" :icon="channel.icon" size="large" />
