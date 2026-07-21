@@ -278,6 +278,13 @@ describe('workflow package export', () => {
 
 			expect(manifest.requirements).toEqual({
 				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1,
+						usedByWorkflows: [parent.id],
+					},
+				],
 			});
 		});
 
