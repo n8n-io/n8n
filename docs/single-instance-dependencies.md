@@ -80,6 +80,14 @@ separate `3.x`-branch effort. Until then the checks run report-first:
   is allowlisted (`EXPECTED_DUPLICATES`) so the verifier reports it without failing,
   until it is remediated.
 
+## Published peer ranges
+
+`pnpm pack`/`pnpm publish` resolve the `catalog:` protocol to the **exact** catalog
+version in the published tarball — not a caret range. Verified: `@n8n/json-schema-to-zod`
+packs with `"peerDependencies": { "zod": "3.25.67" }`. So a downstream `npm install`
+cannot satisfy a curated peer with a compatible-but-different version; the exact pin is
+already what ships. No publish-tooling change is needed for this on master.
+
 ## Where the checks run
 
 | Check | Where |
