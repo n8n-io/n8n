@@ -1,8 +1,3 @@
-packages/frontend/@n8n/design-system/src/components/N8nSwitch/Switch.test.ts
-  s_b3f23ab76a494c::t_e1a5d47f09228f 8-14,16-23,28-32
-  s_b3f23ab76a494c::t_dc7cb8d3f0f639 15,24-27
-packages/frontend/@n8n/design-system/src/components/N8nSwitch/Switch.vue
-  s_b3f23ab76a494c::t_6caed3771bb805 2,21-25,31,36
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -12,16 +7,6 @@ packages/frontend/@n8n/design-system/src/components/N8nSwitch/Switch.vue
   "humans": {
     "h_9c8f56e3400786": {
       "author": "kgrhartlage <kai.hartlage@n8n.io>"
-    }
-  },
-  "sessions": {
-    "s_b3f23ab76a494c": {
-      "agent_id": {
-        "tool": "codex",
-        "id": "019f6fd0-bfb4-7092-a515-f61e09438476",
-        "model": "gpt-5.6-sol"
-      },
-      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
     }
   }
 }
