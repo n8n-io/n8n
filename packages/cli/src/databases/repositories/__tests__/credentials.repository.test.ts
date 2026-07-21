@@ -255,6 +255,7 @@ describe('CredentialsRepository', () => {
 
 			// ASSERT
 			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				availability: 'workflow',
 				shared: { project: { type: 'personal' } },
 			});
 			expect(credentials).toHaveLength(2);
