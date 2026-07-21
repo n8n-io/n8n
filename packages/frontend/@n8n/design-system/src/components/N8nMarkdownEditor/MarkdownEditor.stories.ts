@@ -103,9 +103,6 @@ const meta: Meta<typeof N8nMarkdownEditor> = {
 	render: (args) => ({
 		components: { N8nMarkdownEditor },
 		setup() {
-			// Per story-instance local state. Never bind Storybook's args.modelValue
-			// into the editor — the theme decorator mounts this twice, and the shared
-			// args value stays stale while typing, which resets the editor content.
 			const value = ref(args.modelValue);
 			const editorArgs = computed(() => {
 				const { modelValue: _modelValue, ...rest } = args;
