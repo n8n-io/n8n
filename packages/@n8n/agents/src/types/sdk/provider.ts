@@ -49,9 +49,23 @@ export type AnthropicThinkingConfig =
 			budgetTokens?: number;
 	  };
 
+/**
+ * OpenAI / AI SDK reasoning effort.
+ * GPT-5.6 Sol supports none|low|medium|high|xhigh|max (no `minimal`).
+ * Older reasoning models may also accept `minimal`.
+ */
+export type OpenAIReasoningEffort =
+	| 'none'
+	| 'minimal'
+	| 'low'
+	| 'medium'
+	| 'high'
+	| 'xhigh'
+	| 'max';
+
 export interface OpenAIThinkingConfig {
-	/** Reasoning effort level. Defaults to 'medium'. */
-	reasoningEffort?: 'low' | 'medium' | 'high';
+	/** Reasoning effort level. Defaults to 'medium'. Mapped to AI SDK `providerOptions.openai.reasoningEffort`. */
+	reasoningEffort?: OpenAIReasoningEffort;
 }
 
 export interface GoogleThinkingConfig {

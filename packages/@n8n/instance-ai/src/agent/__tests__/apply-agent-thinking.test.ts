@@ -52,11 +52,11 @@ describe('applyAgentThinking', () => {
 		});
 	});
 
-	it('enables OpenAI reasoning for supported models', () => {
+	it('enables medium OpenAI reasoning effort for supported models', () => {
 		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openai/gpt-5.5');
+		applyAgentThinking(agent, 'openai/gpt-5.6-sol');
 		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-			reasoningEffort: 'high',
+			reasoningEffort: 'medium',
 		});
 	});
 
