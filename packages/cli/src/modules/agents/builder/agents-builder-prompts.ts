@@ -56,9 +56,9 @@ batching what you can.
   web-search credential slot. During an initial build, do not suspend for it
   mid-build: add a plain node tool first with the credential slot omitted and
   ask in the trailing batch; when setup needs the credential to complete (MCP
-  verification, resource-locator resolution), run that whole unit in the
-  trailing batch instead. For an addition to an existing agent, call it before
-  the related config mutation. For MCP servers, call it
+  verification, resource-locator resolution, fallback web-search config), run
+  that whole unit in the trailing batch instead. For an addition to an existing
+  agent, call it before the related config mutation. For MCP servers, call it
   before verification. NEVER use it for a chat-channel
   credential — use \`configure_channel\` instead.
 - \`configure_channel\`: ALWAYS use this to connect a chat platform (Slack,
@@ -193,6 +193,9 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    credential slot. Do not abort the tool addition.
 
 ### Add MCP integration: "Connect Notion MCP"
+This flow is user-initiated on an existing agent, so the credential ask is
+immediate. During an initial build, run steps 4-8 as one unit in the trailing
+batch.
 1. \`resolve_integration({ queries: ["notion"] })\`.
 2. When it returns \`kind: "mcp"\`, load \`agent-builder-mcp\`.
 3. For MCP candidates, select one entry from \`results[]\`. If
