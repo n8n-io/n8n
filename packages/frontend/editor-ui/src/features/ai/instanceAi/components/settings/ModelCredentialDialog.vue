@@ -154,7 +154,7 @@ const description = computed(() =>
 </script>
 
 <template>
-	<N8nDialog v-model:open="open" size="small" data-test-id="n8n-agent-model-dialog">
+	<N8nDialog v-model:open="open" size="medium" data-test-id="n8n-agent-model-dialog">
 		<N8nDialogHeader>
 			<N8nText
 				v-if="setup"

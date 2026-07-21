@@ -121,7 +121,7 @@ async function handleSave() {
 <template>
 	<N8nDialog
 		v-model:open="open"
-		size="small"
+		size="medium"
 		:header="i18n.baseText('settings.n8nAgent.searchDialog.title')"
 		:description="i18n.baseText('settings.n8nAgent.searchDialog.description')"
 		data-test-id="n8n-agent-search-dialog"

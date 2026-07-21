@@ -168,6 +168,9 @@ function handleInteractOutside(e: Event) {
 		0 64px 64px light-dark(rgba(0, 0, 0, 0.06), var(--color--black-alpha-100));
 	z-index: 1950; // See APP_Z_INDEXES in useStyles.ts
 	max-width: var(--dialog--max-width);
+	/* Tall content scrolls inside the dialog instead of clipping past the viewport. */
+	max-height: calc(100dvh - var(--spacing--lg));
+	overflow-y: auto;
 
 	&:focus {
 		outline: none;
