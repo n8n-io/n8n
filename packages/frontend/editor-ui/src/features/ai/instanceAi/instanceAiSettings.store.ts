@@ -179,7 +179,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			}
 			clearDraft();
 		} catch {
-			toast.showError(new Error('Failed to load settings'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.loadError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
 		} finally {
 			isLoading.value = false;
 		}
@@ -198,13 +201,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			} as InstanceAiAdminSettingsUpdateRequest);
 			settings.value = result;
 			clearDraft();
-			toast.showMessage({ title: 'Settings saved', type: 'success' });
+			toast.showMessage({
+				title: i18n.baseText('settings.n8nAgent.toast.saved'),
+				type: 'success',
+			});
 			await settingsStore.getModuleSettings();
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
 			return true;
 		} catch (error) {
 			clearDraft();
-			toast.showError(error, 'Settings error');
+			toast.showError(error, i18n.baseText('settings.n8nAgent.toast.errorTitle'));
 			return false;
 		} finally {
 			isSaving.value = false;
@@ -220,10 +226,16 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			delete draft.enabled;
 			await settingsStore.getModuleSettings();
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
-			toast.showMessage({ title: 'Settings saved', type: 'success' });
+			toast.showMessage({
+				title: i18n.baseText('settings.n8nAgent.toast.saved'),
+				type: 'success',
+			});
 			return true;
 		} catch {
-			toast.showError(new Error('Failed to save settings'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.saveError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
 			return false;
 		} finally {
 			isSaving.value = false;
@@ -237,7 +249,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			});
 			preferences.value = result;
 		} catch {
-			toast.showError(new Error('Failed to save preference'), 'Settings error');
+			toast.showError(
+				new Error(i18n.baseText('settings.n8nAgent.toast.preferenceError')),
+				i18n.baseText('settings.n8nAgent.toast.errorTitle'),
+			);
 		}
 	}
 

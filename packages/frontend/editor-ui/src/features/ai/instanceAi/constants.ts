@@ -20,6 +20,14 @@ export const INSTANCE_MODEL_CREDENTIAL_TYPES = [
 ] as const;
 
 export const INSTANCE_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
+
+/** Brand names, deliberately not translated; single source for dialogs and settings rows. */
+export const SANDBOX_PROVIDER_LABELS = {
+	daytona: 'Daytona',
+	'n8n-sandbox': 'n8n Sandbox Service',
+} as const;
+
+export type InstanceAiConnectionKind = 'model' | 'sandbox' | 'search';
 export const INSTANCE_AI_NEW_VIEW = 'InstanceAiNew';
 export const INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
 export const NEW_CONVERSATION_TITLE = 'New conversation';

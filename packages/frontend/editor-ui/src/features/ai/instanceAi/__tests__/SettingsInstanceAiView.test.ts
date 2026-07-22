@@ -6,9 +6,7 @@ import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import { VIEWS } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
-import ModelCredentialDialog from '../components/settings/ModelCredentialDialog.vue';
-import SandboxCredentialDialog from '../components/settings/SandboxCredentialDialog.vue';
-import SearchCredentialDialog from '../components/settings/SearchCredentialDialog.vue';
+import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -114,9 +112,13 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
-const renderModelDialog = createComponentRenderer(ModelCredentialDialog);
-const renderSandboxDialog = createComponentRenderer(SandboxCredentialDialog);
-const renderSearchDialog = createComponentRenderer(SearchCredentialDialog);
+const renderConnectionDialog = createComponentRenderer(ConnectionDialog);
+const renderModelDialog = ({ props }: { props: Record<string, unknown> }) =>
+	renderConnectionDialog({ props: { kind: 'model', ...props } });
+const renderSandboxDialog = ({ props }: { props: Record<string, unknown> }) =>
+	renderConnectionDialog({ props: { kind: 'sandbox', ...props } });
+const renderSearchDialog = ({ props }: { props: Record<string, unknown> }) =>
+	renderConnectionDialog({ props: { kind: 'search', ...props } });
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
@@ -140,6 +142,7 @@ const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> 
 describe('SettingsInstanceAiView', () => {
 	let store: ReturnType<typeof useInstanceAiSettingsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
+	let fetchCredentialTypesSpy: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -150,6 +153,9 @@ describe('SettingsInstanceAiView', () => {
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
+		fetchCredentialTypesSpy = vi
+			.spyOn(useCredentialsStore(), 'fetchCredentialTypes')
+			.mockResolvedValue(undefined as never) as unknown as ReturnType<typeof vi.fn>;
 		useCredentialsStore().setCredentialTypes([
 			{ name: 'openAiApi', displayName: 'OpenAI', properties: [] },
 			{ name: 'anthropicApi', displayName: 'Anthropic', properties: [] },
@@ -324,6 +330,39 @@ describe('SettingsInstanceAiView', () => {
 			expect(testCredential).not.toHaveBeenCalled();
 		});
 
+		it('restores the hydrated model name when switching back to the hydrated provider', async () => {
+			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
+				data: { apiKey: '__blank' },
+			} as never);
+			store.$patch({
+				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
+				instanceModelCredentials: [
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+				],
+			});
+			const { findByTestId, findByText, getByTestId } = renderModelDialog({
+				props: { open: true },
+			});
+
+			const select = await findByTestId('n8n-agent-model-provider-select');
+			await waitFor(() => expect(select.querySelector('input')!.value).toBe('OpenAI'));
+
+			const modelNameInput = () => {
+				const field = getByTestId('n8n-agent-model-name-input');
+				return field.tagName === 'INPUT'
+					? (field as HTMLInputElement)
+					: field.querySelector('input')!;
+			};
+
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('Anthropic'));
+			expect(modelNameInput().value).toBe('');
+
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('OpenAI'));
+			expect(modelNameInput().value).toBe('gpt-4o');
+		});
+
 		it('keeps the dialog open when the saved credential fails its test', async () => {
 			const credentialsStore = useCredentialsStore();
 			credentialsStore.setCredentialTypes([
@@ -375,9 +414,71 @@ describe('SettingsInstanceAiView', () => {
 
 			await waitFor(() =>
 				expect(getByTestId('n8n-agent-sandbox-provider-select').querySelector('input')!.value).toBe(
-					'settings.n8nAgent.modelCredential.none',
+					'settings.n8nAgent.connection.none',
 				),
 			);
+		});
+
+		it('keeps the setup action disabled in read-only mode until a connection is selected', async () => {
+			vi.mocked(hasPermission).mockImplementation(
+				(_permissionNames, options) => options?.rbac?.scope !== 'credential:manageInstance',
+			);
+			store.$patch({
+				serviceCredentials: [
+					{
+						id: 'daytona-id',
+						name: 'Existing Daytona',
+						type: 'daytonaApi',
+						provider: 'daytonaApi',
+					},
+				],
+			});
+			const { findByTestId, findByText, getByTestId } = renderSandboxDialog({
+				props: { open: true, setup: true },
+			});
+
+			const select = await findByTestId('n8n-agent-sandbox-provider-select');
+			expect(getByTestId('n8n-agent-sandbox-dialog-save')).toBeDisabled();
+
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('Existing Daytona'));
+
+			expect(getByTestId('n8n-agent-sandbox-dialog-save')).not.toBeDisabled();
+		});
+
+		it('clears both sandbox slots when switching back to the environment configuration', async () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					daytonaCredentialId: 'daytona-id',
+					sandboxProvider: 'daytona',
+					sandboxEnvConfigured: true,
+				},
+				serviceCredentials: [
+					{
+						id: 'daytona-id',
+						name: 'Existing Daytona',
+						type: 'daytonaApi',
+						provider: 'daytonaApi',
+					},
+				],
+			});
+			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
+				data: { apiUrl: 'https://app.daytona.io/api', apiKey: '__blank' },
+			} as never);
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { findByTestId, findByText, getByTestId } = renderSandboxDialog({
+				props: { open: true },
+			});
+
+			const select = await findByTestId('n8n-agent-sandbox-provider-select');
+			await waitFor(() => expect(select.querySelector('input')!).not.toBeDisabled());
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('settings.n8nAgent.connection.none'));
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
+
+			expect(store.draft).toMatchObject({ sandboxConnection: null });
+			expect(save).toHaveBeenCalledOnce();
 		});
 
 		it('defaults the provider from settings and stages an inline Daytona connection', async () => {
@@ -488,7 +589,7 @@ describe('SettingsInstanceAiView', () => {
 
 			await waitFor(() =>
 				expect(getByTestId('n8n-agent-search-provider-select').querySelector('input')!.value).toBe(
-					'settings.n8nAgent.modelCredential.none',
+					'settings.n8nAgent.connection.none',
 				),
 			);
 		});
@@ -817,6 +918,25 @@ describe('SettingsInstanceAiView', () => {
 			expect(store.settings?.searchCredentialId).toBeNull();
 		});
 
+		it('does not offer the search step when enabling fails', async () => {
+			const disabledSettings = { ...store.settings!, enabled: false };
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(false);
+			const { findByTestId, findByText, getByRole, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
+			await findByTestId('n8n-agent-model-dialog-step');
+			await completeModelStep(findByTestId, getByTestId, findByText);
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+			await completeSandboxStep(getByTestId);
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
+			await nextTick();
+			expect(queryByTestId('n8n-agent-search-dialog-step')).toBeNull();
+		});
+
 		it('lets the user go back from the search step to the sandbox step', async () => {
 			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
 			const { findByTestId, findByText, getByTestId } = renderComponent();
@@ -998,10 +1118,16 @@ describe('SettingsInstanceAiView', () => {
 
 			const { getByText, getByTestId, findByTestId, queryByTestId } = renderComponent();
 			expect(queryByTestId('n8n-agent-search-setup')).toBeNull();
-			expect(getByText('settings.n8nAgent.search.managedByEnv')).toBeVisible();
+			expect(getByText('settings.n8nAgent.search.env.value')).toBeVisible();
 
 			await fireEvent.click(getByTestId('n8n-agent-search-row'));
 			expect(await findByTestId('n8n-agent-search-provider-select')).toBeVisible();
+		});
+
+		it('fetches credential types on mount so deep links can render connection fields', () => {
+			renderComponent();
+
+			expect(fetchCredentialTypesSpy).toHaveBeenCalledWith(false);
 		});
 
 		it('hides credential rows on managed deployments', () => {

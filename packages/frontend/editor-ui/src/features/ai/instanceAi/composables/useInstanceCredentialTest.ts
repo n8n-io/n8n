@@ -58,6 +58,8 @@ export function useInstanceCredentialTest() {
 		}
 	}
 
+	// Results land in credentialsStore.credentialTestResults (keyed by credential id) so any
+	// consumer — view pre-flight or a dialog — can resurrect the failure via restoreStoredError.
 	async function testSavedCredential(id: string, name: string, type: string): Promise<boolean> {
 		if (!isCredentialTypeTestable(type)) return true;
 
@@ -94,6 +96,7 @@ export function useInstanceCredentialTest() {
 		}
 	}
 
+	/** Resurfaces a failure recorded for this credential by any prior testSavedCredential run. */
 	function restoreStoredError(id: string | null | undefined) {
 		credentialTestError.value =
 			id && credentialsStore.credentialTestResults.get(id) === 'error' ? genericError() : '';

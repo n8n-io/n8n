@@ -34,9 +34,8 @@ import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComp
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import ModelCredentialDialog from '../components/settings/ModelCredentialDialog.vue';
-import SandboxCredentialDialog from '../components/settings/SandboxCredentialDialog.vue';
-import SearchCredentialDialog from '../components/settings/SearchCredentialDialog.vue';
+import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../constants';
+import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -99,7 +98,9 @@ const isSandboxConfigured = computed(() =>
 );
 const sandboxValue = computed(() => {
 	if (sandboxCredentialId.value) {
-		return store.settings?.sandboxProvider === 'daytona' ? 'Daytona' : 'n8n Sandbox Service';
+		return store.settings?.sandboxProvider === 'daytona'
+			? SANDBOX_PROVIDER_LABELS.daytona
+			: SANDBOX_PROVIDER_LABELS['n8n-sandbox'];
 	}
 	return i18n.baseText('settings.n8nAgent.sandbox.env.value');
 });
@@ -121,9 +122,10 @@ const searchState = computed<'set' | 'env' | 'notset'>(() => {
 	if (store.settings?.searchEnvConfigured) return 'env';
 	return 'notset';
 });
-const searchValue = computed(() =>
-	searchCredential.value ? credentialTypeLabel(searchCredential.value.type) : '',
-);
+const searchValue = computed(() => {
+	if (searchState.value === 'env') return i18n.baseText('settings.n8nAgent.search.env.value');
+	return searchCredential.value ? credentialTypeLabel(searchCredential.value.type) : '';
+});
 
 const isSetupRequired = computed(
 	() =>
@@ -251,48 +253,49 @@ function permissionOptionsFor(key: keyof InstanceAiPermissions) {
 	return key === 'executeMcpTool' ? MCP_TOOL_PERMISSION_OPTIONS : PERMISSION_OPTIONS;
 }
 
-const modelDialogOpen = ref(false);
-const sandboxDialogOpen = ref(false);
-const searchDialogOpen = ref(false);
+/** Exactly one dialog can be active; transitions between steps never observe an all-closed state. */
+const activeDialog = ref<InstanceAiConnectionKind | null>(null);
 const setupChain = ref(false);
 const enableAfterSetup = ref(false);
 
-watch(
-	[modelDialogOpen, sandboxDialogOpen, searchDialogOpen],
-	([isModelOpen, isSandboxOpen, isSearchOpen]) => {
-		if (isModelOpen || isSandboxOpen || isSearchOpen) return;
-		setupChain.value = false;
-		enableAfterSetup.value = false;
-	},
-	{ flush: 'post' },
-);
+watch(activeDialog, (dialog) => {
+	if (dialog !== null) return;
+	setupChain.value = false;
+	enableAfterSetup.value = false;
+});
+
+function setDialogOpen(kind: InstanceAiConnectionKind, isOpen: boolean) {
+	if (isOpen) activeDialog.value = kind;
+	else if (activeDialog.value === kind) activeDialog.value = null;
+}
 
 function openModelDialog() {
 	setupChain.value = false;
-	modelDialogOpen.value = true;
+	activeDialog.value = 'model';
 }
 
 function openModelSetup() {
 	setupChain.value = !isSandboxConfigured.value;
-	modelDialogOpen.value = true;
+	activeDialog.value = 'model';
 }
 
 function openSandboxDialog() {
 	setupChain.value = false;
-	sandboxDialogOpen.value = true;
+	activeDialog.value = 'sandbox';
 }
 
-async function finishSetup() {
+/** Returns whether the chain may continue (false only when enabling failed). */
+async function finishSetup(): Promise<boolean> {
 	setupChain.value = false;
-	if (!enableAfterSetup.value) return;
+	if (!enableAfterSetup.value) return true;
 
 	enableAfterSetup.value = false;
-	await store.persistEnabled(true);
+	return await store.persistEnabled(true);
 }
 
 async function handleModelSaved() {
 	if (setupChain.value && !isSandboxConfigured.value) {
-		sandboxDialogOpen.value = true;
+		activeDialog.value = 'sandbox';
 		return;
 	}
 	await finishSetup();
@@ -301,19 +304,11 @@ async function handleModelSaved() {
 async function handleSandboxSaved() {
 	// The optional search step never gates enablement; enable first, then offer it.
 	const chainSearch = setupChain.value && searchState.value === 'notset';
-	await finishSetup();
+	if (!(await finishSetup())) return;
 	if (chainSearch) {
 		setupChain.value = true;
-		searchDialogOpen.value = true;
+		activeDialog.value = 'search';
 	}
-}
-
-function handleSandboxBack() {
-	modelDialogOpen.value = true;
-}
-
-function handleSearchBack() {
-	sandboxDialogOpen.value = true;
 }
 
 function credentialTypeLabel(type: string) {
@@ -323,6 +318,7 @@ function credentialTypeLabel(type: string) {
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.n8nAgent'));
 	void store.fetch();
+	void credentialsStore.fetchCredentialTypes(false);
 });
 
 async function handleEnable() {
@@ -583,7 +579,7 @@ function openAiUsageSettings() {
 						:class="{ [$style.dim]: isOff }"
 						:clickable="!isOff && searchState !== 'notset'"
 						data-test-id="n8n-agent-search-row"
-						@click="searchDialogOpen = true"
+						@click="activeDialog = 'search'"
 					>
 						<template #info>
 							<span :class="$style.titleWithTag">
@@ -610,11 +606,8 @@ function openAiUsageSettings() {
 								:label="i18n.baseText('settings.n8nAgent.search.setup')"
 								:disabled="store.isSaving"
 								data-test-id="n8n-agent-search-setup"
-								@click="searchDialogOpen = true"
+								@click="activeDialog = 'search'"
 							/>
-							<N8nBadge v-else-if="searchState === 'env'" size="small">
-								{{ i18n.baseText('settings.n8nAgent.search.managedByEnv') }}
-							</N8nBadge>
 							<N8nSettingsRowConfigure v-else :value="searchValue" />
 						</template>
 					</N8nSettingsRow>
@@ -750,21 +743,27 @@ function openAiUsageSettings() {
 		</template>
 
 		<template v-if="showCredentialsRows">
-			<ModelCredentialDialog
-				v-model:open="modelDialogOpen"
+			<ConnectionDialog
+				kind="model"
+				:open="activeDialog === 'model'"
 				:setup="setupChain"
+				@update:open="setDialogOpen('model', $event)"
 				@saved="handleModelSaved"
 			/>
-			<SandboxCredentialDialog
-				v-model:open="sandboxDialogOpen"
+			<ConnectionDialog
+				kind="sandbox"
+				:open="activeDialog === 'sandbox'"
 				:setup="setupChain"
+				@update:open="setDialogOpen('sandbox', $event)"
 				@saved="handleSandboxSaved"
-				@back="handleSandboxBack"
+				@back="activeDialog = 'model'"
 			/>
-			<SearchCredentialDialog
-				v-model:open="searchDialogOpen"
+			<ConnectionDialog
+				kind="search"
+				:open="activeDialog === 'search'"
 				:setup="setupChain"
-				@back="handleSearchBack"
+				@update:open="setDialogOpen('search', $event)"
+				@back="activeDialog = 'sandbox'"
 			/>
 		</template>
 	</N8nSettingsLayout>

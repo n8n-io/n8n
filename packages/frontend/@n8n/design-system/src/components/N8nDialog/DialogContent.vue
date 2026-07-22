@@ -112,19 +112,17 @@ function handleInteractOutside(e: Event) {
 		@open-auto-focus="emit('openAutoFocus', $event)"
 		@close-auto-focus="emit('closeAutoFocus', $event)"
 	>
-		<div :class="$style.scrollable">
-			<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
-			<VisuallyHidden v-if="needsFallbackTitle" as-child>
-				<DialogTitle>{{ ariaLabel }}</DialogTitle>
-			</VisuallyHidden>
+		<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
+		<VisuallyHidden v-if="needsFallbackTitle" as-child>
+			<DialogTitle>{{ ariaLabel }}</DialogTitle>
+		</VisuallyHidden>
 
-			<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
-			<VisuallyHidden v-if="needsFallbackDescription" as-child>
-				<DialogDescription>{{ ariaDescription }}</DialogDescription>
-			</VisuallyHidden>
+		<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
+		<VisuallyHidden v-if="needsFallbackDescription" as-child>
+			<DialogDescription>{{ ariaDescription }}</DialogDescription>
+		</VisuallyHidden>
 
-			<slot />
-		</div>
+		<slot />
 
 		<N8nDialogClose v-if="showCloseButton" />
 	</DialogContent>
@@ -155,8 +153,6 @@ function handleInteractOutside(e: Event) {
 
 .content {
 	position: fixed;
-	display: flex;
-	flex-direction: column;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
@@ -172,17 +168,10 @@ function handleInteractOutside(e: Event) {
 		0 64px 64px light-dark(rgba(0, 0, 0, 0.06), var(--color--black-alpha-100));
 	z-index: 1950; // See APP_Z_INDEXES in useStyles.ts
 	max-width: var(--dialog--max-width);
-	max-height: calc(100dvh - var(--spacing--lg));
 
 	&:focus {
 		outline: none;
 	}
-}
-
-.scrollable {
-	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
 }
 
 .content[data-state='open'] {
