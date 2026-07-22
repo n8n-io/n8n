@@ -20,6 +20,12 @@ const credentialUnresolved: BlockingIssue = {
 	usedByWorkflows: ['w1'],
 };
 
+const variableUnresolved: BlockingIssue = {
+	type: 'variable-unresolved',
+	name: 'API_URL',
+	usedByWorkflows: ['w1'],
+};
+
 describe('toImportBlockedError', () => {
 	it('maps a folder-conflict to 409 Conflict', () => {
 		const error = toImportBlockedError([folderConflict]);
@@ -28,6 +34,11 @@ describe('toImportBlockedError', () => {
 
 	it('still maps credential-only blocks to 422', () => {
 		const error = toImportBlockedError([credentialUnresolved]);
+		expect(error).toBeInstanceOf(UnprocessableRequestError);
+	});
+
+	it('maps variable-only blocks to 422', () => {
+		const error = toImportBlockedError([variableUnresolved]);
 		expect(error).toBeInstanceOf(UnprocessableRequestError);
 	});
 

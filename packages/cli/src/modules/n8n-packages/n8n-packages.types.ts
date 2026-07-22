@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { VariableResolutionFailure } from './entities/variable/variable.types';
 import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
 import type {
 	WorkflowConflict,
@@ -77,6 +78,8 @@ export const DataTableSchemaConflictPolicy = {
 export const VariableMissingPolicy = {
 	/** Imports workflows even when referenced variables are absent. Nothing is created; unresolved names are reported as warnings in the response. */
 	DoNothing: 'do-nothing',
+	/** Blocks the import unless every referenced variable already resolves in the target project or global scope. */
+	MustPreexist: 'must-preexist',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -257,7 +260,8 @@ export type BlockingIssue =
 			usedByWorkflows: string[];
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure);
+	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| ({ type: 'variable-unresolved' } & VariableResolutionFailure);
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
