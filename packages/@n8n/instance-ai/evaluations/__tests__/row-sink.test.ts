@@ -104,11 +104,11 @@ describe('runEvalAndPersist crash recovery from the sink', () => {
 					rowSink,
 					testCasesWithFiles,
 				},
-				() => {
+				async () => {
 					for (const { iteration } of rows) {
 						rowSink.append({ run: { inputs: rowInputs(iteration), outputs: rowOutputs(true) } });
 					}
-					return Promise.reject(new Error('lane meltdown'));
+					return await Promise.reject(new Error('lane meltdown'));
 				},
 			),
 		).rejects.toThrow('lane meltdown');
