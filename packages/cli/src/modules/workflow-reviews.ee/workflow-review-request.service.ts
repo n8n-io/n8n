@@ -1,4 +1,10 @@
-import type { CreateWorkflowReviewRequestDto } from '@n8n/api-types';
+import type {
+	CreateWorkflowReviewRequestDto,
+	ListWorkflowReviewRequestsQueryDto,
+	WorkflowReviewRequestList,
+	WorkflowReviewRequestSummary,
+} from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import {
 	DbLock,
 	DbLockService,
@@ -7,10 +13,10 @@ import {
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type User,
-	type WorkflowReviewRequest,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -22,6 +28,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 @Service()
 export class WorkflowReviewRequestService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly workflowReviewPolicyService: WorkflowReviewPolicyService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
@@ -30,9 +37,46 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly dbLockService: DbLockService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
-	async create(user: User, dto: CreateWorkflowReviewRequestDto): Promise<WorkflowReviewRequest> {
+	async list(
+		user: User,
+		query: ListWorkflowReviewRequestsQueryDto,
+	): Promise<WorkflowReviewRequestList> {
+		const policy = await this.workflowReviewPolicyService.get();
+		if (!policy.enabled) {
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(query.workflowId, user, [
+			'workflow:read',
+		]);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		const [requests, count] = await this.workflowReviewRequestRepository.findRequestsForWorkflow(
+			query.workflowId,
+			{ state: query.state, skip: query.skip, take: query.take },
+		);
+
+		return {
+			count,
+			data: requests.map((request) => ({
+				id: request.id,
+				state: request.state,
+				decision: request.decision,
+				createdAt: request.createdAt.toISOString(),
+				updatedAt: request.updatedAt.toISOString(),
+			})),
+		};
+	}
+
+	async create(
+		user: User,
+		dto: CreateWorkflowReviewRequestDto,
+	): Promise<WorkflowReviewRequestSummary> {
 		const { workflowId, workflowVersionId } = dto.workflows[0];
 
 		const policy = await this.workflowReviewPolicyService.get();
@@ -65,44 +109,63 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
-		return await this.dbLockService.withLock(DbLock.WORKFLOW_REVIEW_REQUEST_CREATE, async (tx) => {
-			const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
-				workflowId,
-				tx,
-			);
-			if (existing) {
-				throw new ConflictError(
-					'An open review request already exists for this workflow',
-					'Sync the existing review request instead of creating a new one',
-					{ workflowReviewRequestId: existing.id },
-				);
-			}
-
-			const request = await this.workflowReviewRequestRepository.createRequest(
-				{
-					projectId: project.id,
-					title: dto.title,
-					description: dto.description ?? null,
-					createdById: user.id,
-				},
-				tx,
-			);
-
-			await this.workflowReviewRequestWorkflowRepository.createWorkflowRow(
-				{
-					workflowReviewRequestId: request.id,
+		const request = await this.dbLockService.withLock(
+			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			async (tx) => {
+				const existing = await this.workflowReviewRequestRepository.findOpenRequestForWorkflow(
 					workflowId,
-					workflowVersionId,
-				},
-				tx,
+					tx,
+				);
+				if (existing) {
+					throw new ConflictError(
+						'An open review request already exists for this workflow',
+						'Sync the existing review request instead of creating a new one',
+						{ workflowReviewRequestId: existing.id },
+					);
+				}
+
+				const created = await this.workflowReviewRequestRepository.createRequest(
+					{
+						projectId: project.id,
+						title: dto.title,
+						description: dto.description ?? null,
+						createdById: user.id,
+					},
+					tx,
+				);
+
+				await this.workflowReviewRequestWorkflowRepository.createWorkflowRow(
+					{
+						workflowReviewRequestId: created.id,
+						workflowId,
+						workflowVersionId,
+					},
+					tx,
+				);
+
+				await this.workflowReviewRequestAuthorRepository.addAuthor(
+					{ workflowReviewRequestId: created.id, userId: user.id },
+					tx,
+				);
+
+				return created;
+			},
+		);
+
+		// Fire-and-forget: the transaction has committed, a failed broadcast
+		// must not fail the request. Viewers heal via focus/reconnect refetch.
+		this.collaborationService
+			.broadcastWorkflowReviewStateChanged(workflowId)
+			.catch((error) =>
+				this.logger.warn('Failed to broadcast review state change', { workflowId, error }),
 			);
 
-			await this.workflowReviewRequestAuthorRepository.addAuthor(
-				{ workflowReviewRequestId: request.id, userId: user.id },
-				tx,
-			);
-
-			return request;
-		});
+		return {
+			id: request.id,
+			state: request.state,
+			decision: request.decision,
+			createdAt: request.createdAt.toISOString(),
+			updatedAt: request.updatedAt.toISOString(),
+		};
 	}
 }

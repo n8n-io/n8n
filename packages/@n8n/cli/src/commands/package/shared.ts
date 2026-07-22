@@ -8,6 +8,7 @@ type BlockingIssue =
 			name: string;
 	  }
 	| { type: 'credential-unresolved'; kind: string; sourceId: string; usedByWorkflows: string[] }
+	| { type: 'variable-unresolved'; name: string; usedByWorkflows: string[] }
 	| {
 			type: 'missing-node-type';
 			nodeType: string;
@@ -24,6 +25,10 @@ function formatIssue(issue: unknown): string {
 	if (it.type === 'credential-unresolved') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
 		return `credential ${it.sourceId} unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'variable-unresolved') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		return `variable "${it.name}" unresolved, used by workflow(s) ${usedBy}`;
 	}
 	if (it.type === 'missing-node-type') {
 		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';

@@ -51,6 +51,7 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 				workflowIds: [],
 				executionIds: [],
 				dataTableIds: [],
+				artifactRefs: [],
 				finalText: '',
 				toolCalls: [],
 				agentActivities: [],

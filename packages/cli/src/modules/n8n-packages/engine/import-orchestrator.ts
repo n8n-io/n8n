@@ -146,6 +146,8 @@ export class ImportOrchestrator {
 			credentialRequest,
 			folderPlan,
 			dataTablePlan,
+			variableRequest,
+			variablePlan,
 			missingNodeTypes,
 			missingNodeTypeMode: options.missingNodeTypeMode,
 		});
@@ -222,6 +224,8 @@ export class ImportOrchestrator {
 		credentialRequest,
 		folderPlan,
 		dataTablePlan,
+		variableRequest,
+		variablePlan,
 		missingNodeTypes,
 		missingNodeTypeMode,
 	}: {
@@ -230,6 +234,8 @@ export class ImportOrchestrator {
 		credentialRequest: CredentialBindingRequest;
 		folderPlan: FolderImportPlan;
 		dataTablePlan: DataTableImportPlan;
+		variableRequest: VariableImportRequest;
+		variablePlan: VariableImportPlan;
 		missingNodeTypes: MissingNodeTypeRequirement[];
 		missingNodeTypeMode: MissingNodeTypeMode;
 	}): BlockingIssue[] {
@@ -252,6 +258,9 @@ export class ImportOrchestrator {
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
 				.map(toCredentialBlockingIssue),
+			...this.variableImporter
+				.blockingFailures(variableRequest, variablePlan)
+				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
 			...missingNodeTypeBlockingFailures(missingNodeTypeMode, missingNodeTypes).map(
 				({ type, typeVersion, usedByWorkflows }): BlockingIssue => ({
 					type: 'missing-node-type',
