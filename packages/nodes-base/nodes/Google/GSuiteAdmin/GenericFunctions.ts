@@ -85,6 +85,7 @@ export function mapUserExtraFields(fields: IDataObject, body: IDataObject): void
 		['imsUi', 'imsValues', 'ims'],
 		['keywordsUi', 'keywordsValues', 'keywords'],
 		['locationsUi', 'locationsValues', 'locations'],
+		['posixAccountsUi', 'posixAccountsValues', 'posixAccounts'],
 	];
 	for (const [uiKey, valuesKey, bodyKey] of arrayMappings) {
 		if (fields[uiKey]) {

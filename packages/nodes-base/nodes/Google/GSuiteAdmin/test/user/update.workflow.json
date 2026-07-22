@@ -58,6 +58,22 @@
 								"value": "boss@example.com"
 							}
 						]
+					},
+					"posixAccountsUi": {
+						"posixAccountsValues": [
+							{
+								"username": "jdoe",
+								"uid": 1001,
+								"gid": 1001,
+								"homeDirectory": "/home/jdoe",
+								"shell": "/bin/bash",
+								"gecos": "John Doe",
+								"systemId": "sys1",
+								"accountId": "acc1",
+								"operatingSystemType": "linux",
+								"primary": true
+							}
+						]
 					}
 				}
 			},

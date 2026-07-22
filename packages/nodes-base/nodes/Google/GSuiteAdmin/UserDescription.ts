@@ -1012,6 +1012,93 @@ export const userExtraFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'POSIX Accounts',
+		name: 'posixAccountsUi',
+		type: 'fixedCollection',
+		placeholder: 'Add POSIX Account',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'posixAccountsValues',
+				displayName: 'POSIX Account',
+				values: [
+					{
+						displayName: 'Username',
+						name: 'username',
+						type: 'string',
+						default: '',
+						description: 'The username of the account',
+					},
+					{
+						displayName: 'UID',
+						name: 'uid',
+						type: 'number',
+						default: 0,
+						description: 'The POSIX compliant user ID',
+					},
+					{
+						displayName: 'GID',
+						name: 'gid',
+						type: 'number',
+						default: 0,
+						description: 'The default group ID',
+					},
+					{
+						displayName: 'Home Directory',
+						name: 'homeDirectory',
+						type: 'string',
+						default: '',
+						description: 'The path to the home directory for this account',
+					},
+					{
+						displayName: 'Shell',
+						name: 'shell',
+						type: 'string',
+						default: '',
+						description: 'The path to the login shell for this account',
+					},
+					{
+						displayName: 'GECOS',
+						name: 'gecos',
+						type: 'string',
+						default: '',
+						description: 'The GECOS (user information) for this account',
+					},
+					{
+						displayName: 'System ID',
+						name: 'systemId',
+						type: 'string',
+						default: '',
+						description: 'System identifier for which account username or UID apply to',
+					},
+					{
+						displayName: 'Account ID',
+						name: 'accountId',
+						type: 'string',
+						default: '',
+						description: 'A POSIX account field identifier',
+					},
+					{
+						displayName: 'Operating System Type',
+						name: 'operatingSystemType',
+						type: 'options',
+						options: [
+							{ name: 'Linux', value: 'linux' },
+							{ name: 'Unspecified', value: 'unspecified' },
+							{ name: 'Windows', value: 'windows' },
+						],
+						default: 'linux',
+						description: 'The operating system type for this account',
+					},
+					primaryField,
+				],
+			},
+		],
+	},
 ];
 
 export const userOperations: INodeProperties[] = [

@@ -1,7 +1,11 @@
 import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { googleApiRequest, googleApiRequestAllItems, mapUserExtraFields } from '../GenericFunctions';
+import {
+	googleApiRequest,
+	googleApiRequestAllItems,
+	mapUserExtraFields,
+} from '../GenericFunctions';
 import type { Mock } from 'vitest';
 
 describe('Google GSuiteAdmin Node', () => {
@@ -231,6 +235,43 @@ describe('Google GSuiteAdmin Node', () => {
 				organizations: [{ name: 'Acme', title: 'Engineer', type: 'work' }],
 				relations: [{ type: 'manager', value: 'boss@example.com' }],
 				addresses: [{ type: 'home', locality: 'Berlin' }],
+			});
+		});
+
+		it('should unwrap posixAccounts into the API array', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					posixAccountsUi: {
+						posixAccountsValues: [
+							{
+								username: 'jdoe',
+								uid: 1001,
+								gid: 1001,
+								homeDirectory: '/home/jdoe',
+								shell: '/bin/bash',
+								operatingSystemType: 'linux',
+								primary: true,
+							},
+						],
+					},
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				posixAccounts: [
+					{
+						username: 'jdoe',
+						uid: 1001,
+						gid: 1001,
+						homeDirectory: '/home/jdoe',
+						shell: '/bin/bash',
+						operatingSystemType: 'linux',
+						primary: true,
+					},
+				],
 			});
 		});
 
