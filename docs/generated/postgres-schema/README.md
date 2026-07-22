@@ -62,7 +62,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.insights_raw](public.insights_raw.md) | 5 |  | BASE TABLE |
 | [public.installed_nodes](public.installed_nodes.md) | 4 |  | BASE TABLE |
 | [public.installed_packages](public.installed_packages.md) | 6 |  | BASE TABLE |
-| [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 8 |  | BASE TABLE |
+| [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 9 |  | BASE TABLE |
 | [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
@@ -94,7 +94,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.role_mapping_rule_project](public.role_mapping_rule_project.md) | 2 |  | BASE TABLE |
 | [public.role_scope](public.role_scope.md) | 2 |  | BASE TABLE |
 | [public.scheduled_job](public.scheduled_job.md) | 19 |  | BASE TABLE |
-| [public.scheduled_task](public.scheduled_task.md) | 16 |  | BASE TABLE |
+| [public.scheduled_task](public.scheduled_task.md) | 17 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
@@ -119,6 +119,10 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_publication_trigger_status](public.workflow_publication_trigger_status.md) | 8 |  | BASE TABLE |
 | [public.workflow_publish_history](public.workflow_publish_history.md) | 6 |  | BASE TABLE |
 | [public.workflow_published_version](public.workflow_published_version.md) | 4 |  | BASE TABLE |
+| [public.workflow_review_request](public.workflow_review_request.md) | 12 |  | BASE TABLE |
+| [public.workflow_review_request_authors](public.workflow_review_request_authors.md) | 2 |  | BASE TABLE |
+| [public.workflow_review_request_reviewers](public.workflow_review_request_reviewers.md) | 2 |  | BASE TABLE |
+| [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 4 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
@@ -297,6 +301,17 @@ erDiagram
 "public.workflow_publish_history" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_published_version" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
+"public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;updatedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.workflow_review_request" }o--o| "public.user" : "FOREIGN KEY (#quot;closedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.workflow_review_request" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.workflow_review_request_authors" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_review_request_authors" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_review_request_reviewers" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_review_request_reviewers" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_review_request_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
@@ -819,6 +834,7 @@ erDiagram
 "public.instance_ai_checkpoints" {
   timestamp_3__with_time_zone createdAt
   timestamp_3__with_time_zone expiredAt
+  varchar_64_ hostRunId
   varchar_255_ key
   varchar_255_ resourceId
   varchar_255_ runId
@@ -1132,6 +1148,7 @@ erDiagram
   integer attempts
   varchar_255_ claimedBy
   timestamp_3__with_time_zone createdAt
+  timestamp_3__with_time_zone dispatchedAt
   text errorMessage
   timestamp_3__with_time_zone finishedAt
   bigint id
@@ -1378,6 +1395,34 @@ erDiagram
   varchar_36_ publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.workflow_review_request" {
+  timestamp_3__with_time_zone approvedAt
+  uuid closedById FK
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_50_ decision
+  text description
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_16_ state
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  uuid updatedById FK
+}
+"public.workflow_review_request_authors" {
+  uuid userId FK
+  varchar_36_ workflowReviewRequestId FK
+}
+"public.workflow_review_request_reviewers" {
+  uuid userId FK
+  varchar_36_ workflowReviewRequestId FK
+}
+"public.workflow_review_request_workflow" {
+  varchar_36_ id
+  varchar_36_ workflowId FK
+  varchar_36_ workflowReviewRequestId FK
+  varchar_36_ workflowVersionId FK
 }
 "public.workflow_statistics" {
   bigint count

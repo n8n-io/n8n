@@ -127,6 +127,23 @@ describe('AgentsToolsService', () => {
 		});
 	});
 
+	describe('searchAgentToolNodes()', () => {
+		it('initializes and searches the catalog with the agent tool-node filter', async () => {
+			const { service, nodeCatalogService } = makeService();
+
+			const result = await service.searchAgentToolNodes(['gmail', 'slack']);
+
+			expect(nodeCatalogService.initialize).toHaveBeenCalled();
+			expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'slack'], {
+				nodeFilter: isAgentToolNodeType,
+			});
+			expect(result).toEqual({
+				results: 'search-result',
+				queriesWithNoResults: [],
+			});
+		});
+	});
+
 	describe('isExecutableNodeType', () => {
 		it('rejects trigger nodes only', () => {
 			expect(isExecutableNodeType('n8n-nodes-base.scheduleTrigger')).toBe(false);
@@ -155,6 +172,10 @@ describe('AgentsToolsService', () => {
 			for (const nodeType of AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES) {
 				expect(isAgentToolNodeType(nodeType)).toBe(false);
 			}
+		});
+
+		it('rejects the sub-workflow tool node', () => {
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.toolWorkflow')).toBe(false);
 		});
 
 		it('allows shared AI utility tool node IDs', () => {
@@ -196,5 +217,34 @@ describe('AgentsToolsService', () => {
 				{ nodeId: 'n8n-nodes-base.gmail', version: '2.1', resource: 'message' },
 			]);
 		});
+
+		it.each(['sendAndWait', 'dispatchAndWait'])(
+			'rejects unsupported operation %s before reading its node schema',
+			async (operation) => {
+				const { service, nodeCatalogService } = makeService();
+
+				const result = await getTypesTool(service).handler!(
+					{
+						nodeIds: [
+							{
+								nodeId: 'n8n-nodes-base.slackTool',
+								version: 2.2,
+								resource: 'message',
+								operation,
+							},
+						],
+					},
+					ctx,
+				);
+
+				expect(nodeCatalogService.getNodeTypes).not.toHaveBeenCalled();
+				expect(result).toEqual({
+					results: expect.stringContaining(`Operation "${operation}"`),
+				});
+				expect(result).toEqual({
+					results: expect.stringContaining('requireApproval: true'),
+				});
+			},
+		);
 	});
 });

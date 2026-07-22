@@ -1,10 +1,12 @@
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiThreadOrigin,
-	InstanceAiThreadSource,
-	InstanceAiResourceAttachment,
+import {
+	instanceAiAgentAttachmentSchema,
+	type InstanceAiAgentAttachment,
+	type InstanceAiHandoffContext,
+	type InstanceAiThreadOrigin,
+	type InstanceAiThreadSource,
+	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -12,7 +14,10 @@ import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceA
 import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { INSTANCE_AI_THREAD_VIEW } from '../constants';
+import {
+	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
+	INSTANCE_AI_THREAD_VIEW,
+} from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 /** The existing credential id, when known, so the agent can act on it directly. */
@@ -42,6 +47,10 @@ export function buildInstanceAiArtifactCredentialQuestion(
 }
 
 const pendingFirstMessageKey = (threadId: string) => `n8n-instance-ai-first-message:${threadId}`;
+const pendingHandoffContextKey = (threadId: string) =>
+	`n8n-instance-ai-handoff-context:${threadId}`;
+const pendingAgentAttachmentKey = (threadId: string) =>
+	`n8n-instance-ai-agent-attachment:${threadId}`;
 
 export interface PendingFirstMessage {
 	message: string;
@@ -63,6 +72,23 @@ export function buildInstanceAiCredentialHandoffContext(
 			...(credential.documentationUrl ? { documentationUrl: credential.documentationUrl } : {}),
 			...(credential.oauthRedirectUrl ? { oauthRedirectUrl: credential.oauthRedirectUrl } : {}),
 		},
+	};
+}
+
+export function buildInstanceAiAgentPreviewHandoffContext(params: {
+	agentId: string;
+	threadId: string;
+	agentName?: string;
+	agentIcon?: string;
+	sessionTitle?: string;
+}): InstanceAiHandoffContext {
+	return {
+		source: 'agent-preview',
+		agentId: params.agentId,
+		threadId: params.threadId,
+		...(params.agentName ? { agentName: params.agentName } : {}),
+		...(params.agentIcon ? { agentIcon: params.agentIcon } : {}),
+		...(params.sessionTitle ? { sessionTitle: params.sessionTitle } : {}),
 	};
 }
 
@@ -95,6 +121,46 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 	} catch {
 		return null;
 	}
+}
+
+export function stashPendingHandoffContext(
+	threadId: string,
+	context: InstanceAiHandoffContext,
+): void {
+	localStorage.setItem(pendingHandoffContextKey(threadId), JSON.stringify(context));
+}
+
+export function consumePendingHandoffContext(threadId: string): InstanceAiHandoffContext | null {
+	const raw = localStorage.getItem(pendingHandoffContextKey(threadId));
+	if (!raw) return null;
+	localStorage.removeItem(pendingHandoffContextKey(threadId));
+	try {
+		return JSON.parse(raw) as InstanceAiHandoffContext;
+	} catch {
+		return null;
+	}
+}
+
+export function stashPendingAgentAttachment(
+	threadId: string,
+	attachment: InstanceAiAgentAttachment,
+): void {
+	localStorage.setItem(pendingAgentAttachmentKey(threadId), JSON.stringify(attachment));
+}
+
+export function getPendingAgentAttachment(threadId: string): InstanceAiAgentAttachment | null {
+	const raw = localStorage.getItem(pendingAgentAttachmentKey(threadId));
+	if (!raw) return null;
+	try {
+		const parsed = instanceAiAgentAttachmentSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : null;
+	} catch {
+		return null;
+	}
+}
+
+export function clearPendingAgentAttachment(threadId: string): void {
+	localStorage.removeItem(pendingAgentAttachmentKey(threadId));
 }
 
 /** Resolve the personal project a launched thread binds to, loading it on first use. */
@@ -131,6 +197,21 @@ export async function provisionLaunchedThread(
 	return threadId;
 }
 
+export async function provisionContextOnlyThread(
+	projectId: string,
+	context: InstanceAiHandoffContext,
+	launch?: InstanceAiThreadLaunch,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+	} catch {
+		return null;
+	}
+	stashPendingHandoffContext(threadId, context);
+	return threadId;
+}
+
 // One hand-off at a time across all entry points (module-level to share the guard).
 let handoffInFlight = false;
 
@@ -143,6 +224,62 @@ export function useInstanceAiHandoff() {
 	const rootStore = useRootStore();
 	const router = useRouter();
 	const toast = useToast();
+
+	async function openAgentArtifactThread(attachment: InstanceAiAgentAttachment): Promise<boolean> {
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const threadId = uuidv4();
+			try {
+				await instanceAiStore.syncThread(threadId, attachment.projectId);
+				await instanceAiStore.updateThreadMetadata(threadId, {
+					[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY]: {
+						agentId: attachment.id,
+						projectId: attachment.projectId,
+						...(attachment.name ? { name: attachment.name } : {}),
+					},
+				});
+			} catch {
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return false;
+			}
+			stashPendingAgentAttachment(threadId, attachment);
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
+			return true;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
+
+	async function openThreadWithContext(
+		projectId: string,
+		context: InstanceAiHandoffContext,
+		options?: {
+			newTab?: boolean;
+			launch?: InstanceAiThreadLaunch;
+		},
+	): Promise<boolean> {
+		if (handoffInFlight) return false;
+		handoffInFlight = true;
+		try {
+			const tab = options?.newTab ? window.open('', '_blank') : null;
+			const threadId = await provisionContextOnlyThread(projectId, context, options?.launch);
+			if (!threadId) {
+				tab?.close();
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return false;
+			}
+			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
+			if (tab) {
+				tab.location.href = router.resolve(route).href;
+			} else {
+				await router.push(route);
+			}
+			return true;
+		} finally {
+			handoffInFlight = false;
+		}
+	}
 
 	async function startThread(
 		projectId: string,
@@ -196,5 +333,5 @@ export function useInstanceAiHandoff() {
 		}
 	}
 
-	return { startThread };
+	return { startThread, openThreadWithContext, openAgentArtifactThread };
 }

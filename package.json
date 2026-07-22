@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.31.0",
+  "version": "2.32.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -201,6 +201,7 @@
       "undici@5": "catalog:undici-v6",
       "undici@6": "catalog:undici-v6",
       "undici@7": "catalog:undici-v7",
+      "node-gyp>undici": "catalog:undici-v7",
       "@babel/traverse": "^7.23.2"
     },
     "patchedDependencies": {
@@ -217,7 +218,8 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
       "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
-      "assert@2.1.0": "patches/assert@2.1.0.patch"
+      "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "lodash@4.18.1": "patches/lodash@4.18.1.patch"
     }
   }
 }

@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 
+import { toImportBlockedError } from './import-blocked.error';
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
 import type {
@@ -13,8 +14,17 @@ import type {
 	DataTableImportPlan,
 	DataTableImportRequest,
 } from '../entities/data-table/data-table.types';
+import type {
+	FolderImportContext,
+	FolderImportPlan,
+	PreparedFolder,
+} from '../entities/folder/folder-import.types';
 import { FolderImporter } from '../entities/folder/folder-importer';
-import type { FolderImportPlan, PreparedFolder } from '../entities/folder/folder-import.types';
+import { VariableImporter } from '../entities/variable/variable-importer';
+import type {
+	VariableImportPlan,
+	VariableImportRequest,
+} from '../entities/variable/variable.types';
 import type {
 	PreparedWorkflow,
 	WorkflowImportOutcome,
@@ -31,7 +41,6 @@ import type {
 	ImportWorkflowProperties,
 	PackageImportBindings,
 } from '../n8n-packages.types';
-import { toImportBlockedError } from './import-blocked.error';
 
 export interface ImportOrchestrationInput {
 	context: ImportContext;
@@ -39,7 +48,10 @@ export interface ImportOrchestrationInput {
 	workflows: PreparedWorkflow[];
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
+	variableRequest: VariableImportRequest;
 	options: ImportWorkflowProperties & ImportFolderProperties;
+	/** The target project does not exist yet and will be created by this import (project packages). */
+	projectPendingCreation?: boolean;
 }
 
 export interface ImportOrchestrationResult {
@@ -48,6 +60,18 @@ export interface ImportOrchestrationResult {
 	bindings: PackageImportBindings;
 	credentialResult: CredentialApplyResult;
 	dataTablePlan: DataTableImportPlan;
+	variablePlan: VariableImportPlan;
+}
+
+export interface ImportPlan {
+	input: ImportOrchestrationInput;
+	folderContext: FolderImportContext;
+	credentialPlan: CredentialResolution;
+	workflowPlan: WorkflowImportPlan;
+	folderPlan: FolderImportPlan;
+	dataTablePlan: DataTableImportPlan;
+	variablePlan: VariableImportPlan;
+	blockingIssues: BlockingIssue[];
 }
 
 /**
@@ -59,23 +83,41 @@ export class ImportOrchestrator {
 	constructor(
 		private readonly credentialImporter: CredentialImporter,
 		private readonly dataTableImporter: DataTableImporter,
+		private readonly variableImporter: VariableImporter,
 		private readonly folderImporter: FolderImporter,
 		private readonly workflowImporter: WorkflowImporter,
 		private readonly workflowPublisher: WorkflowPublisher,
 	) {}
 
 	async import(input: ImportOrchestrationInput): Promise<ImportOrchestrationResult> {
-		const { context, folders, workflows, credentialRequest, dataTableRequest, options } = input;
+		const plan = await this.plan(input);
+		if (plan.blockingIssues.length > 0) {
+			throw toImportBlockedError(plan.blockingIssues);
+		}
+		return await this.apply(plan);
+	}
 
-		// PublishAll requires publish scope up front; other policies are checked per workflow.
+	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
+		const {
+			context,
+			folders,
+			workflows,
+			credentialRequest,
+			dataTableRequest,
+			variableRequest,
+			options,
+		} = input;
+
 		await this.workflowPublisher.assertCanPublish(
 			context.user,
 			context.projectId,
 			options.workflowPublishingPolicy,
+			input.projectPendingCreation,
 		);
 
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
+		const variablePlan = await this.variableImporter.plan(context, variableRequest);
 		const workflowPlan = await this.workflowImporter.plan(context, workflows, options);
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
@@ -88,9 +130,29 @@ export class ImportOrchestrator {
 			dataTablePlan,
 		});
 
-		if (blockingIssues.length > 0) {
-			throw toImportBlockedError(blockingIssues);
-		}
+		return {
+			input,
+			folderContext,
+			credentialPlan,
+			workflowPlan,
+			folderPlan,
+			dataTablePlan,
+			variablePlan,
+			blockingIssues,
+		};
+	}
+
+	async apply(plan: ImportPlan): Promise<ImportOrchestrationResult> {
+		const {
+			input,
+			folderContext,
+			credentialPlan,
+			workflowPlan,
+			folderPlan,
+			dataTablePlan,
+			variablePlan,
+		} = plan;
+		const { context, credentialRequest, options } = input;
 
 		const folderSummaries = await this.folderImporter.apply(folderContext, folderPlan);
 
@@ -122,6 +184,7 @@ export class ImportOrchestrator {
 			bindings,
 			credentialResult,
 			dataTablePlan,
+			variablePlan,
 		};
 	}
 

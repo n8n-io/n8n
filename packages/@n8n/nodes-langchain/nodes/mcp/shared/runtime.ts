@@ -315,6 +315,7 @@ export async function executeMcpTool(
 			{
 				logger: ctx.logger,
 				onExecutionCancellation: ctx.onExecutionCancellation?.bind(ctx),
+				onExecutionFinish: ctx.onExecutionFinish?.bind(ctx),
 			},
 		);
 

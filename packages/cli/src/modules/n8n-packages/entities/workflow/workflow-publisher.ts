@@ -40,13 +40,22 @@ export class WorkflowPublisher {
 	 * Fail the import before any writes when {@link WorkflowPublishingPolicy.PublishAll}
 	 * is selected and the actor lacks `workflow:publish`. Other policies skip this check;
 	 * publish permission is checked per workflow in workflowService
+	 *
+	 * `projectPendingCreation` lets this run before the target project exists: a project the
+	 * user is importing as new will be created with them as admin, so they can always publish
+	 * in it and there is nothing to look up yet.
 	 */
 	async assertCanPublish(
 		user: User,
 		projectId: string,
 		policy: WorkflowPublishingPolicy,
+		projectPendingCreation = false,
 	): Promise<void> {
 		if (policy !== WorkflowPublishingPolicy.PublishAll) {
+			return;
+		}
+
+		if (projectPendingCreation) {
 			return;
 		}
 

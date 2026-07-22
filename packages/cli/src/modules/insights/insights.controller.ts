@@ -41,13 +41,14 @@ export class InsightsController {
 	@GlobalScope('insights:list')
 	@Licensed('feat:insights:viewDashboard')
 	async getInsightsByWorkflow(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListInsightsWorkflowQueryDto,
 	): Promise<InsightsByWorkflow> {
 		const { startDate, endDate } = this.prepareDateFilters(query);
 
 		return await this.insightsService.getInsightsByWorkflow({
+			user: req.user,
 			skip: query.skip,
 			take: query.take,
 			sortBy: query.sortBy,

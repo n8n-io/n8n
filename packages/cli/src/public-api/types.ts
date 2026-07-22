@@ -9,6 +9,7 @@ import type {
 	UpsertDataTableRowDto,
 	UpdateSecurityPolicyDto,
 	PublicCreateDestination,
+	UpdateSamlConfigurationDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, TagEntity, WorkflowEntity } from '@n8n/db';
 import type { ExecutionStatus, ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -141,10 +142,20 @@ export declare namespace WorkflowRequest {
 		}
 	>;
 
-	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity & { projectId?: string }, {}>;
+	type Create = AuthenticatedRequest<
+		{},
+		{},
+		WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
+		{}
+	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		WorkflowEntity & { parentFolderId?: string | null },
+		{}
+	>;
 	type Activate = AuthenticatedRequest<
 		{ id: string },
 		{},
@@ -408,4 +419,5 @@ export declare namespace LogStreamingRequest {
 
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
+	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
 }

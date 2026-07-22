@@ -94,7 +94,7 @@ catalog:
   '@types/lodash-es': ^4.17.12
   '@types/luxon': 3.2.0
   '@types/markdown-it': ^13.0.2
-  '@types/markdown-it-link-attributes': "^3.0.5"
+  '@types/markdown-it-link-attributes': '^3.0.5'
   '@types/mime-types': 3.0.1
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
@@ -134,7 +134,7 @@ catalog:
   eslint-plugin-n8n-nodes-base: ^1.16.7
   express: 5.1.0
   fast-check: ^3.23.2
-  fast-glob: 3.2.12
+  fast-glob: 3.3.3
   fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16
   fflate: 0.8.3
@@ -169,7 +169,7 @@ catalog:
   nanoid: 3.3.8
   nock: 14.0.14
   nodemailer: 8.0.10
-  openai: 6.19.0
+  openai: 6.46.0
   oracledb: 6.10.0
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1
@@ -217,6 +217,7 @@ catalogMode: strict
 catalogs:
   typescript:
     typescript: 7.0.2
+    tsdown: ^0.22.8
   # Side-by-side TS7: tsgo `tsc` for typecheck/build, plus the real TS6 JS API
   # (as `typescript`) for tooling that needs the programmatic compiler API —
   # e.g. @typescript-eslint/typescript-estree, which TS7 does not yet provide.
@@ -241,7 +242,7 @@ catalogs:
     '@vitejs/plugin-vue': ^5.2.4
     '@vue/test-utils': ^2.4.6
     '@vue/tsconfig': ^0.7.0
-    '@vueuse/core': ^10.11.0
+    '@vueuse/core': ^14.3.0
     element-plus: 2.4.3
     highlight.js: 11.8.0
     pinia: ^2.2.4
@@ -277,5 +278,3 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
-  - 'typescript'
-  - '@typescript/*'

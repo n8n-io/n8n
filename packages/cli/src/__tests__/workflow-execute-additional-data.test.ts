@@ -124,7 +124,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);
 	const activeExecutions = mockInstance(ActiveExecutions);
-	mockInstance(CredentialsPermissionChecker);
+	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
 	mockInstance(WorkflowPublishHistoryRepository);
@@ -163,8 +163,12 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const runWithData = getMockRun({
 			lastNodeOutput: [[{ json: { test: 1 } }]],
 		});
+		const ownershipService = mockInstance(OwnershipService);
 
 		beforeEach(() => {
+			// Both this and the executeAgent describe call mockInstance(OwnershipService),
+			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
+			Container.set(OwnershipService, ownershipService);
 			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({
 					id: EXECUTION_ID,
@@ -182,6 +186,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
 			processRunExecutionData.mockReturnValue(getCancelablePromise(runWithData));
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-id-1', name: 'Mock Project' }),
+			);
 		});
 
 		it('should execute workflow, return data and execution id', async () => {
@@ -264,6 +271,100 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 
 			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
+		});
+
+		describe('credential permission check routing', () => {
+			const subWorkflowData = () =>
+				mock<IWorkflowBase>({
+					id: 'sub-id',
+					name: 'Sub Workflow',
+					nodes: [],
+					connections: {},
+					staticData: {},
+					settings: {},
+				});
+
+			beforeEach(() => {
+				vi.mocked(credentialsPermissionChecker.check).mockClear();
+				vi.mocked(credentialsPermissionChecker.checkForUser).mockClear();
+				vi.mocked(WorkflowExecute).mockClear();
+			});
+
+			it('checks credentials against the triggering user for an inline sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.checkForUser).toHaveBeenCalledTimes(1);
+				expect(vi.mocked(credentialsPermissionChecker.checkForUser).mock.calls[0][0]).toBe(
+					'user-1',
+				);
+				expect(credentialsPermissionChecker.check).not.toHaveBeenCalled();
+			});
+
+			it('checks credentials against the project for a database sub-workflow', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				expect(credentialsPermissionChecker.check).toHaveBeenCalled();
+				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
+			});
+
+			it('preserves the triggering user in the sub-workflow additional data for inline sub-workflows so nested inline calls stay scoped to that user', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+						parentWorkflowId: 'parent-1',
+					}),
+				);
+
+				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
+				expect(integratedAdditionalData.userId).toBe('user-1');
+			});
+
+			it('does not carry the triggering user into a database sub-workflow (runs under its own project scope)', async () => {
+				await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'db-id', code: undefined }),
+					mock<IWorkflowExecuteAdditionalData>({ userId: 'user-1' }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: subWorkflowData(),
+						doNotWaitToFinish: false,
+					}),
+				);
+
+				const integratedAdditionalData = vi.mocked(WorkflowExecute).mock.calls[0][0];
+				expect(integratedAdditionalData.userId).toBeUndefined();
+			});
 		});
 
 		describe('sub-workflow dynamic credential reporting', () => {
@@ -1241,6 +1342,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		beforeEach(() => {
 			vi.clearAllMocks();
+			// Both this and the getBase describe call mockInstance(OwnershipService),
+			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
+			Container.set(OwnershipService, ownershipService);
 			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>(),
 			);

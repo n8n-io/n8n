@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "1.31.0",
+  "version": "1.32.0",
   "scripts": {
     "clean": "rimraf dist .turbo .tmp-schema-docs",
     "dev": "pnpm watch",
@@ -60,8 +60,8 @@
     "@vitest/coverage-v8": "catalog:",
     "express": "catalog:",
     "testcontainers": "catalog:",
-    "typescript": "catalog:",
-    "typescript6": "npm:@typescript/typescript6@6.0.2",
+    "@typescript/native": "catalog:typescript-tooling",
+    "typescript": "catalog:typescript-tooling",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

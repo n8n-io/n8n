@@ -1191,6 +1191,14 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	getInputSourceData(inputIndex?: number, connectionType?: NodeConnectionType): ISourceData;
 	getExecutionCancelSignal(): AbortSignal | undefined;
 	onExecutionCancellation(handler: () => unknown): void;
+	/**
+	 * Registers a handler run when the execution ends (success, failure, or
+	 * cancellation) — not when it pauses into the waiting state. May fire more
+	 * than once, so handlers must be idempotent; errors they throw are caught
+	 * and logged. Unavailable in contexts without lifecycle hooks, so callers
+	 * need their own fallback cleanup.
+	 */
+	onExecutionFinish?(handler: () => unknown): void;
 	logAiEvent(eventName: AiEvent, msg?: string): void;
 };
 
@@ -1322,6 +1330,8 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
+		/** See {@link BaseExecutionFunctions.onExecutionFinish} */
+		onExecutionFinish?(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
 		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
@@ -1469,6 +1479,8 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
+	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
+	logHitlResponse(payload: { approved: boolean; authorized: boolean }): void;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -1882,6 +1894,7 @@ export type DisplayCondition =
 export type NodeFeatures = Record<string, boolean>;
 export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
 export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+export type DeploymentCondition = 'cloud' | 'hosted';
 
 export interface IDisplayOptions {
 	hide?: {
@@ -1894,6 +1907,11 @@ export interface IDisplayOptions {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 export interface ICredentialsDisplayOptions {
@@ -1905,6 +1923,11 @@ export interface ICredentialsDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 
+	showOnDeployment?: DeploymentCondition;
+
+	/**
+	 * @deprecated Use showOnDeployment instead
+	 */
 	hideOnCloud?: boolean;
 }
 
@@ -3295,6 +3318,7 @@ export interface IWorkflowGroup {
 	id: string;
 	name: string;
 	nodeIds: string[];
+	description?: string;
 }
 
 export interface IWorkflowBase {
@@ -3467,6 +3491,17 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+/** Telemetry emitted when an advanced HITL (human-in-the-loop) response is actioned. */
+export type HitlResponseTelemetryPayload = {
+	nodeType: string;
+	/** The decision the responder made. */
+	approved: boolean;
+	/** Whether the responder was on the node's approver allow-list (empty list = anyone). */
+	authorized: boolean;
+	executionId?: string;
+	workflowId?: string;
+};
+
 export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
@@ -3528,6 +3563,7 @@ export interface IWorkflowExecuteAdditionalData {
 	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
+	logHitlResponse?: (payload: HitlResponseTelemetryPayload) => void;
 	parentCallbackManager?: CallbackManager;
 	/**
 	 * The execution mode of the root (top-level) workflow. Used to propagate manual

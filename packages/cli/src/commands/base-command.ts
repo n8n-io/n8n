@@ -21,8 +21,7 @@ import {
 	ExecutionContextHookRegistry,
 	StorageConfig,
 } from 'n8n-core';
-import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
-import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.config';
+import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
@@ -374,13 +373,10 @@ export abstract class BaseCommand<F = never> {
 	protected async initObjectStoreIfConfigured() {
 		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
 
-		const { ObjectStoreService } = await import(
-			'n8n-core/dist/binary-data/object-store/object-store.service.ee.js'
-		);
+		const { ObjectStoreService } = await import('@n8n/blob-storage/object-store');
 		const objectStoreService = Container.get(ObjectStoreService);
 		await objectStoreService.init();
 
-		const { S3ByteStore } = await import('@/blob-storage/s3-byte-store.ee.js');
 		Container.get(ExecutionDataJsonStore).registerByteStore(
 			's3',
 			new S3ByteStore(objectStoreService),
@@ -392,13 +388,10 @@ export abstract class BaseCommand<F = never> {
 	protected async initAzureStoreIfConfigured() {
 		if (Container.get(AzureBlobConfig).containerName === '') return;
 
-		const { AzureBlobService } = await import(
-			'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee.js'
-		);
+		const { AzureBlobService } = await import('@n8n/blob-storage/azure-blob');
 		const azureBlobService = Container.get(AzureBlobService);
 		await azureBlobService.init();
 
-		const { AzureByteStore } = await import('@/blob-storage/azure-byte-store.ee.js');
 		Container.get(ExecutionDataJsonStore).registerByteStore(
 			'az',
 			new AzureByteStore(azureBlobService),

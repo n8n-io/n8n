@@ -9,6 +9,7 @@
 import type {
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
+	InstanceAiEvalAgentExecutionResult,
 	InstanceAiEvalExecutionResult,
 	InstanceAiRunDebugResponse,
 	InstanceAiThreadDebugRunsResponse,
@@ -70,9 +71,11 @@ export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
+	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';
@@ -635,6 +638,13 @@ export class N8nClient {
 	 * referenced workflows are recreated (node credentials stripped server-side)
 	 * and the native message log is written verbatim, so the thread continues
 	 * as if the conversation really happened.
+	 *
+	 * `uniquifyNames` (default true) appends a unique suffix to each seed data
+	 * table's name to dodge the per-project unique-name constraint — safe when the
+	 * seed workflow references tables by id (id-remap). Pass false to keep the
+	 * EXACT declared names, so a freshly-built workflow's by-name references
+	 * resolve (TRUST-311 scenario seeding). `messages`/`workflows` may be empty to
+	 * seed only data tables.
 	 * POST /rest/instance-ai/eval/restore-thread
 	 */
 	async restoreThread(
@@ -642,12 +652,35 @@ export class N8nClient {
 		messages: Array<Record<string, unknown>>,
 		workflows: InstanceAiEvalSeedWorkflow[],
 		dataTables: InstanceAiEvalSeedDataTable[] = [],
+		options: { uniquifyNames?: boolean } = {},
 	): Promise<{ restored: number; workflowIds: string[]; dataTableIds: string[] }> {
+		const body: Record<string, unknown> = { threadId, messages, workflows, dataTables };
+		if (options.uniquifyNames !== undefined) body.uniquifyNames = options.uniquifyNames;
 		const result = await this.fetch('/rest/instance-ai/eval/restore-thread', {
 			method: 'POST',
-			body: { threadId, messages, workflows, dataTables },
+			body,
 		});
 		return RestoreThreadEnvelope.parse(result).data;
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
+	 * for the per-scenario row seeding of a case that pre-created its tables
+	 * before the build turn (TRUST-311). Unlike `restoreThread` (which CREATES
+	 * tables), this targets a table that already exists by id, so a scenario can
+	 * declare its own row state without disturbing the table the built workflow
+	 * bound. `threadId` scopes the table to the run's project server-side.
+	 * POST /rest/instance-ai/eval/seed-data-table-rows
+	 */
+	async seedDataTableRows(
+		threadId: string,
+		tableId: string,
+		rows: Array<Record<string, string | number | boolean | null>>,
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/seed-data-table-rows', {
+			method: 'POST',
+			body: { threadId, tableId, rows },
+		});
 	}
 
 	// -- Data tables ---------------------------------------------------------
@@ -755,6 +788,43 @@ export class N8nClient {
 			timeoutMs,
 		})) as { data: InstanceAiEvalExecutionResult };
 		return result.data;
+	}
+
+	/**
+	 * Run one scenario turn against a built first-class Agent: the agent's own
+	 * model call is real, its tools' HTTP is served by the mock layer. Runs for
+	 * minutes, like the workflow variant.
+	 */
+	async executeAgentWithLlmMock(
+		agentId: string,
+		projectId: string,
+		scenarioHints?: string,
+		timeoutMs: number = 120_000,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		const body: { projectId: string; scenarioHints?: string; timeoutMs?: number } = { projectId };
+		if (scenarioHints) body.scenarioHints = scenarioHints;
+		// Forward the budget server-side so the run is aborted rather than
+		// orphaned when the client gives up. The server floor is the schema min
+		// (30s), so the client abort is floored to 5s above it — a smaller
+		// caller value would leave the server running long after the client quit.
+		const serverBudgetMs = Math.min(Math.max(timeoutMs - 5_000, 30_000), 900_000);
+		body.timeoutMs = serverBudgetMs;
+
+		const result = (await this.fetch(
+			`/rest/instance-ai/eval/execute-agent-with-llm-mock/${agentId}`,
+			{
+				method: 'POST',
+				body,
+				timeoutMs: serverBudgetMs + 5_000,
+			},
+		)) as { data: InstanceAiEvalAgentExecutionResult };
+		return result.data;
+	}
+
+	async deleteAgent(projectId: string, agentId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/agents/v2/${agentId}`, {
+			method: 'DELETE',
+		});
 	}
 
 	// -- SSE helpers ---------------------------------------------------------

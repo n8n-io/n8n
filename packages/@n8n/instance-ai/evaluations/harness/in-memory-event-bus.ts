@@ -29,7 +29,9 @@ export function createInMemoryEventBus(): InstanceAiEventBus {
 			};
 		},
 		getEventsAfter(threadId, afterId) {
-			return (storeByThread.get(threadId) ?? []).filter((event) => event.id > afterId);
+			return (storeByThread.get(threadId) ?? []).filter(
+				(event) => event.id !== undefined && event.id > afterId,
+			);
 		},
 		getEventsForRun(threadId, runId) {
 			return (storeByThread.get(threadId) ?? [])

@@ -4,12 +4,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	DEBOUNCE_TIME,
-	MESSAGE_AN_AGENT_NODE_TYPE,
-	getDebounceTime,
-} from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { CHAT_TRIGGER_NODE_TYPE, DEBOUNCE_TIME, MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -61,7 +57,7 @@ const render = createComponentRenderer(AgentsMode);
 
 function pushAgentsViewStack() {
 	useViewStacks().pushViewStack({
-		title: 'Message an n8n Agent',
+		title: 'AI Agent',
 		hasSearch: true,
 		mode: 'agents',
 		items: [],
