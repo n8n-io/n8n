@@ -171,8 +171,12 @@ function main() {
 		}
 		console.error('');
 		console.error(
-			'If this is an intentional, already-tracked case, it must be in the baseline; run --write only when adding a NEW sanctioned exception (not to silence a regression).',
+			'If this is an intentional, already-tracked case, it must be in the baseline; run',
 		);
+		console.error(
+			'`node scripts/single-instance/check-single-instance-peers.mjs --write` only when adding a',
+		);
+		console.error('NEW sanctioned exception (not to silence a regression).');
 		console.error('');
 		process.exit(1);
 	}
