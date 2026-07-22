@@ -1,4 +1,5 @@
 import type { CreateEvaluationCollectionPayload } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type {
 	EvaluationCollection,
 	EvaluationCollectionRepository,
@@ -108,6 +109,7 @@ describe('EvaluationCollectionService', () => {
 	let workflowHistoryService: Mocked<WorkflowHistoryService>;
 	let testRunnerService: Mocked<TestRunnerService>;
 	let telemetry: Mocked<Telemetry>;
+	let logger: Mocked<Logger>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
@@ -118,6 +120,11 @@ describe('EvaluationCollectionService', () => {
 		workflowHistoryService = mock<WorkflowHistoryService>();
 		testRunnerService = mock<TestRunnerService>();
 		telemetry = mock<Telemetry>();
+		logger = mock<Logger>();
+
+		// Async no-op cleanup paths used by rerun rollback.
+		collectionRepo.removeRunsFromCollection.mockResolvedValue(undefined);
+		testRunnerService.cancelTestRun.mockResolvedValue(undefined);
 
 		service = new EvaluationCollectionService(
 			collectionRepo,
@@ -128,6 +135,7 @@ describe('EvaluationCollectionService', () => {
 			workflowHistoryService,
 			testRunnerService,
 			telemetry,
+			logger,
 		);
 
 		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(makeConfig());
@@ -220,6 +228,25 @@ describe('EvaluationCollectionService', () => {
 			).rejects.toThrow(BadRequestError);
 		});
 
+		it('rejects when existingTestRunId references a run that has not completed', async () => {
+			// A failed/cancelled/running run is not a reusable result — reusing
+			// it would silently seed the collection with a broken version. The
+			// caller must omit `existingTestRunId` to force a fresh run.
+			testRunRepo.findOneBy.mockResolvedValueOnce(
+				makeTestRun({ workflowVersionId: 'wfv-1', status: 'error' }),
+			);
+			await expect(
+				service.createCollection(
+					user,
+					'wf-1',
+					makePayload({
+						versions: [{ workflowVersionId: 'wfv-1', existingTestRunId: 'tr-failed' }],
+					}),
+				),
+			).rejects.toThrow(BadRequestError);
+			expect(collectionRepo.createCollection).not.toHaveBeenCalled();
+		});
+
 		it('attaches existing runs and schedules new runs for missing versions', async () => {
 			await service.createCollection(
 				user,
@@ -291,6 +318,251 @@ describe('EvaluationCollectionService', () => {
 					evaluation_config_id: 'cfg-1',
 					dataset_id: 'dt-1',
 				}),
+			);
+		});
+	});
+
+	describe('rerunCollection', () => {
+		it('re-runs every version with fresh runs and unlinks the old runs', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-old-a', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-old-b', workflowVersionId: 'wfv-b', status: 'error' }),
+				],
+			});
+			testRunnerService.startTestRun
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-a', status: 'new' }),
+					finished: Promise.resolve(),
+				})
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-b', status: 'new' }),
+					finished: Promise.resolve(),
+				});
+
+			const { record, runsStartedIds } = await service.rerunCollection(user, 'wf-1', 'col-1');
+
+			// One fresh run per distinct version, each linked to the collection,
+			// compiled against a freshly-frozen config snapshot.
+			expect(testRunnerService.startTestRun).toHaveBeenCalledTimes(2);
+			expect(testRunnerService.startTestRun).toHaveBeenNthCalledWith(
+				1,
+				user,
+				'wf-1',
+				expect.any(Number),
+				expect.objectContaining({
+					workflowVersionId: 'wfv-a',
+					collectionId: 'col-1',
+					evaluationConfigId: 'cfg-1',
+					evaluationConfigSnapshot: expect.objectContaining({ id: 'cfg-1' }),
+					compileFromConfig: true,
+				}),
+			);
+			expect(testRunnerService.startTestRun).toHaveBeenNthCalledWith(
+				2,
+				user,
+				'wf-1',
+				expect.any(Number),
+				expect.objectContaining({ workflowVersionId: 'wfv-b' }),
+			);
+
+			// Old runs unlinked in one atomic call so the compare view shows only
+			// the fresh attempt; insights cache busted.
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', [
+				'tr-old-a',
+				'tr-old-b',
+			]);
+			expect(collectionRepo.updateInsightsCache).toHaveBeenCalledWith('col-1', null);
+
+			expect(runsStartedIds).toEqual(['tr-new-a', 'tr-new-b']);
+			expect(record.runCount).toBe(2);
+		});
+
+		it('re-runs each distinct version once, preserving run order', async () => {
+			// Two runs on the same version collapse to a single re-run; distinct
+			// versions keep their run order.
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-1', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-2', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-3', workflowVersionId: 'wfv-b', status: 'completed' }),
+				],
+			});
+
+			await service.rerunCollection(user, 'wf-1', 'col-1');
+
+			expect(testRunnerService.startTestRun).toHaveBeenCalledTimes(2);
+			const versionOrder = testRunnerService.startTestRun.mock.calls.map(
+				(call) => call[3]?.workflowVersionId,
+			);
+			expect(versionOrder).toEqual(['wfv-a', 'wfv-b']);
+		});
+
+		it('emits Eval collection rerun telemetry', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [makeTestRun({ id: 'tr-old', workflowVersionId: 'wfv-a', status: 'completed' })],
+			});
+
+			await service.rerunCollection(user, 'wf-1', 'col-1');
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Eval collection rerun',
+				expect.objectContaining({
+					collection_id: 'col-1',
+					evaluation_config_id: 'cfg-1',
+					version_count: 1,
+					new_run_count: 1,
+					dataset_id: 'dt-1',
+				}),
+			);
+		});
+
+		it('rejects when a run is still in progress and schedules nothing', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-old-a', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-old-b', workflowVersionId: 'wfv-b', status: 'running' }),
+				],
+			});
+
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(BadRequestError);
+
+			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
+			expect(collectionRepo.removeRunFromCollection).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the collection does not exist', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(null);
+			await expect(service.rerunCollection(user, 'wf-1', 'col-x')).rejects.toThrow(NotFoundError);
+			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the collection eval config no longer exists', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [makeTestRun({ id: 'tr-old', workflowVersionId: 'wfv-a', status: 'completed' })],
+			});
+			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValueOnce(null);
+
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(BadRequestError);
+			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
+		});
+
+		it('rejects when the collection has no pinned versions and starts nothing', async () => {
+			// Defensive guard: a collection whose runs are all unpinned has no
+			// version to re-run against, so we reject rather than start zero runs.
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-1', workflowVersionId: null, status: 'completed' }),
+					makeTestRun({ id: 'tr-2', workflowVersionId: null, status: 'completed' }),
+				],
+			});
+
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(BadRequestError);
+
+			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
+			expect(collectionRepo.removeRunFromCollection).not.toHaveBeenCalled();
+		});
+
+		it('rolls back the fresh runs and leaves the old runs linked when a version fails to start', async () => {
+			// If startTestRun throws partway (e.g. a pinned WorkflowHistory was
+			// pruned), the collection must return to its pre-rerun state: the
+			// already-created fresh runs are unlinked, the OLD runs stay linked,
+			// and the error propagates.
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-old-a', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-old-b', workflowVersionId: 'wfv-b', status: 'completed' }),
+				],
+			});
+			testRunnerService.startTestRun
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-a', status: 'new' }),
+					finished: Promise.resolve(),
+				})
+				.mockRejectedValueOnce(new Error('Workflow version wfv-b not found'));
+
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(
+				'Workflow version wfv-b not found',
+			);
+
+			// The one fresh run that started is cancelled and unlinked; the old runs
+			// are left untouched, and only that single cleanup unlink happens.
+			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-a');
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', ['tr-new-a']);
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledTimes(1);
+			// A failed re-run never busts the insights cache — the collection is
+			// unchanged, so the cached envelope is still valid.
+			expect(collectionRepo.updateInsightsCache).not.toHaveBeenCalled();
+		});
+
+		it('rolls back the fresh attempt when the old-run unlink fails, restoring the pre-rerun state', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-old-a', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-old-b', workflowVersionId: 'wfv-b', status: 'completed' }),
+				],
+			});
+			testRunnerService.startTestRun
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-a', status: 'new' }),
+					finished: Promise.resolve(),
+				})
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-b', status: 'new' }),
+					finished: Promise.resolve(),
+				});
+			// Both fresh runs start, then the old-run unlink fails; the rollback
+			// unlink (fresh ids) still succeeds.
+			collectionRepo.removeRunsFromCollection.mockImplementation(async (_id, ids) => {
+				if (ids.includes('tr-old-a')) throw new Error('unlink old failed');
+			});
+
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(
+				'unlink old failed',
+			);
+
+			// Fresh runs are cancelled + unlinked; the old runs stay linked (their
+			// atomic unlink threw before changing anything); cache is not busted.
+			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-a');
+			expect(testRunnerService.cancelTestRun).toHaveBeenCalledWith('tr-new-b');
+			expect(collectionRepo.removeRunsFromCollection).toHaveBeenCalledWith('col-1', [
+				'tr-new-a',
+				'tr-new-b',
+			]);
+			expect(collectionRepo.updateInsightsCache).not.toHaveBeenCalled();
+		});
+
+		it('logs when the rollback unlink itself fails, still throwing the original error', async () => {
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({ id: 'tr-old-a', workflowVersionId: 'wfv-a', status: 'completed' }),
+					makeTestRun({ id: 'tr-old-b', workflowVersionId: 'wfv-b', status: 'completed' }),
+				],
+			});
+			testRunnerService.startTestRun
+				.mockResolvedValueOnce({
+					testRun: makeTestRun({ id: 'tr-new-a', status: 'new' }),
+					finished: Promise.resolve(),
+				})
+				.mockRejectedValueOnce(new Error('start failed'));
+			collectionRepo.removeRunsFromCollection.mockRejectedValue(new Error('cleanup failed'));
+
+			// The original start error surfaces, not the cleanup error.
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow('start failed');
+
+			// The rollback failure is reported rather than silently swallowed.
+			expect(logger.error).toHaveBeenCalledWith(
+				expect.stringContaining('mixed run set'),
+				expect.objectContaining({ collectionId: 'col-1' }),
 			);
 		});
 	});
@@ -418,7 +690,105 @@ describe('EvaluationCollectionService', () => {
 		});
 	});
 
+	describe('getCollectionDetail', () => {
+		it('scores custom-named 1–5 judge metrics via the config scale and surfaces metricScales', async () => {
+			// The bug: a 1–5 judge metric named anything other than
+			// correctness/helpfulness scored null everywhere. Resolving the scale
+			// from the config (not the name) fixes both avgScore and metricScales.
+			const config = makeConfig({
+				metrics: [
+					{
+						id: 'm1',
+						name: 'Markdown Formatting',
+						type: 'llm_judge',
+						config: {
+							preset: 'correctness',
+							provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							credentialId: 'cred-1',
+							model: 'gpt-4o',
+							outputType: 'numeric',
+							inputs: { actualAnswer: 'a', expectedAnswer: 'b' },
+						},
+					},
+				],
+			});
+			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(config);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [makeTestRun({ id: 'tr-1', metrics: { 'Markdown Formatting': 5 } })],
+			});
+
+			const detail = await service.getCollectionDetail('wf-1', 'col-1');
+
+			expect(detail.metricScales).toEqual({ 'Markdown Formatting': 'oneToFive' });
+			expect(detail.runs[0].avgScore).toBe(1); // 5 / 5
+		});
+
+		it('returns an empty metricScales map when the config is gone (name-based fallback)', async () => {
+			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(null);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [makeTestRun({ id: 'tr-1', metrics: { correctness: 5 } })],
+			});
+
+			const detail = await service.getCollectionDetail('wf-1', 'col-1');
+
+			expect(detail.metricScales).toEqual({});
+			// correctness still scores via the name-based fallback.
+			expect(detail.runs[0].avgScore).toBe(1);
+		});
+	});
+
 	describe('getEvalVersions', () => {
+		it('surfaces only completed runs as reusable, skipping a version whose latest run failed', async () => {
+			const versions: WorkflowHistory[] = [
+				mock<WorkflowHistory>({
+					versionId: 'wfv-a',
+					name: 'A',
+					autosaved: false,
+					createdAt: new Date('2026-04-01'),
+				}),
+				mock<WorkflowHistory>({
+					versionId: 'wfv-b',
+					name: 'B',
+					autosaved: false,
+					createdAt: new Date('2026-04-02'),
+				}),
+			];
+			workflowHistoryRepo.find.mockResolvedValueOnce(versions);
+			// Descending by createdAt, as the query returns them. wfv-a's latest
+			// run failed but an earlier one completed → the completed one is
+			// surfaced. wfv-b has only a failed run → no reusable run.
+			testRunRepo.find.mockResolvedValueOnce([
+				makeTestRun({
+					id: 'tr-a-fail',
+					workflowVersionId: 'wfv-a',
+					status: 'error',
+					createdAt: new Date('2026-04-05'),
+				}),
+				makeTestRun({
+					id: 'tr-a-ok',
+					workflowVersionId: 'wfv-a',
+					status: 'completed',
+					createdAt: new Date('2026-04-04'),
+					metrics: { acc: 0.9 },
+				}),
+				makeTestRun({
+					id: 'tr-b-fail',
+					workflowVersionId: 'wfv-b',
+					status: 'cancelled',
+					createdAt: new Date('2026-04-03'),
+				}),
+			]);
+
+			const result = await service.getEvalVersions('wf-1', 'cfg-1');
+
+			const a = result.versions.find((v) => v.workflowVersionId === 'wfv-a');
+			const b = result.versions.find((v) => v.workflowVersionId === 'wfv-b');
+			expect(a?.lastRun?.testRunId).toBe('tr-a-ok');
+			expect(b?.lastRun).toBeNull();
+		});
+
 		it('annotates the highest-scoring version as best and runs below 0.6 as critical', async () => {
 			const versions: WorkflowHistory[] = [
 				mock<WorkflowHistory>({
@@ -450,6 +820,48 @@ describe('EvaluationCollectionService', () => {
 			expect(a?.lastRun?.isCritical).toBe(false);
 			expect(b?.lastRun?.isBest).toBe(false);
 			expect(b?.lastRun?.isCritical).toBe(true);
+		});
+
+		it('scores versions on normalized quality metrics, excluding token/time metrics', async () => {
+			const versions: WorkflowHistory[] = [
+				mock<WorkflowHistory>({
+					versionId: 'wfv-a',
+					name: 'A',
+					autosaved: false,
+					createdAt: new Date('2026-04-01'),
+				}),
+				mock<WorkflowHistory>({
+					versionId: 'wfv-b',
+					name: 'B',
+					autosaved: false,
+					createdAt: new Date('2026-04-02'),
+				}),
+			];
+			workflowHistoryRepo.find.mockResolvedValueOnce(versions);
+			// correctness is a 1–5 metric → /5; tokens/executionTime are operational
+			// and excluded, so avgScore is the correctness score alone rather than a
+			// token-dominated mean in the thousands.
+			testRunRepo.find.mockResolvedValueOnce([
+				makeTestRun({
+					id: 'tr-a',
+					workflowVersionId: 'wfv-a',
+					metrics: { correctness: 5, completionTokens: 1719, executionTime: 21368 },
+				}),
+				makeTestRun({
+					id: 'tr-b',
+					workflowVersionId: 'wfv-b',
+					metrics: { correctness: 2, completionTokens: 540, executionTime: 11646 },
+				}),
+			]);
+
+			const result = await service.getEvalVersions('wf-1', 'cfg-1');
+
+			const a = result.versions.find((v) => v.workflowVersionId === 'wfv-a');
+			const b = result.versions.find((v) => v.workflowVersionId === 'wfv-b');
+			expect(a?.lastRun?.avgScore).toBe(1); // 5 / 5
+			expect(b?.lastRun?.avgScore).toBeCloseTo(0.4); // 2 / 5
+			expect(a?.lastRun?.isBest).toBe(true);
+			expect(b?.lastRun?.isCritical).toBe(true); // 0.4 < 0.6
 		});
 
 		it('includes a current-draft row with no last run', async () => {

@@ -30,6 +30,7 @@ type ExportPackageRequest = AuthenticatedRequest<
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
+		includeVariableValues?: boolean;
 		missingWorkflowDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
 	}
 >;
@@ -48,7 +49,7 @@ function assertPackageExportApiKeyScopes(
 	workflowIds: string[],
 	folderIds: string[],
 	projectIds: string[],
-) {
+): string[] {
 	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
 	if (!apiKeyScopes) {
 		throw new ForbiddenError('Forbidden');
@@ -68,6 +69,8 @@ function assertPackageExportApiKeyScopes(
 			throw new ForbiddenError('Forbidden');
 		}
 	}
+
+	return apiKeyScopes;
 }
 
 function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
@@ -99,6 +102,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 			let workflowIds: string[] = [];
 			let folderIds: string[] = [];
 			let projectIds: string[] = [];
+			let includeVariableValues: boolean = true;
 
 			try {
 				const payload = ExportPackageRequestDto.safeParse(req.body);
@@ -109,6 +113,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				workflowIds = payload.data.workflowIds ?? [];
 				folderIds = payload.data.folderIds ?? [];
 				projectIds = payload.data.projectIds ?? [];
+				includeVariableValues = payload.data.includeVariableValues;
 
 				// A package is either a set of loose workflows/folders or a set of whole projects, not both.
 				if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -119,13 +124,20 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
 				}
 
-				assertPackageExportApiKeyScopes(req, workflowIds, folderIds, projectIds);
+				const apiKeyScopes = assertPackageExportApiKeyScopes(
+					req,
+					workflowIds,
+					folderIds,
+					projectIds,
+				);
 
 				const stream = await Container.get(N8nPackagesService).exportPackage({
 					user: req.user,
 					workflowIds,
 					folderIds,
 					projectIds,
+					includeVariableValues,
+					canExportVariableValues: apiKeyScopes.includes('variable:list'),
 					missingWorkflowDependencyPolicy: payload.data.missingWorkflowDependencyPolicy,
 				});
 
@@ -185,6 +197,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					dataTableMatchingMode: payload.data.dataTableMatchingMode,
 					dataTableMissingMode: payload.data.dataTableMissingMode,
 					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
+					variableMissingPolicy: payload.data.variableMissingPolicy,
 					packageBuffer: packageFile.buffer,
 				});
 				return res.status(200).json(result);

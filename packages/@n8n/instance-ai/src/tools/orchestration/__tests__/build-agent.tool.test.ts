@@ -1,4 +1,8 @@
-import { BUILDER_CHECKPOINT_UNAVAILABLE_CODE, type InstanceAiEvent } from '@n8n/api-types';
+import {
+	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
+	type InstanceAiEvent,
+	type QuestionAnswer,
+} from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -41,6 +45,7 @@ interface BuildAgentOutput {
 	error?: string;
 	agentId?: string;
 	agentName?: string;
+	answers?: QuestionAnswer[];
 }
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
@@ -122,6 +127,15 @@ const expectedUsageItem = {
 	cacheWrite: 0,
 	output: 20,
 };
+
+/** A manually-resolvable promise, for proving the tool awaits `claimSubAgentUsage`. */
+function deferredClaim(): { promise: Promise<void>; resolve: () => void } {
+	let resolve!: () => void;
+	const promise = new Promise<void>((r) => {
+		resolve = r;
+	});
+	return { promise, resolve };
+}
 
 function askQuestionsSuspendPayload() {
 	return {
@@ -261,6 +275,8 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).toHaveBeenCalledWith('Support Agent');
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Build me a support agent', {
 			threadId: 'ia-builder:thread-1:agent-1',
+			hostThreadId: 'thread-1',
+			runId: 'run-1',
 			modelConfig: context.modelId,
 		});
 	});
@@ -421,7 +437,7 @@ describe('build-agent tool', () => {
 		expect(message).toContain('Attach the workflow');
 		expect(message).toContain('<session-workflows>');
 		expect(message).toContain(
-			'Workflows built in this session (attachable as {"type":"workflow"} tools):',
+			'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
 		);
 		expect(message).toContain('- Send Reminder (id: wf-1): Sends a reminder email');
 		expect(message).toContain('</session-workflows>');
@@ -436,6 +452,8 @@ describe('build-agent tool', () => {
 		expect(delegate.createAgent).not.toHaveBeenCalled();
 		expect(delegate.streamBuild).toHaveBeenCalledWith('agent-existing', 'Add a tool', {
 			threadId: 'ia-builder:thread-1:agent-existing',
+			hostThreadId: 'thread-1',
+			runId: 'run-1',
 			modelConfig: context.modelId,
 		});
 	});
@@ -487,7 +505,7 @@ describe('build-agent tool', () => {
 	});
 
 	describe('configUpdated', () => {
-		it.each(['write_config', 'patch_config'])(
+		it.each(['write_config', 'patch_config', 'publish_agent', 'unpublish_agent'])(
 			'is true when the work summary has a succeeded %s call',
 			async (toolName) => {
 				const { context, delegate } = makeContext();
@@ -620,6 +638,144 @@ describe('build-agent tool', () => {
 		});
 	});
 
+	describe('agent display-name refresh', () => {
+		it('labels the first agent-spawned with the resolved name on the agentId path and stamps it on the output', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Existing Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			const spawned = publishedEvents[0];
+			expect(spawned).toMatchObject({ type: 'agent-spawned' });
+			expect(spawned && 'payload' in spawned ? spawned.payload : undefined).toMatchObject({
+				targetResource: {
+					type: 'agent',
+					id: 'agent-existing',
+					projectId: 'proj-1',
+					name: 'Existing Agent',
+				},
+			});
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-existing' });
+			expect(result.agentName).toBe('Existing Agent');
+			// Name already fresh — no second agent-spawned republish.
+			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+		});
+
+		it('leaves the spawn event unnamed and proceeds when the upfront lookup fails on the agentId path', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockRejectedValue(new Error('db down'));
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
+
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-existing' });
+			expect(result.agentName).toBeUndefined();
+			const spawned = publishedEvents[0];
+			const payload = spawned && 'payload' in spawned ? spawned.payload : undefined;
+			expect(payload).toMatchObject({
+				targetResource: { type: 'agent', id: 'agent-existing', projectId: 'proj-1' },
+			});
+			expect(
+				(payload as { targetResource?: { name?: string } }).targetResource?.name,
+			).toBeUndefined();
+		});
+
+		it('picks up a builder rename after the turn: fresh agentName on the output, a republished agent-spawned, and a re-saved binding', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Renamed Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				fakeStream(
+					[toolCallChunk('call-1', 'patch_config'), toolResultChunk('call-1')],
+					'Renamed.',
+				),
+			);
+
+			const result = await runTool(context, { message: 'Rename it', name: 'New Agent' });
+
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-1', agentName: 'Renamed Agent' });
+			const spawnedEvents = publishedEvents.filter((event) => event.type === 'agent-spawned');
+			expect(spawnedEvents).toHaveLength(2);
+			const republished = spawnedEvents[1];
+			expect(
+				republished && 'payload' in republished ? republished.payload : undefined,
+			).toMatchObject({
+				targetResource: {
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'proj-1',
+					name: 'Renamed Agent',
+				},
+			});
+			expect(saveAgentBuilderTarget).toHaveBeenLastCalledWith(context.domainContext, {
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+				name: 'Renamed Agent',
+			});
+		});
+
+		it('does not republish or re-save when the resolved name matches the current target name', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('New Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Done.'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+			// Only the create-path bind — no refresh save.
+			expect(saveAgentBuilderTarget).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps a successful turn intact and logs a warning when the post-turn refresh fails', async () => {
+			const { context, delegate, publishedEvents } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockRejectedValue(new Error('db down'));
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Done.'));
+
+			const result = await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			expect(result).toMatchObject({ ok: true, agentId: 'agent-1', agentName: 'New Agent' });
+			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+			expect(context.logger.warn).toHaveBeenCalledWith(
+				'Failed to refresh agent name after builder turn',
+				expect.objectContaining({ agentId: 'agent-1' }),
+			);
+		});
+
+		it('carries the refreshed name in the builderCheckpoint target when the turn suspends', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Renamed Agent');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(
+				suspendingStream('ask_questions', askQuestionsSuspendPayload()),
+			);
+			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
+
+			await runToolWithCtx(context, { message: 'Build it', name: 'New Agent' }, { suspend });
+
+			const payload = suspend.mock.calls[0][0] as Record<string, unknown>;
+			expect(payload).toMatchObject({
+				builderCheckpoint: {
+					target: { agentId: 'agent-1', projectId: 'proj-1', name: 'Renamed Agent' },
+				},
+			});
+		});
+	});
+
 	describe('multi-agent target switching', () => {
 		it('creates and rebinds to a second agent when a different name is given while a target is bound', async () => {
 			const { context, delegate } = makeContext();
@@ -649,6 +805,8 @@ describe('build-agent tool', () => {
 			});
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Build me another agent', {
 				threadId: 'ia-builder:thread-1:agent-2',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -696,6 +854,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Go back to the tracker agent', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, sessionAgent);
@@ -758,6 +918,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -788,6 +950,8 @@ describe('build-agent tool', () => {
 			expect(delegate.createAgent).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-2', 'Now edit this one', {
 				threadId: 'ia-builder:thread-1:agent-2',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(saveAgentBuilderTarget).toHaveBeenCalledWith(context.domainContext, {
@@ -820,6 +984,8 @@ describe('build-agent tool', () => {
 			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
 			expect(delegate.streamBuild).toHaveBeenCalledWith('agent-1', 'Add a tool', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 		});
@@ -970,16 +1136,57 @@ describe('build-agent tool', () => {
 			// binding decides which agent this resumes against.
 			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 			expect(result).toEqual({
 				ok: true,
 				builderReply: 'Using Slack.',
+				configUpdated: false,
+				agentId: 'agent-1',
+				answers: [{ questionId: 'q1', selectedOptions: ['slack'] }],
+			});
+		});
+
+		it('does not attach answers when resuming a credential suspension', async () => {
+			const { context, delegate } = makeContext();
+			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
+			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
+				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
+			]);
+			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Connected Slack.'));
+
+			const result = await runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{
+					resumeData: { credentials: { slack: 'cred-1' } },
+					suspendPayload: {
+						...askCredentialSuspendPayload(),
+						requestId: 'orch-req-1',
+						builderCheckpoint: {
+							runId: 'builder-run-1',
+							toolCallId: 'builder-call-1',
+							configUpdated: false,
+						},
+					},
+				},
+			);
+
+			expect(result).toEqual({
+				ok: true,
+				builderReply: 'Connected Slack.',
 				configUpdated: false,
 				agentId: 'agent-1',
 			});
@@ -1013,12 +1220,19 @@ describe('build-agent tool', () => {
 
 			expect(delegate.findOpenSuspensions).toHaveBeenCalledWith('agent-1', {
 				threadId: 'ia-builder:thread-1:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: context.modelId,
 			});
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 		});
 
@@ -1046,7 +1260,12 @@ describe('build-agent tool', () => {
 			expect(delegate.resumeBuild).toHaveBeenCalledWith(
 				'agent-1',
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:thread-1:agent-1', modelConfig: context.modelId },
+				{
+					threadId: 'ia-builder:thread-1:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: context.modelId,
+				},
 			);
 		});
 
@@ -1295,7 +1514,7 @@ describe('build-agent tool', () => {
 	describe('credit metering', () => {
 		it('claims usage once for a completed leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1316,9 +1535,40 @@ describe('build-agent tool', () => {
 			);
 		});
 
+		it('waits for the usage claim before returning a completed leg', async () => {
+			const { context, delegate } = makeContext();
+			const claim = deferredClaim();
+			context.claimSubAgentUsage = vi.fn().mockReturnValue(claim.promise);
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([finishChunk()], 'ok'));
+
+			const resultPromise = runToolWithCtx(
+				context,
+				{ message: 'Build it', name: 'New Agent' },
+				{ toolCallId: 'orch-call-1' },
+			);
+
+			// The tool call must not settle while its usage claim is still pending.
+			const timeoutSentinel = Symbol('timeout');
+			const raceBeforeResolve = await Promise.race([
+				resultPromise,
+				new Promise((resolve) => setTimeout(() => resolve(timeoutSentinel), 20)),
+			]);
+			expect(raceBeforeResolve).toBe(timeoutSentinel);
+
+			claim.resolve();
+			const result = await resultPromise;
+
+			expect(result.ok).toBe(true);
+			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
+		});
+
 		it('claims usage with status errored for an errored leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1342,7 +1592,8 @@ describe('build-agent tool', () => {
 
 		it('claims usage with a suspension-suffixed dedupe id before cascading the suspension', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			const claim = deferredClaim();
+			context.claimSubAgentUsage = vi.fn().mockReturnValue(claim.promise);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1364,11 +1615,18 @@ describe('build-agent tool', () => {
 			);
 			const suspend: Mock = vi.fn().mockResolvedValue(undefined);
 
-			await runToolWithCtx(
+			const resultPromise = runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
 				{ toolCallId: 'orch-call-1', suspend },
 			);
+
+			// The suspension must not be cascaded while its usage claim is still pending.
+			await new Promise((resolve) => setTimeout(resolve, 20));
+			expect(suspend).not.toHaveBeenCalled();
+
+			claim.resolve();
+			await resultPromise;
 
 			expect(context.claimSubAgentUsage).toHaveBeenCalledTimes(1);
 			expect(context.claimSubAgentUsage).toHaveBeenCalledWith(
@@ -1376,6 +1634,7 @@ describe('build-agent tool', () => {
 				[expectedUsageItem],
 				'suspended',
 			);
+			expect(suspend).toHaveBeenCalledTimes(1);
 			const claimOrder = (context.claimSubAgentUsage as Mock).mock.invocationCallOrder[0];
 			const suspendOrder = suspend.mock.invocationCallOrder[0];
 			expect(claimOrder).toBeLessThan(suspendOrder);
@@ -1383,7 +1642,7 @@ describe('build-agent tool', () => {
 
 		it('claims usage with the ref-suffixed dedupe base on the resume leg', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
 			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
 				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
@@ -1430,7 +1689,7 @@ describe('build-agent tool', () => {
 
 		it('still calls the hook with an empty array when the stream carried no usage', async () => {
 			const { context, delegate } = makeContext();
-			context.claimSubAgentUsage = vi.fn();
+			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1482,6 +1741,40 @@ describe('build-agent tool', () => {
 
 			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
 			expect(sessionArg).not.toHaveProperty('telemetry');
+		});
+
+		it('forwards the parent trace memory-task lease hook in the builder session', async () => {
+			const { context, delegate } = makeContext();
+			const { tracing } = makeTracingStub();
+			const onMemoryTaskEvent = vi.fn();
+			tracing.onMemoryTaskEvent = onMemoryTaskEvent;
+			context.tracing = tracing;
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).toEqual(
+				expect.objectContaining({ memoryTaskObserver: onMemoryTaskEvent }),
+			);
+		});
+
+		it('omits the memory-task lease hook from the builder session when tracing is unset', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.createAgent).mockResolvedValue({
+				agentId: 'agent-1',
+				projectId: 'proj-1',
+			});
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'ok'));
+
+			await runTool(context, { message: 'Build it', name: 'New Agent' });
+
+			const [, , sessionArg] = vi.mocked(delegate.streamBuild).mock.calls[0];
+			expect(sessionArg).not.toHaveProperty('memoryTaskObserver');
 		});
 
 		it('starts a labeled agent-builder child run and finishes it with outputs on completion', async () => {

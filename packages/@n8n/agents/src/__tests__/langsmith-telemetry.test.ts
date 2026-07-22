@@ -290,4 +290,38 @@ describe('LangSmithTelemetry', () => {
 		expect(delegate.onEnd).toHaveBeenCalledTimes(3);
 		expect(delegate.onEnd).not.toHaveBeenCalledWith(streamWrapper);
 	});
+
+	it('still exports a traceable span after its trace bookkeeping is evicted under load', async () => {
+		await new LangSmithTelemetry({
+			apiKey: 'ls-test-key',
+			project: 'instance-ai',
+		}).build();
+
+		const processor = mockProviderConfigs[0] as {
+			spanProcessors: Array<{
+				onStart(span: unknown, parentContext: unknown): void;
+				onEnd(span: unknown): void;
+			}>;
+		};
+		const filteredProcessor = processor.spanProcessors[0];
+		const delegate = mockBatchProcessorInstances[0];
+		const makeRootSpan = (traceId: string, attributes: Record<string, unknown> = {}) => ({
+			attributes,
+			spanContext: () => ({ traceId, spanId: `${traceId}-span` }),
+		});
+
+		const evictedSpan = makeRootSpan('trace-evicted', { 'langsmith.traceable': 'true' });
+		filteredProcessor.onStart(evictedSpan, {});
+
+		// Process-lived providers can't let bookkeeping grow forever — exceed the
+		// tracked-trace cap (MAX_TRACKED_TRACES = 1_000) so the first trace's
+		// bookkeeping is evicted before its span ends.
+		for (let i = 0; i < 1_000; i++) {
+			filteredProcessor.onStart(makeRootSpan(`trace-filler-${i}`), {});
+		}
+
+		filteredProcessor.onEnd(evictedSpan);
+
+		expect(delegate.onEnd).toHaveBeenCalledWith(evictedSpan);
+	});
 });

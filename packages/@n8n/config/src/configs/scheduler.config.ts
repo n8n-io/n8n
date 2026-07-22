@@ -269,4 +269,14 @@ export class SchedulerConfig {
 	 */
 	@Env('N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER')
 	allowSkipDurableScheduler: boolean = false;
+
+	/**
+	 * How many times a scheduled run may be reclaimed (for example after a crash)
+	 * or retried on error before it's given up on and dead-lettered. Defaults to
+	 * 5. Raise it on infrastructure prone to instance restarts or transient
+	 * errors, so a single crash doesn't drop a run; lower it to dead-letter and
+	 * move on sooner. Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_MAX_ATTEMPTS', positiveIntSchema)
+	maxAttempts: number = 5;
 }

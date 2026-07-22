@@ -14,8 +14,10 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalAgentExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalSeedDataTableRowsRequest,
 	normalizeInstanceAiThreadSource,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
@@ -41,6 +43,7 @@ import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/in
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
@@ -111,6 +114,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
@@ -402,12 +406,12 @@ export class InstanceAiController {
 			//    valid on any main (the table is in the shared DB). The reads are
 			//    async, so unlike the old synchronous memory-store replay, live
 			//    events can land mid-bootstrap: buffer them across every await (the
-			//    replay read AND the run-sync tree reads) and flush with seq dedupe
-			//    only when no await remains before live delivery takes over (the
-			//    drain persists before it emits, so a fact is never in neither
-			//    place). A flushed event may already be folded into a run-sync tree;
-			//    the shared reducer applies it idempotently, same as any live event
-			//    arriving after a frame.
+			//    replay read, the run-sync tree reads, AND the gap read) and flush
+			//    with seq dedupe only when no await remains before live delivery
+			//    takes over (the drain persists before it emits, so a fact is never
+			//    in neither place). A flushed event may already be folded into a
+			//    run-sync tree; the shared reducer applies it idempotently, same as
+			//    any live event arriving after a frame.
 			const arrivedDuringReplay: StoredEvent[] = [];
 			const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
 				arrivedDuringReplay.push(stored);
@@ -425,13 +429,111 @@ export class InstanceAiController {
 				// Build each live group's bootstrap tree from the durable log, so the
 				// group renders fully even when the bus cache was evicted, the process
 				// restarted, or this main never buffered the thread (sibling main).
+				// Remember which coalesced blocks each delivered tree folds: the gap
+				// read below may return the same rows, and re-applying a block the
+				// tree already renders would append a duplicate timeline entry.
+				const blockKey = (event: {
+					type: string;
+					runId: string;
+					agentId: string;
+					responseId?: string;
+					payload: { text: string };
+				}) =>
+					`${event.type}:${event.runId}:${event.agentId}:${event.responseId ?? ''}:${event.payload.text}`;
+				const foldedBlockKeys = new Set<string>();
 				for (const [groupId, group] of liveGroups) {
 					const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
 					if (closed) return;
 					writeRunSyncFrame(groupId, group, runEvents);
+					for (const event of runEvents) {
+						if (event.type === 'text-block' || event.type === 'reasoning-block') {
+							foldedBlockKeys.add(blockKey(event));
+						}
+					}
+				}
+				// One more durable read: coalesced blocks are persisted but never
+				// live-emitted (live clients saw the deltas), so a segment that closed
+				// during the awaits above exists only as rows the replay read predates
+				// — invisible to the buffering subscription. Without this read, the
+				// buffered fact that follows such a block would advance the browser
+				// cursor past it and no later replay would ever return it.
+				const gapRows = await this.eventLog.getEventsAfter(threadId, lastReplayedSeq);
+				if (closed) return;
+				// A still-streaming segment exists only in the log's coalesce buffer
+				// (deltas are never persisted), so a mid-stream refresh would render
+				// only the post-refresh tail. Serve each open segment as one ephemeral
+				// delta frame (no `id:` line — the cursor stays on durable facts), after
+				// the run-sync frames so live deltas keep appending to it and the
+				// segment's eventual block replaces it. Everything from this read to
+				// `bootstrapping = false` is synchronous, so a buffered delta of a
+				// served segment is exactly text inside the snapshot: skipping it loses
+				// nothing and delivering it would duplicate.
+				const openSegments = this.eventLog.getOpenSegments(threadId);
+				const segmentKey = (
+					kind: 'text' | 'reasoning',
+					event: { runId: string; agentId: string; responseId?: string },
+				) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
+				const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
+				// Deliver the gap rows first. A block identical to one folded into a
+				// delivered run-sync tree is not re-applied (that would duplicate its
+				// text) but still counts as delivered for cursor contiguity — its
+				// content reached the client inside the frame. Buffered deltas of a
+				// gap block's segment are skipped below like served ones: their text
+				// is inside the block, and delivering them after it would duplicate.
+				const gapBlockSegments = new Set<string>();
+				for (const row of gapRows) {
+					if (row.id === undefined || row.id <= lastReplayedSeq) continue;
+					const { event } = row;
+					if (event.type === 'text-block' || event.type === 'reasoning-block') {
+						gapBlockSegments.add(
+							segmentKey(event.type === 'text-block' ? 'text' : 'reasoning', event),
+						);
+						if (foldedBlockKeys.has(blockKey(event))) {
+							lastReplayedSeq = row.id;
+							continue;
+						}
+					}
+					deliver(row);
+					lastReplayedSeq = row.id;
 				}
 				for (const stored of arrivedDuringReplay) {
-					if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
+					if (stored.id !== undefined) {
+						if (stored.id <= lastReplayedSeq) continue;
+						if (stored.id === lastReplayedSeq + 1) {
+							deliver(stored);
+							lastReplayedSeq = stored.id;
+							continue;
+						}
+						// Rows between the cursor and this fact were persisted after the
+						// gap read (a segment closed while it was in flight): deliver the
+						// fact's content but strip its id line, so the cursor never
+						// crosses a row the client has not seen — the next replay returns
+						// the missing block and re-applies this fact idempotently.
+						deliver({ event: stored.event });
+						continue;
+					}
+					const { event } = stored;
+					if (
+						(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
+						(served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event)) ||
+							gapBlockSegments.has(
+								segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event),
+							))
+					) {
+						continue;
+					}
+					deliver(stored);
+				}
+				for (const segment of openSegments) {
+					deliver({
+						event: {
+							type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
+							runId: segment.runId,
+							agentId: segment.agentId,
+							...(segment.responseId ? { responseId: segment.responseId } : {}),
+							payload: { text: segment.text },
+						},
+					});
 				}
 				this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
 			} finally {
@@ -829,6 +931,18 @@ export class InstanceAiController {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
+	// Runs for minutes; same client timeout handling as the workflow variant.
+	@Post('/eval/execute-agent-with-llm-mock/:agentId')
+	@GlobalScope('instanceAi:eval')
+	async executeAgentWithLlmMock(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: InstanceAiEvalAgentExecutionRequest,
+	) {
+		return await this.evalAgentExecutionService.executeWithLlmMock(agentId, req.user, payload);
+	}
+
 	/**
 	 * Pin a build thread's credential view to a declared set. Only narrows:
 	 * `list()` results are intersected with these IDs, so the caller cannot see
@@ -876,11 +990,12 @@ export class InstanceAiController {
 		const idMap = await this.evalThreadRestore.restoreDataTables(
 			payload.dataTables ?? [],
 			projectId,
+			{ uniquifyNames: payload.uniquifyNames ?? true },
 		);
 		const dataTableIds = [...idMap.values()];
 		// Roll back everything we created if a later step fails, so a partial
 		// restore doesn't leak workflows/tables into the shared eval project.
-		let restored: number;
+		let restored = 0;
 		let createdWorkflowIds: string[] = [];
 		try {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
@@ -888,11 +1003,14 @@ export class InstanceAiController {
 				projectId,
 				idMap,
 			);
-			({ restored } = await this.memoryService.restoreThreadMessages(
-				req.user.id,
-				payload.threadId,
-				payload.messages,
-			));
+			// A data-table-only seed (TRUST-311) sends no messages — skip the write.
+			if (payload.messages.length > 0) {
+				({ restored } = await this.memoryService.restoreThreadMessages(
+					req.user.id,
+					payload.threadId,
+					payload.messages,
+				));
+			}
 		} catch (error) {
 			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
 			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
@@ -905,6 +1023,31 @@ export class InstanceAiController {
 			workflowIds: workflows.map((workflow) => workflow.id),
 			dataTableIds,
 		};
+	}
+
+	/**
+	 * Reset an existing data table's rows to exactly the supplied set
+	 * (clear-then-insert). The eval harness pre-creates a case's scenario data
+	 * tables empty before the build turn (so the agent binds the real table id),
+	 * then calls this per scenario to swap in that scenario's rows (TRUST-311
+	 * follow-up). Auth + project scoping mirror restore-thread: the table must be
+	 * in the thread's project.
+	 */
+	@Post('/eval/seed-data-table-rows')
+	@GlobalScope('instanceAi:eval')
+	async seedEvalDataTableRows(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalSeedDataTableRowsRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
+		if (!projectId) {
+			throw new BadRequestError('Thread is not bound to a project');
+		}
+		await this.evalThreadRestore.reseedDataTableRows(payload.tableId, projectId, payload.rows);
+		return { ok: true, tableId: payload.tableId, rowCount: payload.rows.length };
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

@@ -114,6 +114,47 @@ describe('TestRunnerService', () => {
 		vi.resetAllMocks();
 	});
 
+	describe('getEndNodeOutputs (per-case output capture)', () => {
+		// Private helper that feeds the compare Outputs tab; exercised directly.
+		const readOutputs = (execution: IRun, endNodeName: string) =>
+			(
+				testRunnerService as unknown as {
+					getEndNodeOutputs(execution: IRun, endNodeName: string): Record<string, unknown>;
+				}
+			).getEndNodeOutputs(execution, endNodeName);
+
+		test('reads the output from the first non-empty main branch (IF/Switch false branch)', () => {
+			const execution = mock<IRun>({
+				data: {
+					resultData: {
+						runData: {
+							End: [
+								{
+									data: {
+										main: [
+											[], // branch 0 — not taken
+											[{ json: { answer: 'from the false branch' } }], // branch 1 — taken
+										],
+									},
+								},
+							],
+						},
+					},
+				},
+			});
+
+			expect(readOutputs(execution, 'End')).toEqual({ answer: 'from the false branch' });
+		});
+
+		test('returns an empty object when the end node produced no items', () => {
+			const execution = mock<IRun>({
+				data: { resultData: { runData: { End: [{ data: { main: [[]] } }] } } },
+			});
+
+			expect(readOutputs(execution, 'End')).toEqual({});
+		});
+	});
+
 	describe('findEvaluationTriggerNode', () => {
 		test('should find the trigger node in a workflow', () => {
 			// Setup a test workflow with a trigger node
@@ -2706,6 +2747,49 @@ describe('TestRunnerService', () => {
 			);
 		});
 
+		test('compiles from the supplied snapshot and does not re-read the live config', async () => {
+			// Collection runs pass a frozen config snapshot so a config edit racing
+			// the run can't change later versions' compilation. The runner must
+			// compile from that snapshot and skip the live DB lookup.
+			evaluationConfigRepository.findByIdAndWorkflowId.mockClear();
+			workflowRepository.findById.mockResolvedValueOnce({
+				id: 'wf-1',
+				name: 'Live',
+				nodes: [{ name: 'LiveNode' }],
+				connections: {},
+				settings: {},
+			} as never);
+			workflowHistoryService.findVersion.mockResolvedValueOnce({
+				versionId: 'wfv-x',
+				nodes: [{ name: 'SnapshotNode' } as never],
+				connections: {} as never,
+			} as never);
+			testRunRepository.createTestRun.mockResolvedValueOnce(mock<TestRun>({ id: 'tr-snap' }));
+
+			const snapshot = { id: 'cfg-1', name: 'frozen', metrics: [] } as never;
+			let compiledConfig: unknown;
+			workflowCompiler.compile.mockImplementationOnce((wf, config) => {
+				compiledConfig = config;
+				return wf as never;
+			});
+
+			const { finished } = await testRunnerService.startTestRun(USER as never, 'wf-1', 1, {
+				collectionId: 'col-1',
+				workflowVersionId: 'wfv-x',
+				evaluationConfigId: 'cfg-1',
+				evaluationConfigSnapshot: snapshot,
+				compileFromConfig: true,
+			});
+			await finished.catch(() => undefined);
+
+			expect(evaluationConfigRepository.findByIdAndWorkflowId).not.toHaveBeenCalled();
+			expect(compiledConfig).toBe(snapshot);
+			expect(testRunRepository.createTestRun).toHaveBeenCalledWith(
+				'wf-1',
+				expect.objectContaining({ evaluationConfigSnapshot: snapshot }),
+			);
+		});
+
 		test('overwrites workflowData.versionId with the pinned history versionId', async () => {
 			// `ExecutionPersistence` reads `workflowData.versionId` and stores
 			// it on the execution row. If the live workflow's `versionId` leaks
@@ -3126,6 +3210,161 @@ describe('TestRunnerService', () => {
 
 			expect(ranTestCall?.run_type).toBe('config');
 			expect(finishedCall?.run_type).toBe('config');
+		});
+	});
+
+	describe('per-case inputs/outputs capture (config-compiled runs)', () => {
+		const TRIGGER_NODE_NAME = 'Dataset Trigger';
+		const METRICS_NODE_NAME = 'Set Metrics';
+		const START_NODE_NAME = 'Start';
+		const END_NODE_NAME = 'Agent';
+		const USER_OBJ = mock<{ id: string }>({ id: 'user-out' });
+		const WORKFLOW_ID = 'wf-out';
+
+		// A config-compiled workflow: eval trigger → end node (the node under
+		// test) → metrics. Crucially it has NO Set Outputs node, which is exactly
+		// the shape the compiler emits and the reason per-case outputs were empty.
+		const buildCompiledWorkflow = (): IWorkflowBase =>
+			({
+				id: WORKFLOW_ID,
+				name: 'Compiled Eval Workflow',
+				active: false,
+				nodes: [
+					{
+						id: 'trigger',
+						name: TRIGGER_NODE_NAME,
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [0, 0] as [number, number],
+						parameters: { source: 'dataTable', dataTableId: 'dt-1' },
+					},
+					{
+						id: 'agent',
+						name: END_NODE_NAME,
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'metrics',
+						name: METRICS_NODE_NAME,
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 4.7,
+						position: [400, 0] as [number, number],
+						parameters: {
+							operation: 'setMetrics',
+							metric: 'customMetrics',
+							metrics: { assignments: [{ id: '1', name: 'score', value: 1 }] },
+						},
+					},
+				],
+				connections: {},
+				settings: {},
+			}) as unknown as IWorkflowBase;
+
+		const buildDatasetExecution = (): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[TRIGGER_NODE_NAME]: [
+								{
+									data: { [NodeConnectionTypes.Main]: [[{ json: { caseId: 0 } }]] },
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		// The per-case execution: the end node produced an answer and the metrics
+		// node produced a score. No Set Outputs node ran.
+		const buildCaseExecution = (): IRun =>
+			({
+				data: {
+					resultData: {
+						runData: {
+							[END_NODE_NAME]: [
+								{
+									data: {
+										[NodeConnectionTypes.Main]: [[{ json: { output: 'The capital is Paris' } }]],
+									},
+								},
+							],
+							[METRICS_NODE_NAME]: [
+								{
+									data: { [NodeConnectionTypes.Main]: [[{ json: { score: 1 } }]] },
+								},
+							],
+						},
+					},
+				},
+			}) as unknown as IRun;
+
+		// Drives a full config-compiled run and returns the success-status patch
+		// persisted for the single case, so each test can assert its field.
+		const runConfigCaseAndGetSuccessPatch = async (): Promise<Record<string, unknown>> => {
+			const compiled = buildCompiledWorkflow();
+			workflowRepository.findById.mockResolvedValue(compiled as never);
+			workflowCompiler.compile.mockReturnValue(compiled as never);
+			concurrencyControlService.throttle.mockResolvedValue(undefined as never);
+			testRunRepository.markAsRunning.mockResolvedValue(undefined as never);
+			testRunRepository.markAsCompleted.mockResolvedValue(undefined as never);
+			testRunRepository.clearInstanceTracking.mockResolvedValue(undefined as never);
+			testRunRepository.isCancellationRequested.mockResolvedValue(false);
+			testCaseExecutionRepository.createPendingBatch.mockImplementation(
+				async (_runId, runIndices) =>
+					runIndices.map((_, i) => ({ id: `seeded-case-${i}` }) as never),
+			);
+			testCaseExecutionRepository.tryMarkCaseAsRunning.mockResolvedValue(true);
+			testCaseExecutionRepository.update.mockResolvedValue({ affected: 1 } as never);
+			Object.assign(testRunRepository, {
+				manager: {
+					transaction: vi
+						.fn()
+						.mockImplementation(async (cb: (trx: unknown) => Promise<unknown>) => await cb({})),
+				},
+			});
+
+			let runCallIndex = 0;
+			workflowRunner.run.mockImplementation(async () =>
+				runCallIndex++ === 0 ? 'dataset-exec' : 'case-exec',
+			);
+			activeExecutions.getPostExecutePromise.mockImplementation(async (id) =>
+				id === 'dataset-exec' ? buildDatasetExecution() : buildCaseExecution(),
+			);
+
+			const snapshot = {
+				id: 'cfg-1',
+				workflowId: WORKFLOW_ID,
+				startNodeName: START_NODE_NAME,
+				endNodeName: END_NODE_NAME,
+			} as never;
+
+			const { finished } = await testRunnerService.startTestRun(USER_OBJ as never, WORKFLOW_ID, 1, {
+				evaluationConfigId: 'cfg-1',
+				evaluationConfigSnapshot: snapshot,
+				compileFromConfig: true,
+			});
+			await finished.catch(() => undefined);
+
+			const successUpdate = testCaseExecutionRepository.update.mock.calls.find(
+				([, patch]) => (patch as { status?: string }).status === 'success',
+			);
+			expect(successUpdate).toBeDefined();
+			return successUpdate?.[1] as Record<string, unknown>;
+		};
+
+		it('persists the end-node output as per-case outputs when there is no Set Outputs node', async () => {
+			const patch = await runConfigCaseAndGetSuccessPatch();
+			expect(patch.outputs).toEqual({ output: 'The capital is Paris' });
+		});
+
+		it('persists the dataset row as per-case inputs when there is no Set Inputs node', async () => {
+			const patch = await runConfigCaseAndGetSuccessPatch();
+			// The dataset row pinned to the eval trigger (would be {} without the fix).
+			expect(patch.inputs).toEqual({ caseId: 0 });
 		});
 	});
 

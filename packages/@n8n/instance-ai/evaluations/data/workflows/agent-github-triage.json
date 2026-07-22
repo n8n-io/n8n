@@ -1,0 +1,32 @@
+{
+	"description": "Agent-artifact case: GitHub bug-triage agent stressing mock-layer reliability on a read-then-write chain — the duplicate search result must steer a conditional comment-vs-create decision, so cross-request mock consistency is the capability under test. One scenario also asserts the ABSENCE of a request (no issue created when a duplicate exists).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create an n8n agent called 'Bug Triage' for our engineering team. When someone reports a bug, it should first search our acme/widgets GitHub repository for existing open issues that look like duplicates of the report. If it finds a likely duplicate, it must add a comment on that existing issue with the new report's details instead of creating anything new. If there is no duplicate, it should create a new issue labelled 'bug' with a clear title and the report as the body. Either way it must tell the user exactly what it did, including the number of the issue it commented on or created. Use OpenAI gpt-4o-mini as its model with my OpenAI credential, and use my GitHub credential for the repository work. No clarifying questions needed — build it with exactly this."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["agent", "build", "github"],
+	"credentials": [{ "type": "openAiApi" }, { "type": "githubApi" }],
+	"outcomeExpectations": [
+		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration). Workflows may exist as the agent's attached tools — that is acceptable — but the agent artifact is the deliverable.",
+		"The agent's instructions cover the triage flow: search acme/widgets for duplicate open issues first, comment on the duplicate when one is found, otherwise create a new issue labelled 'bug', and report the outcome with the issue number.",
+		"The agent has GitHub tooling that can search issues and create or comment on them in the acme/widgets repository.",
+		"The agent's configured model is an OpenAI model."
+	],
+	"executionScenarios": [
+		{
+			"name": "comments-on-duplicate",
+			"description": "A duplicate exists: the issue search returns a matching open issue; the agent must comment on it and must NOT create a new issue.",
+			"dataSetup": "The user reports that CSV export truncates rows over 10k. The GitHub issue search / list for acme/widgets returns exactly one matching open issue: number 482, titled 'CSV export truncates large files', clearly the same bug. Any request commenting on issue 482 succeeds. No issue-creation request should happen in this scenario; if one is made anyway, it succeeds and returns issue number 900.",
+			"successCriteria": "The agent looked up acme/widgets issues, posted a comment targeting issue 482 (see the intercepted comment request), did NOT create a new issue, and its final reply honestly says it commented on the existing issue 482 rather than creating a new one."
+		},
+		{
+			"name": "creates-when-no-duplicate",
+			"description": "No duplicate: the search comes back empty; the agent must create a new labelled issue.",
+			"dataSetup": "The user reports that the login page shows a blank screen on Safari. The GitHub issue search / list for acme/widgets returns zero matching open issues (an empty result set). The issue-creation request succeeds and returns the new issue number 517.",
+			"successCriteria": "The agent looked up acme/widgets issues, found none matching, then created exactly one new issue (see the intercepted creation request) about the Safari login blank screen with a 'bug' label, and its final reply reports the created issue's number as returned by the creation response."
+		}
+	]
+}
