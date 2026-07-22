@@ -11,7 +11,7 @@
 //   node scripts/nathan.mjs deploy my-branch --license pro2
 //   node scripts/nathan.mjs deploy master test-ai --ai
 //
-// Note: enterprise (--license) and AI (--ai) features cannot be used together.
+// Note: --license enterprise and AI (--ai) features cannot be used together.
 //
 // Needs a token in ~/.n8n/dev/nathan-token — on first run it links you to a form to
 // get one and saves it there. A public tunnel is opened via `npx localtunnel`.
@@ -136,10 +136,10 @@ if (!token) process.exit(1);
 const text = process.argv.slice(2).join(' ').trim() || 'help';
 const args = process.argv.slice(2);
 const hasEnterprise = args.some(
-	(a) => a === '--license' || a.startsWith('--license=') || a === '--enterprise',
+	(a, i) => a === '--license=enterprise' || (a === '--license' && args[i + 1] === 'enterprise'),
 );
 if (args.includes('--ai') && hasEnterprise) {
-	console.error('⚠️  Enterprise (--license/--enterprise) and --ai cannot be used together; the deploy may not behave as expected.\n');
+	console.error('⚠️  --license enterprise and --ai cannot be used together; the deploy may not behave as expected.\n');
 }
 const isLocal = text.startsWith('local');
 const slackTarget = process.env.NATHAN_SLACK_CHANNEL
