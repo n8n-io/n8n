@@ -37,7 +37,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: undefined,
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({ matched: [], missing: [] });
@@ -49,7 +49,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: [],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({ matched: [], missing: [] });
@@ -62,7 +62,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({
@@ -77,7 +77,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-2', 'wf-1', 'wf-2'] }],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({
@@ -97,7 +97,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({ matched: ['API_URL'], missing: [] });
@@ -109,7 +109,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({ matched: ['API_URL'], missing: [] });
@@ -128,7 +128,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({ matched: ['API_URL'], missing: [] });
@@ -145,7 +145,7 @@ describe('VariableImporter', () => {
 
 			const plan = await importer.plan(context, {
 				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({
@@ -165,7 +165,7 @@ describe('VariableImporter', () => {
 					{ name: 'API_URL', usedByWorkflows: ['wf-1'] },
 					{ name: 'API_KEY', usedByWorkflows: ['wf-1'] },
 				],
-				missingPolicy: 'do-nothing',
+				missingMode: 'do-nothing',
 			});
 
 			expect(plan).toEqual({
@@ -181,23 +181,23 @@ describe('VariableImporter', () => {
 			missing: [{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }],
 		};
 
-		describe('do-nothing policy', () => {
+		describe('do-nothing missing mode', () => {
 			it('never blocks, even with unresolved requirements', () => {
 				const { importer } = makeImporter();
 
 				expect(
-					importer.blockingFailures({ requirements: undefined, missingPolicy: 'do-nothing' }, plan),
+					importer.blockingFailures({ requirements: undefined, missingMode: 'do-nothing' }, plan),
 				).toEqual([]);
 			});
 		});
 
-		describe('must-preexist policy', () => {
+		describe('must-preexist missing mode', () => {
 			it('blocks on every unresolved requirement', () => {
 				const { importer } = makeImporter();
 
 				expect(
 					importer.blockingFailures(
-						{ requirements: undefined, missingPolicy: 'must-preexist' },
+						{ requirements: undefined, missingMode: 'must-preexist' },
 						plan,
 					),
 				).toEqual([{ name: 'API_KEY', usedByWorkflows: ['wf-1'] }]);
@@ -208,7 +208,7 @@ describe('VariableImporter', () => {
 
 				expect(
 					importer.blockingFailures(
-						{ requirements: undefined, missingPolicy: 'must-preexist' },
+						{ requirements: undefined, missingMode: 'must-preexist' },
 						{ matched: ['API_URL'], missing: [] },
 					),
 				).toEqual([]);

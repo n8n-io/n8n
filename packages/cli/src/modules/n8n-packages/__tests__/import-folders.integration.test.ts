@@ -46,7 +46,7 @@ async function importFolders(params: FolderImportParams) {
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingPolicy: 'do-nothing',
+		variableMissingMode: 'do-nothing',
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
 }

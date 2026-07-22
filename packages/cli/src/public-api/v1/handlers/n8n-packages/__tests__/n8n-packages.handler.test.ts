@@ -586,19 +586,19 @@ describe('n8n-packages handler', () => {
 				expect.objectContaining({
 					projectId: 'proj-brie',
 					workflowConflictPolicy: 'fail',
-					variableMissingPolicy: 'do-nothing',
+					variableMissingMode: 'do-nothing',
 				}),
 			);
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 
-		it('forwards variableMissingPolicy when provided', async () => {
+		it('forwards variableMissingMode when provided', async () => {
 			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
 			mockService.importPackage.mockResolvedValue(result as never);
 			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
 
 			const caught = await runImport(
-				makeImportRequest({ projectId: 'proj-brie', variableMissingPolicy: 'do-nothing' }, [
+				makeImportRequest({ projectId: 'proj-brie', variableMissingMode: 'do-nothing' }, [
 					'workflow:import',
 				]),
 				res,
@@ -606,7 +606,7 @@ describe('n8n-packages handler', () => {
 
 			expect(caught).toBeUndefined();
 			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ variableMissingPolicy: 'do-nothing' }),
+				expect.objectContaining({ variableMissingMode: 'do-nothing' }),
 			);
 		});
 	});

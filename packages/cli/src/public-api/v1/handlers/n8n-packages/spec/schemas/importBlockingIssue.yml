@@ -164,7 +164,7 @@ oneOf:
   - type: object
     description: >
       A variable reference that could not be resolved in the target project or the
-      global scope, under `variableMissingPolicy=must-preexist`.
+      global scope, under `variableMissingMode=must-preexist`.
     required:
       - type
       - name

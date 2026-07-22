@@ -75,7 +75,7 @@ export const DataTableSchemaConflictPolicy = {
 	Fail: 'fail',
 } as const;
 
-export const VariableMissingPolicy = {
+export const VariableMissingMode = {
 	/** Imports workflows even when referenced variables are absent. Nothing is created; unresolved names are reported as warnings in the response. */
 	DoNothing: 'do-nothing',
 	/** Blocks the import unless every referenced variable already resolves in the target project or global scope. */
@@ -101,8 +101,7 @@ export type DataTableMissingMode = (typeof DataTableMissingMode)[keyof typeof Da
 export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
 
-export type VariableMissingPolicy =
-	(typeof VariableMissingPolicy)[keyof typeof VariableMissingPolicy];
+export type VariableMissingMode = (typeof VariableMissingMode)[keyof typeof VariableMissingMode];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -149,7 +148,7 @@ export type ImportDataTableProperties = {
 };
 
 export type ImportVariableProperties = {
-	variableMissingPolicy: VariableMissingPolicy;
+	variableMissingMode: VariableMissingMode;
 };
 
 /**

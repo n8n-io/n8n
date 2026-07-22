@@ -157,7 +157,7 @@ export class ProjectPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
-			missingPolicy: request.variableMissingPolicy,
+			missingMode: request.variableMissingMode,
 		};
 
 		return {

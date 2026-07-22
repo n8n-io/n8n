@@ -69,7 +69,7 @@ type ImportPackageParams = Omit<
 	| 'dataTableMatchingMode'
 	| 'dataTableMissingMode'
 	| 'dataTableSchemaConflictPolicy'
-	| 'variableMissingPolicy'
+	| 'variableMissingMode'
 > &
 	Partial<
 		Pick<
@@ -84,7 +84,7 @@ type ImportPackageParams = Omit<
 			| 'dataTableMatchingMode'
 			| 'dataTableMissingMode'
 			| 'dataTableSchemaConflictPolicy'
-			| 'variableMissingPolicy'
+			| 'variableMissingMode'
 		>
 	>;
 
@@ -99,7 +99,7 @@ async function importPackage(params: ImportPackageParams) {
 		dataTableMatchingMode: DataTableMatchingMode.ById,
 		dataTableMissingMode: DataTableMissingMode.Create,
 		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
-		variableMissingPolicy: 'do-nothing',
+		variableMissingMode: 'do-nothing',
 		...params,
 	});
 }

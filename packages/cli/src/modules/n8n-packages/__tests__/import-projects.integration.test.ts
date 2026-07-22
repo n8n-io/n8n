@@ -50,7 +50,7 @@ async function importProjects(
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingPolicy: 'do-nothing',
+		variableMissingMode: 'do-nothing',
 		...overrides,
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
@@ -511,7 +511,7 @@ describe('project shell import', () => {
 			const result = await importProjects(owner, packageBuffer);
 
 			expect(result.variables).toEqual({ matched: ['GLOBAL_URL'], missing: ['ABSENT_VAR'] });
-			// do-nothing policy does not create variables
+			// do-nothing mode does not create variables
 			expect(await Container.get(VariablesRepository).count()).toBe(1);
 		});
 
@@ -546,7 +546,7 @@ describe('project shell import', () => {
 			});
 
 			const error = await importProjects(owner, packageBuffer, undefined, {
-				variableMissingPolicy: 'must-preexist',
+				variableMissingMode: 'must-preexist',
 			}).catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(UnprocessableRequestError);
@@ -611,7 +611,7 @@ describe('project shell import', () => {
 			const workflowsBefore = await workflowStates();
 
 			const error = await importProjects(owner, packageBuffer, undefined, {
-				variableMissingPolicy: 'must-preexist',
+				variableMissingMode: 'must-preexist',
 			}).catch((e: unknown) => e);
 
 			expect(error).toBeInstanceOf(UnprocessableRequestError);

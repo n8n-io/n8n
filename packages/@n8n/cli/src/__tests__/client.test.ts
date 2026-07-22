@@ -214,7 +214,7 @@ describe('N8nClient packages', () => {
 			expect(form.get('dataTableSchemaConflictPolicy')).toBe('fail');
 		});
 
-		describe('variableMissingPolicy', () => {
+		describe('variableMissingMode', () => {
 			it.each(['do-nothing', 'must-preexist'])('sends %s when provided', async (policy) => {
 				fetchMock.mockResolvedValue(
 					jsonResponse(200, {
@@ -229,12 +229,12 @@ describe('N8nClient packages', () => {
 					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
 					{
 						workflowConflictPolicy: 'fail',
-						variableMissingPolicy: policy,
+						variableMissingMode: policy,
 					},
 				);
 
 				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
-				expect(form.get('variableMissingPolicy')).toBe(policy);
+				expect(form.get('variableMissingMode')).toBe(policy);
 			});
 		});
 
