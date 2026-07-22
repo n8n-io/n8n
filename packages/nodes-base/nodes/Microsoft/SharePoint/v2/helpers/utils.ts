@@ -30,6 +30,14 @@ export function assertPathSegment(node: INode, value: string, paramName: string)
 /** Shape shared by every Graph collection reply a listSearch method here consumes. */
 export type GraphSearchReply<T> = { '@odata.nextLink'?: string; value?: T[] };
 
+/**
+ * Builds a `fields/{column} eq '{value}'` OData $filter clause. The value is
+ * always compared as a quoted string literal, where the only special character
+ * is the single quote, escaped by doubling; URL encoding is the transport's job.
+ */
+export const odataFieldEqualsClause = (column: string, value: unknown) =>
+	`fields/${column} eq '${String(value ?? '').replaceAll("'", "''")}'`;
+
 /** Characters SharePoint forbids in file names; Graph rejects them with a misleading 400. */
 export const SHAREPOINT_ILLEGAL_FILE_NAME_CHARS = ['"', '*', ':', '<', '>', '?', '/', '\\', '|'];
 

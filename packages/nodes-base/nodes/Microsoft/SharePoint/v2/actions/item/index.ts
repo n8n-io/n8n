@@ -1,10 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-// `delete` is reserved — alias as `del`.
 import * as del from './delete.operation';
 import * as get from './get.operation';
+import * as update from './update.operation';
 
-export { get, del as delete };
+export { del as delete, get, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -30,10 +30,17 @@ export const description: INodeProperties[] = [
 				description: 'Delete an item',
 				action: 'Delete item',
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an item in an existing list',
+				action: 'Update item in a list',
+			},
 		],
 		default: 'get',
 	},
 
 	...get.description,
 	...del.description,
+	...update.description,
 ];

@@ -3,7 +3,7 @@ import { VersionedNodeType } from 'n8n-workflow';
 
 import { MicrosoftSharePointV1 } from './v1/MicrosoftSharePointV1.node';
 // Uncomment along with the v2 registration below to test v2 locally.
-// import { MicrosoftSharePointV2 } from './v2/MicrosoftSharePointV2.node';
+import { MicrosoftSharePointV2 } from './v2/MicrosoftSharePointV2.node';
 
 export class MicrosoftSharePoint extends VersionedNodeType {
 	constructor() {
@@ -25,7 +25,7 @@ export class MicrosoftSharePoint extends VersionedNodeType {
 			// highest registered version regardless of defaultVersion, so v2 must
 			// stay unregistered until the launch ticket flips the default.
 			// Uncomment locally to test v2 work.
-			// 2: new MicrosoftSharePointV2(baseDescription),
+			2: new MicrosoftSharePointV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
