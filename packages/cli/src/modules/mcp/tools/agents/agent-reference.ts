@@ -41,7 +41,8 @@ creating either one.
 
 1. Use search_projects to identify the project, or search_agents and get_agent for an existing Agent.
    By-ID tools (get_agent, mutate_agent, validate_agent, publish_agent, unpublish_agent,
-   delete_agent, update_agent_integration) take an agentId alone and resolve the project from it.
+   revert_agent, list_agent_versions, delete_agent, update_agent_integration) take an agentId alone
+   and resolve the project from it.
 2. Use discover_agent_assets plus list_credentials, search_nodes, get_node_types, and
    explore_node_resources to ground model, tool, workflow, integration, and credential choices.
 3. For a new Agent, call create_agent with the initial config after discovering its assets. The
@@ -64,6 +65,13 @@ Building, editing, or validating an Agent never implies permission to publish or
 the Agent as a draft by default. An explicit request to publish, activate, deploy, make live, or
 connect a chat integration counts as approval; otherwise ask after validation and wait for the
 answer before calling publish_agent or connecting an integration.
+
+## Version history
+
+list_agent_versions lists an Agent's published versions; get_agent with a versionId inspects one
+before acting on it. revert_agent restores the draft from a version without publishing, returning a
+fresh configHash for further mutations. publish_agent with a versionId republishes that version
+directly, leaving the draft untouched; as a (re)publication it requires the same explicit approval.
 
 ## mutate_agent operations
 

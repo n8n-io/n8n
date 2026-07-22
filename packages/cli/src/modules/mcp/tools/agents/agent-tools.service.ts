@@ -89,6 +89,45 @@ const agentIdentityShape = {
 	agentId: z.string().min(1).describe('Agent ID'),
 } satisfies z.ZodRawShape;
 
+const getAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Read a published version snapshot instead of the draft, e.g. the activeVersionId. Snapshots are read-only, so the response has no configHash.',
+		),
+} satisfies z.ZodRawShape;
+
+const publishAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Republish a previously published version instead of the current draft. The draft is left untouched.',
+		),
+} satisfies z.ZodRawShape;
+
+const revertAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Published version to restore the draft from; defaults to the currently published version',
+		),
+} satisfies z.ZodRawShape;
+
+const listAgentVersionsInput = {
+	...agentIdentityShape,
+	limit: z.number().int().min(1).max(100).optional().default(20),
+	offset: z.number().int().min(0).optional().default(0),
+} satisfies z.ZodRawShape;
+
 const searchAgentsInput = {
 	projectId: z.string().min(1).optional().describe('Restrict results to one project'),
 	query: z.string().optional().describe('Filter by Agent name'),
@@ -280,6 +319,8 @@ export class McpAgentToolsService {
 		this.register(server, this.validateAgentTool(user));
 		this.register(server, this.publishAgentTool(user));
 		this.register(server, this.unpublishAgentTool(user));
+		this.register(server, this.revertAgentTool(user));
+		this.register(server, this.listAgentVersionsTool(user));
 		this.register(server, this.deleteAgentTool(user));
 		this.register(server, this.discoverAssetsTool(user));
 		this.register(server, this.verifyMcpServerTool(user));
@@ -347,13 +388,13 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private getAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private getAgentTool(user: User): ToolDefinition<typeof getAgentInput> {
 		return {
 			name: 'get_agent',
 			config: {
 				description:
-					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent.',
-				inputSchema: agentIdentityShape,
+					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft.',
+				inputSchema: getAgentInput,
 				annotations: {
 					title: 'Get Agent',
 					readOnlyHint: true,
@@ -362,12 +403,20 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ agentId }) =>
-				await this.run(user, 'get_agent', { agentId }, async () => {
-					const projectId = await this.resolveProjectId(user, agentId);
-					await this.assertScope(user, projectId, 'agent:read');
-					return { ok: true, ...(await this.getAgentSnapshot(user, projectId, agentId)) };
-				}),
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'get_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const projectId = await this.resolveProjectId(user, agentId);
+						await this.assertScope(user, projectId, 'agent:read');
+						const snapshot = versionId
+							? await this.getAgentVersionSnapshot(projectId, agentId, versionId)
+							: await this.getAgentSnapshot(user, projectId, agentId);
+						return { ok: true, ...snapshot };
+					},
+				),
 		};
 	}
 
@@ -518,13 +567,13 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private publishAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private publishAgentTool(user: User): ToolDefinition<typeof publishAgentInput> {
 		return {
 			name: 'publish_agent',
 			config: {
 				description:
-					'Publish a valid Agent draft and activate its tasks and integrations. Only call after the user explicitly requests or confirms publication; completing a build does not imply approval.',
-				inputSchema: agentIdentityShape,
+					'Publish a valid Agent draft and activate its tasks and integrations. Pass versionId to republish a previously published version instead. Only call after the user explicitly requests or confirms publication; completing a build does not imply approval.',
+				inputSchema: publishAgentInput,
 				annotations: {
 					title: 'Publish Agent',
 					readOnlyHint: false,
@@ -533,25 +582,108 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ agentId }) =>
-				await this.run(user, 'publish_agent', { agentId }, async () => {
-					const projectId = await this.resolveProjectId(user, agentId);
-					await this.assertScope(user, projectId, 'agent:publish');
-					const validation = await this.validateAgent(user, projectId, agentId);
-					if (!validation.valid) {
-						throw new UserError(
-							`Agent is not runnable: ${[...validation.errors, ...validation.missing].join(', ')}`,
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'publish_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const projectId = await this.resolveProjectId(user, agentId);
+						await this.assertScope(user, projectId, 'agent:publish');
+						// Republishing a snapshot skips draft validation, mirroring the
+						// REST publish endpoint: the draft is not what goes live.
+						if (!versionId) {
+							const validation = await this.validateAgent(user, projectId, agentId);
+							if (!validation.valid) {
+								throw new UserError(
+									`Agent is not runnable: ${[...validation.errors, ...validation.missing].join(', ')}`,
+								);
+							}
+						}
+						const agent = await this.agentPublishService.publishAgent(
+							agentId,
+							projectId,
+							user,
+							versionId,
 						);
-					}
-					const agent = await this.agentPublishService.publishAgent(agentId, projectId, user);
-					return {
-						ok: true,
+						return {
+							ok: true,
+							agentId,
+							published: true,
+							versionId: agent.versionId,
+							activeVersionId: agent.activeVersionId,
+							url: this.getAgentUrl(projectId, agentId),
+						};
+					},
+				),
+		};
+	}
+
+	private revertAgentTool(user: User): ToolDefinition<typeof revertAgentInput> {
+		return {
+			name: 'revert_agent',
+			config: {
+				description:
+					'Restore an Agent draft from a published version, overwriting the draft config, skills, tasks, and custom tools. Does not publish. Inspect the version with get_agent first; the response returns the new configHash.',
+				inputSchema: revertAgentInput,
+				annotations: {
+					title: 'Revert Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'revert_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const projectId = await this.resolveProjectId(user, agentId);
+						await this.assertScope(user, projectId, 'agent:update');
+						const agent = versionId
+							? await this.agentPublishService.revertToVersion(agentId, projectId, versionId)
+							: await this.agentPublishService.revertToPublishedAgent(agentId, projectId);
+						return {
+							ok: true,
+							agentId,
+							versionId: agent.versionId,
+							activeVersionId: agent.activeVersionId,
+							configHash: getAgentConfigHash(this.configFromEntity(agent)),
+							url: this.getAgentUrl(projectId, agentId),
+						};
+					},
+				),
+		};
+	}
+
+	private listAgentVersionsTool(user: User): ToolDefinition<typeof listAgentVersionsInput> {
+		return {
+			name: 'list_agent_versions',
+			config: {
+				description:
+					'List the publish history of an Agent, newest first. Pass a versionId to get_agent to inspect a version before revert_agent or publish_agent.',
+				inputSchema: listAgentVersionsInput,
+				annotations: {
+					title: 'List Agent Versions',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, limit, offset }) =>
+				await this.run(user, 'list_agent_versions', { agentId }, async () => {
+					const projectId = await this.resolveProjectId(user, agentId);
+					await this.assertScope(user, projectId, 'agent:read');
+					const versions = await this.agentPublishService.listPublishHistory(
 						agentId,
-						published: true,
-						versionId: agent.versionId,
-						activeVersionId: agent.activeVersionId,
-						url: this.getAgentUrl(projectId, agentId),
-					};
+						projectId,
+						limit,
+						offset,
+					);
+					return { ok: true, data: versions, count: versions.length };
 				}),
 		};
 	}
@@ -778,6 +910,53 @@ export class McpAgentToolsService {
 				descriptor: tool.descriptor,
 			})),
 			integrations: agent.integrations ?? [],
+		};
+	}
+
+	/**
+	 * Read-only view of a published version snapshot. Deliberately returns no
+	 * configHash: mutations only ever apply to the draft, so a snapshot hash
+	 * must not be usable as a mutate_agent baseConfigHash.
+	 */
+	private async getAgentVersionSnapshot(projectId: string, agentId: string, versionId: string) {
+		const { agent, version, tasks } = await this.agentPublishService.getVersion(
+			agentId,
+			projectId,
+			versionId,
+		);
+		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
+		// Integrations are a read-only runtime surface, omitted from the config
+		// here for the same reason as in getAgentSnapshot.
+		const { integrations: _integrations, ...editableConfig } = version.schema;
+
+		return {
+			agent: {
+				id: agent.id,
+				name: agent.name,
+				projectId: agent.projectId,
+				published: agent.activeVersionId !== null,
+				versionId: agent.versionId,
+				activeVersionId: agent.activeVersionId,
+			},
+			version: {
+				versionId: version.versionId,
+				author: version.author,
+				createdAt: version.createdAt.toISOString(),
+				isActive: version.versionId === agent.activeVersionId,
+			},
+			config: editableConfig,
+			skills: version.skills ?? {},
+			tasks: tasks.map((task) => ({
+				id: task.taskId,
+				name: task.name,
+				objective: task.objective,
+				cronExpression: task.cronExpression,
+				enabled: task.enabled,
+			})),
+			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
+				id,
+				descriptor: tool.descriptor,
+			})),
 		};
 	}
 

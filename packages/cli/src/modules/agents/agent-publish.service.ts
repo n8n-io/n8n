@@ -15,7 +15,9 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
+import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -232,6 +234,29 @@ export class AgentPublishService {
 	 */
 	async hasPublishHistory(agentId: string): Promise<boolean> {
 		return await this.agentHistoryRepository.existsForAgent(agentId);
+	}
+
+	/**
+	 * Load one published version snapshot (schema, tools, skills) plus its
+	 * frozen task rows, for read-only inspection.
+	 */
+	async getVersion(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+	): Promise<{ agent: Agent; version: AgentHistory; tasks: AgentTaskSnapshot[] }> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		if (!version) {
+			throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
+		}
+
+		const tasks = await this.agentTaskSnapshotRepository.findByVersionId(versionId);
+		return { agent, version, tasks };
 	}
 
 	async listPublishHistory(

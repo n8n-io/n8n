@@ -146,8 +146,10 @@ describe('McpAgentToolsService', () => {
 					'discover_agent_assets',
 					'get_agent',
 					'get_agent_builder_reference',
+					'list_agent_versions',
 					'mutate_agent',
 					'publish_agent',
+					'revert_agent',
 					'search_agents',
 					'unpublish_agent',
 					'update_agent_integration',
@@ -183,6 +185,8 @@ describe('McpAgentToolsService', () => {
 			['validate_agent', 'agent:read', identity],
 			['publish_agent', 'agent:publish', identity],
 			['unpublish_agent', 'agent:unpublish', identity],
+			['revert_agent', 'agent:update', identity],
+			['list_agent_versions', 'agent:read', identity],
 			['delete_agent', 'agent:delete', identity],
 			['discover_agent_assets', 'agent:read', { projectId: 'project-1', kind: 'models' }],
 			[
@@ -718,7 +722,12 @@ describe('McpAgentToolsService', () => {
 				agentId: 'agent-1',
 			});
 
-			expect(agentPublishService.publishAgent).toHaveBeenCalledWith('agent-1', 'project-1', user);
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				user,
+				undefined,
+			);
 			expect(result.structuredContent).toEqual({
 				ok: true,
 				agentId: 'agent-1',
@@ -727,6 +736,110 @@ describe('McpAgentToolsService', () => {
 				activeVersionId: 'v2',
 				url: 'https://n8n.test/projects/project-1/agents/agent-1',
 			});
+		});
+
+		it('republishes a previous version without validating the draft', async () => {
+			agentPublishService.publishAgent.mockResolvedValue(
+				agentEntity({ versionId: 'v3', activeVersionId: 'v1' }),
+			);
+
+			const result = await callTool('publish_agent', { agentId: 'agent-1', versionId: 'v1' });
+
+			expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				user,
+				'v1',
+			);
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				published: true,
+				versionId: 'v3',
+				activeVersionId: 'v1',
+			});
+		});
+	});
+
+	describe('revert_agent', () => {
+		it('restores the draft from the currently published version by default', async () => {
+			agentPublishService.revertToPublishedAgent.mockResolvedValue(
+				agentEntity({ versionId: 'v1', activeVersionId: 'v1' }),
+			);
+
+			const result = await callTool('revert_agent', { agentId: 'agent-1' });
+
+			expect(agentPublishService.revertToPublishedAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+			);
+			expect(agentPublishService.revertToVersion).not.toHaveBeenCalled();
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				agentId: 'agent-1',
+				versionId: 'v1',
+				activeVersionId: 'v1',
+				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
+				url: 'https://n8n.test/projects/project-1/agents/agent-1',
+			});
+		});
+
+		it('restores the draft from a specific version', async () => {
+			agentPublishService.revertToVersion.mockResolvedValue(
+				agentEntity({ versionId: 'v4', activeVersionId: 'v2' }),
+			);
+
+			const result = await callTool('revert_agent', { agentId: 'agent-1', versionId: 'v0' });
+
+			expect(agentPublishService.revertToVersion).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				'v0',
+			);
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				versionId: 'v4',
+				activeVersionId: 'v2',
+			});
+		});
+
+		it('returns an error result when the version does not exist', async () => {
+			agentPublishService.revertToVersion.mockRejectedValue(new Error('Version "nope" not found'));
+
+			const result = await callTool('revert_agent', { agentId: 'agent-1', versionId: 'nope' });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({ error: 'Version "nope" not found' });
+		});
+	});
+
+	describe('list_agent_versions', () => {
+		it('lists the publish history', async () => {
+			const versions = [
+				{
+					versionId: 'v1',
+					agentId: 'agent-1',
+					createdAt: '2026-01-02T00:00:00.000Z',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					author: 'Ada Lovelace',
+					isActive: true,
+				},
+			];
+			agentPublishService.listPublishHistory.mockResolvedValue(versions);
+
+			const result = await callTool('list_agent_versions', {
+				agentId: 'agent-1',
+				limit: 20,
+				offset: 0,
+			});
+
+			expect(agentPublishService.listPublishHistory).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				20,
+				0,
+			);
+			expect(result.structuredContent).toEqual({ ok: true, data: versions, count: 1 });
 		});
 	});
 
@@ -791,6 +904,65 @@ describe('McpAgentToolsService', () => {
 
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({ error: 'Agent "nope" not found' });
+		});
+
+		it('returns a published version snapshot without a configHash when versionId is passed', async () => {
+			agentPublishService.getVersion.mockResolvedValue({
+				agent: agentEntity({ activeVersionId: 'v0' }),
+				version: {
+					versionId: 'v0',
+					agentId: 'agent-1',
+					author: 'Ada Lovelace',
+					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+					schema: {
+						...baseConfig,
+						integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+					},
+					tools: { my_tool: { code: 'code', descriptor: { name: 'my_tool' } } },
+					skills: { 'skill-1': { name: 'Skill' } },
+				},
+				tasks: [
+					{
+						taskId: 'task-1',
+						name: 'Daily',
+						objective: 'Summarize',
+						cronExpression: '0 9 * * *',
+						enabled: true,
+					},
+				],
+			} as never);
+
+			const result = await callTool('get_agent', { agentId: 'agent-1', versionId: 'v0' });
+
+			expect(agentPublishService.getVersion).toHaveBeenCalledWith('agent-1', 'project-1', 'v0');
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				agent: expect.objectContaining({ id: 'agent-1', published: true }),
+				version: {
+					versionId: 'v0',
+					author: 'Ada Lovelace',
+					createdAt: '2026-01-01T00:00:00.000Z',
+					isActive: true,
+				},
+				skills: { 'skill-1': { name: 'Skill' } },
+				tasks: [expect.objectContaining({ id: 'task-1', enabled: true })],
+				customTools: [{ id: 'my_tool', descriptor: { name: 'my_tool' } }],
+			});
+			expect(result.structuredContent.config).not.toHaveProperty('integrations');
+			expect(result.structuredContent).not.toHaveProperty('configHash');
+		});
+
+		it('returns an error result for an unknown versionId', async () => {
+			agentPublishService.getVersion.mockRejectedValue(
+				new Error('Version "v9" not found for agent "agent-1"'),
+			);
+
+			const result = await callTool('get_agent', { agentId: 'agent-1', versionId: 'v9' });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'Version "v9" not found for agent "agent-1"',
+			});
 		});
 	});
 

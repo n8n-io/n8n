@@ -374,6 +374,34 @@ describe('AgentPublishService', () => {
 		);
 	});
 
+	it('returns a version snapshot with its task snapshots', async () => {
+		const { service, agentRepository, agentHistoryRepository, taskSnapshotRepository } =
+			makeService();
+		const version = makeHistory({ versionId: 'old-version' });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(version);
+		taskSnapshotRepository.findByVersionId.mockResolvedValue([makeTaskSnapshot()]);
+
+		const result = await service.getVersion(agentId, projectId, 'old-version');
+
+		expect(agentHistoryRepository.findByVersionAndAgentId).toHaveBeenCalledWith(
+			'old-version',
+			agentId,
+		);
+		expect(result.version).toBe(version);
+		expect(result.tasks).toEqual([makeTaskSnapshot()]);
+	});
+
+	it('throws when the requested version does not exist for the agent', async () => {
+		const { service, agentRepository, agentHistoryRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(null);
+
+		await expect(service.getVersion(agentId, projectId, 'nope')).rejects.toThrow(
+			'Version "nope" not found for agent "agent-1"',
+		);
+	});
+
 	it('maps publish history rows and marks the active version', async () => {
 		const { service, agentRepository, agentHistoryRepository } = makeService();
 		const active = makeHistory({ versionId: 'active-version', author: 'Ada Lovelace' });
