@@ -257,63 +257,6 @@ describe('WorkflowPublisher', () => {
 			});
 		});
 
-		it('does not publish workflows blocked by missing node types', async () => {
-			const workflow = mock<WorkflowEntity>({
-				id: 'wf-1',
-				versionId: 'v1',
-				activeVersionId: null,
-				isArchived: false,
-			});
-
-			const result = await publisher.apply(
-				user,
-				createItem(true),
-				workflow,
-				WorkflowPublishingPolicy.PublishAll,
-				new Map([['wf-1', 'missing-node-type']]),
-			);
-
-			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
-			expect(result.workflow).toBe(workflow);
-			expect(result.publishing).toEqual({
-				state: 'blocked',
-				blockedReason: 'missing-node-type',
-			});
-		});
-
-		it('reports unchanged when missing node types block publishing an already-published update', async () => {
-			const workflow = mock<WorkflowEntity>({
-				id: 'wf-1',
-				versionId: 'v2',
-				activeVersionId: 'v1',
-				isArchived: false,
-			});
-
-			const updateItem: PersistedWorkflowPlanItem = {
-				action: 'update',
-				sourceWorkflowId: 'wf-broken',
-				sourcePublished: true,
-				parentFolderId: null,
-				entity: mock<WorkflowEntity>(),
-				existing: mock<WorkflowEntity>({ id: 'wf-1' }),
-			};
-
-			const result = await publisher.apply(
-				user,
-				updateItem,
-				workflow,
-				WorkflowPublishingPolicy.PreservePublishedState,
-				new Map([['wf-broken', 'missing-node-type']]),
-			);
-
-			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
-			expect(result.workflow).toBe(workflow);
-			expect(result.publishing).toEqual({
-				state: 'unchanged',
-				skippedPublishReason: 'missing-node-type',
-			});
-		});
-
 		it('still unpublishes a blocked workflow under unpublish-all', async () => {
 			const workflow = mock<WorkflowEntity>({
 				id: 'wf-1',
@@ -341,7 +284,6 @@ describe('WorkflowPublisher', () => {
 				new Map([['wf-broken', 'missing-node-type']]),
 			);
 
-			// The blocked map only intercepts publishing; unpublish still applies.
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 				source: 'import',

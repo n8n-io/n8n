@@ -83,7 +83,6 @@ export class NodeTypes implements INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		const origType = nodeType;
 
-		// `baseName` is the un-wrapped type to actually get from disk.
 		const { baseName, isSyntheticTool } = this.resolveBaseName(nodeType);
 
 		// If an existing node name ends in `Tool`, then return that node, instead of creating a fake Tool node

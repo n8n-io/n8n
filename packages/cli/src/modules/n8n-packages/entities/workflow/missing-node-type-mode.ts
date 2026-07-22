@@ -29,9 +29,6 @@ export function collectMissingNodeTypes(
 	});
 }
 
-/**
- * Classifies which missing node types block the import, per missing-mode policy.
- */
 /* eslint-disable @typescript-eslint/naming-convention -- API missing node type mode keys */
 const BLOCKING_FAILURES: Record<
 	MissingNodeTypeMode,

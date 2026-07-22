@@ -2469,7 +2469,6 @@ describe('Package import missing node type mode', () => {
 		parameters: {},
 	});
 
-	/** A node type this instance does not have at all. */
 	const unknownNode = () => ({
 		id: 'unknown-node',
 		name: 'Unknown Node',
@@ -2479,7 +2478,6 @@ describe('Package import missing node type mode', () => {
 		parameters: {},
 	});
 
-	/** An `httpRequest` node referencing a credential that does not exist on the target. */
 	const unresolvableCredentialNode = () => ({
 		id: 'http-node',
 		name: 'HTTP Request',
@@ -2541,7 +2539,6 @@ describe('Package import missing node type mode', () => {
 			},
 		});
 
-		// The import is gated before anything is written — no workflows, no stubs.
 		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 		expect(await Container.get(CredentialsRepository).count()).toBe(0);
 	});
@@ -2650,7 +2647,6 @@ describe('Package import missing node type mode', () => {
 		);
 
 		expect(summary?.status).toBe('updated');
-		// The prior published version keeps running; the imported version is never activated.
 		expect(summary?.activeVersionId).toBe(originalActiveVersionId);
 		expect(summary?.publishing).toEqual({
 			state: 'unchanged',

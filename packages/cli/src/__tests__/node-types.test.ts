@@ -136,7 +136,6 @@ describe('NodeTypes', () => {
 			},
 		},
 	};
-	// Plain (non-versioned) node that declares several versions via a `version` array.
 	const multiVersionNode: LoadedClass<INodeType> = {
 		sourcePath: '',
 		type: {
