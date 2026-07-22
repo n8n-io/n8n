@@ -310,11 +310,15 @@ const workflowHandlers: WorkflowHandlers = {
 			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
 			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
-			// binaryMode is a derived, internal setting rather than something users
-			// are expected to control programmatically; strip it so the settings
-			// merge in WorkflowService.update preserves whatever is already stored.
+			// binaryMode and credentialResolverId are derived, internal settings
+			// rather than something users are expected to control programmatically;
+			// strip them so the settings merge in WorkflowService.update preserves
+			// whatever is already stored.
 			if (updateData.settings?.binaryMode !== undefined) {
 				delete updateData.settings.binaryMode;
+			}
+			if (updateData.settings?.credentialResolverId !== undefined) {
+				delete updateData.settings.credentialResolverId;
 			}
 
 			try {

@@ -66,11 +66,14 @@ export async function createWorkflow(
 ): Promise<WorkflowEntity> {
 	const { projectId, parentFolderId, ...rest } = body;
 
-	// binaryMode is a derived, internal setting rather than something users are
-	// expected to control programmatically; ignore any value sent so new
-	// workflows always get the default.
+	// binaryMode and credentialResolverId are derived, internal settings rather
+	// than something users are expected to control programmatically; ignore any
+	// value sent so new workflows always get the default.
 	if (rest.settings?.binaryMode !== undefined) {
 		delete rest.settings.binaryMode;
+	}
+	if (rest.settings?.credentialResolverId !== undefined) {
+		delete rest.settings.credentialResolverId;
 	}
 
 	const workflow = createWorkflowEntityFromPayload(rest);
