@@ -57,6 +57,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
+		addEventListener: vi.fn().mockReturnValue(vi.fn()),
 	}),
 }));
 

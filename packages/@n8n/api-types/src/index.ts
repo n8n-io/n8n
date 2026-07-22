@@ -13,6 +13,7 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export * from './workflow-review-request-summary';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -559,6 +560,8 @@ export {
 	type EvalVersionEntry,
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
+
+export { AGENT_EVALS_FLAG } from './schemas/agent-evals.schema';
 
 export {
 	aiInsightsStatusSchema,

@@ -71,9 +71,11 @@ export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
+	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	executeOnce?: boolean;
 	onError?: 'stopWorkflow' | 'continueRegularOutput' | 'continueErrorOutput';

@@ -284,8 +284,12 @@ vi.mock('@/features/ai/instanceAi/composables/useInstanceAiAvailability', () => 
 }));
 
 const startInstanceAiThread = vi.fn();
+const openAgentArtifactThread = vi.fn();
 vi.mock('@/features/ai/instanceAi/composables/useInstanceAiHandoff', () => ({
-	useInstanceAiHandoff: () => ({ startThread: startInstanceAiThread }),
+	useInstanceAiHandoff: () => ({
+		startThread: startInstanceAiThread,
+		openAgentArtifactThread,
+	}),
 }));
 
 const baseTextFn = (key: string) => {
@@ -532,6 +536,7 @@ function resetViewMocks() {
 	favoritesStoreMock.isFavorite.mockReturnValue(false);
 	instanceAiAvailableRef.value = true;
 	startInstanceAiThread.mockReset();
+	openAgentArtifactThread.mockReset();
 }
 
 describe('AgentBuilderView — preview routing', () => {
@@ -1165,28 +1170,25 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').exists()).toBe(false);
 	});
 
-	it('starts an Instance AI thread with the agent attached on click', async () => {
+	it('opens the agent artifact without sending an opening message', async () => {
 		const wrapper = await renderView();
 		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		await flushPromises();
 
-		expect(startInstanceAiThread).toHaveBeenCalledWith(
-			'p1',
-			'',
+		expect(openAgentArtifactThread).toHaveBeenCalledWith(
+			{
+				type: 'agent',
+				id: 'a1',
+				name: 'Agent One',
+				projectId: 'p1',
+			},
 			{
 				source: 'agent_builder_page',
 				origin: 'internal',
 				sourceContext: { agentId: 'a1' },
 			},
-			[
-				{
-					type: 'agent',
-					id: 'a1',
-					name: 'Agent One',
-					projectId: 'p1',
-				},
-			],
 		);
+		expect(startInstanceAiThread).not.toHaveBeenCalled();
 	});
 
 	it('renders artifact mode with the editor and without the build chat', async () => {

@@ -42,7 +42,7 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 		const scenarioAggs = (c.scenarios ?? []).map((sa) => {
 			const evaluated = sa.passes.filter((p) => p !== 'incomplete');
 			const passCount = evaluated.filter((p) => p).length;
-			const scenario = testCase.executionScenarios.find((x) => x.name === sa.name)!;
+			const scenario = testCase.executionScenarios!.find((x) => x.name === sa.name)!;
 			return {
 				scenario,
 				evaluatedCount: evaluated.length,

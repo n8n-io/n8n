@@ -7,6 +7,7 @@ export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
 export const INSTANCE_AI_NEW_VIEW = 'InstanceAiNew';
+export const INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
 export const NEW_CONVERSATION_TITLE = 'New conversation';
 export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
