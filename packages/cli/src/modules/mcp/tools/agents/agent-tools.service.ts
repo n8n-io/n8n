@@ -604,7 +604,7 @@ export class McpAgentToolsService {
 								);
 							}
 						}
-						const agent = await this.agentPublishService.publishAgent(
+						const { agent } = await this.agentPublishService.publishAgent(
 							agentId,
 							projectId,
 							user,
@@ -1353,7 +1353,7 @@ export class McpAgentToolsService {
 		await this.integrationPersistenceService.saveCredentialIntegration(agent, parsed.data, {
 			broadcast: false,
 		});
-		const publishedAgent = await this.agentPublishService.publishAgent(
+		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
 			input.agentId,
 			projectId,
 			user,
