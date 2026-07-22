@@ -7,6 +7,7 @@ import { EventService } from '@/events/event.service';
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import { ProjectImporter } from '../entities/project/project-importer';
+import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PackageReader } from '../io/package-reader';
 import type {
 	BlockingIssue,
@@ -87,6 +88,8 @@ export class ProjectPackageImporter {
 		const scopedBindings: PackageImportBindings[] = [];
 		const matched: string[] = [];
 		const stubbed: string[] = [];
+		const variablesMatched = new Set<string>();
+		const variablesMissing = new Set<string>();
 		const scopes: PackageImportScope[] = [];
 
 		for (const { project, plan } of planned) {
@@ -96,11 +99,14 @@ export class ProjectPackageImporter {
 			scopedBindings.push(imported.bindings);
 			matched.push(...imported.credentialResult.matched);
 			stubbed.push(...imported.credentialResult.stubbed);
+			imported.variablePlan.matched.forEach((name) => variablesMatched.add(name));
+			imported.variablePlan.missing.forEach(({ name }) => variablesMissing.add(name));
 			scopes.push({
 				context: plan.input.context,
 				imported,
 				credentialRequest: plan.input.credentialRequest,
 				dataTableRequest: plan.input.dataTableRequest,
+				variableRequest: plan.input.variableRequest,
 			});
 		}
 
@@ -113,6 +119,7 @@ export class ProjectPackageImporter {
 			projects: projectSummaries,
 			bindings: mergeBindings(...scopedBindings),
 			credentials: { matched, stubbed },
+			variables: { matched: [...variablesMatched], missing: [...variablesMissing] },
 		});
 	}
 
@@ -148,6 +155,11 @@ export class ProjectPackageImporter {
 			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 		};
 
+		const variableRequest: VariableImportRequest = {
+			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+			missingPolicy: request.variableMissingPolicy,
+		};
+
 		return {
 			context: {
 				user: request.user,
@@ -158,6 +170,7 @@ export class ProjectPackageImporter {
 			workflows,
 			credentialRequest,
 			dataTableRequest,
+			variableRequest,
 			options: request,
 			projectPendingCreation,
 		};

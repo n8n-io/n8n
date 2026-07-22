@@ -16,6 +16,7 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'dataTableMatchingMode',
 	'dataTableMissingMode',
 	'dataTableSchemaConflictPolicy',
+	'variableMissingPolicy',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -86,4 +87,5 @@ export class ImportPackageRequestDto extends Z.class({
 		.enum(['keep-existing', 'fail'])
 		.optional()
 		.default('keep-existing'),
+	variableMissingPolicy: z.enum(['do-nothing', 'must-preexist']).optional().default('do-nothing'),
 }) {}

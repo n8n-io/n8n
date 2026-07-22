@@ -6,6 +6,7 @@ function workflowWithCodeNode(parameters: Record<string, unknown>): WorkflowResp
 		id: 'wf-1',
 		name: 'Code HTTP test',
 		active: false,
+		versionId: 'test-version',
 		nodes: [
 			{
 				name: 'Manual Trigger',
@@ -152,6 +153,7 @@ describe('codeNodeNoHttpRequests', () => {
 			id: 'wf-2',
 			name: 'No code',
 			active: false,
+			versionId: 'test-version',
 			nodes: [
 				{
 					name: 'Manual Trigger',
