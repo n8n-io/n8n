@@ -337,7 +337,7 @@ defineExpose({ credentialId, currentSettings, validationError });
 		<AgentIntegrationSettingsForm
 			ref="settingsFormRef"
 			:type="integration.type"
-			:disabled="loading"
+			:disabled="connected || loading"
 			:connected="connected"
 			:saved-settings="savedSettings"
 			:agent-name="agentName"
