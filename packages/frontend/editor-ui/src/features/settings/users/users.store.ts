@@ -10,6 +10,7 @@ import {
 	type UsersListFilterDto,
 } from '@n8n/api-types';
 import type { UpdateGlobalRolePayload } from '@n8n/rest-api-client/api/users';
+import * as ssoApi from '@n8n/rest-api-client/api/sso';
 import * as usersApi from '@n8n/rest-api-client/api/users';
 import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
 import { PERSONALIZATION_MODAL_KEY } from './users.constants';
@@ -223,8 +224,21 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		logoutHooks.value.push(hook);
 	};
 
-	const logout = async () => {
-		await usersApi.logout(rootStore.restApiContext);
+	const logout = async (options?: { viaOidc?: boolean }) => {
+		let redirectUrl: string | null = null;
+
+		if (options?.viaOidc) {
+			try {
+				({ redirectUrl } = await ssoApi.oidcLogout(rootStore.restApiContext));
+			} catch {
+				// The OIDC logout endpoint may be unavailable (e.g. the license
+				// lapsed since login). Fall back to the standard logout so the
+				// n8n session is terminated in any case.
+				await usersApi.logout(rootStore.restApiContext);
+			}
+		} else {
+			await usersApi.logout(rootStore.restApiContext);
+		}
 
 		unsetCurrentUser();
 
@@ -237,6 +251,8 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		}
 
 		localStorage.removeItem(BROWSER_ID_STORAGE_KEY);
+
+		return { redirectUrl };
 	};
 
 	const createOwner = async (params: {
