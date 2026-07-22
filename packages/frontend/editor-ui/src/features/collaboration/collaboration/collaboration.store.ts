@@ -18,6 +18,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import * as workflowsApi from '@/app/api/workflows';
+import { ResponseError } from '@n8n/rest-api-client';
 
 const HEARTBEAT_INTERVAL = 5 * TIME.MINUTE;
 const WRITE_LOCK_HEARTBEAT_INTERVAL = 30 * TIME.SECOND;
@@ -55,6 +56,12 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const heartbeatTimer = ref<number | null>(null);
 	const writeLockHeartbeatTimer = ref<number | null>(null);
 	const lockStatePollTimer = ref<number | null>(null);
+
+	// Once a write-lock fetch fails with a 401, every future poll from this tab
+	// will fail the same way, while push events (delivered over the still-open
+	// websocket) keep re-arming the poller. Suspend polling until the store is
+	// re-initialized to avoid a sustained stream of failing requests.
+	let lockStatePollingSuspended = false;
 
 	const pushStoreEventListenerRemovalFn = ref<(() => void) | null>(null);
 
@@ -100,7 +107,11 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 				workflowId,
 			);
 			return response;
-		} catch {
+		} catch (error) {
+			if (error instanceof ResponseError && error.httpStatusCode === 401) {
+				lockStatePollingSuspended = true;
+				stopLockStatePolling();
+			}
 			return null;
 		}
 	}
@@ -185,6 +196,9 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	};
 
 	const startLockStatePolling = (workflowId: string) => {
+		if (lockStatePollingSuspended) {
+			return;
+		}
 		stopLockStatePolling();
 		lockStatePollTimer.value = window.setInterval(
 			async () => await pollLockState(workflowId),
@@ -371,6 +385,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		// Store the workflowId we're collaborating on
 		collaboratingWorkflowId.value = workflowId;
+		lockStatePollingSuspended = false;
 
 		// Fetch current write-lock state from backend to restore state after page refresh
 		const writeLock = await fetchWriteLockState(workflowId);
@@ -464,6 +479,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 		collaboratingWorkflowId.value = null;
 		currentWriterLock.value = null;
 		collaborators.value = [];
+		lockStatePollingSuspended = false;
 	}
 
 	return {
