@@ -401,9 +401,8 @@ post:
               variables:
                 type: object
                 description: >
-                  Variable names from the package requirements, grouped by whether
-                  they resolved in the target project (or globally) or remain
-                  unresolved. Names only — values never travel in the response.
+                  Resolution of the package's variable requirements. Names only —
+                  values never travel in the response.
                 required:
                   - matched
                   - missing
@@ -413,14 +412,14 @@ post:
                     items:
                       type: string
                     description: >
-                      Variable names that already exist in the target project or
-                      at the global level (project first, then global).
+                      Variable names that resolved to an existing variable
+                      (importing project's scope first, then global).
                   missing:
                     type: array
                     items:
                       type: string
                     description: >
-                      Variable names with no match in the lookup scope. Under
+                      Variable names that did not resolve. Under
                       `variableMissingPolicy=do-nothing` these are warnings —
                       the import still succeeds and nothing is created.
               bindings:
