@@ -155,7 +155,7 @@ function main() {
 		console.error(
 			'A plain dependency lets `npm install` create a second physical copy, which breaks',
 		);
-		console.error('cross-package composition / instanceof and crashes at boot on `npm install`.');
+		console.error('cross-package composition / instanceof, crashing n8n at boot.');
 		console.error('');
 		for (const { name, lib } of failures) {
 			console.error(
