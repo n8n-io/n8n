@@ -1,4 +1,6 @@
-// Not MinimalUser: its name fields are non-nullable, while the DB columns are nullable.
+// Deliberately not derived from a shared user type: MinimalUser wrongly claims
+// non-nullable names, userBaseSchema wrongly claims optional id/email — and this
+// type doubles as the boundary of what the endpoint may expose.
 export type WorkflowReviewEligibleReviewer = {
 	id: string;
 	email: string;
