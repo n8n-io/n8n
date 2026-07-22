@@ -2656,4 +2656,40 @@ describe('Package import missing node type mode', () => {
 		const stored = await Container.get(WorkflowRepository).findOneByOrFail({ id: active.id });
 		expect(stored.activeVersionId).toBe(originalActiveVersionId);
 	});
+
+	it('fail ignores missing node types in workflows the conflict policy skips', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const existing = await createWorkflow({ name: 'Already there' }, personalProject);
+		await Container.get(WorkflowRepository).update(existing.id, {
+			sourceWorkflowId: 'wf-skipped-broken',
+		});
+
+		const result = await importPackage({
+			user: owner,
+			workflowConflictPolicy: WorkflowConflictPolicy.Skip,
+			packageBuffer: await buildImportPackageBuffer(
+				[
+					serializedWorkflow({
+						id: 'wf-skipped-broken',
+						name: 'Already there',
+						nodes: [scheduleTriggerNode(), unknownNode()],
+					}),
+					serializedWorkflow({ id: 'wf-clean', name: 'Clean', nodes: [scheduleTriggerNode()] }),
+				],
+				{ sourceId },
+			),
+		});
+
+		expect(result.workflows).toHaveLength(2);
+		expect(
+			result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === 'wf-skipped-broken')
+				?.status,
+		).toBe('skipped');
+		expect(
+			result.workflows.find(({ sourceWorkflowId }) => sourceWorkflowId === 'wf-clean')?.status,
+		).toBe('created');
+	});
 });

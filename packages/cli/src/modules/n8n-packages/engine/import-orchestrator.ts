@@ -134,8 +134,10 @@ export class ImportOrchestrator {
 		const folderContext = { ...context, folderConflictPolicy: options.folderConflictPolicy };
 		const folderPlan = await this.folderImporter.plan(folderContext, folders);
 
-		const missingNodeTypes = collectMissingNodeTypes(workflows, (nodeType) =>
-			this.nodeTypes.getSupportedVersions(nodeType),
+		// Skipped workflows are never written, so their node types don't gate the import.
+		const missingNodeTypes = collectMissingNodeTypes(
+			workflowPlan.items.filter((item) => item.action !== 'skip'),
+			(nodeType) => this.nodeTypes.getSupportedVersions(nodeType),
 		);
 
 		const blockingIssues = this.collectBlockingIssues({
