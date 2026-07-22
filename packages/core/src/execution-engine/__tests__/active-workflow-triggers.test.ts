@@ -1424,7 +1424,7 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(pollJobManager.register).toHaveBeenCalledWith(
 				workflowId,
 				pollNode,
-				[customCron],
+				[{ mode: 'custom', cronExpression: customCron }],
 				workflow.timezone,
 			);
 			expect(scheduledTaskManager.register).not.toHaveBeenCalled();

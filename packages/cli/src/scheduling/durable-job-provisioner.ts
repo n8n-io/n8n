@@ -3,7 +3,12 @@ import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createJobProvisioner, DEFAULT_MATERIALIZER_OPTIONS, materialize } from '@n8n/scheduler';
+import {
+	createJobProvisioner,
+	DEFAULT_MATERIALIZER_OPTIONS,
+	materialize,
+	scheduleFingerprint,
+} from '@n8n/scheduler';
 import type {
 	DesiredJob,
 	ExistingJob,
@@ -106,6 +111,31 @@ export class DurableJobProvisioner {
 		desired: DesiredJob[],
 	): Promise<ProvisionSummary> {
 		return await this.provisioner.provision({ workflowId, nodeId, taskType, payload }, desired);
+	}
+
+	/**
+	 * Provision a node's jobs from its collected schedules, deriving each job's
+	 * stable name from `(workflowId, nodeId, schedule fingerprint, occurrence)`.
+	 * The shared entry point for both durable trigger registrars: the name is what
+	 * lets `provision` reconcile an unchanged schedule in place (keeping its row
+	 * and clock) across re-activation, so the derivation must live in one place.
+	 * The occurrence counter disambiguates two rules that fingerprint identically.
+	 */
+	async provisionForNode(
+		workflowId: string,
+		nodeId: string,
+		taskType: string,
+		payload: Record<string, unknown>,
+		schedules: Array<{ schedule: ScheduleDefinition; firstRunAt: Date | null }>,
+	): Promise<ProvisionSummary> {
+		const seen = new Map<string, number>();
+		const desired: DesiredJob[] = schedules.map(({ schedule, firstRunAt }) => {
+			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
+			const occurrence = seen.get(fingerprint) ?? 0;
+			seen.set(fingerprint, occurrence + 1);
+			return { name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`, schedule, firstRunAt };
+		});
+		return await this.provision(workflowId, nodeId, taskType, payload, desired);
 	}
 
 	/** Delete all of a node's jobs; their queued tasks cascade away. */

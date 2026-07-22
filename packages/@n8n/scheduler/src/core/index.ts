@@ -17,6 +17,7 @@ export type {
 } from './types';
 export { computeFirstRunAt, computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
+export { cronToSchedule } from './schedule-from-cron';
 
 export {
 	CLOCK_SKEW_WARN_THRESHOLD_MS,

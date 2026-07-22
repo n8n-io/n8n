@@ -3,7 +3,7 @@ import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint, validateSchedule } from '@n8n/scheduler';
+import { computeFirstRunAt, cronToSchedule, validateSchedule } from '@n8n/scheduler';
 import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -162,7 +162,11 @@ export class ScheduleTriggerJobRegistrar {
 
 				return {
 					registerCron: ({ expression, recurrence, source }: Cron) => {
-						const schedule = this.toSchedule(expression, timezone, recurrence, source);
+						const schedule = cronToSchedule(
+							{ expression, recurrence, source },
+							timezone,
+							this.triggerNodeMode,
+						);
 
 						if (isDegenerateRecurrence(recurrence)) {
 							// The legacy engine never fires such a rule (its recurrence check
@@ -209,58 +213,6 @@ export class ScheduleTriggerJobRegistrar {
 	}
 
 	/**
-	 * Pick the best-fitting scheduler kind for one rule.
-	 *
-	 * - A second/minute cadence becomes an `interval` job in `new` mode (a steady
-	 *   elapsed-time cadence); in `legacy` mode it stays the node's plain cron so
-	 *   fires remain clock-aligned.
-	 * - "Every N days/weeks/months" with N >= 2 becomes a `recurring_cron` job:
-	 *   the cron expression names the candidate instants and the job fires on
-	 *   every Nth of them.
-	 * - Everything else — "every 1 day/week/month" and a raw cron field — is a
-	 *   plain `cron` job.
-	 *
-	 * @param expression The node's cron expression (the anchor for calendar cadences).
-	 * @param timezone The rule's timezone, or `null` for the instance default.
-	 * @param recurrence The node's "every N periods" setting; `intervalSize` is that N.
-	 * @param source Which field drove the cadence (`seconds`/`minutes`) and its size.
-	 * @returns The chosen scheduler {@link Schedule} for this rule.
-	 */
-	private toSchedule(
-		expression: Cron['expression'],
-		timezone: string | null,
-		recurrence: Cron['recurrence'],
-		source: Cron['source'],
-	): Schedule {
-		if (
-			this.triggerNodeMode === 'new' &&
-			source?.size !== undefined &&
-			(source.field === 'seconds' || source.field === 'minutes')
-		) {
-			const intervalSeconds = source.field === 'minutes' ? source.size * 60 : source.size;
-			return { kind: 'interval', intervalSeconds };
-		}
-
-		// `intervalSize` is the N in the node's "every N days/weeks/months". Only
-		// N >= 2 needs the recurring_cron wrapper: with N = 1 every candidate
-		// instant fires, which the cron expression alone already expresses (the
-		// engine rejects a recurrenceSize of 1 to keep one representation per
-		// rule). N = 0/NaN never fires (see isDegenerateRecurrence) and a negative
-		// N fires on every instant in the legacy engine; both are plain crons here.
-		if (recurrence?.activated && recurrence.intervalSize >= 2) {
-			return {
-				kind: 'recurring_cron',
-				cronExpression: expression,
-				timezone,
-				recurrenceUnit: recurrence.typeInterval,
-				recurrenceSize: recurrence.intervalSize,
-			};
-		}
-
-		return { kind: 'cron', cronExpression: expression, timezone };
-	}
-
-	/**
 	 * Persist one node's collected rules, reconciling them against the node's
 	 * existing jobs (see the class doc for why unchanged jobs must keep their rows).
 	 *
@@ -273,25 +225,13 @@ export class ScheduleTriggerJobRegistrar {
 		nodeId: string,
 		collected: CollectedSchedule[],
 	): Promise<void> {
-		const seen = new Map<string, number>();
-		const desired = collected.map(({ schedule, firstRunAt }) => {
-			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-			const occurrence = seen.get(fingerprint) ?? 0;
-			seen.set(fingerprint, occurrence + 1);
-			return {
-				name: `${workflowId}:${nodeId}:${fingerprint}:${occurrence}`,
-				schedule,
-				firstRunAt,
-			};
-		});
-
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
-		const summary = await this.jobProvisioner.provision(
+		const summary = await this.jobProvisioner.provisionForNode(
 			workflowId,
 			nodeId,
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
-			desired,
+			collected,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {

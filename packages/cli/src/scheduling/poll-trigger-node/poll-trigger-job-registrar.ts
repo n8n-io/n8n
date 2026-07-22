@@ -2,25 +2,30 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { DesiredJob, Schedule } from '@n8n/scheduler';
-import { computeFirstRunAt, scheduleFingerprint } from '@n8n/scheduler';
+import { computeFirstRunAt, cronToSchedule } from '@n8n/scheduler';
 import { PollJobManager } from 'n8n-core';
-import type { CronExpression, INode } from 'n8n-workflow';
+import type { INode, TriggerTime } from 'n8n-workflow';
+import { triggerTimeToCron } from 'n8n-workflow';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { PollTriggerTaskPayload } from './poll-trigger-task';
 import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
 
 /**
- * Registers a Poll Trigger node's cron rules as durable `scheduled_job` rows:
+ * Registers a Poll Trigger node's poll times as durable `scheduled_job` rows:
  * the publication path's counterpart to the in-memory `ScheduledTaskManager`,
  * and the concrete backing for core's {@link PollJobManager} port.
  *
- * Every poll time is a plain `cron` job (poll triggers only ever have a fixed
- * cadence). Jobs reconcile in place by a definition-derived name, so an
- * unchanged poll time keeps its row and clock across re-activation. Payload is
- * just `{ workflowId, nodeId }`; the handler re-runs `poll()` each fire, so
- * there is no per-occurrence dedup key.
+ * A sibling of {@link import('../schedule-trigger-node/schedule-trigger-job-registrar').ScheduleTriggerJobRegistrar}:
+ * each poll time maps to a scheduler `Schedule` through the same
+ * {@link cronToSchedule} the Schedule Trigger uses, and both persist through
+ * {@link DurableJobProvisioner.provisionForNode}, which derives a definition-stable
+ * job name so an unchanged poll time keeps its row and clock across re-activation.
+ * The poll node has no source/recurrence UI beyond a fixed cadence, so its
+ * {@link triggerTimeToCron} mapping is simpler than the Schedule Trigger's.
+ *
+ * Payload is just `{ workflowId, nodeId }`; the handler re-runs `poll()` each
+ * fire, so there is no per-occurrence dedup key.
  */
 @Service()
 export class PollTriggerJobRegistrar extends PollJobManager {
@@ -33,6 +38,9 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	/** Instance-default timezone, used to resolve the `'DEFAULT'`/empty sentinel. */
 	private readonly defaultTimezone: string;
 
+	/** How a fixed second/minute cadence is represented (shared with the Schedule Trigger). */
+	private readonly triggerNodeMode: 'legacy' | 'new';
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -44,6 +52,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
 		this.durablePollTriggers = globalConfig.scheduler.durablePollTriggers;
 		this.defaultTimezone = globalConfig.generic.timezone;
+		this.triggerNodeMode = globalConfig.scheduler.triggerNodeMode;
 		this.logger = this.logger.scoped('scheduler');
 
 		if (globalConfig.scheduler.enabled && !workflowsConfig.useWorkflowPublicationService) {
@@ -58,63 +67,35 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		return this.intercepting && this.durablePollTriggers;
 	}
 
-	/** Persist a poll node's cron rules as durable jobs, reconciled in place. */
+	/** Persist a poll node's poll times as durable jobs, reconciled in place. */
 	async register(
 		workflowId: string,
 		node: INode,
-		cronExpressions: CronExpression[],
+		pollTimes: TriggerTime[],
 		timezone: string,
 	): Promise<void> {
-		const desired = this.toDesiredJobs(workflowId, node, cronExpressions, timezone);
-		await this.provisionCollected(workflowId, node, desired);
-	}
-
-	/**
-	 * Map each cron expression to a `cron` job in the node's resolved timezone,
-	 * with its first fire computed ungated and a name stable across re-activation
-	 * (see the class doc).
-	 */
-	private toDesiredJobs(
-		workflowId: string,
-		node: INode,
-		cronExpressions: CronExpression[],
-		timezone: string,
-	): DesiredJob[] {
 		const resolvedTimezone = resolveTimezone(timezone, this.defaultTimezone);
-		const seen = new Map<string, number>();
-		return cronExpressions.map((expression): DesiredJob => {
+		const seed = `${workflowId}:${node.id}`;
+
+		const schedules = pollTimes.map((item) => {
+			const schedule = cronToSchedule(
+				triggerTimeToCron(item, seed),
+				resolvedTimezone,
+				this.triggerNodeMode,
+			);
 			// `computeFirstRunAt` validates the expression/timezone, throwing on a
 			// malformed rule like the legacy engine's parse-at-registration.
-			const schedule: Schedule = {
-				kind: 'cron',
-				cronExpression: normaliseCronFieldCount(expression),
-				timezone: resolvedTimezone,
-			};
 			const firstRunAt = computeFirstRunAt(schedule, new Date());
-			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
-			const occurrence = seen.get(fingerprint) ?? 0;
-			seen.set(fingerprint, occurrence + 1);
-			return {
-				name: `${workflowId}:${node.id}:${fingerprint}:${occurrence}`,
-				schedule,
-				firstRunAt,
-			};
+			return { schedule, firstRunAt };
 		});
-	}
 
-	/** Persist the node's desired jobs, reconciling against its existing ones. */
-	private async provisionCollected(
-		workflowId: string,
-		node: INode,
-		desired: DesiredJob[],
-	): Promise<void> {
 		const payload: PollTriggerTaskPayload = { workflowId, nodeId: node.id };
-		const summary = await this.jobProvisioner.provision(
+		const summary = await this.jobProvisioner.provisionForNode(
 			workflowId,
 			node.id,
 			POLL_TRIGGER_TASK_TYPE,
 			{ ...payload },
-			desired,
+			schedules,
 		);
 
 		this.logger.debug('Provisioned durable poll jobs for trigger node', {
@@ -164,16 +145,4 @@ export class PollTriggerJobRegistrar extends PollJobManager {
  */
 function resolveTimezone(timezone: string, defaultTimezone: string): string {
 	return !timezone || timezone === 'DEFAULT' ? defaultTimezone : timezone;
-}
-
-/**
- * Prepend a `0` seconds field to a 5-field cron so it meets the durable
- * scheduler's 6-field requirement. Custom pollTimes can yield 5 fields, which the
- * legacy cron lib accepted but `validateCron` rejects. 6-field passes through.
- */
-function normaliseCronFieldCount(expression: CronExpression): CronExpression {
-	const trimmed = expression.trim();
-	// Prepending a field widens `CronExpression` to `string`; the result is a valid
-	// 6-field cron, so narrow it back here.
-	return trimmed.split(/\s+/).length === 5 ? (`0 ${trimmed}` as CronExpression) : expression;
 }

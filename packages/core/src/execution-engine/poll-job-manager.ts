@@ -1,4 +1,4 @@
-import type { CronExpression, INode } from 'n8n-workflow';
+import type { INode, TriggerTime } from 'n8n-workflow';
 
 /**
  * Seam for provisioning poll triggers as durable scheduler jobs instead of
@@ -15,11 +15,15 @@ export abstract class PollJobManager {
 	/** Whether durable poll jobs should be used instead of in-memory crons. */
 	abstract isActive(): boolean;
 
-	/** Provision a durable poll job for the node's mapped cron expressions. */
+	/**
+	 * Provision durable poll jobs for the node's poll times. Takes the structured
+	 * `pollTimes` (not pre-mapped cron strings) so the concrete implementation can
+	 * derive a definition-stable job identity, the same way the Schedule Trigger does.
+	 */
 	abstract register(
 		workflowId: string,
 		node: INode,
-		cronExpressions: CronExpression[],
+		pollTimes: TriggerTime[],
 		timezone: string,
 	): Promise<void>;
 }

@@ -359,8 +359,10 @@ export class ActiveWorkflowTriggers {
 			item: TriggerTime[];
 		};
 
+		const triggerTimes = pollTimes.item || [];
+
 		// Get all the trigger times
-		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
+		const cronExpressions = triggerTimes.map(toCronExpression);
 
 		// Reject sub-minute polling up front, so both paths are guarded.
 		for (const expression of cronExpressions) {
@@ -371,9 +373,10 @@ export class ActiveWorkflowTriggers {
 
 		if (this.pollJobManager?.isActive()) {
 			// Durable path: provision a scheduler job instead of an in-memory cron. The
-			// first poll runs as the job's seeded first occurrence, so there is no
-			// in-memory timer and no inline first poll here.
-			await this.pollJobManager.register(workflowId, node, cronExpressions, workflow.timezone);
+			// structured poll times are handed over so the registrar derives a stable
+			// job identity; the first poll runs as the job's seeded first occurrence, so
+			// there is no in-memory timer and no inline first poll here.
+			await this.pollJobManager.register(workflowId, node, triggerTimes, workflow.timezone);
 			return;
 		}
 

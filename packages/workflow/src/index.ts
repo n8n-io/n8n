@@ -59,6 +59,7 @@ export {
 	updateDisplayOptions,
 	randomInt,
 	randomString,
+	stableInt,
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	isCommunityPackageName,

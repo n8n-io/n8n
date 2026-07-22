@@ -10,6 +10,7 @@ import {
 	fileTypeFromMimeType,
 	randomInt,
 	randomString,
+	stableInt,
 	hasKey,
 	isSafeObjectProperty,
 	containsUnsafeObjectPropertyToken,
@@ -848,5 +849,26 @@ describe('sanitizeFilename', () => {
 	it('should remove null bytes', () => {
 		expect(sanitizeFilename('file\0name.txt')).toBe('filename.txt');
 		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
+	});
+});
+
+describe('stableInt', () => {
+	it('returns a value within [min, max)', () => {
+		for (let i = 0; i < 200; i++) {
+			const n = stableInt(`seed-${i}`, 'second', 0, 60);
+			expect(n).toBeGreaterThanOrEqual(0);
+			expect(n).toBeLessThan(60);
+		}
+	});
+
+	it('is deterministic for the same seed and label', () => {
+		expect(stableInt('wf:node', 'second', 0, 60)).toBe(stableInt('wf:node', 'second', 0, 60));
+	});
+
+	it('varies by seed and by label, so different nodes and fields spread apart', () => {
+		expect(stableInt('wf:node-1', 'second', 0, 60)).not.toBe(
+			stableInt('wf:node-2', 'second', 0, 60),
+		);
+		expect(stableInt('wf:node', 'second', 0, 60)).not.toBe(stableInt('wf:node', 'minute', 0, 60));
 	});
 });
