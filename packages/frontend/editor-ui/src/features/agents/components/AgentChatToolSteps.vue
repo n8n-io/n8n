@@ -144,6 +144,15 @@ function formatToolData(value: unknown): string {
 	return JSON.stringify(value, null, 2) ?? String(value);
 }
 
+function isEmptyToolErrorPayload(value: unknown): boolean {
+	if (value === undefined || value === null) return true;
+	if (typeof value === 'string') return value.trim().length === 0;
+	if (typeof value === 'object' && !Array.isArray(value)) {
+		return Object.keys(value).length === 0;
+	}
+	return false;
+}
+
 function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
 	const metadata = toolStepMetadata(tc);
@@ -156,7 +165,11 @@ function toolStepView(tc: ToolCall): ToolStepDisplay {
 }
 
 function toolStepError(tc: ToolCall): string | undefined {
-	return tc.state === TOOL_CALL_STATE.ERROR ? formatToolData(tc.output) : undefined;
+	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
+	if (isEmptyToolErrorPayload(tc.output)) {
+		return i18n.baseText('agents.chat.toolError.generic');
+	}
+	return formatToolData(tc.output);
 }
 
 function isToolStepLoading(tc: ToolCall): boolean {

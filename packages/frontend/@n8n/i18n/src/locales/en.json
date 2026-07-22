@@ -6912,6 +6912,7 @@
 	"agents.builder.chat.newChat.label": "New chat",
 	"agents.chat.loadHistory.error": "Could not load chat history",
 	"agents.chat.clearHistory.error": "Could not clear chat history",
+	"agents.chat.toolError.generic": "Something went wrong while running this tool",
 	"agents.chat.clearHistory": "Clear chat history",
 	"agents.chat.input.placeholder": "Type a message...",
 	"agents.preview.episodicMemoryCallout.text": "Access memories from previous conversations.",

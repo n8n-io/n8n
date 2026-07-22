@@ -25,6 +25,7 @@ vi.mock('@n8n/design-system', () => ({
 					<span> · </span>
 					<span data-testid="tool-step-summary">{{ part }}</span>
 				</template>
+				<div v-if="error && !hideErrorCallout" data-test-id="tool-step-error">{{ error }}</div>
 				<div v-if="isOpen"><slot /></div>
 			</div>
 		`,
@@ -167,6 +168,22 @@ describe('AgentChatToolSteps', () => {
 		).toBe(true);
 		await withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
 		expect(withFix.emitted('fixWithAssistant')?.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('shows a generic error when the failed tool output is empty', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'search_nodes',
+				toolCallId: 'tc-err',
+				state: TOOL_CALL_STATE.ERROR,
+				output: {},
+			},
+		]);
+
+		expect(wrapper.find('[data-test-id="tool-step-error"]').text()).toBe(
+			'agents.chat.toolError.generic',
+		);
+		expect(wrapper.text()).not.toContain('{}');
 	});
 
 	it('shows Fix with Assistant outside the tool group when a multi-tool turn has an error', () => {
