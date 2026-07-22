@@ -12254,37 +12254,7 @@
 		},
 		"type": "node"
 	},
-	{
-		"uuid": "6c073633-c1b0-4fa8-a4b2-126fdf8fdb40",
-		"key": "@n8n/n8n-nodes-langchain.vectorStoreZep",
-		"subcategory": "*",
-		"properties": {
-			"displayName": "Zep Vector Store",
-			"defaults": {
-				"name": "Zep Vector Store"
-			},
-			"description": "Work with your data in Zep Vector Store",
-			"name": "@n8n/n8n-nodes-langchain.vectorStoreZep",
-			"group": ["transform"],
-			"iconUrl": "icons/@n8n/n8n-nodes-langchain/dist/nodes/vector_store/VectorStoreZep/zep.png",
-			"outputs": "={{\n\t\t\t((parameters) => {\n\t\t\t\tconst mode = parameters?.mode ?? 'retrieve';\n\n\t\t\t\tif (mode === 'retrieve-as-tool') {\n\t\t\t\t\treturn [{ displayName: \"Tool\", type: \"ai_tool\"}]\n\t\t\t\t}\n\n\t\t\t\tif (mode === 'retrieve') {\n\t\t\t\t\treturn [{ displayName: \"Vector Store\", type: \"ai_vectorStore\"}]\n\t\t\t\t}\n\t\t\t\treturn [{ displayName: \"\", type: \"main\"}]\n\t\t\t})($parameter)\n\t\t}}",
-			"codex": {
-				"categories": ["AI"],
-				"subcategories": {
-					"AI": ["Vector Stores", "Tools", "Root Nodes"],
-					"Tools": ["Other Tools"]
-				},
-				"resources": {
-					"primaryDocumentation": [
-						{
-							"url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorezep/"
-						}
-					]
-				}
-			}
-		},
-		"type": "node"
-	},
+
 	{
 		"uuid": "7b06e32c-fa15-48bb-b83c-22ae1c6b4d10",
 		"key": "n8n-nodes-base.acuitySchedulingTrigger",

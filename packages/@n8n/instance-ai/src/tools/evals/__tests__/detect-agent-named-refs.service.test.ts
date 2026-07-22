@@ -257,7 +257,7 @@ describe('sub-component scanning', () => {
 				},
 				{
 					name: 'HTTP Tool',
-					type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+					type: 'n8n-nodes-base.httpRequestTool',
 					typeVersion: 1,
 					parameters: { url: "={{ $('Webhook').item.json.endpoint }}" },
 					position: [0, 100],
