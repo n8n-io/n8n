@@ -4437,6 +4437,8 @@
 	"workflowReviews.submitForReview.ariaDescription": "Enter a title and optional description for this workflow review.",
 	"workflowReviews.submitForReview.reviewTitle.label": "Review title",
 	"workflowReviews.submitForReview.description.label": "Description",
+	"workflowReviews.submitForReview.reviewer.label": "Reviewer",
+	"workflowReviews.submitForReview.reviewer.placeholder": "Search users...",
 	"workflowReviews.submitForReview.submit": "Submit",
 	"workflowReviews.submitForReview.error.title": "Workflow couldn't be submitted for review",
 	"workflowReviews.submitForReview.error.save": "Save the workflow and try again.",
