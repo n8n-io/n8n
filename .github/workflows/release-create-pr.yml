@@ -148,8 +148,12 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 30
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
