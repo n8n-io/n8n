@@ -293,16 +293,19 @@ describe('ImportPackageRequestDto', () => {
 			}
 		});
 
-		it('accepts do-nothing as a variableMissingPolicy value', () => {
-			const result = ImportPackageRequestDto.safeParse({
-				variableMissingPolicy: 'do-nothing',
-				workflowConflictPolicy: 'fail',
-			});
-			expect(result.success).toBe(true);
-			if (result.success) {
-				expect(result.data.variableMissingPolicy).toBe('do-nothing');
-			}
-		});
+		it.each(['do-nothing', 'must-preexist'] as const)(
+			'accepts %s as a variableMissingPolicy value',
+			(variableMissingPolicy) => {
+				const result = ImportPackageRequestDto.safeParse({
+					variableMissingPolicy,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.variableMissingPolicy).toBe(variableMissingPolicy);
+				}
+			},
+		);
 
 		it('rejects unsupported variableMissingPolicy values', () => {
 			expect(
