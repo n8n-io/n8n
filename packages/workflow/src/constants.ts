@@ -93,6 +93,7 @@ export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentToo
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
 export const HTTP_REQUEST_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
+export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 export const CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const CHAT_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTool';

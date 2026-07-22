@@ -45,6 +45,14 @@ export type { DbPoolStats } from './connection/db-pool-stats';
 export { AuthRolesService } from './services/auth.roles.service';
 export { DbLock, DbLockService } from './services/db-lock.service';
 
+export { TransactionRunner } from './services/transaction';
+export type {
+	Transaction,
+	OperationContext,
+	IsolationLevel,
+	RunOptions,
+} from './services/transaction';
+
 export { In, Like, MoreThanOrEqual, Not, DataSource } from '@n8n/typeorm';
 export type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
 export type { EntityManager } from '@n8n/typeorm';

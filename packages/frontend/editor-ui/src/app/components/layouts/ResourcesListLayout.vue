@@ -8,7 +8,7 @@ import ResourcesListEmptyState, {
 	isEmptyStateResourceKey,
 } from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 

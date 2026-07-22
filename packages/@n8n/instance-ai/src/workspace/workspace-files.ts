@@ -132,8 +132,12 @@ export async function writeWorkspaceFile(
 				});
 				return;
 			} catch (fallbackError) {
+				// Keep the underlying error as `cause`: quota-exhausted proxy failures
+				// carry their machine-readable code there, which terminal-error
+				// classification reads to surface the out-of-credits message.
 				throw new Error(
 					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
+					{ cause: fallbackError },
 				);
 			}
 		}
@@ -144,6 +148,7 @@ export async function writeWorkspaceFile(
 	} catch (error) {
 		throw new Error(
 			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+			{ cause: error },
 		);
 	}
 }
