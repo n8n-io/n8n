@@ -53,7 +53,13 @@ const scope = (input: {
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
 		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
-		variablePlan: { matched: new Array(vars.matched), missing: new Array(vars.missing) },
+		variablePlan: {
+			matched: Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
+			missing: Array.from({ length: vars.missing }, (_, i) => ({
+				name: `missing-var-${i}`,
+				usedByWorkflows: [],
+			})),
+		},
 	};
 	return {
 		context,

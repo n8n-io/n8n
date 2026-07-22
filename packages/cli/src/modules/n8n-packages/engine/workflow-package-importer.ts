@@ -116,7 +116,7 @@ export class WorkflowPackageImporter {
 			},
 			variables: {
 				matched: imported.variablePlan.matched,
-				missing: imported.variablePlan.missing,
+				missing: imported.variablePlan.missing.map(({ name }) => name),
 			},
 		});
 	}

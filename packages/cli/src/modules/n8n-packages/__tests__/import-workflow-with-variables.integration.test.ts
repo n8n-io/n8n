@@ -189,4 +189,118 @@ describe('workflow package import — with variables', () => {
 			expect(await variablesInProject(targetProject.id)).toEqual([]);
 		});
 	});
+
+	describe('must-preexist import policy', () => {
+		it('imports a package with no variable requirements', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow without vars',
+				project: sourceProject,
+				variableNames: [],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				variableMissingPolicy: 'must-preexist',
+			});
+
+			expect(result.workflows).toHaveLength(1);
+			expect(result.workflows[0].status).toBe('created');
+			expect(result.variables).toEqual({ matched: [], missing: [] });
+		});
+
+		it('blocks the import and writes nothing when a referenced variable is unresolved', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+			const workflowsBefore = await workflowRepository.count();
+
+			await expect(
+				importPackage({
+					user: owner,
+					projectId: targetProject.id,
+					packageBuffer,
+					variableMissingPolicy: 'must-preexist',
+				}),
+			).rejects.toMatchObject({
+				message: /Import blocked/,
+				meta: {
+					issues: [expect.objectContaining({ type: 'variable-unresolved', name: 'API_URL' })],
+				},
+			});
+
+			expect(await workflowRepository.count()).toBe(workflowsBefore);
+			expect(await variablesInProject(targetProject.id)).toEqual([]);
+		});
+
+		it('imports when every referenced variable already resolves in the target project', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createProjectVariable('API_URL', 'https://source.example.com', sourceProject);
+			await createProjectVariable('API_URL', 'https://target.example.com', targetProject);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+			const variablesBefore = await variablesRepository.count();
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				variableMissingPolicy: 'must-preexist',
+			});
+
+			expect(result.workflows).toHaveLength(1);
+			expect(result.workflows[0].status).toBe('created');
+			expect(result.variables).toEqual({ matched: ['API_URL'], missing: [] });
+			expect(await variablesRepository.count()).toBe(variablesBefore);
+		});
+
+		it('imports when a referenced variable resolves only at the global level', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			await createVariable('API_URL', 'https://global.example.com');
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow with vars',
+				project: sourceProject,
+				variableNames: ['API_URL'],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+			const variablesBefore = await variablesRepository.count();
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				variableMissingPolicy: 'must-preexist',
+			});
+
+			expect(result.workflows).toHaveLength(1);
+			expect(result.workflows[0].status).toBe('created');
+			expect(result.variables).toEqual({ matched: ['API_URL'], missing: [] });
+			expect(await variablesInProject(targetProject.id)).toEqual([]);
+			expect(await variablesRepository.count()).toBe(variablesBefore);
+		});
+	});
 });
