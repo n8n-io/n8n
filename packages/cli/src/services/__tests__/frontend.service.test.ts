@@ -155,6 +155,7 @@ describe('FrontendService', () => {
 
 	const securityConfig = mock<SecurityConfig>({
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: '',
 	});
 
 	const pushConfig = mock<PushConfig>({

@@ -409,6 +409,10 @@ export class FrontendService {
 			},
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
+				postMessageAllowedOrigins: this.securityConfig.postMessageAllowedOrigins
+					.split(',')
+					.map((origin) => origin.trim())
+					.filter((origin) => origin !== ''),
 			},
 			chatTrigger: {
 				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,

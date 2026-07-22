@@ -258,6 +258,11 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+		/**
+		 * Origins allowed to exchange `postMessage` commands with the editor iframe.
+		 * Empty means no restriction (any origin is accepted).
+		 */
+		postMessageAllowedOrigins: string[];
 	};
 	chatTrigger?: {
 		disablePublicChat: boolean;
