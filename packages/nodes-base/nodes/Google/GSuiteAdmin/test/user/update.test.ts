@@ -48,6 +48,20 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						value: 'boss@example.com',
 					},
 				],
+				posixAccounts: [
+					{
+						username: 'jdoe',
+						uid: 1001,
+						gid: 1001,
+						homeDirectory: '/home/jdoe',
+						shell: '/bin/bash',
+						gecos: 'John Doe',
+						systemId: 'sys1',
+						accountId: 'acc1',
+						operatingSystemType: 'linux',
+						primary: true,
+					},
+				],
 			})
 			.reply(200, {
 				kind: 'admin#directory#user',

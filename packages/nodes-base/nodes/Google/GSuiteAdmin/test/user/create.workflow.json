@@ -43,6 +43,16 @@
 							}
 						]
 					},
+					"posixAccountsUi": {
+						"posixAccountsValues": [
+							{
+								"username": "jdoe",
+								"uid": 1001,
+								"operatingSystemType": "linux",
+								"primary": true
+							}
+						]
+					},
 					"customFields": {
 						"fieldValues": [
 							{
