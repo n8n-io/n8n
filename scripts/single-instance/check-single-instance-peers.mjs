@@ -8,8 +8,8 @@
  * workspace package that uses it — never a plain `dependency`. In the pnpm monorepo
  * the catalog forces one instance so `dependencies` looks fine locally, but on
  * `npm install n8n` a plain dependency lets npm install a second nested copy, which
- * breaks cross-package schema composition / `instanceof` and crashes at boot. This
- * regression has shipped before, when a package moved zod from a peer to a dependency.
+ * breaks cross-package schema composition / `instanceof` at runtime (a boot crash or
+ * silent misbehaviour). This has shipped before, when a package moved zod peer→dependency.
  *
  * Report-first rollout (no breaking changes on master): moving a published package's
  * curated lib from `dependencies` to `peerDependencies` is breaking for external
@@ -155,7 +155,9 @@ function main() {
 		console.error(
 			'A plain dependency lets `npm install` create a second physical copy, which breaks',
 		);
-		console.error('cross-package composition / instanceof, crashing n8n at boot.');
+		console.error(
+			'cross-package composition / instanceof at runtime (crash or silent misbehaviour).',
+		);
 		console.error('');
 		for (const { name, lib } of failures) {
 			console.error(
