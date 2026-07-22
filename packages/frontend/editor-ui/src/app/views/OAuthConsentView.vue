@@ -268,16 +268,15 @@ onMounted(async () => {
 						<code :class="$style['redirect-warning-url']" data-test-id="consent-redirect-uri">
 							{{ clientDetails.redirectUri }}
 						</code>
+						<N8nCheckbox
+							v-model="redirectUriTrusted"
+							:class="$style['redirect-warning-confirm']"
+							:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+							data-test-id="consent-redirect-confirm"
+						/>
 					</div>
 				</N8nCallout>
 				<div :class="$style['footer-actions']">
-					<N8nCheckbox
-						v-if="!error && clientDetails?.redirectUri"
-						v-model="redirectUriTrusted"
-						:class="$style['footer-confirm']"
-						:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
-						data-test-id="consent-redirect-confirm"
-					/>
 					<div :class="$style['button-group']">
 						<N8nButton
 							v-if="error"
@@ -494,9 +493,8 @@ onMounted(async () => {
 	word-break: break-all;
 }
 
-/* The trust checkbox anchors the left edge of the actions row; CTAs stay right. */
-.footer-confirm {
-	margin-right: auto;
+.redirect-warning-confirm {
+	margin-top: var(--spacing--3xs);
 	margin-bottom: 0;
 }
 
