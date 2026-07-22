@@ -4,7 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| latestVersion | integer | 1 | false |  |  |  |
+| latestVersion | double precision | 1 | false |  |  |  |
 | name | varchar(200) |  | false |  |  |  |
 | package | varchar(241) |  | false |  | [public.installed_packages](public.installed_packages.md) |  |
 | type | varchar(200) |  | false |  |  |  |
@@ -34,7 +34,7 @@ erDiagram
 "public.installed_nodes" }o--|| "public.installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages(#quot;packageName#quot;) ON UPDATE CASCADE ON DELETE CASCADE"
 
 "public.installed_nodes" {
-  integer latestVersion
+  double_precision latestVersion
   varchar_200_ name
   varchar_241_ package FK
   varchar_200_ type

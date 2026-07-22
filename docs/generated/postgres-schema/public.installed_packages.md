@@ -43,7 +43,7 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.installed_nodes" {
-  integer latestVersion
+  double_precision latestVersion
   varchar_200_ name
   varchar_241_ package FK
   varchar_200_ type

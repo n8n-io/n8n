@@ -805,7 +805,7 @@ erDiagram
   bigint value
 }
 "installed_nodes" {
-  INTEGER latestVersion
+  REAL latestVersion
   char_200_ name PK
   char_214_ package FK
   char_200_ type
