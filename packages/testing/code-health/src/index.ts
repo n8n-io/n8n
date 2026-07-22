@@ -5,6 +5,7 @@ import type { CodeHealthContext } from './context.js';
 import { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 import { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 import { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
+import { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 import { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 import { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 import { WorkflowPrTargetSafetyRule } from './rules/workflow-pr-target-safety.rule.js';
@@ -13,6 +14,7 @@ export type { CodeHealthContext } from './context.js';
 export { CatalogViolationsRule } from './rules/catalog-violations.rule.js';
 export { EndpointScopeCoverageRule } from './rules/endpoint-scope-coverage.rule.js';
 export { MigrationTimestampRule } from './rules/migration-timestamp.rule.js';
+export { SingleInstanceLibsRule } from './rules/single-instance-libs.rule.js';
 export { StaleOverridesRule } from './rules/stale-overrides.rule.js';
 export { SubpathPurityRule } from './rules/subpath-purity.rule.js';
 export type { SubpathSpec } from './rules/subpath-purity.rule.js';
@@ -30,6 +32,11 @@ const defaultRuleSettings: RuleSettingsMap = {
 		options: { allowedWorkflows: ['ci-cla-check.yml'] },
 	},
 	'migration-timestamp': {
+		enabled: true,
+		severity: 'error',
+		options: {},
+	},
+	'single-instance-libs': {
 		enabled: true,
 		severity: 'error',
 		options: {},
@@ -112,6 +119,7 @@ export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<Code
 	runner.registerRule(new CatalogViolationsRule());
 	runner.registerRule(new WorkflowPrTargetSafetyRule());
 	runner.registerRule(new MigrationTimestampRule());
+	runner.registerRule(new SingleInstanceLibsRule());
 	runner.registerRule(new StaleOverridesRule());
 	runner.registerRule(new EndpointScopeCoverageRule());
 	runner.registerRule(new SubpathPurityRule());

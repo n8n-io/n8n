@@ -13,6 +13,8 @@ import * as path from 'node:path';
 import { parseArgs } from './cli/arg-parser.js';
 import type { CodeHealthContext } from './context.js';
 import { createDefaultRunner } from './index.js';
+import { runVerifyClosure } from './single-instance/collect-copies.js';
+import { runVerifyNpmInstall } from './single-instance/verify-npm-install.js';
 
 const BASELINE_FILENAME = '.code-health-baseline.json';
 
@@ -27,6 +29,15 @@ async function main(): Promise<void> {
 		changedFiles: parseChangedFiles(process.env.CODE_HEALTH_CHANGED_FILES),
 		addedFiles: parseChangedFiles(process.env.CODE_HEALTH_ADDED_FILES),
 	};
+
+	if (options.command === 'verify-closure') {
+		const dir = options.args[0] ? path.resolve(process.cwd(), options.args[0]) : rootDir;
+		process.exit(runVerifyClosure(dir));
+	}
+
+	if (options.command === 'verify-npm-install') {
+		process.exit(await runVerifyNpmInstall(options.args, rootDir));
+	}
 
 	const runner = createDefaultRunner();
 

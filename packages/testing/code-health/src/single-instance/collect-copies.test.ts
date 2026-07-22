@@ -1,0 +1,73 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { analyze, collectCopies } from './collect-copies.js';
+
+// Build a planted install tree on disk so the walk (collectCopies) is exercised, not just the
+// pure analyze() core. `node_modules` dirs are gitignored, so we construct the tree in a temp dir.
+let ROOT: string;
+
+function pkg(relDir: string, name: string, version: string): void {
+	const dir = join(ROOT, relDir);
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version }));
+}
+
+let planted: ReturnType<typeof collectCopies>;
+let clean: ReturnType<typeof collectCopies>;
+
+beforeAll(() => {
+	ROOT = mkdtempSync(join(tmpdir(), 'collect-copies-fixture-'));
+
+	// two copies of zod (curated, NOT allowlisted) -> FAIL
+	pkg('planted/node_modules/zod', 'zod', '1.0.0');
+	pkg('planted/node_modules/a', 'a', '1.0.0');
+	pkg('planted/node_modules/a/node_modules/zod', 'zod', '2.0.0');
+	// two copies of @langchain/core (curated) -> used for the allowlist case
+	pkg('planted/node_modules/@langchain/core', '@langchain/core', '1.0.0');
+	pkg('planted/node_modules/b', 'b', '1.0.0');
+	pkg('planted/node_modules/b/node_modules/@langchain/core', '@langchain/core', '2.0.0');
+	// two copies of lodash (non-curated) -> report only, never fails
+	pkg('planted/node_modules/lodash', 'lodash', '1.0.0');
+	pkg('planted/node_modules/c', 'c', '1.0.0');
+	pkg('planted/node_modules/c/node_modules/lodash', 'lodash', '2.0.0');
+	// single copy of each curated lib -> passes
+	pkg('clean/node_modules/zod', 'zod', '1.0.0');
+	pkg('clean/node_modules/@langchain/core', '@langchain/core', '1.0.0');
+
+	planted = collectCopies(join(ROOT, 'planted'));
+	clean = collectCopies(join(ROOT, 'clean'));
+});
+
+afterAll(() => rmSync(ROOT, { recursive: true, force: true }));
+
+describe('collectCopies + analyze', () => {
+	it('fails on planted duplicates of non-allowlisted curated libs', () => {
+		const { failures } = analyze(planted);
+		expect(failures.map((f) => f.name).sort()).toEqual(['@langchain/core', 'zod']);
+	});
+
+	it('reports but does not fail on an allowlisted curated duplicate', () => {
+		const { duplicates, failures } = analyze(planted, {
+			allowlist: { '@langchain/core': 'test-only allowlist entry' },
+		});
+		expect(duplicates.find((d) => d.name === '@langchain/core')?.allowed).toBe(true);
+		expect(failures.some((f) => f.name === '@langchain/core')).toBe(false);
+		expect(failures.some((f) => f.name === 'zod')).toBe(true);
+	});
+
+	it('reports non-curated duplicates without failing on them', () => {
+		const { duplicates, failures } = analyze(planted);
+		const lodash = duplicates.find((d) => d.name === 'lodash');
+		expect(lodash && !lodash.isCurated).toBe(true);
+		expect(failures.some((f) => f.name === 'lodash')).toBe(false);
+	});
+
+	it('passes a clean tree with a single copy of each curated lib', () => {
+		const { duplicates, failures } = analyze(clean);
+		expect(duplicates).toHaveLength(0);
+		expect(failures).toHaveLength(0);
+	});
+});
