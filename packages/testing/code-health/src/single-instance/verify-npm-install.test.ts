@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { closureOf, matchChangedFiles } from './verify-npm-install.js';
+import { closureOf, filesTriggerFullRun, matchChangedFiles } from './verify-npm-install.js';
 
 /** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
 function ws(name: string, deps: Array<[string, string]>) {
@@ -75,5 +75,22 @@ describe('matchChangedFiles', () => {
 
 	it('returns nothing for files outside any package', () => {
 		expect(matchChangedFiles(['README.md'], dirs)).toEqual([]);
+	});
+});
+
+describe('filesTriggerFullRun', () => {
+	it('escalates on the catalog / root manifest', () => {
+		expect(filesTriggerFullRun(['pnpm-workspace.yaml'])).toBe(true);
+		expect(filesTriggerFullRun(['package.json'])).toBe(true);
+	});
+
+	it('escalates on a change to the single-instance tool itself', () => {
+		expect(filesTriggerFullRun(['packages/testing/code-health/src/single-instance/libs.ts'])).toBe(
+			true,
+		);
+	});
+
+	it('does not escalate on an ordinary package source change', () => {
+		expect(filesTriggerFullRun(['packages/core/src/index.ts'])).toBe(false);
 	});
 });

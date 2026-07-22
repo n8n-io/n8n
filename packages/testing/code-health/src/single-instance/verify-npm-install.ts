@@ -18,6 +18,11 @@ const ROOT_TRIGGERS = ['pnpm-workspace.yaml', 'package.json', 'packages/testing/
 // Sections that follow the publish graph — devDependencies don't ship, so they're not packed.
 const CLOSURE_SECTIONS = new Set(['dependencies', 'peerDependencies', 'optionalDependencies']);
 
+/** True when a changed file can shift dependency resolution repo-wide, forcing a full check. */
+export function filesTriggerFullRun(files: string[]): boolean {
+	return files.some((f) => ROOT_TRIGGERS.some((t) => f === t || f.startsWith(t)));
+}
+
 interface WorkspacePkg {
 	dir: string;
 	relDir: string;
@@ -83,7 +88,7 @@ function changedPackages(
 		return [];
 	}
 	const files = out.split('\n').filter(Boolean);
-	if (files.some((f) => ROOT_TRIGGERS.some((t) => f === t || f.startsWith(t)))) {
+	if (filesTriggerFullRun(files)) {
 		console.error('Catalog/tooling change detected; verifying all publishable packages.');
 		return [...byName.keys()];
 	}

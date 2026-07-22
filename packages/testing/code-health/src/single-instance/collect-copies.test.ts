@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { analyze, collectCopies } from './collect-copies.js';
+import { analyze, collectCopies, distinctCopies } from './collect-copies.js';
 
 // Build a planted install tree on disk so the walk (collectCopies) is exercised, not just the
 // pure analyze() core. `node_modules` dirs are gitignored, so we construct the tree in a temp dir.
@@ -69,5 +69,44 @@ describe('collectCopies + analyze', () => {
 		const { duplicates, failures } = analyze(clean);
 		expect(duplicates).toHaveLength(0);
 		expect(failures).toHaveLength(0);
+	});
+});
+
+// Exercises the pnpm-shaped layout the tool actually runs against: the physical copy lives under
+// the `.pnpm` virtual store and is symlinked to `node_modules/<pkg>`. This is what the `.pnpm` walk
+// (walkPnpmStore) and the realpath dedup exist for — a single physical copy reached via a symlink
+// alias must count once, not as a second copy.
+describe('collectCopies on a pnpm-style store', () => {
+	let root: string;
+
+	function storePkg(nm: string, key: string, name: string, version: string): string {
+		const dir = join(nm, '.pnpm', key, 'node_modules', name);
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, 'package.json'), JSON.stringify({ name, version }));
+		return dir;
+	}
+
+	afterAll(() => rmSync(root, { recursive: true, force: true }));
+
+	beforeAll(() => {
+		root = mkdtempSync(join(tmpdir(), 'collect-copies-pnpm-'));
+		const nm = join(root, 'node_modules');
+		// one physical zod in the store, symlinked to the top level (the normal single-copy case)
+		const zodReal = storePkg(nm, 'zod@1.0.0', 'zod', '1.0.0');
+		symlinkSync(zodReal, join(nm, 'zod'));
+		// two physical copies of form-data in the store (distinct realpaths → a real duplicate)
+		storePkg(nm, 'form-data@1.0.0', 'form-data', '1.0.0');
+		const fdReal = storePkg(nm, 'form-data@2.0.0', 'form-data', '2.0.0');
+		symlinkSync(fdReal, join(nm, 'form-data'));
+	});
+
+	it('counts a store copy reached via a top-level symlink alias only once', () => {
+		const found = collectCopies(root);
+		expect(distinctCopies(found.get('zod') ?? [])).toHaveLength(1);
+		expect(analyze(found).failures.some((f) => f.name === 'zod')).toBe(false);
+	});
+
+	it('fails on two distinct physical copies in the store despite a symlink alias', () => {
+		expect(analyze(collectCopies(root)).failures.map((f) => f.name)).toEqual(['form-data']);
 	});
 });
