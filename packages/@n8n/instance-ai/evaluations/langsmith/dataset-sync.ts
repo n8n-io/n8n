@@ -103,9 +103,15 @@ export async function syncDataset(
 		logger.info(`Created dataset: ${datasetName}`);
 	}
 
-	// List existing examples, keyed by derived ID (testCaseFile/scenarioName from inputs).
+	// List existing examples, keyed by derived ID (testCaseFile/scenarioName from
+	// inputs). Scoped to the synced cases' slug splits: every mutation below only
+	// touches these slugs, and a scoped read keeps concurrent syncs of disjoint
+	// cases (the LangTracer dispatcher pattern) and sync cost independent of
+	// dataset size. Already-archived examples carry only the 'archived' split, so
+	// they fall out of the read — which keeps re-archiving idempotent for free.
+	const slugSplits = [...new Set(testCasesWithFiles.map((tc) => tc.fileSlug))];
 	const existingByDerivedId = new Map<string, Example>();
-	for await (const example of lsClient.listExamples({ datasetId })) {
+	for await (const example of lsClient.listExamples({ datasetId, splits: slugSplits })) {
 		const inputs = existingInputsSchema.safeParse(example.inputs);
 		if (!inputs.success) continue;
 		existingByDerivedId.set(`${inputs.data.testCaseFile}/${inputs.data.scenarioName}`, example);
@@ -228,6 +234,38 @@ export async function syncDataset(
 	}
 
 	return datasetName;
+}
+
+/** Read-after-write guard: freshly created examples can lag the immediate
+ *  list. Verify the split-scoped count covers what was just synced before a
+ *  driver starts an experiment — an invisible example silently produces an
+ *  empty or partial run (the dispatcher's historical "no results" failure). */
+export async function ensureExamplesVisible(
+	lsClient: Client,
+	datasetName: string,
+	testCasesWithFiles: WorkflowTestCaseWithFile[],
+	logger: EvalLogger,
+	opts: { attempts?: number; baseDelayMs?: number } = {},
+): Promise<void> {
+	const expected = roundRobinCaseRows(testCasesWithFiles).length;
+	if (expected === 0) return;
+	const attempts = opts.attempts ?? 3;
+	const baseDelayMs = opts.baseDelayMs ?? 2_000;
+	const splits = [...new Set(testCasesWithFiles.map((tc) => tc.fileSlug))];
+	for (let attempt = 1; ; attempt++) {
+		let count = 0;
+		for await (const _example of lsClient.listExamples({ datasetName, splits })) count++;
+		if (count >= expected) return;
+		if (attempt >= attempts) {
+			throw new Error(
+				`Dataset "${datasetName}" lists ${String(count)}/${String(expected)} synced example(s) after ${String(attempts)} attempt(s) — read-after-write lag or split drift; refusing to run a partial experiment.`,
+			);
+		}
+		logger.warn(
+			`Dataset "${datasetName}" lists ${String(count)}/${String(expected)} synced example(s); retrying (${String(attempt)}/${String(attempts)})…`,
+		);
+		await new Promise((resolve) => setTimeout(resolve, baseDelayMs * attempt));
+	}
 }
 
 // ---------------------------------------------------------------------------

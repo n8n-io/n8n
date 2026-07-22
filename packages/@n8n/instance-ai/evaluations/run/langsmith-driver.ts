@@ -36,7 +36,7 @@ import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { EVAL_WORKSPACE_NAME, resolveEvalWorkspaceId } from '../harness/langsmith-seed';
 import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
-import { syncDataset } from '../langsmith/dataset-sync';
+import { ensureExamplesVisible, syncDataset } from '../langsmith/dataset-sync';
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
 
 export interface RunConfig {
@@ -104,6 +104,7 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 	}
 	const lsClient = new Client(workspaceId ? { workspaceId } : {});
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, testCasesWithFiles);
+	await ensureExamplesVisible(lsClient, datasetName, testCasesWithFiles, logger);
 
 	// Shared per-run assembly (lanes → allocator → build orchestrator → case
 	// pipeline). The traceable() hook around the lane functions is the only
