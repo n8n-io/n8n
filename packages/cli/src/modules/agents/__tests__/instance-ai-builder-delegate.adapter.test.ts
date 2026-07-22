@@ -410,6 +410,15 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 		});
 	});
 
+	describe('INSTANCE_AI_BUILDER_ADDENDUM', () => {
+		it('requires Preview markdown links instead of forbidding them', () => {
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).not.toContain('not visible in this chat');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('[Preview]');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('relative path');
+			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('Do not invent absolute URLs');
+		});
+	});
+
 	describe('resolveAgentName', () => {
 		it('returns the agent display name', async () => {
 			const { delegate, agentsService } = setup();
