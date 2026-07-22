@@ -1,4 +1,5 @@
 import type { StoryFn } from '@storybook/vue3-vite';
+import type { Component } from 'vue';
 import { ref } from 'vue';
 
 import N8nSelectableList from './SelectableList.vue';
@@ -21,7 +22,7 @@ const Template: StoryFn = (args) => ({
 		return { args, model };
 	},
 	components: {
-		N8nSelectableList,
+		N8nSelectableList: N8nSelectableList as unknown as Component,
 	},
 	template:
 		'<n8n-selectable-list v-bind="args" v-model="model"><template #displayItem="{ name }">Slot content for {{name}}</template></n8n-selectable-list>',
