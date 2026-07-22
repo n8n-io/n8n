@@ -98,20 +98,12 @@ export class DbConnection {
 	}
 
 	/**
-	 * Runs migrations while holding a transaction-scoped Postgres advisory lock
-	 * (`pg_advisory_xact_lock`), so instances starting concurrently against one
-	 * database migrate one at a time instead of racing (deadlocks,
-	 * `column ... already exists`, crash-looping pods).
-	 *
-	 * The lock transaction hosts the migrations themselves, on a single pooled
-	 * connection: holding the lock on a second connection would deadlock startup
-	 * when `DB_POSTGRESDB_POOL_SIZE=1`. All pending migrations therefore commit
-	 * or roll back as one unit (instead of the previous per-migration commits),
-	 * and the lock's lifetime is exactly the transaction's — released on
-	 * commit/rollback, or by the server/pooler when the migrating instance dies,
-	 * so a crash can never leave the lock behind (also under PgBouncer, which
-	 * keeps server connections alive across client disconnects, where a
-	 * session-scoped lock could be orphaned).
+	 * Runs all pending migrations inside a single transaction that also holds a
+	 * Postgres advisory lock, so concurrently starting instances migrate one at
+	 * a time and a crashed instance can never leave the lock behind (even behind
+	 * a pooler like PgBouncer). Sharing one connection between the lock and the
+	 * migrations keeps `DB_POSTGRESDB_POOL_SIZE=1` working; the trade-off is
+	 * that migrations commit or roll back as one unit.
 	 */
 	private async migrateWithAdvisoryLock(options: {
 		schema?: string;
@@ -129,34 +121,30 @@ export class DbConnection {
 			this.logger.info('Acquiring database migration lock...');
 			await queryRunner.startTransaction();
 			try {
-				// A waiter blocks inside pg_advisory_xact_lock() — a single statement —
-				// so it must not be killed by the driver's statement_timeout (default
-				// 5 min). The transaction also idles between statements while migration
-				// JS runs, so it must not be reaped by an idle-in-transaction timeout.
-				// SET LOCAL confines both overrides to this transaction.
+				// No timeout may kill the blocked lock wait or reap this transaction
+				// while it idles between migration statements.
 				await queryRunner.query('SET LOCAL statement_timeout = 0');
+				await queryRunner.query('SET LOCAL lock_timeout = 0');
 				await queryRunner.query('SET LOCAL idle_in_transaction_session_timeout = 0');
 				await queryRunner.query('SELECT pg_advisory_xact_lock($1, $2)', [
 					DbLock.MIGRATIONS,
 					subKey,
 				]);
 				if (options.statementTimeout) {
-					// Lock acquired — restore the driver's per-statement cap for the
-					// migration statements themselves.
+					// Restore the driver's per-statement cap for the migration statements
 					await queryRunner.query(
 						`SET LOCAL statement_timeout = ${Number(options.statementTimeout)}`,
 					);
 				}
 
 				const migrationExecutor = new MigrationExecutor(dataSource, queryRunner);
-				// 'none': the executor manages no transactions and runs everything
-				// inside ours, tying the migrations' fate to the lock's.
+				// 'none': the executor manages no transactions and runs inside ours
 				migrationExecutor.transaction = 'none';
 				await migrationExecutor.executePendingMigrations();
 
 				await queryRunner.commitTransaction();
 			} catch (error) {
-				// Rethrow the original error even if the rollback itself fails.
+				// Rethrow the original error even if the rollback itself fails
 				await queryRunner.rollbackTransaction().catch(() => {});
 				throw error;
 			}

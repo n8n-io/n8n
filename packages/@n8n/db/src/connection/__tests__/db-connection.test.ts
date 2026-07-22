@@ -184,6 +184,7 @@ describe('DbConnection', () => {
 			expect(migrationHelper.wrapMigration).toHaveBeenCalledTimes(2);
 			expect(queryRunner.startTransaction).toHaveBeenCalled();
 			expect(queryRunner.query).toHaveBeenCalledWith('SET LOCAL statement_timeout = 0');
+			expect(queryRunner.query).toHaveBeenCalledWith('SET LOCAL lock_timeout = 0');
 			expect(queryRunner.query).toHaveBeenCalledWith(
 				'SET LOCAL idle_in_transaction_session_timeout = 0',
 			);
