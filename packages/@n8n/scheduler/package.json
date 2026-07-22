@@ -1,6 +1,6 @@
 {
   "name": "@n8n/scheduler",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
