@@ -14,7 +14,6 @@
 // the loop so an erroring tool can't drive API spend.
 // ---------------------------------------------------------------------------
 
-import { Memory } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
@@ -93,7 +92,6 @@ export async function runDiscoveryScenario(
 		const context = applyInstanceState(services.context, options.scenario);
 
 		const mcpManager = new McpClientManager();
-		const memory = new Memory().build();
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
 
@@ -128,7 +126,7 @@ export async function runDiscoveryScenario(
 			context,
 			orchestrationContext,
 			mcpManager,
-			memory,
+			// No memory: discovery measures stateless first-step tool dispatch.
 			memoryConfig: {},
 			// Eager tool loading — discovery measures dispatch given the full toolset,
 			// not whether the orchestrator can find a tool through search.
@@ -138,7 +136,7 @@ export async function runDiscoveryScenario(
 
 		const streamSource = normalizeStreamSource(
 			await agent.stream(options.scenario.userMessage, {
-				maxSteps,
+				maxIterations: maxSteps,
 				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
