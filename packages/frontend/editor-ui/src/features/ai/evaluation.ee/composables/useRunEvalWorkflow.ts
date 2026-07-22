@@ -4,10 +4,10 @@ import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { nodeViewEventBus } from '@/app/event-bus';
 
-const CHAT_TRIGGER_TYPES: string[] = [CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE];
+const CHAT_TRIGGER_TYPES: string[] = [CHAT_TRIGGER_NODE_TYPE];
 
 export type EvalTriggerNode = { name: string; type: string };
 
