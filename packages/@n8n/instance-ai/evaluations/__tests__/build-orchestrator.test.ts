@@ -1,3 +1,4 @@
+import { verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
 import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
@@ -18,7 +19,11 @@ import type { WorkflowTestCase } from '../types';
 
 vi.mock('../harness/runner', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../harness/runner')>();
-	return { ...actual, runWorkflowChecks: vi.fn().mockResolvedValue([]) };
+	return {
+		...actual,
+		runWorkflowChecks: vi.fn().mockResolvedValue([]),
+		fetchAgentScenarioContext: vi.fn().mockResolvedValue('AGENT CONTEXT'),
+	};
 });
 
 vi.mock('../harness/capture-run-debug', () => ({
@@ -271,5 +276,31 @@ describe('createBuildOrchestrator', () => {
 		await expect(deps.buildExpectationsByKey.get('0:case-a')).resolves.toEqual([
 			{ expectation: 'sends a digest', pass: true, reason: 'ok' },
 		]);
+	});
+});
+
+describe('expectation judging context', () => {
+	it('threads the rendered agent artifact into the expectation judge', async () => {
+		const tracedBuild = vi.fn().mockResolvedValue(
+			okBuild({
+				threadId: 'thread-9',
+				transcript: [] as never,
+				artifactRefs: [{ type: 'agent', id: 'agent-1' }] as never,
+			}),
+		);
+		const deps = makeDeps([makeLane(1, tracedBuild)], {
+			testCaseByFileSlug: new Map([
+				['case-a', baseCase({ outcomeExpectations: ['the agent has a Slack tool'] })],
+			]),
+		});
+		const orchestrator = createBuildOrchestrator(deps);
+
+		await orchestrator.getOrBuild(0, 'case-a');
+		await deps.buildExpectationsByKey.get('0:case-a');
+
+		expect(vi.mocked(verifyBuildExpectations)).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ artifactContext: 'AGENT CONTEXT' }),
+		);
 	});
 });

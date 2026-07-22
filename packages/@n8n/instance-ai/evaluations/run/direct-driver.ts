@@ -10,10 +10,10 @@
 
 import { aggregateResults } from './aggregator';
 import type { ScenarioRowInputs } from './case-pipeline';
-import { BUILD_ONLY_SCENARIO_NAME, roundRobinCaseRows } from './rows';
 import { createEvalSession, type EvalSessionConfig } from './eval-session';
 import { expandWithIterations } from './iterations';
 import { reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
+import { BUILD_ONLY_SCENARIO_NAME, roundRobinCaseRows } from './rows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { runWithConcurrency } from '../harness/runner';
 import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';

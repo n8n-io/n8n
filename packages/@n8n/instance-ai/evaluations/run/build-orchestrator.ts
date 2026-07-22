@@ -31,6 +31,7 @@ import {
 	type BuildResult,
 	type executeAgentScenario,
 	type executeScenario,
+	type ScenarioSeedContext,
 } from '../harness/runner';
 import { isTransientNetworkError } from '../harness/transient-error';
 import type {
@@ -96,6 +97,7 @@ export interface LaneState {
 		workflowJsons: BuildResult['workflowJsons'];
 		buildTrace?: BuildResult['buildTrace'];
 		timeoutMs: number;
+		seedContext?: ScenarioSeedContext;
 	}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	tracedExecuteAgent: (execArgs: {
 		agentId: string;
@@ -305,11 +307,17 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		if (expectations.length === 0) return;
 		buildExpectationsByKey.set(
 			key,
-			verifyBuildExpectations(expectations, {
-				transcript,
-				workflowJson: build.workflowJsons[0],
-				metrics: build.conversationMetrics,
-			}).catch((error: unknown) =>
+			(async () =>
+				await verifyBuildExpectations(expectations, {
+					transcript,
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+					// Rendered agent/config artifact (when the build produced one) so
+					// outcome expectations about artifact existence/content judge the
+					// artifact instead of an absent workflow — parity with the retired
+					// direct loop, which always threaded it (stash the context first).
+					artifactContext: await agentContextByKey.get(key),
+				}))().catch((error: unknown) =>
 				allFailVerdicts(
 					expectations,
 					`judge error: ${error instanceof Error ? error.message : String(error)}`,
@@ -452,8 +460,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			}
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
-			stashBuildExpectations(key, fileSlug, build, false);
 			stashAgentContext(key, lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, build, false);
 			stashRunDebug(lane.runner.client, build);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
