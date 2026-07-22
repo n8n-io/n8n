@@ -341,7 +341,9 @@ onMounted(async () => {
 	gap: var(--spacing--md);
 	width: 100%;
 	max-width: 36rem;
-	margin-block-start: clamp(var(--spacing--sm), 10vh, var(--spacing--4xl));
+	/* Settle the card a step below the top on tall windows, but don't waste
+	   vertical space in the short popup windows OAuth clients open. */
+	margin-block-start: clamp(0px, calc(10vh - var(--spacing--3xl)), var(--spacing--4xl));
 	padding: var(--spacing--xl);
 	background: var(--background--surface);
 	border: var(--border-width, 1px) solid var(--border-color--subtle);
