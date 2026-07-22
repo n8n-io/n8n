@@ -119,3 +119,11 @@ properties:
           type: string
         value:
           type: string
+  credentialResolverId:
+    type: string
+    description: |
+      ID of the credential resolver used to resolve credentials for this workflow,
+      overriding the instance's default (system) resolver. Requires the dynamic
+      credentials feature to be enabled on the instance.
+      Set to an empty string to explicitly use the system resolver, or omit the
+      field to leave the current value unchanged.
