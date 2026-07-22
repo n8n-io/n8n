@@ -259,6 +259,7 @@ const workflowHandlers: WorkflowHandlers = {
 				'versionId',
 				'triggerCount',
 				'shared',
+				'description',
 			];
 
 			if (!excludePinnedData) {

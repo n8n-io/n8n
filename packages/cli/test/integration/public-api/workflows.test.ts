@@ -178,8 +178,8 @@ describe('GET /workflows', () => {
 
 	test('should return all owned workflows', async () => {
 		await Promise.all([
-			createWorkflowWithHistory({}, member),
-			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({ description: 'First workflow description' }, member),
+			createWorkflowWithHistory({ description: 'Second workflow description' }, member),
 			createWorkflowWithHistory({}, member),
 		]);
 
@@ -188,6 +188,9 @@ describe('GET /workflows', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.length).toBe(3);
 		expect(response.body.nextCursor).toBeNull();
+
+		let firstWorkflowFound = false;
+		let secondWorkflowFound = false;
 
 		for (const workflow of response.body.data) {
 			const {
@@ -200,6 +203,7 @@ describe('GET /workflows', () => {
 				nodeGroups,
 				settings,
 				name,
+				description,
 				createdAt,
 				updatedAt,
 				isArchived,
@@ -208,6 +212,13 @@ describe('GET /workflows', () => {
 				meta,
 				tags,
 			} = workflow;
+
+			if (description === 'First workflow description') {
+				firstWorkflowFound = true;
+			}
+			if (description === 'Second workflow description') {
+				secondWorkflowFound = true;
+			}
 
 			expect(id).toBeDefined();
 			expect(name).toBeDefined();
@@ -225,7 +236,11 @@ describe('GET /workflows', () => {
 			expect(versionId).toBeDefined();
 			expect(triggerCount).toBeDefined();
 			expect(meta).toBeDefined();
+			expect(description).toBeDefined();
 		}
+
+		expect(firstWorkflowFound).toBe(true);
+		expect(secondWorkflowFound).toBe(true);
 	});
 
 	test('should include node groups when returning owned workflows', async () => {
@@ -290,6 +305,7 @@ describe('GET /workflows', () => {
 				nodes,
 				settings,
 				name,
+				description,
 				createdAt,
 				updatedAt,
 				isArchived,
@@ -314,6 +330,7 @@ describe('GET /workflows', () => {
 			expect(versionId).toBeDefined();
 			expect(triggerCount).toBeDefined();
 			expect(meta).toBeDefined();
+			expect(description).toBeDefined();
 		}
 
 		// check that we really received a different result
@@ -661,7 +678,10 @@ describe('GET /workflows/:id', () => {
 
 	test('should retrieve workflow', async () => {
 		// create and assign workflow to owner
-		const workflow = await createWorkflowWithHistory({}, member);
+		const workflow = await createWorkflowWithHistory(
+			{ description: 'Workflow description here' },
+			member,
+		);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
@@ -676,6 +696,7 @@ describe('GET /workflows/:id', () => {
 			nodes,
 			settings,
 			name,
+			description,
 			createdAt,
 			updatedAt,
 			isArchived,
@@ -687,6 +708,7 @@ describe('GET /workflows/:id', () => {
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
+		expect(description).toEqual('Workflow description here');
 		expect(connections).toEqual(workflow.connections);
 		expect(active).toBe(false);
 		expect(activeVersionId).toBeNull();
