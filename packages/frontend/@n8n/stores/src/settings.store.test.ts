@@ -1,5 +1,7 @@
 import type { FrontendSettings } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 import { createPinia, setActivePinia } from 'pinia';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { useSettingsStore } from './settings.store';
@@ -164,6 +166,56 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
+	});
+
+	describe('insecure connection warning', () => {
+		let writeSpy: MockInstance<(...text: string[]) => void>;
+
+		beforeEach(() => {
+			writeSpy = vi.spyOn(document, 'write').mockImplementation(() => {});
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		it('should render the localized warning over an insecure, non-localhost origin', async () => {
+			vi.stubGlobal('location', { protocol: 'http:', hostname: 'n8n.example.com' });
+
+			getSettings.mockResolvedValueOnce({ ...mockSettings, authCookie: { secure: true } });
+
+			await useSettingsStore().getSettings();
+
+			expect(writeSpy).toHaveBeenCalledTimes(1);
+			const markup = writeSpy.mock.calls[0][0];
+			expect(markup).toContain(i18n.baseText('settings.authCookie.insecureConnection.title'));
+			expect(markup).toContain('N8N_SECURE_COOKIE');
+			expect(markup).toContain('http://localhost:5678');
+		});
+
+		it('should not render the warning over localhost in a non-Safari browser', async () => {
+			vi.stubGlobal('location', { protocol: 'http:', hostname: 'localhost' });
+			vi.stubGlobal('navigator', {
+				userAgent:
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0',
+			});
+
+			getSettings.mockResolvedValueOnce({ ...mockSettings, authCookie: { secure: true } });
+
+			await useSettingsStore().getSettings();
+
+			expect(writeSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not render the warning when the cookie is not secure', async () => {
+			vi.stubGlobal('location', { protocol: 'http:', hostname: 'n8n.example.com' });
+
+			getSettings.mockResolvedValueOnce({ ...mockSettings, authCookie: { secure: false } });
+
+			await useSettingsStore().getSettings();
+
+			expect(writeSpy).not.toHaveBeenCalled();
 		});
 	});
 

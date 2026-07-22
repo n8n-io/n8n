@@ -14,12 +14,12 @@ import {
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { createMember, createOwner } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
+
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflow-reviews'],
@@ -397,6 +397,150 @@ describe('POST /workflow-review-requests', () => {
 				workflows: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
 			})
 			.expect(403);
+
+		testServer.license.enable('feat:workflowReviews');
+	});
+});
+
+describe('GET /workflow-review-requests', () => {
+	/** Link an existing review request to a workflow. */
+	async function linkRequestToWorkflow(requestId: string, workflowId: string, versionId: string) {
+		await workflowRepository.createWorkflowRow({
+			workflowReviewRequestId: requestId,
+			workflowId,
+			workflowVersionId: versionId,
+		});
+	}
+
+	test('returns 400 without a workflowId', async () => {
+		await ownerAgent.get('/workflow-review-requests').expect(400);
+	});
+
+	test('returns an empty list when no request exists', async () => {
+		const { workflow } = await createReviewableWorkflow();
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, state: 'open', take: 1 })
+			.expect(200);
+
+		expect(response.body.data).toEqual({ count: 0, data: [] });
+	});
+
+	test('returns the open request as a minimal summary with state=open&take=1', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			title: 'Confidential title',
+			description: 'Confidential description',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, versionId);
+		await authorRepository.addAuthor({ workflowReviewRequestId: request.id, userId: owner.id });
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, state: 'open', take: 1 })
+			.expect(200);
+
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.data).toHaveLength(1);
+
+		expect(response.body.data.data[0]).toEqual({
+			id: request.id,
+			state: 'open',
+			decision: 'pending',
+			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
+		});
+	});
+
+	test('excludes closed-only history with state=open, includes it without the filter', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const closed = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			state: 'closed',
+			title: 'Closed',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(closed.id, workflow.id, versionId);
+
+		const openResponse = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, state: 'open', take: 1 })
+			.expect(200);
+		expect(openResponse.body.data).toEqual({ count: 0, data: [] });
+
+		const allResponse = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id })
+			.expect(200);
+		expect(allResponse.body.data.count).toBe(1);
+		expect(allResponse.body.data.data[0]).toMatchObject({ id: closed.id, state: 'closed' });
+	});
+
+	test('does not include requests of other workflows', async () => {
+		const { workflow } = await createReviewableWorkflow();
+		const { workflow: otherWorkflow } = await createReviewableWorkflow('version-other');
+		const request = await requestRepository.createRequest({
+			projectId: ownerProject.id,
+			title: 'For the other workflow',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(request.id, otherWorkflow.id, 'version-other');
+
+		const response = await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id })
+			.expect(200);
+
+		expect(response.body.data).toEqual({ count: 0, data: [] });
+	});
+
+	test('returns 404 when the member has no access to the workflow', async () => {
+		const { workflow } = await createReviewableWorkflow();
+
+		await memberAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, state: 'open', take: 1 })
+			.expect(404);
+	});
+
+	test('allows a project:viewer (has workflow:read) to list requests', async () => {
+		const project = await createTeamProject('team', owner);
+		await linkUserToProject(member, project, 'project:viewer');
+		const workflow = await createWorkflow({}, project);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
+		const request = await requestRepository.createRequest({
+			projectId: project.id,
+			title: 'Open review',
+			createdById: owner.id,
+		});
+		await linkRequestToWorkflow(request.id, workflow.id, 'version-1');
+
+		const response = await memberAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id, state: 'open', take: 1 })
+			.expect(200);
+
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.data[0].id).toBe(request.id);
+	});
+
+	test('returns 403 when the instance policy is disabled', async () => {
+		const { workflow } = await createReviewableWorkflow();
+		await policyService.set(false);
+
+		await ownerAgent
+			.get('/workflow-review-requests')
+			.query({ workflowId: workflow.id })
+			.expect(403);
+	});
+
+	test('returns 403 when the license lacks feat:workflowReviews', async () => {
+		testServer.license.disable('feat:workflowReviews');
+
+		await ownerAgent.get('/workflow-review-requests').query({ workflowId: 'wf-1' }).expect(403);
 
 		testServer.license.enable('feat:workflowReviews');
 	});

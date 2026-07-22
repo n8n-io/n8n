@@ -255,6 +255,13 @@ export const setupTestServer = ({
 						break;
 					}
 
+					case 'otel': {
+						const { OtelService } = await import('@/modules/otel/otel.service.js');
+						await Container.get(OtelService).init();
+						await import('@/modules/otel/otel-settings.controller.js');
+						break;
+					}
+
 					case 'sourceControl':
 						await import('@/modules/source-control.ee/source-control.controller.ee.js');
 						break;
