@@ -78,6 +78,26 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	/**
+	 * Finds an agent by ID alone. Agent IDs are globally unique, so this is safe
+	 * for callers whose access check does not hinge on a specific project (e.g.
+	 * users with global agent scopes).
+	 */
+	async findById(id: string): Promise<Agent | null> {
+		return await this.findOne({
+			where: { id },
+			relations: { activeVersion: true },
+		});
+	}
+
+	async findByIdInProjects(id: string, projectIds: string[]): Promise<Agent | null> {
+		if (projectIds.length === 0) return null;
+		return await this.findOne({
+			where: { id, projectId: In(projectIds) },
+			relations: { activeVersion: true },
+		});
+	}
+
 	async findByIdsAndProjectId(
 		ids: string[],
 		projectId: string,

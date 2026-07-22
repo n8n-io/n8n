@@ -34,6 +34,7 @@ import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integ
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { UrlService } from '@/services/url.service';
@@ -64,6 +65,9 @@ const baseConfig: AgentJsonConfig = {
 	tools: [],
 	skills: [],
 };
+
+// What configFromEntity(agentEntity()) composes: schema + integrations.
+const composedConfig: AgentJsonConfig = { ...baseConfig, integrations: [] };
 
 const agentEntity = (overrides: Record<string, unknown> = {}): Agent =>
 	({
@@ -111,6 +115,7 @@ describe('McpAgentToolsService', () => {
 		mockInstance(AgentModelCatalogService),
 		mockInstance(AttachableWorkflowsService),
 		mockInstance(McpRegistryService),
+		mockInstance(NodeTypes),
 		mockInstance(OauthService),
 		mockInstance(OutboundHttp),
 		mockInstance(SsrfProtectionConfig),
@@ -125,6 +130,7 @@ describe('McpAgentToolsService', () => {
 		vi.clearAllMocks();
 		userHasScopesMock.mockResolvedValue(true);
 		agentsService.findByIdForUser.mockResolvedValue(agentEntity());
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
 		urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
 
 		tools = new Map();
@@ -233,12 +239,8 @@ describe('McpAgentToolsService', () => {
 		const mutateInput = (operation: Record<string, unknown>, baseConfigHash?: string) => ({
 			projectId: 'project-1',
 			agentId: 'agent-1',
-			baseConfigHash: baseConfigHash ?? getAgentConfigHash(baseConfig),
+			baseConfigHash: baseConfigHash ?? getAgentConfigHash(composedConfig),
 			operation,
-		});
-
-		beforeEach(() => {
-			agentConfigService.getConfig.mockResolvedValue(baseConfig);
 		});
 
 		it('rejects a stale baseConfigHash without applying the mutation', async () => {
@@ -252,7 +254,7 @@ describe('McpAgentToolsService', () => {
 				ok: false,
 				code: 'stale_config',
 				agentId: 'agent-1',
-				configHash: getAgentConfigHash(baseConfig),
+				configHash: getAgentConfigHash(composedConfig),
 				message: 'Call get_agent before retrying the mutation.',
 			});
 			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
@@ -312,10 +314,11 @@ describe('McpAgentToolsService', () => {
 				'project-1',
 				{ name: 'Renamed' },
 				user,
+				{ clearOmittedOptionalFields: true },
 			);
-			// The stale-check config is reused; the response hash comes from
-			// updateConfig's return value, not a re-fetch.
-			expect(agentConfigService.getConfig).toHaveBeenCalledTimes(1);
+			// The resolved entity's config is reused; the response hash comes
+			// from updateConfig's return value, not a re-fetch.
+			expect(agentConfigService.getConfig).not.toHaveBeenCalled();
 			expect(result.structuredContent).toEqual({
 				ok: true,
 				agentId: 'agent-1',
@@ -346,8 +349,9 @@ describe('McpAgentToolsService', () => {
 			expect(agentConfigService.updateConfig).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
-				{ ...baseConfig, name: 'Patched' },
+				{ ...composedConfig, name: 'Patched' },
 				user,
+				{ clearOmittedOptionalFields: true },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true, operation: 'config.patch' });
 		});
@@ -382,20 +386,14 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('rejects a config.patch that targets integrations', async () => {
-			const config = { ...baseConfig, integrations: [] };
-			agentConfigService.getConfig.mockResolvedValue(config);
-
 			const result = await callTool(
 				'mutate_agent',
-				mutateInput(
-					{
-						type: 'config.patch',
-						patch: [
-							{ op: 'add', path: '/integrations/-', value: { type: 'telegram', credentialId: '' } },
-						],
-					},
-					getAgentConfigHash(config) ?? undefined,
-				),
+				mutateInput({
+					type: 'config.patch',
+					patch: [
+						{ op: 'add', path: '/integrations/-', value: { type: 'telegram', credentialId: '' } },
+					],
+				}),
 			);
 
 			expect(result.isError).toBe(true);
@@ -406,24 +404,18 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('rejects a config.patch that injects integrations via a whole-document replace', async () => {
-			const config = { ...baseConfig, integrations: [] };
-			agentConfigService.getConfig.mockResolvedValue(config);
-
 			const result = await callTool(
 				'mutate_agent',
-				mutateInput(
-					{
-						type: 'config.patch',
-						patch: [
-							{
-								op: 'replace',
-								path: '',
-								value: { ...baseConfig, integrations: [{ type: 'telegram', credentialId: '' }] },
-							},
-						],
-					},
-					getAgentConfigHash(config) ?? undefined,
-				),
+				mutateInput({
+					type: 'config.patch',
+					patch: [
+						{
+							op: 'replace',
+							path: '',
+							value: { ...baseConfig, integrations: [{ type: 'telegram', credentialId: '' }] },
+						},
+					],
+				}),
 			);
 
 			expect(result.isError).toBe(true);
@@ -535,8 +527,13 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('skips the config write when the custom tool reference already exists', async () => {
-			const configWithTool = { ...baseConfig, tools: [{ type: 'custom' as const, id: 'my_tool' }] };
-			agentConfigService.getConfig.mockResolvedValue(configWithTool);
+			const configWithTool = {
+				...composedConfig,
+				tools: [{ type: 'custom' as const, id: 'my_tool' }],
+			};
+			agentsService.findByIdForUser.mockResolvedValue(
+				agentEntity({ schema: { ...baseConfig, tools: configWithTool.tools } }),
+			);
 			agentSecureRuntime.describeToolSecurely.mockResolvedValue({ name: 'my_tool' } as never);
 			agentCustomToolsService.buildCustomTool.mockResolvedValue({
 				ok: true,
@@ -723,15 +720,13 @@ describe('McpAgentToolsService', () => {
 
 	describe('publish_agent', () => {
 		beforeEach(() => {
-			agentsService.findById.mockResolvedValue(agentEntity());
 			agentConfigService.validateConfig.mockResolvedValue({ valid: true, config: baseConfig });
-			agentTaskService.list.mockResolvedValue([]);
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([] as never);
 		});
 
-		it('refuses to publish an agent that is not runnable', async () => {
-			agentValidationService.validateAgentIsRunnable.mockResolvedValue({
-				missing: ['credential:model'],
+		it('refuses to publish an agent that fails publish-scope validation', async () => {
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } }],
 			} as never);
 
 			const result = await callTool('publish_agent', {
@@ -741,13 +736,16 @@ describe('McpAgentToolsService', () => {
 
 			expect(result.isError).toBe(true);
 			expect(result.structuredContent).toMatchObject({
-				error: 'Agent is not runnable: credential:model',
+				error: 'Agent is not runnable: credential',
 			});
 			expect(agentPublishService.publishAgent).not.toHaveBeenCalled();
 		});
 
 		it('publishes a valid agent', async () => {
-			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+			} as never);
 			agentPublishService.publishAgent.mockResolvedValue({
 				agent: agentEntity({ versionId: 'v2', activeVersionId: 'v2' }),
 			});
@@ -780,7 +778,7 @@ describe('McpAgentToolsService', () => {
 
 			const result = await callTool('publish_agent', { agentId: 'agent-1', versionId: 'v1' });
 
-			expect(agentValidationService.validateAgentIsRunnable).not.toHaveBeenCalled();
+			expect(agentValidationService.validateLoadedAgentConfiguration).not.toHaveBeenCalled();
 			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
 				'agent-1',
 				'project-1',
@@ -903,7 +901,7 @@ describe('McpAgentToolsService', () => {
 				tools: [{ type: 'custom' as const, id: 'my_tool' }],
 				tasks: [{ type: 'task' as const, id: 'task-1', enabled: true }],
 			};
-			agentsService.findById.mockResolvedValue(
+			agentsService.findByIdForUser.mockResolvedValue(
 				agentEntity({
 					schema: config,
 					tools: { my_tool: { code: 'code', descriptor: { name: 'my_tool' } } },
@@ -937,7 +935,7 @@ describe('McpAgentToolsService', () => {
 
 		it('reports integrations separately and omits them from the editable config', async () => {
 			const integration = { type: 'telegram', credentialId: 'cred-1' };
-			agentsService.findById.mockResolvedValue(
+			agentsService.findByIdForUser.mockResolvedValue(
 				agentEntity({ activeVersionId: 'v1', integrations: [integration] }),
 			);
 			agentValidationService.validateAgentIsRunnable.mockResolvedValue({ missing: [] } as never);
@@ -951,7 +949,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('returns an error result for an unknown agent', async () => {
-			agentsService.findById.mockResolvedValue(null);
+			agentsService.findByIdForUser.mockResolvedValue(null);
 
 			const result = await callTool('get_agent', { projectId: 'project-1', agentId: 'nope' });
 
@@ -1028,11 +1026,10 @@ describe('McpAgentToolsService', () => {
 
 		it('resolves the project from the agentId', async () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
-			agentsService.findById.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
 
 			const result = await callTool('get_agent', { agentId: 'agent-1' });
 
-			expect(agentsService.findByIdForUser).toHaveBeenCalledWith('agent-1', 'user-1');
+			expect(agentsService.findByIdForUser).toHaveBeenCalledWith('agent-1', user);
 			expect(userHasScopesMock).toHaveBeenCalledWith(user, ['agent:read'], false, {
 				projectId: 'project-9',
 			});
@@ -1050,7 +1047,6 @@ describe('McpAgentToolsService', () => {
 
 		it('applies a mutation against the resolved project', async () => {
 			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ projectId: 'project-9' }));
-			agentConfigService.getConfig.mockResolvedValue(baseConfig);
 			agentConfigService.updateConfig.mockResolvedValue({
 				config: baseConfig,
 				updatedAt: 'now',
@@ -1059,7 +1055,7 @@ describe('McpAgentToolsService', () => {
 
 			const result = await callTool('mutate_agent', {
 				agentId: 'agent-1',
-				baseConfigHash: getAgentConfigHash(baseConfig),
+				baseConfigHash: getAgentConfigHash(composedConfig),
 				operation: { type: 'config.replace', config: { name: 'My Agent' } },
 			});
 
@@ -1068,6 +1064,7 @@ describe('McpAgentToolsService', () => {
 				'project-9',
 				{ name: 'My Agent' },
 				user,
+				{ clearOmittedOptionalFields: true },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true });
 		});
@@ -1083,12 +1080,14 @@ describe('McpAgentToolsService', () => {
 		};
 
 		beforeEach(() => {
-			agentConfigService.getConfig.mockResolvedValue(baseConfig);
+			integrationPersistenceService.removeCredentialIntegration.mockResolvedValue(
+				agentEntity({ integrations: [] }),
+			);
 		});
 
 		it('disconnects a persisted integration and removes its record', async () => {
 			const persisted = { type: 'slack', credentialId: 'cred-1' };
-			agentsService.findById.mockResolvedValue(agentEntity({ integrations: [persisted] }));
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ integrations: [persisted] }));
 
 			const result = await callTool('update_agent_integration', input);
 
@@ -1104,7 +1103,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('still tears down the runtime channel when no persisted integration matches', async () => {
-			agentsService.findById.mockResolvedValue(agentEntity({ integrations: [] }));
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ integrations: [] }));
 
 			const result = await callTool('update_agent_integration', input);
 
@@ -1117,7 +1116,7 @@ describe('McpAgentToolsService', () => {
 		});
 
 		it('falls back to a plain disconnect for an unknown integration type', async () => {
-			agentsService.findById.mockResolvedValue(agentEntity({ integrations: [] }));
+			agentsService.findByIdForUser.mockResolvedValue(agentEntity({ integrations: [] }));
 
 			await callTool('update_agent_integration', { ...input, type: 'bogus' });
 

@@ -6,8 +6,9 @@ import {
 	type ListAgentsQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { In, ProjectRelationRepository } from '@n8n/db';
+import { In, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -162,17 +163,19 @@ export class AgentsService {
 	/**
 	 * Resolves an agent by ID within the projects the user can access. Agent IDs
 	 * are globally unique, so this lets callers address an agent without knowing
-	 * its project up front.
+	 * its project up front. Mirrors `@ProjectScope`'s access model: global agent
+	 * scopes (instance owners/admins) grant access without an explicit project
+	 * relation.
 	 */
-	async findByIdForUser(agentId: string, userId: string): Promise<Agent | null> {
-		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
+	async findByIdForUser(agentId: string, user: User): Promise<Agent | null> {
+		if (hasGlobalScope(user, 'agent:read')) {
+			return await this.agentRepository.findById(agentId);
+		}
+
+		const projectRelations = await this.projectRelationRepository.findAllByUser(user.id);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
 
-		if (projectIds.length === 0) return null;
-
-		return await this.agentRepository.findOne({
-			where: { id: agentId, projectId: In(projectIds) },
-		});
+		return await this.agentRepository.findByIdInProjects(agentId, projectIds);
 	}
 
 	async findByUserPaginated(

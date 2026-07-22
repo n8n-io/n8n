@@ -75,7 +75,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
+import { MCP_CREATE_AGENT_TOOL_NAME, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import { getAllowedToolNames } from './mcp-scopes';
 import type { McpAppsTelemetryVariant, McpClientInfo, RegisterToolFn } from './mcp.types';
 import {
@@ -240,6 +240,10 @@ export class McpService {
 			builderEnabled &&
 			(allowedToolNames?.has(MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName) ?? true);
 		const agentsEnabled = builderEnabled && this.moduleRegistry.isActive('agents');
+		// Same rationale as builderInstructionsEnabled: a grant that cannot call
+		// the agent tools gets no agent build walkthrough.
+		const agentInstructionsEnabled =
+			agentsEnabled && (allowedToolNames?.has(MCP_CREATE_AGENT_TOOL_NAME) ?? true);
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -249,7 +253,7 @@ export class McpService {
 				instructions: getMcpInstructions(
 					builderInstructionsEnabled,
 					n8nConnectAvailable,
-					agentsEnabled,
+					agentInstructionsEnabled,
 				),
 			},
 		);
