@@ -25,17 +25,17 @@ const plannerTodoItemSchema = z
 	.strict();
 
 const PLANNER_TODOS_DESCRIPTION =
-	'Create or update a structured task list for the current build. Use it to decompose the work, ' +
-	'track progress, and record which tasks are blocked on user input. Use it for every build or ' +
-	'change request. This tool only updates the task list; it does not perform work or ask the user.';
+	'Create or update a structured task list for the current task. Use it to decompose the work, ' +
+	'track progress, and record which tasks are blocked on user input. Use it for every multi-step ' +
+	'request. This tool only updates the task list; it does not perform work or ask the user.';
 
 const PLANNER_TODOS_SYSTEM_INSTRUCTION = [
-	'write_todos maintains your plan for the current build. It never asks the user or performs work itself.',
+	'write_todos maintains your plan for the current task. It never asks the user or performs work itself.',
 	'WHEN TO USE write_todos:',
-	'- Every request that builds or changes the agent, before other tool calls.',
+	'- Every multi-step request, before other tool calls.',
 	'- You need to track progress or record tasks blocked on user input.',
 	'WHEN NOT TO USE write_todos:',
-	'- Purely conversational replies with no build work.',
+	'- Purely conversational replies with no task work.',
 	'HOW TO USE write_todos:',
 	'- Write concrete, self-contained tasks; mark the first active task in_progress immediately.',
 	'- Mark a task blocked when it cannot proceed without user input, and state exactly what input is missing in the task content.',
@@ -45,11 +45,18 @@ const PLANNER_TODOS_SYSTEM_INSTRUCTION = [
 	'- Do not call write_todos multiple times in parallel; send one full list update at a time.',
 ].join('\n');
 
+export interface CreatePlannerTodosToolOptions {
+	/** Override the model-visible tool description. */
+	description?: string;
+	/** Override the model-visible system instruction. */
+	systemInstruction?: string;
+}
+
 /** Planner-only variant of `write_todos` — no delegation fields or guidance. */
-export function createPlannerTodosTool(): BuiltTool {
+export function createPlannerTodosTool(options: CreatePlannerTodosToolOptions = {}): BuiltTool {
 	const tool = new Tool(WRITE_TODOS_TOOL_NAME)
-		.description(PLANNER_TODOS_DESCRIPTION)
-		.systemInstruction(PLANNER_TODOS_SYSTEM_INSTRUCTION)
+		.description(options.description ?? PLANNER_TODOS_DESCRIPTION)
+		.systemInstruction(options.systemInstruction ?? PLANNER_TODOS_SYSTEM_INSTRUCTION)
 		.input(buildTodosInputSchema(plannerTodoItemSchema))
 		.output(buildTodosOutputSchema(plannerTodoItemSchema))
 		.handler(todosEchoHandler)

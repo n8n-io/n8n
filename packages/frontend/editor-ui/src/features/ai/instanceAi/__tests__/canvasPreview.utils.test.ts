@@ -562,7 +562,7 @@ describe('getLatestAgentConfigMutation', () => {
 		});
 	});
 
-	test('matches a resolved finish_setup via result.completed', () => {
+	test('matches a resolved finish_setup via result.completed with a connected channel', () => {
 		const node = makeAgentNode({
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
@@ -579,6 +579,21 @@ describe('getLatestAgentConfigMutation', () => {
 			projectId: 'project-1',
 			toolCallId: 'tc-finish-setup',
 		});
+	});
+
+	test('does not match a resolved finish_setup with no connected channel', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-finish-setup',
+					toolName: 'finish_setup',
+					isLoading: false,
+					result: { completed: true, channels: { slack: 'skipped', telegram: 'blocked' } },
+				}),
+			],
+		});
+		expect(getLatestAgentConfigMutation(node)).toBeUndefined();
 	});
 
 	test('returns the latest mutation when several exist, and uses fallbackTarget when no targetResource is in the tree', () => {

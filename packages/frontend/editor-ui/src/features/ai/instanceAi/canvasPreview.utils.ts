@@ -519,10 +519,11 @@ export interface AgentConfigMutationResult {
  * change, rather than waiting for a suspension or the turn to complete.
  * `create_skills` is deliberately excluded — it stores skill bodies without
  * attaching them, so nothing panel-visible changes until the follow-up patch.
- * `finish_setup` only counts on `completed: true`, its trailing (non-suspend)
- * result — its channel phases are the last cards in the chain, so this
- * refreshes the panel right after the final channel confirm even when no
- * follow-up `patch_config` occurs.
+ * `finish_setup` only counts when its trailing (non-suspend) result has at
+ * least one connected channel — a run that only collected answers/skipped
+ * credentials persists nothing panel-visible on its own, and connecting a
+ * channel is otherwise the last card in the chain with no follow-up
+ * `patch_config` to refresh the panel.
  */
 export function getLatestAgentConfigMutation(
 	node: InstanceAiAgentNode,
@@ -539,7 +540,12 @@ function matchAgentConfigMutationToolCall(
 		!tc.isLoading &&
 		AGENT_CONFIG_MUTATION_TOOLS.has(tc.toolName) &&
 		isRecord(tc.result) &&
-		(tc.result.ok === true || tc.result.connected === true || tc.result.completed === true) &&
+		(tc.result.ok === true ||
+			tc.result.connected === true ||
+			(tc.toolName === 'finish_setup' &&
+				tc.result.completed === true &&
+				isRecord(tc.result.channels) &&
+				Object.values(tc.result.channels).some((status) => status === 'connected'))) &&
 		callTarget
 	) {
 		return { ...callTarget, toolCallId: tc.toolCallId };

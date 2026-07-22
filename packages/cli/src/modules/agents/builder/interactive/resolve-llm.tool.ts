@@ -262,17 +262,17 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				if (llmCredentials.length > 1 && !model?.trim()) {
 					const byProvider = new Map<string, CredentialListItem[]>();
 					for (const credential of llmCredentials) {
-						const provider = LLM_PROVIDER_DEFAULTS[credential.type].provider;
-						byProvider.set(provider, [...(byProvider.get(provider) ?? []), credential]);
+						const providerName = LLM_PROVIDER_DEFAULTS[credential.type].provider;
+						byProvider.set(providerName, [...(byProvider.get(providerName) ?? []), credential]);
 					}
 
-					const topProvider = LLM_PROVIDER_PRIORITY.find((provider) => byProvider.has(provider));
+					const topProvider = LLM_PROVIDER_PRIORITY.find((candidate) => byProvider.has(candidate));
 					const topCredentials = topProvider ? byProvider.get(topProvider) : undefined;
 					if (topProvider && topCredentials?.length === 1) {
 						return {
 							...toLlmResolution(topCredentials[0], LLM_PROVIDER_DEFAULTS[topCredentials[0].type]),
 							autoPicked: true as const,
-							otherProviders: [...byProvider.keys()].filter((provider) => provider !== topProvider),
+							otherProviders: [...byProvider.keys()].filter((other) => other !== topProvider),
 						};
 					}
 				}

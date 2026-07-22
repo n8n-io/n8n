@@ -599,10 +599,10 @@ interface SkillAutosaveSnapshot {
 	skill: AgentSkill;
 }
 
-async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
+async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void | 'skipped'> {
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
-	if (props.artifactEditingLocked) return;
+	if (props.artifactEditingLocked) return 'skipped';
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
@@ -621,8 +621,8 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	]);
 }
 
-async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
-	if (props.artifactEditingLocked) return;
+async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void | 'skipped'> {
+	if (props.artifactEditingLocked) return 'skipped';
 	const result = await updateAgentSkill(
 		rootStore.restApiContext,
 		snapshot.projectId,

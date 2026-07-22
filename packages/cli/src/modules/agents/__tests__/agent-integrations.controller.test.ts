@@ -314,7 +314,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'project-1',
 			{ id: 'user-1' },
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
@@ -427,7 +427,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'project-1',
 			{ id: 'user-1' },
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',

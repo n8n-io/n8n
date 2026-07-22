@@ -82,7 +82,7 @@ export class AgentIntegrationsController {
 			agent.projectId,
 			req.user,
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');

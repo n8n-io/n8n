@@ -28,6 +28,10 @@ import { getModelRecommendationsSection } from './agents-builder-model-recommend
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
 import { BuilderCheckpointUnavailableError } from './errors';
+import {
+	BUILDER_PLANNER_TODOS_DESCRIPTION,
+	BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+} from './prompts/planner-todos.prompt';
 import { getBuilderRuntimeSkills } from './skills';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
@@ -276,7 +280,12 @@ export class AgentsBuilderService {
 			builder.tool(tool);
 		}
 
-		builder.tool(createPlannerTodosTool());
+		builder.tool(
+			createPlannerTodosTool({
+				description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+				systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+			}),
+		);
 
 		applyAgentThinking(builder, modelConfig);
 

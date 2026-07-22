@@ -92,4 +92,23 @@ describe('useAgentConfigAutosave', () => {
 
 		expect(save).not.toHaveBeenCalled();
 	});
+
+	it('keeps saveStatus idle and skips onSaved when save resolves "skipped"', async () => {
+		vi.useFakeTimers();
+		const save = vi.fn().mockResolvedValue('skipped' as const);
+		const onSaved = vi.fn();
+		const autosave = useAgentConfigAutosave<{ value: string }>({
+			save,
+			onSaved,
+			debounceMs: 500,
+		});
+
+		autosave.scheduleAutosave({ value: 'latest' });
+		await vi.advanceTimersByTimeAsync(500);
+		await autosave.settleAutosave();
+
+		expect(save).toHaveBeenCalledTimes(1);
+		expect(onSaved).not.toHaveBeenCalled();
+		expect(autosave.saveStatus.value).toBe('idle');
+	});
 });
