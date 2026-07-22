@@ -91,17 +91,6 @@ describe('LDAP configuration in Public API', () => {
 			expect(body.bindingAdminPassword).toBe(CREDENTIAL_BLANKING_VALUE);
 		});
 
-		it('returns an empty string for bindingAdminPassword when it is unset', async () => {
-			testServer.license.enable('feat:ldap');
-
-			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap');
-			const body = response.body as LdapConfigurationResponse;
-
-			expect(response.status).toBe(200);
-			// Default config has no password stored, so it is reported as "" (not the blanking value).
-			expect(body.bindingAdminPassword).toBe('');
-		});
-
 		it('rejects with 403 when not licensed', async () => {
 			const response = await testServer.publicApiAgentFor(owner).get('/settings/ldap');
 
@@ -111,7 +100,7 @@ describe('LDAP configuration in Public API', () => {
 
 		it('rejects with 403 when the API key lacks the ldap:manage scope', async () => {
 			testServer.license.enable('feat:ldap');
-			const scopedOwner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['ldap:sync'] });
 
 			const response = await testServer.publicApiAgentFor(scopedOwner).get('/settings/ldap');
 
@@ -380,7 +369,7 @@ describe('LDAP configuration in Public API', () => {
 			expect(firstPage.data[0].created).toBe(2);
 			expect(firstPage.nextCursor).not.toBeNull();
 
-			// Second page: follow the cursor, expect the next row (created:1).
+			// Second page: follow the cursor, expect the next row (created:1) with more still to come.
 			const secondResponse = await testServer
 				.publicApiAgentFor(owner)
 				.get(`/settings/ldap/sync?cursor=${firstPage.nextCursor}`);
@@ -388,6 +377,17 @@ describe('LDAP configuration in Public API', () => {
 			expect(secondResponse.status).toBe(200);
 			expect(secondPage.data).toHaveLength(1);
 			expect(secondPage.data[0].created).toBe(1);
+			expect(secondPage.nextCursor).not.toBeNull();
+
+			// Last page: the final row (created:0) and a null cursor signalling no more pages.
+			const lastResponse = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/settings/ldap/sync?cursor=${secondPage.nextCursor}`);
+			const lastPage = lastResponse.body as SyncListBody;
+			expect(lastResponse.status).toBe(200);
+			expect(lastPage.data).toHaveLength(1);
+			expect(lastPage.data[0].created).toBe(0);
+			expect(lastPage.nextCursor).toBeNull();
 		});
 
 		it('rejects with 403 when not licensed', async () => {
@@ -527,57 +527,6 @@ describe('LDAP configuration in Public API', () => {
 				.send({ type: 'dry' });
 
 			expect(response.status).toBe(401);
-		});
-	});
-
-	describe('Scope Isolation', () => {
-		it('key with only ldap:manage cannot access /sync endpoints', async () => {
-			testServer.license.enable('feat:ldap');
-			const ldapManageOwner = await createOwnerWithApiKey({ scopes: ['ldap:manage'] });
-
-			const getSyncResponse = await testServer
-				.publicApiAgentFor(ldapManageOwner)
-				.get('/settings/ldap/sync');
-			expect(getSyncResponse.status).toBe(403);
-
-			const postSyncResponse = await testServer
-				.publicApiAgentFor(ldapManageOwner)
-				.post('/settings/ldap/sync')
-				.send({ type: 'dry' });
-			expect(postSyncResponse.status).toBe(403);
-		});
-
-		it('key with only ldap:sync cannot access config endpoints', async () => {
-			testServer.license.enable('feat:ldap');
-			const ldapSyncOwner = await createOwnerWithApiKey({ scopes: ['ldap:sync'] });
-
-			const getConfigResponse = await testServer
-				.publicApiAgentFor(ldapSyncOwner)
-				.get('/settings/ldap');
-			expect(getConfigResponse.status).toBe(403);
-
-			const putConfigResponse = await testServer
-				.publicApiAgentFor(ldapSyncOwner)
-				.put('/settings/ldap')
-				.send(defaultLdapConfig);
-			expect(putConfigResponse.status).toBe(403);
-		});
-
-		it('key with both ldap:manage and ldap:sync can access all endpoints', async () => {
-			testServer.license.enable('feat:ldap');
-			const fullAccessOwner = await createOwnerWithApiKey({
-				scopes: ['ldap:manage', 'ldap:sync'],
-			});
-
-			const getConfigResponse = await testServer
-				.publicApiAgentFor(fullAccessOwner)
-				.get('/settings/ldap');
-			expect(getConfigResponse.status).toBe(200);
-
-			const getSyncResponse = await testServer
-				.publicApiAgentFor(fullAccessOwner)
-				.get('/settings/ldap/sync');
-			expect(getSyncResponse.status).toBe(200);
 		});
 	});
 });

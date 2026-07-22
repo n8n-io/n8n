@@ -27,17 +27,7 @@ describe('LDAP DTOs', () => {
 			enforceEmailUniqueness: true,
 		};
 
-		it('rejects an empty body with an error for every top-level field - Guards against .optional() / .default() on PUT fields', () => {
-			const result = UpdateLdapConfigurationDto.safeParse({});
-			assert(!result.success, 'expected empty body to fail validation');
-
-			const erroredFields = new Set(result.error.issues.map((issue) => String(issue.path[0])));
-			const requiredFields = Object.keys(UpdateLdapConfigurationDto.schema.shape).sort();
-
-			expect([...erroredFields].sort()).toEqual(requiredFields);
-		});
-
-		it('requires every nested field with no optional or default', () => {
+		it('requires every field with no optional or default - guards against .optional() / .default() on PUT fields', () => {
 			expect(zodObjectFieldsAreAllRequired(UpdateLdapConfigurationDto.schema)).toBe(true);
 		});
 
