@@ -8,12 +8,12 @@
  * impl.
  */
 
-export interface ExecutionStartedEvent {
-	type: 'execution:started';
+export interface ExecutionEnqueuedEvent {
+	type: 'execution:enqueued';
 	executionId: string;
 }
 
-export type WorkQueueMessage = ExecutionStartedEvent;
+export type WorkQueueMessage = ExecutionEnqueuedEvent;
 
 export interface WorkQueue {
 	publish(message: WorkQueueMessage): Promise<void>;

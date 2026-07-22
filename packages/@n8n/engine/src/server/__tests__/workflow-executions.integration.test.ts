@@ -46,7 +46,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		if (container) await container.stop();
 	});
 
-	it('creates an execution row, publishes execution_started, returns 201', async () => {
+	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.send({
@@ -67,7 +67,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(row.graph).toEqual(sampleGraph);
 		expect(row.triggerPayload).toEqual({ hello: 'world' });
 
-		expect(workQueue.messages).toEqual([{ type: 'execution:started', executionId }]);
+		expect(workQueue.messages).toEqual([{ type: 'execution:enqueued', executionId }]);
 	});
 
 	it('rejects an invalid body with 400', async () => {

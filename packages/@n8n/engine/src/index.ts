@@ -20,15 +20,16 @@ export type {
 
 export { InMemoryWorkQueue } from './queue';
 export type {
-	ExecutionStartedEvent,
+	ExecutionEnqueuedEvent,
 	WorkQueue,
 	WorkQueueMessage,
 } from './queue';
 
-export { createDataSource, TypeOrmExecutionStore } from './database';
 export type {
 	ExecutionMode,
 	ExecutionStatus,
 	ExecutionStore,
 	NewExecutionRecord,
-} from './database';
+} from './execution';
+
+export { createDataSource, TypeOrmExecutionStore } from './database';

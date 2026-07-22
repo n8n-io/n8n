@@ -36,21 +36,26 @@ async function main(): Promise<void> {
 	});
 
 	let shuttingDown = false;
-	const shutdown = (signal: string): void => {
+	const shutdown = async (signal: string): Promise<void> => {
 		if (shuttingDown) return;
 		shuttingDown = true;
 		console.log(`engine: received ${signal}, shutting down`);
-		server.close((error) => {
-			if (error) {
-				console.error('engine: error during shutdown', error);
-				process.exit(1);
-			}
-			process.exit(0);
+		await new Promise<void>((resolve, reject) => {
+			server.close((error) => (error ? reject(error) : resolve()));
+		});
+		if (dataSource?.isInitialized) await dataSource.destroy();
+		process.exit(0);
+	};
+
+	const onSignal = (signal: string): void => {
+		shutdown(signal).catch((error: unknown) => {
+			console.error('engine: error during shutdown', error);
+			process.exit(1);
 		});
 	};
 
-	process.on('SIGTERM', () => shutdown('SIGTERM'));
-	process.on('SIGINT', () => shutdown('SIGINT'));
+	process.on('SIGTERM', () => onSignal('SIGTERM'));
+	process.on('SIGINT', () => onSignal('SIGINT'));
 }
 
 main().catch((error: unknown) => {

@@ -43,8 +43,8 @@ const WorkflowGraphSchema = z.object({
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
-	triggerPayload: jsonObjectSchema.optional(),
-	mode: z.enum(['production', 'manual', 'test']).optional(),
+	triggerPayload: jsonObjectSchema.nullable().optional(),
+	mode: z.enum(['production', 'manual']).optional(),
 });
 
 export function createWorkflowExecutionsRouter(startExecution: StartExecutionService): RouterType {

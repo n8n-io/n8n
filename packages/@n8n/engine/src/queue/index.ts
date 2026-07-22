@@ -1,5 +1,5 @@
 export type {
-	ExecutionStartedEvent,
+	ExecutionEnqueuedEvent,
 	WorkQueue,
 	WorkQueueMessage,
 } from './work-queue.types';

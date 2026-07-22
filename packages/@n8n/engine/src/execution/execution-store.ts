@@ -1,6 +1,6 @@
 import type { JsonObject } from '../common';
 import type { WorkflowGraph } from '../graph';
-import type { ExecutionMode, ExecutionStatus } from './entities';
+import type { ExecutionMode, ExecutionStatus } from './execution.types';
 
 /** A new execution to persist. `id` and timestamps are assigned by the store. */
 export interface NewExecutionRecord {
@@ -14,7 +14,7 @@ export interface NewExecutionRecord {
 /**
  * Persistence port for executions. The core (`StartExecutionService`) depends
  * on this interface, not on TypeORM, so the storage backend stays swappable and
- * the policy is testable without a database.
+ * the policy is testable without a database. The adapter lives in `database/`.
  */
 export interface ExecutionStore {
 	/** Persist a new execution record; returns its generated id. */

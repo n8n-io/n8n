@@ -10,10 +10,8 @@ import {
 import { nanoid } from 'nanoid';
 
 import type { JsonObject } from '../../common';
+import type { ExecutionMode, ExecutionStatus } from '../../execution/execution.types';
 import type { WorkflowGraph } from '../../graph';
-
-export type ExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
-export type ExecutionMode = 'production' | 'manual' | 'test';
 
 @Entity('workflow_execution')
 @Index('idx_workflow_execution_workflow_id', ['workflowId'])

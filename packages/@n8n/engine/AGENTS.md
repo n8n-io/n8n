@@ -24,8 +24,11 @@ a deployable engine worker) without touching core logic.
   orchestration/policy. Must not open connections, bind an HTTP server, or read
   the environment. Everything external arrives via constructor args / a deps bag
   (the `createScheduler(deps)` pattern).
-- **Ports** — interfaces the core depends on: `AdmittanceService`, `WorkQueue`,
-  and `ExecutionStore`. Handed in at construction.
+- **Ports** — interfaces the core depends on, each defined in its own core
+  module beside a default/reference use: `AdmittanceService` (`admittance/`),
+  `WorkQueue` (`queue/`), `ExecutionStore` (`execution/`). Adapters implement
+  them; the core never imports the port from an adapter. Handed in at
+  construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
   (in-memory default). The Postgres/ORM coupling lives *here only*.
@@ -38,8 +41,10 @@ a deployable engine worker) without touching core logic.
 ## Rules that keep the seams extractable
 
 - Core modules (`graph`, `execution`, `admittance`) don't import `express`,
-  `pg`, or `@n8n/typeorm`, and don't construct a `DataSource`. Persistence,
-  queue, and HTTP are injected.
+  `pg`, or `@n8n/typeorm`, don't construct a `DataSource`, and never import from
+  `database/`. Persistence, queue, and HTTP are injected. The dependency arrow
+  is one-way: `database/` imports the port + domain types from the core, not the
+  reverse.
 - `@n8n/typeorm` / `pg` stay confined to `database/`.
 - `@n8n/config` + `@n8n/di` are used only at the serving/composition layer (for
   `EngineConfig`), never in core logic. (The blueprint flags `@n8n/config` as

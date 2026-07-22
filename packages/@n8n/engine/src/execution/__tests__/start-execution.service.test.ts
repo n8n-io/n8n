@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { AdmittanceRejectedError, type AdmittanceService } from '../../admittance';
-import type { ExecutionStore } from '../../database';
 import type { WorkflowGraph } from '../../graph';
 import type { WorkQueue, WorkQueueMessage } from '../../queue';
+import type { ExecutionStore } from '../execution-store';
 import { StartExecutionService } from '../start-execution.service';
 
 const sampleGraph: WorkflowGraph = {
@@ -12,7 +12,7 @@ const sampleGraph: WorkflowGraph = {
 };
 
 describe('StartExecutionService', () => {
-	it('admits, persists a queued execution, publishes execution:started, returns id', async () => {
+	it('admits, persists a queued execution, publishes execution:enqueued, returns id', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
 		};
@@ -45,7 +45,7 @@ describe('StartExecutionService', () => {
 			graph: sampleGraph,
 			triggerPayload: { hello: 'world' },
 		});
-		expect(messages).toEqual([{ type: 'execution:started', executionId: 'exec-id-1' }]);
+		expect(messages).toEqual([{ type: 'execution:enqueued', executionId: 'exec-id-1' }]);
 	});
 
 	it('defaults mode to production and triggerPayload to null', async () => {

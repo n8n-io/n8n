@@ -1,13 +1,14 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import type { JsonObject } from '../common';
-import type { ExecutionMode, ExecutionStore } from '../database';
 import type { WorkflowGraph } from '../graph';
 import type { WorkQueue } from '../queue';
+import type { ExecutionStore } from './execution-store';
+import type { ExecutionMode } from './execution.types';
 
 export interface StartExecutionRequest {
 	workflowId: string;
 	graph: WorkflowGraph;
-	triggerPayload?: JsonObject;
+	triggerPayload?: JsonObject | null;
 	mode?: ExecutionMode;
 }
 
@@ -41,7 +42,7 @@ export class StartExecutionService {
 		// crash between them leaves the execution 'queued' until the
 		// reconciliation sweep (not yet built) re-dispatches it.
 		await this.workQueue.publish({
-			type: 'execution:started',
+			type: 'execution:enqueued',
 			executionId: id,
 		});
 

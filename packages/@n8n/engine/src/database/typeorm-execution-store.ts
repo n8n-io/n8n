@@ -1,7 +1,7 @@
 import type { Repository } from '@n8n/typeorm';
 
 import type { WorkflowExecution } from './entities';
-import type { ExecutionStore, NewExecutionRecord } from './execution-store';
+import type { ExecutionStore, NewExecutionRecord } from '../execution/execution-store';
 
 /** TypeORM-backed `ExecutionStore` adapter. */
 export class TypeOrmExecutionStore implements ExecutionStore {
