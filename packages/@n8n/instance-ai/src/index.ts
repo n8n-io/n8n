@@ -597,6 +597,7 @@ export type {
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
 	EvaluationConfigSummary,
+	EvaluationConfigDetail,
 	EvaluationConfigMetricInput,
 	EvaluationConfigMetricPreset,
 	UpsertEvaluationConfigInput,

@@ -38,6 +38,7 @@ const scope = (input: {
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
 	dataTable?: { matched: number; created: number; requirements: number };
+	variables?: { matched: number; missing: number; requirements: number };
 }): PackageImportScope => {
 	const context: ImportContext = {
 		user: mock(),
@@ -45,12 +46,14 @@ const scope = (input: {
 		folderId: input.folderId ?? null,
 	};
 	const dt = input.dataTable ?? { matched: 0, created: 0, requirements: 0 };
+	const vars = input.variables ?? { matched: 0, missing: 0, requirements: 0 };
 	const imported: ImportOrchestrationResult = {
 		workflowOutcomes: input.outcomes,
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
 		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
+		variablePlan: { matched: new Array(vars.matched), missing: new Array(vars.missing) },
 	};
 	return {
 		context,
@@ -64,6 +67,10 @@ const scope = (input: {
 		dataTableRequest: mock<DataTableImportRequest>({
 			requirements: dt.requirements === 0 ? undefined : new Array(dt.requirements),
 		}),
+		variableRequest: {
+			requirements: vars.requirements === 0 ? undefined : new Array(vars.requirements),
+			missingPolicy: 'do-nothing',
+		},
 	};
 };
 
@@ -106,6 +113,7 @@ describe('emitPackageImportedEvent', () => {
 					},
 					requirements: [requirement('credA')],
 					dataTable: { matched: 1, created: 0, requirements: 1 },
+					variables: { matched: 1, missing: 0, requirements: 1 },
 				}),
 				scope({
 					projectId: 'P2',
@@ -117,6 +125,7 @@ describe('emitPackageImportedEvent', () => {
 					},
 					requirements: [requirement('credB')],
 					dataTable: { matched: 0, created: 2, requirements: 2 },
+					variables: { matched: 0, missing: 2, requirements: 2 },
 				}),
 			],
 		});
@@ -137,6 +146,7 @@ describe('emitPackageImportedEvent', () => {
 			workflows: { created: 1, updated: 1, skipped: 1 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
 			dataTables: { matched: 1, created: 2, requirements: 3 },
+			variables: { matched: 1, missing: 2, requirements: 3 },
 		});
 		expect(payload.packageSourceId).toBe('src-1');
 	});
