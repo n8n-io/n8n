@@ -20,6 +20,7 @@ import Banner from '@/app/components/Banner.vue';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { INSTANCE_MODEL_CREDENTIAL_TYPES } from '../../constants';
+import { useInstanceAiSetupSteps } from '../../composables/useInstanceAiSetupSteps';
 import { useInstanceCredentialTest } from '../../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import ConnectionFields from './ConnectionFields.vue';
@@ -35,6 +36,7 @@ const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
 const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
 	useInstanceCredentialTest();
+const { stepLabel } = useInstanceAiSetupSteps(1);
 
 provideWorkflowDocumentStore();
 
@@ -191,7 +193,7 @@ const description = computed(() =>
 				tag="p"
 				data-test-id="n8n-agent-model-dialog-step"
 			>
-				{{ i18n.baseText('settings.n8nAgent.setup.step1') }}
+				{{ stepLabel }}
 			</N8nText>
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 			<N8nDialogDescription>{{ description }}</N8nDialogDescription>

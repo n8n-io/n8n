@@ -19,6 +19,7 @@ import type { IUpdateInformation } from '@/Interface';
 import Banner from '@/app/components/Banner.vue';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useInstanceAiSetupSteps } from '../../composables/useInstanceAiSetupSteps';
 import { useInstanceCredentialTest } from '../../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import ConnectionFields from './ConnectionFields.vue';
@@ -37,6 +38,7 @@ const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
 const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
 	useInstanceCredentialTest();
+const { stepLabel, isLastStep } = useInstanceAiSetupSteps(2);
 
 provideWorkflowDocumentStore();
 
@@ -220,7 +222,7 @@ const title = computed(() =>
 				tag="p"
 				data-test-id="n8n-agent-sandbox-dialog-step"
 			>
-				{{ i18n.baseText('settings.n8nAgent.setup.step2') }}
+				{{ stepLabel }}
 			</N8nText>
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 			<N8nDialogDescription>
@@ -303,7 +305,9 @@ const title = computed(() =>
 				:label="
 					credentialTestError
 						? i18n.baseText('credentialEdit.credentialConfig.retry')
-						: i18n.baseText('generic.save')
+						: setup && !isLastStep
+							? i18n.baseText('settings.n8nAgent.setup.continue')
+							: i18n.baseText('generic.save')
 				"
 				:loading="isTestingCredential"
 				:disabled="saveDisabled"

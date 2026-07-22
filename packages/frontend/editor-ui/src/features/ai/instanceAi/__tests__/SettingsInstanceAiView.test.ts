@@ -8,6 +8,7 @@ import { VIEWS } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ModelCredentialDialog from '../components/settings/ModelCredentialDialog.vue';
 import SandboxCredentialDialog from '../components/settings/SandboxCredentialDialog.vue';
+import SearchCredentialDialog from '../components/settings/SearchCredentialDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -89,6 +90,7 @@ vi.mock('@/experiments/instanceAiComputerUse', () => ({
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
 const renderModelDialog = createComponentRenderer(ModelCredentialDialog);
 const renderSandboxDialog = createComponentRenderer(SandboxCredentialDialog);
+const renderSearchDialog = createComponentRenderer(SearchCredentialDialog);
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
@@ -115,7 +117,7 @@ describe('SettingsInstanceAiView', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.mocked(fetchSettings).mockResolvedValue(null);
+		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
 		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
@@ -125,6 +127,7 @@ describe('SettingsInstanceAiView', () => {
 		useCredentialsStore().setCredentialTypes([
 			{ name: 'openAiApi', displayName: 'OpenAI', properties: [] },
 			{ name: 'anthropicApi', displayName: 'Anthropic', properties: [] },
+			{ name: 'searXngApi', displayName: 'SearXNG', properties: [] },
 		] satisfies ICredentialType[]);
 		store = useInstanceAiSettingsStore();
 		settingsStore = useSettingsStore();
@@ -328,6 +331,47 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
+	describe('Search credential dialog', () => {
+		it('preselects SearXNG when search is unconfigured', async () => {
+			const { getByTestId } = renderSearchDialog({ props: { open: true } });
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-search-provider-select').querySelector('input')!.value).toBe(
+					'SearXNG',
+				),
+			);
+			expect(getByTestId('n8n-agent-search-dialog-save')).toBeDisabled();
+		});
+
+		it('preselects the environment option when search is env-configured', async () => {
+			store.$patch({
+				settings: { ...store.settings!, searchEnvConfigured: true },
+			});
+			const { getByTestId } = renderSearchDialog({ props: { open: true } });
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-search-provider-select').querySelector('input')!.value).toBe(
+					'settings.n8nAgent.modelCredential.none',
+				),
+			);
+		});
+
+		it('keeps the setup save action disabled until the preselected default is edited', async () => {
+			const { getByTestId, findByTestId, findByText } = renderSearchDialog({
+				props: { open: true, setup: true },
+			});
+
+			const providerSelect = await findByTestId('n8n-agent-search-provider-select');
+			await waitFor(() => expect(providerSelect.querySelector('input')!.value).toBe('SearXNG'));
+			expect(getByTestId('n8n-agent-search-dialog-save')).toBeDisabled();
+
+			await fireEvent.click(providerSelect.querySelector('input')!);
+			await fireEvent.click(await findByText('braveSearchApi'));
+
+			expect(getByTestId('n8n-agent-search-dialog-save')).not.toBeDisabled();
+		});
+	});
+
 	describe('setup chain', () => {
 		type ConnectionDraft = { type: string } | null | undefined;
 
@@ -401,6 +445,16 @@ describe('SettingsInstanceAiView', () => {
 					: modelNameField.querySelector('input')!;
 			await fireEvent.update(modelNameInput, 'gpt-4.1');
 			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+		}
+
+		async function completeSandboxStep(getByTestId: (id: string) => HTMLElement) {
+			const apiKeyField = getByTestId('n8n-agent-sandbox-api-key-input');
+			const apiKeyInput =
+				apiKeyField.tagName === 'INPUT'
+					? (apiKeyField as HTMLInputElement)
+					: apiKeyField.querySelector('input')!;
+			await fireEvent.update(apiKeyInput, 'sk-test');
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
 		}
 
 		it('chains model setup into the sandbox step when both are unconfigured', async () => {
@@ -543,6 +597,58 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(continueButton).not.toBeDisabled());
 			await fireEvent.click(continueButton);
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+		});
+
+		it('offers the optional search step after the sandbox step without gating enablement', async () => {
+			const disabledSettings = { ...store.settings!, enabled: false };
+			store.$patch({ settings: disabledSettings });
+			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
+			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
+			const persistEnabled = vi.spyOn(store, 'persistEnabled').mockResolvedValue(true);
+			const { findByTestId, findByText, getByRole, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByRole('button', { name: 'settings.n8nAgent.empty.enable' }));
+			await findByTestId('n8n-agent-model-dialog-step');
+			await completeModelStep(findByTestId, getByTestId, findByText);
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+			await completeSandboxStep(getByTestId);
+
+			await waitFor(() => expect(persistEnabled).toHaveBeenCalledWith(true));
+			await waitFor(() => expect(getByTestId('n8n-agent-search-dialog-step')).toBeVisible());
+
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-skip'));
+			await waitFor(() => expect(queryByTestId('n8n-agent-search-dialog-step')).toBeNull());
+			expect(store.settings?.searchCredentialId).toBeNull();
+		});
+
+		it('lets the user go back from the search step to the sandbox step', async () => {
+			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
+			const { findByTestId, findByText, getByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-add'));
+			await completeModelStep(findByTestId, getByTestId, findByText);
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+			await completeSandboxStep(getByTestId);
+			await waitFor(() => expect(getByTestId('n8n-agent-search-dialog-step')).toBeVisible());
+
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-back'));
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+		});
+
+		it('skips the search step when search is already configured', async () => {
+			store.$patch({
+				settings: { ...store.settings!, searchEnvConfigured: true },
+			});
+			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
+			const { findByTestId, findByText, getByTestId, queryByTestId } = renderComponent();
+
+			await fireEvent.click(getByTestId('n8n-agent-model-add'));
+			await completeModelStep(findByTestId, getByTestId, findByText);
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+			await completeSandboxStep(getByTestId);
+
+			await nextTick();
+			expect(queryByTestId('n8n-agent-search-dialog-step')).toBeNull();
 		});
 
 		it('opens a plain dialog when only the model is missing', async () => {

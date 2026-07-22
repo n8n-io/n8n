@@ -255,9 +255,9 @@ const setupChain = ref(false);
 const enableAfterSetup = ref(false);
 
 watch(
-	[modelDialogOpen, sandboxDialogOpen],
-	([isModelOpen, isSandboxOpen]) => {
-		if (isModelOpen || isSandboxOpen) return;
+	[modelDialogOpen, sandboxDialogOpen, searchDialogOpen],
+	([isModelOpen, isSandboxOpen, isSearchOpen]) => {
+		if (isModelOpen || isSandboxOpen || isSearchOpen) return;
 		setupChain.value = false;
 		enableAfterSetup.value = false;
 	},
@@ -296,11 +296,21 @@ async function handleModelSaved() {
 }
 
 async function handleSandboxSaved() {
+	// The optional search step never gates enablement; enable first, then offer it.
+	const chainSearch = setupChain.value && searchState.value === 'notset';
 	await finishSetup();
+	if (chainSearch) {
+		setupChain.value = true;
+		searchDialogOpen.value = true;
+	}
 }
 
 function handleSandboxBack() {
 	modelDialogOpen.value = true;
+}
+
+function handleSearchBack() {
+	sandboxDialogOpen.value = true;
 }
 
 function credentialTypeLabel(type: string) {
@@ -747,7 +757,11 @@ function openAiUsageSettings() {
 				@saved="handleSandboxSaved"
 				@back="handleSandboxBack"
 			/>
-			<SearchCredentialDialog v-model:open="searchDialogOpen" />
+			<SearchCredentialDialog
+				v-model:open="searchDialogOpen"
+				:setup="setupChain"
+				@back="handleSearchBack"
+			/>
 		</template>
 	</N8nSettingsLayout>
 </template>
