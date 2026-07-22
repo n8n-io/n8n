@@ -57,7 +57,12 @@ export function toJsonValue(value: unknown, seen = new WeakSet<object>()): JSONV
 		seen.add(value);
 		const result: JSONObject = {};
 		for (const [key, entryValue] of Object.entries(value)) {
-			result[key] = toJsonValue(entryValue, seen);
+			Object.defineProperty(result, key, {
+				value: toJsonValue(entryValue, seen),
+				enumerable: true,
+				writable: true,
+				configurable: true,
+			});
 		}
 		seen.delete(value);
 		return result;

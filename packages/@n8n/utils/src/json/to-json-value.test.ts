@@ -111,6 +111,21 @@ describe('toJsonValue', () => {
 		it('converts Buffers inside objects', () => {
 			expect(toJsonValue({ data: Buffer.from('payload') })).toEqual({ data: 'payload' });
 		});
+
+		it('preserves a reserver __proto__ key as an own property', () => {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
+			const input: Record<string, unknown> = JSON.parse('{"__proto__":{"inherited":"abc"}}');
+			const result = toJsonValue(input);
+
+			if (result === null || Array.isArray(result) || typeof result !== 'object') {
+				throw new Error('Expected an object');
+			}
+
+			expect(Object.hasOwn(result, '__proto__')).toBe(true);
+			expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+			expect(result.__proto__).toEqual({ inherited: 'abc' });
+			expect(result.inherited).toBeUndefined();
+		});
 	});
 
 	describe('circular references', () => {
