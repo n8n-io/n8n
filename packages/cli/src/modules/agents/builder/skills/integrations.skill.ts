@@ -85,7 +85,11 @@ The \`integrations\` array controls how the target agent is triggered.
   the same \`integrationType\` in the trailing \`finish_setup\` call's
   \`channels\` array — its card connects or skips the channel itself; if
   skipped, list it in the closing setup checklist pointing at the channel
-  chip in the agent panel.
+  chip in the agent panel. If \`finish_setup\` instead reports the channel as
+  \`'blocked'\` (the agent could not be published yet), patch in the
+  credentials/model it collected first; if that resolves every reported
+  issue, call \`configure_channel\` directly for that channel as a follow-up.
+  Otherwise leave it for the closing checklist.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`read_config\` and inspect
   \`config.integrations\`.

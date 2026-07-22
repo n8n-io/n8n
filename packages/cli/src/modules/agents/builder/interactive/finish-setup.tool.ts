@@ -26,6 +26,12 @@ function credentialsOfType(
 	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
 }
 
+/** Compact publish-blocking validation issue, used to gate the channel phase. */
+export interface PublishBlockerIssue {
+	path: string;
+	code: string;
+}
+
 export interface FinishSetupToolDeps {
 	credentialProvider: CredentialProvider;
 	agentId: string;
@@ -35,6 +41,14 @@ export interface FinishSetupToolDeps {
 	listIntegrationCredentialIds?: () => Promise<string[]>;
 	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
 	listChatIntegrationTypes: () => string[];
+	/**
+	 * Publish-blocking validation issues on the agent's current (draft) config,
+	 * excluding `integrations.*` paths. Checked before entering a channel
+	 * phase — connecting a channel auto-publishes the agent, which would
+	 * otherwise fail with a raw publish error whenever another part of the
+	 * config (e.g. a skipped tool credential) is still invalid.
+	 */
+	getPublishBlockers: () => Promise<PublishBlockerIssue[]>;
 }
 
 const finishSetupCredentialRequestInputSchema = z.object({
@@ -68,8 +82,16 @@ const credentialOutcomeSchema = z.union([
 	z.literal('skipped'),
 ]);
 
-/** A channel is either connected (the setup card persisted it) or skipped. */
-const channelOutcomeSchema = z.union([z.literal('connected'), z.literal('skipped')]);
+/**
+ * A channel is connected (the setup card persisted it), skipped (the user
+ * dismissed the card), or blocked (its card was never shown because the
+ * agent could not be published yet).
+ */
+const channelOutcomeSchema = z.union([
+	z.literal('connected'),
+	z.literal('skipped'),
+	z.literal('blocked'),
+]);
 
 const questionsPhaseSchema = z.object({ kind: z.literal('questions') });
 const credentialsPhaseSchema = z.object({
@@ -133,7 +155,11 @@ type FinishSetupResumeData = z.infer<typeof finishSetupResumeSchema>;
 
 type FinishSetupCtx = InterruptibleToolContext<FinishSetupSuspendPayload, FinishSetupResumeData>;
 
-type FinishSetupToolResult = { completed: true } & Collected;
+interface FinishSetupToolResult extends Collected {
+	completed: true;
+	/** Present only when a channel phase was skipped because the agent could not be published yet. */
+	publishBlockedIssues?: PublishBlockerIssue[];
+}
 
 /** Throws for any credential request whose type isn't recognized. */
 function validateCredentialTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
@@ -249,6 +275,33 @@ async function mergeResumeIntoCollected(
 	return { ...previous, credentials };
 }
 
+/**
+ * Before entering a channel phase, verify the agent can currently be
+ * published — connecting a channel auto-publishes it, so an already-invalid
+ * config (e.g. a skipped tool credential) would otherwise surface as a raw
+ * publish error from the channel card's REST call instead of a clear message
+ * here. Channel phases are always the trailing, consecutive phases (see
+ * computeInitialPlan), so once `phase` is a channel phase, every phase in
+ * `remainingPhases` is one too.
+ */
+async function checkChannelPublishability(
+	phase: PhaseDescriptor,
+	remainingPhases: PhaseDescriptor[],
+	collected: Collected,
+	deps: FinishSetupToolDeps,
+): Promise<FinishSetupToolResult | undefined> {
+	if (phase.kind !== 'channel') return undefined;
+
+	const publishBlockedIssues = await deps.getPublishBlockers();
+	if (publishBlockedIssues.length === 0) return undefined;
+
+	const channels = { ...(collected.channels ?? {}) };
+	for (const blockedPhase of [phase, ...remainingPhases]) {
+		if (blockedPhase.kind === 'channel') channels[blockedPhase.integrationType] = 'blocked';
+	}
+	return { completed: true, ...collected, channels, publishBlockedIssues };
+}
+
 /** Suspend for the given phase, carrying the remaining plan forward in the chain state. */
 async function suspendForPhase(params: {
 	phase: PhaseDescriptor;
@@ -329,6 +382,9 @@ async function startPlan(
 	}
 
 	const [currentPhase, ...remainingPhases] = phases;
+	const blocked = await checkChannelPublishability(currentPhase, remainingPhases, collected, deps);
+	if (blocked) return blocked;
+
 	return await suspendForPhase({
 		phase: currentPhase,
 		remainingPhases,
@@ -360,6 +416,9 @@ async function resumePlan(
 	}
 
 	const [nextPhase, ...restPhases] = chain.remainingPhases;
+	const blocked = await checkChannelPublishability(nextPhase, restPhases, collected, deps);
+	if (blocked) return blocked;
+
 	return await suspendForPhase({
 		phase: nextPhase,
 		remainingPhases: restPhases,
@@ -383,11 +442,16 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 				'questions first, then credentials, then one card per requested channel (always ' +
 				'last, since connecting a channel needs credentials to already be resolved). Pass ' +
 				'`channels` with a returned `type` from list_integration_types, one entry per channel ' +
-				'to connect; do not infer channel names. Returns ' +
-				'{ completed, answers, credentials, channels }: resolve the model answer with ' +
-				'resolve_llm, copy returned credential ids into the config, and verify MCP servers ' +
-				'with them. Auto-resolves credential slots that match an existing single credential ' +
-				'or the connected channel credential.',
+				'to connect; do not infer channel names. Connecting a channel publishes the agent, so ' +
+				'if the agent still has other unresolved issues once a channel phase is reached, that ' +
+				'phase\'s card is never shown — its outcome is `"blocked"` instead of `"connected"`/' +
+				'`"skipped"`, and the result carries `publishBlockedIssues`. Resolve those issues first ' +
+				'(patch in the credentials/model this same call already collected), then call ' +
+				'configure_channel directly for each blocked channel. Returns ' +
+				'{ completed, answers, credentials, channels, publishBlockedIssues }: resolve the model ' +
+				'answer with resolve_llm, copy returned credential ids into the config, and verify MCP ' +
+				'servers with them. Auto-resolves credential slots that match an existing single ' +
+				'credential or the connected channel credential.',
 		)
 		.input(finishSetupInputSchema)
 		.suspend(finishSetupSuspendSchema)

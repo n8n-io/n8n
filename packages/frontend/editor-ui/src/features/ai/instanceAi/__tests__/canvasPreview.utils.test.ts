@@ -562,6 +562,25 @@ describe('getLatestAgentConfigMutation', () => {
 		});
 	});
 
+	test('matches a resolved finish_setup via result.completed', () => {
+		const node = makeAgentNode({
+			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-finish-setup',
+					toolName: 'finish_setup',
+					isLoading: false,
+					result: { completed: true, channels: { slack: 'connected' } },
+				}),
+			],
+		});
+		expect(getLatestAgentConfigMutation(node)).toEqual({
+			agentId: 'agent-1',
+			projectId: 'project-1',
+			toolCallId: 'tc-finish-setup',
+		});
+	});
+
 	test('returns the latest mutation when several exist, and uses fallbackTarget when no targetResource is in the tree', () => {
 		const node = makeAgentNode({
 			toolCalls: [

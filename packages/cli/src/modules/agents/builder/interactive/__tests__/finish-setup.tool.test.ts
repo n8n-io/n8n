@@ -29,6 +29,7 @@ const BASE_DEPS = {
 	agentId: 'agent-1',
 	projectId: 'project-1',
 	listChatIntegrationTypes: () => ['slack', 'telegram'],
+	getPublishBlockers: async () => [],
 };
 
 describe('finish_setup tool', () => {
@@ -275,5 +276,78 @@ describe('finish_setup tool', () => {
 			tool.handler!({ channels: [{ integrationType: 'discord' }] }, ctx as never),
 		).rejects.toThrow('Unsupported chat channel "discord"');
 		expect(ctx.suspend).not.toHaveBeenCalled();
+	});
+
+	it('suspends normally for a channel phase when there are no publish blockers', async () => {
+		const getPublishBlockers = vi.fn(async () => []);
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialProvider: makeProvider([]),
+			getPublishBlockers,
+		});
+		const ctx = makeCtx();
+
+		const payload = (await tool.handler!(
+			{ channels: [{ integrationType: 'slack' }] },
+			ctx as never,
+		)) as Record<string, unknown>;
+
+		expect(getPublishBlockers).toHaveBeenCalled();
+		expect(payload).toMatchObject({
+			message: 'Set up the slack channel',
+			channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+		});
+	});
+
+	it('returns the channel blocked without suspending when the agent cannot be published (channel-first)', async () => {
+		const getPublishBlockers = vi.fn(async () => [{ path: 'model', code: 'missing_required' }]);
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialProvider: makeProvider([]),
+			getPublishBlockers,
+		});
+		const ctx = makeCtx();
+
+		const result = await tool.handler!({ channels: [{ integrationType: 'slack' }] }, ctx as never);
+
+		expect(getPublishBlockers).toHaveBeenCalled();
+		expect(ctx.suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			completed: true,
+			channels: { slack: 'blocked' },
+			publishBlockedIssues: [{ path: 'model', code: 'missing_required' }],
+		});
+	});
+
+	it('marks every remaining channel phase blocked when publish blockers appear at the first channel entry', async () => {
+		const getPublishBlockers = vi.fn(async () => [{ path: 'model', code: 'missing_required' }]);
+		const tool = buildFinishSetupTool({
+			...BASE_DEPS,
+			credentialProvider: makeProvider([]),
+			getPublishBlockers,
+		});
+		const input = {
+			credentialRequests: [{ credentialType: 'airtableApi', purpose: 'Airtable log' }],
+			channels: [{ integrationType: 'slack' }, { integrationType: 'telegram' }],
+		};
+
+		const credentialsPayload = (await tool.handler!(input, makeCtx() as never)) as Record<
+			string,
+			unknown
+		>;
+
+		const resumeCtx = makeCtx({
+			resumeData: { credentials: { airtableApi: 'new-cred' } },
+			suspendPayload: credentialsPayload,
+		});
+		const result = await tool.handler!(input, resumeCtx as never);
+
+		expect(resumeCtx.suspend).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			completed: true,
+			credentials: { airtableApi: { id: 'new-cred', name: 'new-cred' } },
+			channels: { slack: 'blocked', telegram: 'blocked' },
+			publishBlockedIssues: [{ path: 'model', code: 'missing_required' }],
+		});
 	});
 });
