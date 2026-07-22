@@ -22,12 +22,15 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	 * view can list cases before each is executed.
 	 */
 	async seedResults(cases: CreateAgentEvalResultAttrs[]): Promise<AgentEvalResult[]> {
-		const results = cases.map((c) =>
+		const results = cases.map((c, index) =>
 			this.create({
 				status: 'new',
 				runId: c.runId,
 				sourceRowId: c.sourceRowId ?? null,
-				runIndex: c.runIndex ?? null,
+				// Fall back to the seed position so `findByRunId` (orders by
+				// runIndex ASC) returns a stable order on every database. A null
+				// runIndex would sort first on SQLite but last on Postgres.
+				runIndex: c.runIndex ?? index,
 				input: c.input ?? null,
 			}),
 		);

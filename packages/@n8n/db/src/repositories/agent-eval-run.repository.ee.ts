@@ -6,7 +6,6 @@ import { AgentEvalRun } from '../entities';
 
 type CreateAgentEvalRunAttrs = {
 	datasetId: string;
-	agentId: string;
 	agentVersionId?: string | null;
 	createdById?: string | null;
 };
@@ -21,7 +20,6 @@ export class AgentEvalRunRepository extends Repository<AgentEvalRun> {
 		const run = this.create({
 			status: 'new',
 			datasetId: attrs.datasetId,
-			agentId: attrs.agentId,
 			agentVersionId: attrs.agentVersionId ?? null,
 			createdById: attrs.createdById ?? null,
 			cancelRequested: false,

@@ -53,11 +53,10 @@ export class CreateAgentEvalTables1784000000060 implements ReversibleMigration {
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
 				column('datasetId').varchar(36).notNull,
-				column('agentId').varchar(36).notNull,
 				column('agentVersionId')
 					.varchar(36)
 					.comment(
-						'Published agent version under test (agent_history.versionId); loose pointer, no FK so runs survive history pruning',
+						'Published agent version under test (agent_history.versionId); loose pointer, no FK so runs survive history pruning. The agent itself comes from the dataset.',
 					),
 				column('status').varchar().notNull.withEnumCheck(RUN_STATUSES).comment('Run lifecycle'),
 				column('runAt').timestampTimezone(),
@@ -74,14 +73,8 @@ export class CreateAgentEvalTables1784000000060 implements ReversibleMigration {
 				column('createdById').uuid,
 			)
 			.withIndexOn('datasetId')
-			.withIndexOn('agentId')
 			.withForeignKey('datasetId', {
 				tableName: DATASET_TABLE,
-				columnName: 'id',
-				onDelete: 'CASCADE',
-			})
-			.withForeignKey('agentId', {
-				tableName: AGENTS_TABLE,
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})

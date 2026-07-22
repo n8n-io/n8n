@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_eval_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "datasetId" varchar(36) NOT NULL, "agentId" varchar(36) NOT NULL, "agentVersionId" varchar(36), "status" varchar NOT NULL, "runAt" datetime(3), "completedAt" datetime(3), "metrics" text, "errorCode" varchar(255), "errorDetails" text, "runningInstanceId" varchar(255), "cancelRequested" boolean NOT NULL DEFAULT (false), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_eval_run_status" CHECK ("status" IN ('new', 'running', 'completed', 'error', 'cancelled')), CONSTRAINT "FK_39ca447735d378e365f4227abff" FOREIGN KEY ("datasetId") REFERENCES "agent_eval_dataset" ("id") ON DELETE CASCADE, CONSTRAINT "FK_1cf1e8a115bff926b114db51f87" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_54ee897f442cc7393a6d6165334" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "agent_eval_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "datasetId" varchar(36) NOT NULL, "agentVersionId" varchar(36), "status" varchar NOT NULL, "runAt" datetime(3), "completedAt" datetime(3), "metrics" text, "errorCode" varchar(255), "errorDetails" text, "runningInstanceId" varchar(255), "cancelRequested" boolean NOT NULL DEFAULT (false), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_eval_run_status" CHECK ("status" IN ('new', 'running', 'completed', 'error', 'cancelled')), CONSTRAINT "FK_39ca447735d378e365f4227abff" FOREIGN KEY ("datasetId") REFERENCES "agent_eval_dataset" ("id") ON DELETE CASCADE, CONSTRAINT "FK_54ee897f442cc7393a6d6165334" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -15,7 +15,6 @@ CREATE TABLE "agent_eval_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "datasetId
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| agentId | varchar(36) |  | false |  | [agents](agents.md) |  |
 | agentVersionId | varchar(36) |  | true |  |  |  |
 | cancelRequested | boolean | false | false |  |  |  |
 | completedAt | datetime(3) |  | true |  |  |  |
@@ -37,8 +36,7 @@ CREATE TABLE "agent_eval_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "datasetId
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("status" IN ('new', 'running', 'completed', 'error', 'cancelled')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
-| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
-| - (Foreign key ID: 2) | FOREIGN KEY | FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 1) | FOREIGN KEY | FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_agent_eval_run_1 | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -46,7 +44,6 @@ CREATE TABLE "agent_eval_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "datasetId
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_1cf1e8a115bff926b114db51f8 | CREATE INDEX "IDX_1cf1e8a115bff926b114db51f8" ON "agent_eval_run" ("agentId")  |
 | IDX_39ca447735d378e365f4227abf | CREATE INDEX "IDX_39ca447735d378e365f4227abf" ON "agent_eval_run" ("datasetId")  |
 | sqlite_autoindex_agent_eval_run_1 | PRIMARY KEY (id) |
 
@@ -55,13 +52,11 @@ CREATE TABLE "agent_eval_run" ("id" varchar(36) PRIMARY KEY NOT NULL, "datasetId
 ```mermaid
 erDiagram
 
-"agent_eval_run" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_run" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_eval_run" }o--|| "agent_eval_dataset" : "FOREIGN KEY (datasetId) REFERENCES agent_eval_dataset (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_eval_result" }o--|| "agent_eval_run" : "FOREIGN KEY (runId) REFERENCES agent_eval_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "agent_eval_run" {
-  varchar_36_ agentId FK
   varchar_36_ agentVersionId
   boolean cancelRequested
   datetime_3_ completedAt
@@ -76,19 +71,6 @@ erDiagram
   varchar_255_ runningInstanceId
   varchar status
   datetime_3_ updatedAt
-}
-"agents" {
-  varchar_36_ activeVersionId FK
-  datetime_3_ createdAt
-  varchar_36_ id PK
-  TEXT integrations
-  varchar_128_ name
-  varchar_255_ projectId FK
-  TEXT schema
-  TEXT skills
-  TEXT tools
-  datetime_3_ updatedAt
-  varchar_36_ versionId
 }
 "user" {
   datetime_3_ createdAt

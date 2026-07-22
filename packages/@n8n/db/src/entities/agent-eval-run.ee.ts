@@ -9,12 +9,11 @@ export type AgentEvalRunStatus = 'new' | 'running' | 'completed' | 'error' | 'ca
 
 /**
  * One execution of an {@link AgentEvalDataset} against a specific agent version.
- * Stores run-level status, aggregated metrics, and the cross-main cancellation
+ * The agent under test is the dataset's agent — it is not duplicated here, so a
+ * run can never disagree with its dataset about which agent it targets. Stores
+ * run-level status, aggregated metrics, and the cross-main cancellation
  * coordination fields (`runningInstanceId` + `cancelRequested`) proven on
  * {@link TestRun}.
- *
- * `agentId` and `agentVersionId` are plain FK columns (see {@link AgentEvalDataset}
- * for the no-decorator rationale); the FKs are enforced by the migration's raw SQL.
  */
 @Entity({ name: 'agent_eval_run' })
 export class AgentEvalRun extends WithTimestampsAndStringId {
@@ -25,11 +24,12 @@ export class AgentEvalRun extends WithTimestampsAndStringId {
 	@ManyToOne('AgentEvalDataset', { onDelete: 'CASCADE' })
 	dataset: AgentEvalDataset;
 
-	@Index()
-	@Column('varchar', { length: 36 })
-	agentId: string;
-
-	/** The published agent version under test — points at an `agent_history` row. */
+	/**
+	 * The published agent version under test — a loose pointer to an
+	 * `agent_history` row, with no FK so a run survives history pruning (mirrors
+	 * `TestRun.workflowVersionId`). Not enforced at the DB level: callers must
+	 * pin a version of the dataset's own agent.
+	 */
 	@Column('varchar', { length: 36, nullable: true })
 	agentVersionId: string | null;
 

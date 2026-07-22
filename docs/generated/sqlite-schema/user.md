@@ -123,7 +123,6 @@ erDiagram
   varchar_8_ vote
 }
 "agent_eval_run" {
-  varchar_36_ agentId FK
   varchar_36_ agentVersionId
   boolean cancelRequested
   datetime_3_ completedAt

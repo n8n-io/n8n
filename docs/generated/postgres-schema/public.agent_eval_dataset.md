@@ -90,7 +90,6 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_eval_run" {
-  varchar_36_ agentId FK
   varchar_36_ agentVersionId
   boolean cancelRequested
   timestamp_3__with_time_zone completedAt

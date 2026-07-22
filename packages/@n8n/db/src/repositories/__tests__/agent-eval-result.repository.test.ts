@@ -37,21 +37,23 @@ describe('AgentEvalResultRepository', () => {
 			expect(saved[1]).toMatchObject({ runIndex: 1, sourceRowId: 'row-b' });
 		});
 
-		it('defaults optional case fields to null', async () => {
+		it('defaults sourceRowId/input to null and runIndex to the seed position', async () => {
 			(entityManager.create as Mock).mockImplementation(
 				(_target: unknown, entityLike: unknown) => entityLike as AgentEvalResult,
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entities) => entities);
 
-			await repo.seedResults([{ runId: 'run-1' }]);
+			await repo.seedResults([{ runId: 'run-1' }, { runId: 'run-1' }]);
 
 			const saved = entityManager.save.mock.calls[0]?.[1] as AgentEvalResult[];
 			expect(saved[0]).toMatchObject({
 				status: 'new',
 				sourceRowId: null,
-				runIndex: null,
+				runIndex: 0,
 				input: null,
 			});
+			// runIndex falls back to the array position, so order is stable cross-DB.
+			expect(saved[1]).toMatchObject({ runIndex: 1 });
 		});
 	});
 

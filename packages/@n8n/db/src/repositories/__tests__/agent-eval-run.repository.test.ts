@@ -20,13 +20,12 @@ describe('AgentEvalRunRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createRun({ datasetId: 'ds-1', agentId: 'agent-1', agentVersionId: 'v-1' });
+			await repo.createRun({ datasetId: 'ds-1', agentVersionId: 'v-1' });
 
 			const saved = entityManager.save.mock.calls[0]?.[1];
 			expect(saved).toMatchObject({
 				status: 'new',
 				datasetId: 'ds-1',
-				agentId: 'agent-1',
 				agentVersionId: 'v-1',
 				createdById: null,
 				cancelRequested: false,
@@ -39,7 +38,7 @@ describe('AgentEvalRunRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createRun({ datasetId: 'ds-1', agentId: 'agent-1' });
+			await repo.createRun({ datasetId: 'ds-1' });
 
 			const saved = entityManager.save.mock.calls[0]?.[1] as AgentEvalRun;
 			expect(saved.agentVersionId).toBeNull();

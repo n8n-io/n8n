@@ -95,7 +95,6 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_eval_run" {
-  varchar_36_ agentId FK
   varchar_36_ agentVersionId
   boolean cancelRequested
   datetime_3_ completedAt

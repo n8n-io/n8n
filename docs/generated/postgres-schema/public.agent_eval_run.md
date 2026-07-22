@@ -4,8 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| agentId | varchar(36) |  | false |  | [public.agents](public.agents.md) |  |
-| agentVersionId | varchar(36) |  | true |  |  | Published agent version under test (agent_history.versionId); loose pointer, no FK so runs survive history pruning |
+| agentVersionId | varchar(36) |  | true |  |  | Published agent version under test (agent_history.versionId); loose pointer, no FK so runs survive history pruning. The agent itself comes from the dataset. |
 | cancelRequested | boolean | false | false |  |  | Fallback cancellation flag polled by the running main |
 | completedAt | timestamp(3) with time zone |  | true |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -25,11 +24,9 @@
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | CHK_agent_eval_run_status | CHECK | CHECK (((status)::text = ANY ((ARRAY['new'::character varying, 'running'::character varying, 'completed'::character varying, 'error'::character varying, 'cancelled'::character varying])::text[]))) |
-| FK_1cf1e8a115bff926b114db51f87 | FOREIGN KEY | FOREIGN KEY ("agentId") REFERENCES agents(id) ON DELETE CASCADE |
 | FK_39ca447735d378e365f4227abff | FOREIGN KEY | FOREIGN KEY ("datasetId") REFERENCES agent_eval_dataset(id) ON DELETE CASCADE |
 | FK_54ee897f442cc7393a6d6165334 | FOREIGN KEY | FOREIGN KEY ("createdById") REFERENCES "user"(id) ON DELETE SET NULL |
 | PK_280832ca3f1b43663cc0e25e77f | PRIMARY KEY | PRIMARY KEY (id) |
-| agent_eval_run_agentId_not_null | n | NOT NULL "agentId" |
 | agent_eval_run_cancelRequested_not_null | n | NOT NULL "cancelRequested" |
 | agent_eval_run_createdAt_not_null | n | NOT NULL "createdAt" |
 | agent_eval_run_datasetId_not_null | n | NOT NULL "datasetId" |
@@ -41,7 +38,6 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_1cf1e8a115bff926b114db51f8 | CREATE INDEX "IDX_1cf1e8a115bff926b114db51f8" ON public.agent_eval_run USING btree ("agentId") |
 | IDX_39ca447735d378e365f4227abf | CREATE INDEX "IDX_39ca447735d378e365f4227abf" ON public.agent_eval_run USING btree ("datasetId") |
 | PK_280832ca3f1b43663cc0e25e77f | CREATE UNIQUE INDEX "PK_280832ca3f1b43663cc0e25e77f" ON public.agent_eval_run USING btree (id) |
 
@@ -50,13 +46,11 @@
 ```mermaid
 erDiagram
 
-"public.agent_eval_run" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_eval_run" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_eval_run" }o--|| "public.agent_eval_dataset" : "FOREIGN KEY (#quot;datasetId#quot;) REFERENCES agent_eval_dataset(id) ON DELETE CASCADE"
 "public.agent_eval_result" }o--|| "public.agent_eval_run" : "FOREIGN KEY (#quot;runId#quot;) REFERENCES agent_eval_run(id) ON DELETE CASCADE"
 
 "public.agent_eval_run" {
-  varchar_36_ agentId FK
   varchar_36_ agentVersionId
   boolean cancelRequested
   timestamp_3__with_time_zone completedAt
@@ -71,19 +65,6 @@ erDiagram
   varchar_255_ runningInstanceId
   varchar status
   timestamp_3__with_time_zone updatedAt
-}
-"public.agents" {
-  varchar_36_ activeVersionId FK
-  timestamp_3__with_time_zone createdAt
-  varchar_36_ id
-  json integrations
-  varchar_128_ name
-  varchar_255_ projectId FK
-  json schema
-  json skills
-  json tools
-  timestamp_3__with_time_zone updatedAt
-  varchar_36_ versionId
 }
 "public.user" {
   timestamp_3__with_time_zone createdAt

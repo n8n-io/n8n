@@ -108,16 +108,15 @@ describe('CreateAgentEvalTables Migration', () => {
 
 	async function insertRun(
 		context: TestMigrationContext,
-		data: { id: string; datasetId: string; agentId: string },
+		data: { id: string; datasetId: string },
 	): Promise<void> {
 		const table = context.escape.tableName('agent_eval_run');
 		const now = new Date();
 		await context.runQuery(
-			`INSERT INTO ${table} ("id", "datasetId", "agentId", "status", "cancelRequested", "createdAt", "updatedAt") VALUES (:id, :datasetId, :agentId, :status, :cancelRequested, :createdAt, :updatedAt)`,
+			`INSERT INTO ${table} ("id", "datasetId", "status", "cancelRequested", "createdAt", "updatedAt") VALUES (:id, :datasetId, :status, :cancelRequested, :createdAt, :updatedAt)`,
 			{
 				id: data.id,
 				datasetId: data.datasetId,
-				agentId: data.agentId,
 				status: 'new',
 				cancelRequested: false,
 				createdAt: now,
@@ -175,7 +174,7 @@ describe('CreateAgentEvalTables Migration', () => {
 			await insertProject(context, projectId);
 			await insertAgent(context, { id: agentId, projectId });
 			await insertDataset(context, { id: datasetId, agentId });
-			await insertRun(context, { id: runId, datasetId, agentId });
+			await insertRun(context, { id: runId, datasetId });
 			await insertResult(context, { id: resultId, runId });
 			await insertRating(context, { id: ratingId, resultId });
 
@@ -202,7 +201,7 @@ describe('CreateAgentEvalTables Migration', () => {
 			await insertProject(context, projectId);
 			await insertAgent(context, { id: agentId, projectId });
 			await insertDataset(context, { id: datasetId, agentId });
-			await insertRun(context, { id: runId, datasetId, agentId });
+			await insertRun(context, { id: runId, datasetId });
 			await insertResult(context, { id: resultId, runId });
 			await insertRating(context, { id: ratingId, resultId });
 
