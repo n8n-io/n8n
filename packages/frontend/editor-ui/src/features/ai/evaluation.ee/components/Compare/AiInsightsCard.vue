@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { useEvalCollectionsStore } from '../../evalCollections.store';
 import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
@@ -9,6 +9,9 @@ import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
 const props = defineProps<{
 	workflowId: string;
 	collectionId: string;
+	// True once the collection's runs are all settled with ≥2 completed — i.e. the
+	// backend can actually produce insights. Drives auto-generation on completion.
+	ready: boolean;
 }>();
 
 const i18n = useI18n();
@@ -45,14 +48,28 @@ async function load(forceRegenerate: boolean) {
 	}
 }
 
+// Generate once the runs are settled and there's nothing cached — covering both
+// "opened an already-finished collection" and "runs finished while watching".
+// Not tied to mount, so insights appear when the second run completes without a
+// manual retry. `ready` only flips false→true once per collection, so this won't
+// loop; a cached envelope or an in-flight load also short-circuits it.
+async function maybeGenerate() {
+	if (!licenseChecked.value || !license.isLicensed.value) return;
+	if (!props.ready) return;
+	if (store.getInsights(props.collectionId) || loading.value) return;
+	await load(false);
+}
+
 onMounted(async () => {
 	await license.ensureLicenseLoaded();
 	licenseChecked.value = true;
-	if (!license.isLicensed.value) return;
-	if (!store.getInsights(props.collectionId)) {
-		await load(false);
-	}
+	await maybeGenerate();
 });
+
+watch(
+	() => props.ready,
+	() => void maybeGenerate(),
+);
 </script>
 
 <template>

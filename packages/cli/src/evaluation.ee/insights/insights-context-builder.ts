@@ -9,9 +9,14 @@ import { averageNormalizedScore } from './insights-scoring';
 // Bounds that keep the prompt (and its token cost) from ballooning on large
 // datasets / workflows. Per-case fields are truncated and both the case count
 // and the node-name lists are capped.
-const MAX_CASES_PER_VERSION = 3;
+const MAX_CASES_PER_VERSION = 10;
 const MAX_FIELD_CHARS = 400;
 const MAX_DIFF_NAMES = 15;
+
+// Node parameter keys whose string values are prompt/instruction text. Only
+// these are surfaced to the insights LLM, so a changed system prompt is visible
+// while credentials and other parameters are never sent.
+const PROMPT_FIELD_KEYS = new Set(['systemmessage', 'systemprompt', 'prompt', 'text']);
 // Only the first this-many cases per run (ordered by runIndex) are fetched, so
 // on larger datasets regression selection is limited to that window — a
 // bounded, approximate "worst cases" rather than an exhaustive scan.
@@ -36,10 +41,18 @@ export type InsightsContextCase = {
 	versionScorePercent: number | null;
 };
 
+// A changed prompt-text parameter on a modified node, before → after (both
+// truncated). Empty `before`/`after` means the field was added/removed.
+export type InsightsPromptChange = { field: string; before: string; after: string };
+
+// A modified node plus any of its prompt-text parameters that changed, so the
+// analyst can cite the actual instruction that changed — not just the node name.
+export type InsightsModifiedNode = { node: string; promptChanges: InsightsPromptChange[] };
+
 export type InsightsContextWorkflowDiff = {
 	added: string[];
 	removed: string[];
-	modified: string[];
+	modified: InsightsModifiedNode[];
 };
 
 export type InsightsContextVersionView = {
@@ -79,6 +92,40 @@ const scoresToPercent = (scores: Record<string, number>): Record<string, number>
 	const out: Record<string, number> = {};
 	for (const [key, value] of Object.entries(scores)) out[key] = Math.round(value * 100);
 	return out;
+};
+
+// Recursively collect prompt-like string leaves from a node's parameters, keyed
+// by dotted path. Only keys in `PROMPT_FIELD_KEYS` are kept — never credentials
+// or arbitrary parameters.
+const collectPromptFields = (params: unknown, path = ''): Record<string, string> => {
+	const out: Record<string, string> = {};
+	if (!params || typeof params !== 'object') return out;
+	for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+		const nextPath = path ? `${path}.${key}` : key;
+		if (typeof value === 'string') {
+			if (PROMPT_FIELD_KEYS.has(key.toLowerCase()) && value.trim() !== '') out[nextPath] = value;
+		} else if (value && typeof value === 'object') {
+			Object.assign(out, collectPromptFields(value, nextPath));
+		}
+	}
+	return out;
+};
+
+// Prompt-text fields that differ between the base and version node, before →
+// after. Drives the "what actually changed in the instruction" the LLM cites.
+const promptChangesBetween = (
+	base: INode | undefined,
+	version: INode | undefined,
+): InsightsPromptChange[] => {
+	const before = collectPromptFields(base?.parameters);
+	const after = collectPromptFields(version?.parameters);
+	const changes: InsightsPromptChange[] = [];
+	for (const field of new Set([...Object.keys(before), ...Object.keys(after)])) {
+		const b = before[field] ?? '';
+		const a = after[field] ?? '';
+		if (b !== a) changes.push({ field, before: truncate(b), after: truncate(a) });
+	}
+	return changes;
 };
 
 /**
@@ -161,14 +208,23 @@ export class InsightsContextBuilder {
 		if (!baseNodes || !versionNodes) return null;
 
 		const diff = compareWorkflowsNodes<INode>(baseNodes, versionNodes);
+		// compareWorkflowsNodes keys by node id and hands back the base node for a
+		// modified entry; look up both sides by id to diff their prompt text.
+		const baseById = new Map(baseNodes.map((n) => [n.id, n]));
+		const versionById = new Map(versionNodes.map((n) => [n.id, n]));
 		const added: string[] = [];
 		const removed: string[] = [];
-		const modified: string[] = [];
+		const modified: InsightsModifiedNode[] = [];
 		for (const { status, node } of diff.values()) {
 			const label = `${node.name} (${node.type})`;
 			if (status === NodeDiffStatus.Added) added.push(label);
 			else if (status === NodeDiffStatus.Deleted) removed.push(label);
-			else if (status === NodeDiffStatus.Modified) modified.push(label);
+			else if (status === NodeDiffStatus.Modified) {
+				modified.push({
+					node: label,
+					promptChanges: promptChangesBetween(baseById.get(node.id), versionById.get(node.id)),
+				});
+			}
 		}
 		return {
 			added: added.slice(0, MAX_DIFF_NAMES),

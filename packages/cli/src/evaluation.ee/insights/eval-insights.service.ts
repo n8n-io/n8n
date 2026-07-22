@@ -31,8 +31,11 @@ const INSIGHTS_SYSTEM_PROMPT = [
 	'- `regressions`: versions that scored notably worse than the winner on a specific metric',
 	'  (empty array if none). `delta` is the percentage-point difference vs the winner (negative = worse).',
 	'- `suggestedNext`: one concrete next experiment, with a testable `hypothesis`.',
-	'Ground every statement in the provided metric scores, workflow node diffs, and regressed cases —',
-	'cite metric names and the specific node changes. Scores are percentages (0–100).',
+	'Ground every statement in the provided metric scores, workflow node diffs, and regressed cases.',
+	'Each modified node carries its changed prompt text (before → after) under `promptChanges` — when',
+	'such a change explains a regression, quote the specific instruction that changed rather than',
+	'guessing (e.g. a system prompt that tells the model to answer a category incorrectly). Cite metric',
+	'names and node names. Scores are percentages (0–100).',
 	'Keep each headline under 120 characters and each body under 280 characters.',
 ].join('\n');
 
@@ -318,7 +321,8 @@ export class EvalInsightsService {
 			'Compare these workflow versions, all evaluated against the same dataset.',
 			`The base version "${context.baseVersionLabel}" is the winner — write the winner card about it`,
 			'and set winner.versionLabel to that letter. Scores are percentages (0–100). Ground every',
-			'statement in the metric scores, workflow node diffs, and regressed cases below.',
+			'statement in the metric scores, workflow node diffs (including changed prompt text under',
+			'`promptChanges`), and regressed cases below.',
 			'',
 			JSON.stringify(context),
 		].join('\n');

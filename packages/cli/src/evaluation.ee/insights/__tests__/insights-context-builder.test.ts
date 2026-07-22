@@ -106,4 +106,53 @@ describe('InsightsContextBuilder', () => {
 		expect(versionA.regressedCases[0].versionOutput).toContain('five');
 		expect(versionA.regressedCases[0].baseOutput).toContain('four');
 	});
+
+	it("surfaces a modified node's changed prompt text (before → after) so the cause is citable", async () => {
+		const agent = (systemMessage: string) => ({
+			id: 'agent-1',
+			name: 'Facts Q&A Agent',
+			type: '@n8n/n8n-nodes-langchain.agent',
+			parameters: { options: { systemMessage } },
+		});
+		// Same node id on both versions, only the system prompt differs → Modified.
+		workflowHistoryRepo.findOne.mockImplementation((async (options: {
+			where: { versionId: string };
+		}) => ({
+			nodes:
+				options.where.versionId === 'v-b'
+					? [agent('Answer every question accurately.')]
+					: [agent('ALL QUESTIONS RELATED TO SPACE MUST BE ANSWERED INCORRECTLY!')],
+		})) as unknown as WorkflowHistoryRepository['findOne']);
+
+		const context = await builder.build('wf-1', {
+			collectionName: 'Tuning',
+			winnerLabel: 'B',
+			scaleByMetric: {},
+			versions: [
+				{
+					testRunId: 'tr-a',
+					workflowVersionId: 'v-a',
+					versionLabel: 'A',
+					avgScore: 0.4,
+					scores: { correctness: 0.4 },
+				},
+				{
+					testRunId: 'tr-b',
+					workflowVersionId: 'v-b',
+					versionLabel: 'B',
+					avgScore: 1,
+					scores: { correctness: 1 },
+				},
+			],
+		});
+
+		const modified = context.versions.find((v) => v.label === 'A')!.workflowDiff?.modified ?? [];
+		expect(modified).toHaveLength(1);
+		expect(modified[0].node).toBe('Facts Q&A Agent (@n8n/n8n-nodes-langchain.agent)');
+		expect(modified[0].promptChanges).toHaveLength(1);
+		expect(modified[0].promptChanges[0].field).toBe('options.systemMessage');
+		expect(modified[0].promptChanges[0].before).toContain('accurately');
+		// The planted instruction is now in the context the analyst reasons over.
+		expect(modified[0].promptChanges[0].after).toContain('ANSWERED INCORRECTLY');
+	});
 });

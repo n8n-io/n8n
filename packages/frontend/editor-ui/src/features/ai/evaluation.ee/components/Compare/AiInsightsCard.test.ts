@@ -44,7 +44,7 @@ const renderComponent = createComponentRenderer(AiInsightsCard, {
 	global: {
 		plugins: [createTestingPinia({ stubActions: false, createSpy: vi.fn })],
 	},
-	props: { workflowId: 'wf-1', collectionId: 'col-1' },
+	props: { workflowId: 'wf-1', collectionId: 'col-1', ready: true },
 });
 
 describe('AiInsightsCard', () => {
@@ -76,7 +76,7 @@ describe('AiInsightsCard', () => {
 		expect(store.generateInsights).not.toHaveBeenCalled();
 	});
 
-	it('generates insights on mount and renders the three takeaways', async () => {
+	it('generates insights once ready and renders the three takeaways', async () => {
 		const { container } = renderComponent();
 
 		await waitFor(() =>
@@ -85,6 +85,20 @@ describe('AiInsightsCard', () => {
 		await waitFor(() => expect(container.textContent).toContain('B wins'));
 		expect(container.textContent).toContain('A slipped');
 		expect(container.textContent).toContain('Try C');
+	});
+
+	it('waits for runs to settle: no generation until ready flips true', async () => {
+		const { rerender } = renderComponent({ props: { ready: false } });
+
+		// Runs still in flight → no generation attempt (would 400 on <2 completed).
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(store.generateInsights).not.toHaveBeenCalled();
+
+		// The last run lands → ready flips true → insights generate without a click.
+		await rerender({ ready: true });
+		await waitFor(() =>
+			expect(store.generateInsights).toHaveBeenCalledWith('wf-1', 'col-1', false),
+		);
 	});
 
 	it('uses cached insights without a manual regenerate affordance', async () => {
