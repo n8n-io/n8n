@@ -27,6 +27,7 @@ const oauthServerService = Container.get(OAuthServerService);
 const globalConfig = Container.get(GlobalConfig);
 const oauthServerConfig = Container.get(OAuthServerConfig);
 const logger = Container.get(Logger);
+const urlService = Container.get(UrlService);
 
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
@@ -70,9 +71,7 @@ const oauthClientLimitGuard: RequestHandler = async (_req, res, next) => {
 const rfc9207IssuerParam: RequestHandler = (_req, res, next) => {
 	const originalLocation = res.location.bind(res);
 	res.location = (url: string) =>
-		originalLocation(
-			OAuthHelpers.appendIssuerParam(url, Container.get(UrlService).getInstanceBaseUrl()),
-		);
+		originalLocation(OAuthHelpers.appendIssuerParam(url, urlService.getInstanceBaseUrl()));
 	next();
 };
 
