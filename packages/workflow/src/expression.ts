@@ -285,6 +285,29 @@ export class Expression {
 		return false;
 	}
 
+	/**
+	 * Set when the next evaluated template is trusted (authored by node/n8n
+	 * code, not by a user). Consumed by the first evaluation and NOT inherited
+	 * by nested evaluations (e.g. user expressions resolved through
+	 * `$parameter`), which stay on the sandboxed engine.
+	 */
+	private trustedTemplateRequested = false;
+
+	/**
+	 * Run `fn` marking the first template it evaluates as trusted: it is
+	 * evaluated with the in-process (legacy) engine even when the VM engine is
+	 * enabled, so it needs no isolate. Only use for templates defined in node
+	 * descriptions (e.g. `webhookDescription` fields) — never for user input.
+	 */
+	runAsTrustedTemplate<T>(fn: () => T): T {
+		this.trustedTemplateRequested = true;
+		try {
+			return fn();
+		} finally {
+			this.trustedTemplateRequested = false;
+		}
+	}
+
 	async releaseIsolate(): Promise<void> {
 		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
 	}
@@ -539,6 +562,12 @@ export class Expression {
 			return parameterValue;
 		}
 
+		// Consume the trusted-template flag at entry so that nested evaluations
+		// triggered while rendering (e.g. user expressions resolved via
+		// `$parameter`) do not inherit it and stay on the sandboxed engine.
+		const trustedTemplate = this.trustedTemplateRequested;
+		this.trustedTemplateRequested = false;
+
 		// Is an expression
 
 		// Remove the equal sign
@@ -561,7 +590,7 @@ export class Expression {
 
 		Expression.initializeGlobalContext(data);
 
-		const usingVm = Expression.shouldUseVm();
+		const usingVm = Expression.shouldUseVm() && !trustedTemplate;
 
 		// Expression extensions — only attached for the legacy engine.
 		//
@@ -608,7 +637,7 @@ export class Expression {
 
 		// Execute the expression
 		const extendedExpression = extendSyntax(parameterValue);
-		const returnValue = this.renderExpression(extendedExpression, data);
+		const returnValue = this.renderExpression(extendedExpression, data, trustedTemplate);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
 				throw new UserError('this is a DateTime, please access its methods');
@@ -625,9 +654,11 @@ export class Expression {
 		return returnValue;
 	}
 
-	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// Use VM evaluator if engine is set to 'vm' and we're not in the browser
-		if (Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
+	private renderExpression(expression: string, data: IWorkflowDataProxyData, trustedTemplate = false) {
+		// Use VM evaluator if engine is set to 'vm' and we're not in the browser.
+		// Trusted templates (node-description code) skip the VM and run on the
+		// in-process engine — they need no isolate.
+		if (!trustedTemplate && Expression.expressionEngine === 'vm' && !IS_FRONTEND) {
 			if (!Expression.vmEvaluator) {
 				throw new UnexpectedError(
 					'N8N_EXPRESSION_ENGINE=vm is enabled but VM evaluator is not initialized. Call Expression.initExpressionEngine() during application startup.',

@@ -128,7 +128,7 @@ describe('Webhook Helper Functions', () => {
 			nodeType.description.webhooks = [webhookDescription];
 			nodeTypes.getByNameAndVersion.mockReturnValueOnce(nodeType);
 
-			expression.getSimpleParameterValue.mockImplementation((_node, parameterValue) => {
+			expression.getTrustedSimpleParameterValue.mockImplementation((_node, parameterValue) => {
 				if (parameterValue === 'webhook') return webhookPath;
 				return parameterValue;
 			});
@@ -144,7 +144,7 @@ describe('Webhook Helper Functions', () => {
 			);
 
 			expect(result).toEqual(expected);
-			expect(expression.getSimpleParameterValue).toHaveBeenCalled();
+			expect(expression.getTrustedSimpleParameterValue).toHaveBeenCalled();
 		});
 	});
 
@@ -179,7 +179,7 @@ describe('Webhook Helper Functions', () => {
 			});
 			nodeType.description.webhooks = [webhookDescription];
 			nodeTypes.getByNameAndVersion.mockReturnValueOnce(nodeType);
-			expression.getSimpleParameterValue.mockImplementation((_node, parameterValue) =>
+			expression.getTrustedSimpleParameterValue.mockImplementation((_node, parameterValue) =>
 				parameterValue === 'mcp' ? 'mcp' : parameterValue,
 			);
 

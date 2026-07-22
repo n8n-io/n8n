@@ -217,6 +217,29 @@ export class WorkflowExpression {
 	}
 
 	/**
+	 * Same as `getSimpleParameterValue`, but the template itself is evaluated
+	 * with the in-process (legacy) engine even when the VM engine is enabled —
+	 * no isolate needed. Only for trusted, node-description-authored templates
+	 * (e.g. `webhookDescription` fields). User expressions nested inside the
+	 * template (resolved via `$parameter`) still run on the sandboxed engine.
+	 */
+	getTrustedSimpleParameterValue(
+		...args: Parameters<WorkflowExpression['getSimpleParameterValue']>
+	): ReturnType<WorkflowExpression['getSimpleParameterValue']> {
+		return this.expression.runAsTrustedTemplate(() => this.getSimpleParameterValue(...args));
+	}
+
+	/**
+	 * Trusted-template variant of `getComplexParameterValue` — see
+	 * `getTrustedSimpleParameterValue`.
+	 */
+	getTrustedComplexParameterValue(
+		...args: Parameters<WorkflowExpression['getComplexParameterValue']>
+	): ReturnType<WorkflowExpression['getComplexParameterValue']> {
+		return this.expression.runAsTrustedTemplate(() => this.getComplexParameterValue(...args));
+	}
+
+	/**
 	 * Resolves value of complex parameter. But does not work for workflow-data.
 	 */
 	getComplexParameterValue(

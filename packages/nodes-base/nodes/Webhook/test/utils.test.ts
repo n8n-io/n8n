@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import {
 	UnexpectedError,
+	type FilterValue,
 	type IWebhookFunctions,
 	type INodeExecutionData,
 	type IDataObject,
@@ -13,6 +14,7 @@ import type { WebhookParameters } from '../utils';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	evaluateOnlyRunIfConditions,
 	generateBasicAuthToken,
 	generateFormPostBasicAuthToken,
 	getResponseCode,
@@ -878,6 +880,209 @@ describe('Auth token generation', () => {
 
 			expect(token1).not.toBe(token2);
 			expect(token1).not.toBe(token3);
+		});
+	});
+
+	describe('evaluateOnlyRunIfConditions', () => {
+		const requestJson: IDataObject = {
+			body: { campaign_id: 'match-me', count: '42', tags: ['a', 'b'], contact: { id: 'c1' } },
+			headers: { 'x-api-key': 'secret', 'content-type': 'application/json' },
+			params: { segment: 'eu' },
+			query: { debug: 'true' },
+		};
+
+		let context: ReturnType<typeof mock<IWebhookFunctions>>;
+		beforeEach(() => {
+			context = mock<IWebhookFunctions>();
+		});
+
+		const filterOptions = {
+			caseSensitive: true,
+			leftValue: '',
+			typeValidation: 'loose',
+			version: 2,
+		} as const;
+
+		const makeFilter = (
+			conditions: FilterValue['conditions'],
+			combinator: FilterValue['combinator'] = 'and',
+		): FilterValue => ({
+			options: { ...filterOptions },
+			combinator,
+			conditions,
+		});
+
+		it('resolves a simple body field reference natively (no expression engine)', () => {
+			const pass = evaluateOnlyRunIfConditions(
+				context,
+				makeFilter([
+					{
+						id: '1',
+						leftValue: '={{ $json.body.campaign_id }}',
+						rightValue: 'match-me',
+						operator: { type: 'string', operation: 'equals' },
+					},
+				]),
+				requestJson,
+			);
+			expect(pass).toBe(true);
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('returns false when the condition does not match', () => {
+			const pass = evaluateOnlyRunIfConditions(
+				context,
+				makeFilter([
+					{
+						id: '1',
+						leftValue: '={{ $json.body.campaign_id }}',
+						rightValue: 'other',
+						operator: { type: 'string', operation: 'equals' },
+					},
+				]),
+				requestJson,
+			);
+			expect(pass).toBe(false);
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('resolves bracket paths into headers natively', () => {
+			const pass = evaluateOnlyRunIfConditions(
+				context,
+				makeFilter([
+					{
+						id: '1',
+						leftValue: "={{ $json.headers['x-api-key'] }}",
+						rightValue: 'secret',
+						operator: { type: 'string', operation: 'equals' },
+					},
+				]),
+				requestJson,
+			);
+			expect(pass).toBe(true);
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('supports exists / notExists on missing fields', () => {
+			const exists = (leftValue: string, operation: 'exists' | 'notExists') =>
+				evaluateOnlyRunIfConditions(
+					context,
+					makeFilter([
+						{
+							id: '1',
+							leftValue,
+							rightValue: '',
+							operator: { type: 'string', operation, singleValue: true },
+						},
+					]),
+					requestJson,
+				);
+			expect(exists('={{ $json.body.campaign_id }}', 'exists')).toBe(true);
+			expect(exists('={{ $json.body.nope }}', 'exists')).toBe(false);
+			expect(exists('={{ $json.body.nope.deep }}', 'notExists')).toBe(true);
+		});
+
+		it('coerces string numbers under loose type validation', () => {
+			const pass = evaluateOnlyRunIfConditions(
+				context,
+				makeFilter([
+					{
+						id: '1',
+						leftValue: '={{ $json.body.count }}',
+						rightValue: 40,
+						operator: { type: 'number', operation: 'gt' },
+					},
+				]),
+				requestJson,
+			);
+			expect(pass).toBe(true);
+		});
+
+		it('combines conditions with AND and OR', () => {
+			const matching: FilterValue['conditions'][number] = {
+				id: '1',
+				leftValue: '={{ $json.body.campaign_id }}',
+				rightValue: 'match-me',
+				operator: { type: 'string', operation: 'equals' },
+			};
+			const failing: FilterValue['conditions'][number] = {
+				id: '2',
+				leftValue: '={{ $json.query.debug }}',
+				rightValue: 'false',
+				operator: { type: 'string', operation: 'equals' },
+			};
+			expect(
+				evaluateOnlyRunIfConditions(context, makeFilter([matching, failing], 'and'), requestJson),
+			).toBe(false);
+			expect(
+				evaluateOnlyRunIfConditions(context, makeFilter([matching, failing], 'or'), requestJson),
+			).toBe(true);
+		});
+
+		it('uses literal values without touching the expression engine', () => {
+			const pass = evaluateOnlyRunIfConditions(
+				context,
+				makeFilter([
+					{
+						id: '1',
+						leftValue: 'static',
+						rightValue: 'static',
+						operator: { type: 'string', operation: 'equals' },
+					},
+				]),
+				requestJson,
+			);
+			expect(pass).toBe(true);
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the expression engine for complex expressions', () => {
+			context.evaluateExpression.mockReturnValue('MATCH-ME');
+			const pass = evaluateOnlyRunIfConditions(
+				context,
+				makeFilter([
+					{
+						id: '1',
+						leftValue: '={{ $json.body.campaign_id.toUpperCase() }}',
+						rightValue: 'MATCH-ME',
+						operator: { type: 'string', operation: 'equals' },
+					},
+				]),
+				requestJson,
+			);
+			expect(pass).toBe(true);
+			expect(context.evaluateExpression).toHaveBeenCalledWith(
+				'{{ $json.body.campaign_id.toUpperCase() }}',
+				0,
+			);
+		});
+
+		it('applies defaults when filter options are missing', () => {
+			const filter = {
+				combinator: 'and',
+				conditions: [
+					{
+						id: '1',
+						leftValue: '={{ $json.body.campaign_id }}',
+						rightValue: 'match-me',
+						operator: { type: 'string', operation: 'equals' },
+					},
+				],
+			} as unknown as FilterValue;
+			expect(evaluateOnlyRunIfConditions(context, filter, requestJson)).toBe(true);
+		});
+
+		it('propagates filter errors (caller decides the failure policy)', () => {
+			const filter = makeFilter([
+				{
+					id: '1',
+					leftValue: '={{ $json.body.contact }}',
+					rightValue: 42,
+					operator: { type: 'number', operation: 'equals' },
+				},
+			]);
+			filter.options.typeValidation = 'strict';
+			expect(() => evaluateOnlyRunIfConditions(context, filter, requestJson)).toThrow();
 		});
 	});
 });

@@ -2,7 +2,12 @@ import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
-import { WorkflowConfigurationError } from 'n8n-workflow';
+import {
+	executeFilter,
+	matchSimpleRequestFieldPath,
+	resolveRequestFieldPath,
+	WorkflowConfigurationError,
+} from 'n8n-workflow';
 import type {
 	IWebhookFunctions,
 	INodeExecutionData,
@@ -10,6 +15,8 @@ import type {
 	ICredentialDataDecryptedObject,
 	MultiPartFormData,
 	INode,
+	FilterValue,
+	NodeParameterValue,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -85,6 +92,47 @@ export const configuredOutputs = (parameters: WebhookParameters) => {
 
 	return outputs;
 };
+
+/**
+ * Evaluates "Only Run If" filter conditions against the incoming request.
+ * Simple `{{ $json.<path> }}` references are resolved natively; anything more
+ * complex falls back to the expression engine (which acquires an isolate when
+ * the VM engine is enabled).
+ */
+export function evaluateOnlyRunIfConditions(
+	context: IWebhookFunctions,
+	rawFilter: FilterValue,
+	requestJson: IDataObject,
+): boolean {
+	const resolveValue = (
+		value: NodeParameterValue | NodeParameterValue[],
+	): NodeParameterValue | NodeParameterValue[] => {
+		if (typeof value !== 'string' || !value.startsWith('=')) return value;
+		const path = matchSimpleRequestFieldPath(value);
+		if (path !== null) return resolveRequestFieldPath(requestJson, path) as NodeParameterValue;
+		return context.evaluateExpression(value.slice(1), 0) as NodeParameterValue;
+	};
+
+	const conditions = (rawFilter.conditions ?? []).map((condition) => ({
+		...condition,
+		leftValue: resolveValue(condition.leftValue),
+		rightValue: resolveValue(condition.rightValue),
+	}));
+
+	return executeFilter(
+		{
+			combinator: rawFilter.combinator ?? 'and',
+			options: rawFilter.options ?? {
+				caseSensitive: true,
+				leftValue: '',
+				typeValidation: 'loose',
+				version: 2,
+			},
+			conditions,
+		},
+		{ itemIndex: 0 },
+	);
+}
 
 export const setupOutputConnection = (
 	ctx: IWebhookFunctions,

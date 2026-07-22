@@ -1045,7 +1045,7 @@ function evaluateResponseOptions(
 	//check if response mode should be set automatically, e.g. multipage form
 	const responseMode =
 		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
-		(workflow.expression.getSimpleParameterValue(
+		(workflow.expression.getTrustedSimpleParameterValue(
 			workflowStartNode,
 			webhookData.webhookDescription.responseMode,
 			executionMode,
@@ -1054,7 +1054,7 @@ function evaluateResponseOptions(
 			'onReceived',
 		) as WebhookResponseMode);
 
-	const responseCode = workflow.expression.getSimpleParameterValue(
+	const responseCode = workflow.expression.getTrustedSimpleParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseCode as string,
 		executionMode,
@@ -1066,7 +1066,7 @@ function evaluateResponseOptions(
 	// This parameter is used for two different purposes:
 	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
 	// 2. as well as WebhookResponseData config in all the other modes
-	const responseData = workflow.expression.getComplexParameterValue(
+	const responseData = workflow.expression.getTrustedComplexParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
@@ -1080,21 +1080,21 @@ function evaluateResponseOptions(
 	// We can unify the behavior in the next major release and get rid of this flag
 	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
 
-	const responsePropertyName = workflow.expression.getSimpleParameterValue(
+	const responsePropertyName = workflow.expression.getTrustedSimpleParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responsePropertyName,
 		executionMode,
 		additionalKeys,
 	) as string | undefined;
 
-	const responseContentType = workflow.expression.getSimpleParameterValue(
+	const responseContentType = workflow.expression.getTrustedSimpleParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseContentType,
 		executionMode,
 		additionalKeys,
 	) as string | undefined;
 
-	const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
+	const responseBinaryPropertyName = workflow.expression.getTrustedSimpleParameterValue(
 		workflowStartNode,
 		webhookData.webhookDescription.responseBinaryPropertyName,
 		executionMode,
@@ -1130,7 +1130,7 @@ async function parseRequestBody(
 	const nodeVersion = workflowStartNode.typeVersion;
 	if (nodeVersion === 1) {
 		// binaryData option is removed in versions higher than 1
-		binaryData = workflow.expression.getSimpleParameterValue(
+		binaryData = workflow.expression.getTrustedSimpleParameterValue(
 			workflowStartNode,
 			'={{$parameter["options"]["binaryData"]}}',
 			executionMode,
