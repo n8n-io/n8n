@@ -1,12 +1,21 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
+import { PathResolvingService } from '@/services/path-resolving.service';
+
 @Service()
 export class UrlService {
 	/** Returns the base URL n8n is reachable from */
 	readonly baseUrl: string;
 
-	constructor(private readonly globalConfig: GlobalConfig) {
+	/** The normalized URL base path from N8N_BASE_PATH or legacy N8N_PATH */
+	readonly basePath: string;
+
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly pathResolvingService: PathResolvingService,
+	) {
+		this.basePath = this.pathResolvingService.getUrlBasePath();
 		this.baseUrl = this.generateBaseUrl();
 	}
 
@@ -39,12 +48,12 @@ export class UrlService {
 	}
 
 	private generateBaseUrl(): string {
-		const { path, port, host, protocol } = this.globalConfig;
+		const { port, host, protocol } = this.globalConfig;
 
 		if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
-			return `${protocol}://${host}${path}`;
+			return `${protocol}://${host}${this.basePath}`;
 		}
-		return `${protocol}://${host}:${port}${path}`;
+		return `${protocol}://${host}:${port}${this.basePath}`;
 	}
 
 	/** Remove leading and trailing double quotes from a URL. */

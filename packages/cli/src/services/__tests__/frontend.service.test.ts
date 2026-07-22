@@ -30,6 +30,7 @@ vi.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
 describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
 	const globalConfig = mock<GlobalConfig>({
+		basePath: '',
 		database: { type: 'sqlite' },
 		endpoints: { rest: 'rest', health: '/healthz' },
 		diagnostics: { enabled: false },
