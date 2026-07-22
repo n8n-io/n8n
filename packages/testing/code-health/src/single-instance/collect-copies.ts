@@ -6,7 +6,6 @@ import { CURATED_LIBS } from './libs.js';
 export interface Copy {
 	realPath: string;
 	version: string;
-	foundAt: string;
 }
 
 export interface DuplicateGroup {
@@ -36,6 +35,7 @@ export const EXPECTED_DUPLICATES: Record<string, string> = {};
 export function collectCopies(root: string): Map<string, Copy[]> {
 	const found = new Map<string, Copy[]>();
 	const walkedRealDirs = new Set<string>(); // guard against symlink cycles / re-walks
+	const recordedReals = new Set<string>(); // a physical copy is read+parsed once, not per alias
 
 	const readEntries = (dir: string) => {
 		try {
@@ -47,9 +47,14 @@ export function collectCopies(root: string): Map<string, Copy[]> {
 
 	const record = (name: string, dir: string) => {
 		let real: string;
-		let pj: { name?: string; version?: string };
 		try {
 			real = realpathSync(dir);
+		} catch {
+			return; // not a real dir
+		}
+		if (recordedReals.has(real)) return; // same physical copy reached via another alias
+		let pj: { name?: string; version?: string };
+		try {
 			pj = JSON.parse(readFileSync(join(real, 'package.json'), 'utf8')) as {
 				name?: string;
 				version?: string;
@@ -58,8 +63,9 @@ export function collectCopies(root: string): Map<string, Copy[]> {
 			return; // not a real package dir (e.g. a decoy source folder)
 		}
 		if (pj.name !== name) return; // guard against name/dir mismatch
+		recordedReals.add(real);
 		const copies = found.get(name) ?? [];
-		copies.push({ realPath: real, version: pj.version ?? '', foundAt: dir });
+		copies.push({ realPath: real, version: pj.version ?? '' });
 		found.set(name, copies);
 	};
 
@@ -148,7 +154,7 @@ export function runVerifyClosure(dir: string): number {
 	for (const lib of CURATED_LIBS) {
 		const dup = curatedDups.get(lib);
 		if (!dup) {
-			const copies = found.has(lib) ? distinctCopies(found.get(lib) ?? []) : [];
+			const copies = distinctCopies(found.get(lib) ?? []);
 			console.log(
 				`  ${lib}: ${copies.length === 0 ? 'not present' : `OK (1 copy, v${copies[0].version})`}`,
 			);

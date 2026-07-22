@@ -14,7 +14,7 @@ export const CURATED_LIBS = ['zod', 'form-data', '@langchain/core', 'reflect-met
  * Curated libs enforced pin-only (must use `catalog:`) but NOT subject to the
  * peerDependency rule this iteration.
  */
-export const PIN_ONLY_LIBS = ['reflect-metadata'];
+const PIN_ONLY_LIBS = ['reflect-metadata'];
 
 /**
  * Host / standalone packages that provide their own runtime instance — the end-user CLI
