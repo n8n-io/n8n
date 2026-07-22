@@ -15,18 +15,13 @@ import { findPackageJsonFiles, parsePackageJson } from '../utils/package-json-sc
 const RUNTIME_SECTIONS = new Set(['dependencies', 'optionalDependencies']);
 
 /**
- * Single-instance-sensitive libraries composed across package boundaries must be a
- * `peerDependency` (pinned via `catalog:`) in every non-host, non-frontend workspace package
- * that uses them — never a plain/optional `dependency`. In the pnpm monorepo the catalog forces
- * one instance so `dependencies` looks fine locally, but on `npm install n8n` a plain dependency
- * lets npm install a second nested copy, which breaks cross-package composition / `instanceof`
- * at runtime (a boot crash or silent misbehaviour). This has shipped before, when a package moved
- * zod from a peer to a dependency.
+ * A single-instance-sensitive library must be a `peerDependency` in non-host, non-frontend
+ * packages — a plain `dependency` looks fine under the pnpm catalog but lets `npm install` nest a
+ * second physical copy, breaking cross-package composition / `instanceof` at runtime.
  *
- * `catalog-violations` already forces curated libs in dependencies/devDependencies to `catalog:`
- * but deliberately skips `peerDependencies`; this rule covers what it doesn't — the peer SHAPE,
- * plus curated peers being pinned via `catalog:`. `reflect-metadata` is pin-only (excluded from
- * the peer rule). Report-first via the shared `.code-health-baseline.json`.
+ * `catalog-violations` forces curated libs to `catalog:` in every section but `peerDependencies`;
+ * this rule covers what it skips — the peer shape, plus pinning curated peers via `catalog:`.
+ * `reflect-metadata` is pin-only (excluded from the peer rule). Report-first via the baseline.
  */
 export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 	readonly id = 'single-instance-libs';
@@ -51,7 +46,7 @@ export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 						this.createViolation(
 							file,
 							dep.line,
-							1,
+							5,
 							`"${dep.name}" is a runtime dependency of "${pkg.packageName}"; it must be a peerDependency.`,
 							'Move it to peerDependencies with "catalog:", and keep it in devDependencies with "catalog:" for local builds.',
 						),
@@ -67,7 +62,7 @@ export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 						this.createViolation(
 							file,
 							dep.line,
-							1,
+							5,
 							`"${dep.name}" peerDependency in "${pkg.packageName}" must use "catalog:".`,
 							'Change the peerDependencies entry to "catalog:" so the published range is a single pinned version.',
 						),

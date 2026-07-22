@@ -66,6 +66,22 @@ describe('SingleInstanceLibsRule', () => {
 		expect(violations[0].message).toContain('must use "catalog:"');
 	});
 
+	// The catalog-shape check keys off the whole curated list, not just zod — a scoped curated
+	// lib and even the pin-only reflect-metadata must be pinned when declared as a peer.
+	it.each(['@langchain/core', 'reflect-metadata'])(
+		'flags a non-zod curated peerDependency (%s) that is not catalog:',
+		async (lib) => {
+			writePackage(tmpDir, 'packages/@n8n/api-types', {
+				name: '@n8n/api-types',
+				peerDependencies: { [lib]: '^1.0.0' },
+			});
+			const violations = await rule.analyze(context());
+			expect(violations).toHaveLength(1);
+			expect(violations[0].message).toContain(lib);
+			expect(violations[0].message).toContain('must use "catalog:"');
+		},
+	);
+
 	it('exempts host packages', async () => {
 		writePackage(tmpDir, 'packages/cli', { name: 'n8n', dependencies: { zod: 'catalog:' } });
 		expect(await rule.analyze(context())).toHaveLength(0);
