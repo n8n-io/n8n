@@ -7,20 +7,6 @@ export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
 
-export const INSTANCE_MODEL_CREDENTIAL_TYPES = [
-	'openAiApi',
-	'anthropicApi',
-	'googlePalmApi',
-	'groqApi',
-	'deepSeekApi',
-	'mistralCloudApi',
-	'xAiApi',
-	'openRouterApi',
-	'cohereApi',
-] as const;
-
-export const INSTANCE_SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'] as const;
-
 /** Brand names, deliberately not translated; single source for dialogs and settings rows. */
 export const SANDBOX_PROVIDER_LABELS = {
 	daytona: 'Daytona',

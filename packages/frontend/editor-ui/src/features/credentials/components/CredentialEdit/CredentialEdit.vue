@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
+import type { IUpdateInformation } from '@/Interface';
 import type { ICredentialsResponse } from '../../credentials.types';
 
 import type {
@@ -255,20 +255,12 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
-const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
-	if (props.mode !== 'new') return undefined;
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	return isCredentialModalState(modalState) ? modalState.usageScope : undefined;
-});
-
 const appendToBody = computed<boolean>(() => {
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 	return isCredentialModalState(modalState) && modalState.appendToBody === true;
 });
 
-const isInstanceCredential = computed(
-	() => presetUsageScope.value === 'instance' || currentCredential.value?.usageScope === 'instance',
-);
+const isInstanceCredential = computed(() => currentCredential.value?.usageScope === 'instance');
 
 const sidebarItems = computed(() => {
 	const menuItems: IMenuItem[] = [
@@ -661,9 +653,6 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	const isNewCredential = props.mode === 'new' && !credentialId.value;
 
 	if (isNewCredential) {
-		if (presetUsageScope.value) {
-			credentialDetails.usageScope = presetUsageScope.value;
-		}
 		credential = await createCredential(credentialDetails, projectsStore.currentProject);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {

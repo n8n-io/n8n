@@ -5,7 +5,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiModelCredential,
+	InstanceAiProviderConnection,
 } from '@n8n/api-types';
 
 export async function fetchSettings(
@@ -36,12 +36,12 @@ export async function updatePreferences(
 
 export async function fetchServiceCredentials(
 	context: IRestApiContext,
-): Promise<InstanceAiModelCredential[]> {
+): Promise<InstanceAiProviderConnection[]> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/settings/service-credentials');
 }
 
 export async function fetchInstanceModelCredentials(
 	context: IRestApiContext,
-): Promise<InstanceAiModelCredential[]> {
+): Promise<InstanceAiProviderConnection[]> {
 	return await makeRestApiRequest(context, 'GET', '/instance-ai/settings/model-credentials');
 }

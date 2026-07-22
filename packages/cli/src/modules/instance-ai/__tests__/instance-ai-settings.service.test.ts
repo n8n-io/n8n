@@ -246,10 +246,9 @@ describe('InstanceAiSettingsService', () => {
 					'new-cred',
 					operationContext,
 				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).not.toHaveBeenCalled();
 			});
 
-			it('should run external credential hooks before the locked transaction', async () => {
+			it('should run external credential hooks after the locked transaction commits', async () => {
 				const order: string[] = [];
 				credentialsService.runInstanceCredentialHooks.mockImplementation(async () => {
 					order.push('hooks');
@@ -266,7 +265,7 @@ describe('InstanceAiSettingsService', () => {
 					adminUser,
 				);
 
-				expect(order).toEqual(['hooks', 'transaction']);
+				expect(order).toEqual(['transaction', 'hooks']);
 				expect(credentialsService.runInstanceCredentialHooks).toHaveBeenCalledWith('create', {
 					id: null,
 					name: 'AI Assistant model',
@@ -296,6 +295,24 @@ describe('InstanceAiSettingsService', () => {
 				});
 			});
 
+			it('should keep a committed connection when its external hook fails', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue(null);
+				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
+				credentialsService.runInstanceCredentialHooks.mockRejectedValue(new Error('hook failed'));
+
+				await expect(
+					service.updateAdminSettings(
+						{ modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } }, modelName: 'gpt-5' },
+						adminUser,
+					),
+				).resolves.toBeDefined();
+				expect(logger.warn).toHaveBeenCalledWith('Provider connection hook failed', {
+					event: 'create',
+					credentialId: null,
+					error: 'hook failed',
+				});
+			});
+
 			it('should update the existing credential in place when the type is unchanged', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'cred-1',
@@ -320,7 +337,6 @@ describe('InstanceAiSettingsService', () => {
 					{ skipExternalHooks: true },
 				);
 				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).not.toHaveBeenCalled();
 				expect(instanceCredentialBroker.assignForUse).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'instance-ai:model' }),
 					'cred-1',
@@ -328,7 +344,7 @@ describe('InstanceAiSettingsService', () => {
 				);
 			});
 
-			it('should replace and best-effort delete the old credential when the provider type changes', async () => {
+			it('should replace the assignment without deleting the reusable old credential', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'old-cred',
 					name: 'AI Assistant model',
@@ -349,38 +365,6 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({ id: 'instance-ai:model' }),
 					'new-cred',
 					operationContext,
-				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-cred',
-					{},
-				);
-			});
-
-			it('should not fail the update when deleting the replaced credential fails', async () => {
-				instanceCredentialBroker.resolveForUse.mockResolvedValue({
-					id: 'old-cred',
-					name: 'AI Assistant model',
-					type: 'openAiApi',
-					data: { apiKey: 'k' },
-				});
-				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
-				credentialsService.deleteInstanceCredentialIfUnassigned.mockRejectedValue(
-					new Error('delete failed'),
-				);
-
-				await expect(
-					service.updateAdminSettings(
-						{
-							modelConnection: { type: 'anthropicApi', data: { apiKey: 'k' } },
-							modelName: 'claude-sonnet-5',
-						},
-						adminUser,
-					),
-				).resolves.toBeDefined();
-				expect(logger.warn).toHaveBeenCalledWith(
-					'Could not delete a replaced provider connection credential',
-					{ credentialId: 'old-cred', error: 'delete failed' },
 				);
 			});
 
@@ -415,11 +399,6 @@ describe('InstanceAiSettingsService', () => {
 				expect(instanceCredentialBroker.clearForUse).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
 					operationContext,
-				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-n8n',
-					{},
 				);
 				expect(result.sandboxProvider).toBe('daytona');
 			});
@@ -462,7 +441,7 @@ describe('InstanceAiSettingsService', () => {
 				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
 			});
 
-			it('should clear a connection and best-effort delete the released credential', async () => {
+			it('should clear a connection without resolving or deleting the released credential', async () => {
 				instanceCredentialBroker.getAssignedCredentialId.mockImplementation(async (policy) =>
 					policy.id === 'instance-ai:search' ? 'old-search' : null,
 				);
@@ -475,11 +454,6 @@ describe('InstanceAiSettingsService', () => {
 				);
 				// The clear path never decrypts the outgoing credential.
 				expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-search',
-					{},
-				);
 			});
 
 			it('should clear a connection even when the current assignment cannot be resolved', async () => {
@@ -497,17 +471,11 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({ id: 'instance-ai:model' }),
 					operationContext,
 				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'legacy-model-cred',
-					{},
-				);
 			});
 
 			it('should replace an unresolvable legacy assignment with a new credential', async () => {
 				instanceCredentialBroker.resolveForUse
-					.mockRejectedValueOnce(new UnprocessableRequestError('not valid')) // pre-lock hook lookup
-					.mockRejectedValueOnce(new UnprocessableRequestError('not valid')) // in-transaction lookup
+					.mockRejectedValueOnce(new UnprocessableRequestError('not valid'))
 					.mockResolvedValue({
 						id: 'new-cred',
 						name: 'AI Assistant model',
@@ -527,11 +495,6 @@ describe('InstanceAiSettingsService', () => {
 				).resolves.toBeDefined();
 				expect(credentialsService.createInstanceCredential).toHaveBeenCalled();
 				expect(credentialsService.updateInstanceCredential).not.toHaveBeenCalled();
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'legacy-model-cred',
-					{},
-				);
 			});
 
 			it('should clear both sandbox slots when the sandbox connection is cleared', async () => {
@@ -554,28 +517,15 @@ describe('InstanceAiSettingsService', () => {
 					operationContext,
 				);
 				expect(instanceCredentialBroker.resolveForUse).not.toHaveBeenCalled();
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-daytona',
-					{},
-				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-n8n',
-					{},
-				);
 			});
 
 			it('should reject an inline model connection whose saved data fails validation', async () => {
-				instanceCredentialBroker.resolveForUse
-					.mockResolvedValueOnce(null) // pre-lock hook lookup
-					.mockResolvedValueOnce(null) // in-transaction lookup
-					.mockResolvedValue({
-						id: 'new-cred',
-						name: 'AI Assistant model',
-						type: 'anthropicApi',
-						data: {},
-					});
+				instanceCredentialBroker.resolveForUse.mockResolvedValueOnce(null).mockResolvedValue({
+					id: 'new-cred',
+					name: 'AI Assistant model',
+					type: 'anthropicApi',
+					data: {},
+				});
 				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
 
 				await expect(
@@ -585,6 +535,7 @@ describe('InstanceAiSettingsService', () => {
 					),
 				).rejects.toThrow('The field "apiKey" or "url" is required');
 				expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
 			});
 
 			it('should roll back an inline model connection without a model name', async () => {
@@ -601,6 +552,7 @@ describe('InstanceAiSettingsService', () => {
 				expect(credentialsService.createInstanceCredential).toHaveBeenCalled();
 				expect(instanceCredentialBroker.assignForUse).not.toHaveBeenCalled();
 				expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+				expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
 			});
 
 			it('should allow selecting existing credential ids without the manage scope', async () => {

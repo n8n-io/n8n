@@ -125,30 +125,16 @@ avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
 and `address`, but those have no detection pattern yet — setting them has no
 effect (they were deferred as too false-positive-prone for free-form prose).
 
-## Instance credentials
+## Provider connections
 
-Admin-selected credentials for Instance AI (model, sandbox, search) are **instance
-credentials**: regular credential rows with `availability: 'instance'`, managed only
-by owners/admins (global scope `credential:manageInstance`) and never usable in the
-workflow canvas. Instance AI resolves them server-side through the
-`InstanceCredentialBroker` under these credential use IDs:
+On self-hosted deployments, owners and admins can configure the model, sandbox, and
+web-search connections from the AI Assistant settings page. These connections are
+managed centrally and are not offered as workflow-canvas credentials.
 
-| Credential use ID | Credential types |
-|-------------------|------------------|
-| `instance-ai:model` | LLM provider credentials (`openAiApi`, `anthropicApi`, ...) |
-| `instance-ai:sandbox:daytona` | `daytonaApi` |
-| `instance-ai:sandbox:n8n` | `httpHeaderAuth` (header name must be `x-api-key`) |
-| `instance-ai:search` | `braveSearchApi`, `searXngApi` |
-
-The environment variables above remain the fallback when no credential is selected.
-The broker stores each selection in `instance_credential_assignment`. Its foreign key
-prevents deletion until the assignment is cleared. The model name remains in Instance
-AI settings. The effective model name resolves as the instance setting, then the
-per-user preference, then `N8N_INSTANCE_AI_MODEL`. On cloud and proxy-managed
-deployments these values are managed externally and the API rejects them.
-
-To integrate another instance-level feature with the broker, see
-[instance credentials](../../../cli/src/credentials/instance-credentials.md).
+The environment variables above remain the fallback when no provider connection is
+selected. The effective model name resolves as the instance setting, then the per-user
+preference, then `N8N_INSTANCE_AI_MODEL`. Cloud and proxy-managed deployments receive
+these values from the managed service instead.
 
 ## Enabling / Disabling
 

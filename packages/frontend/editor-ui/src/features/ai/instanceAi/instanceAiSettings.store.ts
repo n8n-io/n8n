@@ -26,7 +26,7 @@ import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiModelCredential,
+	InstanceAiProviderConnection,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
 	ToolCategory,
@@ -48,8 +48,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isSaving = ref(false);
 	const settings = ref<InstanceAiAdminSettingsResponse | null>(null);
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
-	const serviceCredentials = ref<InstanceAiModelCredential[]>([]);
-	const instanceModelCredentials = ref<InstanceAiModelCredential[]>([]);
+	const serviceCredentials = ref<InstanceAiProviderConnection[]>([]);
+	const instanceModelCredentials = ref<InstanceAiProviderConnection[]>([]);
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────

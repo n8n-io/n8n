@@ -227,8 +227,8 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
-					{ id: 'anthropic-id', name: 'Backup', type: 'anthropicApi', provider: 'anthropic' },
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi' },
+					{ id: 'anthropic-id', name: 'Backup', type: 'anthropicApi' },
 				],
 			});
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
@@ -259,9 +259,7 @@ describe('SettingsInstanceAiView', () => {
 
 		it('allows provider connection managers to select an existing connection', async () => {
 			store.$patch({
-				instanceModelCredentials: [
-					{ id: 'anthropic-id', name: 'Backup', type: 'anthropicApi', provider: 'anthropic' },
-				],
+				instanceModelCredentials: [{ id: 'anthropic-id', name: 'Backup', type: 'anthropicApi' }],
 			});
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
 			const { getByTestId, findByTestId, findByText, queryByTestId } = renderModelDialog({
@@ -296,7 +294,7 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi' },
 				],
 			});
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
@@ -337,7 +335,7 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi' },
 				],
 			});
 			const { findByTestId, findByText, getByTestId } = renderModelDialog({
@@ -383,7 +381,7 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi' },
 				],
 			});
 			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
@@ -429,7 +427,6 @@ describe('SettingsInstanceAiView', () => {
 						id: 'daytona-id',
 						name: 'Existing Daytona',
 						type: 'daytonaApi',
-						provider: 'daytonaApi',
 					},
 				],
 			});
@@ -459,7 +456,6 @@ describe('SettingsInstanceAiView', () => {
 						id: 'daytona-id',
 						name: 'Existing Daytona',
 						type: 'daytonaApi',
-						provider: 'daytonaApi',
 					},
 				],
 			});
@@ -545,7 +541,6 @@ describe('SettingsInstanceAiView', () => {
 						id: 'daytona-id',
 						name: 'Existing Daytona',
 						type: 'daytonaApi',
-						provider: 'daytonaApi',
 					},
 				],
 			});
@@ -649,7 +644,6 @@ describe('SettingsInstanceAiView', () => {
 						id: 'brave-id',
 						name: 'Existing search',
 						type: 'braveSearchApi',
-						provider: 'braveSearchApi',
 					},
 				],
 			});
@@ -674,12 +668,10 @@ describe('SettingsInstanceAiView', () => {
 
 		beforeEach(() => {
 			vi.mocked(fetchInstanceModelCredentials).mockResolvedValue([
-				{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi', provider: 'openai' },
+				{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi' },
 			]);
 			store.$patch({
-				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi', provider: 'openai' },
-				],
+				instanceModelCredentials: [{ id: 'openai-id', name: 'OpenAI account', type: 'openAiApi' }],
 			});
 			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
 				data: {},
@@ -703,7 +695,6 @@ describe('SettingsInstanceAiView', () => {
 							id: 'created-model-cred',
 							name: 'AI Assistant model',
 							type: model.type,
-							provider: 'openai',
 						});
 					}
 				}
@@ -838,7 +829,7 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({
 				settings: disabledSettings,
 				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi' },
 				],
 			});
 			vi.mocked(fetchSettings).mockResolvedValue(disabledSettings);
@@ -1103,9 +1094,7 @@ describe('SettingsInstanceAiView', () => {
 		it('shows the configured model value once a credential pair is set', () => {
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
-				instanceModelCredentials: [
-					{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi', provider: 'openai' },
-				],
+				instanceModelCredentials: [{ id: 'openai-id', name: 'OpenAI', type: 'openAiApi' }],
 			});
 
 			const { getByText, queryByTestId } = renderComponent();

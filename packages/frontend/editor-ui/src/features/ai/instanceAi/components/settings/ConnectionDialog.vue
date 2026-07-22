@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, toRaw, watch } from 'vue';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type { InstanceAiModelCredential } from '@n8n/api-types';
+import {
+	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
+	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	type InstanceAiProviderConnection,
+} from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
@@ -20,12 +24,7 @@ import type { IUpdateInformation } from '@/Interface';
 import Banner from '@/app/components/Banner.vue';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import {
-	INSTANCE_MODEL_CREDENTIAL_TYPES,
-	INSTANCE_SEARCH_CREDENTIAL_TYPES,
-	SANDBOX_PROVIDER_LABELS,
-	type InstanceAiConnectionKind,
-} from '../../constants';
+import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../../constants';
 import { useInstanceAiSetupSteps } from '../../composables/useInstanceAiSetupSteps';
 import { useInstanceCredentialTest } from '../../composables/useInstanceCredentialTest';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
@@ -75,7 +74,7 @@ function credentialTypeLabel(type: string) {
 	return credentialsStore.getCredentialTypeByName(type)?.displayName ?? type;
 }
 
-interface KindSpec {
+interface DialogCopy {
 	idPrefix: string;
 	titleKey: BaseTextKey;
 	setupTitleKey: BaseTextKey;
@@ -86,41 +85,9 @@ interface KindSpec {
 	providerHintKey?: BaseTextKey;
 	footnoteKey?: BaseTextKey;
 	testName: string;
-	showBackInSetup: boolean;
-	showSkipInSetup: boolean;
-	continueInSetup: () => boolean;
-	envConfigured: () => boolean;
-	assignedId: () => string | null;
-	assignedSelection: () => string;
-	/** Preselected when opening with nothing assigned (never applied in read-only mode). */
-	defaultSelection: () => string;
-	options: () => Array<{ value: string; label: string }>;
-	existingCredentials: () => InstanceAiModelCredential[];
-	existingCredentialLabel: (credential: InstanceAiModelCredential) => string;
-	selectionFor: (credential: InstanceAiModelCredential) => string;
-	credentialTypeFor: (selection: string) => string;
-	seedData: (selection: string) => ICredentialDataDecryptedObject;
-	showsFields: (selection: string) => boolean;
-	applyLoadedData: (data: ICredentialDataDecryptedObject) => void;
-	initialExtra: () => string;
-	/** Whether the extra input must be filled whenever a connection is active (any mode). */
-	extraRequired: boolean;
-	newDataComplete: (selection: string) => boolean;
-	extraInput?: {
-		labelKey: BaseTextKey;
-		placeholderKey?: BaseTextKey;
-		inputType: 'text' | 'password';
-		testId: string;
-		visible: () => boolean;
-	};
-	buildConnectionData: () => ICredentialDataDecryptedObject;
-	stageExisting: () => void;
-	stageNew: (connectionData: ICredentialDataDecryptedObject) => void;
-	stageClear: () => void;
-	refresh: () => void;
 }
 
-const specs: Record<InstanceAiConnectionKind, KindSpec> = {
+const DIALOG_COPY: Record<InstanceAiConnectionKind, DialogCopy> = {
 	model: {
 		idPrefix: 'n8n-agent-model',
 		titleKey: 'settings.n8nAgent.modelDialog.title',
@@ -131,55 +98,6 @@ const specs: Record<InstanceAiConnectionKind, KindSpec> = {
 		placeholderKey: 'settings.n8nAgent.modelCredential.placeholder',
 		footnoteKey: 'settings.n8nAgent.modelDialog.footnote',
 		testName: 'AI Assistant model',
-		showBackInSetup: false,
-		showSkipInSetup: false,
-		continueInSetup: () => true,
-		envConfigured: () => Boolean(store.settings?.modelEnvConfigured),
-		assignedId: () => store.settings?.modelCredentialId ?? null,
-		assignedSelection: () =>
-			store.instanceModelCredentials.find(
-				(credential) => credential.id === store.settings?.modelCredentialId,
-			)?.type ?? '',
-		defaultSelection: () => '',
-		options: () =>
-			INSTANCE_MODEL_CREDENTIAL_TYPES.map((type) => ({
-				value: type,
-				label: credentialTypeLabel(type),
-			})),
-		existingCredentials: () => store.instanceModelCredentials,
-		existingCredentialLabel: (credential) =>
-			`${credential.name} · ${credentialTypeLabel(credential.type)}`,
-		selectionFor: (credential) => credential.type,
-		credentialTypeFor: (selected) => selected,
-		seedData: () => ({}),
-		showsFields: (selected) => Boolean(selected),
-		applyLoadedData: (data) => {
-			fieldsData.value = data;
-		},
-		initialExtra: () => store.settings?.modelName ?? '',
-		extraRequired: true,
-		newDataComplete: () => true,
-		extraInput: {
-			labelKey: 'settings.n8nAgent.modelName.label',
-			placeholderKey: 'settings.n8nAgent.modelName.placeholder',
-			inputType: 'text',
-			testId: 'n8n-agent-model-name-input',
-			visible: () => Boolean(usingExisting.value ? selectedCredentialId.value : selection.value),
-		},
-		buildConnectionData: () => ({ ...toRaw(fieldsData.value) }),
-		stageExisting: () => {
-			store.setField('modelCredentialId', selectedCredentialId.value || null);
-			store.setField('modelName', selectedCredentialId.value ? extraValue.value.trim() : undefined);
-		},
-		stageNew: (connectionData) => {
-			store.setField('modelConnection', { type: selection.value, data: connectionData });
-			store.setField('modelName', extraValue.value.trim());
-		},
-		stageClear: () => {
-			store.setField('modelConnection', null);
-			store.setField('modelName', undefined);
-		},
-		refresh: () => void store.refreshInstanceModelCredentials(),
 	},
 	sandbox: {
 		idPrefix: 'n8n-agent-sandbox',
@@ -189,89 +107,6 @@ const specs: Record<InstanceAiConnectionKind, KindSpec> = {
 		fieldLabelKey: 'settings.n8nAgent.sandboxDialog.provider',
 		providerHintKey: 'settings.n8nAgent.sandboxDialog.providerHint',
 		testName: 'AI Assistant sandbox',
-		showBackInSetup: true,
-		showSkipInSetup: false,
-		continueInSetup: () => !isLastStep.value,
-		envConfigured: () => Boolean(store.settings?.sandboxEnvConfigured),
-		assignedId: () =>
-			store.settings?.daytonaCredentialId ?? store.settings?.n8nSandboxCredentialId ?? null,
-		assignedSelection: () =>
-			store.settings?.daytonaCredentialId
-				? 'daytona'
-				: store.settings?.n8nSandboxCredentialId
-					? 'n8n-sandbox'
-					: '',
-		defaultSelection: () =>
-			store.settings?.sandboxEnvConfigured ? '' : (store.settings?.sandboxProvider ?? ''),
-		options: () => [
-			{ value: 'daytona', label: SANDBOX_PROVIDER_LABELS.daytona },
-			{ value: 'n8n-sandbox', label: SANDBOX_PROVIDER_LABELS['n8n-sandbox'] },
-		],
-		existingCredentials: () =>
-			store.serviceCredentials.filter((credential) =>
-				SANDBOX_CREDENTIAL_TYPES.includes(credential.type),
-			),
-		existingCredentialLabel: (credential) => credential.name,
-		selectionFor: (credential) => (credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox'),
-		credentialTypeFor: (selected) => (selected === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth'),
-		seedData: (selected): ICredentialDataDecryptedObject => {
-			if (selected === 'daytona') return { apiUrl: DAYTONA_DEFAULT_API_URL };
-			return {};
-		},
-		showsFields: (selected) => selected === 'daytona',
-		applyLoadedData: (data) => {
-			if (!store.settings?.daytonaCredentialId && store.settings?.n8nSandboxCredentialId) {
-				extraValue.value = typeof data.value === 'string' ? data.value : '';
-			} else {
-				fieldsData.value = data;
-			}
-		},
-		initialExtra: () => '',
-		extraRequired: false,
-		newDataComplete: (selected) => {
-			if (selected === 'n8n-sandbox') return extraValue.value.trim().length > 0;
-			return (
-				typeof fieldsData.value.apiUrl === 'string' &&
-				fieldsData.value.apiUrl.trim().length > 0 &&
-				typeof fieldsData.value.apiKey === 'string' &&
-				fieldsData.value.apiKey.trim().length > 0
-			);
-		},
-		extraInput: {
-			labelKey: 'settings.n8nAgent.sandboxCredential.apiKey',
-			inputType: 'password',
-			testId: 'n8n-agent-sandbox-api-key-input',
-			visible: () => !usingExisting.value && selection.value === 'n8n-sandbox',
-		},
-		buildConnectionData: () =>
-			selection.value === 'daytona'
-				? { ...toRaw(fieldsData.value) }
-				: { name: N8N_SANDBOX_HEADER, value: extraValue.value.trim() },
-		stageExisting: () => {
-			store.setField(
-				'daytonaCredentialId',
-				selection.value === 'daytona' ? selectedCredentialId.value : null,
-			);
-			store.setField(
-				'n8nSandboxCredentialId',
-				selection.value === 'n8n-sandbox' ? selectedCredentialId.value : null,
-			);
-			if (selection.value === 'daytona' || selection.value === 'n8n-sandbox') {
-				store.setField('sandboxProvider', selection.value);
-			}
-		},
-		stageNew: (connectionData) => {
-			if (selection.value === 'daytona') {
-				store.setField('sandboxConnection', { type: 'daytonaApi', data: connectionData });
-			} else {
-				store.setField('sandboxConnection', {
-					type: 'httpHeaderAuth',
-					data: { name: N8N_SANDBOX_HEADER, value: extraValue.value.trim() },
-				});
-			}
-		},
-		stageClear: () => store.setField('sandboxConnection', null),
-		refresh: () => void store.refreshCredentials(),
 	},
 	search: {
 		idPrefix: 'n8n-agent-search',
@@ -281,61 +116,188 @@ const specs: Record<InstanceAiConnectionKind, KindSpec> = {
 		fieldLabelKey: 'settings.n8nAgent.searchCredential.label',
 		placeholderKey: 'settings.n8nAgent.searchCredential.placeholder',
 		testName: 'AI Assistant web search',
-		showBackInSetup: true,
-		showSkipInSetup: true,
-		continueInSetup: () => false,
-		envConfigured: () => Boolean(store.settings?.searchEnvConfigured),
-		assignedId: () => store.settings?.searchCredentialId ?? null,
-		assignedSelection: () =>
-			store.serviceCredentials.find(
-				(credential) => credential.id === store.settings?.searchCredentialId,
-			)?.type ?? '',
-		defaultSelection: () => (store.settings?.searchEnvConfigured ? '' : DEFAULT_SEARCH_TYPE),
-		options: () =>
-			INSTANCE_SEARCH_CREDENTIAL_TYPES.map((type) => ({
-				value: type,
-				label: credentialTypeLabel(type),
-			})),
-		existingCredentials: () =>
-			store.serviceCredentials.filter((credential) =>
-				INSTANCE_SEARCH_CREDENTIAL_TYPES.some((type) => type === credential.type),
-			),
-		existingCredentialLabel: (credential) =>
-			`${credential.name} · ${credentialTypeLabel(credential.type)}`,
-		selectionFor: (credential) => credential.type,
-		credentialTypeFor: (selected) => selected,
-		seedData: () => ({}),
-		showsFields: (selected) => Boolean(selected),
-		applyLoadedData: (data) => {
-			fieldsData.value = data;
-		},
-		initialExtra: () => '',
-		extraRequired: false,
-		newDataComplete: (selected) => {
-			const field = selected === 'braveSearchApi' ? 'apiKey' : 'apiUrl';
-			const value = fieldsData.value[field];
-			return typeof value === 'string' && value.trim().length > 0;
-		},
-		buildConnectionData: () => ({ ...toRaw(fieldsData.value) }),
-		stageExisting: () => store.setField('searchCredentialId', selectedCredentialId.value || null),
-		stageNew: (connectionData) =>
-			store.setField('searchConnection', { type: selection.value, data: connectionData }),
-		stageClear: () => store.setField('searchConnection', null),
-		refresh: () => void store.refreshCredentials(),
 	},
 };
 
-const spec = specs[props.kind];
+const copy = DIALOG_COPY[props.kind];
 
-const assignedId = computed(() => spec.assignedId());
+function environmentConfigured(): boolean {
+	if (props.kind === 'model') return Boolean(store.settings?.modelEnvConfigured);
+	if (props.kind === 'sandbox') return Boolean(store.settings?.sandboxEnvConfigured);
+	return Boolean(store.settings?.searchEnvConfigured);
+}
+
+function getAssignedId(): string | null {
+	if (props.kind === 'model') return store.settings?.modelCredentialId ?? null;
+	if (props.kind === 'sandbox') {
+		return store.settings?.daytonaCredentialId ?? store.settings?.n8nSandboxCredentialId ?? null;
+	}
+	return store.settings?.searchCredentialId ?? null;
+}
+
+function getAssignedSelection(): string {
+	if (props.kind === 'sandbox') {
+		if (store.settings?.daytonaCredentialId) return 'daytona';
+		if (store.settings?.n8nSandboxCredentialId) return 'n8n-sandbox';
+		return '';
+	}
+	const credentials =
+		props.kind === 'model' ? store.instanceModelCredentials : store.serviceCredentials;
+	return credentials.find(({ id }) => id === getAssignedId())?.type ?? '';
+}
+
+function getDefaultSelection(): string {
+	if (props.kind === 'model') return '';
+	if (props.kind === 'sandbox') {
+		return store.settings?.sandboxEnvConfigured ? '' : (store.settings?.sandboxProvider ?? '');
+	}
+	return store.settings?.searchEnvConfigured ? '' : DEFAULT_SEARCH_TYPE;
+}
+
+function getProviderOptions(): Array<{ value: string; label: string }> {
+	if (props.kind === 'sandbox') {
+		return [
+			{ value: 'daytona', label: SANDBOX_PROVIDER_LABELS.daytona },
+			{ value: 'n8n-sandbox', label: SANDBOX_PROVIDER_LABELS['n8n-sandbox'] },
+		];
+	}
+	const credentialTypes =
+		props.kind === 'model'
+			? INSTANCE_AI_MODEL_CREDENTIAL_TYPES
+			: INSTANCE_AI_SEARCH_CREDENTIAL_TYPES;
+	return credentialTypes.map((type) => ({ value: type, label: credentialTypeLabel(type) }));
+}
+
+function getExistingCredentials(): InstanceAiProviderConnection[] {
+	if (props.kind === 'model') return store.instanceModelCredentials;
+	const allowedTypes =
+		props.kind === 'sandbox' ? SANDBOX_CREDENTIAL_TYPES : INSTANCE_AI_SEARCH_CREDENTIAL_TYPES;
+	return store.serviceCredentials.filter(({ type }) =>
+		allowedTypes.some((allowed) => allowed === type),
+	);
+}
+
+function existingCredentialLabel(credential: InstanceAiProviderConnection): string {
+	return props.kind === 'sandbox'
+		? credential.name
+		: `${credential.name} · ${credentialTypeLabel(credential.type)}`;
+}
+
+function selectionForCredential(credential: InstanceAiProviderConnection): string {
+	if (props.kind !== 'sandbox') return credential.type;
+	return credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox';
+}
+
+function credentialTypeFor(selected: string): string {
+	if (props.kind !== 'sandbox') return selected;
+	return selected === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth';
+}
+
+function seedData(selected: string): ICredentialDataDecryptedObject {
+	return props.kind === 'sandbox' && selected === 'daytona'
+		? { apiUrl: DAYTONA_DEFAULT_API_URL }
+		: {};
+}
+
+function applyLoadedData(data: ICredentialDataDecryptedObject): void {
+	if (
+		props.kind === 'sandbox' &&
+		!store.settings?.daytonaCredentialId &&
+		store.settings?.n8nSandboxCredentialId
+	) {
+		extraValue.value = typeof data.value === 'string' ? data.value : '';
+		return;
+	}
+	fieldsData.value = data;
+}
+
+function newConnectionIsComplete(selected: string): boolean {
+	if (props.kind === 'model') return true;
+	if (props.kind === 'sandbox') {
+		if (selected === 'n8n-sandbox') return extraValue.value.trim().length > 0;
+		return (
+			typeof fieldsData.value.apiUrl === 'string' &&
+			fieldsData.value.apiUrl.trim().length > 0 &&
+			typeof fieldsData.value.apiKey === 'string' &&
+			fieldsData.value.apiKey.trim().length > 0
+		);
+	}
+	const field = selected === 'braveSearchApi' ? 'apiKey' : 'apiUrl';
+	const value = fieldsData.value[field];
+	return typeof value === 'string' && value.trim().length > 0;
+}
+
+function buildConnectionData(): ICredentialDataDecryptedObject {
+	if (props.kind === 'sandbox' && selection.value === 'n8n-sandbox') {
+		return { name: N8N_SANDBOX_HEADER, value: extraValue.value.trim() };
+	}
+	return { ...toRaw(fieldsData.value) };
+}
+
+function stageExisting(): void {
+	if (props.kind === 'model') {
+		store.setField('modelCredentialId', selectedCredentialId.value || null);
+		store.setField('modelName', selectedCredentialId.value ? extraValue.value.trim() : undefined);
+		return;
+	}
+	if (props.kind === 'search') {
+		store.setField('searchCredentialId', selectedCredentialId.value || null);
+		return;
+	}
+	store.setField(
+		'daytonaCredentialId',
+		selection.value === 'daytona' ? selectedCredentialId.value : null,
+	);
+	store.setField(
+		'n8nSandboxCredentialId',
+		selection.value === 'n8n-sandbox' ? selectedCredentialId.value : null,
+	);
+	if (selection.value === 'daytona' || selection.value === 'n8n-sandbox') {
+		store.setField('sandboxProvider', selection.value);
+	}
+}
+
+function stageNew(connectionData: ICredentialDataDecryptedObject): void {
+	if (props.kind === 'model') {
+		store.setField('modelConnection', { type: selection.value, data: connectionData });
+		store.setField('modelName', extraValue.value.trim());
+		return;
+	}
+	if (props.kind === 'sandbox') {
+		store.setField('sandboxConnection', {
+			type: credentialTypeFor(selection.value),
+			data: connectionData,
+		});
+		return;
+	}
+	store.setField('searchConnection', { type: selection.value, data: connectionData });
+}
+
+function stageClear(): void {
+	if (props.kind === 'model') {
+		store.setField('modelConnection', null);
+		store.setField('modelName', undefined);
+	} else if (props.kind === 'sandbox') {
+		store.setField('sandboxConnection', null);
+	} else {
+		store.setField('searchConnection', null);
+	}
+}
+
+function refreshCredentials(): void {
+	if (props.kind === 'model') void store.refreshInstanceModelCredentials();
+	else void store.refreshCredentials();
+}
+
+const assignedId = computed(getAssignedId);
 const hasSelection = computed(() =>
 	usingExisting.value ? selectedCredentialId.value : selection.value,
 );
-const providerOptions = computed(() => spec.options());
-const existingOptions = computed(() => spec.existingCredentials());
+const providerOptions = computed(getProviderOptions);
+const existingOptions = computed(getExistingCredentials);
 
 const noneLabel = computed(() =>
-	spec.envConfigured()
+	environmentConfigured()
 		? i18n.baseText('settings.n8nAgent.connection.none')
 		: i18n.baseText('settings.n8nAgent.connection.noneNoEnv'),
 );
@@ -351,13 +313,13 @@ function snapshot() {
 }
 
 async function hydrate() {
-	extraValue.value = spec.initialExtra();
+	extraValue.value = props.kind === 'model' ? (store.settings?.modelName ?? '') : '';
 	selectedCredentialId.value = assignedId.value ?? '';
 	selectingExistingCredential.value = false;
 	selection.value = readOnly.value
-		? spec.assignedSelection()
-		: spec.assignedSelection() || spec.defaultSelection();
-	fieldsData.value = spec.seedData(selection.value);
+		? getAssignedSelection()
+		: getAssignedSelection() || getDefaultSelection();
+	fieldsData.value = seedData(selection.value);
 	if (assignedId.value && !readOnly.value) {
 		isLoading.value = true;
 		try {
@@ -365,9 +327,9 @@ async function hydrate() {
 			const data = (
 				credential && 'data' in credential ? (credential.data ?? {}) : {}
 			) as ICredentialDataDecryptedObject;
-			spec.applyLoadedData(data);
+			applyLoadedData(data);
 		} catch {
-			fieldsData.value = spec.seedData(selection.value);
+			fieldsData.value = seedData(selection.value);
 		} finally {
 			isLoading.value = false;
 		}
@@ -393,7 +355,7 @@ function selectOption(next: string) {
 		credentialTestError.value = '';
 		selectingExistingCredential.value = true;
 		selectedCredentialId.value = existingCredential.id;
-		selection.value = spec.selectionFor(existingCredential);
+		selection.value = selectionForCredential(existingCredential);
 		fieldsData.value = {};
 		extraValue.value = existingCredential.id === assignedId.value ? hydratedExtra : '';
 		return;
@@ -406,7 +368,7 @@ function selectOption(next: string) {
 	selectedCredentialId.value = '';
 	selection.value = next;
 	// Switching starts from a clean slate; only the hydrated selection keeps its values.
-	fieldsData.value = next === hydratedSelection ? { ...hydratedData } : spec.seedData(next);
+	fieldsData.value = next === hydratedSelection ? { ...hydratedData } : seedData(next);
 	extraValue.value = next === hydratedSelection ? hydratedExtra : '';
 }
 
@@ -415,7 +377,7 @@ function selectCredential(nextCredentialId: string) {
 	credentialTestError.value = '';
 	selectedCredentialId.value = nextCredentialId;
 	const credential = existingOptions.value.find(({ id }) => id === nextCredentialId);
-	selection.value = credential ? spec.selectionFor(credential) : '';
+	selection.value = credential ? selectionForCredential(credential) : '';
 	extraValue.value = nextCredentialId === assignedId.value ? hydratedExtra : '';
 }
 
@@ -425,9 +387,9 @@ function setFieldValue(name: string, value: IUpdateInformation['value']) {
 
 const isComplete = computed(() => {
 	if (!hasSelection.value) return true;
-	if (spec.extraRequired && extraValue.value.trim().length === 0) return false;
+	if (props.kind === 'model' && extraValue.value.trim().length === 0) return false;
 	if (usingExisting.value) return true;
-	return spec.newDataComplete(selection.value);
+	return newConnectionIsComplete(selection.value);
 });
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 const primaryDisabled = computed(() => {
@@ -438,26 +400,26 @@ const primaryDisabled = computed(() => {
 });
 
 async function handlePrimary() {
-	const connectionData = spec.buildConnectionData();
+	const connectionData = buildConnectionData();
 	if (
 		!usingExisting.value &&
 		selection.value &&
 		!(await testCredential({
-			id: selection.value === spec.assignedSelection() ? (assignedId.value ?? '') : '',
-			name: spec.testName,
-			type: spec.credentialTypeFor(selection.value),
+			id: selection.value === getAssignedSelection() ? (assignedId.value ?? '') : '',
+			name: copy.testName,
+			type: credentialTypeFor(selection.value),
 			data: connectionData,
 		}))
 	)
 		return;
 
 	if (isChanged.value) {
-		if (usingExisting.value) spec.stageExisting();
-		else if (!selection.value) spec.stageClear();
-		else spec.stageNew(connectionData);
+		if (usingExisting.value) stageExisting();
+		else if (!selection.value) stageClear();
+		else stageNew(connectionData);
 		if (!(await store.save())) return;
 	}
-	spec.refresh();
+	refreshCredentials();
 	// Emit before closing so the host can transition to the next dialog without an all-closed gap.
 	emit('saved');
 	open.value = false;
@@ -468,23 +430,23 @@ function handleBack() {
 	open.value = false;
 }
 
-const title = computed(() => i18n.baseText(props.setup ? spec.setupTitleKey : spec.titleKey));
+const title = computed(() => i18n.baseText(props.setup ? copy.setupTitleKey : copy.titleKey));
 const description = computed(() =>
 	i18n.baseText(
-		props.setup && spec.setupDescriptionKey ? spec.setupDescriptionKey : spec.descriptionKey,
+		props.setup && copy.setupDescriptionKey ? copy.setupDescriptionKey : copy.descriptionKey,
 	),
 );
-const showCancel = computed(() => !props.setup || (!spec.showBackInSetup && !spec.showSkipInSetup));
+const showCancel = computed(() => !props.setup || props.kind === 'model');
 const primaryLabel = computed(() => {
 	if (credentialTestError.value) return i18n.baseText('credentialEdit.credentialConfig.retry');
-	if (props.setup && spec.continueInSetup())
+	if (props.setup && (props.kind === 'model' || (props.kind === 'sandbox' && !isLastStep.value)))
 		return i18n.baseText('settings.n8nAgent.setup.continue');
 	return i18n.baseText('generic.save');
 });
 </script>
 
 <template>
-	<N8nDialog v-model:open="open" size="medium" :data-test-id="`${spec.idPrefix}-dialog`">
+	<N8nDialog v-model:open="open" size="medium" :data-test-id="`${copy.idPrefix}-dialog`">
 		<N8nDialogHeader>
 			<N8nText
 				v-if="setup"
@@ -493,7 +455,7 @@ const primaryLabel = computed(() => {
 				color="text-light"
 				bold
 				tag="p"
-				:data-test-id="`${spec.idPrefix}-dialog-step`"
+				:data-test-id="`${copy.idPrefix}-dialog-step`"
 			>
 				{{ stepLabel }}
 			</N8nText>
@@ -502,14 +464,14 @@ const primaryLabel = computed(() => {
 		</N8nDialogHeader>
 
 		<div :class="$style.fields">
-			<N8nInputLabel :label="i18n.baseText(spec.fieldLabelKey)">
+			<N8nInputLabel :label="i18n.baseText(copy.fieldLabelKey)">
 				<N8nSelect
 					v-if="readOnly"
 					:model-value="selectedCredentialId"
 					size="medium"
 					:disabled="store.isSaving || isLoading"
-					:placeholder="spec.placeholderKey ? i18n.baseText(spec.placeholderKey) : undefined"
-					:data-test-id="`${spec.idPrefix}-provider-select`"
+					:placeholder="copy.placeholderKey ? i18n.baseText(copy.placeholderKey) : undefined"
+					:data-test-id="`${copy.idPrefix}-provider-select`"
 					@update:model-value="selectCredential(String($event ?? ''))"
 				>
 					<N8nOption v-if="!setup" value="" :label="noneLabel" />
@@ -517,7 +479,7 @@ const primaryLabel = computed(() => {
 						v-for="credential in existingOptions"
 						:key="credential.id"
 						:value="credential.id"
-						:label="spec.existingCredentialLabel(credential)"
+						:label="existingCredentialLabel(credential)"
 					/>
 				</N8nSelect>
 				<N8nSelect
@@ -525,8 +487,8 @@ const primaryLabel = computed(() => {
 					:model-value="selectingExistingCredential ? selectedCredentialId : selection"
 					size="medium"
 					:disabled="store.isSaving || isLoading"
-					:placeholder="spec.placeholderKey ? i18n.baseText(spec.placeholderKey) : undefined"
-					:data-test-id="`${spec.idPrefix}-provider-select`"
+					:placeholder="copy.placeholderKey ? i18n.baseText(copy.placeholderKey) : undefined"
+					:data-test-id="`${copy.idPrefix}-provider-select`"
 					@update:model-value="selectOption(String($event ?? ''))"
 				>
 					<N8nOption v-if="!setup" value="" :label="noneLabel" />
@@ -540,82 +502,98 @@ const primaryLabel = computed(() => {
 						v-for="credential in existingOptions"
 						:key="credential.id"
 						:value="credential.id"
-						:label="spec.existingCredentialLabel(credential)"
+						:label="existingCredentialLabel(credential)"
 					/>
 				</N8nSelect>
 				<N8nText
-					v-if="spec.providerHintKey"
+					v-if="copy.providerHintKey"
 					tag="p"
 					:class="$style.providerHint"
 					size="small"
 					color="text-light"
 				>
-					{{ i18n.baseText(spec.providerHintKey) }}
+					{{ i18n.baseText(copy.providerHintKey) }}
 				</N8nText>
 			</N8nInputLabel>
 
 			<ConnectionFields
-				v-if="!usingExisting && selection && spec.showsFields(selection) && !isLoading"
-				:credential-type="spec.credentialTypeFor(selection)"
+				v-if="
+					!usingExisting &&
+					selection &&
+					(kind !== 'sandbox' || selection === 'daytona') &&
+					!isLoading
+				"
+				:credential-type="credentialTypeFor(selection)"
 				:data="fieldsData"
-				:data-test-id="`${spec.idPrefix}-connection-fields`"
+				:data-test-id="`${copy.idPrefix}-connection-fields`"
 				@update="setFieldValue"
 			/>
 
 			<N8nInputLabel
-				v-if="spec.extraInput && spec.extraInput.visible()"
-				:label="i18n.baseText(spec.extraInput.labelKey)"
+				v-if="kind === 'model' && hasSelection"
+				:label="i18n.baseText('settings.n8nAgent.modelName.label')"
 			>
 				<N8nInput
 					:model-value="extraValue"
-					:type="spec.extraInput.inputType"
+					type="text"
 					size="medium"
 					:disabled="store.isSaving || isLoading"
 					autocomplete="off"
 					:spellcheck="false"
-					:placeholder="
-						spec.extraInput.placeholderKey
-							? i18n.baseText(spec.extraInput.placeholderKey)
-							: undefined
-					"
-					:data-test-id="spec.extraInput.testId"
+					:placeholder="i18n.baseText('settings.n8nAgent.modelName.placeholder')"
+					data-test-id="n8n-agent-model-name-input"
+					@update:model-value="extraValue = String($event)"
+				/>
+			</N8nInputLabel>
+			<N8nInputLabel
+				v-else-if="kind === 'sandbox' && !usingExisting && selection === 'n8n-sandbox'"
+				:label="i18n.baseText('settings.n8nAgent.sandboxCredential.apiKey')"
+			>
+				<N8nInput
+					:model-value="extraValue"
+					type="password"
+					size="medium"
+					:disabled="store.isSaving || isLoading"
+					autocomplete="off"
+					:spellcheck="false"
+					data-test-id="n8n-agent-sandbox-api-key-input"
 					@update:model-value="extraValue = String($event)"
 				/>
 			</N8nInputLabel>
 		</div>
 
 		<N8nText
-			v-if="spec.footnoteKey"
+			v-if="copy.footnoteKey"
 			:class="$style.footnote"
 			size="small"
 			color="text-light"
 			tag="p"
 		>
-			{{ i18n.baseText(spec.footnoteKey) }}
+			{{ i18n.baseText(copy.footnoteKey) }}
 		</N8nText>
 		<Banner
 			v-if="credentialTestError"
 			theme="danger"
 			:message="i18n.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
 			:details="credentialTestError"
-			:data-test-id="`${spec.idPrefix}-credential-test-error`"
+			:data-test-id="`${copy.idPrefix}-credential-test-error`"
 		/>
 
 		<N8nDialogFooter>
 			<N8nButton
-				v-if="setup && spec.showBackInSetup"
+				v-if="setup && kind !== 'model'"
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('generic.back')"
-				:data-test-id="`${spec.idPrefix}-dialog-back`"
+				:data-test-id="`${copy.idPrefix}-dialog-back`"
 				@click="handleBack"
 			/>
 			<N8nButton
-				v-if="setup && spec.showSkipInSetup"
+				v-if="setup && kind === 'search'"
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('settings.n8nAgent.setup.skip')"
-				:data-test-id="`${spec.idPrefix}-dialog-skip`"
+				:data-test-id="`${copy.idPrefix}-dialog-skip`"
 				@click="open = false"
 			/>
 			<N8nButton
@@ -623,7 +601,7 @@ const primaryLabel = computed(() => {
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('generic.cancel')"
-				:data-test-id="`${spec.idPrefix}-dialog-cancel`"
+				:data-test-id="`${copy.idPrefix}-dialog-cancel`"
 				@click="open = false"
 			/>
 			<N8nButton
@@ -632,7 +610,7 @@ const primaryLabel = computed(() => {
 				:label="primaryLabel"
 				:loading="isTestingCredential"
 				:disabled="primaryDisabled"
-				:data-test-id="`${spec.idPrefix}-dialog-save`"
+				:data-test-id="`${copy.idPrefix}-dialog-save`"
 				@click="handlePrimary"
 			/>
 		</N8nDialogFooter>
