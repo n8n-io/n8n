@@ -50,11 +50,11 @@ describe('useAgentConfigAutosave', () => {
 		let rejectFirstSave: (error: Error) => void = () => {};
 		const save = vi.fn((snapshot: { value: string }) => {
 			if (snapshot.value === 'old') {
-				return new Promise<void>((_resolve, reject) => {
+				return new Promise<'skipped' | undefined>((_resolve, reject) => {
 					rejectFirstSave = reject;
 				});
 			}
-			return Promise.resolve();
+			return Promise.resolve(undefined);
 		});
 		const autosave = useAgentConfigAutosave<{ value: string }>({
 			save,

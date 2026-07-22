@@ -16,7 +16,7 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	 * and keeps `saveStatus` at `'idle'` instead of flashing `'saved'` for an
 	 * edit that was never persisted.
 	 */
-	save: (snapshot: TSnapshot) => Promise<void | 'skipped'>;
+	save: (snapshot: TSnapshot) => Promise<'skipped' | undefined>;
 	/** Called after a successful save so the caller can fire telemetry. */
 	onSaved?: (snapshot: TSnapshot) => void;
 	/** Called when the save throws — caller decides how to surface the error. */

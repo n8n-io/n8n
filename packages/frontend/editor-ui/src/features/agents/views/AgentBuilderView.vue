@@ -599,7 +599,7 @@ interface SkillAutosaveSnapshot {
 	skill: AgentSkill;
 }
 
-async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void | 'skipped'> {
+async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' | undefined> {
 	// The AI may be mutating this agent right now — a save queued just before
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
@@ -611,7 +611,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void | 'ski
 	// meantime — both `config` (handled inside useAgentConfig) and
 	// `agent.versionId` would otherwise be polluted with values for the
 	// previous agent.
-	if (result.stale) return;
+	if (result.stale) return undefined;
 	if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 		agent.value = { ...agent.value, versionId: result.versionId };
 	}
@@ -619,9 +619,10 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void | 'ski
 		fetchAgent(snapshot.projectId, snapshot.agentId),
 		refreshConfigValidation(snapshot.projectId, snapshot.agentId),
 	]);
+	return undefined;
 }
 
-async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void | 'skipped'> {
+async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<'skipped' | undefined> {
 	if (props.artifactEditingLocked) return 'skipped';
 	const result = await updateAgentSkill(
 		rootStore.restApiContext,
@@ -631,7 +632,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void | 'skipp
 		snapshot.skill,
 	);
 	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
-	if (agent.value?.id !== snapshot.agentId) return;
+	if (agent.value?.id !== snapshot.agentId) return undefined;
 	agent.value = {
 		...agent.value,
 		versionId: result.versionId,
@@ -641,6 +642,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void | 'skipp
 		},
 	};
 	await refreshConfigValidation(snapshot.projectId, snapshot.agentId);
+	return undefined;
 }
 
 // Debounce shorter than the workflow canvas' 1500ms — the publish button's
