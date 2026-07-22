@@ -3,11 +3,11 @@ import { jsonParse } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
-import type { EvalLogger } from '../harness/logger';
-import { createRowSink, runEvalAndPersist } from '../run/persist';
-import type { ScenarioRowInputs } from '../run/case-pipeline';
-import type { TargetOutput } from '../run/reshape';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import type { EvalLogger } from '../harness/logger';
+import type { ScenarioRowInputs } from '../run/case-pipeline';
+import { createRowSink, runEvalAndPersist } from '../run/persist';
+import type { TargetOutput } from '../run/reshape';
 import type { WorkflowTestCase } from '../types';
 
 // The row sink is the crash-recovery journal both drivers feed: one JSON line
@@ -104,11 +104,11 @@ describe('runEvalAndPersist crash recovery from the sink', () => {
 					rowSink,
 					testCasesWithFiles,
 				},
-				async () => {
+				() => {
 					for (const { iteration } of rows) {
 						rowSink.append({ run: { inputs: rowInputs(iteration), outputs: rowOutputs(true) } });
 					}
-					throw new Error('lane meltdown');
+					return Promise.reject(new Error('lane meltdown'));
 				},
 			),
 		).rejects.toThrow('lane meltdown');
