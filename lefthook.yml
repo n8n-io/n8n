@@ -32,9 +32,9 @@ pre-commit:
       skip:
         - merge
         - rebase
-    single_instance_check:
+    single_instance_libs_check:
       glob: '**/package.json'
-      run: pnpm check:single-instance
+      run: pnpm --filter=@n8n/code-health check --rule=single-instance-libs
       skip:
         - merge
         - rebase

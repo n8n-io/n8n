@@ -109,7 +109,6 @@ jobs:
               .github/scripts/**
               scripts/licenses/**
               scripts/mutation-health/**
-              scripts/single-instance/**
             performance:
               packages/testing/performance/**
               packages/workflow/src/**

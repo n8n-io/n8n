@@ -70,7 +70,7 @@ jobs:
       - name: Verify npm-install closure for changed packages
         env:
           BEFORE_SHA: ${{ github.event.before }}
-        run: node scripts/single-instance/verify-single-instance-npm-install.mjs --changed="$BEFORE_SHA"
+        run: pnpm --filter=@n8n/code-health exec tsx src/cli.ts verify-npm-install --changed="$BEFORE_SHA"
 
   notify-on-failure:
     name: Notify Slack on failure

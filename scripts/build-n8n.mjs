@@ -235,7 +235,7 @@ await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --fil
 // third-party re-split can't hard-break every nightly/release with no config escape.
 // Promote to a hard gate once it has proven stable across releases.
 echo(chalk.yellow('INFO: Verifying single-instance dependency integrity in the production closure...'));
-const verifyProcess = $`cd ${config.rootDir} && node scripts/single-instance/verify-single-instance-deps.mjs ${config.compiledAppDir}`.nothrow();
+const verifyProcess = $`cd ${config.rootDir} && pnpm --filter=@n8n/code-health exec tsx src/cli.ts verify-closure ${config.compiledAppDir}`.nothrow();
 verifyProcess.pipe(process.stdout);
 const verifyResult = await verifyProcess;
 if (verifyResult.exitCode === 0) {

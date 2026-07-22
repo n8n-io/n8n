@@ -166,4 +166,4 @@ jobs:
         with:
           build-command: pnpm build
       - name: Verify full npm-install closure
-        run: node scripts/single-instance/verify-single-instance-npm-install.mjs --all
+        run: pnpm --filter=@n8n/code-health exec tsx src/cli.ts verify-npm-install --all
