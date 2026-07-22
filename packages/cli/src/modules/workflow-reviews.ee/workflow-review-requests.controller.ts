@@ -1,5 +1,6 @@
 import {
 	CreateWorkflowReviewRequestDto,
+	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	type GetWorkflowReviewInboxSummaryResponse,
 	type ListWorkflowReviewInboxResponse,
@@ -23,6 +24,18 @@ export class WorkflowReviewRequestsController {
 		@Query query: ListWorkflowReviewRequestsQueryDto,
 	) {
 		return await this.workflowReviewRequestService.list(req.user, query);
+	}
+
+	// Routes register in declaration order — keep this above any future `GET /:id`
+	// so 'eligible-reviewers' is not captured as an id
+	@Get('/eligible-reviewers')
+	@Licensed('feat:workflowReviews')
+	async getEligibleReviewers(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: GetWorkflowReviewEligibleReviewersQueryDto,
+	) {
+		return await this.workflowReviewRequestService.getEligibleReviewers(req.user, query);
 	}
 
 	@Post('/')

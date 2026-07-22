@@ -1,6 +1,8 @@
 import type {
 	CreateWorkflowReviewRequestDto,
+	GetWorkflowReviewEligibleReviewersQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
+	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestSummary,
 	ListWorkflowReviewInboxQueryDto,
@@ -13,8 +15,10 @@ import {
 	DbLock,
 	DbLockService,
 	SharedWorkflowRepository,
+	UserRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
+	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	type InboxCursor,
 	type User,
@@ -30,6 +34,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -45,11 +50,31 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
+		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
+		private readonly userRepository: UserRepository,
+		private readonly roleService: RoleService,
 		private readonly projectService: ProjectService,
 		private readonly licenseState: LicenseState,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
 	) {}
+
+	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
+		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
+			this.roleService.rolesWithScope('project', ['workflow:publish']),
+			this.roleService.rolesWithScope('global', ['workflow:publish']),
+		]);
+
+		const users = await this.userRepository.findEligibleByProjectOrGlobalRoles({
+			projectId,
+			projectRoleSlugs,
+			globalRoleSlugs,
+		});
+
+		return users
+			.filter((user) => !user.isPending && user.id !== excludeUserId)
+			.sort((a, b) => a.email.localeCompare(b.email));
+	}
 
 	async list(
 		user: User,
@@ -80,6 +105,41 @@ export class WorkflowReviewRequestService {
 				decision: request.decision,
 				createdAt: request.createdAt.toISOString(),
 				updatedAt: request.updatedAt.toISOString(),
+			})),
+		};
+	}
+
+	async getEligibleReviewers(
+		user: User,
+		query: GetWorkflowReviewEligibleReviewersQueryDto,
+	): Promise<WorkflowReviewEligibleReviewersList> {
+		const policy = await this.workflowReviewPolicyService.get();
+		if (!policy.enabled) {
+			throw new ForbiddenError('Workflow reviews are not enabled for this instance');
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(query.workflowId, user, [
+			'workflow:publish',
+		]);
+		if (!workflow) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(query.workflowId);
+		if (!project) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		const reviewers = await this.findEligibleReviewers(project.id, user.id);
+
+		// No pagination: the set is bounded by the project's members plus instance admins
+		return {
+			count: reviewers.length,
+			data: reviewers.map((reviewer) => ({
+				id: reviewer.id,
+				email: reviewer.email,
+				firstName: reviewer.firstName ?? null,
+				lastName: reviewer.lastName ?? null,
 			})),
 		};
 	}
@@ -120,6 +180,24 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find workflow');
 		}
 
+		const reviewerUserIds = [...new Set(dto.reviewerUserIds ?? [])];
+		if (reviewerUserIds.length > 0) {
+			if (reviewerUserIds.includes(user.id)) {
+				throw new BadRequestError('You cannot assign yourself as a reviewer');
+			}
+
+			const eligibleIds = new Set(
+				(await this.findEligibleReviewers(project.id, user.id)).map((reviewer) => reviewer.id),
+			);
+			// The requester can already enumerate the eligible set, so listing ids leaks nothing
+			const ineligibleIds = reviewerUserIds.filter((id) => !eligibleIds.has(id));
+			if (ineligibleIds.length > 0) {
+				throw new BadRequestError(
+					`These users are not eligible to review this workflow: ${ineligibleIds.join(', ')}`,
+				);
+			}
+		}
+
 		const request = await this.dbLockService.withLock(
 			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
 			async (tx) => {
@@ -158,6 +236,13 @@ export class WorkflowReviewRequestService {
 					{ workflowReviewRequestId: created.id, userId: user.id },
 					tx,
 				);
+
+				if (reviewerUserIds.length > 0) {
+					await this.workflowReviewRequestReviewerRepository.addReviewers(
+						{ workflowReviewRequestId: created.id, userIds: reviewerUserIds },
+						tx,
+					);
+				}
 
 				return created;
 			},

@@ -1,6 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState, type Logger } from '@n8n/backend-common';
-import type { DbLockService, SharedWorkflowRepository, User, WorkflowReviewRequest } from '@n8n/db';
+import type {
+	DbLockService,
+	SharedWorkflowRepository,
+	User,
+	UserRepository,
+	WorkflowReviewRequest,
+	WorkflowReviewRequestReviewerRepository,
+} from '@n8n/db';
 import {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -10,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -27,6 +35,9 @@ describe('WorkflowReviewRequestService list', () => {
 		WorkflowReviewRequestWorkflowRepository,
 	);
 	const workflowReviewRequestAuthorRepository = mockInstance(WorkflowReviewRequestAuthorRepository);
+	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const userRepository = mock<UserRepository>();
+	const roleService = mock<RoleService>();
 	const projectService = mockInstance(ProjectService);
 	const licenseState = mockInstance(LicenseState);
 	const dbLockService = mock<DbLockService>();
@@ -51,6 +62,9 @@ describe('WorkflowReviewRequestService list', () => {
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			workflowReviewRequestAuthorRepository,
+			reviewerRepository,
+			userRepository,
+			roleService,
 			projectService,
 			licenseState,
 			dbLockService,

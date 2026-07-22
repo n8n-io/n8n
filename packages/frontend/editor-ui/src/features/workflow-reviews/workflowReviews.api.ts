@@ -1,6 +1,7 @@
 import type {
 	GetWorkflowReviewInboxSummaryResponse,
 	ListWorkflowReviewInboxResponse,
+	WorkflowReviewEligibleReviewersList,
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestSummary,
@@ -14,6 +15,7 @@ export interface CreateWorkflowReviewRequestPayload {
 		workflowId: string;
 		workflowVersionId: string;
 	}>;
+	reviewerUserIds?: string[];
 }
 
 export type FetchWorkflowReviewInboxParams = {
@@ -31,6 +33,18 @@ export async function fetchWorkflowReviewRequests(
 		context,
 		'GET',
 		'/workflow-review-requests',
+		{ ...query },
+	);
+}
+
+export async function fetchEligibleReviewers(
+	context: IRestApiContext,
+	query: { workflowId: string },
+): Promise<WorkflowReviewEligibleReviewersList> {
+	return await makeRestApiRequest<WorkflowReviewEligibleReviewersList>(
+		context,
+		'GET',
+		'/workflow-review-requests/eligible-reviewers',
 		{ ...query },
 	);
 }
