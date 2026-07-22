@@ -199,6 +199,10 @@ export class StaticWorkflowDependencyExporter {
 			}
 
 			const allocator = this.folderAllocator(parentTarget ?? options.baseDir);
+			// A folder's directly-contained workflows are written under `<folder>/workflows`,
+			// so reserve that segment before placing child folders — otherwise a child folder
+			// named "workflows" would collide with its parent's workflow directory.
+			if (parentTarget) allocator.reserve('workflows');
 			const target = allocator.allocate(folder.name);
 			const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
 			options.writer.writeDirectory(target);

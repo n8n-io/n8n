@@ -265,6 +265,39 @@ describe('StaticWorkflowDependencyExporter', () => {
 		expect(credentialExtractor.extract).not.toHaveBeenCalled();
 	});
 
+	it('reserves the workflows/ segment so a child folder named "workflows" does not collide with its parent workflow directory', () => {
+		const exporter = makeExporter();
+		const writer = new CapturingWriter();
+		const root = makeFolder('f-root', 'Root');
+		const wfFolder = makeFolder('f-wf', 'Workflows');
+
+		const result = exporter.export(
+			emptyRequest(writer, [
+				// A workflow placed directly in Root → folders/root/workflows/alpha
+				dependency({
+					workflow: makeWorkflow({ id: 'wf-a', name: 'Alpha' }),
+					placement: 'folder',
+					folderChain: [root],
+				}),
+				// A workflow nested under Root's child folder literally named "Workflows"
+				dependency({
+					workflow: makeWorkflow({ id: 'wf-b', name: 'Beta' }),
+					placement: 'folder',
+					folderChain: [root, wfFolder],
+				}),
+			]),
+		);
+
+		const rootWorkflow = result.workflowEntries.find((e) => e.id === 'wf-a');
+		const nestedWorkflow = result.workflowEntries.find((e) => e.id === 'wf-b');
+		const nestedFolder = result.folderEntries.find((e) => e.id === 'f-wf');
+
+		expect(rootWorkflow?.target).toBe('folders/root/workflows/alpha');
+		// The "Workflows" folder is suffixed so it never occupies Root's workflow directory.
+		expect(nestedFolder?.target).toBe('folders/root/workflows-2');
+		expect(nestedWorkflow?.target).toBe('folders/root/workflows-2/workflows/beta');
+	});
+
 	it('shares one folder shell between two dependencies in the same folder', () => {
 		const exporter = makeExporter();
 		const writer = new CapturingWriter();
