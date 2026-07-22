@@ -4,6 +4,7 @@ import { pickVariableForProject } from 'n8n-workflow';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { variableBlockingFailures } from './variable-missing-policy';
+import { createFailure } from './variable.types';
 import type {
 	VariableImportPlan,
 	VariableImportRequest,
@@ -35,14 +36,14 @@ export class VariableImporter {
 		const matched: string[] = [];
 		const missing: VariableResolutionFailure[] = [];
 
-		for (const { name, usedByWorkflows } of requirements) {
+		for (const requirement of requirements) {
 			const picked = pickVariableForProject(
-				variablesByKey.get(name) ?? [],
-				name,
+				variablesByKey.get(requirement.name) ?? [],
+				requirement.name,
 				context.projectId,
 			);
-			if (picked) matched.push(name);
-			else missing.push({ name, usedByWorkflows: [...usedByWorkflows].sort() });
+			if (picked) matched.push(requirement.name);
+			else missing.push(createFailure(requirement));
 		}
 
 		return { matched, missing };

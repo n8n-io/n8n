@@ -33,6 +33,13 @@ export interface VariableResolutionFailure {
 	usedByWorkflows: string[];
 }
 
+export function createFailure(requirement: PackageVariableRequirement): VariableResolutionFailure {
+	return {
+		name: requirement.name,
+		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+	};
+}
+
 export interface VariableImportPlan {
 	/** Requirement names that resolve in the target project or at the global level. */
 	matched: string[];

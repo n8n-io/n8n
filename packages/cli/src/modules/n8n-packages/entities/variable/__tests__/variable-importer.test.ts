@@ -71,6 +71,21 @@ describe('VariableImporter', () => {
 			});
 		});
 
+		it('dedupes and sorts usedByWorkflows on unresolved requirements', async () => {
+			const { importer, variablesService } = makeImporter();
+			variablesService.getAllCached.mockResolvedValue([]);
+
+			const plan = await importer.plan(context, {
+				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-2', 'wf-1', 'wf-2'] }],
+				missingPolicy: 'do-nothing',
+			});
+
+			expect(plan).toEqual({
+				matched: [],
+				missing: [{ name: 'API_URL', usedByWorkflows: ['wf-1', 'wf-2'] }],
+			});
+		});
+
 		it('matches a project-scoped variable in the target project', async () => {
 			const { importer, variablesService } = makeImporter();
 			variablesService.getAllCached.mockResolvedValue([
