@@ -24,7 +24,6 @@ import { VariableImporter } from '../entities/variable/variable-importer';
 import type {
 	VariableImportPlan,
 	VariableImportRequest,
-	VariableResolutionFailure,
 } from '../entities/variable/variable.types';
 import type {
 	PreparedWorkflow,
@@ -229,7 +228,7 @@ export class ImportOrchestrator {
 				.map(toCredentialBlockingIssue),
 			...this.variableImporter
 				.blockingFailures(variableRequest, variablePlan)
-				.map(toVariableBlockingIssue),
+				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
 		];
 	}
 }
@@ -244,13 +243,5 @@ function toCredentialBlockingIssue(failure: CredentialResolutionFailure): Blocki
 		...(expectedType ? { expectedType } : {}),
 		...(actualType ? { actualType } : {}),
 		usedByWorkflows,
-	};
-}
-
-function toVariableBlockingIssue(failure: VariableResolutionFailure): BlockingIssue {
-	return {
-		type: 'variable-unresolved',
-		name: failure.name,
-		usedByWorkflows: failure.usedByWorkflows,
 	};
 }

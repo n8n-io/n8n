@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { VariableResolutionFailure } from './entities/variable/variable.types';
 import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
 import type {
 	WorkflowConflict,
@@ -260,14 +261,7 @@ export type BlockingIssue =
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
 	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
-	| {
-			// Inlined rather than intersected with VariableResolutionFailure: variable.types
-			// imports VariableMissingPolicy from here, so importing back would form a type cycle.
-			type: 'variable-unresolved';
-			/** Requirement name with no match in the target project or global scope. */
-			name: string;
-			usedByWorkflows: string[];
-	  };
+	| ({ type: 'variable-unresolved' } & VariableResolutionFailure);
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
