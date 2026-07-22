@@ -42,4 +42,9 @@ export class InstanceCredentialUseRegistry {
 		}
 		return credentialUse;
 	}
+
+	/** Non-throwing lookup for assignments whose use may not be registered (module disabled). */
+	find(credentialUseId: string): InstanceCredentialUse | undefined {
+		return this.uses.get(credentialUseId);
+	}
 }
