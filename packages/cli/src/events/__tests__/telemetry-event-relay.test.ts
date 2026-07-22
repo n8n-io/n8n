@@ -3756,5 +3756,43 @@ describe('TelemetryEventRelay', () => {
 			expect(props).not.toHaveProperty('is_authorized');
 			expect(props).toMatchObject({ node_type: 'n8n-nodes-base.gmail', is_approved: false });
 		});
+
+		it('should forward `response_mode` and `advanced_email` for email nodes', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.gmail',
+				approved: true,
+				authorized: undefined,
+				response_mode: 'direct_link',
+				advanced_email: true,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			const props = vi.mocked(telemetry.track).mock.calls[0][1];
+			expect(props).toMatchObject({
+				node_type: 'n8n-nodes-base.gmail',
+				is_approved: true,
+				response_mode: 'direct_link',
+				is_advanced_email: true,
+			});
+		});
+
+		it('should omit `response_mode` and `is_advanced_email` when absent (chat nodes)', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			const props = vi.mocked(telemetry.track).mock.calls[0][1];
+			expect(props).not.toHaveProperty('response_mode');
+			expect(props).not.toHaveProperty('is_advanced_email');
+		});
 	});
 });

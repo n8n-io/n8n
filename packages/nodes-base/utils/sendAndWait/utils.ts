@@ -510,9 +510,17 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 		return { noWebhookResponse: true };
 	}
 
-	// Advanced HITL: the confirmation-page POST is the actioned response.
-	if (confirmationPage && method === 'POST' && this.getNode().type === GMAIL_NODE_TYPE) {
-		this.logHitlResponse({ approved });
+	// Advanced HITL telemetry for the Gmail node — fired only for the advanced
+	// toggles (confirmation page, or advanced email's one-click links.)
+	const advancedEmail = this.getNodeParameter('advancedEmail', false) as boolean;
+	const isConfirmationPagePost = confirmationPage && method === 'POST';
+	const isDirectLinkGet = !confirmationPage && method === 'GET' && advancedEmail;
+	if ((isConfirmationPagePost || isDirectLinkGet) && this.getNode().type === GMAIL_NODE_TYPE) {
+		this.logHitlResponse({
+			approved,
+			response_mode: isConfirmationPagePost ? 'confirmation_page' : 'direct_link',
+			advanced_email: advancedEmail,
+		});
 	}
 
 	return {

@@ -1470,7 +1470,12 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getWebhookName(): string;
 	validateCookieAuth(cookieValue: string): Promise<IUser>;
 	/** Emits telemetry for an advanced HITL response actioned via this webhook. */
-	logHitlResponse(payload: { approved: boolean; authorized?: boolean }): void;
+	logHitlResponse(
+		payload: Pick<
+			HitlResponseTelemetryPayload,
+			'approved' | 'authorized' | 'response_mode' | 'advanced_email'
+		>,
+	): void;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions & BaseHelperFunctions & BinaryHelperFunctions;
 }
@@ -3492,6 +3497,13 @@ export type HitlResponseTelemetryPayload = {
 	 * responder and omit it.
 	 */
 	authorized?: boolean;
+	/**
+	 * How an email responder actioned the request: `confirmation_page` (the
+	 * double-confirm POST) or `direct_link` (a one-click email button GET). Only
+	 * email nodes set this; chat nodes omit it.
+	 */
+	response_mode?: 'confirmation_page' | 'direct_link';
+	advanced_email?: boolean;
 	executionId?: string;
 	workflowId?: string;
 };

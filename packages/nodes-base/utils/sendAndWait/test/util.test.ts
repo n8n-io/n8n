@@ -724,7 +724,11 @@ describe('Send and Wait utils tests', () => {
 					webhookResponse: expect.any(String),
 					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
 				});
-				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({ approved: true });
+				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({
+					approved: true,
+					response_mode: 'confirmation_page',
+					advanced_email: false,
+				});
 			});
 
 			it('should log a declined HITL response on POST when the option is enabled', async () => {
@@ -740,7 +744,32 @@ describe('Send and Wait utils tests', () => {
 
 				await sendAndWaitWebhook.call(mockWebhookFunctions);
 
-				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({ approved: false });
+				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({
+					approved: false,
+					response_mode: 'confirmation_page',
+					advanced_email: false,
+				});
+			});
+
+			it('should record advanced_email on the confirmation-page POST when advanced email is also on', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+					advancedEmail: true,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({
+					approved: true,
+					response_mode: 'confirmation_page',
+					advanced_email: true,
+				});
 			});
 
 			it('should not log a HITL response on POST when the option is disabled', async () => {
@@ -795,6 +824,105 @@ describe('Send and Wait utils tests', () => {
 					webhookResponse: expect.any(String),
 					workflowData: [[{ json: { data: { approved: true, respondedAt: expect.any(String) } } }]],
 				});
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
+			});
+
+			it('should log a direct-link HITL response on GET for advanced email without a confirmation page', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: false,
+					advancedEmail: true,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({
+					approved: true,
+					response_mode: 'direct_link',
+					advanced_email: true,
+				});
+			});
+
+			it('should log a declined direct-link HITL response on GET for advanced email', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'false' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: false,
+					advancedEmail: true,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.logHitlResponse).toHaveBeenCalledWith({
+					approved: false,
+					response_mode: 'direct_link',
+					advanced_email: true,
+				});
+			});
+
+			it('should not log a direct-link response on GET when advanced email is off', async () => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: false,
+					advancedEmail: false,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
+			});
+
+			it('should not double-log on the confirmation-page GET when advanced email is also on', async () => {
+				const send = vi.fn();
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({ send } as unknown as Response);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: true,
+					advancedEmail: true,
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				expect(result).toEqual({ noWebhookResponse: true });
+				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
+			});
+
+			it('should not log a direct-link response on GET for a non-Gmail node', async () => {
+				mockWebhookFunctions.getNode.mockReturnValue({
+					type: 'n8n-nodes-base.microsoftOutlook',
+				} as any);
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'GET',
+					headers: { 'user-agent': 'Mozilla/5.0 (Macintosh) Firefox/128.0' },
+					query: { approved: 'true' },
+				} as unknown as Request);
+				mockParams({
+					responseType: 'approval',
+					confirmationPage: false,
+					advancedEmail: true,
+				});
+
+				await sendAndWaitWebhook.call(mockWebhookFunctions);
+
 				expect(mockWebhookFunctions.logHitlResponse).not.toHaveBeenCalled();
 			});
 
