@@ -431,12 +431,12 @@ function toggleScope(scope: S, checked: boolean) {
 .modes {
 	display: grid;
 	grid-template-columns: 1fr;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--xs);
 }
 
 .modeCard {
-	padding: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--xs);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	cursor: pointer;
