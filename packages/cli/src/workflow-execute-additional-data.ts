@@ -325,12 +325,18 @@ export async function executeWorkflow(
 		source: 'integrated',
 	});
 
+	// A sub-workflow loaded from inline JSON / file / URL (source other than a
+	// stored database workflow) carries no project of its own. Its credentials
+	// must be evaluated against the triggering user, not the parent's project.
+	const isInlineSubworkflow = workflowInfo.code !== undefined && workflowInfo.id === undefined;
+
 	const executionPromise = startExecution(
 		additionalData,
 		options,
 		executionId,
 		runData,
 		workflowData,
+		isInlineSubworkflow,
 	);
 
 	if (options.doNotWaitToFinish) {
@@ -453,6 +459,7 @@ async function startExecution(
 	executionId: string,
 	runData: IWorkflowExecutionDataProcess,
 	workflowData: IWorkflowBase,
+	isInlineSubworkflow = false,
 ): Promise<ExecuteWorkflowData> {
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
@@ -481,7 +488,17 @@ async function startExecution(
 
 	let data;
 	try {
-		await Container.get(CredentialsPermissionChecker).check(workflowData.id, workflowData.nodes);
+		if (isInlineSubworkflow && additionalData.userId) {
+			// Inline sub-workflow triggered by a specific user: its credentials were
+			// never vetted against that user (they live only in the parameter JSON),
+			// so validate them against the user rather than the parent's project.
+			await Container.get(CredentialsPermissionChecker).checkForUser(
+				additionalData.userId,
+				workflowData.nodes,
+			);
+		} else {
+			await Container.get(CredentialsPermissionChecker).check(workflowData.id, workflowData.nodes);
+		}
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
@@ -493,6 +510,11 @@ async function startExecution(
 		// different webhooks
 		const workflowSettings = workflowData.settings;
 		const additionalDataIntegrated = await getBase({
+			// Inline sub-workflows carry no project, so the triggering user must be
+			// preserved for nested inline calls to be validated against that user too.
+			// Stored sub-workflows run under their own project scope, so their userId
+			// stays unset (their credentials are validated against the project instead).
+			userId: isInlineSubworkflow ? additionalData.userId : undefined,
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
