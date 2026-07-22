@@ -2,6 +2,7 @@ import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
@@ -65,27 +66,12 @@ export function isWorkflowJsonSourceFile(filePath: string): boolean {
 }
 
 /**
- * Normalizes compiled workflow nodes for INode persistence.
- *
- * Optional top-level INode fields must be omitted, never null. LLM-authored
- * WorkflowJSON and sandbox BUILD_MJS output can still carry `"credentials": null`
- * etc.; strip those before validation/persist. Nested nulls (e.g. credential id)
- * are preserved.
+ * Normalizes compiled workflow nodes for INode persistence via
+ * {@link normalizeNodeShape}. Nested nulls (e.g. credential id) are preserved.
  */
 function normalizeWorkflowNodes(json: WorkflowJSON): void {
-	for (const node of json.nodes ?? []) {
-		if (!isRecord(node)) continue;
-
-		for (const key of Object.keys(node)) {
-			if (node[key] === null) {
-				delete node[key];
-			}
-		}
-
-		if (!isRecord(node.parameters)) {
-			node.parameters = {};
-		}
-	}
+	if (!json.nodes) return;
+	json.nodes = json.nodes.map((node) => normalizeNodeShape(node));
 }
 
 function validateCompiledWorkflow(

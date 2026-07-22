@@ -15,6 +15,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { Workflow } from 'n8n-workflow';
+import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 
 // Instantiates a store that derives the workflow id from the route. These tests run
 // without a router, so resolve the id directly.
@@ -165,6 +166,7 @@ describe('useWorkflowUpdate', () => {
 			});
 			const nodeWithNulls = {
 				...newNode,
+				parameters: null,
 				credentials: null,
 				webhookId: null,
 				notes: null,
@@ -198,6 +200,7 @@ describe('useWorkflowUpdate', () => {
 				string,
 				unknown
 			>;
+			expect(addedNode.parameters).toEqual({});
 			expect(addedNode).not.toHaveProperty('credentials');
 			expect(addedNode).not.toHaveProperty('webhookId');
 			expect(addedNode).not.toHaveProperty('notes');
@@ -923,6 +926,52 @@ describe('useWorkflowUpdate', () => {
 				expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
 					[
 						expect.objectContaining({
+							credentials: { httpBasicAuth: { id: 'cred-1', name: 'My Credential' } },
+						}),
+					],
+					expect.any(Object),
+				);
+			});
+
+			it('should coerce null parameters to {} before applying default credentials', async () => {
+				const nodeWithNullParams = {
+					...createTestNode({
+						id: 'node-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						credentials: undefined,
+					}),
+					parameters: null,
+					credentials: null,
+				};
+
+				const mockCredential = {
+					id: 'cred-1',
+					name: 'My Credential',
+					type: 'httpBasicAuth',
+				};
+
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+					credentials: [{ name: 'httpBasicAuth' }],
+				});
+				credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([mockCredential]);
+				vi.mocked(getMainAuthField).mockReturnValue({ name: 'authentication' } as never);
+				vi.mocked(getAuthTypeForNodeCredential).mockReturnValue({ value: 'basicAuth' } as never);
+
+				mockCanvasOperations.addNodes.mockResolvedValue([nodeWithNullParams as unknown as INodeUi]);
+
+				const { updateWorkflow } = useWorkflowUpdate();
+
+				const result = await updateWorkflow({
+					nodes: [nodeWithNullParams as unknown as INodeUi],
+					connections: {},
+				});
+
+				expect(result.success).toBe(true);
+				expect(mockCanvasOperations.addNodes).toHaveBeenCalledWith(
+					[
+						expect.objectContaining({
+							parameters: expect.objectContaining({ authentication: 'basicAuth' }),
 							credentials: { httpBasicAuth: { id: 'cred-1', name: 'My Credential' } },
 						}),
 					],

@@ -12,7 +12,12 @@ import type {
 	FromAIArgument,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { isHitlToolType, NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
+import {
+	isHitlToolType,
+	NodeHelpers,
+	normalizeNodeShape,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
@@ -163,29 +168,13 @@ export function getParameterDisplayableOptions(
 }
 
 /**
- * Drops null-valued keys from a node object.
- *
- * Optional INode fields are `.optional()`, never `.nullable()`. Sources such as
- * the AI Assistant edit round-trip can still emit `"credentials": null` etc.;
- * those are equivalent to the key being omitted and must be stripped before the
- * node is applied to the canvas or persisted.
- */
-export function omitNullNodeFields<T extends object>(node: T): T {
-	const cleaned = { ...node };
-	for (const key of Object.keys(cleaned) as Array<keyof T>) {
-		if (cleaned[key] === null) {
-			delete cleaned[key];
-		}
-	}
-	return cleaned;
-}
-
-/**
  * Serializes a node for persistence: strips transient UI state, resolves
  * default parameters via the node type definition, and retains only the
  * credentials that are currently displayable.
  */
 export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi): INodeUi {
+	node = normalizeNodeShape(node);
+
 	const skipKeys = [
 		'color',
 		'continueOnFail',
@@ -204,11 +193,9 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 	};
 
 	for (const key in node) {
-		// Skip nulls: optional INode fields must be omitted, never null (see omitNullNodeFields).
-		const value = (node as unknown as Record<string, unknown>)[key];
-		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1 && value !== null) {
+		if (key.charAt(0) !== '_' && skipKeys.indexOf(key) === -1) {
 			// @ts-ignore
-			nodeData[key] = value;
+			nodeData[key] = node[key];
 		}
 	}
 

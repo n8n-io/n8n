@@ -4,11 +4,7 @@ import { setActivePinia } from 'pinia';
 import { NodeHelpers } from 'n8n-workflow';
 import type { INodePropertyOptions, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	getParameterDisplayableOptions,
-	omitNullNodeFields,
-	serializeNode,
-} from './nodeTransforms';
+import { getParameterDisplayableOptions, serializeNode } from './nodeTransforms';
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -262,30 +258,6 @@ describe('getParameterDisplayableOptions', () => {
 	});
 });
 
-describe('omitNullNodeFields', () => {
-	it('removes null-valued keys and leaves other values intact', () => {
-		const result = omitNullNodeFields({
-			id: '1',
-			name: 'Node',
-			credentials: null,
-			webhookId: null,
-			parameters: {},
-			retryOnFail: false,
-			notes: undefined,
-		});
-
-		expect(result).toEqual({
-			id: '1',
-			name: 'Node',
-			parameters: {},
-			retryOnFail: false,
-			notes: undefined,
-		});
-		expect('credentials' in result).toBe(false);
-		expect('webhookId' in result).toBe(false);
-	});
-});
-
 describe('serializeNode', () => {
 	const nodeTypeProvider = { getNodeType: vi.fn().mockReturnValue(null) };
 
@@ -409,8 +381,19 @@ describe('serializeNode', () => {
 			{},
 			false,
 			false,
-			node,
+			expect.objectContaining({
+				id: 'id',
+				name: 'Test Node',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {},
+			}),
 			knownNodeType,
 		);
+		const normalizedNode = vi.mocked(NodeHelpers.getNodeParameters).mock.calls[0]?.[4] as Record<
+			string,
+			unknown
+		>;
+		expect(normalizedNode).not.toHaveProperty('credentials');
+		expect(normalizedNode).not.toHaveProperty('webhookId');
 	});
 });

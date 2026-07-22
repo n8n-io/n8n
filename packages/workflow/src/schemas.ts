@@ -499,3 +499,29 @@ export const INodeSchema: z.ZodType<INode> = z.object({
 });
 
 export const INodesSchema: z.ZodType<INode[]> = z.array(INodeSchema);
+
+/**
+ * Normalize a node to the {@link INodeSchema} persistence shape.
+ *
+ * Optional top-level INode fields are `.optional()`, never `.nullable()` — nullish
+ * values are omitted. `parameters` is required and always coerced to an object.
+ * Nested nulls (e.g. credential ids) are left intact.
+ */
+export function normalizeNodeShape<T extends object>(node: T): T {
+	const cleaned: Record<string, unknown> = { ...(node as Record<string, unknown>) };
+
+	for (const key of Object.keys(cleaned)) {
+		if (key === 'parameters') continue;
+		if (cleaned[key] === null || cleaned[key] === undefined) {
+			delete cleaned[key];
+		}
+	}
+
+	const parameters = cleaned.parameters;
+	cleaned.parameters =
+		parameters !== null && typeof parameters === 'object' && !Array.isArray(parameters)
+			? parameters
+			: {};
+
+	return cleaned as T;
+}

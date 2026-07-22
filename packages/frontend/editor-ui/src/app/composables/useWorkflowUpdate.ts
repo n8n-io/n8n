@@ -14,10 +14,9 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
-import { omitNullNodeFields } from '@/app/utils/nodes/nodeTransforms';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
-import { NodeHelpers, type IConnections, type INode } from 'n8n-workflow';
+import { NodeHelpers, normalizeNodeShape, type IConnections, type INode } from 'n8n-workflow';
 import isEqual from 'lodash/isEqual';
 
 export interface UpdateWorkflowOptions {
@@ -343,10 +342,10 @@ export function useWorkflowUpdate() {
 		options?: UpdateWorkflowOptions,
 	): Promise<UpdateWorkflowResult> {
 		try {
-			// AI edit round-trips can emit optional INode fields as null; strip them so
+			// AI edit round-trips can emit optional INode fields as null; normalize so
 			// they never reach the canvas store or serializeNode (Object.keys(null)).
 			if (workflowData.nodes) {
-				workflowData.nodes = workflowData.nodes.map((node) => omitNullNodeFields(node));
+				workflowData.nodes = workflowData.nodes.map((node) => normalizeNodeShape(node));
 			}
 
 			// Apply default credentials to incoming nodes BEFORE adding to store

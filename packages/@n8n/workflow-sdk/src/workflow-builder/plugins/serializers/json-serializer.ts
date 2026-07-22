@@ -4,7 +4,7 @@
  * Serializes workflows to n8n's standard JSON format.
  */
 
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, normalizeNodeShape } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { foldLegacyErrorConnections } from '../../../types/base';
@@ -34,18 +34,6 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'n8n-nodes-base.formTrigger',
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 ]);
-
-/** Drop null/undefined optional top-level keys; `parameters` is always retained. */
-function omitNullishTopLevelNodeFields(node: NodeJSON): NodeJSON {
-	const cleaned = { ...node };
-	for (const key of Object.keys(cleaned) as Array<keyof NodeJSON>) {
-		if (key === 'parameters') continue;
-		if (cleaned[key] === null || cleaned[key] === undefined) {
-			delete cleaned[key];
-		}
-	}
-	return cleaned;
-}
 
 /**
  * Serialize a single node to NodeJSON format.
@@ -171,7 +159,7 @@ function serializeNode(
 		n8nNode.extendsCredential = config.extendsCredential;
 	}
 
-	return omitNullishTopLevelNodeFields(n8nNode);
+	return normalizeNodeShape(n8nNode);
 }
 
 /**
