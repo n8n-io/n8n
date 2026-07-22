@@ -170,21 +170,6 @@ function hasUnresolvedConfirmation(
 	return node.children.some((child) => hasUnresolvedConfirmation(child, resolved));
 }
 
-/** Settle persisted activity only after thread status confirms there is no live work. */
-function settleStaleAgentTree(node: InstanceAiAgentNode): void {
-	if (node.status === 'active') {
-		node.status = 'cancelled';
-	}
-	for (const tc of node.toolCalls) {
-		if (tc.isLoading) {
-			tc.isLoading = false;
-		}
-	}
-	for (const child of node.children) {
-		settleStaleAgentTree(child);
-	}
-}
-
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const tasks = messages[i].agentTree?.tasks;
@@ -974,27 +959,20 @@ export function createThreadRuntime(
 				return;
 			}
 
-			if (isOrchestratorLive(status)) {
-				const runId = syncLiveRunFromStatus(status, messages.value);
-				if (runId) {
-					activeRunId.value = runId;
-					triggerRef(messages);
-				}
-				return;
+			// An idle response is deliberately a no-op: /status reflects this
+			// process only, so on multi-main a non-driving main truthfully
+			// reports idle while a sibling still streams — settling local state
+			// on it would cancel a live run's tree. Dead runs converge through
+			// terminal facts in the durable log (boot sweep + cancel) instead.
+			// Background task visibility is handled by the run-sync control
+			// frame that is sent on SSE connect.
+			if (!isOrchestratorLive(status)) return;
+
+			const runId = syncLiveRunFromStatus(status, messages.value);
+			if (runId) {
+				activeRunId.value = runId;
+				triggerRef(messages);
 			}
-
-			activeRunId.value = null;
-
-			// Background work is still visible via SSE run-sync on reconnect —
-			// settling trees here would race with that authoritative snapshot.
-			if (status.backgroundTasks.length > 0) return;
-
-			for (const message of messages.value) {
-				if (message.role !== 'assistant') continue;
-				message.isStreaming = false;
-				if (message.agentTree) settleStaleAgentTree(message.agentTree);
-			}
-			triggerRef(messages);
 		} catch {
 			// Silently ignore
 		}
@@ -1113,15 +1091,16 @@ export function createThreadRuntime(
 	}
 
 	async function cancelRun(): Promise<void> {
+		// Thread-scoped and idempotent server-side, so it works after a reload
+		// that lost the local run id. Don't clear activeRunId or settle any
+		// state here: the terminal state arrives as a run-finish fact over SSE
+		// — the backend appends one even for a crashed run with no live
+		// process left to emit it, so every client converges through replay.
 		try {
 			await postCancel(rootStore.restApiContext, threadId);
 		} catch {
 			toast.showError(new Error('Failed to cancel. Try again.'), 'Cancel failed');
-			return;
 		}
-		// Cancel is idempotent, so an already-dead run emits no run-finish SSE —
-		// re-check authoritative status to settle stale local state either way.
-		await loadThreadStatus();
 	}
 
 	/** Cancel a specific background task. */
