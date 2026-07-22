@@ -214,6 +214,30 @@ describe('N8nClient packages', () => {
 			expect(form.get('dataTableSchemaConflictPolicy')).toBe('fail');
 		});
 
+		describe('variableMissingMode', () => {
+			it.each(['do-nothing', 'must-preexist'])('sends %s when provided', async (policy) => {
+				fetchMock.mockResolvedValue(
+					jsonResponse(200, {
+						workflows: [],
+						bindings: {},
+						credentials: { matched: [], stubbed: [] },
+						variables: { matched: [], missing: [] },
+					}),
+				);
+
+				await client.importPackage(
+					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+					{
+						workflowConflictPolicy: 'fail',
+						variableMissingMode: policy,
+					},
+				);
+
+				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+				expect(form.get('variableMissingMode')).toBe(policy);
+			});
+		});
+
 		it('forwards bindings verbatim as a form field', async () => {
 			fetchMock.mockResolvedValue(
 				jsonResponse(200, {

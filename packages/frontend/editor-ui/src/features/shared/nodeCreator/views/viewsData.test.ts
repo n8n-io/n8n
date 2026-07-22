@@ -19,7 +19,7 @@ const getNodeType = vi.fn();
 const aiTransformNode = mockNodeTypeDescription({ name: AI_TRANSFORM_NODE_TYPE });
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'AI Agent',
+	displayName: 'AI Agent V1',
 	hidden: true,
 });
 

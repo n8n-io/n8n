@@ -39,7 +39,7 @@ export class JsonStore<Ref, Payload extends object> {
 				jsonStringify({ ...payload, version: this.options.version }),
 				'utf-8',
 			);
-			return await store.write(this.options.key(ref), body, 'application/json');
+			return await store.write(this.options.key(ref), body, { mimeType: 'application/json' });
 		} catch (error) {
 			throw this.options.createWriteError(ref, error);
 		}

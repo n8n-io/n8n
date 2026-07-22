@@ -252,7 +252,7 @@ describe('POST /n8n-packages/import', () => {
 			.field('dataTableMatchingMode', 'by-id')
 			.field('dataTableMissingMode', 'must-preexist')
 			.field('dataTableSchemaConflictPolicy', 'fail')
-			.field('variableMissingPolicy', 'do-nothing')
+			.field('variableMissingMode', 'do-nothing')
 			.attach('package', tarBuffer, 'import.n8np');
 
 		expect(response.statusCode).toBe(200);
