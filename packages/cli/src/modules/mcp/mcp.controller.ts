@@ -7,6 +7,7 @@ import { ErrorReporter } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
 
+import { McpProtectedResource } from './mcp-protected-resource';
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
 import { McpConfig } from './mcp.config';
 import {
@@ -34,6 +35,7 @@ export class McpController {
 		private readonly mcpSettingsService: McpSettingsService,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
+		private readonly mcpProtectedResource: McpProtectedResource,
 	) {}
 
 	// Add CORS headers helper
@@ -66,7 +68,8 @@ export class McpController {
 	})
 	async discoverAuthSchemeHead(_req: Request, res: Response) {
 		this.setCorsHeaders(res);
-		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		const prmUrl = this.mcpProtectedResource.getProtectedResourceMetadataUrl();
+		res.header('WWW-Authenticate', `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`);
 		res.status(401).end();
 	}
 

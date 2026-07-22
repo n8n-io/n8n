@@ -37,7 +37,7 @@ describe('EvalTestCaseSchema', () => {
 	it('accepts a minimal valid fixture', () => {
 		const parsed = EvalTestCaseSchema.parse(validFixture());
 		expect(parsed.executionScenarios).toHaveLength(1);
-		expect(parsed.conversation[0].role).toBe('user');
+		expect(parsed.conversation![0].role).toBe('user');
 	});
 
 	it('rejects an empty conversation', () => {
@@ -49,7 +49,7 @@ describe('EvalTestCaseSchema', () => {
 			...validFixture(),
 			conversation: [{ role: 'user', text: ['line 1', 'line 2'] }],
 		});
-		expect(parsed.conversation[0].text).toBe('line 1\nline 2');
+		expect(parsed.conversation![0].text).toBe('line 1\nline 2');
 	});
 
 	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
@@ -251,7 +251,7 @@ describe('EvalTestCaseSchema', () => {
 			requires: 'mock-server',
 		} as (typeof fixture.executionScenarios)[number];
 		const parsed = EvalTestCaseSchema.parse(fixture);
-		expect(parsed.executionScenarios[0].requires).toBe('mock-server');
+		expect(parsed.executionScenarios![0].requires).toBe('mock-server');
 	});
 });
 

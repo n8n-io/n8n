@@ -3,7 +3,7 @@
   "version": "1.17.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
     "format": "biome format --write src",
