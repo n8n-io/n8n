@@ -618,6 +618,8 @@ export class AgentsBuilderToolsService {
 			}),
 			buildFinishSetupTool({
 				credentialProvider,
+				agentId,
+				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
 					const agent = await this.agentsService.findById(agentId, projectId);
@@ -625,6 +627,10 @@ export class AgentsBuilderToolsService {
 						.map((integration) => integration.credentialId)
 						.filter((credentialId) => credentialId.length > 0);
 				},
+				listChatIntegrationTypes: () =>
+					this.agentIntegrationPersistenceService
+						.listChatIntegrations()
+						.map((integration) => integration.type),
 			}),
 			buildVerifyMcpServerTool({
 				credentialProvider,

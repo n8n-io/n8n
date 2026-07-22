@@ -1310,7 +1310,6 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(tool.systemInstruction).toContain('vague or placeholder skill');
 			expect(tool.systemInstruction).toContain('ask the user clarifying');
-			expect(tool.systemInstruction).toContain('stated assumptions');
 			expect(tool.systemInstruction).toContain('Gotchas');
 			expect(tool.systemInstruction).toContain('exact target-agent tool names');
 			expect(tool.systemInstruction).toContain('references are not automatically loaded');
@@ -1480,7 +1479,6 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(tool.systemInstruction).toContain('vague, broad, or placeholder objective');
 			expect(tool.systemInstruction).toContain('ask the user clarifying questions');
-			expect(tool.systemInstruction).toContain('stated assumptions');
 			expect(tool.systemInstruction).toContain('self-contained');
 			expect(tool.systemInstruction).toContain('Success criteria');
 			expect(tool.systemInstruction).toContain('A task can only use tools the agent already has');

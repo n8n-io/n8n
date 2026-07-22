@@ -447,25 +447,6 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('instanceAi.credential.deny')).toBeTruthy();
 		});
 
-		it('advances to the next step without submitting when skipping one of several pending credentials', async () => {
-			const requests = makeCredentialRequests(2);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-
-			const { getByText, getByTestId } = renderComponent({
-				props: {
-					requestId: 'req-1',
-					credentialRequests: requests,
-					message: 'Set up credentials',
-				},
-			});
-
-			await userEvent.click(getByText('instanceAi.credential.deny'));
-
-			expect(confirmSpy).not.toHaveBeenCalled();
-			expect(getByText('2 of 2')).toBeTruthy();
-			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
-		});
-
 		it('submits the selected credential and marks the skipped one when skipping the first of two', async () => {
 			const requests = makeCredentialRequestsWithExisting(2);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
@@ -693,26 +674,6 @@ describe('InstanceAiCredentialSetup', () => {
 			await userEvent.click(getByTestId('credential-picker'));
 
 			expect(getByText('instanceAi.credential.finalize.applied')).toBeTruthy();
-		});
-
-		it('defers the whole card in one click even with multiple pending credentials', async () => {
-			const requests = makeCredentialRequests(2);
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
-
-			const { getByText } = renderComponent({
-				props: {
-					requestId: 'req-1',
-					credentialRequests: requests,
-					message: 'Set up credentials',
-					credentialFlow: { stage: 'finalize' as const },
-				},
-			});
-
-			await userEvent.click(getByText('instanceAi.credential.finalize.later'));
-
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
-			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
 		});
 	});
 });

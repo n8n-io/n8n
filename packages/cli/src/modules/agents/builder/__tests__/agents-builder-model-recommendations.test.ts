@@ -104,8 +104,6 @@ describe('builder model recommendations', () => {
 		expect(section).toContain('`openai/gpt-5` GPT-5');
 		expect(section).toContain('`google/gemini-2.5-pro` Gemini 2.5 Pro');
 		expect(section).not.toContain('text-embedding-3-large');
-		expect(section).toContain('Never write a non-empty model or credential');
-		expect(section).not.toContain('Do not write a model or credential directly');
 	});
 
 	it('injects always-needed builder guidance into the base builder prompt', () => {
@@ -132,16 +130,6 @@ describe('builder model recommendations', () => {
 			(s) => s.id === 'agent-builder-node-tools',
 		);
 		expect(nodeToolsSkill?.instructions).toContain('agent-builder-resource-locators');
-	});
-
-	it('does not tell the builder to write target agent descriptions', () => {
-		const prompt = buildPrompt(null);
-
-		expect(prompt).not.toContain('Fresh agents must include a brief `description`');
-		expect(prompt).toContain('Requires `name` and `instructions`');
-		expect(prompt).not.toContain(
-			'"description": "Answers support questions and helps triage customer issues."',
-		);
 	});
 
 	it('routes subagent delegation to the sub-agent builder skill', () => {

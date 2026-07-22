@@ -1,6 +1,7 @@
 import type { BuiltTool, CredentialProvider, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
+	channelSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
 	interactionQuestionSchema,
 	questionAnswerSchema,
@@ -15,9 +16,13 @@ import { BUILDER_TOOLS } from '../builder-tool-names';
 
 export interface FinishSetupToolDeps {
 	credentialProvider: CredentialProvider;
+	agentId: string;
+	projectId: string;
 	isCredentialTypeKnown?: (credentialType: string) => boolean;
 	/** Credential ids of the agent's configured chat channel integrations — reused for a matching credential slot. */
 	listIntegrationCredentialIds?: () => Promise<string[]>;
+	/** Wraps `AgentIntegrationPersistenceService.listChatIntegrations()`. */
+	listChatIntegrationTypes: () => string[];
 }
 
 const finishSetupCredentialRequestInputSchema = z.object({
@@ -27,14 +32,22 @@ const finishSetupCredentialRequestInputSchema = z.object({
 });
 type CredentialSlotInput = z.infer<typeof finishSetupCredentialRequestInputSchema>;
 
+const finishSetupChannelInputSchema = z.object({
+	integrationType: z.string().min(1),
+});
+
 const finishSetupInputSchema = z
 	.object({
 		questions: z.array(interactionQuestionSchema).optional(),
 		credentialRequests: z.array(finishSetupCredentialRequestInputSchema).optional(),
+		channels: z.array(finishSetupChannelInputSchema).optional(),
 	})
-	.refine((v) => (v.questions?.length ?? 0) + (v.credentialRequests?.length ?? 0) > 0, {
-		message: 'Pass at least one pending setup item.',
-	});
+	.refine(
+		(v) =>
+			(v.questions?.length ?? 0) + (v.credentialRequests?.length ?? 0) + (v.channels?.length ?? 0) >
+			0,
+		{ message: 'Pass at least one pending setup item.' },
+	);
 type FinishSetupInput = z.infer<typeof finishSetupInputSchema>;
 
 /** One resolved credential outcome per slot key — either a resolved credential or an explicit skip. */
@@ -43,17 +56,29 @@ const credentialOutcomeSchema = z.union([
 	z.literal('skipped'),
 ]);
 
+/** A channel is either connected (the setup card persisted it) or skipped. */
+const channelOutcomeSchema = z.union([z.literal('connected'), z.literal('skipped')]);
+
 const questionsPhaseSchema = z.object({ kind: z.literal('questions') });
 const credentialsPhaseSchema = z.object({
 	kind: z.literal('credentials'),
 	slots: z.array(finishSetupCredentialRequestInputSchema),
 });
-const phaseDescriptorSchema = z.union([questionsPhaseSchema, credentialsPhaseSchema]);
+const channelPhaseSchema = z.object({
+	kind: z.literal('channel'),
+	integrationType: z.string(),
+});
+const phaseDescriptorSchema = z.union([
+	questionsPhaseSchema,
+	credentialsPhaseSchema,
+	channelPhaseSchema,
+]);
 type PhaseDescriptor = z.infer<typeof phaseDescriptorSchema>;
 
 const collectedSchema = z.object({
 	answers: z.array(questionAnswerSchema).optional(),
 	credentials: z.record(credentialOutcomeSchema).optional(),
+	channels: z.record(channelOutcomeSchema).optional(),
 });
 type Collected = z.infer<typeof collectedSchema>;
 
@@ -61,8 +86,8 @@ type Collected = z.infer<typeof collectedSchema>;
  * Chain state carried inside the suspend payload (a member of each phase's
  * suspend schema, so it round-trips through the builder checkpoint) and
  * stripped by instance AI's cascade before the FE ever sees it — the FE
- * routes purely on the presence of `inputType`/`credentialRequests`,
- * identical to the single-purpose interactive tools.
+ * routes purely on the presence of `inputType`/`credentialRequests`/
+ * `channelConfig`, identical to the single-purpose interactive tools.
  */
 const chainStateSchema = z.object({
 	currentPhase: phaseDescriptorSchema,
@@ -75,15 +100,16 @@ type ChainState = z.infer<typeof chainStateSchema>;
 const finishSetupSuspendSchema = z.union([
 	questionsSuspendPayloadSchema.extend({ finishSetupChain: chainStateSchema }),
 	credentialSuspendPayloadSchema.extend({ finishSetupChain: chainStateSchema }),
+	channelSuspendPayloadSchema.extend({ finishSetupChain: chainStateSchema }),
 ]);
 type FinishSetupSuspendPayload = z.infer<typeof finishSetupSuspendSchema>;
 
 /**
- * Deliberately a single permissive object, not a union — the two phases'
- * resume shapes overlap enough (e.g. both carry an optional `approved`) that a
- * union would ambiguously match the wrong arm. The handler always knows which
- * phase a resume belongs to from `ctx.suspendPayload.finishSetupChain`, so
- * shape ambiguity here is harmless.
+ * Deliberately a single permissive object, not a union — the three phases'
+ * resume shapes overlap enough (e.g. questions/credentials and channel both
+ * carry an optional `approved`) that a union would ambiguously match the
+ * wrong arm. The handler always knows which phase a resume belongs to from
+ * `ctx.suspendPayload.finishSetupChain`, so shape ambiguity here is harmless.
  */
 const finishSetupResumeSchema = z.object({
 	approved: z.boolean().optional(),
@@ -110,16 +136,8 @@ async function resolveCredentialName(
 	return existingCredentials.find((c) => c.id === credentialId)?.name ?? credentialId;
 }
 
-/**
- * Validate input, then auto-resolve every credential slot using the same
- * rules as ask_credential (matching channel credential first, then a single
- * existing credential of the type). Slots that cannot be auto-resolved
- * become a phase; the questions phase (if any) always runs first.
- */
-async function computeInitialPlan(
-	input: FinishSetupInput,
-	deps: FinishSetupToolDeps,
-): Promise<{ phases: PhaseDescriptor[]; collected: Collected }> {
+/** Throws for any credential request whose type isn't recognized. */
+function validateCredentialTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
 	for (const request of input.credentialRequests ?? []) {
 		if (deps.isCredentialTypeKnown && !deps.isCredentialTypeKnown(request.credentialType)) {
 			throw new Error(
@@ -127,6 +145,39 @@ async function computeInitialPlan(
 			);
 		}
 	}
+}
+
+/** Throws for any requested channel whose type isn't a known chat integration. */
+function validateChannelTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
+	const availableChannelTypes = deps.listChatIntegrationTypes();
+	for (const channel of input.channels ?? []) {
+		if (!availableChannelTypes.includes(channel.integrationType)) {
+			const availableMessage = availableChannelTypes.length
+				? ` Available: ${availableChannelTypes.join(', ')}.`
+				: ' No chat channels are currently available.';
+			throw new Error(
+				`Unsupported chat channel "${channel.integrationType}". Call list_integration_types ` +
+					'and choose a returned type.' +
+					availableMessage,
+			);
+		}
+	}
+}
+
+/**
+ * Validate input, then auto-resolve every credential slot using the same
+ * rules as ask_credential (matching channel credential first, then a single
+ * existing credential of the type). Slots that cannot be auto-resolved
+ * become a phase. Phase order is fixed: questions, then credentials, then
+ * one channel phase per requested channel — channels always run last since
+ * their card persists the connection immediately via REST.
+ */
+async function computeInitialPlan(
+	input: FinishSetupInput,
+	deps: FinishSetupToolDeps,
+): Promise<{ phases: PhaseDescriptor[]; collected: Collected }> {
+	validateCredentialTypes(input, deps);
+	validateChannelTypes(input, deps);
 
 	const collected: Collected = {};
 	const pendingSlots: CredentialSlotInput[] = [];
@@ -160,6 +211,9 @@ async function computeInitialPlan(
 	const phases: PhaseDescriptor[] = [];
 	if (input.questions?.length) phases.push({ kind: 'questions' });
 	if (pendingSlots.length > 0) phases.push({ kind: 'credentials', slots: pendingSlots });
+	for (const channel of input.channels ?? []) {
+		phases.push({ kind: 'channel', integrationType: channel.integrationType });
+	}
 
 	return { phases, collected };
 }
@@ -173,6 +227,12 @@ async function mergeResumeIntoCollected(
 ): Promise<Collected> {
 	if (phase.kind === 'questions') {
 		return { ...previous, answers: resumeData?.answers ?? [] };
+	}
+
+	if (phase.kind === 'channel') {
+		const channels = { ...(previous.channels ?? {}) };
+		channels[phase.integrationType] = resumeData?.approved ? 'connected' : 'skipped';
+		return { ...previous, channels };
 	}
 
 	const credentials = { ...(previous.credentials ?? {}) };
@@ -217,6 +277,17 @@ async function suspendForPhase(params: {
 			severity: 'info' as const,
 			inputType: 'questions' as const,
 			questions: questions ?? [],
+			finishSetupChain,
+		});
+	}
+
+	if (phase.kind === 'channel') {
+		return await ctx.suspend({
+			requestId: nanoid(),
+			message: `Set up the ${phase.integrationType} channel`,
+			severity: 'info' as const,
+			channelConfig: { integrationType: phase.integrationType, agentId: deps.agentId },
+			projectId: deps.projectId,
 			finishSetupChain,
 		});
 	}
@@ -307,15 +378,18 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 	return new Tool(BUILDER_TOOLS.FINISH_SETUP)
 		.description(
 			'Collect everything still needed to finish the initial build in ONE guided flow: open ' +
-				'questions (including the model choice) and credential slots. Call it at most once, ' +
-				'only in the trailing step of an initial build when only blocked tasks remain, and ' +
-				'never together with another interactive tool. It shows the setup cards back-to-back ' +
-				'without returning control between them. Returns { completed, answers, credentials }: ' +
-				'resolve the model answer with resolve_llm, copy returned credential ids into the ' +
-				'config, and verify MCP servers with them. Auto-resolves credential slots that match ' +
-				'an existing single credential or the connected channel credential. Channel ' +
-				'connections are NOT included — after this resolves, point the user to the channel ' +
-				'chip in the agent panel.',
+				'questions (including the model choice), credential slots, and chat-channel ' +
+				'connections. Call it at most once, only in the trailing step of an initial build ' +
+				'when only blocked tasks remain, and never together with another interactive tool. ' +
+				'It shows the setup cards back-to-back without returning control between them — ' +
+				'questions first, then credentials, then one card per requested channel (always ' +
+				'last, since connecting a channel needs credentials to already be resolved). Pass ' +
+				'`channels` with a returned `type` from list_integration_types, one entry per channel ' +
+				'to connect; do not infer channel names. Returns ' +
+				'{ completed, answers, credentials, channels }: resolve the model answer with ' +
+				'resolve_llm, copy returned credential ids into the config, and verify MCP servers ' +
+				'with them. Auto-resolves credential slots that match an existing single credential ' +
+				'or the connected channel credential.',
 		)
 		.input(finishSetupInputSchema)
 		.suspend(finishSetupSuspendSchema)

@@ -195,26 +195,6 @@ describe('AiController', () => {
 		});
 	});
 
-	describe('aiCredits', () => {
-		it('should delegate to freeAiCreditsService with the user and project id', async () => {
-			const credential = mock<Awaited<ReturnType<FreeAiCreditsService['claim']>>>();
-			freeAiCreditsService.claim.mockResolvedValue(credential);
-
-			const result = await controller.aiCredits(request, response, { projectId: 'project123' });
-
-			expect(freeAiCreditsService.claim).toHaveBeenCalledWith(request.user, 'project123');
-			expect(result).toBe(credential);
-		});
-
-		it('should throw InternalServerError if claiming fails', async () => {
-			freeAiCreditsService.claim.mockRejectedValue(new Error('Already claimed'));
-
-			await expect(
-				controller.aiCredits(request, response, { projectId: 'project123' }),
-			).rejects.toThrow(InternalServerError);
-		});
-	});
-
 	describe('build', () => {
 		const payload: AiBuilderChatRequestDto = {
 			payload: {

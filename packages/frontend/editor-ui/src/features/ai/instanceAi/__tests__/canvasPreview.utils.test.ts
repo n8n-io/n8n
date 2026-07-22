@@ -513,7 +513,7 @@ describe('getLatestAgentConfigMutation', () => {
 		});
 	});
 
-	test('ignores in-flight calls and failed results', () => {
+	test('ignores in-flight calls, failed results, and non-mutation tools', () => {
 		const inFlight = makeAgentNode({
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [makeToolCall({ toolName: 'write_config', isLoading: true })],
@@ -527,10 +527,8 @@ describe('getLatestAgentConfigMutation', () => {
 			],
 		});
 		expect(getLatestAgentConfigMutation(failed)).toBeUndefined();
-	});
 
-	test('ignores non-mutation tools', () => {
-		const node = makeAgentNode({
+		const nonMutation = makeAgentNode({
 			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 			toolCalls: [
 				makeToolCall({ toolName: 'read_config', isLoading: false, result: { ok: true } }),
@@ -542,7 +540,7 @@ describe('getLatestAgentConfigMutation', () => {
 				}),
 			],
 		});
-		expect(getLatestAgentConfigMutation(node)).toBeUndefined();
+		expect(getLatestAgentConfigMutation(nonMutation)).toBeUndefined();
 	});
 
 	test('matches a resolved configure_channel via result.connected', () => {

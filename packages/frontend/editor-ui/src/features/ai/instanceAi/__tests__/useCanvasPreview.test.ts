@@ -788,6 +788,12 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
+
+			ctx.thread.messages = [
+				makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2', 'write_config') }),
+			];
+			await nextTick();
+			expect(ctx.agentRefreshKey.value).toBe(initialKey + 2);
 		});
 
 		test('does not increment agentRefreshKey when a different tab is active, and not while hydrating', async () => {
@@ -811,23 +817,6 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.agentRefreshKey.value).toBe(keyBeforeHydration);
-		});
-
-		test('increments agentRefreshKey again for a second mutation with a new toolCallId', async () => {
-			const ctx = setup();
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			ctx.openAgentPreview('agent-1', 'project-1');
-			const initialKey = ctx.agentRefreshKey.value;
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
-			await nextTick();
-			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
-
-			ctx.thread.messages = [
-				makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2', 'write_config') }),
-			];
-			await nextTick();
-			expect(ctx.agentRefreshKey.value).toBe(initialKey + 2);
 		});
 	});
 

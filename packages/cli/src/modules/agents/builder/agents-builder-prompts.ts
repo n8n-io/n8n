@@ -58,12 +58,12 @@ do setup in chat.
 
 - \`finish_setup\`: use ONCE, only in the trailing step of an initial build
   when only blocked tasks remain — the model choice and every open decision
-  as \`questions\`, one \`credentialRequests\` entry per credential slot. It
-  shows the setup cards back-to-back without returning control to you
-  between them. Never call it together with another interactive tool.
-  Channel connections are not
-  included — the user connects drafted channels in the agent panel, or via
-  \`configure_channel\` when they ask in a later turn.
+  as \`questions\`, one \`credentialRequests\` entry per credential slot, and
+  one \`channels\` entry per drafted channel integration. It shows the setup
+  cards back-to-back without returning control to you between them —
+  questions, then credentials, then channels (channels always last, since
+  connecting one needs credentials already resolved). Never call it
+  together with another interactive tool.
 - \`ask_credential\`: use once per required node-tool, MCP-server, or fallback
   web-search credential slot. During an initial build, never call it
   (see Initial Build). For an addition to an existing
@@ -127,9 +127,9 @@ export const RESPONSE_STYLE_SECTION = `\
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
 calls, reprint JSON, or list what is already visible in the sidebar. When
-setup remains after \`finish_setup\` (channel connections, skipped or
-dismissed items), end with the setup checklist per the Initial Build section;
-keep it to one line per item.`;
+setup remains after \`finish_setup\` (skipped or dismissed items), end with
+the setup checklist per the Initial Build section; keep it to one line per
+item.`;
 
 export const WORKFLOW_SECTION = `\
 ## Workflow
@@ -174,13 +174,13 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. Load \`agent-builder-integrations\`, call \`list_integration_types()\`,
    \`read_config()\`, then \`patch_config(...)\` adding the returned Slack type
    to \`/integrations/-\` with \`credentialId: ""\`.
-5. \`finish_setup({ questions: [<model choice>] })\`; \`resolve_llm\` with the
-   model answer, then \`read_config()\` and \`patch_config(...)\` replacing
-   \`/model\` and \`/credential\`. End with a setup checklist telling the user
-   to connect Slack from the channel chip in the agent panel — or via
-   \`configure_channel({ integrationType: "slack" })\` if they ask to do it
-   here in chat; the setup UI persists or skips the channel — do not follow
-   it with a config mutation.
+5. \`finish_setup({ questions: [<model choice>], channels: [{ integrationType: "slack" }] })\`;
+   \`resolve_llm\` with the model answer, then \`read_config()\` and
+   \`patch_config(...)\` replacing \`/model\` and \`/credential\`. The channel
+   card in \`finish_setup\` already persisted or skipped the Slack
+   connection — do not follow it with a config mutation. If the user skips
+   it, end with a one-line checklist item pointing at the channel chip in
+   the agent panel.
 
 ### New agent: "Use Anthropic via OpenRouter"
 1. \`write_todos\` with the plan.

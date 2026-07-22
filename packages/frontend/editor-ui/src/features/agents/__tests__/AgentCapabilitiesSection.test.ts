@@ -639,29 +639,6 @@ describe('AgentCapabilitiesSection', () => {
 	});
 
 	it('disables the add-tool and add-skill buttons when disabled (read-only host)', async () => {
-		const wrapper = mountSection([]);
-		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
-		expect(
-			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
-		).toBeUndefined();
-		expect(
-			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
-		).toBeUndefined();
-
-		await wrapper.setProps({ disabled: true });
-
-		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
-		expect(
-			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
-		).toBeDefined();
-		expect(
-			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
-		).toBeDefined();
-	});
-
-	it('renders no wrapper overlay and keeps chips visible but disabled when disabled (read-only host)', async () => {
 		const wrapper = mountSection(
 			[],
 			{},
@@ -686,22 +663,28 @@ describe('AgentCapabilitiesSection', () => {
 		);
 		await flushPromises();
 
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 		expect(
-			wrapper.find('[data-testid="agent-capabilities-section"]').attributes('inert'),
+			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
+		).toBeUndefined();
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
 		).toBeUndefined();
 
 		await wrapper.setProps({ disabled: true });
 
-		// No wrapper-level dim/inert overlay.
+		expect(wrapper.find('[data-testid="agent-capabilities-add-tool"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-capabilities-add-skill"]').exists()).toBe(true);
 		expect(
-			wrapper.find('[data-testid="agent-capabilities-section"]').attributes('inert'),
-		).toBeUndefined();
+			wrapper.find('[data-testid="agent-capabilities-add-tool"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.find('[data-testid="agent-capabilities-add-skill"]').attributes('disabled'),
+		).toBeDefined();
 
-		// Chips stay visible but individually disabled, and clicking them is a no-op.
 		const toolChip = wrapper.find('[data-testid="agent-capabilities-tool-row"]');
 		const skillChip = wrapper.find('[data-testid="agent-capabilities-skill-row"]');
-		expect(toolChip.exists()).toBe(true);
-		expect(skillChip.exists()).toBe(true);
 		expect(toolChip.attributes('disabled')).toBeDefined();
 		expect(skillChip.attributes('disabled')).toBeDefined();
 
