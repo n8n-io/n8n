@@ -340,8 +340,10 @@ describe('InstanceAiSettingsService', () => {
 				const result = await service.updateAdminSettings({ sandboxConnection: null }, adminUser);
 
 				expect(result.sandboxProvider).toBe('n8n-sandbox');
-				const persisted = settingsRepository.upsert.mock.calls.at(-1)?.[0];
-				expect(persisted?.value).not.toContain('sandboxProvider');
+				expect(settingsRepository.upsert).toHaveBeenLastCalledWith(
+					expect.objectContaining({ value: expect.not.stringContaining('sandboxProvider') }),
+					['key'],
+				);
 			});
 
 			it('should reject an n8n sandbox connection with a wrong header name', async () => {
