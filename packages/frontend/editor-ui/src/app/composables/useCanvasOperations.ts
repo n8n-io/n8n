@@ -13,7 +13,10 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -2624,6 +2627,16 @@ export function useCanvasOperations() {
 	 * Import operations
 	 */
 
+	function mostRecentlyUpdatedCredential(
+		credentials: ICredentialsResponse[],
+	): ICredentialsResponse | undefined {
+		return credentials.reduce<ICredentialsResponse | undefined>(
+			(mostRecent, current) =>
+				mostRecent && mostRecent.updatedAt > current.updatedAt ? mostRecent : current,
+			undefined,
+		);
+	}
+
 	function removeUnknownCredentials(workflow: WorkflowDataUpdate) {
 		if (!workflow?.nodes) return;
 
@@ -2635,17 +2648,17 @@ export function useCanvasOperations() {
 				if (credentialsStore.getCredentialById(credential.id)) continue;
 
 				// The id is unknown locally, e.g. the workflow was exported from another
-				// instance. Fall back to matching by name before dropping the credential.
-				const nameMatches = credentialsStore
-					.getCredentialsByType(type)
-					.filter((cred) => cred.name === credential.name);
+				// instance. Prefer re-matching by name, then fall back to the most
+				// recently updated credential of the type. This mirrors the NDV's
+				// auto-select: without it the node would warn on canvas only until it
+				// is opened, at which point that same credential gets assigned anyway.
+				const candidates = credentialsStore.getCredentialsByType(type);
+				const nameMatches = candidates.filter((cred) => cred.name === credential.name);
+				const replacement =
+					mostRecentlyUpdatedCredential(nameMatches) ?? mostRecentlyUpdatedCredential(candidates);
 
-				if (nameMatches.length === 1) {
-					node.credentials[type] = { id: nameMatches[0].id, name: nameMatches[0].name };
-				} else if (nameMatches.length > 1) {
-					// Ambiguous: keep it name-only so the existing "not identified" node
-					// issue prompts the user to pick one, instead of silently unsetting it.
-					node.credentials[type] = { id: null, name: credential.name };
+				if (replacement) {
+					node.credentials[type] = { id: replacement.id, name: replacement.name };
 				} else {
 					delete node.credentials[type];
 				}
