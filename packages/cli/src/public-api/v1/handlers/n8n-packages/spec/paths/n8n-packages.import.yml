@@ -402,7 +402,9 @@ post:
                 type: object
                 description: >
                   Resolution of the package's variable requirements. Names only —
-                  values never travel in the response.
+                  values never travel in the response. For project packages,
+                  resolution runs per project, so a name that resolves in some
+                  projects but not others appears in both lists.
                 required:
                   - matched
                   - missing
