@@ -2,6 +2,8 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import * as file from './file';
+import * as item from './item';
 import * as list from './list';
 import { SERVICE_PRINCIPAL_AUTH } from '../transport';
 
@@ -73,6 +75,14 @@ export const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
+					name: 'File',
+					value: 'file',
+				},
+				{
+					name: 'Item',
+					value: 'item',
+				},
+				{
 					name: 'List',
 					value: 'list',
 				},
@@ -80,6 +90,8 @@ export const versionDescription: INodeTypeDescription = {
 			default: 'list',
 		},
 
+		...file.description,
+		...item.description,
 		...list.description,
 	],
 };

@@ -16,6 +16,7 @@ import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { AgentExecutionService } from '../agent-execution.service';
+import type { AgentRuntimeInstrumentation } from '../agent-runtime-instrumentation';
 import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
@@ -36,6 +37,12 @@ export interface SubAgentForegroundRunContext {
 	 * is a published/integration run.
 	 */
 	user?: User;
+	/**
+	 * Runtime instrumentation of the delegating parent run. Threaded into the
+	 * child's reconstruction so delegated runs share the parent's seams
+	 * (model fetch, MCP fetch, tool execution contexts).
+	 */
+	instrumentation?: AgentRuntimeInstrumentation;
 }
 
 export interface SubAgentForegroundResult {
@@ -88,8 +95,12 @@ export class SubAgentForegroundRunner {
 		const resourceId = request.parentResourceId ?? threadId;
 
 		const reconstructionService = await getReconstructionService();
+		const childConfig =
+			context.instrumentation?.transformDelegatedAgentConfig?.(runtimeSource.source.config, {
+				subAgentId: runtimeSource.source.sourceId,
+			}) ?? runtimeSource.source.config;
 		const { agent } = await reconstructionService.reconstructFromResolvedSource({
-			config: runtimeSource.source.config,
+			config: childConfig,
 			memoryOwnerAgentId: runtimeSource.source.sourceId,
 			projectId: context.projectId,
 			credentialProvider: context.credentialProvider,
@@ -99,6 +110,7 @@ export class SubAgentForegroundRunner {
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: context.parentAgentId,
 			user: context.user,
+			instrumentation: context.instrumentation,
 		});
 
 		// Abort the child when the parent run is cancelled.

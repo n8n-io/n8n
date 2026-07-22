@@ -20,6 +20,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -260,6 +261,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			telemetry,
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
+			mock<ExternalHooks>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

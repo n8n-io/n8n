@@ -130,6 +130,8 @@ export { GetResourceDependenciesDto } from './workflows/get-resource-dependencie
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
+export { ListTagsQueryDto } from './tag/list-tags-query.dto';
+export { TagPublicDto, TagListPublicDto, tagPublicSchema } from './tag/tag-public.dto';
 
 export { UpdateApiKeyRequestDto } from './api-keys/update-api-key-request.dto';
 export { CreateApiKeyRequestDto } from './api-keys/create-api-key-request.dto';
@@ -185,6 +187,7 @@ export {
 } from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
+export { RoleDeleteQueryDto } from './roles/role-delete-query.dto';
 export {
 	RoleAssignmentsResponseDto,
 	type RoleProjectAssignment,
@@ -240,7 +243,9 @@ export * from './evaluations';
 
 export {
 	OAuthClientResponseDto,
+	ListOAuthClientsQueryDto,
 	ListOAuthClientsResponseDto,
+	DeleteOAuthClientQueryDto,
 	DeleteOAuthClientResponseDto,
 	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
@@ -286,6 +291,8 @@ export {
 	type EncryptionKeysSortOption,
 } from './encryption/list-encryption-keys-query.dto';
 export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';
+
+export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
 export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';
