@@ -107,6 +107,7 @@ defineExpose({
 		teleported
 		searchable
 		width="var(--reka-dropdown-menu-trigger-width)"
+		:sub-menu-max-height="`calc(var(--spacing--5xl) * 2)`"
 		@select="handleSelect"
 	>
 		<template #trigger>

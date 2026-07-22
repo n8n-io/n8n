@@ -16,6 +16,7 @@ import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch }
 
 import {
 	DropdownMenuPortalTargetKey,
+	DropdownMenuSubMaxHeightKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuItemSlots,
 } from './DropdownMenu.types';
@@ -49,6 +50,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
+const subMenuMaxHeight = inject(DropdownMenuSubMaxHeightKey, ref(undefined));
 
 const internalSubMenuOpen = ref(false);
 const childrenContainerRef = ref<HTMLElement | null>(null);
@@ -235,7 +237,10 @@ onBeforeUnmount(() => {
 			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
 					:class="$style['sub-content']"
-					:style="subContentMaxHeight ? { maxHeight: subContentMaxHeight } : undefined"
+					:style="[
+						subContentMaxHeight ? { maxHeight: subContentMaxHeight } : {},
+						subMenuMaxHeight ? { '--n8n-dropdown-sub-max-height': subMenuMaxHeight } : {},
+					]"
 					:side-offset="1"
 					:prioritize-position="true"
 					sticky="partial"
@@ -514,7 +519,10 @@ onBeforeUnmount(() => {
 	width: fit-content;
 	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
 	max-width: var(--n8n--dropdown-menu-width);
-	max-height: min(var(--reka-dropdown-menu-content-available-height), var(--spacing--5xl));
+	max-height: min(
+		var(--reka-dropdown-menu-content-available-height),
+		var(--n8n-dropdown-sub-max-height, var(--spacing--5xl))
+	);
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	overflow: hidden;
 	scrollbar-width: none;

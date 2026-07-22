@@ -12,6 +12,7 @@ import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch 
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
 	DropdownMenuPortalTargetKey,
+	DropdownMenuSubMaxHeightKey,
 	type DropdownMenuItemProps,
 	type DropdownMenuProps,
 	type DropdownMenuSlots,
@@ -51,6 +52,17 @@ const $style = useCssModule();
 provide(
 	DropdownMenuPortalTargetKey,
 	computed(() => props.portalTarget),
+);
+
+provide(
+	DropdownMenuSubMaxHeightKey,
+	computed(() =>
+		props.subMenuMaxHeight === undefined
+			? undefined
+			: typeof props.subMenuMaxHeight === 'number'
+				? `${props.subMenuMaxHeight}px`
+				: props.subMenuMaxHeight,
+	),
 );
 
 // Handle controlled/uncontrolled state
