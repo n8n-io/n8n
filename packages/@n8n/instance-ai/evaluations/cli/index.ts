@@ -20,7 +20,7 @@ import { selectCases } from '../run/case-selection';
 import { runDirect } from '../run/direct-driver';
 import { cleanupLanes, setupLanes } from '../run/lane-setup';
 import { runWithLangSmith } from '../run/langsmith-driver';
-import { ciRerunHint, runEvalAndPersist } from '../run/persist';
+import { ciRerunHint, createRowSink, runEvalAndPersist } from '../run/persist';
 import { emitRunReports } from '../run/reporters';
 
 async function main(): Promise<void> {
@@ -52,6 +52,8 @@ async function main(): Promise<void> {
 		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
 	const mcpBuildSpend: McpBuildSpend[] = [];
+	// Every completed row is journaled so a crashed run still persists verdicts.
+	const rowSink = createRowSink(args.outputDir);
 	const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
 
 	try {
@@ -72,6 +74,8 @@ async function main(): Promise<void> {
 					commitSha,
 					rerun: ciRerunHint(),
 					mcpBuildSpend,
+					rowSink,
+					testCasesWithFiles,
 				},
 				async (partialResults) => {
 					if (hasLangSmith) {
@@ -85,6 +89,7 @@ async function main(): Promise<void> {
 							cleanupBuiltWorkflows,
 							mcpBuildLogDir,
 							mcpBuildSpend,
+							rowSink,
 						});
 						return {
 							evaluation: langsmithRun.evaluation,

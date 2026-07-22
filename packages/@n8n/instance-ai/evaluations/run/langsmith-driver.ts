@@ -18,8 +18,14 @@ import { type Lane, type McpBuildSpend } from './build-orchestrator';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { createEvalSession, MAX_CONCURRENT_BUILDS } from './eval-session';
 import { expandWithIterations } from './iterations';
-import { computePassRatePerIter, summarizeMcpBuildSpend } from './persist';
-import { isPlainObject, parseTargetOutput, reshapeLangSmithRuns } from './reshape';
+import { computePassRatePerIter, summarizeMcpBuildSpend, type RowSink } from './persist';
+import type { ScenarioRowInputs } from './case-pipeline';
+import {
+	isPlainObject,
+	parseTargetOutput,
+	reshapeLangSmithRuns,
+	type TargetOutput,
+} from './reshape';
 import { partialIsolationWarning } from '../cli/args';
 import type { CliArgs } from '../cli/args';
 import { bucketFromEvaluation } from '../comparison/bucket-from-evaluation';
@@ -31,7 +37,7 @@ import { EVAL_WORKSPACE_NAME, resolveEvalWorkspaceId } from '../harness/langsmit
 import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';
 import { syncDataset } from '../langsmith/dataset-sync';
-import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
 
 export interface RunConfig {
 	args: CliArgs;
@@ -51,10 +57,8 @@ export interface RunConfig {
 	 *  LangSmith experiment metadata and eval-results.json — the run's only spend
 	 *  record beyond raw session logs, for a suite that's manual-only due to cost. */
 	mcpBuildSpend: McpBuildSpend[];
-	/** Optional sink the direct loop pushes each completed iteration's results into
-	 *  as they finish, so an abort that rejects the run still leaves the caller
-	 *  (runEvalAndPersist) with the scenarios that already completed. */
-	partialResults?: WorkflowTestCaseResult[][];
+	/** Journal of completed rows for crash recovery (see run/persist.ts). */
+	rowSink?: RowSink;
 }
 
 export async function runWithLangSmith(config: RunConfig): Promise<{
@@ -124,7 +128,11 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 			}) as typeof fn,
 	});
 	const { buildDurations } = session.orchestrator;
-	const target = session.pipeline.runRow;
+	const target = async (inputs: ScenarioRowInputs): Promise<TargetOutput> => {
+		const outputs = await session.pipeline.runRow(inputs);
+		config.rowSink?.append({ run: { inputs, outputs } });
+		return outputs;
+	};
 
 	const feedbackExtractor = ({ run }: { run: Run }): EvaluationResult[] => {
 		const output = parseTargetOutput(run.outputs);

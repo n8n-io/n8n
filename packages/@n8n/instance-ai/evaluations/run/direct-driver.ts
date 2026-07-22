@@ -12,6 +12,7 @@ import { aggregateResults } from './aggregator';
 import type { ScenarioRowInputs } from './case-pipeline';
 import { createEvalSession, type EvalSessionConfig } from './eval-session';
 import { expandWithIterations } from './iterations';
+import { type RowSink } from './persist';
 import { reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
 import { BUILD_ONLY_SCENARIO_NAME, roundRobinCaseRows } from './rows';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
@@ -22,6 +23,8 @@ export interface DirectRunConfig extends Omit<EvalSessionConfig, 'wrap'> {
 	/** Sink for per-iteration results as reshape produces them, so an abort in
 	 *  aggregation/persistence still leaves runEvalAndPersist the completed rows. */
 	partialResults?: WorkflowTestCaseResult[][];
+	/** Journal of completed rows for crash recovery (see run/persist.ts). */
+	rowSink?: RowSink;
 }
 
 /** Same flattening as the LangSmith dataset sync (run/rows.ts), projected to
@@ -40,7 +43,7 @@ export async function runDirect(config: DirectRunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, testCasesWithFiles, partialResults } = config;
+	const { args, lanes, logger, testCasesWithFiles, partialResults, rowSink } = config;
 
 	if (testCasesWithFiles.length === 0) {
 		console.log('No workflow test cases selected (check --source / --filter / --exclude / --tier)');
@@ -71,7 +74,12 @@ export async function runDirect(config: DirectRunConfig): Promise<{
 		// flight, builds capped per lane by the allocator (MAX_CONCURRENT_BUILDS).
 		const completed: ReshapeRunRow[] = await runWithConcurrency(
 			rows,
-			async (row) => ({ run: { inputs: row, outputs: await session.pipeline.runRow(row) } }),
+			async (row) => {
+				const outputs = await session.pipeline.runRow(row);
+				const completedRow = { run: { inputs: row, outputs } };
+				rowSink?.append(completedRow);
+				return completedRow;
+			},
 			args.concurrency,
 		);
 
