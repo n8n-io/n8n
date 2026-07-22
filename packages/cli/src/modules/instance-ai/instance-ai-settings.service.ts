@@ -18,7 +18,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig, DeploymentConfig } from '@n8n/config';
 import { DbLock, DbLockService, SettingsRepository, UserRepository } from '@n8n/db';
-import type { CredentialsEntity, OperationContext, User } from '@n8n/db';
+import type { CredentialsEntity, ICredentialsDb, OperationContext, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ModelConfig } from '@n8n/instance-ai';
 import { hasGlobalScope } from '@n8n/permissions';
@@ -33,6 +33,7 @@ import {
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
@@ -45,6 +46,19 @@ import {
 } from './sandbox-provider';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
+const N8N_SANDBOX_HEADER_NAME = 'x-api-key';
+
+const MODEL_PROVIDER_API_KEY_ENV: ReadonlyMap<string, string> = new Map([
+	['anthropic', 'ANTHROPIC_API_KEY'],
+	['cohere', 'COHERE_API_KEY'],
+	['deepseek', 'DEEPSEEK_API_KEY'],
+	['google', 'GOOGLE_GENERATIVE_AI_API_KEY'],
+	['groq', 'GROQ_API_KEY'],
+	['mistral', 'MISTRAL_API_KEY'],
+	['openai', 'OPENAI_API_KEY'],
+	['openrouter', 'OPENROUTER_API_KEY'],
+	['xai', 'XAI_API_KEY'],
+]);
 
 type UserInstanceAiPreferences = NonNullable<IUserSettings['instanceAi']>;
 
@@ -119,6 +133,27 @@ function validateModelCredential({
 	);
 }
 
+function modelCredentialHeaders(
+	credentialType: string,
+	data: ICredentialDataDecryptedObject,
+): Record<string, string> | undefined {
+	const headers: Record<string, string> = {};
+	if (credentialType === 'openAiApi' && typeof data.organizationId === 'string') {
+		const organizationId = data.organizationId.trim();
+		if (organizationId) headers['OpenAI-Organization'] = organizationId;
+	}
+	if (
+		(credentialType === 'openAiApi' || credentialType === 'anthropicApi') &&
+		data.header === true &&
+		typeof data.headerName === 'string' &&
+		typeof data.headerValue === 'string'
+	) {
+		const headerName = data.headerName.trim();
+		if (headerName) headers[headerName] = data.headerValue;
+	}
+	return Object.keys(headers).length ? headers : undefined;
+}
+
 function validateSandboxServiceCredential({
 	type,
 	data,
@@ -127,9 +162,9 @@ function validateSandboxServiceCredential({
 	data: ICredentialDataDecryptedObject;
 }): void {
 	const headerName = requireConnectionValue(type, data, 'name').toLowerCase();
-	if (headerName !== 'x-api-key') {
+	if (headerName !== N8N_SANDBOX_HEADER_NAME) {
 		throw new UnprocessableRequestError(
-			`The credential's header name must be "x-api-key" but is "${headerName}"`,
+			`The credential's header name must be "${N8N_SANDBOX_HEADER_NAME}" but is "${headerName}"`,
 		);
 	}
 	requireConnectionValue(type, data, 'value');
@@ -184,14 +219,16 @@ interface PersistedAdminSettings {
 	browserUseEnabled?: boolean;
 }
 
-interface PendingCredentialHook {
+interface PreparedConnection {
 	event: 'create' | 'update';
+	expectedCredentialId: string | null;
 	credential: {
 		id: string | null;
 		name: string;
 		type: string;
 		data: ICredentialDataDecryptedObject;
 	};
+	encryptedData?: ICredentialsDb;
 }
 
 @Service()
@@ -274,6 +311,7 @@ export class InstanceAiSettingsService {
 
 	async getAdminSettings(): Promise<InstanceAiAdminSettingsResponse> {
 		const c = this.config;
+		const modelProviderApiKeyEnv = MODEL_PROVIDER_API_KEY_ENV.get(c.model.split('/', 1)[0] ?? '');
 		const isManaged = this.isCloud || this.aiService.isProxyEnabled();
 		const credentialIds: [string | null, string | null, string | null, string | null] = isManaged
 			? [null, null, null, null]
@@ -307,10 +345,14 @@ export class InstanceAiSettingsService {
 			// A legacy assignment without a model name reads as unconfigured, matching runtime.
 			modelCredentialId: modelName === null ? null : modelCredentialId,
 			modelName,
-			modelEnvConfigured: Boolean(c.modelApiKey.trim() || c.modelUrl.trim()),
+			modelEnvConfigured: Boolean(
+				c.modelApiKey.trim() ||
+					c.modelUrl.trim() ||
+					(modelProviderApiKeyEnv && process.env[modelProviderApiKeyEnv]?.trim()),
+			),
 			// n8n-sandbox needs only the URL; the service accepts keyless clients.
 			sandboxEnvConfigured:
-				sandboxProvider === 'daytona'
+				this.environmentSandboxProvider === 'daytona'
 					? Boolean(c.daytonaApiKey.trim())
 					: Boolean(c.n8nSandboxServiceUrl.trim()),
 			searchEnvConfigured: Boolean(c.braveSearchApiKey.trim() || c.searxngUrl.trim()),
@@ -361,7 +403,25 @@ export class InstanceAiSettingsService {
 				throw new ForbiddenError('You do not have permission to manage provider connections');
 			}
 		}
-		const pendingCredentialHooks: PendingCredentialHook[] = [];
+		if (modelConnection && (settingsUpdate.modelName ?? this.adminModelName) === null) {
+			throw new UnprocessableRequestError('modelName must be set together with modelCredentialId');
+		}
+		const [modelPrepared, searchPrepared, sandboxPrepared] = user
+			? await Promise.all([
+					this.prepareConnection(
+						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+						'AI Assistant model',
+						modelConnection,
+					),
+					this.prepareConnection(
+						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+						'AI Assistant web search',
+						searchConnection,
+					),
+					this.prepareSandboxConnection(sandboxConnection),
+				])
+			: [undefined, undefined, undefined];
+		await this.runConnectionHooks([modelPrepared, searchPrepared, sandboxPrepared]);
 		const { previous, next } = await this.dbLockService.withLockContext(
 			DbLock.INSTANCE_AI_SETTINGS,
 			async (ctx) => {
@@ -372,7 +432,7 @@ export class InstanceAiSettingsService {
 						'AI Assistant model',
 						modelConnection,
 						ctx,
-						pendingCredentialHooks,
+						modelPrepared,
 					);
 				}
 				if (user && searchConnection !== undefined) {
@@ -382,7 +442,7 @@ export class InstanceAiSettingsService {
 						'AI Assistant web search',
 						searchConnection,
 						ctx,
-						pendingCredentialHooks,
+						searchPrepared,
 					);
 				}
 				if (user && sandboxConnection !== undefined) {
@@ -390,7 +450,7 @@ export class InstanceAiSettingsService {
 						user,
 						sandboxConnection,
 						ctx,
-						pendingCredentialHooks,
+						sandboxPrepared,
 					);
 					daytonaCredentialId = sandbox.daytonaCredentialId;
 					n8nSandboxCredentialId = sandbox.n8nSandboxCredentialId;
@@ -491,7 +551,6 @@ export class InstanceAiSettingsService {
 		);
 		this.applyAdminSettings(next);
 		this.emitSettingsUpdated(previous, next);
-		await this.runConnectionHooks(pendingCredentialHooks);
 
 		return await this.getAdminSettings();
 	}
@@ -525,15 +584,10 @@ export class InstanceAiSettingsService {
 		name: string,
 		connection: InstanceAiConnectionUpdate | null,
 		ctx: OperationContext,
-		pendingHooks: PendingCredentialHook[],
+		prepared?: PreparedConnection,
 	): Promise<string | null> {
 		if (connection === null) return null;
-
-		if (!policy.credentialTypes.includes(connection.type)) {
-			throw new UnprocessableRequestError(
-				`Connection type "${connection.type}" is not supported for "${policy.id}"`,
-			);
-		}
+		if (!prepared?.encryptedData) throw new ConflictError('Provider connection changed; retry');
 
 		// A current assignment outside the allowed types (legacy data) is replaced, not fatal.
 		let current: ResolvedInstanceCredential | null;
@@ -544,25 +598,19 @@ export class InstanceAiSettingsService {
 			current = null;
 		}
 
+		if ((current?.id ?? null) !== prepared.expectedCredentialId) {
+			throw new ConflictError('Provider connection changed; retry');
+		}
+
 		const data = connection.data as ICredentialDataDecryptedObject;
-		policy.validate?.({ type: connection.type, data });
 		if (current && current.type === connection.type) {
 			await this.credentialsService.updateInstanceCredential(
 				user,
 				current.id,
 				{ name: current.name, type: current.type, data },
 				ctx,
-				{ skipExternalHooks: true },
+				{ skipExternalHooks: true, encryptedData: prepared.encryptedData },
 			);
-			pendingHooks.push({
-				event: 'update',
-				credential: {
-					id: current.id,
-					name: current.name,
-					type: current.type,
-					data,
-				},
-			});
 			return current.id;
 		}
 
@@ -574,27 +622,73 @@ export class InstanceAiSettingsService {
 		};
 		const created = await this.credentialsService.createInstanceCredential(dto, user, ctx, {
 			skipExternalHooks: true,
-		});
-		pendingHooks.push({
-			event: 'create',
-			credential: { id: null, name, type: connection.type, data },
+			encryptedData: prepared.encryptedData,
 		});
 		return created.id;
 	}
 
-	/** Runs slow external hooks only after the transaction has committed. */
-	private async runConnectionHooks(pendingHooks: PendingCredentialHook[]): Promise<void> {
-		for (const { event, credential } of pendingHooks) {
-			try {
-				await this.credentialsService.runInstanceCredentialHooks(event, credential);
-			} catch (error) {
-				Container.get(Logger)
-					.scoped('instance-ai')
-					.warn('Provider connection hook failed', {
-						event,
-						credentialId: credential.id,
-						error: ensureError(error).message,
-					});
+	private async prepareConnection(
+		policy: InstanceCredentialUse,
+		name: string,
+		connection: InstanceAiConnectionUpdate | null | undefined,
+	): Promise<PreparedConnection | undefined> {
+		if (!connection) return undefined;
+		if (!policy.credentialTypes.includes(connection.type)) {
+			throw new UnprocessableRequestError(
+				`Connection type "${connection.type}" is not supported for "${policy.id}"`,
+			);
+		}
+
+		let current: ResolvedInstanceCredential | null;
+		try {
+			current = await this.instanceCredentialBroker.resolveForUse(policy);
+		} catch (error) {
+			if (!(error instanceof UnprocessableRequestError)) throw error;
+			current = null;
+		}
+
+		const data = connection.data as ICredentialDataDecryptedObject;
+		policy.validate?.({ type: connection.type, data });
+		const updatesCurrent = current?.type === connection.type;
+		return {
+			event: updatesCurrent ? 'update' : 'create',
+			expectedCredentialId: current?.id ?? null,
+			credential: {
+				id: updatesCurrent ? current.id : null,
+				name: updatesCurrent ? current.name : name,
+				type: connection.type,
+				data,
+			},
+		};
+	}
+
+	private async prepareSandboxConnection(
+		connection: InstanceAiConnectionUpdate | null | undefined,
+	): Promise<PreparedConnection | undefined> {
+		if (!connection) return undefined;
+		const policy =
+			connection.type === 'daytonaApi'
+				? INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY
+				: connection.type === 'httpHeaderAuth'
+					? INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY
+					: undefined;
+		if (!policy) {
+			throw new UnprocessableRequestError(
+				`Connection type "${connection.type}" is not supported for the sandbox`,
+			);
+		}
+		return await this.prepareConnection(policy, 'AI Assistant sandbox', connection);
+	}
+
+	private async runConnectionHooks(
+		preparedConnections: Array<PreparedConnection | undefined>,
+	): Promise<void> {
+		for (const prepared of preparedConnections) {
+			if (prepared) {
+				prepared.encryptedData = await this.credentialsService.runInstanceCredentialHooks(
+					prepared.event,
+					prepared.credential,
+				);
 			}
 		}
 	}
@@ -604,7 +698,7 @@ export class InstanceAiSettingsService {
 		user: User,
 		connection: InstanceAiConnectionUpdate | null,
 		ctx: OperationContext,
-		pendingHooks: PendingCredentialHook[],
+		prepared?: PreparedConnection,
 	): Promise<{
 		daytonaCredentialId: string | null;
 		n8nSandboxCredentialId: string | null;
@@ -619,7 +713,6 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					ctx,
-					pendingHooks,
 				),
 				n8nSandboxCredentialId: await this.upsertConnection(
 					user,
@@ -627,7 +720,6 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					ctx,
-					pendingHooks,
 				),
 			};
 		}
@@ -639,7 +731,7 @@ export class InstanceAiSettingsService {
 					name,
 					connection,
 					ctx,
-					pendingHooks,
+					prepared,
 				),
 				n8nSandboxCredentialId: await this.upsertConnection(
 					user,
@@ -647,7 +739,6 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					ctx,
-					pendingHooks,
 				),
 				sandboxProvider: 'daytona',
 			};
@@ -660,7 +751,7 @@ export class InstanceAiSettingsService {
 					name,
 					connection,
 					ctx,
-					pendingHooks,
+					prepared,
 				),
 				daytonaCredentialId: await this.upsertConnection(
 					user,
@@ -668,7 +759,6 @@ export class InstanceAiSettingsService {
 					name,
 					null,
 					ctx,
-					pendingHooks,
 				),
 				sandboxProvider: 'n8n-sandbox',
 			};
@@ -800,11 +890,11 @@ export class InstanceAiSettingsService {
 		const { data } = resolved;
 		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
 		const apiKey = typeof data.value === 'string' ? data.value : undefined;
-		if (headerName !== 'x-api-key') {
+		if (headerName !== N8N_SANDBOX_HEADER_NAME) {
 			this.warnCredentialFallback(
 				'n8n Sandbox',
 				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY.id,
-				`Credential header must be "x-api-key" but is "${headerName || '(empty)'}"`,
+				`Credential header must be "${N8N_SANDBOX_HEADER_NAME}" but is "${headerName || '(empty)'}"`,
 			);
 			return envConfig;
 		}
@@ -1010,16 +1100,9 @@ export class InstanceAiSettingsService {
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
-
-		if (baseUrl) {
-			return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}) };
-		}
-
-		if (apiKey) {
-			return { id, url: '', apiKey };
-		}
-
-		return null;
+		if (!baseUrl && !apiKey) return null;
+		const headers = modelCredentialHeaders(credentialType, data);
+		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────

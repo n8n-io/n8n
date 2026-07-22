@@ -7,6 +7,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { CredentialsService } from '@/credentials/credentials.service';
 import { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -92,8 +93,28 @@ describe('InstanceAiSettingsService (integration)', () => {
 	});
 
 	it('keeps the previous credential when a replacing update fails at the settings write', async () => {
-		const first = await service.updateAdminSettings(modelUpdate, owner);
-		const credentialId = String(first.modelCredentialId);
+		const credential = await Container.get(CredentialsService).createInstanceCredential(
+			{
+				name: 'AI Assistant model',
+				type: 'openAiApi',
+				data: { apiKey: 'test-key' },
+				availability: 'instance',
+			},
+			owner,
+			{},
+		);
+		const credentialId = credential.id;
+		await assignmentRepository.assignCredential(
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id,
+			credentialId,
+			INSTANCE_AI_MODEL_CREDENTIAL_POLICY.credentialTypes,
+		);
+		await settingsRepository.upsertByKey(
+			'instanceAi.settings',
+			JSON.stringify({ modelName: 'gpt-5' }),
+			true,
+			{},
+		);
 		const before = await credentialsRepository.findOneByOrFail({ id: credentialId });
 		vi.spyOn(settingsRepository, 'upsertByKey').mockRejectedValueOnce(
 			new Error('settings write failed'),
