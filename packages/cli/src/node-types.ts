@@ -24,6 +24,10 @@ export class NodeTypes implements INodeTypes {
 	/**
 	 * Resolves a tool-variant name (`…Tool`/`…HitlTool`) to the base node type it
 	 * is synthesized from, unless a real node with that name exists on disk.
+	 *
+	 * A "synthetic tool" has no implementation of its own: workflows persist
+	 * names like `gmailTool`, and the registry fabricates that node on demand by
+	 * converting the `gmail` base node into an agent tool.
 	 */
 	private resolveBaseName(nodeTypeName: string): { baseName: string; isSyntheticTool: boolean } {
 		const isSyntheticTool =
