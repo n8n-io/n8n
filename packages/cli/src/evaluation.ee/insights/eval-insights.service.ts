@@ -239,8 +239,15 @@ export class EvalInsightsService {
 		winner: RunSummary;
 		scaleByMetric: Record<string, MetricScale>;
 	}): Promise<{ payload: AiInsightsPayload; modelId: string }> {
-		const { user, workflowId, collectionName, evaluationConfigId, summaries, winner, scaleByMetric } =
-			params;
+		const {
+			user,
+			workflowId,
+			collectionName,
+			evaluationConfigId,
+			summaries,
+			winner,
+			scaleByMetric,
+		} = params;
 
 		const resolved = await this.modelResolver.resolve(user, workflowId, evaluationConfigId);
 		if (!resolved) {
