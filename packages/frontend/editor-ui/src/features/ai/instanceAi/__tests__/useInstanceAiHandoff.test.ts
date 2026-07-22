@@ -139,15 +139,26 @@ describe('useInstanceAiHandoff', () => {
 	it('opens an agent artifact thread without sending a message', async () => {
 		const { openAgentArtifactThread } = useInstanceAiHandoff();
 
-		const opened = await openAgentArtifactThread({
-			type: 'agent',
-			id: 'agent-1',
-			name: 'Agent One',
-			projectId: 'project-1',
-		});
+		const opened = await openAgentArtifactThread(
+			{
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Agent One',
+				projectId: 'project-1',
+			},
+			{
+				source: 'agent_builder_page',
+				origin: 'internal',
+				sourceContext: { agentId: 'agent-1' },
+			},
+		);
 
 		expect(opened).toBe(true);
-		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1');
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'agent_builder_page',
+			origin: 'internal',
+			sourceContext: { agentId: 'agent-1' },
+		});
 		expect(mocks.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 			instanceAiAgentBuilderTarget: {
 				agentId: 'agent-1',

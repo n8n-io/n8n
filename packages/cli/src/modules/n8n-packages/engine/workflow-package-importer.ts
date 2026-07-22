@@ -85,7 +85,7 @@ export class WorkflowPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: identifyRequirements(manifest.requirements?.variables, workflows),
-			missingPolicy: request.variableMissingPolicy,
+			missingMode: request.variableMissingMode,
 		};
 
 		const imported = await this.importOrchestrator.import({

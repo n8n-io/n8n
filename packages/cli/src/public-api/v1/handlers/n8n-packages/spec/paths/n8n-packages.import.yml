@@ -185,7 +185,7 @@ post:
                 column or a type mismatch always rejects. Both policies are
                 non-destructive — the matched target table is never altered, and
                 package columns are never added to it.
-            variableMissingPolicy:
+            variableMissingMode:
               type: string
               enum:
                 - do-nothing
@@ -199,7 +199,7 @@ post:
                 lists its name under `variables.missing` in the response so the
                 caller can fill it in afterwards. `must-preexist` rejects the
                 import unless every referenced variable already resolves. Neither
-                policy ever creates a variable.
+                mode ever creates a variable.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -422,7 +422,7 @@ post:
                       type: string
                     description: >
                       Variable names that did not resolve. Under
-                      `variableMissingPolicy=do-nothing` these are warnings —
+                      `variableMissingMode=do-nothing` these are warnings —
                       the import still succeeds and nothing is created.
               bindings:
                 type: object

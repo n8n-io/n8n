@@ -362,7 +362,8 @@ export {
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
 	applyBranchReadOnlyOverrides,
-	normalizeInstanceAiThreadSource,
+	INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 } from './schemas/instance-ai.schema';
 
 export type {

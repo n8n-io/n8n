@@ -1,10 +1,10 @@
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { Telemetry } from '@/app/plugins/telemetry';
+import { TelemetryService } from '@/app/plugins/telemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import merge from 'lodash/merge';
 import { createPinia, setActivePinia } from 'pinia';
 
-let telemetry: Telemetry;
+let telemetry: TelemetryService;
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 
@@ -12,7 +12,7 @@ const MOCK_VERSION_CLI = '0.0.0';
 
 describe('telemetry', () => {
 	beforeAll(() => {
-		telemetry = new Telemetry();
+		telemetry = new TelemetryService();
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		telemetry.init(
