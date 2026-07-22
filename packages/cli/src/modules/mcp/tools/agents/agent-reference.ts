@@ -128,6 +128,10 @@ Tool references use these forms:
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 
+Creating a resource does not give the Agent access to it. For example, a data table created with
+create_data_table is only usable by the Agent once it is attached as a node tool
+(n8n-nodes-base.dataTable); discover it with search_nodes usage="agentTool" like any other node.
+
 Sub-agents are not tool entries. Configure them under the top-level \`subAgents\` field:
 { "subAgents": { "agents": [{ "agentId": "...", "useWhen": "..." }] } }
 
