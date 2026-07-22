@@ -1,0 +1,50 @@
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_0d227fe3b76af9::t_2ba85b1203026c 201-231,235-244,248-250,257,262-279,283,285-294,296-297
+  s_0d227fe3b76af9::t_e80dbf9148489a 140-142,156-161,164-200
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_0d227fe3b76af9::t_12a1ab6511f383 186,191
+  s_0d227fe3b76af9::t_d7b34a02dbf953 1-6,21-27
+  s_0d227fe3b76af9::t_e27b2a915f6322 295,308
+  s_0d227fe3b76af9::t_8494e81ebc1a8c 235,243-245
+  s_0d227fe3b76af9::t_0440fa24c95447 28
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_0d227fe3b76af9::t_6f3b5eed5333e9 18
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_0d227fe3b76af9::t_2b14eb0941cc37 662
+  s_0d227fe3b76af9::t_289121650cd58d 422
+  s_0d227fe3b76af9::t_5b5fa8da8d88e4 144-151
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_0d227fe3b76af9::t_4ec0b51b99665a 177-180
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_0d227fe3b76af9::t_af428cdb30632f 79-82
+  s_0d227fe3b76af9::t_b5e7264d920582 51-56
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_0d227fe3b76af9::t_e05099b85c43bd 476-491
+  s_0d227fe3b76af9::t_7dfb14dd83b358 473
+  s_0d227fe3b76af9::t_789f195aca1cb5 474-475
+packages/cli/src/modules/agents/builder/interactive/__tests__/resolve-llm.tool.test.ts
+  s_0d227fe3b76af9::t_55270c850f11ac 283-337
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0d227fe3b76af9::t_ebc1ba3e69737f 6416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b0b4cde424983ad52762bb6885dc001d2b221280",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0d227fe3b76af9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5df9b504-2893-448e-8223-86cca7df1fb5",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

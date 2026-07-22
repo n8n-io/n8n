@@ -1,0 +1,499 @@
+packages/@n8n/instance-ai/evaluations/__tests__/workflow-checks-applicability.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 9
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 8,26-27,29,32,35,37-39,295
+packages/nodes-base/credentials/GoogleBooksOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15-45,50
+packages/nodes-base/nodes/Google/Gmail/GmailTrigger.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 20,117,120
+packages/frontend/editor-ui/src/features/agents/__tests__/constants.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 8,17-24
+  s_744aa7ffad1673::t_f3a977c23e5e23 25
+packages/@n8n/instance-ai/evaluations/__tests__/eval-results-dispatcher-contract.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-167
+packages/@n8n/instance-ai/evaluations/__tests__/workflow-discovery.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 12
+packages/cli/src/modules/token-exchange/services/__tests__/identity-resolution.service.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 16,19,31,41,46-54,68-71,77-80,102,116,126,141-143,150-152,157-159,164,169,189,204,213-215,222,230,239,244-323
+packages/nodes-base/nodes/Form/test/formCompletionUtils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 184,298,300,362,364,522,562,607
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/code-node-no-http-requests.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 9,156
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 2-3,7
+packages/nodes-base/credentials/GoogleDocsOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 19-49,54
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 2,702-729,738-758
+  s_744aa7ffad1673::t_a41a0369695f87 759
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/versionDescription.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 6,81-84,94
+packages/nodes-base/nodes/EmailSend/test/v2/utils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-34
+packages/nodes-base/nodes/Form/utils/utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 49-50,590,592
+packages/@n8n/instance-ai/evaluations/__tests__/write-partial-results.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 70
+packages/nodes-base/nodes/Form/utils/formNodeUtils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 14,35,39,48-49,54,107
+packages/@n8n/expression-runtime/src/extensions/array-extensions.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 33-36,691
+packages/@n8n/instance-ai/evaluations/harness/normalize-workflow.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 18,20-22
+packages/@n8n/instance-ai/evaluations/computer-use/__tests__/graders-llm.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 48-54,71,152
+packages/cli/test/integration/token-exchange/embed-auth.api.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 65
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 2,6,8,21-29,52-53,56-93,194-197,206
+packages/nodes-base/nodes/Postgres/test/PostgresTrigger.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-276
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenAi/LmOpenAi.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3,210,213-220,228,277-283
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_744aa7ffad1673::t_cf029bb0ffeafd 860
+packages/@n8n/instance-ai/evaluations/__tests__/verification-artifact.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 605
+packages/@n8n/instance-ai/evaluations/cli/langtracer-push.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 174-179
+packages/@n8n/instance-ai/evaluations/tsconfig.json
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3-4,11-19,21-24
+packages/nodes-base/credentials/GoogleDriveOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 19-49,54
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 30-31
+packages/@n8n/instance-ai/evaluations/__tests__/artifact-config-eval-handler.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 27-34
+packages/@n8n/instance-ai/evaluations/__tests__/partial-results-abort.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 48
+packages/nodes-base/credentials/GmailOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 22-52,57
+packages/@n8n/instance-ai/evaluations/__tests__/subagent-runner.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 37
+packages/nodes-base/nodes/Postgres/PostgresTrigger.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 17,256-267,282-295,297-302,318
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_744aa7ffad1673::t_cf029bb0ffeafd 26-30,42,45,95,546-550,661-677
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/graphSearch.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-97
+packages/cli/test/integration/execution-redaction.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 10-17,70-80,85-88,100-120,131,136-139,148-149,155-156,198-212,1067-1226
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.utils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1,778-812
+  s_744aa7ffad1673::t_e44d154b3a644b 813
+packages/@n8n/blob-storage/src/stream-utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 4-10,24
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/get.operation.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-94
+packages/workflow/test/expression-array-proxy-semantics.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 67-80
+packages/nodes-base/nodes/EmailSend/v2/send.operation.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 16,199-201,205-208,214-215,217,221-222,226-227
+packages/cli/src/modules/token-exchange/services/trusted-key.service.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 195,516,555-563,580
+packages/nodes-base/nodes/EmailSend/v1/EmailSendV1.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 13,154-160,163,197-199
+packages/nodes-base/nodes/Form/test/formNodeUtils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 180,212,297,305,327,332,339,342,390,393,430,438
+packages/cli/src/executions/execution-data/__tests__/execution-data-json-store.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 36
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_744aa7ffad1673::t_cf029bb0ffeafd 99,703,713-718
+packages/nodes-base/nodes/Google/Gmail/utils/descriptions.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-12
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/helpers/utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 8-29
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-11
+packages/nodes-base/nodes/Git/GenericFunctions.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 6-9,11-16,20,47-69,74-158
+  s_744aa7ffad1673::t_ba6e9cf1dd86f0 159
+packages/nodes-base/credentials/GoogleContactsOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15-45,50
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/get.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-287
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-126
+packages/nodes-base/credentials/MicrosoftGraphSecurityOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3-4,15-45,50-51
+packages/nodes-base/nodes/EditImage/EditImage.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 9,28-40,1314-1315
+packages/nodes-base/credentials/test/MicrosoftAzureMonitorOAuth2Api.credentials.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-24
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 16-22,36-53,62,76,87,98,116,118,124,126,141,144
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/google-sheets-rlc-default-mode.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 26-27,41-42,54-55,69-70,81-82,94-95
+packages/cli/src/modules/token-exchange/token-exchange.schemas.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 41-44,62,70,97,126-128
+packages/@n8n/instance-ai/package.json
+  s_744aa7ffad1673::t_cf029bb0ffeafd 6
+packages/nodes-base/nodes/Git/test/Git.node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 4-5,9,15-17,62-63,67-76,94-107,109,141-285,944-1163,1183-1185,1198,1200,1202,1236-1238,1318-1356,1358-1360,1365,1369,1372,1394-1412,1496-1511,1793-1833
+  s_744aa7ffad1673::t_696ed38e3407f2 1834
+packages/@n8n/blob-storage/src/s3-byte-store.ee.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1,3,6-7,12-18,25,30-50,56-68,71-92,94-95
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 403-409,412-416
+  s_744aa7ffad1673::t_3a400e5b6aa2b6 417
+packages/@n8n/task-runner/src/js-task-runner/js-task-runner.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 160
+packages/@n8n/nodes-langchain/nodes/embeddings/EmbeddingsHuggingFaceInference/EmbeddingsHuggingFaceInference.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 5,108-117
+  s_744aa7ffad1673::t_2f89351980b18d 118-119
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/folder/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3
+packages/nodes-base/nodes/Schedule/ScheduleTrigger.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 429-441
+packages/frontend/editor-ui/src/features/agents/constants.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 2
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/agent.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-2
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-job-registrar.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 103-105,116,131-139
+packages/nodes-base/nodes/Git/Git.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 35-42,313-326,397-410,413,516,521-522,564-568,670,711,744-747,775,925
+packages/cli/src/modules/token-exchange/services/__tests__/token-exchange.service.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 39,98-102
+packages/cli/test/integration/shared/workflow.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 2,11,57-84,89,107-108
+  s_744aa7ffad1673::t_781e30a4032659 109-110
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-39
+patches/lodash@4.18.1.patch
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-26
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 106-126,128,132-135,137-139
+packages/nodes-base/nodes/EmailSend/v2/utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 48-51
+packages/nodes-base/nodes/Postgres/PostgresTrigger.functions.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 13-37,45,47-48,54-56,74-75,77-81,83,85,89-93,95
+packages/@n8n/blob-storage/src/__tests__/s3-byte-store.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3,8-14,26,39-142
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/item/delete.operation.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-71
+packages/cli/src/modules/token-exchange/token-exchange.types.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 46,62
+packages/nodes-base/credentials/MicrosoftAzureMonitorOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 89-123,128
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 380-445
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-76
+packages/@n8n/task-runner/src/js-task-runner/__tests__/require-resolver.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-2,5-9,68-254
+  s_744aa7ffad1673::t_e820ea2a8e3ee9 255
+packages/@n8n/instance-ai/evaluations/discovery/runner.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 13-15,79-82,133,143
+packages/@n8n/blob-storage/src/azure-byte-store.ee.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1,4,7-8,15-21,33-54,61-70
+  s_744aa7ffad1673::t_750c378399192d 71
+packages/nodes-base/nodes/Google/Gmail/v2/MessageDescription.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 4,303-306,308-310,392-395,397-399
+packages/nodes-base/credentials/GoogleFirebaseRealtimeDatabaseOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 19-49,54
+packages/frontend/editor-ui/src/features/credentials/composables/useNodeCredentialOptions.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 158-214
+packages/@n8n/instance-ai/evaluations/__tests__/runner-prebuilt.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 56
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/delete.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-100
+packages/@n8n/nodes-langchain/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3,142-150
+packages/@n8n/config/src/configs/__tests__/scheduler.config.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 42-43,95-100
+  s_744aa7ffad1673::t_d57831058521b5 101-102
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/methods/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3,13
+package.json
+  s_744aa7ffad1673::t_cf029bb0ffeafd 221-222
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 350-351,353,391,437,445,483
+packages/@n8n/instance-ai/evaluations/__tests__/artifact-workflow-handler.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 57
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 36,64,206-210
+  s_744aa7ffad1673::t_3f420e4f367f98 211-213
+packages/@n8n/instance-ai/evaluations/__tests__/fixtures.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 59-71
+packages/nodes-base/credentials/test/MicrosoftDynamicsOAuth2Api.credentials.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-26
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 74,78
+packages/@n8n/blob-storage/src/types.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-2,21-26,31-39,41-46
+packages/nodes-base/nodes/Snowflake/__tests__/executeQuery.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-157
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/item/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-74
+packages/@n8n/instance-ai/eslint.config.mjs
+  s_744aa7ffad1673::t_cf029bb0ffeafd 25-34
+packages/nodes-base/credentials/AzureStorageOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 25-55,60-61
+packages/nodes-base/credentials/GoogleTranslateOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15-45,50
+packages/nodes-base/nodes/Form/test/Form.node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 6,11-16,494-687
+  s_744aa7ffad1673::t_5d9f4846da37b2 688-689
+packages/frontend/editor-ui/src/app/utils/parameterUtils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-2,66-98
+  s_744aa7ffad1673::t_651af42f54f581 99
+packages/nodes-base/nodes/Form/utils/formCompletionUtils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15,29,96,100,104
+packages/@n8n/ai-utilities/src/__tests__/utils/http-proxy-agent.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 248-273
+packages/nodes-base/nodes/Snowflake/__tests__/executeQuery.workflow.json
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-64
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-job-registrar.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 40-44,48,88-120
+packages/cli/src/constants.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 123-141
+packages/@n8n/nodes-langchain/nodes/llms/test/LmOpenAi.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 5,94-190
+packages/@n8n/nodes-langchain/nodes/mcp/McpClientTool/__test__/McpClientTool.node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 314-322,371-379
+packages/@n8n/nodes-langchain/nodes/llms/test/LmOpenHuggingFaceInference.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-71
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 56-71
+packages/cli/src/modules/token-exchange/services/identity-resolution.service.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 10,17,53,58-84,99-100,129-130,163,165-166,182,188-189,214,216,371
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 152
+packages/@n8n/blob-storage/src/__tests__/stream-utils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 55
+packages/@n8n/blob-storage/src/__tests__/fs-byte-store.integration.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 5,130-222
+  s_744aa7ffad1673::t_b9c0fb476efd04 223
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-format.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 70,80,88
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/file.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 8
+packages/testing/playwright/helpers/jwt-helper.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 40,59,86
+packages/workflow/test/expression-sandboxing.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1059-1099
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/error-routes-consistent.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 13,77,102
+packages/nodes-base/nodes/EmailSend/test/v2/send.operation.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 605-647
+packages/nodes-base/credentials/test/MicrosoftGraphSecurityOAuth2Api.credentials.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-24
+packages/nodes-base/credentials/GoogleChatOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 19-49,54
+packages/@n8n/instance-ai/evaluations/__tests__/summary.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 139
+packages/cli/src/modules/token-exchange/token-exchange.config.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 17-19
+packages/nodes-base/nodes/Form/Form.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 30-35,366,379,417
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3-9,17-20,52-53,144-165,228-253,336
+packages/nodes-base/nodes/Snowflake/GenericFunctions.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 125
+packages/@n8n/blob-storage/src/__tests__/azure-byte-store.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3,20,33-121
+packages/workflow/src/extensions/array-extensions.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 33-36,693
+packages/nodes-base/nodes/Set/v2/helpers/__tests__/utils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 55-77
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1064-1236
+packages/nodes-base/credentials/GoogleSheetsTriggerOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 20-50,55
+packages/nodes-base/credentials/test/AzureStorageOAuth2Api.credentials.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-24
+packages/nodes-base/credentials/YouTubeOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 24-54,59
+packages/@n8n/instance-ai/evaluations/langtracer/config.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 13-16
+packages/@n8n/blob-storage/src/__tests__/json-store.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 5-6,19-20,30-43
+  s_744aa7ffad1673::t_ddf5081acb67a0 44
+packages/nodes-base/nodes/EmailSend/test/v2/sendAndWait.operation.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 32,61
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/http-generic-auth-type-matches-prompt.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 9,116
+packages/@n8n/instance-ai/evaluations/computer-use/graders/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 58
+packages/@n8n/blob-storage/src/fs-byte-store.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 6,8,26,35,38,56-91
+  s_744aa7ffad1673::t_54a91827f0db7c 92
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 247
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/transport/index.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 404-415,446-465
+  s_744aa7ffad1673::t_3d7b3ac6b98562 466
+packages/nodes-base/credentials/GoogleTasksOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15-45,50
+packages/nodes-base/credentials/GoogleBusinessProfileOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15-45,50
+packages/@n8n/instance-ai/evaluations/harness/in-memory-event-bus.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 32-34
+packages/nodes-base/credentials/GoogleAdsOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 23-53,58
+packages/nodes-base/credentials/GoogleFirebaseCloudFirestoreOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 18-48,53
+packages/frontend/@n8n/stores/src/settings.store.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 2,4,172-219
+  s_744aa7ffad1673::t_f260f4b6627fcb 220-221
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 6
+packages/@n8n/instance-ai/evaluations/computer-use/types.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 14-15
+packages/@n8n/computer-use/src/tools/filesystem/search-files.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 64,72-82,86,92-95,100-102,107-111,118-139,141
+  s_744aa7ffad1673::t_fcd502e81696fb 140,142
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 246-257,313
+packages/cli/src/workflow-execute-additional-data.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 338-342,349,502,531-541,553-557
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 20-23,606-662
+  s_744aa7ffad1673::t_a86c131d8467f0 663-664
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 114-115,147-148
+packages/frontend/editor-ui/src/features/ndv/shared/ndv.utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 119-125
+packages/nodes-base/credentials/GoogleAnalyticsOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 18-48,53
+packages/nodes-base/nodes/EditImage/test/EditImage.node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 618-652
+pnpm-workspace.yaml
+  s_744aa7ffad1673::t_cf029bb0ffeafd 137
+packages/@n8n/instance-ai/evaluations/__tests__/data-workflows-schema.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 40,52,254
+packages/nodes-base/nodes/EmailSend/utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-9
+packages/nodes-base/test/lodash-set.patch.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-46
+packages/@n8n/instance-ai/evaluations/__tests__/data-discovery.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 54
+packages/nodes-base/credentials/GoogleCloudNaturalLanguageOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 18-48,53
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3075-3079,7230,7234
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 443-528
+packages/frontend/editor-ui/src/features/ndv/settings/composables/useNodeSettingsParameters.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 347-402
+packages/nodes-base/nodes/EmailSend/v2/sendAndWait.operation.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 21,29-30
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 24-32,272-275,277-284,286-325
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/router.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 9,62-69
+  s_744aa7ffad1673::t_a9db540ae4a778 70-74
+packages/@n8n/tournament/src/VariablePolyfill.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 112-120,146
+packages/workflow/src/native-methods/array.methods.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 359
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_744aa7ffad1673::t_cf029bb0ffeafd 812-834,837,841,935,944-946
+packages/core/src/execution-engine/__tests__/routing-node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 782-853
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 127,276-367
+  s_744aa7ffad1673::t_d23971db6370a1 368-369
+packages/@n8n/config/test/config.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 466
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/list/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 21-23
+packages/nodes-base/nodes/EmailSend/test/v1/EmailSendV1.node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 520-560
+packages/cli/test/integration/token-exchange/identity-resolution.service.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 17,67-71,80-88,107-117,137,142,158-159,175-183,205,247,255,262-271,284,298-299,305-316,320,322,334,340,351,368-377,389-398,421,453-454,478-497,516-520,543-547
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/folder.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 8
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/file/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 4
+packages/nodes-base/nodes/Microsoft/SharePoint/test/v2/item/index.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-208
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 256-272
+  s_744aa7ffad1673::t_c1fc140eb5d5be 255
+packages/nodes-base/nodes/Git/__test__/GenericFunctions.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3,5,135-172
+  s_744aa7ffad1673::t_f875b2c2d0fd8a 173
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 13,141,155-160,168,287-289,295,299-308,310,322,330-336,491
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 44,105
+packages/nodes-base/nodes/Snowflake/Snowflake.node.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 122-148,291-309,331,370
+packages/@n8n/nodes-langchain/nodes/embeddings/test/EmbeddingsHuggingFaceInference.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-72
+packages/@n8n/blob-storage/src/__tests__/mocks.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 21-25
+packages/@n8n/blob-storage/src/json-store.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 42
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 5-6,14,680-740,742
+  s_744aa7ffad1673::t_9bda0ca3fc8181 741
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/expected-tools-invoked.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 13
+packages/nodes-base/credentials/MicrosoftDynamicsOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3-4,106-137,142-145
+packages/@n8n/task-runner/src/js-task-runner/require-resolver.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 18-24,29-112,116,132-135
+packages/@n8n/instance-ai/evaluations/__tests__/conversation-seed.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 45
+packages/cli/test/integration/workflows/workflow.service.ee.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 111-118,199-212
+packages/nodes-base/credentials/GoogleSlidesOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 18-48,53
+packages/nodes-base/credentials/GSuiteAdminOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 22-52,57
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/transport/index.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 47-56
+packages/nodes-base/nodes/Google/Gmail/v2/ThreadDescription.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 3-4,245-248,250-252
+packages/@n8n/nodes-langchain/nodes/tools/ToolHttpRequest/test/ToolHttpRequest.node.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 241-315
+packages/@n8n/instance-ai/evaluations/binaryChecks/checks/memory-session-key-expression.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 9
+packages/nodes-base/nodes/Microsoft/SharePoint/v2/actions/node.type.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 6
+packages/nodes-base/credentials/GooglePerspectiveOAuth2Api.credentials.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 15-45,50
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-32,37,39-40,42,46-53,122-170
+packages/@n8n/ai-utilities/src/utils/http-proxy-agent.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 21,53-56,63-67,79-81,98,104,107
+packages/@n8n/computer-use/src/tools/filesystem/search-files.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1,9-13,261-264,273-339
+packages/@n8n/instance-ai/evaluations/__tests__/comparison-gate.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 45
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 7,9,14,27-28,35-36,312-387,408-458
+  s_744aa7ffad1673::t_9d8052e44cdbc8 459
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 287,289-292,539,1173,1178-1184
+packages/frontend/editor-ui/src/features/agents/module.descriptor.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 18,31-32,161-165
+  s_744aa7ffad1673::t_3752c414ad78d5 166-168
+packages/frontend/@n8n/stores/package.json
+  s_744aa7ffad1673::t_cf029bb0ffeafd 40
+packages/nodes-base/credentials/test/GoogleCustomScopes.credentials.test.ts
+  s_744aa7ffad1673::t_cf029bb0ffeafd 1-135
+pnpm-lock.yaml
+  s_744aa7ffad1673::t_8cc78ade994263 358-359,807-809,1043,1046,1071,1080,1116,1159,1171,1174,1243,1310,1313,1353,1356,1429,1514,1553,1624,1658,1661,1686,1708,1742,1745,1776,1779,1837,1877,1907,1950,1953,1984,1987,2021,2073,2131,2134,2155,2177,2202,2242,2334,2337,2386,2389,2413,2456,2472,2484,2493,2542,2545,2599,2678,2681,2705,2757,2803,2821,2824,2830,2906,2934,2946,2952,2988,3028,3031,3085,3262,3380,3386,3411,3414,3438,3454,3500,3540,3543,3571,3574,3607,3647,3650,3681,3684,3847,3853,3856,3868,3871,3886,3926,4178,4241,4563,4566,4632,4647,4747,4750,4778,4790,4796,4799,4802,4860,4875,4890,4893,4896,4908,4939,4945,4951,4954,5032,5090,5096,5123,5150,5165,5171,5211,5214,5245,5251,5254,5294,5303,5309,5312,5367,5373,5376,5386-5388,5434,5440,5446,5449,5513,5525,5531,5534,5558,5567,5573,5777,5892,5925,5973,5976,6018,6021,6024,6030,6051,6079,6082,6175,6232,6340,6482,6485,6500,6522,6599,6605,6617,6728,6753,6775,6832,6914,6917,9052,22940,25228,25232,25340,25344-25345,25411,26334,26352,26355-26356,26358,26361-26362,26366,26368,26370,26372,26377,26381,26383-26384,26388-26390,26399,26419,26433,26437,26442,26811,27028,28227,28229-28232,28235,28237-28240,28427,29077,29080,29105-29106,29108,29113,29115-29116,29119,29126,29133,29152,29154,29159,29242,29448,29713,30718,30733,30737,30739,30742,30744,30747,30749-30750,30753,30760,30763,30769,30789,30791,30810,30816,30818,30824,31479,31529,32053,32065,32551,33451,33478,33480,33876,35386,36232,36235,36278,36959,36969,36977,36985,36993,37005,37018,37031,37041,37049,37057,37065,37073,37081,37089,37097,37105,37113,37121,37129,37138,37148,37158,37194,37202,37210,37218,37226,37234,37246,37635,39403,39413-39414,39421,39431-39432,39454,39469,39473-39475,39477,39494,39497-39499,40260,40262-40263,41005,41009,41104,41106,41110,41112-41114,41116-41117,41119-41120,41124-41125,41132,41134,41138,41140-41142,41144-41145,41147-41148,41152-41153,41160,41180,41468,41518,41521-41524,41651,41664,41670,41674,41678,41681,41683,41689,41701,41706-41707,41718-41720,41726,41732,41738,41744,41746,41749,41758,41763-41764,41766,41771,41845,42401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "df4d543c43adcc3a72bc8145fb4c71d76146eb44",
+  "prompts": {},
+  "sessions": {
+    "s_744aa7ffad1673": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c708436e-d47a-46c9-8cfa-2a78ec728e0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
