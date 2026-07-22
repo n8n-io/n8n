@@ -21,6 +21,7 @@ import './v2/workflow-hooks-deprecated.rule';
 
 // v3 rules
 import './v3/always-output-data-multi-output.rule';
+import './v3/chat-trigger-embedded-json.rule';
 import './v3/compression-node-limits.rule';
 import './v3/docker-only-deployment.rule';
 import './v3/execute-workflow-each-mode.rule';

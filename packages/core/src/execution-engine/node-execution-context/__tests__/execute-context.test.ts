@@ -466,6 +466,7 @@ describe('ExecuteContext', () => {
 					workflowId: 'wf-id',
 					workflowName: 'My workflow',
 					callingNodeName: node.name,
+					callingNodeId: node.id,
 					inputData: [{ json: { test: 'data' } }],
 					inputDataScope: 'item',
 					exposeWorkflowData: false,
