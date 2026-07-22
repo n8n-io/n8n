@@ -1,0 +1,40 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_c7f2eb05574ce2::t_a6579a113c1f1a 4445-4446
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_c7f2eb05574ce2::t_4430948c597679 108-156
+  s_c7f2eb05574ce2::t_2e03c02acc8062 61-64
+  s_c7f2eb05574ce2::t_e7ddda7579d55a 9-12,23
+  s_c7f2eb05574ce2::t_001887b1b6433f 157
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
+  s_c7f2eb05574ce2::t_e34633938a19c3 20-21,31
+  s_c7f2eb05574ce2::t_10bc51bc2df618 107
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_c7f2eb05574ce2::t_f29eef6bcd7e2c 2,16
+  s_c7f2eb05574ce2::t_1d0b35dc30ff8c 31-38
+  s_c7f2eb05574ce2::t_79fbbe00c1665e 39-41
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_c7f2eb05574ce2::t_dfd9095c7df5d9 2,10,13-14,22-25
+  s_c7f2eb05574ce2::t_e9d0a58eeda5e6 130
+  s_c7f2eb05574ce2::t_941dd263a0e5b5 198-216
+  s_c7f2eb05574ce2::t_ad6ae29b1c4d9a 52-54,61-82,92-94
+  s_c7f2eb05574ce2::t_41701a9c6c9b6a 155
+  s_c7f2eb05574ce2::t_a87ef4b842896a 252-257
+  s_c7f2eb05574ce2::t_3eda1559e2d880 217
+  s_c7f2eb05574ce2::t_13fecd1de5c7e0 258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4901fa0f0487580b051a5ba9e4b4c3654924ebfd",
+  "prompts": {},
+  "sessions": {
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
