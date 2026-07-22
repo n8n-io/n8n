@@ -14,11 +14,7 @@ export type PublicationOutcomeResult =
 	| 'failed';
 
 /** Why a record was skipped (or `none` for any non-skipped outcome). */
-export type PublicationOutcomeReason =
-	| 'none'
-	| 'workflow_not_found'
-	| 'workflow_inactive'
-	| 'version_missing';
+export type PublicationOutcomeReason = 'none' | 'workflow_not_found' | 'version_missing';
 
 /** A trigger operation performed during publication. */
 export type PublicationTriggerOperation = 'activate' | 'deactivate';
@@ -55,6 +51,8 @@ export type WorkflowPublicationMetricsEventMap = {
 		result: PublicationOperationResult;
 		/** Workflows re-enqueued because their in-memory triggers were missing. */
 		deficientCount: number;
+		/** Registered workflows torn down because they are no longer published. */
+		surplusCount: number;
 		durationMs: number;
 	};
 };

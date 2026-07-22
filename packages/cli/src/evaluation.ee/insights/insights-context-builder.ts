@@ -1,3 +1,4 @@
+import type { MetricScale } from '@n8n/api-types';
 import { TestCaseExecutionRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
@@ -99,9 +100,10 @@ export class InsightsContextBuilder {
 			collectionName: string;
 			versions: InsightsContextVersion[];
 			winnerLabel: string;
+			scaleByMetric: Record<string, MetricScale>;
 		},
 	): Promise<InsightsContext> {
-		const { collectionName, versions, winnerLabel } = params;
+		const { collectionName, versions, winnerLabel, scaleByMetric } = params;
 		const base = versions.find((version) => version.versionLabel === winnerLabel) ?? versions[0];
 
 		const baseNodes = await this.loadNodes(workflowId, base.workflowVersionId);
@@ -116,7 +118,9 @@ export class InsightsContextBuilder {
 				avgScorePercent: toPercent(version.avgScore),
 				metricScores: scoresToPercent(version.scores),
 				workflowDiff: isBase ? null : await this.diff(workflowId, baseNodes, version),
-				regressedCases: isBase ? [] : await this.regressedCases(baseCasesByIndex, version),
+				regressedCases: isBase
+					? []
+					: await this.regressedCases(baseCasesByIndex, version, scaleByMetric),
 			});
 		}
 
@@ -179,6 +183,7 @@ export class InsightsContextBuilder {
 			{ metrics: Record<string, number | boolean> | null; outputs: unknown }
 		>,
 		version: InsightsContextVersion,
+		scaleByMetric: Record<string, MetricScale>,
 	): Promise<InsightsContextCase[]> {
 		const versionCases = await this.testCaseExecutionRepo.getManyByTestRunId(version.testRunId, {
 			take: CASE_FETCH_LIMIT,
@@ -188,8 +193,8 @@ export class InsightsContextBuilder {
 		versionCases.forEach((testCase, position) => {
 			const key = testCase.runIndex ?? position;
 			const baseCase = baseCasesByIndex.get(key);
-			const baseScore = averageNormalizedScore(baseCase?.metrics);
-			const versionScore = averageNormalizedScore(testCase.metrics);
+			const baseScore = averageNormalizedScore(baseCase?.metrics, scaleByMetric);
+			const versionScore = averageNormalizedScore(testCase.metrics, scaleByMetric);
 			// Only rank cases where both sides scored and the version did worse.
 			if (baseScore === null || versionScore === null) return;
 			const drop = baseScore - versionScore;

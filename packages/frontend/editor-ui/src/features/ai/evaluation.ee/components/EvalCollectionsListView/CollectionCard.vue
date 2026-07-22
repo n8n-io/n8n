@@ -11,8 +11,13 @@ import type {
 	EvaluationCollectionDetail,
 	EvaluationCollectionRecord,
 } from '../../evalCollections.types';
-import { buildScoreShapedMetricGroups, deriveRunsStatus } from '../../evaluation.utils';
+import {
+	buildScoreShapedMetricGroups,
+	countSettledRuns,
+	deriveRunsStatus,
+} from '../../evaluation.utils';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
+import RunningIndicator from '../shared/RunningIndicator.vue';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
 const props = defineProps<{
@@ -33,25 +38,23 @@ const openCompare = () => {
 	});
 };
 
-// `null` until the detail (with run statuses) has loaded — the list view only
-// pre-fetches detail for the first few cards and lazy-loads the rest on hover,
-// so we must not assert "Done" for a card whose runs might still be in flight.
+// null until detail loads (lazy-fetched per card), so we can't assert "Done" yet.
 const status = computed<'done' | 'running' | 'error' | null>(() =>
 	props.detail ? deriveRunsStatus(props.detail.runs) : null,
 );
+const isRunning = computed(() => status.value === 'running');
 
-// Badge theme + label per status; `null` while detail is still loading (no badge).
+// Live completed-count while runs are in flight; the store's detail poll advances it.
+const completedCount = computed(() => countSettledRuns(props.detail?.runs ?? []));
+const versionCount = computed(() => props.detail?.runs.length ?? 0);
+
+// Settled badge per status; null while loading or running so neither reads as settled.
 const statusBadge = computed(() => {
 	switch (status.value) {
 		case 'done':
 			return {
 				theme: 'success' as const,
 				label: i18n.baseText('evaluation.collections.card.done'),
-			};
-		case 'running':
-			return {
-				theme: 'tertiary' as const,
-				label: i18n.baseText('evaluation.collections.card.running'),
 			};
 		case 'error':
 			return {
@@ -64,9 +67,7 @@ const statusBadge = computed(() => {
 	}
 });
 
-// Append a right arrow so the CTA reads "Open compare →" the way the
-// Figma mock does. N8nButton doesn't accept a trailing icon prop today,
-// so the arrow lives in the label string.
+// N8nButton has no trailing-icon prop, so the arrow lives in the label string.
 const ctaLabel = computed(() => {
 	const key =
 		status.value === 'running'
@@ -75,8 +76,7 @@ const ctaLabel = computed(() => {
 	return `${i18n.baseText(key)} →`;
 });
 
-// "today, 09:14" / "May 12, 09:14" — most-recent completed run's timestamp.
-// Falls back to the collection's `updatedAt` if no run has a date yet.
+// Most-recent completed run's timestamp; falls back to the collection's updatedAt.
 const lastRunRelative = computed<string | null>(() => {
 	const runs = props.detail?.runs ?? [];
 	const completedAts = runs
@@ -106,12 +106,7 @@ const lastRunRelative = computed<string | null>(() => {
 	});
 });
 
-// `EvaluationCollectionRunSummary` carries `workflowVersionId` (a UUID)
-// but no friendly label — joining the wizard's per-version label would
-// require a backend change. Until then, render a short hash inline next
-// to the colored dot so the chip stays compact and matches the Figma
-// shape (`● <name> <score>`). Identity-by-color is already encoded by
-// the VersionAvatar dot index.
+// Run summary has no friendly version label (would need a backend change), so show a short hash.
 const shortHash = (id: string) => id.slice(0, 7);
 
 const versionChips = computed(() =>
@@ -126,23 +121,20 @@ const versionChips = computed(() =>
 	})),
 );
 
-// Score-shaped metrics per version for the mini bar chart. Shares its shaping
-// rule with the compare hero via `buildScoreShapedMetricGroups` so the two
-// surfaces can't drift; the raw metric key doubles as the compact label here.
+// Score-shaped metrics for the mini bar chart; shares buildScoreShapedMetricGroups with the hero so they can't drift.
 const groups = computed(() =>
 	props.detail
-		? buildScoreShapedMetricGroups(props.detail.runs).map(({ key, values }) => ({
-				label: key,
-				values,
-			}))
+		? buildScoreShapedMetricGroups(props.detail.runs, props.detail.metricScales).map(
+				({ key, values }) => ({
+					label: key,
+					values,
+				}),
+			)
 		: [],
 );
 
-// Lazy-load detail when the card scrolls into view, so cards past the first
-// few (which the list pre-fetches) populate their status/chips/chart without
-// depending on a pointer — works for touch, keyboard, and scroll alike. The
-// `requested` guard avoids duplicate in-flight fetches while detail is loading;
-// it resets on failure so a re-intersect can retry.
+// Lazy-load detail when the card scrolls into view (no pointer needed).
+// The `requested` guard blocks duplicate fetches and resets on failure so a retry can re-fire.
 const cardRef = ref<HTMLElement | null>(null);
 const requested = ref(false);
 
@@ -169,7 +161,8 @@ onMounted(() => observe(cardRef.value));
 			<div :class="$style.cardHeader">
 				<div :class="$style.cardHeading">
 					<N8nText size="medium" bold>{{ collection.name }}</N8nText>
-					<N8nBadge v-if="statusBadge" :theme="statusBadge.theme" size="small">
+					<RunningIndicator v-if="isRunning" :completed="completedCount" :total="versionCount" />
+					<N8nBadge v-else-if="statusBadge" :theme="statusBadge.theme" size="small">
 						{{ statusBadge.label }}
 					</N8nBadge>
 				</div>
@@ -217,16 +210,13 @@ onMounted(() => observe(cardRef.value));
 	padding: var(--spacing--md) var(--spacing--lg);
 	transition: border-color var(--animation--duration--snappy) var(--animation--easing);
 
-	// Lift on hover so the card reads as an interactive gateway to the
-	// compare view, even though the CTA button is the explicit trigger.
+	// Lift on hover so the whole card reads as an interactive gateway, not just the CTA.
 	&:hover {
 		border-color: var(--border-color--strong);
 	}
 }
 
-// Title + meta on the left, CTA on the right — Figma puts the "Open
-// compare" button on the same horizontal row as the collection name
-// rather than vertically centred against the chart.
+// Title + meta on the left, CTA on the right, on the same row.
 .cardTopRow {
 	display: flex;
 	align-items: flex-start;

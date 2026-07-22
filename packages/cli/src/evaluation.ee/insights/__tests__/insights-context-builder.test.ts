@@ -50,6 +50,7 @@ describe('InsightsContextBuilder', () => {
 		const context = await builder.build('wf-1', {
 			collectionName: 'Tuning',
 			winnerLabel: 'B',
+			scaleByMetric: {},
 			versions: [
 				{
 					testRunId: 'tr-b',
@@ -73,6 +74,7 @@ describe('InsightsContextBuilder', () => {
 		const context = await builder.build('wf-1', {
 			collectionName: 'Tuning',
 			winnerLabel: 'B',
+			scaleByMetric: {},
 			versions: [
 				{
 					testRunId: 'tr-a',

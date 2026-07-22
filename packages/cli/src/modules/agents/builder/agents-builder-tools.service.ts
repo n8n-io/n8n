@@ -58,6 +58,7 @@ import {
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
+import { buildResolveIntegrationTool } from './resolve-integration.tool';
 import { buildSearchMcpServersTool } from './search-mcp-servers.tool';
 import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-template';
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
@@ -495,7 +496,7 @@ export class AgentsBuilderToolsService {
 					};
 				}
 				try {
-					const agent = await this.agentPublishService.publishAgent(
+					const { agent } = await this.agentPublishService.publishAgent(
 						agentId,
 						projectId,
 						user,
@@ -567,6 +568,12 @@ export class AgentsBuilderToolsService {
 			buildAskCredentialTool({
 				credentialProvider,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				listIntegrationCredentialIds: async () => {
+					const agent = await this.agentsService.findById(agentId, projectId);
+					return (agent?.integrations ?? [])
+						.map((integration) => integration.credentialId)
+						.filter((credentialId) => credentialId.length > 0);
+				},
 			}),
 			buildAskEmbeddingCredentialTool({
 				credentialProvider,
@@ -593,6 +600,10 @@ export class AgentsBuilderToolsService {
 				),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
+			buildResolveIntegrationTool({
+				mcpRegistryService: this.mcpRegistryService,
+				agentsToolsService: this.agentsToolsService,
+			}),
 		];
 
 		return tools;

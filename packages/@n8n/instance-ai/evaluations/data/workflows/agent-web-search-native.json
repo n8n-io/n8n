@@ -1,0 +1,26 @@
+{
+	"description": "Agent-artifact case, web search (native, non-tool): the builder must create an agent using the model's built-in/provider-native web search, which executes inside the real model call at the provider — it is not served by the eval mock layer, so results are real and non-deterministic. Expectations are deliberately process-level (searched via the native capability, grounded and cited answer, honest about failures) and never assert on specific real-world facts. Behaviour-tier: keep out of gated tiers.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create an n8n agent called 'News Brief' for me. When I ask about recent news or current facts, it should use the model's own built-in web search capability (native OpenAI web search — no external search provider like Brave or SearXNG) and answer with a short brief that cites the source URLs it used. It must clearly separate what it found in sources from its own commentary, and if it cannot search or finds nothing, it has to say so honestly rather than answering from memory. Use OpenAI gpt-4o-mini as its model with my OpenAI credential. No clarifying questions needed — build it with exactly this."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["agent", "build", "web-search", "behaviour"],
+	"credentials": [{ "type": "openAiApi" }],
+	"outcomeExpectations": [
+		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration in the context).",
+		"The agent's configuration enables web search using the model's native/built-in capability (no external Brave/SearXNG fallback provider configured).",
+		"The agent's instructions cover citing sources, separating sourced facts from commentary, and honestly reporting when search is unavailable or fruitless.",
+		"The agent's configured model is an OpenAI model."
+	],
+	"executionScenarios": [
+		{
+			"name": "grounded-brief-with-sources",
+			"description": "Process-level check on real native search: the answer must be grounded and cited, or the inability to search must be reported honestly. Results are real — no specific fact is mandated.",
+			"dataSetup": "The user asks for a short brief on notable developments in AI language models from the last few months. The agent's native web search runs for real at the provider — whatever it returns is acceptable content.",
+			"successCriteria": "Either the agent produced a brief grounded in searched sources — the recorded model turns show the provider's built-in web search being used, and the final reply cites at least one concrete source URL for its claims — or, if native search was unavailable or returned nothing, the final reply honestly says so instead of presenting unsourced claims as verified findings. Fabricating sources or presenting memory as search results is a failure."
+		}
+	]
+}

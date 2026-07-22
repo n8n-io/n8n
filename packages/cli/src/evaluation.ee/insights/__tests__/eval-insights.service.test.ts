@@ -1,6 +1,12 @@
 import type { AiInsightsResponse } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
-import type { EvaluationCollection, EvaluationCollectionRepository, TestRun, User } from '@n8n/db';
+import type {
+	EvaluationCollection,
+	EvaluationCollectionRepository,
+	EvaluationConfigRepository,
+	TestRun,
+	User,
+} from '@n8n/db';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -82,6 +88,7 @@ function makeRun(over: Partial<TestRun> = {}): TestRun {
 describe('EvalInsightsService', () => {
 	let service: EvalInsightsService;
 	let collectionRepo: Mocked<EvaluationCollectionRepository>;
+	let evalConfigRepo: Mocked<EvaluationConfigRepository>;
 	let licenseState: Mocked<LicenseState>;
 	let telemetry: Mocked<Telemetry>;
 	let logger: Mocked<Logger>;
@@ -90,6 +97,7 @@ describe('EvalInsightsService', () => {
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
+		evalConfigRepo = mock<EvaluationConfigRepository>();
 		licenseState = mock<LicenseState>();
 		telemetry = mock<Telemetry>();
 		logger = mock<Logger>();
@@ -106,9 +114,13 @@ describe('EvalInsightsService', () => {
 			versions: [],
 		});
 		generateMock.mockReset();
+		// No config metrics resolved by default → name-based scale fallback, which
+		// keeps the existing metric fixtures scoring as before.
+		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(null);
 
 		service = new EvalInsightsService(
 			collectionRepo,
+			evalConfigRepo,
 			licenseState,
 			telemetry,
 			logger,
@@ -506,6 +518,43 @@ describe('EvalInsightsService', () => {
 			for (const regression of result.insights.regressions) {
 				expect(regression.versionLabel).toBe('A');
 			}
+		});
+
+		it('scores custom-named 1–5 judge metrics via the config scale', async () => {
+			// The bug: a 1–5 judge metric named anything but correctness/helpfulness
+			// scored null → "no scored runs". Resolving the scale from the config
+			// makes it a real score so the winner is picked on it.
+			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue({
+				metrics: [
+					{
+						id: 'm1',
+						name: 'Markdown Formatting',
+						type: 'llm_judge',
+						config: {
+							preset: 'correctness',
+							provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							credentialId: 'cred-1',
+							model: 'gpt-4o',
+							outputType: 'numeric',
+							inputs: { actualAnswer: 'a', expectedAnswer: 'b' },
+						},
+					},
+				],
+			} as never);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeRun({ id: 'tr-a', metrics: { 'Markdown Formatting': 5 } }),
+					makeRun({ id: 'tr-b', metrics: { 'Markdown Formatting': 2 } }),
+				],
+			});
+
+			const result = await service.generateInsights(user, 'wf-1', 'col-1');
+
+			expect(result.insights.winner.versionLabel).toBe('A');
+			// 5/5 → 100%, not "no scored runs".
+			expect(result.insights.winner.headline.toLowerCase()).not.toContain('no scored');
+			expect(result.insights.winner.body).toContain('100%');
 		});
 
 		it('returns a neutral envelope when no runs produce numeric metrics', async () => {

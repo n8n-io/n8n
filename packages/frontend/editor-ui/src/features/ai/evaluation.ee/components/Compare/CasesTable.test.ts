@@ -34,6 +34,7 @@ const versions: CompareVersion[] = [
 const cell = (versionIndex: number, score: number | null): CompareCaseCell => ({
 	versionIndex,
 	testCaseId: score === null ? null : `c${versionIndex}`,
+	executionId: null,
 	inputs: { q: 'x' },
 	outputs: { output: 'y' },
 	metrics: score === null ? undefined : { helpfulness: score },
@@ -116,6 +117,7 @@ describe('CasesTable', () => {
 		const pendingCell: CompareCaseCell = {
 			versionIndex: 1,
 			testCaseId: 'c1',
+			executionId: null,
 			inputs: {},
 			outputs: undefined,
 			metrics: undefined,

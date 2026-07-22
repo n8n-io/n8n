@@ -16,6 +16,7 @@ import {
 	buildWorkflowCallingSubWorkflow,
 	buildWorkflowReferencingCredential,
 	buildWorkflowReferencingVariables,
+	buildWorkflowUsingErrorWorkflow,
 } from './utils/test-builders';
 
 type ExportEntries = Awaited<ReturnType<typeof readExport>>['entries'];
@@ -134,7 +135,7 @@ describe('folder package export', () => {
 		}
 	});
 
-	it('blocks folder exports when a static sub-workflow is outside the package', async () => {
+	it('blocks folder exports when a workflow dependency is outside the package', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('Project A', owner);
 		const projectB = await createTeamProject('Project B', owner);
@@ -151,11 +152,32 @@ describe('folder package export', () => {
 		});
 
 		await expect(service.exportPackage({ user: owner, folderIds: [folder.id] })).rejects.toThrow(
-			'sub-workflow dependency not included in the package',
+			'workflow dependency not included in the package',
 		);
 	});
 
-	it('allows folder exports when an external static sub-workflow is selected as a top-level workflow', async () => {
+	it('blocks folder exports when an error workflow is outside the package', async () => {
+		const owner = await createOwner();
+		const projectA = await createTeamProject('Project A', owner);
+		const projectB = await createTeamProject('Project B', owner);
+		const folder = await createFolder(projectA, { name: 'Folder A' });
+		const errorHandler = await createWorkflow(
+			{ name: 'Error Handler', nodes: [], connections: {} },
+			projectB,
+		);
+		await buildWorkflowUsingErrorWorkflow({
+			name: 'Parent',
+			project: projectA,
+			parentFolder: folder,
+			errorWorkflowId: errorHandler.id,
+		});
+
+		await expect(service.exportPackage({ user: owner, folderIds: [folder.id] })).rejects.toThrow(
+			'workflow dependency not included in the package',
+		);
+	});
+
+	it('allows folder exports when an external workflow dependency is selected as a top-level workflow', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('Project A', owner);
 		const projectB = await createTeamProject('Project B', owner);
@@ -164,7 +186,7 @@ describe('folder package export', () => {
 			{ name: 'External Child', nodes: [], connections: {} },
 			projectB,
 		);
-		await buildWorkflowCallingSubWorkflow({
+		const parent = await buildWorkflowCallingSubWorkflow({
 			name: 'Parent',
 			project: projectA,
 			parentFolder: folder,
@@ -181,7 +203,9 @@ describe('folder package export', () => {
 		const childEntry = manifest.workflows!.find(({ id }) => id === externalChild.id);
 		expect(childEntry?.target).toBe('workflows/external-child');
 		expect(entries.find((e) => e.name === `${childEntry!.target}/workflow.json`)).toBeDefined();
-		expect(manifest.requirements).toBeUndefined();
+		expect(manifest.requirements?.workflows).toEqual([
+			{ id: externalChild.id, name: externalChild.name, usedByWorkflows: [parent.id] },
+		]);
 	});
 
 	it('preserves nesting through multiple levels when exporting a folder subtree', async () => {

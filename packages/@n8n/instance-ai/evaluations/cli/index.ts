@@ -70,14 +70,18 @@ import {
 import {
 	abortedWorkflowTestCaseResult,
 	buildWorkflow,
+	executeAgentScenario,
 	executeScenario,
 	cleanupBuild,
+	fetchAgentScenarioContext,
+	findAgentArtifactRef,
 	runWorkflowChecks,
 	effectiveTimeoutMs,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	workflowExpectedForCase,
 	type BuildResult,
+	warnAgentSeedDataTablesIgnored,
 } from '../harness/runner';
 import {
 	classifyScenarioExecutionError,
@@ -95,6 +99,7 @@ import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
+import { rollupCaseVerification } from '../summary';
 import type {
 	BuildExpectationResult,
 	MultiRunEvaluation,
@@ -631,6 +636,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildTrace?: BuildResult['buildTrace'];
 			timeoutMs: number;
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
+		tracedExecuteAgent: (execArgs: {
+			agentId: string;
+			scenario: ExecutionScenario;
+			agentContext: string;
+			buildTrace?: BuildResult['buildTrace'];
+			timeoutMs: number;
+			testCaseName?: string;
+		}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
 	}
 
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
@@ -651,6 +664,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						seedFile: buildArgs.seedFile,
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
+						executionScenarios: buildArgs.executionScenarios,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
@@ -687,6 +701,32 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					),
 				{
 					name: 'scenario_execution',
+					run_type: 'chain',
+					client: lsClient,
+					metadata: { lane: laneNum },
+				},
+			),
+			tracedExecuteAgent: traceable(
+				async (execArgs: {
+					agentId: string;
+					scenario: ExecutionScenario;
+					agentContext: string;
+					buildTrace?: BuildResult['buildTrace'];
+					timeoutMs: number;
+					testCaseName?: string;
+				}) =>
+					await executeAgentScenario(
+						lane.client,
+						execArgs.agentId,
+						execArgs.scenario,
+						execArgs.agentContext,
+						logger,
+						execArgs.timeoutMs,
+						execArgs.testCaseName,
+						execArgs.buildTrace,
+					),
+				{
+					name: 'agent_scenario_execution',
 					run_type: 'chain',
 					client: lsClient,
 					metadata: { lane: laneNum },
@@ -878,6 +918,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
 			stashBuildExpectations(key, fileSlug, build, false);
+			stashAgentContext(key, lane.runner.client, build);
 			stashRunDebug(lane.runner.client, build);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
@@ -906,6 +947,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (build.threadId && build.transcript) {
 			transcriptByThreadId.set(build.threadId, build.transcript);
 		}
+	}
+
+	// Agent config + skills, fetched once per build and shared by every
+	// scenario row of the case (the agent analog of the cached workflow JSON).
+	const agentContextByKey = new Map<string, Promise<string>>();
+
+	function stashAgentContext(key: string, client: N8nClient, build: BuildResult): void {
+		const agentRef = findAgentArtifactRef(build.artifactRefs);
+		if (!agentRef) return;
+		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
 	}
 
 	function stashRunDebug(client: N8nClient, build: BuildResult): void {
@@ -975,6 +1026,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			const { build, lane } = await cached;
 			// Run-debug capture reads the thread — let it settle before deletion.
 			if (build.threadId) await runDebugByThreadId.get(build.threadId)?.catch(() => {});
+			// cleanupBuild also deletes any built agent (agent-anchored builds).
 			const clean = await cleanupBuild(lane.runner.client, build, logger);
 			if (!clean) {
 				// Leave the entry in buildCache — the end-of-run pass retries it.
@@ -1033,13 +1085,17 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			lane: builtOnLane,
 			buildDurationMs,
 		} = await getOrBuild(iteration, inputs.testCaseFile);
+		const cacheKey = `${String(iteration)}:${inputs.testCaseFile}`;
+
+		// Agent-anchored build: scenarios target the agent and a missing workflow is
+		// not a build failure (helper workflows are its tools) — mirrors the direct loop.
+		const agentRef = findAgentArtifactRef(build.artifactRefs);
+		const agentRunnable = agentRef !== undefined && build.transcript !== undefined;
 
 		// Stashed at build time with a `.catch` attached, so awaiting never rejects.
 		// Awaited only after each branch's own work is done, keeping the judge off
 		// the scenario critical path while persisting verdicts to run outputs.
-		const verdictsPromise = buildExpectationsByKey.get(
-			`${String(iteration)}:${inputs.testCaseFile}`,
-		);
+		const verdictsPromise = buildExpectationsByKey.get(cacheKey);
 		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
 			const verdicts = await verdictsPromise;
 			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
@@ -1050,12 +1106,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		// so LangSmith pass metrics stay truthful for scenario-less cases. Checked before
 		// the workflowId guard because answer-only cases legitimately end without a
 		// workflow (workflowExpectedForCase).
-		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME && build.success) {
+		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME && (build.success || agentRunnable)) {
 			const verdicts = await verdictsPromise;
 			const outcome = sentinelOutcomeFromVerdicts(verdicts);
 			return {
 				buildSuccess: true,
 				workflowId: build.workflowId,
+				...(agentRef ? { agentId: agentRef.id } : {}),
+				...(agentRef ? { agentContext: await agentContextByKey.get(cacheKey) } : {}),
 				passed: outcome.passed,
 				score: outcome.score,
 				reasoning: outcome.reasoning,
@@ -1073,7 +1131,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			};
 		}
 
-		if (!build.success || !build.workflowId) {
+		if (!agentRunnable && (!build.success || !build.workflowId)) {
 			return await attachExpectations({
 				buildSuccess: false,
 				passed: false,
@@ -1092,6 +1150,92 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildTrace: build.buildTrace,
 				planRejections: build.proxyDecisionStats?.rejection ?? 0,
 			});
+		}
+
+		// Agent scenario path — real model, mocked tool HTTP. Mirrors the
+		// workflow branch below (retry loop, framework_issue guard, output shape).
+		if (agentRunnable && agentRef) {
+			// Dataset rows don't carry seedDataTables — check the authored scenario.
+			warnAgentSeedDataTablesIgnored(
+				logger,
+				scenario.name,
+				testCaseByFileSlug
+					.get(inputs.testCaseFile)
+					?.executionScenarios?.find((s) => s.name === scenario.name)?.seedDataTables,
+			);
+			const agentExecStart = Date.now();
+			const agentContext =
+				(await agentContextByKey.get(cacheKey)) ?? '(agent configuration could not be fetched)';
+			let agentResult;
+			for (let attempt = 1; ; attempt++) {
+				try {
+					agentResult = await builtOnLane.tracedExecuteAgent({
+						agentId: agentRef.id,
+						scenario,
+						agentContext,
+						buildTrace: build.buildTrace,
+						timeoutMs: effectiveTimeoutMs(
+							testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+							args.timeoutMs,
+						),
+						testCaseName: inputs.testCaseFile,
+					});
+					break;
+				} catch (error: unknown) {
+					const errorMessage = extractErrorMessage(error);
+					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
+						logger.warn(
+							`    [${scenario.name}] agent execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
+						);
+						await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+						continue;
+					}
+					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+					return await attachExpectations({
+						buildSuccess: true,
+						agentId: agentRef.id,
+						agentContext,
+						passed: false,
+						score: 0,
+						reasoning: `Agent scenario execution error: ${errorMessage}`,
+						failureCategory: 'framework_issue',
+						execErrors: [errorMessage],
+						buildDurationMs,
+						execDurationMs: Date.now() - agentExecStart,
+						nodeCount: 0,
+						threadId: build.threadId,
+						buildTrace: build.buildTrace,
+						planRejections: build.proxyDecisionStats?.rejection ?? 0,
+					});
+				}
+			}
+
+			const agentFailureCategory = agentResult.success ? undefined : agentResult.failureCategory;
+			const agentRootCause = agentResult.success ? undefined : agentResult.rootCause;
+			return await attachExpectations({
+				buildSuccess: true,
+				agentId: agentRef.id,
+				agentContext,
+				agentEvalResult: agentResult.agentEvalResult,
+				passed: agentResult.success,
+				score: agentResult.score,
+				reasoning: agentResult.reasoning,
+				failureCategory: agentFailureCategory,
+				rootCause: agentRootCause,
+				...(agentResult.incomplete ? { incomplete: true } : {}),
+				execErrors: agentResult.agentEvalResult?.errors ?? [],
+				buildDurationMs,
+				execDurationMs: Date.now() - agentExecStart,
+				nodeCount: 0,
+				threadId: build.threadId,
+				buildTrace: build.buildTrace,
+				planRejections: build.proxyDecisionStats?.rejection ?? 0,
+			});
+		}
+		if (!build.workflowId) {
+			// agentRunnable without an agentRef is unreachable; this narrows for TS
+			// and guards the workflow path below.
+			throw new Error(`No runnable artifact for scenario ${scenario.name}`);
 		}
 
 		const execStart = Date.now();
@@ -1880,6 +2024,7 @@ export function writeEvalResults(
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
+	const verification = rollupCaseVerification(testCases);
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
@@ -1901,6 +2046,9 @@ export function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			// Cases where nothing could be scored (all units incomplete / skipped) —
+			// reported apart from the pass rate, never as a silent pass.
+			notVerified: verification.notVerified,
 			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 			...(buildSpendSummary ? { mcpBuild: buildSpendSummary } : {}),
 		},
@@ -1922,6 +2070,9 @@ export function writeEvalResults(
 		testCases: testCases.map((tc) => ({
 			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
+			// `notVerified` when no scenario or expectation was scored across runs —
+			// consumers must not treat a zero pass rate here as a pass.
+			status: tc.status,
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
@@ -1945,14 +2096,18 @@ export function writeEvalResults(
 				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
 					workflowId: sr.workflowId ?? tc.runs[runIndex]?.workflowId ?? null,
+					...((sr.agentId ?? tc.runs[runIndex]?.agentId)
+						? { agentId: sr.agentId ?? tc.runs[runIndex]?.agentId }
+						: {}),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
 					rootCause: sr.rootCause,
-					execErrors: sr.evalResult?.errors ?? [],
+					execErrors: sr.evalResult?.errors ?? sr.agentEvalResult?.errors ?? [],
 					evalResult: sr.evalResult,
+					...(sr.agentEvalResult ? { agentEvalResult: sr.agentEvalResult } : {}),
 				})),
 			})),
 		})),

@@ -1,6 +1,12 @@
 import type { Component } from 'vue';
 
-import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import { MCP_CLIENT_BRAND_MATCHERS, MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+import type {
+	McpClientBrandName,
+	McpClientConnectedPeriod,
+	McpClientType,
+	McpClientTypeFilter,
+} from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 
 import ClaudeIcon from './assets/client-icons/claude.svg?component';
@@ -8,26 +14,18 @@ import CursorIcon from './assets/client-icons/cursor.svg?component';
 import OpenAiIcon from './assets/client-icons/openai.svg?component';
 import VsCodeIcon from './assets/client-icons/vscode.svg?component';
 
-export type McpClientType = 'cli' | 'ide' | 'editor' | 'assistant';
-
 export interface McpClientBrand {
 	icon: Component | null;
 	type: McpClientType | null;
 }
 
-/**
- * Client names are free-form (self-reported at OAuth registration), so known
- * clients are recognized by name patterns. First match wins: more specific
- * patterns (e.g. "Claude Code") must come before broader ones ("Claude").
- */
-const BRAND_MATCHERS: Array<{ pattern: RegExp; brand: McpClientBrand }> = [
-	{ pattern: /claude[ -]?code/i, brand: { icon: ClaudeIcon, type: 'cli' } },
-	{ pattern: /claude/i, brand: { icon: ClaudeIcon, type: 'assistant' } },
-	{ pattern: /cursor/i, brand: { icon: CursorIcon, type: 'ide' } },
-	{ pattern: /(visual studio code|vs ?code)/i, brand: { icon: VsCodeIcon, type: 'editor' } },
-	{ pattern: /codex/i, brand: { icon: OpenAiIcon, type: 'cli' } },
-	{ pattern: /chatgpt|openai/i, brand: { icon: OpenAiIcon, type: 'assistant' } },
-];
+/** Logos for the brands recognized by the shared name-pattern matchers. */
+const BRAND_ICONS: Record<McpClientBrandName, Component> = {
+	claude: ClaudeIcon,
+	cursor: CursorIcon,
+	vscode: VsCodeIcon,
+	openai: OpenAiIcon,
+};
 
 // Client names are bounded (a user's own registered clients), so memoizing the
 // regex scan by name is safe; the map would need eviction only if that set ever
@@ -37,10 +35,10 @@ const brandCache = new Map<string, McpClientBrand>();
 export function getClientBrand(clientName: string): McpClientBrand {
 	let brand = brandCache.get(clientName);
 	if (!brand) {
-		brand = BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName))?.brand ?? {
-			icon: null,
-			type: null,
-		};
+		const match = MCP_CLIENT_BRAND_MATCHERS.find(({ pattern }) => pattern.test(clientName));
+		brand = match
+			? { icon: BRAND_ICONS[match.brand], type: match.type }
+			: { icon: null, type: null };
 		brandCache.set(clientName, brand);
 	}
 	return brand;
@@ -75,3 +73,18 @@ export function scopeLabel(
 export function isFullAccessGrant(scopes: string[]): boolean {
 	return scopes.length > 0 && MCP_INSTANCE_SCOPES.every((scope) => scopes.includes(scope));
 }
+
+/** UI state of the connected-clients search + filter popover; applied server-side. */
+export interface OAuthClientFilters {
+	search: string;
+	type: McpClientTypeFilter | null;
+	ownerId: string | null;
+	connected: McpClientConnectedPeriod | null;
+}
+
+export const EMPTY_OAUTH_CLIENT_FILTERS: OAuthClientFilters = {
+	search: '',
+	type: null,
+	ownerId: null,
+	connected: null,
+};

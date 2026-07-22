@@ -1,9 +1,9 @@
+import type { MetadataResponseHeaders } from '@n8n/blob-storage';
+import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import fs from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
-import { ObjectStoreService } from '@/binary-data/object-store/object-store.service.ee';
-import type { MetadataResponseHeaders } from '@/binary-data/object-store/types';
 import { ObjectStoreManager } from '@/binary-data/object-store.manager';
 import { mockInstance, toFileId, toStream } from '@test/utils';
 
