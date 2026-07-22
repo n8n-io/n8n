@@ -581,7 +581,7 @@ function openAiUsageSettings() {
 					<N8nSettingsRow
 						v-if="showCredentialsRows"
 						:class="{ [$style.dim]: isOff }"
-						:clickable="!isOff && searchState === 'set'"
+						:clickable="!isOff && searchState !== 'notset'"
 						data-test-id="n8n-agent-search-row"
 						@click="searchDialogOpen = true"
 					>

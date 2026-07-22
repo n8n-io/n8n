@@ -43,6 +43,7 @@ provideWorkflowDocumentStore();
 
 const selectedType = ref('');
 const selectedCredentialId = ref('');
+const selectingExistingCredential = ref(false);
 const fieldsData = ref<ICredentialDataDecryptedObject>({});
 const modelName = ref('');
 const isLoading = ref(false);
@@ -61,7 +62,8 @@ const assignedType = computed(() =>
 
 function snapshot() {
 	return JSON.stringify({
-		c: selectedCredentialId.value,
+		c: readOnly.value || selectingExistingCredential.value ? selectedCredentialId.value : '',
+		e: selectingExistingCredential.value,
 		t: selectedType.value,
 		d: fieldsData.value,
 		m: modelName.value.trim(),
@@ -72,6 +74,7 @@ async function hydrate() {
 	modelName.value = store.settings?.modelName ?? '';
 	selectedCredentialId.value = assignedId.value ?? '';
 	selectedType.value = assignedType.value;
+	selectingExistingCredential.value = false;
 	fieldsData.value = {};
 	if (assignedId.value && !readOnly.value) {
 		isLoading.value = true;
@@ -119,8 +122,22 @@ const noneLabel = computed(() =>
 );
 
 function selectType(nextType: string) {
-	if (nextType === selectedType.value) return;
+	const existingCredential = existingCredentialOptions.value.find(({ id }) => id === nextType);
+	if (existingCredential) {
+		credentialTestError.value = '';
+		selectingExistingCredential.value = true;
+		selectedCredentialId.value = existingCredential.id;
+		selectedType.value = existingCredential.type;
+		fieldsData.value = {};
+		if (existingCredential.id !== assignedId.value) modelName.value = '';
+		return;
+	}
+
+	const changedMode = selectingExistingCredential.value;
+	if (nextType === selectedType.value && !changedMode) return;
 	credentialTestError.value = '';
+	selectingExistingCredential.value = false;
+	selectedCredentialId.value = '';
 	selectedType.value = nextType;
 	// Switching providers starts from a clean slate; only the hydrated provider keeps its values.
 	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
@@ -139,7 +156,10 @@ function setFieldValue(name: string, value: IUpdateInformation['value']) {
 }
 
 const isComplete = computed(() => {
-	const hasConnection = readOnly.value ? selectedCredentialId.value : selectedType.value;
+	const hasConnection =
+		readOnly.value || selectingExistingCredential.value
+			? selectedCredentialId.value
+			: selectedType.value;
 	return !hasConnection || modelName.value.trim().length > 0;
 });
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
@@ -147,7 +167,12 @@ const primaryDisabled = computed(() => {
 	if (store.isSaving || isTestingCredential.value || isLoading.value || !isComplete.value)
 		return true;
 	if (props.setup)
-		return !isChanged.value && !(readOnly.value ? selectedCredentialId.value : selectedType.value);
+		return (
+			!isChanged.value &&
+			!(readOnly.value || selectingExistingCredential.value
+				? selectedCredentialId.value
+				: selectedType.value)
+		);
 	return !isChanged.value && !credentialTestError.value;
 });
 
@@ -155,6 +180,7 @@ async function handlePrimary() {
 	const connectionData = { ...toRaw(fieldsData.value) };
 	if (
 		!readOnly.value &&
+		!selectingExistingCredential.value &&
 		selectedType.value &&
 		!(await testCredential({
 			id: selectedType.value === assignedType.value ? (assignedId.value ?? '') : '',
@@ -166,7 +192,7 @@ async function handlePrimary() {
 		return;
 
 	if (isChanged.value) {
-		if (readOnly.value) {
+		if (readOnly.value || selectingExistingCredential.value) {
 			store.setField('modelCredentialId', selectedCredentialId.value || null);
 			store.setField('modelName', selectedCredentialId.value ? modelName.value.trim() : undefined);
 		} else if (!selectedType.value) {
@@ -237,7 +263,7 @@ const description = computed(() =>
 				</N8nSelect>
 				<N8nSelect
 					v-else
-					:model-value="selectedType"
+					:model-value="selectingExistingCredential ? selectedCredentialId : selectedType"
 					size="medium"
 					:disabled="store.isSaving"
 					:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
@@ -251,11 +277,17 @@ const description = computed(() =>
 						:value="option.value"
 						:label="option.label"
 					/>
+					<N8nOption
+						v-for="credential in existingCredentialOptions"
+						:key="credential.id"
+						:value="credential.id"
+						:label="`${credential.name} · ${credentialTypeLabel(credential.type)}`"
+					/>
 				</N8nSelect>
 			</N8nInputLabel>
 
 			<ConnectionFields
-				v-if="!readOnly && selectedType && !isLoading"
+				v-if="!readOnly && !selectingExistingCredential && selectedType && !isLoading"
 				:credential-type="selectedType"
 				:data="fieldsData"
 				data-test-id="n8n-agent-model-connection-fields"
@@ -263,7 +295,7 @@ const description = computed(() =>
 			/>
 
 			<N8nInputLabel
-				v-if="readOnly ? selectedCredentialId : selectedType"
+				v-if="readOnly || selectingExistingCredential ? selectedCredentialId : selectedType"
 				:label="i18n.baseText('settings.n8nAgent.modelName.label')"
 			>
 				<N8nInput

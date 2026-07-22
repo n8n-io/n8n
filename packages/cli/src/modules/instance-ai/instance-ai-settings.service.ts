@@ -116,6 +116,10 @@ export class InstanceAiSettingsService {
 
 	private readonly deploymentConfig: DeploymentConfig;
 
+	private readonly environmentSandboxProvider: InstanceAiSandboxProvider;
+
+	private sandboxProviderOverride?: InstanceAiSandboxProvider;
+
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
 
@@ -140,6 +144,8 @@ export class InstanceAiSettingsService {
 	) {
 		this.config = globalConfig.instanceAi;
 		this.deploymentConfig = globalConfig.deployment;
+		this.environmentSandboxProvider = normalizeSandboxProvider(this.config.sandboxProvider);
+		this.config.sandboxProvider = this.environmentSandboxProvider;
 	}
 
 	/** Whether this instance is running on the cloud platform. */
@@ -313,7 +319,16 @@ export class InstanceAiSettingsService {
 					this.snapshotAdminSettings(),
 					this.parsePersistedAdminSettings(persisted?.value),
 				);
-				this.validateAdminSettingsUpdate(update, current, settingsUpdate.sandboxProvider);
+				const clearsSandboxConnection =
+					sandboxConnection === null ||
+					(daytonaCredentialId === null && n8nSandboxCredentialId === null);
+				this.validateAdminSettingsUpdate(
+					update,
+					current,
+					clearsSandboxConnection
+						? this.environmentSandboxProvider
+						: settingsUpdate.sandboxProvider,
+				);
 				const currentModelCredentialId =
 					await this.instanceCredentialBroker.getAssignedCredentialId(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
@@ -321,6 +336,7 @@ export class InstanceAiSettingsService {
 					);
 				const previous = this.snapshotAdminSettings();
 				const next = this.mergeAdminSettings(current, settingsUpdate);
+				if (clearsSandboxConnection) delete next.sandboxProvider;
 
 				const nextModelCredentialId =
 					modelCredentialId === undefined ? currentModelCredentialId : modelCredentialId;
@@ -982,7 +998,10 @@ export class InstanceAiSettingsService {
 		if (!touchesSandboxSettings) return;
 
 		const sandboxProvider = normalizeSandboxProvider(
-			sandboxProviderOverride ?? update.sandboxProvider ?? current.sandboxProvider,
+			sandboxProviderOverride ??
+				update.sandboxProvider ??
+				current.sandboxProvider ??
+				this.environmentSandboxProvider,
 		);
 		const sandboxEnabled = update.sandboxEnabled ?? current.sandboxEnabled ?? false;
 		const unavailableReason = this.getSandboxUnavailableReason(sandboxEnabled, sandboxProvider);
@@ -1043,8 +1062,10 @@ export class InstanceAiSettingsService {
 		if (persisted.mcpAccessEnabled !== undefined)
 			this.mcpAccessEnabled = persisted.mcpAccessEnabled;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
-		if (persisted.sandboxProvider !== undefined)
-			c.sandboxProvider = normalizeSandboxProvider(persisted.sandboxProvider);
+		this.sandboxProviderOverride = persisted.sandboxProvider
+			? normalizeSandboxProvider(persisted.sandboxProvider)
+			: undefined;
+		c.sandboxProvider = this.sandboxProviderOverride ?? this.environmentSandboxProvider;
 		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
 		if (persisted.modelName !== undefined) this.adminModelName = persisted.modelName;
@@ -1066,7 +1087,7 @@ export class InstanceAiSettingsService {
 			mcpServers: c.mcpServers,
 			mcpAccessEnabled: this.mcpAccessEnabled,
 			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: c.sandboxProvider,
+			...(this.sandboxProviderOverride ? { sandboxProvider: this.sandboxProviderOverride } : {}),
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
 			modelName: this.adminModelName,

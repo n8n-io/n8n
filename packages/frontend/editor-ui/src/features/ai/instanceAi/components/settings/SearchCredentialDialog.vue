@@ -44,6 +44,7 @@ provideWorkflowDocumentStore();
 
 const selectedType = ref('');
 const selectedCredentialId = ref('');
+const selectingExistingCredential = ref(false);
 const fieldsData = ref<ICredentialDataDecryptedObject>({});
 const isLoading = ref(false);
 
@@ -77,7 +78,8 @@ const existingCredentialOptions = computed(() =>
 
 function snapshot() {
 	return JSON.stringify({
-		c: selectedCredentialId.value,
+		c: readOnly.value || selectingExistingCredential.value ? selectedCredentialId.value : '',
+		e: selectingExistingCredential.value,
 		t: selectedType.value,
 		d: fieldsData.value,
 	});
@@ -85,6 +87,7 @@ function snapshot() {
 
 async function hydrate() {
 	selectedCredentialId.value = assignedId.value ?? '';
+	selectingExistingCredential.value = false;
 	selectedType.value =
 		assignedType.value || (store.settings?.searchEnvConfigured ? '' : DEFAULT_SEARCH_TYPE);
 	fieldsData.value = {};
@@ -116,8 +119,21 @@ watch(
 );
 
 function selectType(nextType: string) {
-	if (nextType === selectedType.value) return;
+	const existingCredential = existingCredentialOptions.value.find(({ id }) => id === nextType);
+	if (existingCredential) {
+		credentialTestError.value = '';
+		selectingExistingCredential.value = true;
+		selectedCredentialId.value = existingCredential.id;
+		selectedType.value = existingCredential.type;
+		fieldsData.value = {};
+		return;
+	}
+
+	const changedMode = selectingExistingCredential.value;
+	if (nextType === selectedType.value && !changedMode) return;
 	credentialTestError.value = '';
+	selectingExistingCredential.value = false;
+	selectedCredentialId.value = '';
 	selectedType.value = nextType;
 	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
 }
@@ -141,7 +157,7 @@ const noneLabel = computed(() =>
 );
 
 const isComplete = computed(() => {
-	if (readOnly.value || !selectedType.value) return true;
+	if (readOnly.value || selectingExistingCredential.value || !selectedType.value) return true;
 	const field = selectedType.value === 'braveSearchApi' ? 'apiKey' : 'apiUrl';
 	return typeof fieldsData.value[field] === 'string' && fieldsData.value[field].trim().length > 0;
 });
@@ -168,6 +184,7 @@ async function handleSave() {
 	const connectionData = { ...toRaw(fieldsData.value) };
 	if (
 		!readOnly.value &&
+		!selectingExistingCredential.value &&
 		selectedType.value &&
 		!(await testCredential({
 			id: selectedType.value === assignedType.value ? (assignedId.value ?? '') : '',
@@ -179,7 +196,7 @@ async function handleSave() {
 		return;
 
 	if (isChanged.value) {
-		if (readOnly.value) {
+		if (readOnly.value || selectingExistingCredential.value) {
 			store.setField('searchCredentialId', selectedCredentialId.value || null);
 		} else {
 			store.setField(
@@ -236,7 +253,7 @@ async function handleSave() {
 				</N8nSelect>
 				<N8nSelect
 					v-else
-					:model-value="selectedType"
+					:model-value="selectingExistingCredential ? selectedCredentialId : selectedType"
 					size="medium"
 					:disabled="store.isSaving"
 					:placeholder="i18n.baseText('settings.n8nAgent.searchCredential.placeholder')"
@@ -250,11 +267,17 @@ async function handleSave() {
 						:value="option.value"
 						:label="option.label"
 					/>
+					<N8nOption
+						v-for="credential in existingCredentialOptions"
+						:key="credential.id"
+						:value="credential.id"
+						:label="`${credential.name} · ${credentialTypeLabel(credential.type)}`"
+					/>
 				</N8nSelect>
 			</N8nInputLabel>
 
 			<ConnectionFields
-				v-if="!readOnly && selectedType && !isLoading"
+				v-if="!readOnly && !selectingExistingCredential && selectedType && !isLoading"
 				:credential-type="selectedType"
 				:data="fieldsData"
 				data-test-id="n8n-agent-search-connection-fields"

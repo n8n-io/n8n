@@ -323,6 +323,27 @@ describe('InstanceAiSettingsService', () => {
 				expect(result.sandboxProvider).toBe('daytona');
 			});
 
+			it('should restore the environment sandbox provider when the connection is cleared', async () => {
+				credentialsService.createInstanceCredential.mockResolvedValue({
+					id: 'daytona-cred',
+				} as never);
+
+				await service.updateAdminSettings(
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+						},
+					},
+					adminUser,
+				);
+				const result = await service.updateAdminSettings({ sandboxConnection: null }, adminUser);
+
+				expect(result.sandboxProvider).toBe('n8n-sandbox');
+				const persisted = settingsRepository.upsert.mock.calls.at(-1)?.[0];
+				expect(persisted?.value).not.toContain('sandboxProvider');
+			});
+
 			it('should reject an n8n sandbox connection with a wrong header name', async () => {
 				await expect(
 					service.updateAdminSettings(

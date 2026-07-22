@@ -251,6 +251,36 @@ describe('SettingsInstanceAiView', () => {
 			expect(save).toHaveBeenCalledOnce();
 		});
 
+		it('allows provider connection managers to select an existing connection', async () => {
+			store.$patch({
+				instanceModelCredentials: [
+					{ id: 'anthropic-id', name: 'Backup', type: 'anthropicApi', provider: 'anthropic' },
+				],
+			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, findByTestId, findByText, queryByTestId } = renderModelDialog({
+				props: { open: true },
+			});
+			const select = await findByTestId('n8n-agent-model-provider-select');
+
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('Backup · Anthropic'));
+			expect(queryByTestId('n8n-agent-model-connection-fields')).toBeNull();
+			const modelNameField = getByTestId('n8n-agent-model-name-input');
+			const modelNameInput =
+				modelNameField.tagName === 'INPUT'
+					? (modelNameField as HTMLInputElement)
+					: modelNameField.querySelector('input')!;
+			await fireEvent.update(modelNameInput, 'claude-sonnet-4');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+			expect(store.draft).toMatchObject({
+				modelCredentialId: 'anthropic-id',
+				modelName: 'claude-sonnet-4',
+			});
+			expect(save).toHaveBeenCalledOnce();
+		});
+
 		it('stages an inline connection and only saves once a model name is committed', async () => {
 			const credentialsStore = useCredentialsStore();
 			vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
@@ -406,6 +436,36 @@ describe('SettingsInstanceAiView', () => {
 			});
 			expect(save).toHaveBeenCalledOnce();
 		});
+
+		it('allows provider connection managers to select an existing connection', async () => {
+			store.$patch({
+				serviceCredentials: [
+					{
+						id: 'daytona-id',
+						name: 'Existing Daytona',
+						type: 'daytonaApi',
+						provider: 'daytonaApi',
+					},
+				],
+			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, findByTestId, findByText, queryByTestId } = renderSandboxDialog({
+				props: { open: true },
+			});
+			const select = await findByTestId('n8n-agent-sandbox-provider-select');
+
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('Existing Daytona'));
+			expect(queryByTestId('n8n-agent-sandbox-connection-fields')).toBeNull();
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
+
+			expect(store.draft).toMatchObject({
+				daytonaCredentialId: 'daytona-id',
+				n8nSandboxCredentialId: null,
+				sandboxProvider: 'daytona',
+			});
+			expect(save).toHaveBeenCalledOnce();
+		});
 	});
 
 	describe('Search credential dialog', () => {
@@ -479,6 +539,32 @@ describe('SettingsInstanceAiView', () => {
 
 			expect(save).not.toHaveBeenCalled();
 			expect(getByTestId('n8n-agent-search-credential-test-error')).toBeVisible();
+		});
+
+		it('allows provider connection managers to select an existing connection', async () => {
+			store.$patch({
+				serviceCredentials: [
+					{
+						id: 'brave-id',
+						name: 'Existing search',
+						type: 'braveSearchApi',
+						provider: 'braveSearchApi',
+					},
+				],
+			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, findByTestId, findByText, queryByTestId } = renderSearchDialog({
+				props: { open: true },
+			});
+			const select = await findByTestId('n8n-agent-search-provider-select');
+
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('Existing search · Brave Search'));
+			expect(queryByTestId('n8n-agent-search-connection-fields')).toBeNull();
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-save'));
+
+			expect(store.draft).toMatchObject({ searchCredentialId: 'brave-id' });
+			expect(save).toHaveBeenCalledOnce();
 		});
 	});
 
@@ -907,12 +993,15 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByText('OpenAI · gpt-4o')).toBeVisible();
 		});
 
-		it('marks env-managed search instead of offering setup', () => {
+		it('opens configuration for environment-managed search', async () => {
 			store.$patch({ settings: { ...store.settings!, searchEnvConfigured: true } });
 
-			const { getByText, queryByTestId } = renderComponent();
+			const { getByText, getByTestId, findByTestId, queryByTestId } = renderComponent();
 			expect(queryByTestId('n8n-agent-search-setup')).toBeNull();
 			expect(getByText('settings.n8nAgent.search.managedByEnv')).toBeVisible();
+
+			await fireEvent.click(getByTestId('n8n-agent-search-row'));
+			expect(await findByTestId('n8n-agent-search-provider-select')).toBeVisible();
 		});
 
 		it('hides credential rows on managed deployments', () => {
