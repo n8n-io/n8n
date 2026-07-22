@@ -169,7 +169,7 @@ onMounted(async () => {
 						<N8nIcon :class="$style['badge-spinner']" icon="loader-circle" size="large" />
 					</span>
 				</span>
-				<div :class="[$style.logo, $style.n8n]">
+				<div :class="$style.logo">
 					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
 				</div>
 			</header>
@@ -369,11 +369,6 @@ onMounted(async () => {
 	box-shadow: var(--shadow--xs);
 	font-size: var(--font-size--xl);
 	color: var(--text-color--subtle);
-
-	&.n8n > div {
-		position: relative;
-		bottom: var(--spacing--5xs);
-	}
 }
 
 .brand-icon {
