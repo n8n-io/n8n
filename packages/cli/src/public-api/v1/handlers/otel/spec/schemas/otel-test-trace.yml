@@ -1,0 +1,39 @@
+type: object
+additionalProperties: false
+description: >
+  The connection details to test against an OTLP collector. Fields managed declaratively via
+  environment variables are overridden with their effective value before the test is sent.
+required:
+  - exporterEndpoint
+  - exporterTracingPath
+  - exporterServiceName
+  - exporterHeaders
+  - startupConnectivityTimeoutMs
+properties:
+  exporterEndpoint:
+    type: string
+    format: uri
+    description: The base URL of the OTLP collector to export traces to.
+    example: http://localhost:4318
+  exporterTracingPath:
+    type: string
+    description: The path appended to the endpoint for the OTLP traces signal.
+    example: /v1/traces
+  exporterServiceName:
+    type: string
+    minLength: 1
+    description: The `service.name` resource attribute reported on the test span.
+    example: n8n
+  exporterHeaders:
+    type: string
+    description: >
+      Additional headers sent to the OTLP collector, as a single string of comma-separated
+      `key=value` pairs (e.g. `authorization=Bearer my-token,x-tenant-id=acme`). Whitespace
+      around each key and value is trimmed; a value may contain spaces but not commas. Use an
+      empty string when unused.
+    example: authorization=Bearer my-token,x-tenant-id=acme
+  startupConnectivityTimeoutMs:
+    type: integer
+    minimum: 0
+    description: How long, in milliseconds, to wait for the collector to respond.
+    example: 2000

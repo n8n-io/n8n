@@ -1,5 +1,5 @@
-import { SYSTEM_PROMPT, TOOL_DESCRIPTIONS } from './prompts';
-import { decisionSchema, type Decision } from './tools';
+import { SYSTEM_PROMPT } from './prompts';
+import { decisionSchema, TOOL_DESCRIPTIONS, type Decision } from './tools';
 import { createEvalAgent } from '../../../src/utils/eval-agents';
 import type { EvalLogger } from '../../harness/logger';
 

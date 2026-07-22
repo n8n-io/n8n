@@ -184,6 +184,7 @@ export const defaultSettings: FrontendSettings = {
 	evaluation: {
 		quota: 0,
 		collectionsEnabled: false,
+		agentEvalsEnabled: false,
 	},
 	activeModules: [],
 	canvasOnly: false,

@@ -16,6 +16,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -39,6 +40,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -64,6 +66,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -88,6 +91,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -278,5 +282,38 @@ describe('ImportPackageRequestDto', () => {
 		{ name: 'unknown workflowConflictPolicy', request: { workflowConflictPolicy: 'overwrite' } },
 	])('rejects $name', ({ request }) => {
 		expect(ImportPackageRequestDto.safeParse(request).success).toBe(false);
+	});
+
+	describe('variableMissingMode', () => {
+		it('defaults variableMissingMode to do-nothing when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.variableMissingMode).toBe('do-nothing');
+			}
+		});
+
+		it.each(['do-nothing', 'must-preexist'] as const)(
+			'accepts %s as a variableMissingMode value',
+			(variableMissingMode) => {
+				const result = ImportPackageRequestDto.safeParse({
+					variableMissingMode,
+					workflowConflictPolicy: 'fail',
+				});
+				expect(result.success).toBe(true);
+				if (result.success) {
+					expect(result.data.variableMissingMode).toBe(variableMissingMode);
+				}
+			},
+		);
+
+		it('rejects unsupported variableMissingMode values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					variableMissingMode: 'invent-variables',
+					workflowConflictPolicy: 'fail',
+				}).success,
+			).toBe(false);
+		});
 	});
 });

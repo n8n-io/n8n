@@ -47,7 +47,19 @@ export default defineConfig(
 			// TODO: Remove this
 			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 			'import-x/no-cycle': 'warn',
-			'import-x/extensions': 'warn',
+			'import-x/extensions': [
+				'warn',
+				'never',
+				{
+					pathGroupOverrides: [
+						{
+							pattern:
+								'**/*.{service,controller,registry,repository,entity,dto,middleware,module,strategy,handler,helper,error,request,response,mapper,schema,types,constants,config,util,utils}',
+							action: 'ignore',
+						},
+					],
+				},
+			],
 			'import-x/order': 'warn',
 			'no-ex-assign': 'warn',
 			'no-case-declarations': 'warn',

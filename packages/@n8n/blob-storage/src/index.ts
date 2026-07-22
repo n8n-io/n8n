@@ -1,4 +1,18 @@
-export type { BlobMetadata, PreWriteBlobMetadata } from './types';
+export type {
+	BlobMetadata,
+	PreWriteBlobMetadata,
+	ByteStore,
+	ByteStoreKey,
+	StorageLocation,
+	JsonEntry,
+	Stored,
+	JsonStoreOptions,
+} from './types';
+export { FsByteStore, type FsByteStoreOptions } from './fs-byte-store';
+export { S3ByteStore } from './s3-byte-store.ee';
+export { AzureByteStore } from './azure-byte-store.ee';
+export { JsonStore } from './json-store';
+export { SkippedEntryDeletionError } from './skipped-entry-deletion.error';
 export { createFixedSizeChunker } from './stream-utils';
 export { ObjectStoreConfig } from './object-store/object-store.config';
 export type { MetadataResponseHeaders } from './object-store/types';
