@@ -127,6 +127,69 @@ describe('RuntimeTelemetry.withRootSpan()', () => {
 		expect(span.end).toHaveBeenCalledTimes(1);
 	});
 
+	it('omits root when rootAnchored is false, so the span nests under the ambient context', async () => {
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer, rootAnchored: false });
+		const config = { name: 'sub-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			{ telemetry },
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(options).not.toHaveProperty('root');
+		expect((options as { attributes?: unknown }).attributes).toBeDefined();
+		expect(span.end).toHaveBeenCalledTimes(1);
+	});
+
+	it('still skips span creation entirely when runtimeRootSpanEnabled is false, even if rootAnchored is also false', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({
+			tracer,
+			runtimeRootSpanEnabled: false,
+			rootAnchored: false,
+		});
+		const config = { name: 'sub-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await expect(
+			runtimeTelemetry.withRootSpan(
+				'generate',
+				{ telemetry },
+				'run-1',
+				async () => await Promise.resolve('ok'),
+			),
+		).resolves.toBe('ok');
+		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
+	});
+
+	it('tags sub-agent metadata (e.g. source: sub-agent) onto the span attributes like any other metadata key', async () => {
+		const tracer = fakeTracer(fakeSpan());
+		const telemetry = builtTelemetry({
+			tracer,
+			rootAnchored: false,
+			metadata: { thread_id: 'thread-abc', source: 'sub-agent' },
+		});
+		const config = { name: 'sub-agent' } as AgentRuntimeConfig;
+		const runtimeTelemetry = new RuntimeTelemetry(config);
+
+		await runtimeTelemetry.withRootSpan(
+			'generate',
+			{ telemetry },
+			'run-1',
+			async () => await Promise.resolve('ok'),
+		);
+
+		const [, options] = tracer.startActiveSpan.mock.calls[0];
+		const attributes = (options as { attributes: Record<string, unknown> }).attributes;
+		expect(attributes).toMatchObject({ 'ai.telemetry.metadata.source': 'sub-agent' });
+	});
+
 	it('passes links through to the tracer only when provided', async () => {
 		const tracer = fakeTracer(fakeSpan());
 		const telemetry = builtTelemetry({ tracer });

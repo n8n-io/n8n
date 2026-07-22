@@ -1002,6 +1002,12 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@opentelemetry/api':
+        specifier: 1.9.0
+        version: 1.9.0
+      '@opentelemetry/context-async-hooks':
+        specifier: ^2.7.1
+        version: 2.7.1(@opentelemetry/api@1.9.0)
       '@pinecone-database/pinecone':
         specifier: 'catalog:'
         version: 5.1.2
