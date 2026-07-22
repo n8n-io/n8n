@@ -1,12 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState, type Logger } from '@n8n/backend-common';
-import type {
-	DbLockService,
-	Project,
-	SharedWorkflowRepository,
-	User,
-	WorkflowReviewRequest,
-} from '@n8n/db';
+import type { DbLockService, SharedWorkflowRepository, User, WorkflowReviewRequest } from '@n8n/db';
 import {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -47,7 +41,6 @@ describe('WorkflowReviewRequestService list', () => {
 		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
-		projectService.getPersonalProject.mockResolvedValue(null);
 
 		service = new WorkflowReviewRequestService(
 			logger,
@@ -67,9 +60,7 @@ describe('WorkflowReviewRequestService list', () => {
 
 	describe('listForInbox', () => {
 		function mockAccessibleProjects(projectIds: string[] = ['proj-1']) {
-			projectService.getProjectIdsWithScope
-				.mockResolvedValueOnce(projectIds)
-				.mockResolvedValueOnce(projectIds);
+			projectService.getProjectIdsWithScope.mockResolvedValueOnce(projectIds);
 		}
 
 		it('returns paginated data with hasMore and nextCursor', async () => {
@@ -146,48 +137,44 @@ describe('WorkflowReviewRequestService list', () => {
 	});
 
 	describe('resolveAccessibleProjectIds', () => {
-		it('unions admin, publisher, and personal project ids for members', async () => {
-			projectService.getProjectIdsWithScope
-				.mockResolvedValueOnce(['admin-proj'])
-				.mockResolvedValueOnce(['publish-proj']);
-			projectService.getPersonalProject.mockResolvedValue(mock<Project>({ id: 'personal-proj' }));
+		it('returns the publish-scoped project ids for members', async () => {
+			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
 
-			expect(await service.resolveAccessibleProjectIds(user)).toEqual([
-				'admin-proj',
-				'publish-proj',
-				'personal-proj',
-			]);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(user, ['project:delete']);
+			expect(await service.resolveAccessibleProjectIds(user)).toEqual(['publish-proj']);
 			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(user, [
 				'workflow:publish',
 			]);
-			expect(projectService.getPersonalProject).toHaveBeenCalledWith(user);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledTimes(2);
+			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledTimes(1);
+			// Requesters see their own reviews via the repository's requesterId filter,
+			// so no personal-project fallback is needed here.
+			expect(projectService.getPersonalProject).not.toHaveBeenCalled();
 		});
 
-		it('does not duplicate the personal project when it is already in scope', async () => {
-			projectService.getProjectIdsWithScope
-				.mockResolvedValueOnce(['personal-proj'])
-				.mockResolvedValueOnce(['publish-proj']);
-			projectService.getPersonalProject.mockResolvedValue(mock<Project>({ id: 'personal-proj' }));
-
-			expect(await service.resolveAccessibleProjectIds(user)).toEqual([
-				'personal-proj',
-				'publish-proj',
-			]);
-		});
-
-		it('returns null (all projects) for global-scope users without enumerating projects', async () => {
+		it('returns null (all projects) for users with global workflow:publish without enumerating projects', async () => {
 			const owner = mock<User>({
 				role: {
 					slug: 'global:owner',
-					scopes: [{ slug: 'project:delete' }, { slug: 'workflow:publish' }],
+					scopes: [{ slug: 'workflow:publish' }],
 				},
 			});
 
 			expect(await service.resolveAccessibleProjectIds(owner)).toBeNull();
 			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
-			expect(projectService.getPersonalProject).not.toHaveBeenCalled();
+		});
+
+		it('does not short-circuit for a global project:delete role without workflow:publish', async () => {
+			const admin = mock<User>({
+				role: {
+					slug: 'custom:global',
+					scopes: [{ slug: 'project:delete' }],
+				},
+			});
+			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
+
+			expect(await service.resolveAccessibleProjectIds(admin)).toEqual(['publish-proj']);
+			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(admin, [
+				'workflow:publish',
+			]);
 		});
 	});
 });

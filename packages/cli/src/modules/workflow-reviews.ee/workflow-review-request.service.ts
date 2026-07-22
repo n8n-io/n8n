@@ -6,7 +6,7 @@ import type {
 	ListWorkflowReviewInboxQueryDto,
 	ListWorkflowReviewInboxResponse,
 	GetWorkflowReviewInboxSummaryResponse,
-	WorkflowReviewInboxItemDto,
+	WorkflowReviewInboxItem,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -212,9 +212,7 @@ export class WorkflowReviewRequestService {
 			);
 
 		return {
-			data: data.map((row) =>
-				this.toInboxItemDto(row, workflowNamesByRequestId.get(row.id) ?? null),
-			),
+			data: data.map((row) => this.toInboxItem(row, workflowNamesByRequestId.get(row.id) ?? null)),
 			nextCursor,
 			hasMore,
 		};
@@ -247,30 +245,21 @@ export class WorkflowReviewRequestService {
 	/**
 	 * Project IDs for inbox queries. `null` means "all projects, unfiltered".
 	 *
-	 * Global-scope users (instance owners/admins) would resolve to every project id,
-	 * which both enumerates the whole table and can blow SQLite's bound-parameter cap
-	 * on the `projectId IN (...)` filter. For them we skip the filter entirely.
+	 * `workflow:publish` is the single scope that defines review participation —
+	 * it's what `create()` and reviewer eligibility gate on, so the inbox keys off
+	 * the same scope. Users holding it globally would resolve to every project id,
+	 * which both enumerates the whole table and can blow SQLite's bound-parameter
+	 * cap on the `projectId IN (...)` filter, so for them we skip the filter entirely.
 	 *
-	 * For everyone else `getProjectIdsWithScope` only returns team projects, so the
-	 * caller's personal project is added explicitly — members can create reviews there.
+	 * Requesters always see the reviews they created regardless of this set (the
+	 * repository OR-matches `requesterId`), so no personal-project fallback is needed.
 	 */
 	async resolveAccessibleProjectIds(user: User): Promise<string[] | null> {
-		if (hasGlobalScope(user, 'project:delete') || hasGlobalScope(user, 'workflow:publish')) {
+		if (hasGlobalScope(user, 'workflow:publish')) {
 			return null;
 		}
 
-		const [adminProjectIds, publishProjectIds, personalProject] = await Promise.all([
-			this.projectService.getProjectIdsWithScope(user, ['project:delete']),
-			this.projectService.getProjectIdsWithScope(user, ['workflow:publish']),
-			this.projectService.getPersonalProject(user),
-		]);
-
-		const projectIds = new Set([...adminProjectIds, ...publishProjectIds]);
-		if (personalProject) {
-			projectIds.add(personalProject.id);
-		}
-
-		return [...projectIds];
+		return await this.projectService.getProjectIdsWithScope(user, ['workflow:publish']);
 	}
 
 	/**
@@ -298,10 +287,10 @@ export class WorkflowReviewRequestService {
 		return { createdAt, id };
 	}
 
-	private toInboxItemDto(
+	private toInboxItem(
 		entity: WorkflowReviewRequest,
 		workflowName: string | null,
-	): WorkflowReviewInboxItemDto {
+	): WorkflowReviewInboxItem {
 		return {
 			id: entity.id,
 			projectId: entity.projectId,

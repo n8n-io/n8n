@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { WorkflowReviewInboxItemDto, WorkflowReviewRequestState } from '@n8n/api-types';
+import type { WorkflowReviewInboxItem, WorkflowReviewRequestState } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -15,7 +15,7 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 const props = defineProps<{
-	items: WorkflowReviewInboxItemDto[];
+	items: WorkflowReviewInboxItem[];
 	activeState: WorkflowReviewRequestState;
 	selectedId: string | null;
 	loading: boolean;
@@ -84,7 +84,13 @@ function onListBackgroundClick() {
 			/>
 		</div>
 
-		<div ref="listRef" :class="$style.list" @click.self="onListBackgroundClick">
+		<div
+			ref="listRef"
+			role="listbox"
+			:aria-label="i18n.baseText('workflowReviews.page.title')"
+			:class="$style.list"
+			@click.self="onListBackgroundClick"
+		>
 			<N8nLoading v-if="loading" :loading="true" :rows="4" />
 			<template v-else>
 				<N8nText
@@ -100,7 +106,12 @@ function onListBackgroundClick() {
 					:key="item.id"
 					:class="[$style.card, { [$style.cardSelected]: selectedId === item.id }]"
 					data-test-id="workflow-review-request-row"
+					role="option"
+					tabindex="0"
+					:aria-selected="selectedId === item.id"
 					@click="emit('select', item.id)"
+					@keydown.enter.prevent="emit('select', item.id)"
+					@keydown.space.prevent="emit('select', item.id)"
 				>
 					<div :class="$style.cardContent">
 						<N8nText bold tag="h3" :class="$style.cardTitle">
@@ -176,16 +187,22 @@ function onListBackgroundClick() {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
-	border: none;
+	border: var(--border-width) solid var(--color--foreground--tint-1);
 	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {
 		background-color: var(--background--active);
+		border-color: transparent;
+	}
+
+	&:focus-visible {
+		border-color: var(--focus--border-color);
 	}
 }
 
 .cardSelected {
 	background-color: var(--background--active);
+	border-color: transparent;
 }
 
 .cardContent {

@@ -19,7 +19,7 @@ export type InboxCursor = {
 };
 
 export type FindManyForInboxOptions = {
-	/** `null` means all projects (no filter); `[]` means no admin/editor projects. */
+	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
 	projectIds: string[] | null;
 	/** Requesters always see the reviews they created, regardless of project scope. */
 	requesterId: string;
@@ -29,7 +29,7 @@ export type FindManyForInboxOptions = {
 };
 
 export type ExistsAnyForInboxOptions = {
-	/** `null` means all projects (no filter); `[]` means no admin/editor projects. */
+	/** `null` means all projects (no filter); `[]` means no publish-scoped projects. */
 	projectIds: string[] | null;
 	/** Requesters always see the reviews they created, regardless of project scope. */
 	requesterId: string;
@@ -165,7 +165,7 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 
 	/**
 	 * Inbox visibility: a review is visible if the caller is its requester OR it
-	 * belongs to a project the caller administers/edits. `projectIds === null`
+	 * belongs to a project the caller can publish to. `projectIds === null`
 	 * means global scope (no filter). An empty `projectIds` still matches the
 	 * caller's own requests.
 	 */
