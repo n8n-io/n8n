@@ -75,9 +75,10 @@ export class InsightsModelResolver {
 		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : undefined;
 		if (!apiKey) return null;
-		// n8n credentials spell the base host as `url`; `@n8n/agents` normalizes
-		// `url` → `baseURL` and defaults it when absent.
-		const url = typeof data.url === 'string' ? data.url : undefined;
+		// Most LLM credentials spell the base host as `url`; Google's uses `host`.
+		// `@n8n/agents` normalizes `url` → `baseURL` and defaults it when absent.
+		const base = data.url ?? data.host;
+		const url = typeof base === 'string' ? base : undefined;
 
 		const modelId = `${prefix}/${judge.config.model}`;
 		return { modelConfig: { id: modelId, apiKey, url }, modelId };

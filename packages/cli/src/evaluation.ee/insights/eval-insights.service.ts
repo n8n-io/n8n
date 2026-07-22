@@ -112,10 +112,6 @@ export class EvalInsightsService {
 			});
 		}
 
-		// Labels (A/B/C) map to each run's index in the *full* collection
-		// (`detail.runs` is `createdAt ASC`), and the FE labels by the same
-		// position — so keep filtered-out runs on their original index or the
-		// winner/regression gets attributed to the wrong version.
 		// Resolve metric scales from the config so scores normalize by scale,
 		// not metric name; falls back to the name-based heuristic when gone.
 		const scaleByMetric = await this.buildScaleByMetric(
@@ -123,6 +119,10 @@ export class EvalInsightsService {
 			workflowId,
 		);
 
+		// Labels (A/B/C) map to each run's index in the *full* collection
+		// (`detail.runs` is `createdAt ASC`), and the FE labels by the same
+		// position — so keep filtered-out runs on their original index or the
+		// winner/regression gets attributed to the wrong version.
 		const summaries: RunSummary[] = [];
 		detail.runs.forEach((run, originalIndex) => {
 			if (run.status === 'completed' && run.metrics) {
@@ -261,6 +261,10 @@ export class EvalInsightsService {
 			),
 		});
 
+		// Intentionally tool-less: the prompt embeds untrusted workflow content
+		// (node prompt text + case I/O), so a planted instruction can only bias
+		// the narrative, never trigger a tool/exfil. Reconcile + zod bound the
+		// output. Adding a tool here would open an exfiltration channel — don't.
 		const agent = new Agent('eval-insights')
 			.model(resolved.modelConfig)
 			.instructions(INSIGHTS_SYSTEM_PROMPT)
