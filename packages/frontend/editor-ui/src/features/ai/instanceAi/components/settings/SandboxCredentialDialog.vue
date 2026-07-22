@@ -36,6 +36,7 @@ const emit = defineEmits<{ saved: []; back: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
+const readOnly = computed(() => !store.canManageInstanceCredentials);
 const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
 	useInstanceCredentialTest();
 const { stepLabel, isLastStep } = useInstanceAiSetupSteps(2);
@@ -45,6 +46,7 @@ provideWorkflowDocumentStore();
 type SandboxSelection = '' | 'daytona' | 'n8n-sandbox';
 
 const selectedProvider = ref<SandboxSelection>('');
+const selectedCredentialId = ref('');
 const fieldsData = ref<ICredentialDataDecryptedObject>({});
 const apiKeyValue = ref('');
 const isLoading = ref(false);
@@ -70,9 +72,15 @@ const providerOptions = [
 	{ value: 'daytona', label: 'Daytona' },
 	{ value: 'n8n-sandbox', label: 'n8n Sandbox Service' },
 ] as const;
+const existingCredentialOptions = computed(() =>
+	store.serviceCredentials.filter((credential) =>
+		['daytonaApi', 'httpHeaderAuth'].includes(credential.type),
+	),
+);
 
 function snapshot() {
 	return JSON.stringify({
+		c: selectedCredentialId.value,
 		p: selectedProvider.value,
 		d: fieldsData.value,
 		k: apiKeyValue.value,
@@ -84,12 +92,13 @@ function freshData(provider: SandboxSelection): ICredentialDataDecryptedObject {
 }
 
 async function hydrate() {
+	selectedCredentialId.value = assignedId.value ?? '';
 	selectedProvider.value =
 		assignedProvider.value ||
 		(store.settings?.sandboxEnvConfigured ? '' : (store.settings?.sandboxProvider ?? ''));
 	fieldsData.value = freshData(selectedProvider.value);
 	apiKeyValue.value = '';
-	if (assignedId.value) {
+	if (assignedId.value && !readOnly.value) {
 		isLoading.value = true;
 		try {
 			const credential = await credentialsStore.getCredentialData({ id: assignedId.value });
@@ -130,6 +139,15 @@ function selectProvider(next: SandboxSelection) {
 	if (next !== hydratedProvider) apiKeyValue.value = '';
 }
 
+function selectCredential(nextCredentialId: string) {
+	if (nextCredentialId === selectedCredentialId.value) return;
+	credentialTestError.value = '';
+	selectedCredentialId.value = nextCredentialId;
+	const credential = existingCredentialOptions.value.find(({ id }) => id === nextCredentialId);
+	selectedProvider.value =
+		credential?.type === 'daytonaApi' ? 'daytona' : credential ? 'n8n-sandbox' : '';
+}
+
 function setFieldValue(name: string, value: IUpdateInformation['value']) {
 	fieldsData.value = { ...fieldsData.value, [name]: value } as ICredentialDataDecryptedObject;
 }
@@ -140,59 +158,67 @@ const noneLabel = computed(() =>
 		: i18n.baseText('settings.n8nAgent.modelCredential.noneNoEnv'),
 );
 
-const readOnly = computed(() => !store.canManageInstanceCredentials);
-const isComplete = computed(() =>
-	selectedProvider.value === 'n8n-sandbox' ? apiKeyValue.value.trim().length > 0 : true,
-);
+const isComplete = computed(() => {
+	if (readOnly.value || !selectedProvider.value) return true;
+	if (selectedProvider.value === 'n8n-sandbox') return apiKeyValue.value.trim().length > 0;
+	return (
+		typeof fieldsData.value.apiUrl === 'string' &&
+		fieldsData.value.apiUrl.trim().length > 0 &&
+		typeof fieldsData.value.apiKey === 'string' &&
+		fieldsData.value.apiKey.trim().length > 0
+	);
+});
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 const saveDisabled = computed(() => {
-	if (
-		store.isSaving ||
-		isTestingCredential.value ||
-		isLoading.value ||
-		readOnly.value ||
-		!isComplete.value
-	)
+	if (store.isSaving || isTestingCredential.value || isLoading.value || !isComplete.value)
 		return true;
 	if (props.setup) return !isChanged.value && !selectedProvider.value;
 	return !isChanged.value && !credentialTestError.value;
 });
 
 async function handleSave() {
+	const connectionData =
+		selectedProvider.value === 'daytona'
+			? { ...toRaw(fieldsData.value) }
+			: { name: N8N_SANDBOX_HEADER, value: apiKeyValue.value.trim() };
+	if (
+		!readOnly.value &&
+		selectedProvider.value &&
+		!(await testCredential({
+			id: selectedProvider.value === assignedProvider.value ? (assignedId.value ?? '') : '',
+			name: 'AI Assistant sandbox',
+			type: selectedProvider.value === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth',
+			data: connectionData,
+		}))
+	)
+		return;
+
 	if (isChanged.value) {
-		if (!selectedProvider.value) {
+		if (readOnly.value) {
+			store.setField(
+				'daytonaCredentialId',
+				selectedProvider.value === 'daytona' ? selectedCredentialId.value : null,
+			);
+			store.setField(
+				'n8nSandboxCredentialId',
+				selectedProvider.value === 'n8n-sandbox' ? selectedCredentialId.value : null,
+			);
+			if (selectedProvider.value) store.setField('sandboxProvider', selectedProvider.value);
+		} else if (!selectedProvider.value) {
 			store.setField('sandboxConnection', null);
 		} else if (selectedProvider.value === 'daytona') {
 			store.setField('sandboxConnection', {
 				type: 'daytonaApi',
-				data: { ...toRaw(fieldsData.value) },
+				data: connectionData,
 			});
 		} else {
 			store.setField('sandboxConnection', {
 				type: 'httpHeaderAuth',
-				data: { name: N8N_SANDBOX_HEADER, value: apiKeyValue.value.trim() },
+				data: connectionData,
 			});
 		}
 		if (!(await store.save())) return;
 	}
-	const credentialId =
-		selectedProvider.value === 'daytona'
-			? store.settings?.daytonaCredentialId
-			: store.settings?.n8nSandboxCredentialId;
-	if (
-		selectedProvider.value &&
-		credentialId &&
-		!(await testCredential({
-			id: credentialId,
-			name: 'AI Assistant sandbox',
-			type: selectedProvider.value === 'daytona' ? 'daytonaApi' : 'httpHeaderAuth',
-			data:
-				selectedProvider.value === 'daytona'
-					? { ...toRaw(fieldsData.value) }
-					: { name: N8N_SANDBOX_HEADER, value: apiKeyValue.value.trim() },
-		}))
-	)
-		return;
 	void store.refreshCredentials();
 	open.value = false;
 	emit('saved');
@@ -233,9 +259,26 @@ const title = computed(() =>
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('settings.n8nAgent.sandboxDialog.provider')">
 				<N8nSelect
+					v-if="readOnly"
+					:model-value="selectedCredentialId"
+					size="medium"
+					:disabled="store.isSaving"
+					data-test-id="n8n-agent-sandbox-provider-select"
+					@update:model-value="selectCredential(String($event ?? ''))"
+				>
+					<N8nOption v-if="!setup" value="" :label="noneLabel" />
+					<N8nOption
+						v-for="credential in existingCredentialOptions"
+						:key="credential.id"
+						:value="credential.id"
+						:label="credential.name"
+					/>
+				</N8nSelect>
+				<N8nSelect
+					v-else
 					:model-value="selectedProvider"
 					size="medium"
-					:disabled="store.isSaving || readOnly"
+					:disabled="store.isSaving"
 					data-test-id="n8n-agent-sandbox-provider-select"
 					@update:model-value="selectProvider(($event ?? '') as SandboxSelection)"
 				>
@@ -253,7 +296,7 @@ const title = computed(() =>
 			</N8nInputLabel>
 
 			<ConnectionFields
-				v-if="selectedProvider === 'daytona' && !isLoading"
+				v-if="!readOnly && selectedProvider === 'daytona' && !isLoading"
 				credential-type="daytonaApi"
 				:data="fieldsData"
 				data-test-id="n8n-agent-sandbox-connection-fields"
@@ -261,14 +304,14 @@ const title = computed(() =>
 			/>
 
 			<N8nInputLabel
-				v-if="selectedProvider === 'n8n-sandbox'"
+				v-if="!readOnly && selectedProvider === 'n8n-sandbox'"
 				:label="i18n.baseText('settings.n8nAgent.sandboxCredential.apiKey')"
 			>
 				<N8nInput
 					:model-value="apiKeyValue"
 					type="password"
 					size="medium"
-					:disabled="store.isSaving || readOnly"
+					:disabled="store.isSaving"
 					autocomplete="off"
 					data-test-id="n8n-agent-sandbox-api-key-input"
 					@update:model-value="apiKeyValue = String($event)"

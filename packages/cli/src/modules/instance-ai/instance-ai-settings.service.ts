@@ -56,7 +56,6 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
-	ollamaApi: 'ollama',
 	groqApi: 'groq',
 	deepSeekApi: 'deepseek',
 	mistralCloudApi: 'mistral',
@@ -90,7 +89,6 @@ const URL_FIELD_MAP: Record<string, string> = {
 	openAiApi: 'url',
 	anthropicApi: 'url',
 	googlePalmApi: 'host',
-	ollamaApi: 'baseUrl',
 };
 
 // ---------------------------------------------------------------------------
@@ -274,14 +272,12 @@ export class InstanceAiSettingsService {
 		const { previous, next } = await this.dbLockService.withLockContext(
 			DbLock.INSTANCE_AI_SETTINGS,
 			async (ctx) => {
-				const replacedCredentialIds: string[] = [];
 				if (user && modelConnection !== undefined) {
 					modelCredentialId = await this.upsertConnection(
 						user,
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
 						'AI Assistant model',
 						modelConnection,
-						replacedCredentialIds,
 						ctx,
 					);
 				}
@@ -291,17 +287,11 @@ export class InstanceAiSettingsService {
 						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 						'AI Assistant web search',
 						searchConnection,
-						replacedCredentialIds,
 						ctx,
 					);
 				}
 				if (user && sandboxConnection !== undefined) {
-					const sandbox = await this.upsertSandboxConnection(
-						user,
-						sandboxConnection,
-						replacedCredentialIds,
-						ctx,
-					);
+					const sandbox = await this.upsertSandboxConnection(user, sandboxConnection, ctx);
 					daytonaCredentialId = sandbox.daytonaCredentialId;
 					n8nSandboxCredentialId = sandbox.n8nSandboxCredentialId;
 					if (sandbox.sandboxProvider) settingsUpdate.sandboxProvider = sandbox.sandboxProvider;
@@ -323,6 +313,7 @@ export class InstanceAiSettingsService {
 					this.snapshotAdminSettings(),
 					this.parsePersistedAdminSettings(persisted?.value),
 				);
+				this.validateAdminSettingsUpdate(update, current, settingsUpdate.sandboxProvider);
 				const currentModelCredentialId =
 					await this.instanceCredentialBroker.getAssignedCredentialId(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
@@ -363,19 +354,25 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 					n8nSandboxCredentialId,
 				);
-				if (typeof n8nSandboxCredentialId === 'string') {
-					await this.validateN8nSandboxCredential(ctx);
-				}
 				await updateCredentialAssignment(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY, searchCredentialId);
+				if (typeof daytonaCredentialId === 'string') {
+					await this.validateAssignedServiceCredential(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY, ctx);
+				}
+				if (typeof n8nSandboxCredentialId === 'string') {
+					await this.validateAssignedServiceCredential(
+						INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+						ctx,
+					);
+				}
+				if (typeof searchCredentialId === 'string') {
+					await this.validateAssignedServiceCredential(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY, ctx);
+				}
 				await this.settingsRepository.upsertByKey(
 					ADMIN_SETTINGS_KEY,
 					JSON.stringify(next),
 					true,
 					ctx,
 				);
-				if (user) {
-					await this.deleteReplacedCredentials(user, replacedCredentialIds, ctx);
-				}
 				return { previous, next };
 			},
 		);
@@ -413,13 +410,11 @@ export class InstanceAiSettingsService {
 		policy: InstanceCredentialUse,
 		name: string,
 		connection: InstanceAiConnectionUpdate | null,
-		replacedCredentialIds: string[],
 		ctx: OperationContext,
 	): Promise<string | null> {
 		const current = await this.instanceCredentialBroker.resolveForUse(policy, ctx);
 
 		if (connection === null) {
-			if (current) replacedCredentialIds.push(current.id);
 			return null;
 		}
 
@@ -447,7 +442,6 @@ export class InstanceAiSettingsService {
 			availability: 'instance',
 		};
 		const created = await this.credentialsService.createInstanceCredential(dto, user, ctx);
-		if (current) replacedCredentialIds.push(current.id);
 		return created.id;
 	}
 
@@ -455,7 +449,6 @@ export class InstanceAiSettingsService {
 	private async upsertSandboxConnection(
 		user: User,
 		connection: InstanceAiConnectionUpdate | null,
-		replacedCredentialIds: string[],
 		ctx: OperationContext,
 	): Promise<{
 		daytonaCredentialId: string | null;
@@ -470,7 +463,6 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 					name,
 					null,
-					replacedCredentialIds,
 					ctx,
 				),
 				n8nSandboxCredentialId: await this.upsertConnection(
@@ -478,7 +470,6 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 					name,
 					null,
-					replacedCredentialIds,
 					ctx,
 				),
 			};
@@ -490,7 +481,6 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 					name,
 					connection,
-					replacedCredentialIds,
 					ctx,
 				),
 				n8nSandboxCredentialId: await this.upsertConnection(
@@ -498,7 +488,6 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 					name,
 					null,
-					replacedCredentialIds,
 					ctx,
 				),
 				sandboxProvider: 'daytona',
@@ -518,7 +507,6 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
 					name,
 					connection,
-					replacedCredentialIds,
 					ctx,
 				),
 				daytonaCredentialId: await this.upsertConnection(
@@ -526,7 +514,6 @@ export class InstanceAiSettingsService {
 					INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 					name,
 					null,
-					replacedCredentialIds,
 					ctx,
 				),
 				sandboxProvider: 'n8n-sandbox',
@@ -535,16 +522,6 @@ export class InstanceAiSettingsService {
 		throw new UnprocessableRequestError(
 			`Connection type "${connection.type}" is not supported for the sandbox`,
 		);
-	}
-
-	private async deleteReplacedCredentials(
-		user: User,
-		credentialIds: string[],
-		ctx: OperationContext,
-	): Promise<void> {
-		for (const credentialId of new Set(credentialIds)) {
-			await this.credentialsService.deleteInstanceCredentialIfUnassigned(user, credentialId, ctx);
-		}
 	}
 
 	async reloadFromDb(): Promise<void> {
@@ -716,20 +693,58 @@ export class InstanceAiSettingsService {
 		return envConfig;
 	}
 
-	/** The sandbox client sends the key as `x-api-key`; any other header silently fails at runtime. */
-	private async validateN8nSandboxCredential(ctx: OperationContext): Promise<void> {
-		const resolved = await this.instanceCredentialBroker.resolveForUse(
-			INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
-			ctx,
-		);
+	private async validateAssignedServiceCredential(
+		policy: InstanceCredentialUse,
+		ctx: OperationContext,
+	): Promise<void> {
+		const resolved = await this.instanceCredentialBroker.resolveForUse(policy, ctx);
 		if (!resolved) return;
-		const headerName =
-			typeof resolved.data.name === 'string' ? resolved.data.name.trim().toLowerCase() : '';
-		if (headerName !== 'x-api-key') {
+
+		if (resolved.type === 'daytonaApi') {
+			this.requireHttpUrl(resolved.type, resolved.data, 'apiUrl');
+			this.requireConnectionValue(resolved.type, resolved.data, 'apiKey');
+		} else if (resolved.type === 'searXngApi') {
+			this.requireHttpUrl(resolved.type, resolved.data, 'apiUrl');
+		} else if (resolved.type === 'braveSearchApi') {
+			this.requireConnectionValue(resolved.type, resolved.data, 'apiKey');
+		} else if (resolved.type === 'httpHeaderAuth') {
+			const headerName = this.requireConnectionValue(
+				resolved.type,
+				resolved.data,
+				'name',
+			).toLowerCase();
+			if (headerName !== 'x-api-key') {
+				throw new UnprocessableRequestError(
+					`The credential's header name must be "x-api-key" but is "${headerName}"`,
+				);
+			}
+			this.requireConnectionValue(resolved.type, resolved.data, 'value');
+		}
+	}
+
+	private requireConnectionValue(
+		type: string,
+		data: ICredentialDataDecryptedObject,
+		field: string,
+	): string {
+		const value = data[field];
+		if (typeof value !== 'string' || value.trim().length === 0) {
 			throw new UnprocessableRequestError(
-				`The credential's header name must be "x-api-key" but is "${headerName || '(empty)'}"`,
+				`The field "${field}" is required for provider connection type "${type}"`,
 			);
 		}
+		return value.trim();
+	}
+
+	private requireHttpUrl(type: string, data: ICredentialDataDecryptedObject, field: string): void {
+		const value = this.requireConnectionValue(type, data, field);
+		try {
+			const url = new URL(value);
+			if (url.protocol === 'http:' || url.protocol === 'https:') return;
+		} catch {}
+		throw new UnprocessableRequestError(
+			`The field "${field}" must be a valid HTTP URL for provider connection type "${type}"`,
+		);
 	}
 
 	private async resolveServiceCredential(
@@ -949,6 +964,29 @@ export class InstanceAiSettingsService {
 				`Cannot update ${label}-managed fields: ${present.join(', ')}`,
 			);
 		}
+	}
+
+	private validateAdminSettingsUpdate(
+		update: InstanceAiAdminSettingsUpdateRequest,
+		current: PersistedAdminSettings,
+		sandboxProviderOverride?: InstanceAiSandboxProvider,
+	): void {
+		const touchesSandboxSettings =
+			update.sandboxEnabled !== undefined ||
+			update.sandboxProvider !== undefined ||
+			update.sandboxImage !== undefined ||
+			update.sandboxTimeout !== undefined ||
+			update.daytonaCredentialId !== undefined ||
+			update.n8nSandboxCredentialId !== undefined ||
+			update.sandboxConnection !== undefined;
+		if (!touchesSandboxSettings) return;
+
+		const sandboxProvider = normalizeSandboxProvider(
+			sandboxProviderOverride ?? update.sandboxProvider ?? current.sandboxProvider,
+		);
+		const sandboxEnabled = update.sandboxEnabled ?? current.sandboxEnabled ?? false;
+		const unavailableReason = this.getSandboxUnavailableReason(sandboxEnabled, sandboxProvider);
+		if (unavailableReason) throw new UnprocessableRequestError(unavailableReason);
 	}
 
 	private getSandboxUnavailableReason(

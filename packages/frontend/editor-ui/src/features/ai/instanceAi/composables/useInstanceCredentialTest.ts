@@ -1,6 +1,10 @@
 import { ref } from 'vue';
 import { i18n } from '@n8n/i18n';
-import type { ICredentialDataDecryptedObject, ICredentialsDecrypted } from 'n8n-workflow';
+import {
+	displayParameter,
+	type ICredentialDataDecryptedObject,
+	type ICredentialsDecrypted,
+} from 'n8n-workflow';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 
@@ -12,6 +16,21 @@ export function useInstanceCredentialTest() {
 	const credentialTestError = ref('');
 	const isTestingCredential = ref(false);
 
+	function hasRequiredData(credentials: ICredentialsDecrypted): boolean {
+		const data = credentials.data ?? {};
+		return (credentialsStore.getCredentialTypeByName(credentials.type)?.properties ?? []).every(
+			(property) => {
+				if (!property.required || !displayParameter(data, property, null, null)) return true;
+				const value = data[property.name];
+				const hasValue =
+					typeof value === 'string'
+						? value.trim().length > 0
+						: value !== null && value !== undefined;
+				return hasValue || (property.default !== undefined && property.default !== '');
+			},
+		);
+	}
+
 	async function runCredentialTest(credentials: ICredentialsDecrypted): Promise<boolean> {
 		const result = await credentialsStore.testCredential(credentials);
 		if (result.status === 'OK') return true;
@@ -22,7 +41,11 @@ export function useInstanceCredentialTest() {
 
 	async function testCredential(credentials: ICredentialsDecrypted): Promise<boolean> {
 		credentialTestError.value = '';
-		if (!isCredentialTypeTestable(credentials.type)) return true;
+		if (!isCredentialTypeTestable(credentials.type)) {
+			const isValid = hasRequiredData(credentials);
+			if (!isValid) credentialTestError.value = genericError();
+			return isValid;
+		}
 
 		isTestingCredential.value = true;
 		try {

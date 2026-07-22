@@ -34,6 +34,7 @@ const emit = defineEmits<{ saved: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
+const readOnly = computed(() => !store.canManageInstanceCredentials);
 const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
 	useInstanceCredentialTest();
 const { stepLabel } = useInstanceAiSetupSteps(1);
@@ -41,6 +42,7 @@ const { stepLabel } = useInstanceAiSetupSteps(1);
 provideWorkflowDocumentStore();
 
 const selectedType = ref('');
+const selectedCredentialId = ref('');
 const fieldsData = ref<ICredentialDataDecryptedObject>({});
 const modelName = ref('');
 const isLoading = ref(false);
@@ -58,14 +60,20 @@ const assignedType = computed(() =>
 );
 
 function snapshot() {
-	return JSON.stringify({ t: selectedType.value, d: fieldsData.value, m: modelName.value.trim() });
+	return JSON.stringify({
+		c: selectedCredentialId.value,
+		t: selectedType.value,
+		d: fieldsData.value,
+		m: modelName.value.trim(),
+	});
 }
 
 async function hydrate() {
 	modelName.value = store.settings?.modelName ?? '';
+	selectedCredentialId.value = assignedId.value ?? '';
 	selectedType.value = assignedType.value;
 	fieldsData.value = {};
-	if (assignedId.value) {
+	if (assignedId.value && !readOnly.value) {
 		isLoading.value = true;
 		try {
 			const credential = await credentialsStore.getCredentialData({ id: assignedId.value });
@@ -102,6 +110,7 @@ const providerOptions = computed(() =>
 		label: credentialTypeLabel(type),
 	})),
 );
+const existingCredentialOptions = computed(() => store.instanceModelCredentials);
 
 const noneLabel = computed(() =>
 	store.settings?.modelEnvConfigured
@@ -118,52 +127,60 @@ function selectType(nextType: string) {
 	if (nextType !== hydratedType) modelName.value = '';
 }
 
+function selectCredential(nextCredentialId: string) {
+	if (nextCredentialId === selectedCredentialId.value) return;
+	credentialTestError.value = '';
+	selectedCredentialId.value = nextCredentialId;
+	if (nextCredentialId !== assignedId.value) modelName.value = '';
+}
+
 function setFieldValue(name: string, value: IUpdateInformation['value']) {
 	fieldsData.value = { ...fieldsData.value, [name]: value } as ICredentialDataDecryptedObject;
 }
 
-const readOnly = computed(() => !store.canManageInstanceCredentials);
-const isComplete = computed(() => !selectedType.value || modelName.value.trim().length > 0);
+const isComplete = computed(() => {
+	const hasConnection = readOnly.value ? selectedCredentialId.value : selectedType.value;
+	return !hasConnection || modelName.value.trim().length > 0;
+});
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 const primaryDisabled = computed(() => {
-	if (
-		store.isSaving ||
-		isTestingCredential.value ||
-		isLoading.value ||
-		readOnly.value ||
-		!isComplete.value
-	)
+	if (store.isSaving || isTestingCredential.value || isLoading.value || !isComplete.value)
 		return true;
-	if (props.setup) return !isChanged.value && !selectedType.value;
+	if (props.setup)
+		return !isChanged.value && !(readOnly.value ? selectedCredentialId.value : selectedType.value);
 	return !isChanged.value && !credentialTestError.value;
 });
 
 async function handlePrimary() {
+	const connectionData = { ...toRaw(fieldsData.value) };
+	if (
+		!readOnly.value &&
+		selectedType.value &&
+		!(await testCredential({
+			id: selectedType.value === assignedType.value ? (assignedId.value ?? '') : '',
+			name: 'AI Assistant model',
+			type: selectedType.value,
+			data: connectionData,
+		}))
+	)
+		return;
+
 	if (isChanged.value) {
-		if (!selectedType.value) {
+		if (readOnly.value) {
+			store.setField('modelCredentialId', selectedCredentialId.value || null);
+			store.setField('modelName', selectedCredentialId.value ? modelName.value.trim() : undefined);
+		} else if (!selectedType.value) {
 			store.setField('modelConnection', null);
 			store.setField('modelName', undefined);
 		} else {
 			store.setField('modelConnection', {
 				type: selectedType.value,
-				data: { ...toRaw(fieldsData.value) },
+				data: connectionData,
 			});
 			store.setField('modelName', modelName.value.trim());
 		}
 		if (!(await store.save())) return;
 	}
-	const credentialId = store.settings?.modelCredentialId;
-	if (
-		selectedType.value &&
-		credentialId &&
-		!(await testCredential({
-			id: credentialId,
-			name: 'AI Assistant model',
-			type: selectedType.value,
-			data: { ...toRaw(fieldsData.value) },
-		}))
-	)
-		return;
 	void store.refreshInstanceModelCredentials();
 	open.value = false;
 	emit('saved');
@@ -202,9 +219,27 @@ const description = computed(() =>
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('settings.n8nAgent.modelCredential.field')">
 				<N8nSelect
+					v-if="readOnly"
+					:model-value="selectedCredentialId"
+					size="medium"
+					:disabled="store.isSaving"
+					:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
+					data-test-id="n8n-agent-model-provider-select"
+					@update:model-value="selectCredential(String($event ?? ''))"
+				>
+					<N8nOption v-if="!setup" value="" :label="noneLabel" />
+					<N8nOption
+						v-for="credential in existingCredentialOptions"
+						:key="credential.id"
+						:value="credential.id"
+						:label="`${credential.name} · ${credentialTypeLabel(credential.type)}`"
+					/>
+				</N8nSelect>
+				<N8nSelect
+					v-else
 					:model-value="selectedType"
 					size="medium"
-					:disabled="store.isSaving || readOnly"
+					:disabled="store.isSaving"
 					:placeholder="i18n.baseText('settings.n8nAgent.modelCredential.placeholder')"
 					data-test-id="n8n-agent-model-provider-select"
 					@update:model-value="selectType(String($event ?? ''))"
@@ -220,7 +255,7 @@ const description = computed(() =>
 			</N8nInputLabel>
 
 			<ConnectionFields
-				v-if="selectedType && !isLoading"
+				v-if="!readOnly && selectedType && !isLoading"
 				:credential-type="selectedType"
 				:data="fieldsData"
 				data-test-id="n8n-agent-model-connection-fields"
@@ -228,13 +263,13 @@ const description = computed(() =>
 			/>
 
 			<N8nInputLabel
-				v-if="selectedType"
+				v-if="readOnly ? selectedCredentialId : selectedType"
 				:label="i18n.baseText('settings.n8nAgent.modelName.label')"
 			>
 				<N8nInput
 					:model-value="modelName"
 					size="medium"
-					:disabled="store.isSaving || readOnly"
+					:disabled="store.isSaving"
 					autocomplete="off"
 					:spellcheck="false"
 					:placeholder="i18n.baseText('settings.n8nAgent.modelName.placeholder')"

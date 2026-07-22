@@ -11,7 +11,6 @@ export const INSTANCE_MODEL_CREDENTIAL_TYPES = [
 	'openAiApi',
 	'anthropicApi',
 	'googlePalmApi',
-	'ollamaApi',
 	'groqApi',
 	'deepSeekApi',
 	'mistralCloudApi',

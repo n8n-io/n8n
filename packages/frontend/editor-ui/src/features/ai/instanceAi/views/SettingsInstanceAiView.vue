@@ -69,7 +69,10 @@ const modelCredential = computed(() =>
 	),
 );
 const isModelConfigured = computed(() =>
-	Boolean(store.settings?.modelCredentialId ?? store.settings?.modelEnvConfigured),
+	Boolean(
+		store.settings?.modelEnvConfigured ||
+			(store.settings?.modelCredentialId && store.settings.modelName),
+	),
 );
 const modelValue = computed(() => {
 	if (store.settings?.modelCredentialId) {
@@ -80,7 +83,7 @@ const modelValue = computed(() => {
 	return i18n.baseText('settings.n8nAgent.modelCredential.env.value');
 });
 const modelDescription = computed<{ key: BaseTextKey; warning: boolean } | null>(() => {
-	if (store.settings?.modelCredentialId) return null;
+	if (store.settings?.modelCredentialId && store.settings.modelName) return null;
 	if (store.settings?.modelEnvConfigured)
 		return { key: 'settings.n8nAgent.modelCredential.env.description', warning: false };
 	return { key: 'settings.n8nAgent.modelCredential.missing.description', warning: !isOff.value };
@@ -337,6 +340,7 @@ async function handleEnable() {
 	const modelCredentialId = store.settings?.modelCredentialId;
 	if (
 		modelCredentialId &&
+		store.canManageInstanceCredentials &&
 		(!modelCredential.value ||
 			!(await testSavedCredential(
 				modelCredentialId,
@@ -353,7 +357,7 @@ async function handleEnable() {
 		return;
 	}
 
-	if (sandboxCredentialId.value) {
+	if (sandboxCredentialId.value && store.canManageInstanceCredentials) {
 		const isDaytona = store.settings?.sandboxProvider === 'daytona';
 		if (
 			!(await testSavedCredential(

@@ -18,7 +18,10 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
-import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import {
+	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+	InstanceAiSettingsService,
+} from '../instance-ai-settings.service';
 
 type CredentialOperationContext = NonNullable<
 	Parameters<InstanceCredentialBroker['clearForUse']>[1]
@@ -262,7 +265,7 @@ describe('InstanceAiSettingsService', () => {
 				);
 			});
 
-			it('should replace and delete the old credential when the provider type changes', async () => {
+			it('should preserve the old credential when the provider type changes', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'old-cred',
 					name: 'AI Assistant model',
@@ -284,11 +287,7 @@ describe('InstanceAiSettingsService', () => {
 					'new-cred',
 					operationContext,
 				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-cred',
-					operationContext,
-				);
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).not.toHaveBeenCalled();
 			});
 
 			it('should switch the sandbox provider and clear the other slot', async () => {
@@ -302,7 +301,12 @@ describe('InstanceAiSettingsService', () => {
 				} as never);
 
 				const result = await service.updateAdminSettings(
-					{ sandboxConnection: { type: 'daytonaApi', data: { apiUrl: 'u', apiKey: 'k' } } },
+					{
+						sandboxConnection: {
+							type: 'daytonaApi',
+							data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
+						},
+					},
 					adminUser,
 				);
 
@@ -315,11 +319,7 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({ id: 'instance-ai:sandbox:n8n' }),
 					operationContext,
 				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-n8n',
-					operationContext,
-				);
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).not.toHaveBeenCalled();
 				expect(result.sandboxProvider).toBe('daytona');
 			});
 
@@ -338,7 +338,7 @@ describe('InstanceAiSettingsService', () => {
 				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
 			});
 
-			it('should clear a connection and delete the replaced credential', async () => {
+			it('should clear a connection without deleting the credential', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
 					id: 'old-search',
 					name: 'AI Assistant web search',
@@ -352,11 +352,7 @@ describe('InstanceAiSettingsService', () => {
 					expect.objectContaining({ id: 'instance-ai:search' }),
 					operationContext,
 				);
-				expect(credentialsService.deleteInstanceCredentialIfUnassigned).toHaveBeenCalledWith(
-					adminUser,
-					'old-search',
-					operationContext,
-				);
+				expect(credentialsService.deleteInstanceCredentialIfUnassigned).not.toHaveBeenCalled();
 			});
 
 			it('should reject connection payloads without the provider connection scope', async () => {
@@ -404,29 +400,47 @@ describe('InstanceAiSettingsService', () => {
 				expect(credentialsService.createInstanceCredential).not.toHaveBeenCalled();
 			});
 
-			it('should fail the settings transaction when replacement cleanup fails', async () => {
+			it('should reject incomplete Daytona credentials', async () => {
 				instanceCredentialBroker.resolveForUse.mockResolvedValue({
-					id: 'old-cred',
-					name: 'AI Assistant model',
-					type: 'openAiApi',
-					data: {},
+					id: 'daytona-cred',
+					name: 'AI Assistant sandbox',
+					type: 'daytonaApi',
+					data: { apiUrl: 'https://daytona.example.com', apiKey: ' ' },
 				});
-				credentialsService.createInstanceCredential.mockResolvedValue({ id: 'new-cred' } as never);
-				credentialsService.deleteInstanceCredentialIfUnassigned.mockRejectedValue(
-					new Error('delete failed'),
-				);
 
 				await expect(
-					service.updateAdminSettings(
-						{
-							modelConnection: { type: 'anthropicApi', data: { apiKey: 'k' } },
-							modelName: 'claude-sonnet-5',
-						},
-						adminUser,
-					),
-				).rejects.toThrow('delete failed');
-				expect(dbLockService.withLockContext).toHaveBeenCalledOnce();
+					service.updateAdminSettings({ daytonaCredentialId: 'daytona-cred' }),
+				).rejects.toThrow(/apiKey/);
 			});
+
+			it('should reject invalid SearXNG URLs', async () => {
+				instanceCredentialBroker.resolveForUse.mockResolvedValue({
+					id: 'search-cred',
+					name: 'AI Assistant web search',
+					type: 'searXngApi',
+					data: { apiUrl: 'not-a-url' },
+				});
+
+				await expect(
+					service.updateAdminSettings({ searchCredentialId: 'search-cred' }),
+				).rejects.toThrow(/valid HTTP URL/);
+			});
+		});
+
+		it('should reject n8n sandbox selection without a service URL', async () => {
+			globalConfig.instanceAi.sandboxEnabled = true;
+			globalConfig.instanceAi.n8nSandboxServiceUrl = '';
+
+			await expect(
+				service.updateAdminSettings({
+					n8nSandboxCredentialId: 'sandbox-cred',
+					sandboxProvider: 'n8n-sandbox',
+				}),
+			).rejects.toThrow(/N8N_SANDBOX_SERVICE_URL/);
+		});
+
+		it('should not offer Ollama credentials to the unsupported runtime', () => {
+			expect(INSTANCE_AI_MODEL_CREDENTIAL_POLICY.credentialTypes).not.toContain('ollamaApi');
 		});
 
 		it('should clear a service credential assignment', async () => {

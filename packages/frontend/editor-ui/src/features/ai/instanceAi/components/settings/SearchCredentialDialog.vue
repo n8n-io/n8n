@@ -35,6 +35,7 @@ const emit = defineEmits<{ saved: []; back: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
+const readOnly = computed(() => !store.canManageInstanceCredentials);
 const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
 	useInstanceCredentialTest();
 const { stepLabel } = useInstanceAiSetupSteps(3);
@@ -42,6 +43,7 @@ const { stepLabel } = useInstanceAiSetupSteps(3);
 provideWorkflowDocumentStore();
 
 const selectedType = ref('');
+const selectedCredentialId = ref('');
 const fieldsData = ref<ICredentialDataDecryptedObject>({});
 const isLoading = ref(false);
 
@@ -67,16 +69,26 @@ const providerOptions = computed(() =>
 		label: credentialTypeLabel(type),
 	})),
 );
+const existingCredentialOptions = computed(() =>
+	store.serviceCredentials.filter((credential) =>
+		INSTANCE_SEARCH_CREDENTIAL_TYPES.some((type) => type === credential.type),
+	),
+);
 
 function snapshot() {
-	return JSON.stringify({ t: selectedType.value, d: fieldsData.value });
+	return JSON.stringify({
+		c: selectedCredentialId.value,
+		t: selectedType.value,
+		d: fieldsData.value,
+	});
 }
 
 async function hydrate() {
+	selectedCredentialId.value = assignedId.value ?? '';
 	selectedType.value =
 		assignedType.value || (store.settings?.searchEnvConfigured ? '' : DEFAULT_SEARCH_TYPE);
 	fieldsData.value = {};
-	if (assignedId.value) {
+	if (assignedId.value && !readOnly.value) {
 		isLoading.value = true;
 		try {
 			const credential = await credentialsStore.getCredentialData({ id: assignedId.value });
@@ -110,6 +122,14 @@ function selectType(nextType: string) {
 	fieldsData.value = nextType === hydratedType ? { ...hydratedData } : {};
 }
 
+function selectCredential(nextCredentialId: string) {
+	if (nextCredentialId === selectedCredentialId.value) return;
+	credentialTestError.value = '';
+	selectedCredentialId.value = nextCredentialId;
+	selectedType.value =
+		existingCredentialOptions.value.find(({ id }) => id === nextCredentialId)?.type ?? '';
+}
+
 function setFieldValue(name: string, value: IUpdateInformation['value']) {
 	fieldsData.value = { ...fieldsData.value, [name]: value } as ICredentialDataDecryptedObject;
 }
@@ -120,10 +140,15 @@ const noneLabel = computed(() =>
 		: i18n.baseText('settings.n8nAgent.modelCredential.noneNoEnv'),
 );
 
-const readOnly = computed(() => !store.canManageInstanceCredentials);
+const isComplete = computed(() => {
+	if (readOnly.value || !selectedType.value) return true;
+	const field = selectedType.value === 'braveSearchApi' ? 'apiKey' : 'apiUrl';
+	return typeof fieldsData.value[field] === 'string' && fieldsData.value[field].trim().length > 0;
+});
 const isChanged = computed(() => snapshot() !== hydratedSnapshot);
 const saveDisabled = computed(() => {
-	if (store.isSaving || isTestingCredential.value || isLoading.value || readOnly.value) return true;
+	if (store.isSaving || isTestingCredential.value || isLoading.value || !isComplete.value)
+		return true;
 	if (props.setup) return !isChanged.value && !assignedId.value;
 	return !isChanged.value && !credentialTestError.value;
 });
@@ -140,27 +165,30 @@ function handleBack() {
 }
 
 async function handleSave() {
-	if (isChanged.value) {
-		store.setField(
-			'searchConnection',
-			selectedType.value
-				? { type: selectedType.value, data: { ...toRaw(fieldsData.value) } }
-				: null,
-		);
-		if (!(await store.save())) return;
-	}
-	const credentialId = store.settings?.searchCredentialId;
+	const connectionData = { ...toRaw(fieldsData.value) };
 	if (
+		!readOnly.value &&
 		selectedType.value &&
-		credentialId &&
 		!(await testCredential({
-			id: credentialId,
+			id: selectedType.value === assignedType.value ? (assignedId.value ?? '') : '',
 			name: 'AI Assistant web search',
 			type: selectedType.value,
-			data: { ...toRaw(fieldsData.value) },
+			data: connectionData,
 		}))
 	)
 		return;
+
+	if (isChanged.value) {
+		if (readOnly.value) {
+			store.setField('searchCredentialId', selectedCredentialId.value || null);
+		} else {
+			store.setField(
+				'searchConnection',
+				selectedType.value ? { type: selectedType.value, data: connectionData } : null,
+			);
+		}
+		if (!(await store.save())) return;
+	}
 	void store.refreshCredentials();
 	open.value = false;
 	emit('saved');
@@ -190,9 +218,27 @@ async function handleSave() {
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('settings.n8nAgent.searchCredential.label')">
 				<N8nSelect
+					v-if="readOnly"
+					:model-value="selectedCredentialId"
+					size="medium"
+					:disabled="store.isSaving"
+					:placeholder="i18n.baseText('settings.n8nAgent.searchCredential.placeholder')"
+					data-test-id="n8n-agent-search-provider-select"
+					@update:model-value="selectCredential(String($event ?? ''))"
+				>
+					<N8nOption v-if="!setup" value="" :label="noneLabel" />
+					<N8nOption
+						v-for="credential in existingCredentialOptions"
+						:key="credential.id"
+						:value="credential.id"
+						:label="`${credential.name} · ${credentialTypeLabel(credential.type)}`"
+					/>
+				</N8nSelect>
+				<N8nSelect
+					v-else
 					:model-value="selectedType"
 					size="medium"
-					:disabled="store.isSaving || readOnly"
+					:disabled="store.isSaving"
 					:placeholder="i18n.baseText('settings.n8nAgent.searchCredential.placeholder')"
 					data-test-id="n8n-agent-search-provider-select"
 					@update:model-value="selectType(String($event ?? ''))"
@@ -208,7 +254,7 @@ async function handleSave() {
 			</N8nInputLabel>
 
 			<ConnectionFields
-				v-if="selectedType && !isLoading"
+				v-if="!readOnly && selectedType && !isLoading"
 				:credential-type="selectedType"
 				:data="fieldsData"
 				data-test-id="n8n-agent-search-connection-fields"

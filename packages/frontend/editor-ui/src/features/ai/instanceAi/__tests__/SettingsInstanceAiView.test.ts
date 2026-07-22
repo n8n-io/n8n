@@ -21,12 +21,38 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
 		baseText: (key: string) => key,
+		credText: () => ({
+			inputLabelDisplayName: (parameter: { displayName: string }) => parameter.displayName,
+			inputLabelDescription: () => '',
+			hint: () => '',
+		}),
 	}),
 }));
 
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({ set: vi.fn() }),
 }));
+
+vi.mock('../components/settings/ConnectionFields.vue', async () => {
+	const { defineComponent, h } = await import('vue');
+	return {
+		default: defineComponent({
+			props: { data: { type: Object, required: true } },
+			emits: ['update'],
+			setup(props, { emit }) {
+				const input = (name: string, type = 'text') =>
+					h('input', {
+						'data-test-id': `connection-${name}`,
+						type,
+						value: (props.data as Record<string, unknown>)[name] ?? '',
+						onInput: (event: Event) =>
+							emit('update', name, (event.target as HTMLInputElement).value),
+					});
+				return () => h('div', [input('apiUrl'), input('apiKey', 'password')]);
+			},
+		}),
+	};
+});
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
@@ -127,7 +153,42 @@ describe('SettingsInstanceAiView', () => {
 		useCredentialsStore().setCredentialTypes([
 			{ name: 'openAiApi', displayName: 'OpenAI', properties: [] },
 			{ name: 'anthropicApi', displayName: 'Anthropic', properties: [] },
-			{ name: 'searXngApi', displayName: 'SearXNG', properties: [] },
+			{
+				name: 'daytonaApi',
+				displayName: 'Daytona',
+				properties: [
+					{ displayName: 'API URL', name: 'apiUrl', type: 'string', required: true, default: '' },
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						typeOptions: { password: true },
+						required: true,
+						default: '',
+					},
+				],
+			},
+			{
+				name: 'searXngApi',
+				displayName: 'SearXNG',
+				properties: [
+					{ displayName: 'API URL', name: 'apiUrl', type: 'string', required: true, default: '' },
+				],
+			},
+			{
+				name: 'braveSearchApi',
+				displayName: 'Brave Search',
+				properties: [
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+				test: { request: { url: '/search' } },
+			},
 		] satisfies ICredentialType[]);
 		store = useInstanceAiSettingsStore();
 		settingsStore = useSettingsStore();
@@ -153,28 +214,41 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('Model credential dialog', () => {
-		it('disables editing without the provider connection scope', async () => {
+		it('allows selecting an existing connection without the provider connection scope', async () => {
 			vi.mocked(hasPermission).mockImplementation(
 				(_permissionNames, options) => options?.rbac?.scope !== 'credential:manageInstance',
 			);
-			vi.spyOn(useCredentialsStore(), 'getCredentialData').mockResolvedValue({
-				data: {},
-			} as never);
 			store.$patch({
 				settings: { ...store.settings!, modelCredentialId: 'openai-id', modelName: 'gpt-4o' },
 				instanceModelCredentials: [
 					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
+					{ id: 'anthropic-id', name: 'Backup', type: 'anthropicApi', provider: 'anthropic' },
 				],
 			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
 
-			const { getByTestId } = renderModelDialog({ props: { open: true } });
+			const { getByTestId, findByTestId, findByText, queryByTestId } = renderModelDialog({
+				props: { open: true },
+			});
+			const select = await findByTestId('n8n-agent-model-provider-select');
 
-			await waitFor(() =>
-				expect(
-					getByTestId('n8n-agent-model-provider-select').querySelector('input'),
-				).toBeDisabled(),
-			);
-			expect(getByTestId('n8n-agent-model-dialog-save')).toBeDisabled();
+			await waitFor(() => expect(select.querySelector('input')).not.toBeDisabled());
+			expect(queryByTestId('n8n-agent-model-connection-fields')).toBeNull();
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('Backup · Anthropic'));
+			const modelNameField = getByTestId('n8n-agent-model-name-input');
+			const modelNameInput =
+				modelNameField.tagName === 'INPUT'
+					? (modelNameField as HTMLInputElement)
+					: modelNameField.querySelector('input')!;
+			await fireEvent.update(modelNameInput, 'claude-sonnet-4');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+			expect(store.draft).toMatchObject({
+				modelCredentialId: 'anthropic-id',
+				modelName: 'claude-sonnet-4',
+			});
+			expect(save).toHaveBeenCalledOnce();
 		});
 
 		it('stages an inline connection and only saves once a model name is committed', async () => {
@@ -243,7 +317,7 @@ describe('SettingsInstanceAiView', () => {
 					{ id: 'openai-id', name: 'AI Assistant model', type: 'openAiApi', provider: 'openai' },
 				],
 			});
-			vi.spyOn(store, 'save').mockResolvedValue(true);
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
 			const { findByTestId, getByTestId } = renderModelDialog({ props: { open: true } });
 
 			const modelNameField = await findByTestId('n8n-agent-model-name-input');
@@ -258,6 +332,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(testCredential).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'openai-id', type: 'openAiApi' }),
 			);
+			expect(save).not.toHaveBeenCalled();
 		});
 	});
 
@@ -288,13 +363,15 @@ describe('SettingsInstanceAiView', () => {
 
 			await fireEvent.click(providerSelect.querySelector('input')!);
 			await fireEvent.click(await findByText('Daytona'));
+			const fields = getByTestId('n8n-agent-sandbox-connection-fields');
+			await fireEvent.update(fields.querySelector('input[type="password"]')!, 'daytona-key');
 
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
 
 			expect(store.draft).toMatchObject({
 				sandboxConnection: {
 					type: 'daytonaApi',
-					data: { apiUrl: 'https://app.daytona.io/api' },
+					data: { apiUrl: 'https://app.daytona.io/api', apiKey: 'daytona-key' },
 				},
 			});
 			expect(save).toHaveBeenCalledOnce();
@@ -366,9 +443,42 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-search-dialog-save')).toBeDisabled();
 
 			await fireEvent.click(providerSelect.querySelector('input')!);
-			await fireEvent.click(await findByText('braveSearchApi'));
+			await fireEvent.click(await findByText('Brave Search'));
+
+			expect(getByTestId('n8n-agent-search-dialog-save')).toBeDisabled();
+			const fields = getByTestId('n8n-agent-search-connection-fields');
+			await fireEvent.update(
+				fields.querySelector('[data-test-id="connection-apiKey"]')!,
+				'brave-key',
+			);
 
 			expect(getByTestId('n8n-agent-search-dialog-save')).not.toBeDisabled();
+		});
+
+		it('tests a changed connection before saving it', async () => {
+			const credentialsStore = useCredentialsStore();
+			vi.spyOn(credentialsStore, 'testCredential').mockResolvedValue({
+				status: 'Error',
+				message: 'Invalid API key',
+			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, findByTestId, findByText } = renderSearchDialog({
+				props: { open: true },
+			});
+			const providerSelect = await findByTestId('n8n-agent-search-provider-select');
+
+			await fireEvent.click(providerSelect.querySelector('input')!);
+			await fireEvent.click(await findByText('Brave Search'));
+			await fireEvent.update(
+				getByTestId('n8n-agent-search-connection-fields').querySelector(
+					'[data-test-id="connection-apiKey"]',
+				)!,
+				'brave-key',
+			);
+			await fireEvent.click(getByTestId('n8n-agent-search-dialog-save'));
+
+			expect(save).not.toHaveBeenCalled();
+			expect(getByTestId('n8n-agent-search-credential-test-error')).toBeVisible();
 		});
 	});
 
@@ -717,7 +827,15 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByText('settings.n8nAgent.status.enabled')).toBeVisible();
 		});
 
-		it('shows setup required while model or sandbox are unconfigured', () => {
+		it('shows setup required for a credential-only legacy model assignment', () => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					modelCredentialId: 'openai-id',
+					modelName: null,
+					sandboxEnvConfigured: true,
+				},
+			});
 			const { getByTestId, getByText } = renderComponent();
 			expect(getByTestId('n8n-agent-status-menu')).toBeVisible();
 			expect(getByText('settings.n8nAgent.status.setupRequired')).toBeVisible();
@@ -725,7 +843,12 @@ describe('SettingsInstanceAiView', () => {
 
 		it('shows an enable button with dimmed sections when disabled but configured', () => {
 			store.$patch({
-				settings: { ...store.settings!, enabled: false, modelCredentialId: 'openai-id' },
+				settings: {
+					...store.settings!,
+					enabled: false,
+					modelCredentialId: 'openai-id',
+					modelName: 'gpt-4o',
+				},
 			});
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
