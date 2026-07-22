@@ -1,7 +1,49 @@
 import { readFileSync, readdirSync } from 'fs';
 import { basename, join } from 'path';
+import { z } from 'zod';
 
 import type { DiscoveryTestCase } from '../../discovery/types';
+import type { LocalGatewayStatus } from '../../../src/types';
+
+const forbiddenToolCallSchema = z
+	.object({
+		toolName: z.string().min(1),
+		argsContainAny: z.array(z.string().min(1)).optional(),
+	})
+	.strict();
+
+/** Strict authoring schema for discovery cases — a typo'd key or an empty
+ *  expectation must fail at load time, not pass vacuously at run time (the
+ *  workflow-case loader has had this guarantee for a while; discovery cases
+ *  were a blind JSON.parse cast until TRUST-261's cleanup). */
+export const discoveryTestCaseSchema = z
+	.object({
+		id: z.string().min(1),
+		userMessage: z.string().min(1),
+		instanceState: z
+			.object({
+				// Opaque here (mirrors SystemPromptOptions); consumers validate usage.
+				localGateway: z.custom<LocalGatewayStatus>().optional(),
+				browserAvailable: z.boolean().optional(),
+			})
+			.strict()
+			.optional(),
+		expectedToolInvocations: z
+			.object({
+				anyOf: z.array(z.string().min(1)).optional(),
+				noneOf: z.array(z.string().min(1)).optional(),
+				anyOfToolCalls: z.array(forbiddenToolCallSchema).optional(),
+				allOfToolCalls: z.array(forbiddenToolCallSchema).optional(),
+				noneOfToolCalls: z.array(forbiddenToolCallSchema).optional(),
+			})
+			.strict()
+			.refine((expectations) => Object.values(expectations).some((v) => v !== undefined), {
+				message: 'expectedToolInvocations needs at least one expectation key',
+			}),
+		rationale: z.string().optional(),
+		maxSteps: z.number().int().positive().optional(),
+	})
+	.strict();
 
 export interface DiscoveryTestCaseWithFile {
 	testCase: DiscoveryTestCase;
@@ -11,13 +53,22 @@ export interface DiscoveryTestCaseWithFile {
 
 function parseTestCaseFile(filePath: string): DiscoveryTestCase {
 	const content = readFileSync(filePath, 'utf-8');
+	let raw: unknown;
 	try {
-		return JSON.parse(content) as DiscoveryTestCase;
+		raw = JSON.parse(content);
 	} catch (error) {
 		throw new Error(
 			`Failed to parse discovery test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
+	const parsed = discoveryTestCaseSchema.safeParse(raw);
+	if (!parsed.success) {
+		const issues = parsed.error.issues
+			.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+			.join('; ');
+		throw new Error(`Invalid discovery test case ${filePath}: ${issues}`);
+	}
+	return parsed.data;
 }
 
 function parseSubstringList(value: string | undefined): string[] {

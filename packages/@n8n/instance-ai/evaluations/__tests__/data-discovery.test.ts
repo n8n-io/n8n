@@ -7,7 +7,7 @@
  * runner.
  */
 
-import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
+import { discoveryTestCaseSchema, loadDiscoveryTestCasesWithFiles } from '../data/discovery';
 import { runExpectedToolsInvokedCheck } from '../discovery/expected-tools-invoked';
 
 describe('loadDiscoveryTestCasesWithFiles', () => {
@@ -67,5 +67,27 @@ describe('loadDiscoveryTestCasesWithFiles', () => {
 
 		expect(positive.length).toBeGreaterThan(0);
 		expect(negative.length).toBeGreaterThan(0);
+	});
+});
+
+describe('discoveryTestCaseSchema', () => {
+	const valid = {
+		id: 'my-scenario',
+		userMessage: 'do the thing',
+		expectedToolInvocations: { anyOf: ['build-workflow'] },
+	};
+
+	it('accepts a minimal valid case', () => {
+		expect(discoveryTestCaseSchema.safeParse(valid).success).toBe(true);
+	});
+
+	it('rejects a typo-d key instead of passing vacuously', () => {
+		const typo = { ...valid, expectedToolInvocation: { anyOf: ['x'] } };
+		expect(discoveryTestCaseSchema.safeParse(typo).success).toBe(false);
+	});
+
+	it('rejects empty expectations — a case must assert something', () => {
+		const empty = { ...valid, expectedToolInvocations: {} };
+		expect(discoveryTestCaseSchema.safeParse(empty).success).toBe(false);
 	});
 });
