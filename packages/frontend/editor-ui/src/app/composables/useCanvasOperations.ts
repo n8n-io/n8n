@@ -2630,11 +2630,24 @@ export function useCanvasOperations() {
 		for (const node of workflow.nodes) {
 			if (!node.credentials) continue;
 
-			for (const [name, credential] of Object.entries(node.credentials)) {
+			for (const [type, credential] of Object.entries(node.credentials)) {
 				if (typeof credential === 'string' || credential.id === null) continue;
+				if (credentialsStore.getCredentialById(credential.id)) continue;
 
-				if (!credentialsStore.getCredentialById(credential.id)) {
-					delete node.credentials[name];
+				// The id is unknown locally, e.g. the workflow was exported from another
+				// instance. Fall back to matching by name before dropping the credential.
+				const nameMatches = credentialsStore
+					.getCredentialsByType(type)
+					.filter((cred) => cred.name === credential.name);
+
+				if (nameMatches.length === 1) {
+					node.credentials[type] = { id: nameMatches[0].id, name: nameMatches[0].name };
+				} else if (nameMatches.length > 1) {
+					// Ambiguous: keep it name-only so the existing "not identified" node
+					// issue prompts the user to pick one, instead of silently unsetting it.
+					node.credentials[type] = { id: null, name: credential.name };
+				} else {
+					delete node.credentials[type];
 				}
 			}
 		}
