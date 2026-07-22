@@ -654,6 +654,16 @@ export type Modals = {
 
 export type ModalKey = keyof Modals;
 
+/**
+ * The modal-opening capability. Stores that need to open modals depend on this
+ * pair (mirroring `ui.store`'s surface) and receive it via dependency injection,
+ * rather than importing `ui.store` directly. A consumer may use only a subset.
+ */
+export interface ModalOpeners {
+	openModal: (name: ModalKey) => void;
+	openModalWithData: (payload: { name: ModalKey; data: Record<string, unknown> }) => void;
+}
+
 // `ModalState` is owned by `@n8n/frontend-module-sdk`; re-exported here so existing
 // `@/Interface` importers stay unchanged.
 export type { ModalState };
