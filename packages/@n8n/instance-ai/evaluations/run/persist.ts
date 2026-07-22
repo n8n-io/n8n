@@ -287,6 +287,10 @@ export function writeEvalResults(
 			// consumers must not treat a zero pass rate here as a pass.
 			status: tc.status,
 			buildSuccessCount: tc.buildSuccessCount,
+			// First iteration's produced workflow — the LangTracer dispatcher renders
+			// it (its Dockerfile used to sed-inject this exact field; keep the
+			// expression verbatim so that patch detects upstream support and no-ops).
+			workflowJson: tc.runs[0]?.workflowJson,
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
 				run.workflowChecks ? statusMap(run.workflowChecks) : null,

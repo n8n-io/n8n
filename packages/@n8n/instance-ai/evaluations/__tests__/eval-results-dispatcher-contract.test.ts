@@ -44,6 +44,14 @@ function iteration1(): WorkflowTestCaseResult {
 		testCase,
 		workflowBuildSuccess: true,
 		workflowChecks: [passingCheck],
+		workflowJson: {
+			id: 'wf-1',
+			name: 'Digest',
+			active: false,
+			versionId: 'v1',
+			nodes: [],
+			connections: {},
+		},
 		buildExpectationResults: [
 			{ expectation: 'sends a digest', pass: true, reason: 'digest node present' },
 		],
@@ -76,6 +84,7 @@ interface DispatcherView {
 	experimentName?: string;
 	testCases: Array<{
 		buildSuccessCount: number;
+		workflowJson?: { id: string };
 		totalRuns: number;
 		workflowChecksPerRun: Array<Record<string, string> | null>;
 		buildExpectations: Array<{
@@ -131,6 +140,9 @@ describe('eval-results.json — dispatcher contract', () => {
 		const tc = report.testCases[0];
 		expect(tc.buildSuccessCount).toBe(2);
 		expect(tc.totalRuns).toBe(2);
+		// Produced workflow rides along (first iteration's) — the dispatcher's
+		// Dockerfile patch greps for upstream support of this field and no-ops.
+		expect(tc.workflowJson).toMatchObject({ id: 'wf-1' });
 
 		// Per-iteration build signals. Checks serialize as a name→status map (an
 		// iteration without checks serializes as null, not as a hole).
