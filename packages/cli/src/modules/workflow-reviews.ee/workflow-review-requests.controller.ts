@@ -1,6 +1,6 @@
-import { CreateWorkflowReviewRequestDto } from '@n8n/api-types';
+import { CreateWorkflowReviewRequestDto, ListWorkflowReviewRequestsQueryDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Licensed, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { WorkflowReviewRequestService } from './workflow-review-request.service';
@@ -8,6 +8,16 @@ import { WorkflowReviewRequestService } from './workflow-review-request.service'
 @RestController('/workflow-review-requests')
 export class WorkflowReviewRequestsController {
 	constructor(private readonly workflowReviewRequestService: WorkflowReviewRequestService) {}
+
+	@Get('/')
+	@Licensed('feat:workflowReviews')
+	async list(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListWorkflowReviewRequestsQueryDto,
+	) {
+		return await this.workflowReviewRequestService.list(req.user, query);
+	}
 
 	@Post('/')
 	@Licensed('feat:workflowReviews')

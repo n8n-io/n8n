@@ -272,6 +272,13 @@ export interface FrontendSettings {
 		 * `084_eval_collections` flag would otherwise never resolve.
 		 */
 		collectionsEnabled: boolean;
+		/**
+		 * Operator override (`N8N_AGENT_EVALS_ENABLED`) that force-enables the
+		 * agent-evals surface. Surfaced here so the frontend gate works even when
+		 * the in-browser PostHog client is disabled (telemetry off), where the
+		 * `101_agent_evals` flag would otherwise never resolve.
+		 */
+		agentEvalsEnabled: boolean;
 	};
 
 	/** Backend modules that were initialized during startup. */
