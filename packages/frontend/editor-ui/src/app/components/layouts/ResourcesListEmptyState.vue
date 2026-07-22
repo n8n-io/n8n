@@ -27,7 +27,7 @@ export const EMPTY_STATE_CONFIG = {
 		disabledTooltipKey: 'credentials.empty.button.disabled.tooltip',
 	},
 	executions: {
-		icon: 'workflow',
+		icon: 'history',
 		headingKey: 'executions.empty.heading',
 		descriptionKey: 'executions.empty.description',
 		ctaKey: 'projects.header.create.workflow',
