@@ -14,31 +14,27 @@ import {
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import {
-	computed,
-	toValue,
-	unref,
-	type ComputedRef,
-	type MaybeRef,
-	type MaybeRefOrGetter,
-} from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
 export function useNodeCredentialOptions(
-	node: ComputedRef<INodeUi | null>,
-	nodeType: ComputedRef<INodeTypeDescription | null>,
-	overrideCredType: MaybeRef<NodeParameterValueType | undefined>,
+	node: MaybeRefOrGetter<INodeUi | null>,
+	nodeType: MaybeRefOrGetter<INodeTypeDescription | null>,
+	overrideCredType: MaybeRefOrGetter<NodeParameterValueType | undefined>,
 	displayAllOptions: MaybeRefOrGetter<boolean> = false,
 ) {
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
-	const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
+	const mainNodeAuthField = computed(() => getMainAuthField(toValue(nodeType)));
 
 	const credentialTypesNodeDescriptions = computed(() =>
-		credentialsStore.getCredentialTypesNodeDescriptions(unref(overrideCredType), nodeType.value),
+		credentialsStore.getCredentialTypesNodeDescriptions(
+			toValue(overrideCredType),
+			toValue(nodeType),
+		),
 	);
 
 	const credentialTypesNodeDescriptionDisplayed = computed(() =>
@@ -65,7 +61,7 @@ export function useNodeCredentialOptions(
 			);
 		});
 
-		if (node.value?.type === HTTP_REQUEST_NODE_TYPE) {
+		if (toValue(node)?.type === HTTP_REQUEST_NODE_TYPE) {
 			options = options.filter((option) => !option.isManaged);
 		}
 
@@ -73,7 +69,8 @@ export function useNodeCredentialOptions(
 	}
 
 	function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
-		if (!node.value) {
+		const nodeValue = toValue(node);
+		if (!nodeValue) {
 			return false;
 		}
 
@@ -82,21 +79,22 @@ export function useNodeCredentialOptions(
 			return true;
 		}
 		return nodeHelpers.displayParameter(
-			node.value.parameters,
+			nodeValue.parameters,
 			credentialTypeDescription,
 			'',
-			node.value,
+			nodeValue,
 		);
 	}
 
 	function showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-		if (!node.value) {
+		const nodeValue = toValue(node);
+		if (!nodeValue) {
 			return false;
 		}
 
-		const isRequired = isRequiredCredential(nodeType.value, credentialType);
+		const isRequired = isRequiredCredential(toValue(nodeType), credentialType);
 
-		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(node.value.type) && isRequired;
+		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeValue.type) && isRequired;
 	}
 
 	function getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
@@ -104,11 +102,11 @@ export function useNodeCredentialOptions(
 		if (credentialIsRequired) {
 			if (mainNodeAuthField.value) {
 				if (toValue(displayAllOptions)) {
-					return nodeType.value?.credentials?.map((cred) => cred.name) ?? [];
+					return toValue(nodeType)?.credentials?.map((cred) => cred.name) ?? [];
 				}
 
 				const credentials = getAllNodeCredentialForAuthType(
-					nodeType.value,
+					toValue(nodeType),
 					mainNodeAuthField.value.name,
 				);
 				return credentials.map((cred) => cred.name);
@@ -118,7 +116,7 @@ export function useNodeCredentialOptions(
 	}
 
 	function isCredentialExisting(credentialType: INodeCredentialDescription): boolean {
-		const credential = node.value?.credentials?.[credentialType.name];
+		const credential = toValue(node)?.credentials?.[credentialType.name];
 		// Gateway-managed credentials have no real DB record but are properly configured
 		if (credential?.__aiGatewayManaged) return true;
 		if (!credential?.id) return false;

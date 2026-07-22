@@ -1137,6 +1137,42 @@ describe('NodeCredentials', () => {
 		});
 	});
 
+	describe('credential auto-select', () => {
+		it('should auto-select a credential of the overridden type on mount', () => {
+			const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
+			ndvStore.activeNode = httpNodeNoCreds;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+			};
+
+			const { emitted } = renderComponent({
+				props: {
+					node: httpNodeNoCreds,
+					overrideCredType: 'openAiApi',
+					readonly: false,
+					showAll: false,
+					hideIssues: false,
+				},
+				global: {
+					provide: {
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+					},
+				},
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				name: string;
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.name).toBe(httpNodeNoCreds.name);
+			expect(payload.properties.credentials['openAiApi']).toEqual({
+				id: 'c8vqdPpPClh4TgIO',
+				name: 'OpenAi account',
+			});
+		});
+	});
+
 	describe('AI Gateway toggle (onAiGatewaySelector)', () => {
 		const googlePalmApiCredType: ICredentialType = {
 			name: 'googlePalmApi',

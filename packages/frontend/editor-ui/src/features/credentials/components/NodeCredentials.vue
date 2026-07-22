@@ -43,6 +43,7 @@ import { assert } from '@n8n/utils/assert';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
+import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
@@ -165,7 +166,7 @@ const {
 } = useNodeCredentialOptions(
 	node,
 	nodeType,
-	computed(() => props.overrideCredType),
+	() => props.overrideCredType,
 	() => props.showAll,
 );
 
@@ -308,38 +309,31 @@ watch(
 
 		if (!isEmpty(selected.value)) return;
 
-		const allOptions = types.map((type) => type.options).flat();
-
-		if (allOptions.length === 0) {
-			// No credentials configured — auto-enable AI Gateway for supported types,
-			// but only on the initial setup so a later action change doesn't redirect
-			// the user onto n8n Connect.
-			if (aiGateway.isEnabled.value && isInitialEvaluation) {
-				for (const { type } of types) {
-					if (
-						aiGateway.isCredentialTypeSupported(type.name) &&
-						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
-						isCurrentActionSupported.value
-					) {
-						onAiGatewaySelector(type.name, true, false);
-					}
-				}
-			}
+		const autoSelected = getAutoSelectedCredential(node.value, props.overrideCredType);
+		if (autoSelected) {
+			onCredentialSelected(
+				autoSelected.credentialType,
+				autoSelected.credential.id,
+				false, // showAuthOptions
+				false, // isUserAction
+			);
 			return;
 		}
 
-		const mostRecentCredential = allOptions.reduce(
-			(mostRecent, current) =>
-				mostRecent && mostRecent.updatedAt > current.updatedAt ? mostRecent : current,
-			allOptions[0],
-		);
-
-		onCredentialSelected(
-			mostRecentCredential.type,
-			mostRecentCredential.id,
-			false, // showAuthOptions
-			false, // isUserAction
-		);
+		// No credentials available to select — auto-enable AI Gateway for supported
+		// types, but only on the initial setup so a later action change doesn't
+		// redirect the user onto n8n Connect.
+		if (aiGateway.isEnabled.value && isInitialEvaluation) {
+			for (const { type } of types) {
+				if (
+					aiGateway.isCredentialTypeSupported(type.name) &&
+					aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+					isCurrentActionSupported.value
+				) {
+					onAiGatewaySelector(type.name, true, false);
+				}
+			}
+		}
 	},
 	{ immediate: true },
 );

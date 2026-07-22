@@ -56,6 +56,7 @@ import {
 import * as workflowsApi from '@/app/api/workflows';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { getAutoSelectedCredential } from '@/features/credentials/credentials.utils';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -1121,6 +1122,34 @@ export function useCanvasOperations() {
 		});
 
 		return nodeData;
+	}
+
+	/**
+	 * Auto-select a default credential for pasted/imported nodes that have none
+	 */
+	function autoSelectNodeCredentials(nodes: INode[]) {
+		const autoSelected = nodes.flatMap((node) => {
+			const selection = getAutoSelectedCredential(node);
+			if (!selection) return [];
+
+			node.credentials = {
+				...(node.credentials ?? {}),
+				[selection.credentialType]: selection.credential,
+			};
+			return { nodeName: node.name, credentialName: selection.credential.name };
+		});
+		if (autoSelected.length === 0) return;
+
+		const single = autoSelected.length === 1 ? autoSelected[0] : undefined;
+		toast.showMessage({
+			type: 'info',
+			title: i18n.baseText('nodeView.showMessage.credentialsAutoAdded.title'),
+			message: single
+				? i18n.baseText('nodeView.showMessage.credentialsAutoAdded.message.single', {
+						interpolate: { credentialName: single.credentialName, nodeName: single.nodeName },
+					})
+				: i18n.baseText('nodeView.showMessage.credentialsAutoAdded.message.multiple'),
+		});
 	}
 
 	async function revertAddNode(nodeName: string) {
@@ -2934,6 +2963,7 @@ export function useCanvasOperations() {
 			}
 
 			removeUnknownCredentials(workflowData);
+			autoSelectNodeCredentials(workflowData.nodes ?? []);
 
 			try {
 				if (trackEvents) {

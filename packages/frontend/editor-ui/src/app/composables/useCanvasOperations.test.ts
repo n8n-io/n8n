@@ -162,6 +162,11 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
+const getAutoSelectedCredentialMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/credentials/credentials.utils', () => ({
+	getAutoSelectedCredential: getAutoSelectedCredentialMock,
+}));
+
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
 const unsetDataMock = vi.fn();
@@ -5267,6 +5272,85 @@ describe('useCanvasOperations', () => {
 			nodes: [], //buildImportNodes(),
 			connections: {},
 		};
+
+		it('should auto-select a credential for an imported node and toast its name', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(result.nodes?.[0]?.credentials).toEqual({ cred: { id: '1', name: 'credA' } });
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'Credentials auto-added',
+				message: 'We selected "credA" for the "Set" node. Please check it\'s the right one.',
+			});
+		});
+
+		it('should show a generic toast when credentials are auto-selected for multiple nodes', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [
+				createTestNode({ id: '1', name: 'Set', type: SET_NODE_TYPE }),
+				createTestNode({ id: '2', name: 'Set 2', type: SET_NODE_TYPE }),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'Credentials auto-added',
+				message:
+					"We added existing credentials to the pasted node(s). Please check they're the right ones.",
+			});
+		});
+
+		it('should not toast when there is nothing to auto-select', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue(undefined);
+
+			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(result.nodes?.[0]?.credentials).toBeUndefined();
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Credentials auto-added' }),
+			);
+		});
 
 		it('should show an error and import nothing when data is not a valid workflow', async () => {
 			const toast = useToast();
