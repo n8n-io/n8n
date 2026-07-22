@@ -75,7 +75,7 @@ describe('normalizeNodeShape', () => {
 		});
 	});
 
-	it('does not strip nullish values for keys outside INodeSchema', () => {
+	it('does not strip null for keys outside INodeSchema', () => {
 		const result = normalizeNodeShape({
 			id: '1',
 			parameters: {},
@@ -94,5 +94,18 @@ describe('normalizeNodeShape', () => {
 		});
 
 		expect(result).toEqual({ id: null, name: null, parameters: {} });
+	});
+
+	it('always omits undefined top-level values, including required keys', () => {
+		const result = normalizeNodeShape({
+			id: '1',
+			name: undefined,
+			parameters: {},
+			notInSchema: undefined,
+		});
+
+		expect(result).toEqual({ id: '1', parameters: {} });
+		expect(result).not.toHaveProperty('name');
+		expect(result).not.toHaveProperty('notInSchema');
 	});
 });

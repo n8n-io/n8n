@@ -502,7 +502,7 @@ export const INodeSchema: z.ZodType<INode> = iNodeSchemaObject;
 
 export const INodesSchema: z.ZodType<INode[]> = z.array(INodeSchema);
 
-/** Top-level keys that are `.optional()` but not `.nullable()` — nullish values must be omitted. */
+/** Top-level keys that are `.optional()` but not `.nullable()` — `null` must be omitted. */
 const optionalNonNullableINodeKeys: ReadonlySet<string> = new Set(
 	Object.entries(iNodeSchemaObject.shape)
 		.filter(([, field]) => field.isOptional() && !field.isNullable())
@@ -512,16 +512,23 @@ const optionalNonNullableINodeKeys: ReadonlySet<string> = new Set(
 /**
  * Normalize a node to the {@link INodeSchema} persistence shape.
  *
- * Driven by INodeSchema: nullish values are omitted only for top-level keys marked
- * `.optional()` and not `.nullable()`. Adding a `.nullable()` field preserves `null`
- * for that key automatically. `parameters` is required and always coerced to an object.
- * Nested nulls (e.g. credential ids) are left intact.
+ * - `undefined` top-level values are always omitted (JSON has no undefined; e.g. sticky
+ *   notes may intentionally leave `name` unset).
+ * - `null` is omitted only for keys marked `.optional()` and not `.nullable()` on
+ *   INodeSchema. Adding a `.nullable()` field preserves `null` for that key.
+ * - `parameters` is required and always coerced to an object.
+ * - Nested nulls (e.g. credential ids) are left intact.
  */
 export function normalizeNodeShape<T extends object>(node: T): T {
 	const cleaned: Record<string, unknown> = { ...(node as Record<string, unknown>) };
 
-	for (const key of optionalNonNullableINodeKeys) {
-		if (cleaned[key] === null || cleaned[key] === undefined) {
+	for (const key of Object.keys(cleaned)) {
+		const value = cleaned[key];
+		if (value === undefined) {
+			delete cleaned[key];
+			continue;
+		}
+		if (value === null && optionalNonNullableINodeKeys.has(key)) {
 			delete cleaned[key];
 		}
 	}
