@@ -1,7 +1,6 @@
 import type { IHttpRequestMethods, IHttpRequestOptions, IDataObject } from 'n8n-workflow';
 import { createHash, createHmac } from 'node:crypto';
 
-
 import type { AwsIamCredentialsType, AwsSecurityHeaders } from './types';
 import { awsGetSignInOptionsAndUpdateRequest, signOptions } from './utils';
 
@@ -29,7 +28,8 @@ const AMZ_DATE = '20260722T080000Z';
 const DATE_STAMP = '20260722';
 
 const sha256Hex = (data: string | Buffer) => createHash('sha256').update(data).digest('hex');
-const hmac = (key: string | Buffer, data: string) => createHmac('sha256', key).update(data).digest();
+const hmac = (key: string | Buffer, data: string) =>
+	createHmac('sha256', key).update(data).digest();
 
 function expectedSignature(canonicalRequest: string, region: string, service: string): string {
 	const stringToSign = [
@@ -66,6 +66,13 @@ async function signS3Request(options: {
 	body?: string | Buffer;
 	query?: IDataObject;
 }): Promise<{ result: IHttpRequestOptions; url: string }> {
+	// The flag must be set before the path is built: the legacy branch skips the
+	// strict encoding so the rollback lever reproduces pre-migration wire bytes.
+	if (options.legacy) {
+		process.env.N8N_AWS_LEGACY_SIGNER = 'true';
+	} else {
+		delete process.env.N8N_AWS_LEGACY_SIGNER;
+	}
 	const requestOptions = {
 		headers: {},
 		...(options.body !== undefined && { body: options.body }),
@@ -79,11 +86,6 @@ async function signS3Request(options: {
 		's3',
 		'us-east-1',
 	);
-	if (options.legacy) {
-		process.env.N8N_AWS_LEGACY_SIGNER = 'true';
-	} else {
-		delete process.env.N8N_AWS_LEGACY_SIGNER;
-	}
 	const result = await signOptions(requestOptions, signOpts, securityHeaders, url, options.method);
 	return { result, url };
 }
@@ -138,6 +140,7 @@ describe('S3 path signing (real signers)', () => {
 		'/bucket/at@10:30,x;y=[z]|w.bin',
 		'/bucket/café 中文.pdf',
 		'/bucket/nested/deep (copy)/key.json',
+		'/bucket/a%2Fb.txt',
 	];
 
 	describe.each(KEY_CORPUS)('key %s', (path) => {
@@ -152,7 +155,6 @@ describe('S3 path signing (real signers)', () => {
 			// canonical requests — any difference is the path.
 			expect(smithyAuth.signedHeaders).toBe(legacyAuth.signedHeaders);
 			expect(smithyAuth.signature).toBe(legacyAuth.signature);
-			expect(smithy.url).toBe(legacy.url);
 		});
 
 		it('new signer matches the legacy aws4 signature (PUT with body)', async () => {
@@ -171,7 +173,11 @@ describe('S3 path signing (real signers)', () => {
 	it('signs multipart request shapes identically to aws4 (query canonicalization)', async () => {
 		const shapes: Array<{ method: IHttpRequestMethods; query: IDataObject; body?: Buffer }> = [
 			{ method: 'POST', query: { uploads: '' } },
-			{ method: 'PUT', query: { partNumber: '2', uploadId: 'abc+def/ghi==' }, body: Buffer.from('chunk') },
+			{
+				method: 'PUT',
+				query: { partNumber: '2', uploadId: 'abc+def/ghi==' },
+				body: Buffer.from('chunk'),
+			},
 		];
 		for (const shape of shapes) {
 			const path = '/bucket/key (1).pdf';
@@ -183,7 +189,22 @@ describe('S3 path signing (real signers)', () => {
 
 			expect(smithyAuth.signedHeaders).toBe(legacyAuth.signedHeaders);
 			expect(smithyAuth.signature).toBe(legacyAuth.signature);
+			expect(smithy.url).toBe(
+				'https://s3.us-east-1.amazonaws.com/bucket/key%20%281%29.pdf?' +
+					new URLSearchParams(shape.query as Record<string, string>).toString(),
+			);
 		}
+	});
+
+	it('keeps pre-migration wire bytes when the legacy signer flag is set (rollback lever)', async () => {
+		const { url } = await signS3Request({
+			legacy: true,
+			path: '/bucket/report (1)+final.pdf',
+			method: 'GET',
+		});
+		// Raw WHATWG form: parens and + untouched, only the space encoded — byte-identical
+		// to what pre-2.30 aws4 deployments sent, so + keys keep addressing 'a b'-style keys.
+		expect(url).toBe('https://s3.us-east-1.amazonaws.com/bucket/report%20(1)+final.pdf');
 	});
 
 	it('deliberately diverges from aws4 for a literal + in the key (kept as %2B, not space)', async () => {

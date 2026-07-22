@@ -416,8 +416,9 @@ function resolveServiceAndRegion(
  * `/` separators stay literal — the form S3 computes server-side when verifying
  * SigV4 signatures, and the form the AWS SDK sends on the wire. A segment that is
  * not valid percent-encoding (a stray `%`) is treated as raw text, so the key still
- * round-trips unchanged. A literal `+` becomes `%2B` (AWS SDK behavior); the legacy
- * aws4 signer read a path `+` as a space.
+ * round-trips unchanged. An encoded slash collapses to `/` (S3 keys are flat, so
+ * `%2F` and `/` address the same key — aws4 did the same). A literal `+` becomes
+ * `%2B` (AWS SDK behavior); the legacy aws4 signer read a path `+` as a space.
  */
 export function uriEncodeS3Pathname(pathname: string): string {
 	return pathname
@@ -439,7 +440,8 @@ export function uriEncodeS3Pathname(pathname: string): string {
 				(char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
 			);
 		})
-		.join('/');
+		.join('/')
+		.replace(/%2F/g, '/');
 }
 
 /**
@@ -562,9 +564,11 @@ export function awsGetSignInOptionsAndUpdateRequest(
 	// uriEscapePath is off for S3 so smithy signs this string verbatim. WHATWG URL
 	// leaves characters like ( ) + & = : @ raw in the pathname, so encode it once
 	// here — the same string becomes both the signed path and the wire URL below.
+	// The legacy signer must keep the raw path: it canonicalizes internally, and
+	// the rollback flag has to reproduce pre-migration wire bytes exactly.
+	const encodeS3Path = signingService === 's3' && process.env.N8N_AWS_LEGACY_SIGNER !== 'true';
 	path =
-		(signingService === 's3' ? uriEncodeS3Pathname(endpoint.pathname) : endpoint.pathname) +
-		endpoint.search;
+		(encodeS3Path ? uriEncodeS3Pathname(endpoint.pathname) : endpoint.pathname) + endpoint.search;
 
 	// ! aws4.sign *must* have the body to sign, but we might have .form instead of .body
 	const requestWithForm = requestOptions as unknown as { form?: Record<string, string> };

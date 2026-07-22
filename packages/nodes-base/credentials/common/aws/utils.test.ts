@@ -1651,7 +1651,7 @@ describe('uriEncodeS3Pathname', () => {
 	// Characters WHATWG URL leaves raw in a pathname but S3's SigV4 canonicalization
 	// (AWS UriEncode) percent-encodes. Inputs are built through `new URL` so each
 	// case sees exactly what awsGetSignInOptionsAndUpdateRequest sees.
-	test.each([
+	it.each([
 		['+', '%2B'],
 		['!', '%21'],
 		["'", '%27'],
@@ -1696,8 +1696,10 @@ describe('uriEncodeS3Pathname', () => {
 		expect(uriEncodeS3Pathname('/bucket/résumé.pdf')).toBe('/bucket/r%C3%A9sum%C3%A9.pdf');
 	});
 
-	it('preserves an encoded slash without turning it into a separator', () => {
-		expect(uriEncodeS3Pathname('/bucket/a%2Fb.txt')).toBe('/bucket/a%2Fb.txt');
+	it('collapses an encoded slash to / — S3 keys are flat, %2F and / address the same key', () => {
+		expect(uriEncodeS3Pathname('/bucket/a%2Fb.txt')).toBe('/bucket/a/b.txt');
+		// A double-encoded slash stays an encoded literal, exactly like aws4.
+		expect(uriEncodeS3Pathname('/bucket/a%252Fb.txt')).toBe('/bucket/a%252Fb.txt');
 	});
 
 	it('treats a stray % as literal text without poisoning valid escapes around it', () => {
@@ -1731,8 +1733,8 @@ describe('uriEncodeS3Pathname', () => {
 	});
 
 	it('matches the legacy aws4 canonical encoding, except + which is preserved as %2B', () => {
-		// aws4's oracle: decode each segment (+ read as space), re-encode everything
-		// but unreserved characters. Proven against S3 by years of production use.
+		// aws4's S3 canonicalization: decode each segment (+ read as space), re-encode
+		// everything but unreserved characters, then collapse %2F back to /.
 		const aws4Canonical = (pathname: string) =>
 			pathname
 				.split('/')
@@ -1742,12 +1744,14 @@ describe('uriEncodeS3Pathname', () => {
 						(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
 					),
 				)
-				.join('/');
+				.join('/')
+				.replace(/%2F/g, '/');
 		const plusFreeKeys = [
 			'/bucket/report (1)&v=2!.pdf',
 			"/bucket/quart'ile*star.log",
 			'/bucket/at@10:30,x;y=[z]|w.bin',
 			'/bucket/café 中文.pdf',
+			'/bucket/a%2Fb.txt',
 		];
 		for (const key of plusFreeKeys) {
 			const { pathname } = new URL(`https://s3.us-east-1.amazonaws.com${key}`);
@@ -1815,7 +1819,10 @@ describe('awsGetSignInOptionsAndUpdateRequest — S3 object-path canonicalizatio
 
 	it('canonicalizes S3 requests arriving through the uri branch (HTTP Request node)', () => {
 		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
-			{ uri: 'https://mybucket.s3.eu-west-1.amazonaws.com/exports/a+b (copy).csv', headers: {} } as any,
+			{
+				uri: 'https://mybucket.s3.eu-west-1.amazonaws.com/exports/a+b (copy).csv',
+				headers: {},
+			} as any,
 			credentials,
 			'',
 			'GET',
@@ -1843,7 +1850,8 @@ describe('awsGetSignInOptionsAndUpdateRequest — S3 object-path canonicalizatio
 	});
 
 	it('leaves non-S3 service paths untouched (Lambda ARN colons stay raw)', () => {
-		const path = '/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:fn/invocations';
+		const path =
+			'/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:fn/invocations';
 		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
 			{ headers: {} } as any,
 			credentials,
