@@ -1175,12 +1175,19 @@ describe('AgentBuilderView — three-column shell', () => {
 		await wrapper.find('[data-testid="agent-builder-instance-ai-btn"]').trigger('click');
 		await flushPromises();
 
-		expect(openAgentArtifactThread).toHaveBeenCalledWith({
-			type: 'agent',
-			id: 'a1',
-			name: 'Agent One',
-			projectId: 'p1',
-		});
+		expect(openAgentArtifactThread).toHaveBeenCalledWith(
+			{
+				type: 'agent',
+				id: 'a1',
+				name: 'Agent One',
+				projectId: 'p1',
+			},
+			{
+				source: 'agent_builder_page',
+				origin: 'internal',
+				sourceContext: { agentId: 'a1' },
+			},
+		);
 		expect(startInstanceAiThread).not.toHaveBeenCalled();
 	});
 
