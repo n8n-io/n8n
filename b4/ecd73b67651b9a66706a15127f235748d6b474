@@ -1,0 +1,71 @@
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_fad358ef69fdc9::t_eaef5fa0c78a24 130-132
+  s_fad358ef69fdc9::t_c421e717859f0c 61-66
+  s_fad358ef69fdc9::t_dbca21e36bec6c 177-183
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_3e807d2c46814a::t_778944183ff223 791-796
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  s_fad358ef69fdc9::t_330b6bb6b5ee00 103
+  s_fad358ef69fdc9::t_9e72ea8e3285e8 160
+  s_3e807d2c46814a::t_63b5e30f0384f0 117-126
+  s_fad358ef69fdc9::t_217b4318956817 28-32
+  s_3e807d2c46814a::t_681f9e5770344c 208,218,225,234,236,243,261-262
+  s_fad358ef69fdc9::t_52cc5b7c9f1701 201,207,209-217,219-224,226-233,235,237-242,244-260,263-278
+  s_fad358ef69fdc9::t_d8144ba2c0e77a 184
+  s_fad358ef69fdc9::t_416d07b7b5b8ed 43
+  s_fad358ef69fdc9::t_df606777b7a045 83
+  s_fad358ef69fdc9::t_d527d4d0d598aa 34
+packages/@n8n/agents/src/runtime/__tests__/planner-todos-tool.test.ts
+  s_3e807d2c46814a::t_b98c1c7ba53e8a 50
+packages/cli/src/modules/agents/builder/skills/integrations.skill.ts
+  s_fad358ef69fdc9::t_3c6aa74b0d6dae 84-88
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_fad358ef69fdc9::t_3809ebd42a53b3 152-164,214-216
+  s_fad358ef69fdc9::t_28ce4487b75157 232-237
+  s_fad358ef69fdc9::t_f3bf903c46f8fb 381-392
+  s_fad358ef69fdc9::t_9593bfbb88ac5e 4,19-20,24-25,35-38,43,45-50
+  s_fad358ef69fdc9::t_39504cdffc0317 139-151,165-166,171-173,179-180
+  s_fad358ef69fdc9::t_86cc8d8ab0147a 284-294
+  s_fad358ef69fdc9::t_0aa89a04e40feb 59-61,67-75,81,89-90,103,108-112
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_fad358ef69fdc9::t_be6c8340e092ca 621-622,630-633
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_fad358ef69fdc9::t_e90ffc36c92530 218-228
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  s_fad358ef69fdc9::t_cb9211d93c94df 30-34,36-38
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_3e807d2c46814a::t_aff905924880c5 666-667,669-672,677-678,680-684
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/canvasPreview.utils.test.ts
+  s_3e807d2c46814a::t_e4608d1eb06e54 516,531,543
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_fad358ef69fdc9::t_e83ca8be9a52e6 574-592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b4ecd73b67651b9a66706a15127f235748d6b474",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_3e807d2c46814a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "581b3f40-2971-4363-b9a5-675439f27716",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_fad358ef69fdc9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3fe3a64f-4672-4318-8866-cacd239e702c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
