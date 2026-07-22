@@ -60,8 +60,6 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 }));
 
 // Only the Admin system role is offered as a preset (clicking copies its scopes).
-// Member and Chat User presets were removed since their scopes are too limited
-// to be useful starting points for a custom role.
 const presetRoles = computed(() =>
 	rolesStore.processedInstanceRoles.filter(
 		(r) => r.systemRole && r.slug === GLOBAL_ADMIN_ROLE_SLUG,
