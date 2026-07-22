@@ -32,6 +32,7 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						name: 'Acme',
 						title: 'Engineer',
 						type: 'work',
+						customType: '',
 						department: '',
 						costCenter: '',
 						description: '',

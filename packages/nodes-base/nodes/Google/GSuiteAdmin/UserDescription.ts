@@ -236,7 +236,6 @@ export const userExtraFields: INodeProperties[] = [
 						name: 'type',
 						type: 'options',
 						options: [
-							{ name: 'Custom', value: 'custom' },
 							{ name: 'Domain Only', value: 'domain_only' },
 							{ name: 'Other', value: 'other' },
 							{ name: 'School', value: 'school' },
@@ -244,7 +243,13 @@ export const userExtraFields: INodeProperties[] = [
 						],
 						default: 'work',
 					},
-					customTypeField('type'),
+					{
+						displayName: 'Custom Type',
+						name: 'customType',
+						type: 'string',
+						default: '',
+						description: 'A free-form type.',
+					},
 					{
 						displayName: 'Department',
 						name: 'department',
@@ -1093,6 +1098,7 @@ export const userFields: INodeProperties[] = [
 								default: 'work',
 								description: 'The type of phone number',
 							},
+							customTypeField('type'),
 							{
 								displayName: 'Phone Number',
 								name: 'value',
@@ -1145,6 +1151,7 @@ export const userFields: INodeProperties[] = [
 								default: 'work',
 								description: 'The type of the email account',
 							},
+							customTypeField('type'),
 							{
 								displayName: 'Email',
 								name: 'address',
@@ -1777,6 +1784,7 @@ export const userFields: INodeProperties[] = [
 								default: 'work',
 								description: 'The type of phone number',
 							},
+							customTypeField('type'),
 							{
 								displayName: 'Phone Number',
 								name: 'value',
@@ -1840,6 +1848,7 @@ export const userFields: INodeProperties[] = [
 								default: 'work',
 								description: 'The type of the email account',
 							},
+							customTypeField('type'),
 							{
 								displayName: 'Email',
 								name: 'address',
