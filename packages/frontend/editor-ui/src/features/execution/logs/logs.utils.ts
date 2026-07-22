@@ -29,7 +29,7 @@ import {
 	isNodeLog,
 	isGroupLog,
 } from './logs.types';
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import type {
 	GroupExecutionStatus,
 	NodeExecutionSnapshot,
@@ -811,9 +811,6 @@ export function getDepth(entry: LogEntry): number {
 }
 
 export function getInputKey(node: INodeUi): string {
-	if (node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && node.typeVersion < 1.1) {
-		return 'input';
-	}
 	if (node.type === CHAT_TRIGGER_NODE_TYPE) {
 		return 'chatInput';
 	}

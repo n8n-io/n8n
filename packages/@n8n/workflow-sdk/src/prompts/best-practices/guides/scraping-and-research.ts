@@ -40,25 +40,19 @@ fetch it from the site directly. Using scraping nodes is the best way to get aro
 Fail" feature
 - Refresh expired tokens, verify API keys, and ensure correct permissions to avoid authentication failures
 
-### SerpAPI (@n8n/n8n-nodes-langchain.toolSerpApi)
+### HTML (n8n-nodes-base.html)
 
-Purpose: Give an agent the ability to search for research materials and fact-checking results that have been retrieved
-from other sources.
+Purpose: Extracts structured content from HTML returned by an HTTP Request
+
+Configuration:
+
+- Select the Extract HTML Content operation
+- JavaScript-rendered pages may return empty content because HTTP Request receives only the initial HTML
 
 ### Perplexity (n8n-nodes-base.perplexityTool)
 
 Purpose: Give an agent the ability to search utilising Perplexity, a powerful tool for finding sources/material for
 generating reports and information.
-
-### HTML Extract (n8n-nodes-base.htmlExtract)
-
-Purpose: Parses HTML and extracts data using CSS selectors for web scraping
-
-Pitfalls:
-
-- Some sites use JavaScript to render content, which may not be accessible via simple HTTP requests. Consider using
-browser automation tools or APIs if the HTML appears empty
-- Validate that the CSS selectors match the actual page structure to avoid extraction failures
 
 ### Split Out (n8n-nodes-base.splitOut)
 

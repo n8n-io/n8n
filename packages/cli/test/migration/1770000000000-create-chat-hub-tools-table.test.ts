@@ -17,7 +17,7 @@ function makeTool(
 	return {
 		id: overrides.id ?? randomUUID(),
 		name: overrides.name ?? 'Google Search',
-		type: overrides.type ?? '@n8n/n8n-nodes-langchain.toolSerpApi',
+		type: overrides.type ?? '@n8n/n8n-nodes-langchain.toolCalculator',
 		typeVersion: overrides.typeVersion ?? 1,
 		parameters: { query: 'test' },
 		position: [0, 0],
@@ -292,7 +292,7 @@ describe('CreateChatHubToolsTable Migration', () => {
 			const definition = JSON.parse(rows[0].definition);
 			// Should contain extra fields from the original INode definition
 			expect(definition.parameters).toEqual({ query: 'test' });
-			expect(definition.type).toBe('@n8n/n8n-nodes-langchain.toolSerpApi');
+			expect(definition.type).toBe('@n8n/n8n-nodes-langchain.toolCalculator');
 
 			await context.queryRunner.release();
 		});
