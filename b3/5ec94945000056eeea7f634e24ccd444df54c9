@@ -1,0 +1,31 @@
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_9d04c638190c69::t_d29f63c0e8e8ea 99
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_9d04c638190c69::t_d29f63c0e8e8ea 2,10,83-150
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_9d04c638190c69::t_d29f63c0e8e8ea 11,13,33-34,37-47,567-603
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-importer.ts
+  s_9d04c638190c69::t_d29f63c0e8e8ea 3,8,28,34,59,61-63,67,78,149-158,160,162,165,230-242,251,255-256,263,277-316
+packages/cli/src/modules/n8n-packages/entities/workflow/sub-workflow-ordering.ts
+  s_9d04c638190c69::t_d29f63c0e8e8ea 1-54
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/sub-workflow-ordering.test.ts
+  s_9d04c638190c69::t_d29f63c0e8e8ea 1-81
+packages/cli/src/modules/n8n-packages/__tests__/import-subworkflows.integration.test.ts
+  s_9d04c638190c69::t_d29f63c0e8e8ea 1-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b35ec94945000056eeea7f634e24ccd444df54c9",
+  "prompts": {},
+  "sessions": {
+    "s_9d04c638190c69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5c527e9-6adb-4e02-af45-ea54aca80bcc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}
