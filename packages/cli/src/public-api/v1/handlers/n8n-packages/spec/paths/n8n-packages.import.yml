@@ -189,6 +189,7 @@ post:
               type: string
               enum:
                 - do-nothing
+                - must-preexist
               default: do-nothing
               description: >
                 Controls what happens when a variable referenced by the package's
@@ -196,8 +197,9 @@ post:
                 (lookup order: project, then global). `do-nothing` (default)
                 imports the workflows without creating the missing variable and
                 lists its name under `variables.missing` in the response so the
-                caller can fill it in afterwards. Additional policies will be
-                added in follow-up work.
+                caller can fill it in afterwards. `must-preexist` rejects the
+                import unless every referenced variable already resolves. Neither
+                policy ever creates a variable.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -399,9 +401,10 @@ post:
               variables:
                 type: object
                 description: >
-                  Variable names from the package requirements, grouped by whether
-                  they resolved in the target project (or globally) or remain
-                  unresolved. Names only — values never travel in the response.
+                  Resolution of the package's variable requirements. Names only —
+                  values never travel in the response. For project packages,
+                  resolution runs per project, so a name that resolves in some
+                  projects but not others appears in both lists.
                 required:
                   - matched
                   - missing
@@ -411,14 +414,14 @@ post:
                     items:
                       type: string
                     description: >
-                      Variable names that already exist in the target project or
-                      at the global level (project first, then global).
+                      Variable names that resolved to an existing variable
+                      (importing project's scope first, then global).
                   missing:
                     type: array
                     items:
                       type: string
                     description: >
-                      Variable names with no match in the lookup scope. Under
+                      Variable names that did not resolve. Under
                       `variableMissingPolicy=do-nothing` these are warnings —
                       the import still succeeds and nothing is created.
               bindings:
@@ -463,7 +466,8 @@ post:
                   $ref: '../schemas/importBlockingIssue.yml'
     '422':
       description: >
-        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+        Import blocked by non-conflict issues only (e.g. unresolved credentials or
+        variables).
       content:
         application/json:
           schema:
