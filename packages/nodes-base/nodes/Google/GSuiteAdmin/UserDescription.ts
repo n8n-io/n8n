@@ -79,6 +79,283 @@ const primaryField: INodeProperties = {
 	description: 'Whether this is the primary entry for the user',
 };
 
+// Fields shared between the create (`additionalFields`) and update (`updateFields`) collections.
+const changePasswordField: INodeProperties = {
+	displayName: 'Change Password at Next Login',
+	name: 'changePasswordAtNextLogin',
+	type: 'boolean',
+	default: false,
+	description: 'Whether the user is forced to change their password at next login',
+};
+
+const phonesField: INodeProperties = {
+	displayName: 'Phones',
+	name: 'phoneUi',
+	placeholder: 'Add Phone',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	default: {},
+	options: [
+		{
+			name: 'phoneValues',
+			displayName: 'Phone',
+			values: [
+				{
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					options: [
+						{ name: 'Assistant', value: 'assistant' },
+						{ name: 'Callback', value: 'callback' },
+						{ name: 'Car', value: 'car' },
+						{ name: 'Company Main', value: 'company_main' },
+						{ name: 'Custom', value: 'custom' },
+						{ name: 'Grand Central', value: 'grand_central' },
+						{ name: 'Home', value: 'home' },
+						{ name: 'Home Fax', value: 'home_fax' },
+						{ name: 'ISDN', value: 'isdn' },
+						{ name: 'Main', value: 'main' },
+						{ name: 'Mobile', value: 'mobile' },
+						{ name: 'Other', value: 'other' },
+						{ name: 'Other Fax', value: 'other_fax' },
+						{ name: 'Pager', value: 'pager' },
+						{ name: 'Radio', value: 'radio' },
+						{ name: 'Telex', value: 'telex' },
+						{ name: 'TTY TDD', value: 'tty_tdd' },
+						{ name: 'Work', value: 'work' },
+						{ name: 'Work Fax', value: 'work_fax' },
+						{ name: 'Work Mobile', value: 'work_mobile' },
+						{ name: 'Work Pager', value: 'work_pager' },
+					],
+					default: 'work',
+					description: 'The type of phone number',
+				},
+				customTypeField('type'),
+				{
+					displayName: 'Phone Number',
+					name: 'value',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. +1234567890',
+				},
+				{
+					displayName: 'Primary',
+					name: 'primary',
+					type: 'boolean',
+					default: false,
+					description:
+						"Whether this is the user's primary phone number. A user may only have one primary phone number.",
+				},
+			],
+		},
+	],
+};
+
+const secondaryEmailsField: INodeProperties = {
+	displayName: 'Secondary Emails',
+	name: 'emailUi',
+	placeholder: 'Add Email',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	default: {},
+	options: [
+		{
+			name: 'emailValues',
+			displayName: 'Email',
+			values: [
+				{
+					displayName: 'Type',
+					name: 'type',
+					type: 'options',
+					options: [
+						{ name: 'Home', value: 'home' },
+						{ name: 'Work', value: 'work' },
+						{ name: 'Other', value: 'other' },
+					],
+					default: 'work',
+					description: 'The type of the email account',
+				},
+				customTypeField('type'),
+				{
+					displayName: 'Email',
+					name: 'address',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. john.doe.work@example.com',
+				},
+			],
+		},
+	],
+};
+
+const rolesField: INodeProperties = {
+	displayName: 'Roles',
+	name: 'roles',
+	type: 'multiOptions',
+	default: [],
+	description: 'Select the roles you want to assign to the user',
+	options: rolesOptions,
+};
+
+const customFieldsField: INodeProperties = {
+	displayName: 'Custom Fields',
+	name: 'customFields',
+	placeholder: 'Add or Edit Custom Fields',
+	type: 'fixedCollection',
+	typeOptions: {
+		multipleValues: true,
+	},
+	default: {},
+	description: 'Allows editing and adding of custom fields',
+	options: [
+		{
+			name: 'fieldValues',
+			displayName: 'Field',
+			values: [
+				{
+					displayName: 'Schema Name or ID',
+					name: 'schemaName',
+					type: 'options',
+					typeOptions: {
+						loadOptionsMethod: 'getSchemas',
+					},
+					default: '',
+					description:
+						'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				},
+				{
+					displayName: 'Field Name or ID',
+					name: 'fieldName',
+					type: 'string',
+					default: '',
+					required: true,
+					description: 'Enter a field name from the selected schema',
+				},
+				{
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					default: '',
+					required: true,
+					description: 'Provide a value for the selected field',
+				},
+			],
+		},
+	],
+};
+
+// Output/projection fields shared between the get and getAll operations.
+const userOutputFields = (operation: 'get' | 'getAll'): INodeProperties[] => [
+	{
+		displayName: 'Output',
+		name: 'output',
+		type: 'options',
+		required: true,
+		default: 'simplified',
+		displayOptions: {
+			show: {
+				operation: [operation],
+				resource: ['user'],
+			},
+		},
+		options: [
+			{
+				name: 'Simplified',
+				value: 'simplified',
+				description:
+					'Only return specific fields: kind, ID, primaryEmail, name (with subfields), isAdmin, lastLoginTime, creationTime, and suspended',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+				description: 'Return all fields from the API response',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'select',
+				description: 'Choose specific fields to include',
+			},
+		],
+	},
+	{
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'multiOptions',
+		default: [],
+		displayOptions: {
+			show: {
+				output: ['select'],
+				operation: [operation],
+				resource: ['user'],
+			},
+		},
+		options: [
+			{ name: 'Creation Time', value: 'creationTime' },
+			{ name: 'Is Admin', value: 'isAdmin' },
+			{ name: 'Kind', value: 'kind' },
+			{ name: 'Last Login Time', value: 'lastLoginTime' },
+			{ name: 'Name', value: 'name' },
+			{ name: 'Primary Email', value: 'primaryEmail' },
+			{ name: 'Suspended', value: 'suspended' },
+		],
+		description: 'Fields to include in the response when "Select Included Fields" is chosen',
+	},
+	{
+		displayName: 'Custom Fields',
+		name: 'projection',
+		type: 'options',
+		required: true,
+		options: [
+			{
+				name: "Don't Include",
+				value: 'basic',
+				description: 'Do not include any custom fields for the user',
+			},
+			{
+				name: 'Custom',
+				value: 'custom',
+				description: 'Include custom fields from schemas requested in Custom Schema Names or IDs',
+			},
+			{
+				name: 'Include All',
+				value: 'full',
+				description: 'Include all fields associated with this user',
+			},
+		],
+		default: 'basic',
+		displayOptions: {
+			show: {
+				operation: [operation],
+				resource: ['user'],
+			},
+		},
+		description: 'What subset of fields to fetch for this user',
+	},
+	{
+		displayName: 'Custom Schema Names or IDs',
+		name: 'customFieldMask',
+		type: 'multiOptions',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: [operation],
+				resource: ['user'],
+				'/projection': ['custom'],
+			},
+		},
+		typeOptions: {
+			loadOptionsMethod: 'getSchemas',
+		},
+		default: [],
+		description:
+			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+	},
+];
+
 // Writable User attributes shared between the create and update operations.
 // See https://developers.google.com/workspace/admin/directory/reference/rest/v1/users
 export const userExtraFields: INodeProperties[] = [
@@ -247,7 +524,7 @@ export const userExtraFields: INodeProperties[] = [
 						name: 'customType',
 						type: 'string',
 						default: '',
-						description: 'A free-form type.',
+						description: 'A free-form type',
 					},
 					{
 						displayName: 'Department',
@@ -983,238 +1260,11 @@ export const userFields: INodeProperties[] = [
 			},
 		},
 		options: [
-			{
-				displayName: 'Change Password at Next Login',
-				name: 'changePasswordAtNextLogin',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the user is forced to change their password at next login',
-			},
-			{
-				displayName: 'Phones',
-				name: 'phoneUi',
-				placeholder: 'Add Phone',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'phoneValues',
-						displayName: 'Phone',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								options: [
-									{
-										name: 'Assistant',
-										value: 'assistant',
-									},
-									{
-										name: 'Callback',
-										value: 'callback',
-									},
-									{
-										name: 'Car',
-										value: 'car',
-									},
-									{
-										name: 'Company Main',
-										value: 'company_main',
-									},
-									{
-										name: 'Custom',
-										value: 'custom',
-									},
-									{
-										name: 'Grand Central',
-										value: 'grand_central',
-									},
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Home Fax',
-										value: 'home_fax',
-									},
-									{
-										name: 'ISDN',
-										value: 'isdn',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-									{
-										name: 'Other Fax',
-										value: 'other_fax',
-									},
-									{
-										name: 'Pager',
-										value: 'pager',
-									},
-									{
-										name: 'Radio',
-										value: 'radio',
-									},
-									{
-										name: 'Telex',
-										value: 'telex',
-									},
-									{
-										name: 'TTY TDD',
-										value: 'tty_tdd',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Work Fax',
-										value: 'work_fax',
-									},
-									{
-										name: 'Work Mobile',
-										value: 'work_mobile',
-									},
-									{
-										name: 'Work Pager',
-										value: 'work_pager',
-									},
-								],
-								default: 'work',
-								description: 'The type of phone number',
-							},
-							customTypeField('type'),
-							{
-								displayName: 'Phone Number',
-								name: 'value',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Primary',
-								name: 'primary',
-								type: 'boolean',
-								default: false,
-								description: "Whether this is the user's primary phone number",
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Secondary Emails',
-				name: 'emailUi',
-				placeholder: 'Add Email',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'emailValues',
-						displayName: 'Email',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								options: [
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-								],
-								default: 'work',
-								description: 'The type of the email account',
-							},
-							customTypeField('type'),
-							{
-								displayName: 'Email',
-								name: 'address',
-								type: 'string',
-								default: '',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Roles',
-				name: 'roles',
-				type: 'multiOptions',
-				default: [],
-				description: 'Select the roles you want to assign to the user',
-				options: rolesOptions,
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customFields',
-				placeholder: 'Add or Edit Custom Fields',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				description: 'Allows editing and adding of custom fields',
-				options: [
-					{
-						name: 'fieldValues',
-						displayName: 'Field',
-						values: [
-							{
-								displayName: 'Schema Name or ID',
-								name: 'schemaName',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getSchemas',
-								},
-								default: '',
-								description:
-									'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-							},
-							{
-								displayName: 'Field Name or ID',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								required: true,
-								description: 'Enter a field name from the selected schema',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								required: true,
-								description: 'Provide a value for the selected field',
-							},
-						],
-					},
-				],
-			},
+			changePasswordField,
+			phonesField,
+			secondaryEmailsField,
+			rolesField,
+			customFieldsField,
 			...userExtraFields,
 		],
 	},
@@ -1222,131 +1272,7 @@ export const userFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Output',
-		name: 'output',
-		type: 'options',
-		required: true,
-		default: 'simplified',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['user'],
-			},
-		},
-		options: [
-			{
-				name: 'Simplified',
-				value: 'simplified',
-				description:
-					'Only return specific fields: kind, ID, primaryEmail, name (with subfields), isAdmin, lastLoginTime, creationTime, and suspended',
-			},
-			{
-				name: 'Raw',
-				value: 'raw',
-				description: 'Return all fields from the API response',
-			},
-			{
-				name: 'Select Included Fields',
-				value: 'select',
-				description: 'Choose specific fields to include',
-			},
-		],
-	},
-	{
-		displayName: 'Fields',
-		name: 'fields',
-		type: 'multiOptions',
-		default: [],
-		displayOptions: {
-			show: {
-				output: ['select'],
-				operation: ['get'],
-				resource: ['user'],
-			},
-		},
-		options: [
-			{
-				name: 'Creation Time',
-				value: 'creationTime',
-			},
-			{
-				name: 'Is Admin',
-				value: 'isAdmin',
-			},
-			{
-				name: 'Kind',
-				value: 'kind',
-			},
-			{
-				name: 'Last Login Time',
-				value: 'lastLoginTime',
-			},
-			{
-				name: 'Name',
-				value: 'name',
-			},
-			{
-				name: 'Primary Email',
-				value: 'primaryEmail',
-			},
-			{
-				name: 'Suspended',
-				value: 'suspended',
-			},
-		],
-		description: 'Fields to include in the response when "Select Included Fields" is chosen',
-	},
-	{
-		displayName: 'Custom Fields',
-		name: 'projection',
-		type: 'options',
-		required: true,
-		options: [
-			{
-				name: "Don't Include",
-				value: 'basic',
-				description: 'Do not include any custom fields for the user',
-			},
-			{
-				name: 'Custom',
-				value: 'custom',
-				description: 'Include custom fields from schemas requested in Custom Schema Names or IDs',
-			},
-			{
-				name: 'Include All',
-				value: 'full',
-				description: 'Include all fields associated with this user',
-			},
-		],
-		default: 'basic',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['user'],
-			},
-		},
-		description: 'What subset of fields to fetch for this user',
-	},
-	{
-		displayName: 'Custom Schema Names or IDs',
-		name: 'customFieldMask',
-		type: 'multiOptions',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['user'],
-				'/projection': ['custom'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getSchemas',
-		},
-		default: [],
-		description:
-			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-	},
+	...userOutputFields('get'),
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
@@ -1382,131 +1308,7 @@ export const userFields: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	{
-		displayName: 'Output',
-		name: 'output',
-		type: 'options',
-		required: true,
-		default: 'simplified',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['user'],
-			},
-		},
-		options: [
-			{
-				name: 'Simplified',
-				value: 'simplified',
-				description:
-					'Only return specific fields: kind, ID, primaryEmail, name (with subfields), isAdmin, lastLoginTime, creationTime, and suspended',
-			},
-			{
-				name: 'Raw',
-				value: 'raw',
-				description: 'Return all fields from the API response',
-			},
-			{
-				name: 'Select Included Fields',
-				value: 'select',
-				description: 'Choose specific fields to include',
-			},
-		],
-	},
-	{
-		displayName: 'Fields',
-		name: 'fields',
-		type: 'multiOptions',
-		default: [],
-		displayOptions: {
-			show: {
-				output: ['select'],
-				operation: ['getAll'],
-				resource: ['user'],
-			},
-		},
-		options: [
-			{
-				name: 'Creation Time',
-				value: 'creationTime',
-			},
-			{
-				name: 'Is Admin',
-				value: 'isAdmin',
-			},
-			{
-				name: 'Kind',
-				value: 'kind',
-			},
-			{
-				name: 'Last Login Time',
-				value: 'lastLoginTime',
-			},
-			{
-				name: 'Name',
-				value: 'name',
-			},
-			{
-				name: 'Primary Email',
-				value: 'primaryEmail',
-			},
-			{
-				name: 'Suspended',
-				value: 'suspended',
-			},
-		],
-		description: 'Fields to include in the response when "Select Included Fields" is chosen',
-	},
-	{
-		displayName: 'Custom Fields',
-		name: 'projection',
-		type: 'options',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['user'],
-			},
-		},
-		options: [
-			{
-				name: "Don't Include",
-				value: 'basic',
-				description: 'Do not include any custom fields for the user',
-			},
-			{
-				name: 'Custom',
-				value: 'custom',
-				description: 'Include custom fields from schemas requested in Custom Schema Names or IDs',
-			},
-			{
-				name: 'Include All',
-				value: 'full',
-				description: 'Include all fields associated with this user',
-			},
-		],
-		default: 'basic',
-		description: 'What subset of fields to fetch for this user',
-	},
-	{
-		displayName: 'Custom Schema Names or IDs',
-		name: 'customFieldMask',
-		type: 'multiOptions',
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['user'],
-				'/projection': ['custom'],
-			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getSchemas',
-		},
-		default: [],
-		description:
-			'A comma-separated list of schema names. All fields from these schemas are fetched. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-	},
+	...userOutputFields('getAll'),
 	{
 		displayName: 'Filter',
 		name: 'filter',
@@ -1644,13 +1446,7 @@ export const userFields: INodeProperties[] = [
 				description:
 					'Whether to set the user as suspended. If set to OFF, the user will be reactivated. If not added, the status will remain unchanged.',
 			},
-			{
-				displayName: 'Change Password at Next Login',
-				name: 'changePasswordAtNextLogin',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the user is forced to change their password at next login',
-			},
+			changePasswordField,
 			{
 				displayName: 'First Name',
 				name: 'firstName',
@@ -1675,133 +1471,7 @@ export const userFields: INodeProperties[] = [
 				description:
 					'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 			},
-			{
-				displayName: 'Phones',
-				name: 'phoneUi',
-				placeholder: 'Add Phone',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'phoneValues',
-						displayName: 'Phone',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								options: [
-									{
-										name: 'Assistant',
-										value: 'assistant',
-									},
-									{
-										name: 'Callback',
-										value: 'callback',
-									},
-									{
-										name: 'Car',
-										value: 'car',
-									},
-									{
-										name: 'Company Main',
-										value: 'company_main',
-									},
-									{
-										name: 'Custom',
-										value: 'custom',
-									},
-									{
-										name: 'Grand Central',
-										value: 'grand_central',
-									},
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Home Fax',
-										value: 'home_fax',
-									},
-									{
-										name: 'ISDN',
-										value: 'isdn',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-									{
-										name: 'Other Fax',
-										value: 'other_fax',
-									},
-									{
-										name: 'Pager',
-										value: 'pager',
-									},
-									{
-										name: 'Radio',
-										value: 'radio',
-									},
-									{
-										name: 'Telex',
-										value: 'telex',
-									},
-									{
-										name: 'TTY TDD',
-										value: 'tty_tdd',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Work Fax',
-										value: 'work_fax',
-									},
-									{
-										name: 'Work Mobile',
-										value: 'work_mobile',
-									},
-									{
-										name: 'Work Pager',
-										value: 'work_pager',
-									},
-								],
-								default: 'work',
-								description: 'The type of phone number',
-							},
-							customTypeField('type'),
-							{
-								displayName: 'Phone Number',
-								name: 'value',
-								type: 'string',
-								default: '',
-								placeholder: 'e.g. +1234567890',
-							},
-							{
-								displayName: 'Primary',
-								name: 'primary',
-								type: 'boolean',
-								default: false,
-								description:
-									"Whether this is the user's primary phone number. A user may only have one primary phone number.",
-							},
-						],
-					},
-				],
-			},
+			phonesField,
 			{
 				displayName: 'Primary Email',
 				name: 'primaryEmail',
@@ -1811,107 +1481,9 @@ export const userFields: INodeProperties[] = [
 				description:
 					"The user's primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.",
 			},
-			{
-				displayName: 'Secondary Emails',
-				name: 'emailUi',
-				placeholder: 'Add Email',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'emailValues',
-						displayName: 'Email',
-						values: [
-							{
-								displayName: 'Type',
-								name: 'type',
-								type: 'options',
-								options: [
-									{
-										name: 'Home',
-										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Other',
-										value: 'other',
-									},
-								],
-								default: 'work',
-								description: 'The type of the email account',
-							},
-							customTypeField('type'),
-							{
-								displayName: 'Email',
-								name: 'address',
-								type: 'string',
-								default: '',
-								placeholder: 'e.g. john.doe.work@example.com',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Roles',
-				name: 'roles',
-				type: 'multiOptions',
-				default: [],
-				description: 'Select the roles you want to assign to the user',
-				options: rolesOptions,
-			},
-			{
-				displayName: 'Custom Fields',
-				name: 'customFields',
-				placeholder: 'Add or Edit Custom Fields',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				description: 'Allows editing and adding of custom fields',
-				options: [
-					{
-						name: 'fieldValues',
-						displayName: 'Field',
-						values: [
-							{
-								displayName: 'Schema Name or ID',
-								name: 'schemaName',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getSchemas',
-								},
-								default: '',
-								description:
-									'Select the schema to use for custom fields. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
-							},
-							{
-								displayName: 'Field Name or ID',
-								name: 'fieldName',
-								type: 'string',
-								default: '',
-								required: true,
-								description: 'Enter a field name from the selected schema',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								required: true,
-								description: 'Provide a value for the selected field',
-							},
-						],
-					},
-				],
-			},
+			secondaryEmailsField,
+			rolesField,
+			customFieldsField,
 			...userExtraFields,
 		],
 	},
