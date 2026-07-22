@@ -1,0 +1,44 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2a235a6e9347be::t_5b9c0fdda5c5ad 1052,2138-2144,2510-2511,3214-3246,4094-4095,6468,6893-6896,7281,7322,7325,7329
+  s_a2967ec392b10a::t_d74d500a30802c 5070-5077
+packages/frontend/editor-ui/src/features/workflowReviews/workflowReviewRequests.store.ts
+  s_782e56c14c8ff8::t_fcec6d1b0a8edf 2,4,6-26,28-45,47-53,55-133
+packages/frontend/editor-ui/src/features/workflowReviews/views/WorkflowReviewRequestsView.vue
+  s_a2967ec392b10a::t_d74d500a30802c 1-128
+packages/frontend/editor-ui/src/features/workflowReviews/components/WorkflowReviewRequestsSidebar.vue
+  s_a2967ec392b10a::t_d74d500a30802c 1,3-8,10-50,52-70,72-89,93-140,142-155,157-159,162-167,170-177
+  s_a2967ec392b10a::t_2e6f1650d7873f 51
+  s_a2967ec392b10a::t_8470c38415ddc6 90-92,141,156,160-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c123c8a681009e592dfb7ea8717f4d96b621c6c5",
+  "prompts": {},
+  "sessions": {
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_782e56c14c8ff8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "479a1e88-da05-4f1f-88bf-0e188b32ec02",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
