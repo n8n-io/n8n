@@ -1,7 +1,7 @@
 import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { initializeAuthenticatedFeatures, initializeCore, state } from '@/app/init';
-import { UserManagementAuthenticationMethod } from '@/Interface';
+import { AuthenticationMethod } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -144,7 +144,7 @@ describe('Init', () => {
 				callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
 			};
 
-			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Oidc;
+			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Oidc;
 			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc] = true;
 
@@ -158,7 +158,7 @@ describe('Init', () => {
 			// once during initializeCore and once during the login hook
 			expect(ssoStore.initialize).toHaveBeenCalledTimes(2);
 			expect(ssoStore.initialize).toHaveBeenLastCalledWith({
-				authenticationMethod: UserManagementAuthenticationMethod.Oidc,
+				authenticationMethod: AuthenticationMethod.Oidc,
 				managedByEnv: false,
 				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
@@ -174,14 +174,14 @@ describe('Init', () => {
 			const ldap = { loginEnabled: false, loginLabel: '' };
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
-			settingsStore.userManagement.authenticationMethod = UserManagementAuthenticationMethod.Saml;
+			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Saml;
 			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
 
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
-				authenticationMethod: UserManagementAuthenticationMethod.Saml,
+				authenticationMethod: AuthenticationMethod.Saml,
 				managedByEnv: false,
 				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {

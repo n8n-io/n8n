@@ -4,6 +4,7 @@ export { AiBuilderTemporaryWorkflowRepository } from './ai-builder-temporary-wor
 export { ApiKeyRepository } from './api-key.repository';
 export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
+export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export { CredentialsRepository } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
@@ -70,6 +71,10 @@ export {
 	type PublishedWorkflowDataForExecution,
 } from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
+export { WorkflowReviewRequestRepository } from './workflow-review-request.repository';
+export { WorkflowReviewRequestWorkflowRepository } from './workflow-review-request-workflow.repository';
+export { WorkflowReviewRequestReviewerRepository } from './workflow-review-request-reviewer.repository';
+export { WorkflowReviewRequestAuthorRepository } from './workflow-review-request-author.repository';
 export {
 	WorkflowDependencyRepository,
 	WorkflowDependencies,
