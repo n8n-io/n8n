@@ -42,6 +42,10 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	divided?: boolean;
 	/** Whether to show a checkmark indicator */
 	checked?: boolean;
+	/** Keep the menu open after this item is selected (e.g. toggle rows). */
+	keepOpen?: boolean;
+	/** Render as a non-interactive section header label instead of a selectable item. */
+	header?: boolean;
 	/** Additional CSS classes */
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */

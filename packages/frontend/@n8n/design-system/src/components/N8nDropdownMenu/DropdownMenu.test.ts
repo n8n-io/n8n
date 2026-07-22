@@ -322,6 +322,56 @@ describe('N8nDropdownMenu', () => {
 			});
 		});
 
+		it('should keep the dropdown open after selecting a keepOpen item', async () => {
+			const items: DropdownMenuItemProps[] = [{ id: 'toggle', label: 'Toggle', keepOpen: true }];
+
+			const wrapper = render(DropdownMenu, {
+				props: {
+					items,
+				},
+			});
+
+			const trigger = wrapper.container.querySelector('button')!;
+			await userEvent.click(trigger);
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			const menuItem = document.querySelector('[role="menuitem"]')!;
+			await userEvent.click(menuItem);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('select')?.[0]).toEqual(['toggle']);
+			});
+			// Still open — the selection did not close the menu.
+			expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+		});
+
+		it('should render a header item as a non-interactive label', async () => {
+			const items: DropdownMenuItemProps[] = [
+				{ id: 'section', label: 'Section title', header: true },
+				{ id: 'option-1', label: 'Option 1' },
+			];
+
+			const wrapper = render(DropdownMenu, {
+				props: {
+					items,
+				},
+			});
+
+			await userEvent.click(wrapper.container.querySelector('button')!);
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			// The header text renders...
+			expect(document.body.textContent).toContain('Section title');
+			// ...but it is not a selectable menu item (only the real option is).
+			expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(1);
+		});
+
 		it('should not emit select event for disabled items', async () => {
 			const items: DropdownMenuItemProps[] = [
 				{ id: 'disabled-item', label: 'Disabled', disabled: true },

@@ -206,6 +206,13 @@ defineExpose({
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
+			<N8nIcon
+				v-else-if="item.data?.trailingIcon"
+				:icon="item.data.trailingIcon"
+				size="medium"
+				color="text-light"
+				:class="ui.class"
+			/>
 		</template>
 	</N8nDropdownMenu>
 </template>

@@ -2,7 +2,6 @@
 import { computed, onMounted, useTemplateRef } from 'vue';
 import {
 	N8nAiModelSelectorDropdown,
-	N8nCheckbox,
 	useDropdownSearch,
 	type AiModelSelectorMenuItem,
 	type AiModelSelectorMenuItemData,
@@ -30,7 +29,6 @@ import {
 	type AgentModelSelection,
 	type AgentModelsByProvider,
 } from '../model-providers';
-import { AGENT_MODEL_CREDENTIAL_MODAL_KEY } from '../constants';
 
 const MAX_MODEL_NAME_CHARS = 45;
 const MAX_SEARCH_RESULTS_PER_PROVIDER = 10;
@@ -39,8 +37,6 @@ const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
 
 type MenuItemData = AiModelSelectorMenuItemData & {
 	provider?: AgentModelProvider;
-	/** Marks the n8n credits toggle row so the item-leading slot renders a checkbox. */
-	isN8nCredits?: boolean;
 };
 
 type MenuItem = AiModelSelectorMenuItem<MenuItemData>;
@@ -201,29 +197,40 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		(selectedProviderCredentialId !== null &&
 			credentialOptions.some((credential) => credential.id === selectedProviderCredentialId));
 
-	const configureCredentialItems: MenuItem[] = canCreateCredentials.value
+	// Flat list of the project's existing credentials for this provider; selecting
+	// one activates it and keeps the dropdown open so a model can be picked next.
+	// Credentials render without a leading icon — only models carry one.
+	const credentialItems: MenuItem[] = credentialOptions.map<MenuItem>((credential) => ({
+		id: buildMenuItemId(provider, 'select', credential.id),
+		label: credential.name,
+		disabled: false,
+		checked: selectedProviderCredentialId === credential.id,
+		keepOpen: true,
+		data: { provider },
+	}));
+
+	// "+ Create credential" — the plus sits on the right (trailing), no leading icon.
+	const createCredentialItems: MenuItem[] = canCreateCredentials.value
 		? credentialTypes.length === 1
 			? [
 					{
 						id: buildMenuItemId(provider, 'configure', credentialTypes[0]),
-						icon: { type: 'icon', value: 'settings' },
 						label: i18n.baseText('agents.modelSelector.configureCredentials'),
-						disabled: isAiGatewayManagedSelected,
-						data: { provider, credentialType: credentialTypes[0], leadingIcon: 'settings' },
+						disabled: false,
+						data: { provider, trailingIcon: 'plus' },
 					},
 				]
 			: [
 					{
 						id: `${provider}::configure`,
-						icon: { type: 'icon', value: 'settings' },
 						label: i18n.baseText('agents.modelSelector.configureCredentials'),
-						disabled: isAiGatewayManagedSelected,
-						data: { provider, leadingIcon: 'settings' },
+						disabled: false,
+						data: { provider },
 						children: credentialTypes.map<MenuItem>((credentialType) => ({
 							id: buildMenuItemId(provider, 'configure', credentialType),
 							label: getCredentialTypeDisplayName(credentialType),
 							disabled: false,
-							data: { provider, credentialType },
+							data: { provider, trailingIcon: 'plus' },
 						})),
 					},
 				]
@@ -239,13 +246,14 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					id: buildMenuItemId(provider, 'n8nConnect', credentialTypes[0]),
 					label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
 					disabled: false,
+					// Active state shows as the native right-aligned checkmark; the row
+					// toggles the managed tag and keeps the dropdown open. No leading icon.
+					checked: isAiGatewayManagedSelected,
+					keepOpen: true,
 					data: {
 						provider,
-						credentialType: credentialTypes[0],
 						// Green "remaining" pill (N8nActionPill), matching the workflow node.
 						actionPill: aiGatewayBalancePill.value,
-						// Rendered as a toggle checkbox via the item-leading slot.
-						isN8nCredits: true,
 					},
 				},
 			]
@@ -275,11 +283,10 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 			: [];
 
 	const modelItems = hasProviderCredential
-		? models.map<MenuItem>((model, index) => ({
+		? models.map<MenuItem>((model) => ({
 				id: buildMenuItemId(provider, 'model', model.model),
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
 				disabled: false,
-				divided: index === 0,
 				checked: selectedModel?.provider === provider && selectedModel.model === model.model,
 				data: {
 					provider,
@@ -307,10 +314,44 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 							id: `${provider}::empty`,
 							label: i18n.baseText('agents.modelSelector.noModels'),
 							disabled: true,
-							divided: true,
 						},
 					]
 				: [];
+
+	// Group the submenu into a "Connect to <provider>" credentials section and a
+	// "Models" section, each introduced by a non-interactive header row.
+	const connectItems: MenuItem[] = [
+		...freeOpenAiCreditsItems,
+		...n8nCreditsItems,
+		...credentialItems,
+		...createCredentialItems,
+	];
+	const connectHeader: MenuItem[] = connectItems.length
+		? [
+				{
+					id: `${provider}::header::connect`,
+					label: i18n.baseText('agents.modelSelector.connectTo', {
+						interpolate: { provider: definition.displayName },
+					}),
+					header: true,
+					disabled: true,
+				},
+			]
+		: [];
+
+	const modelsSection: MenuItem[] = [...modelItems, ...statusItems];
+	const modelsHeader: MenuItem[] = modelsSection.length
+		? [
+				{
+					id: `${provider}::header::models`,
+					label: i18n.baseText('agents.modelSelector.models'),
+					header: true,
+					disabled: true,
+					// Separator above the models section when a connect section precedes it.
+					divided: connectItems.length > 0,
+				},
+			]
+		: [];
 
 	return {
 		id: provider,
@@ -318,18 +359,13 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		data: {
 			provider,
 			credentialType: credentialTypes[0],
-			badgeLabel:
-				provider === FREE_OPENAI_CREDITS_PROVIDER && canUseFreeOpenAiCredits.value
-					? i18n.baseText('agents.modelSelector.freeCredits.badge')
-					: undefined,
+			// Providers covered by n8n Connect get the same green "Free credits" N8nActionPill
+			// as the node creator.
+			actionPill: isAiGatewayManagedAvailable
+				? { text: i18n.baseText('generic.freeCredits'), type: 'default' as const }
+				: undefined,
 		},
-		children: [
-			...freeOpenAiCreditsItems,
-			...n8nCreditsItems,
-			...configureCredentialItems,
-			...modelItems,
-			...statusItems,
-		],
+		children: [...connectHeader, ...connectItems, ...modelsHeader, ...modelsSection],
 	};
 }
 
@@ -416,27 +452,6 @@ function openNewCredential(credentialType: string) {
 	}
 }
 
-function openCredentialsSelectorOrCreate(provider: AgentModelProvider, credentialType: string) {
-	if (disabled) return;
-
-	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
-
-	if (existingCredentials.length === 0 && canCreateCredentials.value) {
-		openNewCredential(credentialType);
-		return;
-	}
-
-	uiStore.openModalWithData({
-		name: AGENT_MODEL_CREDENTIAL_MODAL_KEY,
-		data: {
-			credentialType,
-			displayName: getCredentialTypeDisplayName(credentialType),
-			initialValue: credentials?.[provider] ?? null,
-			onSelect: (credentialId: string | null) => emit('selectCredential', provider, credentialId),
-		},
-	});
-}
-
 async function onSelect(id: string) {
 	if (disabled) return;
 
@@ -445,7 +460,12 @@ async function onSelect(id: string) {
 	const { provider: providerId, action, value } = parsed;
 
 	if (action === 'configure') {
-		openCredentialsSelectorOrCreate(providerId, value);
+		openNewCredential(value);
+		return;
+	}
+
+	if (action === 'select') {
+		emit('selectCredential', providerId, value);
 		return;
 	}
 
@@ -472,10 +492,6 @@ async function onSelect(id: string) {
 	if (action === 'model') {
 		emit('change', { provider: providerId, model: value });
 	}
-}
-
-function isProviderManaged(provider: AgentModelProvider): boolean {
-	return credentials?.[provider] === AI_GATEWAY_MANAGED_TAG;
 }
 
 function toggleN8nCredits(provider: AgentModelProvider, enabled: boolean) {
@@ -512,14 +528,7 @@ defineExpose({
 		</template>
 
 		<template #item-leading="{ item, ui }">
-			<N8nCheckbox
-				v-if="item.data?.isN8nCredits && item.data.provider"
-				:model-value="isProviderManaged(item.data.provider)"
-				:class="ui.class"
-				@click.stop
-				@update:model-value="toggleN8nCredits(item.data.provider, $event)"
-			/>
-			<ModelSelectorItemLeadingIcon v-else :item="item" :class="ui.class" />
+			<ModelSelectorItemLeadingIcon :item="item" :class="ui.class" />
 		</template>
 	</N8nAiModelSelectorDropdown>
 </template>

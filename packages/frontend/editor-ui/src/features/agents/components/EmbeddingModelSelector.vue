@@ -84,12 +84,12 @@ function providerToMenuItem(provider: AgentEmbeddingProvider): MenuItem {
 	const isSelectedProvider = provider === selectedProvider.value;
 	const hasProviderCredential = credentialOptions.length > 0;
 
-	const configureItems: MenuItem[] = canCreateCredentials
+	const createCredentialItems: MenuItem[] = canCreateCredentials
 		? [
 				{
 					id: buildMenuItemId(provider, 'configure', credentialType),
 					label: i18n.baseText('agents.modelSelector.configureCredentials'),
-					data: { leadingIcon: 'settings' },
+					data: { trailingIcon: 'plus' },
 				},
 			]
 		: [];
@@ -122,7 +122,7 @@ function providerToMenuItem(provider: AgentEmbeddingProvider): MenuItem {
 		id: provider,
 		label: AGENT_MODEL_PROVIDER_DEFINITIONS[provider].displayName,
 		data: { credentialType },
-		children: [...configureItems, ...credentialItems, ...modelItems],
+		children: [...credentialItems, ...createCredentialItems, ...modelItems],
 	};
 }
 

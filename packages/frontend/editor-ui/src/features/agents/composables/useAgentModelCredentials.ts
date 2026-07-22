@@ -1,5 +1,7 @@
 import { LOCAL_STORAGE_AGENT_MODEL_CREDENTIALS } from '@/app/constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
@@ -32,6 +34,17 @@ function parseStoredCredentials(value: string): AgentCredentialsByProvider {
 export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGetter<string>) {
 	const isInitialized = ref(false);
 	const credentialsStore = useCredentialsStore();
+	const aiGatewayStore = useAiGatewayStore();
+	const settingsStore = useSettingsStore();
+
+	// Providers covered by n8n Connect default to the managed "n8n credits" credential
+	// so building works with zero configuration.
+	function supportsManagedCredits(provider: AgentModelProvider): boolean {
+		if (!settingsStore.isAiGatewayEnabled) return false;
+		return AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes.some((credentialType) =>
+			aiGatewayStore.isCredentialTypeSupported(credentialType),
+		);
+	}
 
 	const selectedCredentials = useLocalStorage<AgentCredentialsByProvider>(
 		LOCAL_STORAGE_AGENT_MODEL_CREDENTIALS(userId),
@@ -85,7 +98,11 @@ export function useAgentModelCredentials(userId: string, projectId: MaybeRefOrGe
 					: selectedCredentialId &&
 							providerCredentials.some((credential) => credential.id === selectedCredentialId)
 						? selectedCredentialId
-						: (providerCredentials[0]?.id ?? null);
+						: // Nothing selected: default to n8n credits where supported, else the
+							// first existing credential.
+							supportsManagedCredits(provider)
+							? AI_GATEWAY_MANAGED_TAG
+							: (providerCredentials[0]?.id ?? null);
 		}
 
 		return credentials;

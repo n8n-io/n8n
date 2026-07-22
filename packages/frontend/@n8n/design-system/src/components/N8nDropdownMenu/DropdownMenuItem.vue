@@ -1,6 +1,10 @@
 <script setup lang="ts" generic="T = string, D = never">
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nLoading from '@n8n/design-system/components/N8nLoading';
+import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import {
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubTrigger,
@@ -8,10 +12,6 @@ import {
 	DropdownMenuPortal,
 } from 'reka-ui';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
-
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nLoading from '@n8n/design-system/components/N8nLoading';
-import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 
 import {
 	DropdownMenuPortalTargetKey,
@@ -89,10 +89,11 @@ const handleSelect = (value: T) => {
 	emit('select', value);
 };
 
-const handleItemSelect = () => {
-	if (!props.disabled && !hasSubMenu.value) {
-		emit('select', props.id);
-	}
+const handleItemSelect = (event: Event) => {
+	if (props.disabled || hasSubMenu.value) return;
+	// Prevent reka-ui from closing the menu for toggle-style rows.
+	if (props.keepOpen) event.preventDefault();
+	emit('select', props.id);
 };
 
 const handlePointerMove = (event: PointerEvent) => {
@@ -176,18 +177,22 @@ onBeforeUnmount(() => {
 	<div ref="itemRef" :class="$style.wrapper">
 		<DropdownMenuSeparator v-if="divided" :class="$style.separator" />
 
+		<DropdownMenuLabel v-if="header" :class="$style['section-header']">
+			<N8nText size="small" color="text-light" bold>{{ label }}</N8nText>
+		</DropdownMenuLabel>
+
 		<DropdownMenuSub
-			v-if="hasSubMenu"
+			v-else-if="hasSubMenu"
 			:open="internalSubMenuOpen"
 			@update:open="handleSubMenuOpenChange"
 		>
 			<DropdownMenuSubTrigger
 				:id="htmlId"
 				:aria-selected="highlighted || undefined"
-				@pointermove.capture="handlePointerMove"
 				:disabled="disabled"
 				:data-test-id="testId"
 				:class="[$style.item, $style['sub-trigger'], props.class, { 'is-disabled': !!disabled }]"
+				@pointermove.capture="handlePointerMove"
 			>
 				<slot name="item-leading" :item="props" :ui="leadingProps">
 					<Icon
@@ -328,10 +333,10 @@ onBeforeUnmount(() => {
 			v-else
 			:id="htmlId"
 			:aria-selected="highlighted || undefined"
-			@pointermove.capture="handlePointerMove"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">
@@ -388,6 +393,13 @@ onBeforeUnmount(() => {
 	&::-webkit-scrollbar {
 		display: none;
 	}
+}
+
+.section-header {
+	display: flex;
+	align-items: center;
+	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--3xs);
+	user-select: none;
 }
 
 .item {
