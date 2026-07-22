@@ -8,6 +8,7 @@ import {
 	McpAuthenticationSchemaTypes,
 	agentSkillSchema,
 	agentTaskSchema,
+	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
@@ -221,7 +222,10 @@ const discoverAssetsInput = {
 		.min(1)
 		.optional()
 		.describe('Optional filter for workflows, subagents, or MCP servers'),
-	provider: z.enum(AGENT_MODEL_PROVIDERS).optional().describe('Model provider for kind=models'),
+	provider: z
+		.enum(AGENT_MODEL_PROVIDERS)
+		.optional()
+		.describe('Model provider for kind=models; omit to get a provider summary without model lists'),
 	credentialId: z
 		.string()
 		.min(1)
@@ -998,6 +1002,7 @@ export class McpAgentToolsService {
 				if (operation.config.integrations !== undefined) {
 					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
 				}
+				this.assertSanitizeStable(operation.config);
 				const result = await this.agentConfigService.updateConfig(
 					agentId,
 					projectId,
@@ -1017,6 +1022,7 @@ export class McpAgentToolsService {
 				if (integrationsChanged(config, patched)) {
 					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
 				}
+				this.assertSanitizeStable(patched);
 				const result = await this.agentConfigService.updateConfig(
 					agentId,
 					projectId,
@@ -1097,6 +1103,29 @@ export class McpAgentToolsService {
 		}
 	}
 
+	/**
+	 * updateConfig sanitizes configs on write, silently dropping array entries
+	 * whose `type` the schema does not recognize. Stored configs are already
+	 * sanitize-stable, so any difference here comes from the submitted
+	 * mutation — reject it loudly instead of reporting a success that
+	 * persisted less than the client sent.
+	 */
+	private assertSanitizeStable(config: unknown): void {
+		const sanitized = sanitizeAgentJsonConfig(config);
+		if (JSON.stringify(sanitized) === JSON.stringify(config)) return;
+		const fields =
+			typeof config === 'object' && config !== null && typeof sanitized === 'object'
+				? Object.keys(config).filter(
+						(key) =>
+							JSON.stringify((config as Record<string, unknown>)[key]) !==
+							JSON.stringify((sanitized as Record<string, unknown>)[key]),
+					)
+				: [];
+		throw new UserError(
+			`Config contains entries the schema does not support${fields.length ? ` (in: ${fields.join(', ')})` : ''}; saving would silently drop them. Compare against the config schema from get_agent_builder_reference — e.g. sub-agents belong under subAgents.agents, not tools.`,
+		);
+	}
+
 	private async setTaskEnabled(
 		user: User,
 		agentId: string,
@@ -1156,7 +1185,7 @@ export class McpAgentToolsService {
 
 	private async discoverAssets(user: User, input: DiscoverAssetsInput): Promise<unknown> {
 		switch (input.kind) {
-			case 'models':
+			case 'models': {
 				if (input.provider) {
 					return await this.agentModelCatalogService.getProviderModels(
 						user,
@@ -1165,9 +1194,20 @@ export class McpAgentToolsService {
 						input.credentialId,
 					);
 				}
-				return filterOfferedAgentModelProviders(
+				// The full catalog runs to hundreds of KB — far past MCP client
+				// token limits — so without a provider return a summary instead.
+				const catalog = filterOfferedAgentModelProviders(
 					await (await import('@n8n/agents')).fetchProviderCatalog(),
 				);
+				return {
+					providers: Object.values(catalog).map((provider) => ({
+						provider: provider.id,
+						name: provider.name,
+						modelCount: Object.keys(provider.models).length,
+					})),
+					hint: 'Pass provider (and optionally credentialId) to list the models of one provider.',
+				};
+			}
 			case 'integrations':
 				return this.integrationPersistenceService.listChatIntegrations().map((integration) => ({
 					...integration,

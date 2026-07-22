@@ -73,6 +73,10 @@ before acting on it. revert_agent restores the draft from a version without publ
 fresh configHash for further mutations. publish_agent with a versionId republishes that version
 directly, leaving the draft untouched; as a (re)publication it requires the same explicit approval.
 
+In publish, unpublish, and revert responses, \`activeVersionId\` identifies the live published
+version (null when unpublished) while \`versionId\` is the draft's internal pointer — do not report
+\`versionId\` as a published version.
+
 ## mutate_agent operations
 
 Pass a single \`operation\` object whose \`type\` selects the mutation. Each operation's fields sit
@@ -93,7 +97,18 @@ directly on that object — there is no \`value\` wrapper. For example:
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
 - task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
 - customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
-  The source must export default new Tool('tool_name') and may import only runtime-supported packages.
+  Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder
+  chain with \`description\`, \`input\` (a Zod schema), and \`handler\`; \`output\` is optional:
+
+  \`\`\`typescript
+  import { Tool } from '@n8n/agents';
+  import { z } from 'zod';
+
+  export default new Tool('get_current_datetime')
+  	.description('Return the current date and time as an ISO 8601 string')
+  	.input(z.object({}))
+  	.handler(async () => new Date().toISOString());
+  \`\`\`
 - customTool.delete: Set \`toolId\` to the custom tool to delete; its config reference is removed.
 
 Every mutation requires baseConfigHash from get_agent or the previous successful mutation. Mutation
@@ -112,6 +127,9 @@ Tool references use these forms:
 - Workflow tool: { "type": "workflow", "workflow": "Workflow Name", "name": "tool_name" }
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
+
+Sub-agents are not tool entries. Configure them under the top-level \`subAgents\` field:
+{ "subAgents": { "agents": [{ "agentId": "...", "useWhen": "..." }] } }
 
 Do not guess node parameters or stable resource IDs. Discover the node definition and live resource
 options first. Never place credential secret data in Agent configuration or MCP tool arguments; use

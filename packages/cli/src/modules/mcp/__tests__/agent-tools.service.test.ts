@@ -10,6 +10,13 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
+vi.mock('@n8n/agents', () => ({
+	fetchProviderCatalog: vi.fn().mockResolvedValue({
+		openai: { id: 'openai', name: 'OpenAI', models: { 'gpt-a': {}, 'gpt-b': {} } },
+		'not-offered': { id: 'not-offered', name: 'Not Offered', models: { x: {} } },
+	}),
+}));
+
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -257,6 +264,34 @@ describe('McpAgentToolsService', () => {
 					results: { success: false },
 				}),
 			);
+		});
+
+		it('rejects a patch with entries the config sanitizer would silently drop', async () => {
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({
+					type: 'config.patch',
+					patch: [{ op: 'add', path: '/tools/-', value: { type: 'subagent', agentId: 'a2' } }],
+				}),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent.error).toContain('subAgents.agents');
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
+		});
+
+		it('rejects a config.replace with entries the config sanitizer would silently drop', async () => {
+			const result = await callTool(
+				'mutate_agent',
+				mutateInput({
+					type: 'config.replace',
+					config: { ...baseConfig, tools: [{ type: 'subagent', agentId: 'a2' }] },
+				}),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent.error).toContain('in: tools');
+			expect(agentConfigService.updateConfig).not.toHaveBeenCalled();
 		});
 
 		it('applies config.replace and returns the hash of the stored config', async () => {
@@ -840,6 +875,24 @@ describe('McpAgentToolsService', () => {
 				0,
 			);
 			expect(result.structuredContent).toEqual({ ok: true, data: versions, count: 1 });
+		});
+	});
+
+	describe('discover_agent_assets', () => {
+		it('returns a provider summary for kind=models without a provider', async () => {
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'models',
+			});
+
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				kind: 'models',
+				data: {
+					providers: [{ provider: 'openai', name: 'OpenAI', modelCount: 2 }],
+					hint: expect.stringContaining('provider'),
+				},
+			});
 		});
 	});
 
