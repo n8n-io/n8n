@@ -1,0 +1,77 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.ts
+  s_e0cc82d125e08a::t_ff4f596475046a 1-202
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.test.ts
+  s_e0cc82d125e08a::t_ff4f596475046a 1-144
+packages/frontend/editor-ui/src/features/workflow-reviews/reviewInbox.store.test.ts
+  s_e0cc82d125e08a::t_ff4f596475046a 1-206
+packages/frontend/editor-ui/src/features/workflow-reviews/views/WorkflowReviewRequestsView.vue
+  s_e0cc82d125e08a::t_ff4f596475046a 1-155
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectNavigation.vue
+  s_e0cc82d125e08a::t_c43b6fda9b18c2 18-19
+  s_e0cc82d125e08a::t_7b15c1114d64bb 128
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_e0cc82d125e08a::t_1436a6ff7b501b 2-3,19-25,49-61
+packages/frontend/editor-ui/src/features/collaboration/projects/composables/useProjectPages.ts
+  s_e0cc82d125e08a::t_202a2a92c4b219 4
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_e0cc82d125e08a::t_7cdcedb3cc6f09 9
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_782e56c14c8ff8::t_463c3982d89327 7,10,39,45
+  s_659d89565dd06e::t_9b75777233e743 56-59
+  s_278b5dc3633c05::t_14e71601275869 4-6,40-44,46-51,60
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_659d89565dd06e::t_a00352e6087c20 581
+  s_278b5dc3633c05::t_060c199c7b9a79 609,614,632,641,654,663,690,714,717
+  s_a2967ec392b10a::t_c88cbb8f6925d1 32,34,37,52-54,74,76-79,82
+  s_a2967ec392b10a::t_1eaa0322af9e4a 561-580,582-608,610-613,615-631,633-640,642-653,655-662,664-689,691-713,715-716,718-726
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  s_e0cc82d125e08a::t_c888fdfe771b60 5-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "17d9c104ceb4da2762d1b03235e44623a5c46c78",
+  "prompts": {},
+  "sessions": {
+    "s_278b5dc3633c05": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7b77dc33-92bf-492b-8614-c5fa327f6901",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_659d89565dd06e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9438224-5514-4a69-9edd-5631763dfabc",
+        "model": "kimi-k2.7-code"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_782e56c14c8ff8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "479a1e88-da05-4f1f-88bf-0e188b32ec02",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_a2967ec392b10a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c04c3e1-d5a9-42bf-81c9-c49a5c1432d1",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_e0cc82d125e08a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b603185d-d59b-4c8d-a5fb-062b299cccc7",
+        "model": "default"
+      },
+      "human_author": null
+    }
+  }
+}

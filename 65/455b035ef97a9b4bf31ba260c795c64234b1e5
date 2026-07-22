@@ -1,0 +1,19 @@
+build2.log
+  s_0237a66f4d3f8f::t_f8032c98626914 1-2566
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "65455b035ef97a9b4bf31ba260c795c64234b1e5",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
