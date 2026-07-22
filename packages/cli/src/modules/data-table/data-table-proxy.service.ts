@@ -99,8 +99,6 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
-		// Fail fast with a node-scoped error: the referenced table may have been
-		// deleted, or skipped when the workflow was imported without its tables.
 		try {
 			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
 		} catch (error) {

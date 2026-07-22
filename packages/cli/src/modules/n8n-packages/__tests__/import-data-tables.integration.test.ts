@@ -572,7 +572,6 @@ describe('workflow package import — with data tables', () => {
 				dataTableMissingMode: 'do-nothing',
 			});
 
-			// The imported node still points at the skipped table's id.
 			const imported = await workflowRepository.findOneOrFail({
 				where: { id: result.workflows[0].localId },
 			});

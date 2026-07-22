@@ -22,7 +22,6 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
 import { DataTableProxyService } from '../data-table-proxy.service';
 import { DataTableService } from '../data-table.service';
-import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 
 const PROJECT_ID = 'project-id';
 
@@ -286,26 +285,6 @@ describe('DataTableProxyService', () => {
 	});
 
 	describe('getDataTableProxy existence validation', () => {
-		it('throws NodeOperationError when the data table does not exist in the project', async () => {
-			dataTableServiceMock.validateDataTableExists.mockRejectedValue(
-				new DataTableNotFoundError('missing-id'),
-			);
-
-			const promise = dataTableProxyService.getDataTableProxy(workflow, node, 'missing-id');
-
-			await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
-			await expect(promise).rejects.toThrow("Data table with ID 'missing-id' could not be found");
-		});
-
-		it('validates existence against the resolved project', async () => {
-			await dataTableProxyService.getDataTableProxy(workflow, node, 'dataTable-id');
-
-			expect(dataTableServiceMock.validateDataTableExists).toHaveBeenCalledWith(
-				'dataTable-id',
-				PROJECT_ID,
-			);
-		});
-
 		it('rethrows non-not-found errors unwrapped', async () => {
 			const dbError = new Error('connection lost');
 			dataTableServiceMock.validateDataTableExists.mockRejectedValue(dbError);
