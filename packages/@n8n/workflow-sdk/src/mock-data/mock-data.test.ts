@@ -457,10 +457,9 @@ describe('ai-root shapes', () => {
 	it('classifies the assistant and vendor LLM nodes as AI roots', async () => {
 		const { isAiRootNodeType, describeAiRootShape } = await import('./ai-root-shapes.js');
 
-		// Mirrors the editor's canonical AI_ROOT_NODE_TYPES list
+		// Mirrors the editor's canonical VENDOR_AI_ROOT_NODE_TYPES list
 		// (evaluation.ee/evaluation.constants.ts).
 		for (const type of [
-			'@n8n/n8n-nodes-langchain.openAiAssistant',
 			'@n8n/n8n-nodes-langchain.openAi',
 			'@n8n/n8n-nodes-langchain.anthropic',
 			'@n8n/n8n-nodes-langchain.googleGemini',

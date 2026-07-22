@@ -191,9 +191,9 @@ export async function createWorkflowWithTrigger(
 				},
 				{
 					id: 'uuid-2',
-					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
+					parameters: { rule: { interval: [{ field: 'days' }] } },
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
 					typeVersion: 1,
 					position: [500, 300],
 				},
@@ -207,7 +207,9 @@ export async function createWorkflowWithTrigger(
 				},
 			],
 			connections: {
-				Cron: { main: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]] },
+				'Schedule Trigger': {
+					main: [[{ node: 'Set', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
 			},
 			...attributes,
 		},

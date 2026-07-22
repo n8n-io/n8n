@@ -2,12 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import {
-	CRON_NODE_TYPE,
-	INTERVAL_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '@/app/constants';
+import { MANUAL_TRIGGER_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -144,8 +139,7 @@ const inputMode = ref<MappingMode>(
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 const showDraggableHint = computed(() => {
-	const toIgnore = [MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
-	if (!currentNode.value || toIgnore.includes(currentNode.value.type)) {
+	if (!currentNode.value || currentNode.value.type === MANUAL_TRIGGER_NODE_TYPE) {
 		return false;
 	}
 

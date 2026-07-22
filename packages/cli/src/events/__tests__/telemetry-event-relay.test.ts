@@ -3472,7 +3472,7 @@ describe('TelemetryEventRelay', () => {
 								id: '1',
 								typeVersion: 1,
 								name: 'OpenAI',
-								type: 'n8n-nodes-base.openAi',
+								type: '@n8n/n8n-nodes-langchain.openAi',
 								parameters: {},
 								position: [100, 200],
 							},

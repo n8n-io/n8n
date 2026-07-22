@@ -3047,12 +3047,6 @@ importers:
       '@azure/search-documents':
         specifier: 12.1.0
         version: 12.1.0
-      '@getzep/zep-cloud':
-        specifier: 1.0.6
-        version: 1.0.6(f7636f1681b49d771ee2a293a491ade5)
-      '@getzep/zep-js':
-        specifier: 0.9.0
-        version: 0.9.0
       '@google-cloud/resource-manager':
         specifier: 5.3.0
         version: 5.3.0(encoding@0.1.13)
@@ -3079,7 +3073,7 @@ importers:
         version: 1.0.1(@langchain/core@1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.46.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.1.27(e72248de09b780d83a0bec808cad4e88)
+        version: 1.1.27(bec6b2a8ed9b66d535544d76d1da0942)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -8583,10 +8577,6 @@ packages:
       langchain:
         optional: true
 
-  '@getzep/zep-js@0.9.0':
-    resolution: {integrity: sha512-GNaH7EwAisAaMuaUZzOR3hk3yTc7LXrqboPfSN6mZE0rAWGHOjT7V53Hec6yFJqFyXs4/7DsJvZlOcs+gEygNQ==}
-    engines: {node: '>=18.0.0'}
-
   '@google-cloud/paginator@5.0.2':
     resolution: {integrity: sha512-DJS3s0OVH4zFDB1PzjxAsHqJT6sKVbRwwML0ZBP9PbU7Yebtu/7SWMRzvO2J3nUi9pRNITCfu4LJeooM2w4pjg==}
     engines: {node: '>=14.0.0'}
@@ -11847,10 +11837,6 @@ packages:
 
   '@supabase/supabase-js@2.50.0':
     resolution: {integrity: sha512-M1Gd5tPaaghYZ9OjeO1iORRqbTWFEz/cF3pPubRnMPzA+A8SiUsXXWDP+DWsASZcjEcVEcVQIAF38i5wrijYOg==}
-
-  '@supercharge/promise-pool@3.1.0':
-    resolution: {integrity: sha512-gB3NukbIcYzRtPoE6dx9svQYPodxvnfQlaaQd8N/z87E6WaMfRE7o5HwB+LZ+KeM0nsNAq1n4TmBtfz1VCUR+Q==}
-    engines: {node: '>=8'}
 
   '@swc/core-darwin-arm64@1.15.8':
     resolution: {integrity: sha512-M9cK5GwyWWRkRGwwCbREuj6r8jKdES/haCZ3Xckgkl8MUQJZA3XB7IXXK1IXRNeLjg6m7cnoMICpXv1v1hlJOg==}
@@ -25800,12 +25786,7 @@ snapshots:
       langchain: 1.2.30(@langchain/core@1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.46.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.46.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(vue@3.5.26(@typescript/typescript6@6.0.2))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
     transitivePeerDependencies:
       - encoding
-
-  '@getzep/zep-js@0.9.0':
-    dependencies:
-      '@supercharge/promise-pool': 3.1.0
-      semver: 7.7.3
-      typescript: 5.9.3
+    optional: true
 
   '@google-cloud/paginator@5.0.2':
     dependencies:
@@ -26315,7 +26296,7 @@ snapshots:
       - '@smithy/hash-node'
       - peggy
 
-  '@langchain/community@1.1.27(e72248de09b780d83a0bec808cad4e88)':
+  '@langchain/community@1.1.27(bec6b2a8ed9b66d535544d76d1da0942)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.60.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.4.2)(encoding@0.1.13)(openai@6.46.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -26337,7 +26318,6 @@ snapshots:
       '@azure/storage-blob': 12.32.0
       '@browserbasehq/sdk': 2.12.0(encoding@0.1.13)
       '@getzep/zep-cloud': 1.0.6(f7636f1681b49d771ee2a293a491ade5)
-      '@getzep/zep-js': 0.9.0
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
       '@huggingface/inference': 4.0.5
       '@libsql/client': 0.17.2(bufferutil@4.0.9)(encoding@0.1.13)(utf-8-validate@5.0.10)
@@ -29222,8 +29202,6 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
-
-  '@supercharge/promise-pool@3.1.0': {}
 
   '@swc/core-darwin-arm64@1.15.8':
     optional: true

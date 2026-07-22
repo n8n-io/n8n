@@ -162,9 +162,9 @@ test.describe(
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Latest');
 			await n8n.ndv.close();
 
-			await n8n.canvas.openNode('Read PDF');
+			await n8n.canvas.openNode('Read Spreadsheet File');
 			await n8n.ndv.openSettings();
-			await expect(n8n.ndv.getNodeVersion()).toContainText('Read PDF node version 1');
+			await expect(n8n.ndv.getNodeVersion()).toContainText('Spreadsheet File node version 1');
 			await expect(n8n.ndv.getNodeVersion()).toContainText('Deprecated');
 			await n8n.ndv.close();
 		});

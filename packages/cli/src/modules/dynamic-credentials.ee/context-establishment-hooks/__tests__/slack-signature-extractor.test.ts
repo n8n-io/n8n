@@ -75,7 +75,7 @@ describe('SlackSignatureExtractor', () => {
 
 		it('should return false for non-webhook nodes', () => {
 			expect(extractor.isApplicableToTriggerNode('n8n-nodes-base.httpRequest')).toBe(false);
-			expect(extractor.isApplicableToTriggerNode('n8n-nodes-base.cron')).toBe(false);
+			expect(extractor.isApplicableToTriggerNode('n8n-nodes-base.manualTrigger')).toBe(false);
 		});
 	});
 

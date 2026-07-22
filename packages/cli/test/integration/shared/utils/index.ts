@@ -15,7 +15,6 @@ import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { HttpBasicAuth } from 'n8n-nodes-base/credentials/HttpBasicAuth.credentials';
 import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.credentials';
 import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
-import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -88,10 +87,6 @@ function buildDefaultNodes(): INodeTypeData {
 	return {
 		'n8n-nodes-base.manualTrigger': {
 			type: new ManualTrigger(),
-			sourcePath: '',
-		},
-		'n8n-nodes-base.cron': {
-			type: new Cron(),
 			sourcePath: '',
 		},
 		'n8n-nodes-base.set': {
@@ -195,9 +190,9 @@ export function makeWorkflow(options?: {
 
 	const node: INode = {
 		id: uuid(),
-		name: 'Cron',
-		type: 'n8n-nodes-base.cron',
-		parameters: {},
+		name: 'Schedule Trigger',
+		type: 'n8n-nodes-base.scheduleTrigger',
+		parameters: SCHEDULE_TRIGGER_PARAMETERS,
 		typeVersion: 1,
 		position: [740, 240],
 	};
@@ -222,3 +217,9 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
+
+export const SCHEDULE_TRIGGER_PARAMETERS = {
+	rule: {
+		interval: [{ field: 'days' }],
+	},
+};
