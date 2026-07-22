@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/frontend-module-sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "exports": {
