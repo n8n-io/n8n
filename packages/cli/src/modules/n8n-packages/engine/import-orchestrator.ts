@@ -128,6 +128,8 @@ export class ImportOrchestrator {
 			credentialRequest,
 			folderPlan,
 			dataTablePlan,
+			variableRequest,
+			variablePlan,
 		});
 
 		return {
@@ -194,12 +196,16 @@ export class ImportOrchestrator {
 		credentialRequest,
 		folderPlan,
 		dataTablePlan,
+		variableRequest,
+		variablePlan,
 	}: {
 		workflowPlan: WorkflowImportPlan;
 		credentialPlan: CredentialResolution;
 		credentialRequest: CredentialBindingRequest;
 		folderPlan: FolderImportPlan;
 		dataTablePlan: DataTableImportPlan;
+		variableRequest: VariableImportRequest;
+		variablePlan: VariableImportPlan;
 	}): BlockingIssue[] {
 		return [
 			...workflowPlan.conflicts.map(
@@ -220,6 +226,9 @@ export class ImportOrchestrator {
 			...this.credentialImporter
 				.blockingFailures(credentialRequest, credentialPlan)
 				.map(toCredentialBlockingIssue),
+			...this.variableImporter
+				.blockingFailures(variableRequest, variablePlan)
+				.map((failure): BlockingIssue => ({ type: 'variable-unresolved', ...failure })),
 		];
 	}
 }

@@ -12,6 +12,8 @@ interface TriggerOptions {
 	maxNotFoundRetries?: number;
 	/** Delay between 404 retries in ms. Default: 250 */
 	notFoundRetryDelayMs?: number;
+	/** Max redirects to follow. Set to 0 to observe a redirect response directly. */
+	maxRedirects?: number;
 }
 
 /** Triggers webhooks with retry for 404s (async registration) and connection errors. */
@@ -29,6 +31,7 @@ export class WebhookApiHelper {
 				method: options?.method ?? 'GET',
 				headers: options?.headers,
 				data: options?.data,
+				maxRedirects: options?.maxRedirects,
 				maxRetries: 3, // Playwright retry for connection errors
 			});
 

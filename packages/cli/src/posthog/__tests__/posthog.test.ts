@@ -220,6 +220,7 @@ describe('PostHog', () => {
 				// state into unrelated cases.
 				globalConfig.evaluation.collectionsEnabled = false;
 				globalConfig.evaluation.configEvalsEnabled = false;
+				globalConfig.evaluation.agentEvalsEnabled = false;
 			});
 
 			it('force-enables the eval-collections flag when N8N_EVAL_COLLECTIONS_ENABLED is set', async () => {
@@ -269,6 +270,30 @@ describe('PostHog', () => {
 				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
 
 				expect(flags).toEqual({ '084_eval_collections': true });
+			});
+
+			it('force-enables the agent-evals flag when N8N_AGENT_EVALS_ENABLED is set', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockResolvedValue(mockEvaluatedFlags({}));
+				globalConfig.evaluation.agentEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toMatchObject({ '101_agent_evals': true });
+			});
+
+			it('falls back to the agent-evals override when PostHog throws', async () => {
+				(PostHog.prototype.evaluateFlags as Mock).mockRejectedValue(new Error('posthog down'));
+				globalConfig.evaluation.agentEvalsEnabled = true;
+
+				const ph = new PostHogClient(instanceSettings, globalConfig);
+				await ph.init();
+
+				const flags = await ph.getFeatureFlags({ id: userId, createdAt });
+
+				expect(flags).toEqual({ '101_agent_evals': true });
 			});
 		});
 	});

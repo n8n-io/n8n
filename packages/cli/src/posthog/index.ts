@@ -1,4 +1,5 @@
 import {
+	AGENT_EVALS_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
@@ -176,6 +177,9 @@ export class PostHogClient {
 		// `variant` string, not a boolean (`isConfigEvalsEnabled` checks for it).
 		if (this.globalConfig.evaluation.configEvalsEnabled) {
 			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
+		}
+		if (this.globalConfig.evaluation.agentEvalsEnabled) {
+			overrides[AGENT_EVALS_FLAG] = true;
 		}
 		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}

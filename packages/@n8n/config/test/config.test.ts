@@ -469,6 +469,7 @@ describe('GlobalConfig', () => {
 		evaluation: {
 			collectionsEnabled: false,
 			configEvalsEnabled: false,
+			agentEvalsEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
