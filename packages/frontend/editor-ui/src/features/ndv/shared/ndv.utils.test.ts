@@ -1,4 +1,4 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, afterEach } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type {
 	IConnections,
@@ -773,5 +773,41 @@ describe('setValue', () => {
 		setValue(nodeValues, 'customTelemetryTags.tag[0]', null);
 
 		expect(nodeValues.value.customTelemetryTags).toEqual({});
+	});
+});
+
+describe('setValue with dot-notation paths that name inherited members', () => {
+	// Guard the shared prototype so a regression in one test cannot cascade to others.
+	const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+
+	afterEach(() => {
+		if (!hadOwnCall) {
+			delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+		}
+	});
+
+	it('keeps built-in object prototypes intact when a path names an inherited member', () => {
+		const nodeValues: Ref<INodeParameters> = ref({ parameters: {} });
+
+		setValue(nodeValues, 'parameters.toString.call', 'x');
+
+		expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+		expect(Object.prototype.toString.call([])).toBe('[object Array]');
+		// The value lands as a plain own property on the parameters object.
+		expect((nodeValues.value.parameters as { toString?: { call?: unknown } }).toString?.call).toBe(
+			'x',
+		);
+	});
+
+	it('keeps built-in object prototypes intact for a nested inherited key', () => {
+		const nodeValues: Ref<INodeParameters> = ref({ parameters: {} });
+
+		setValue(nodeValues, 'parameters.a.toString.call', 'y');
+
+		expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+		expect(Object.prototype.toString.call({})).toBe('[object Object]');
+		expect(
+			(nodeValues.value.parameters as { a?: { toString?: { call?: unknown } } }).a?.toString?.call,
+		).toBe('y');
 	});
 });
