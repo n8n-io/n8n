@@ -16,7 +16,19 @@ const FIXTURE = defineTelemetryEvents({
 	USER_CREATED_CREDENTIAL: {
 		name: 'User created credential',
 		description: 'Fires when the user creates a credential.',
-		properties: z.looseObject({ credential_type: z.string() }),
+		properties: z.looseObject({
+			credential_type: z.string(),
+			context: z.looseObject({ source: z.string() }).optional(),
+			metadata: z.object({}).catchall(z.unknown()).optional(),
+		}),
+	},
+	USER_OPENED_PANEL: {
+		name: 'User opened panel',
+		description: 'Fires when the user opens a panel.',
+		properties: z.object({
+			context: z.object({ source: z.string() }),
+			items: z.array(z.object({ item_id: z.string() })).optional(),
+		}),
 	},
 });
 
@@ -58,9 +70,28 @@ describe('getEventValidationError', () => {
 		expect(error).toContain('extra_junk: unrecognized property');
 	});
 
+	it('reports unrecognized properties inside nested objects', () => {
+		const error = getEventValidationError(FIXTURE.USER_OPENED_PANEL, {
+			context: { source: 'canvas', typo: true },
+		});
+
+		expect(error).toContain('context.typo: unrecognized property');
+	});
+
+	it('reports unrecognized properties inside arrays', () => {
+		const error = getEventValidationError(FIXTURE.USER_OPENED_PANEL, {
+			context: { source: 'canvas' },
+			items: [{ item_id: 'item-1', typo: true }],
+		});
+
+		expect(error).toContain('items.0.typo: unrecognized property');
+	});
+
 	it('allows extra properties on intentionally loose schemas', () => {
 		const error = getEventValidationError(FIXTURE.USER_CREATED_CREDENTIAL, {
 			credential_type: 'notionApi',
+			context: { source: 'canvas', anything_nested: true },
+			metadata: { anything_dynamic: true },
 			anything_else: true,
 		});
 

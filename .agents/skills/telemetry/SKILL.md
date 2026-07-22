@@ -53,7 +53,7 @@ Entries get property autocomplete and compile-time checks — typo'd, missing, o
 
 ## Hard rules
 
-- **Never rename an emitted event.** BigQuery materializes one table per event name; a rename orphans downstream history. A rename is delete + create, names are never reused, and removed events go to the registry's removed ledger.
+- **Never rename an emitted event.** BigQuery materializes one table per event name; a rename orphans downstream history. A rename is delete + create, names are never reused, and removals must be coordinated with the data team before deleting the registry entry.
 - **Never duplicate an event name** — one entry per event across all domains, referenced by every call site (even FE + BE). CI fails on collision.
 - **Properties evolve additively only.** Changing a property's type forks warehouse columns even under a stable name. Mark deprecations on the schema (`.meta({ deprecated: true })`) instead of removing.
 - **Breaking changes need a data-team heads-up** in Slack plus a Notion note before they ship.
