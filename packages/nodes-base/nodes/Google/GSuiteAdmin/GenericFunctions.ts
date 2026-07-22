@@ -86,11 +86,23 @@ export function mapUserExtraFields(fields: IDataObject, body: IDataObject): void
 		['keywordsUi', 'keywordsValues', 'keywords'],
 		['locationsUi', 'locationsValues', 'locations'],
 		['posixAccountsUi', 'posixAccountsValues', 'posixAccounts'],
+		['sshPublicKeysUi', 'sshPublicKeysValues', 'sshPublicKeys'],
 	];
 	for (const [uiKey, valuesKey, bodyKey] of arrayMappings) {
 		if (fields[uiKey]) {
 			body[bodyKey] = (fields[uiKey] as IDataObject)[valuesKey];
 		}
+	}
+
+	// sshPublicKeys: omit expirationTimeUsec when unset (0) so keys don't expire at epoch
+	if (Array.isArray(body.sshPublicKeys)) {
+		body.sshPublicKeys = (body.sshPublicKeys as IDataObject[]).map((entry) => {
+			if (!entry.expirationTimeUsec) {
+				const { expirationTimeUsec, ...rest } = entry;
+				return rest;
+			}
+			return entry;
+		});
 	}
 }
 

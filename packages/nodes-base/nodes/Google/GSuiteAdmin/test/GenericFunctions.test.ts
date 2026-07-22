@@ -275,6 +275,46 @@ describe('Google GSuiteAdmin Node', () => {
 			});
 		});
 
+		it('should unwrap sshPublicKeys into the API array', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					sshPublicKeysUi: {
+						sshPublicKeysValues: [{ key: 'ssh-rsa AAAA', expirationTimeUsec: 1893456000000000 }],
+					},
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				sshPublicKeys: [{ key: 'ssh-rsa AAAA', expirationTimeUsec: 1893456000000000 }],
+			});
+		});
+
+		it('should drop expirationTimeUsec from sshPublicKeys when unset (0)', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					sshPublicKeysUi: {
+						sshPublicKeysValues: [
+							{ key: 'ssh-rsa AAAA', expirationTimeUsec: 0 },
+							{ key: 'ssh-ed25519 BBBB', expirationTimeUsec: 1893456000000000 },
+						],
+					},
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				sshPublicKeys: [
+					{ key: 'ssh-rsa AAAA' },
+					{ key: 'ssh-ed25519 BBBB', expirationTimeUsec: 1893456000000000 },
+				],
+			});
+		});
+
 		it('should not set keys for omitted fields', () => {
 			const body: IDataObject = {};
 

@@ -53,6 +53,14 @@
 							}
 						]
 					},
+					"sshPublicKeysUi": {
+						"sshPublicKeysValues": [
+							{
+								"key": "ssh-rsa AAAA",
+								"expirationTimeUsec": 1893456000000000
+							}
+						]
+					},
 					"customFields": {
 						"fieldValues": [
 							{

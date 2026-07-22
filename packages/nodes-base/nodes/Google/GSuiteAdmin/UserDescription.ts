@@ -1099,6 +1099,38 @@ export const userExtraFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'SSH Public Keys',
+		name: 'sshPublicKeysUi',
+		type: 'fixedCollection',
+		placeholder: 'Add SSH Public Key',
+		typeOptions: {
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				name: 'sshPublicKeysValues',
+				displayName: 'SSH Public Key',
+				values: [
+					{
+						displayName: 'Key',
+						name: 'key',
+						type: 'string',
+						default: '',
+						description: 'The SSH public key',
+					},
+					{
+						displayName: 'Expiration Time (Usec)',
+						name: 'expirationTimeUsec',
+						type: 'number',
+						default: 0,
+						description: 'Expiration time in microseconds since epoch. Leave 0 for no expiration.',
+					},
+				],
+			},
+		],
+	},
 ];
 
 export const userOperations: INodeProperties[] = [

@@ -62,6 +62,12 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						primary: true,
 					},
 				],
+				sshPublicKeys: [
+					{
+						key: 'ssh-rsa AAAA',
+						expirationTimeUsec: 1893456000000000,
+					},
+				],
 			})
 			.reply(200, {
 				kind: 'admin#directory#user',
