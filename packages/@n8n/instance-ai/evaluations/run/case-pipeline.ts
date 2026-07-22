@@ -13,8 +13,8 @@
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
 import type { BuildOrchestrator } from './build-orchestrator';
+import { sentinelOutcomeFromVerdicts, type TargetOutput } from './reshape';
 import type { CliArgs } from '../cli/args';
-import { sentinelOutcomeFromVerdicts, type TargetOutput } from '../cli/reshape';
 import type { EvalLogger } from '../harness/logger';
 import {
 	cleanupBuild,

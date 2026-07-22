@@ -1,12 +1,12 @@
 import type { Run } from 'langsmith/schemas';
 
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import {
 	parseTargetOutput,
 	reshapeLangSmithRuns,
 	sentinelOutcomeFromVerdicts,
-} from '../cli/reshape';
-import type { WorkflowTestCaseWithFile } from '../data/workflows';
-import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
+} from '../run/reshape';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,

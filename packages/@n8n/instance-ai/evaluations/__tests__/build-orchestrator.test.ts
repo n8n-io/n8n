@@ -1,5 +1,4 @@
 import type { CliArgs } from '../cli/args';
-import { LaneAllocator } from '../cli/lane-allocator';
 import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
 import { runWorkflowChecks, type BuildResult } from '../harness/runner';
@@ -8,6 +7,7 @@ import {
 	type BuildOrchestratorDeps,
 	type LaneState,
 } from '../run/build-orchestrator';
+import { LaneAllocator } from '../run/lane-allocator';
 import type { WorkflowTestCase } from '../types';
 
 // Characterization tests for the build phase extracted in TRUST-261: cache

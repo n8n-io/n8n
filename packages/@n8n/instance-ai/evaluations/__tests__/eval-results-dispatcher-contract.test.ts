@@ -5,8 +5,8 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
-import { aggregateResults } from '../cli/aggregator';
-import { writeEvalResults } from '../cli/index';
+import { aggregateResults } from '../run/aggregator';
+import { writeEvalResults } from '../run/persist';
 import type { ExecutionScenario, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 // Pins the `eval-results.json` fields the lang-tracer dispatcher ingests

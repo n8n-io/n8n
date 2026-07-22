@@ -8,11 +8,11 @@
 // same case pipeline, so the two drivers produce the same result shapes.
 // ---------------------------------------------------------------------------
 
+import { aggregateResults } from './aggregator';
 import type { ScenarioRowInputs } from './case-pipeline';
 import { createEvalSession, type EvalSessionConfig } from './eval-session';
-import { aggregateResults } from '../cli/aggregator';
-import { expandWithIterations } from '../cli/lanes';
-import { reshapeLangSmithRuns, type ReshapeRunRow } from '../cli/reshape';
+import { expandWithIterations } from './iterations';
+import { reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { runWithConcurrency } from '../harness/runner';
 import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';

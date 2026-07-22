@@ -20,8 +20,8 @@ import {
 	type McpBuildSpend,
 } from './build-orchestrator';
 import { createCasePipeline, type CasePipeline } from './case-pipeline';
+import { LaneAllocator } from './lane-allocator';
 import type { CliArgs } from '../cli/args';
-import { LaneAllocator } from '../cli/lane-allocator';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 import type { PrebuiltManifest } from '../harness/prebuilt-workflows';

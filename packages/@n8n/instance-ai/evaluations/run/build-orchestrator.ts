@@ -10,10 +10,10 @@
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
+import type { LaneAllocator } from './lane-allocator';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
-import type { LaneAllocator } from '../cli/lane-allocator';
 import { buildWorkflowViaMcp, type McpBuildSettings } from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
