@@ -253,6 +253,14 @@ export class SchedulerConfig {
 	triggerNodeMode: 'legacy' | 'new' = 'legacy';
 
 	/**
+	 * Routes poll triggers through the durable scheduler instead of the in-process
+	 * timer, independently of the Schedule Trigger, so poller nodes can be rolled
+	 * onto the durable scheduler on their own timeline.
+	 */
+	@Env('N8N_SCHEDULER_DURABLE_POLL_TRIGGERS')
+	durablePollTriggers: boolean = false;
+
+	/**
 	 * How many times a scheduled run may be reclaimed (for example after a crash)
 	 * or retried on error before it's given up on and dead-lettered. Defaults to
 	 * 5. Raise it on infrastructure prone to instance restarts or transient

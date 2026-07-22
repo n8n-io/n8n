@@ -98,10 +98,12 @@ export type * from './interfaces';
 export * from './node-execution-context';
 export * from './node-execution-context/utils/execution-metadata';
 export * from './partial-execution-utils';
+export { PollJobManager } from './poll-job-manager';
 export { PollTriggerExecutor } from './poll-trigger-executor';
 export { isEngineRequest } from './requests-response';
 export * from './routing-node';
 export * from './scheduled-task-manager';
+export { TriggersAndPollers } from './triggers-and-pollers';
 export * from './workflow-execute';
 // Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
 // can reuse the same schema-driven cred synthesizer the wire-server URL

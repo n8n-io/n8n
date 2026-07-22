@@ -2,8 +2,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import type { ErrorReporter, StorageConfig } from 'n8n-core';
-import { sleep, UnexpectedError } from 'n8n-workflow';
+import type { ErrorReporter, IGetExecutePollFunctions, StorageConfig } from 'n8n-core';
+import { sleep, UnexpectedError, Workflow } from 'n8n-workflow';
 import type {
 	Cron,
 	CronExpression,
@@ -11,12 +11,12 @@ import type {
 	IConnections,
 	INode,
 	INodeExecutionData,
+	IPollFunctions,
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-	Workflow,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -30,6 +30,7 @@ import type {
 	ScheduleTriggerJobRegistrar,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import type { OwnershipService } from '@/services/ownership.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type {
 	PublishedWorkflowDataForExecution,
@@ -37,6 +38,7 @@ import type {
 } from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
+import { createNodeTypes } from './trigger-test-utils';
 import {
 	TriggerExecutionContextFactory,
 	type TriggerFailureHandler,
@@ -55,6 +57,7 @@ describe('TriggerExecutionContextFactory', () => {
 	const scheduleTriggerJobRegistrar = mock<ScheduleTriggerJobRegistrar>();
 	const scheduleCollectionSession = mock<ScheduleTriggerCollectionSession>();
 	const ownershipService = mock<OwnershipService>();
+	const nodeTypes = createNodeTypes();
 
 	let factory: TriggerExecutionContextFactory;
 
@@ -83,6 +86,7 @@ describe('TriggerExecutionContextFactory', () => {
 			workflowPublishedDataService,
 			scheduleTriggerJobRegistrar,
 			ownershipService,
+			nodeTypes,
 		);
 	});
 
@@ -490,6 +494,97 @@ describe('TriggerExecutionContextFactory', () => {
 		});
 	});
 
+	describe('createPollExecutionContext', () => {
+		const pollNode: INode = {
+			id: 'node-1',
+			name: 'Poll Trigger',
+			type: 'poll',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const buildWorkflowData = (): IWorkflowBase =>
+			({
+				id: 'wf-1',
+				name: 'My Polling Workflow',
+				active: true,
+				nodes: [pollNode],
+				connections: {},
+				settings: { timezone: 'Europe/Berlin' },
+				staticData: {},
+			}) as IWorkflowBase;
+
+		test('builds the workflow and poll context with the activation path modes', async () => {
+			const workflowData = buildWorkflowData();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+			const pollFunctions = mock<IPollFunctions>();
+			const getPollFunctions = vi.fn().mockReturnValue(pollFunctions);
+			const getExecutePollFunctionsSpy = vi
+				.spyOn(factory, 'getExecutePollFunctions')
+				.mockReturnValue(getPollFunctions as unknown as IGetExecutePollFunctions);
+
+			const result = await factory.createPollExecutionContext(workflowData, pollNode);
+
+			expect(result.workflow).toBeInstanceOf(Workflow);
+			expect(result.pollFunctions).toBe(pollFunctions);
+
+			expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+				workflowId: 'wf-1',
+				workflowSettings: { timezone: 'Europe/Berlin' },
+			});
+
+			// Built with the activation path's execution/activation modes ('trigger'/'update').
+			// Exactly five args: no per-occurrence deduplication key is threaded as a sixth.
+			expect(getExecutePollFunctionsSpy).toHaveBeenCalledWith(
+				workflowData,
+				additionalData,
+				'trigger',
+				'update',
+				expect.any(Function),
+			);
+
+			// The poll context is bound to the built workflow, the node, and the same modes.
+			expect(getPollFunctions).toHaveBeenCalledWith(
+				result.workflow,
+				pollNode,
+				additionalData,
+				'trigger',
+				'update',
+			);
+		});
+
+		test('binds a fresh (non-cached) resolver so the poll cursor is never stale', async () => {
+			const workflowData = buildWorkflowData();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const getExecutePollFunctionsSpy = vi
+				.spyOn(factory, 'getExecutePollFunctions')
+				.mockReturnValue(vi.fn() as unknown as IGetExecutePollFunctions);
+
+			workflowPublishedDataService.getPublishedWorkflowDataForExecution.mockResolvedValue(
+				mock<PublishedWorkflowDataForExecution>(),
+			);
+
+			await factory.createPollExecutionContext(workflowData, pollNode);
+
+			// The __emit -> runWorkflow closure must resolve fresh data, never the cache.
+			const resolveWorkflowData = getExecutePollFunctionsSpy.mock.calls[0][4];
+			await resolveWorkflowData();
+
+			expect(
+				workflowPublishedDataService.getPublishedWorkflowDataForExecution,
+			).toHaveBeenCalledWith('wf-1');
+			expect(
+				workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution,
+			).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('executeErrorWorkflow', () => {
 		test('calls the standalone function with a correctly shaped IRun', () => {
 			const workflowData = mock<IWorkflowBase>();
@@ -566,6 +661,51 @@ describe('TriggerExecutionContextFactory', () => {
 			);
 
 			await expect(factory.loadPublishedWorkflowData('wf-1')).rejects.toThrow(UnexpectedError);
+		});
+	});
+
+	describe('loadPublishedWorkflowData with bypassCache', () => {
+		test('bypasses the cache and reads fresh from the database', async () => {
+			const workflowData = {
+				id: 'wf-1',
+				name: 'My workflow',
+				description: null,
+				active: true,
+				isArchived: false,
+				createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+				settings: { timezone: 'Europe/Berlin' },
+				staticData: { foo: 'bar' },
+				activeVersionId: 'published-version',
+				versionCounter: 3,
+				versionId: 'published-version',
+				nodes: [{ id: 'n1' } as INode],
+				connections: {} as IConnections,
+				nodeGroups: [],
+			} satisfies PublishedWorkflowDataForExecution;
+
+			workflowPublishedDataService.getPublishedWorkflowDataForExecution.mockResolvedValue(
+				workflowData,
+			);
+
+			const result = await factory.loadPublishedWorkflowData('wf-1', { bypassCache: true });
+
+			expect(result.staticData).toEqual({ foo: 'bar' });
+			// The poll path must never read through the publish-time cache.
+			expect(
+				workflowPublishedDataService.getPublishedWorkflowDataForExecution,
+			).toHaveBeenCalledWith('wf-1');
+			expect(
+				workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution,
+			).not.toHaveBeenCalled();
+		});
+
+		test('throws UnexpectedError when the service returns null', async () => {
+			workflowPublishedDataService.getPublishedWorkflowDataForExecution.mockResolvedValue(null);
+
+			await expect(
+				factory.loadPublishedWorkflowData('wf-1', { bypassCache: true }),
+			).rejects.toThrow(UnexpectedError);
 		});
 	});
 });

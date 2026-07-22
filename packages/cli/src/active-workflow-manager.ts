@@ -48,6 +48,7 @@ import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
@@ -87,6 +88,7 @@ export class ActiveWorkflowManager {
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly eventBus: MessageEventBus,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
+		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -938,10 +940,11 @@ export class ActiveWorkflowManager {
 			// lost command would otherwise leak them, firing an inactive workflow.
 			try {
 				await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
+				await this.pollTriggerJobRegistrar.removeWorkflow(workflowId);
 			} catch (error) {
 				this.errorReporter.error(error);
 				this.logger.error(
-					`Could not remove durable schedule jobs of workflow "${workflowId}" because of error: "${error.message}"`,
+					`Could not remove durable jobs of workflow "${workflowId}" because of error: "${error.message}"`,
 				);
 			}
 
@@ -1015,10 +1018,11 @@ export class ActiveWorkflowManager {
 		// how clearWebhooks failures are handled.
 		try {
 			await this.scheduleTriggerJobRegistrar.removeWorkflow(workflowId);
+			await this.pollTriggerJobRegistrar.removeWorkflow(workflowId);
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(
-				`Could not remove durable schedule jobs of workflow "${workflowId}" because of error: "${error.message}"`,
+				`Could not remove durable jobs of workflow "${workflowId}" because of error: "${error.message}"`,
 			);
 		}
 

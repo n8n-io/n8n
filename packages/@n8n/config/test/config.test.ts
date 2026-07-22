@@ -463,6 +463,7 @@ describe('GlobalConfig', () => {
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
+			durablePollTriggers: false,
 			maxAttempts: 5,
 		},
 		evaluation: {

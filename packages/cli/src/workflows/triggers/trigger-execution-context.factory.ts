@@ -15,6 +15,7 @@ import type {
 	IExecuteResponsePromiseData,
 	INode,
 	INodeExecutionData,
+	IPollFunctions,
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
@@ -28,9 +29,11 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
+import { NodeTypes } from '@/node-types';
 import type { ScheduleTriggerCollectionSession } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
 import { OwnershipService } from '@/services/ownership.service';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
@@ -68,6 +71,7 @@ export class TriggerExecutionContextFactory {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly scheduleTriggerJobRegistrar: ScheduleTriggerJobRegistrar,
 		private readonly ownershipService: OwnershipService,
+		private readonly nodeTypes: NodeTypes,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -211,7 +215,9 @@ export class TriggerExecutionContextFactory {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecutePollFunctions(
-		workflowData: IWorkflowDb,
+		// Accepts a plain `IWorkflowBase` so the durable poll-trigger handler can
+		// pass the published workflow data it loads (not a DB entity) unchanged.
+		workflowData: IWorkflowBase,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -269,6 +275,53 @@ export class TriggerExecutionContextFactory {
 		};
 	}
 
+	/**
+	 * Assembles the poll execution context, matching the activation path
+	 * (WorkflowTriggerActivator / ActiveWorkflowTriggers.activatePollTrigger): the
+	 * Workflow instance, additionalData, and the resolve-at-emit-time closure are
+	 * built the exact same way, so the durable poll-trigger handler runs `poll()`
+	 * against the same context as the legacy in-memory poller. The closure keeps
+	 * reading fresh (non-cached) so the poll cursor in staticData is never stale.
+	 */
+	async createPollExecutionContext(
+		workflowData: IWorkflowBase,
+		node: INode,
+	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
+		const workflow = new Workflow({
+			id: workflowData.id,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: true,
+			nodeTypes: this.nodeTypes,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		});
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflowData.id,
+			workflowSettings: workflowData.settings,
+		});
+
+		const resolveWorkflowData = async () =>
+			await this.loadPublishedWorkflowData(workflowData.id, { bypassCache: true });
+
+		// 'trigger' / 'update' are the execution/activation modes the activation path uses
+		// for poll triggers (see WorkflowTriggerActivator.registerNonWebhookTriggers).
+		const getPollFunctions = this.getExecutePollFunctions(
+			workflowData,
+			additionalData,
+			'trigger',
+			'update',
+			resolveWorkflowData,
+		);
+		// Mirror the core caller (ActiveWorkflowTriggers.activatePollTrigger): the factory
+		// closed over additionalData/mode/activation, but the type still expects all five.
+		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
+
+		return { workflow, pollFunctions };
+	}
+
 	executeErrorWorkflow(
 		error: ExecutionError,
 		workflowData: IWorkflowBase,
@@ -293,17 +346,26 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the cached
+	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
 	 * published data. `pinData` and `meta` are deliberately left out — they are
 	 * irrelevant to a production trigger execution.
 	 *
+	 * Pass `bypassCache` on the poll path: pollers mutate `staticData` (the poll
+	 * cursor) every tick via `saveStaticData`, and that write does not refresh the
+	 * cache (only the publication applier does), so the cache would serve a stale
+	 * cursor forever. The cursor must be read live.
+	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */
-	async loadPublishedWorkflowData(workflowId: string): Promise<IWorkflowBase> {
-		const publishedData =
-			await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
-				workflowId,
-			);
+	async loadPublishedWorkflowData(
+		workflowId: string,
+		{ bypassCache = false }: { bypassCache?: boolean } = {},
+	): Promise<IWorkflowBase> {
+		const publishedData = bypassCache
+			? await this.workflowPublishedDataService.getPublishedWorkflowDataForExecution(workflowId)
+			: await this.workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution(
+					workflowId,
+				);
 
 		if (!publishedData) {
 			throw new UnexpectedError('Published version not found for workflow', {

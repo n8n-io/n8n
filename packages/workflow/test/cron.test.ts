@@ -1,4 +1,4 @@
-import { toCronExpression } from '../src/cron';
+import { isSubMinuteCron, toCronExpression } from '../src/cron';
 import type { CronExpression } from '../src/interfaces';
 
 describe('Cron', () => {
@@ -71,6 +71,21 @@ describe('Cron', () => {
 				cronExpression: ' 0 9-17 * * * ' as CronExpression,
 			});
 			expect(expression).toEqual('0 9-17 * * *');
+		});
+	});
+
+	describe('isSubMinuteCron', () => {
+		test.each([
+			['* * * * * *', true],
+			['*/30 * * * * *', true],
+			['0 * * * * *', false],
+			['30 * * * * *', false],
+			// 5-field standard crons are minute-granular, so never sub-minute.
+			['* * * * *', false],
+			// Tolerates surrounding and repeated whitespace.
+			['  */5  * * * * *  ', true],
+		] as Array<[CronExpression, boolean]>)('is %j -> %s', (expression, expected) => {
+			expect(isSubMinuteCron(expression)).toBe(expected);
 		});
 	});
 });

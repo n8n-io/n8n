@@ -22,6 +22,7 @@ import { Tracing } from '@/observability';
 import { ActiveWorkflowTriggers } from '../active-workflow-triggers';
 import type { IGetExecuteTriggerFunctions } from '../interfaces';
 import type { PollContext } from '../node-execution-context';
+import type { PollJobManager } from '../poll-job-manager';
 import { PollTriggerExecutor } from '../poll-trigger-executor';
 import { ScheduledTaskManager } from '../scheduled-task-manager';
 import type { TriggersAndPollers } from '../triggers-and-pollers';
@@ -1350,6 +1351,137 @@ describe('ActiveWorkflowTriggers', () => {
 
 			// Only the newly registered cron remains; the stale one was removed
 			expect(realScheduledTaskManager.getTargetIds(workflowGroup())).toEqual(['fresh-node']);
+		});
+	});
+
+	describe('durable poll job path', () => {
+		const customCron = '0 * * * *' as CronExpression;
+
+		const buildTriggers = (pollJobManager?: PollJobManager) =>
+			new ActiveWorkflowTriggers(
+				logger,
+				scheduledTaskManager,
+				triggersAndPollers,
+				errorReporter,
+				new PollTriggerExecutor(logger, triggersAndPollers, tracing),
+				pollJobManager,
+			);
+
+		const buildPollJobManager = (active: boolean) => {
+			const pollJobManager = mock<PollJobManager>();
+			pollJobManager.isActive.mockReturnValue(active);
+			return pollJobManager;
+		};
+
+		const activatePoll = async (
+			triggers: ActiveWorkflowTriggers,
+			pollTimes: PollTimes = { item: [{ mode: 'custom', cronExpression: customCron }] },
+		) => {
+			workflow.getTriggerNodes.mockReturnValue([]);
+			workflow.getPollNodes.mockReturnValue([pollNode]);
+			getPollFunctions.mockReturnValue(pollFunctions);
+			pollFunctions.getNodeParameter.calledWith('pollTimes').mockReturnValue(pollTimes);
+			// Reset to drop any `*Once` implementations queued but left unconsumed by
+			// earlier tests, which `vi.clearAllMocks()` does not clear.
+			triggersAndPollers.runPollFunction.mockReset();
+			triggersAndPollers.runPollFunction.mockResolvedValue(null);
+
+			await triggers.addAllTriggers(
+				workflowId,
+				workflow,
+				additionalData,
+				mode,
+				activation,
+				getTriggerFunctions,
+				getPollFunctions,
+			);
+		};
+
+		it('registers an in-memory cron and polls once when no durable manager is bound', async () => {
+			const triggers = buildTriggers(undefined);
+
+			await activatePoll(triggers);
+
+			expect(scheduledTaskManager.register).toHaveBeenCalledWith(
+				{
+					group: workflowGroup(),
+					targetId: pollNode.id,
+					timezone: workflow.timezone,
+					expression: customCron,
+				},
+				expect.any(Function),
+			);
+			// The legacy path polls once at activation to prove the node works.
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
+		});
+
+		it('provisions a durable job, skipping the in-memory cron and the inline first poll, when the manager is active', async () => {
+			const pollJobManager = buildPollJobManager(true);
+			const triggers = buildTriggers(pollJobManager);
+
+			await activatePoll(triggers);
+
+			expect(pollJobManager.register).toHaveBeenCalledWith(
+				workflowId,
+				pollNode,
+				[customCron],
+				workflow.timezone,
+			);
+			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
+			// The first poll runs as the durable job's seeded first occurrence, so
+			// activation must not poll inline on this instance.
+			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+		});
+
+		it('falls back to the in-memory cron when the manager is bound but inactive', async () => {
+			const pollJobManager = buildPollJobManager(false);
+			const triggers = buildTriggers(pollJobManager);
+
+			await activatePoll(triggers);
+
+			expect(pollJobManager.register).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.register).toHaveBeenCalledWith(
+				{
+					group: workflowGroup(),
+					targetId: pollNode.id,
+					timezone: workflow.timezone,
+					expression: customCron,
+				},
+				expect.any(Function),
+			);
+		});
+
+		it('provisions nothing when the sub-minute guard fails activation', async () => {
+			// The guard rejects before the branch, so a rejected activation creates
+			// neither a durable job nor an in-memory cron.
+			const pollJobManager = buildPollJobManager(true);
+			const triggers = buildTriggers(pollJobManager);
+
+			await expect(
+				activatePoll(triggers, {
+					item: [{ mode: 'custom', cronExpression: '* * * * * *' as CronExpression }],
+				}),
+			).rejects.toThrow('The polling interval is too short. It has to be at least a minute.');
+
+			expect(pollJobManager.register).not.toHaveBeenCalled();
+			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
+		});
+
+		// Durable rows track the workflow's published state and are torn down by the
+		// cli lifecycle (deactivate/delete/republish), not by this in-memory teardown.
+		// So removeTriggers only clears the legacy cron and never touches the durable
+		// manager, which is why the manager exposes no teardown method to call here.
+		it('removeTriggers clears only the legacy cron for a removed poll node', async () => {
+			const pollJobManager = buildPollJobManager(true);
+			const triggers = buildTriggers(pollJobManager);
+
+			await activatePoll(triggers);
+			await triggers.removeTriggers(workflowId, new Set([pollNode.id]));
+
+			expect(scheduledTaskManager.deregisterTarget).toHaveBeenCalledWith(
+				workflowGroup(),
+				pollNode.id,
+			);
 		});
 	});
 });

@@ -11,6 +11,7 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	isSubMinuteCron,
 	toCronExpression,
 	TriggerCloseError,
 	UserError,
@@ -21,6 +22,7 @@ import {
 import { ErrorReporter } from '@/errors/error-reporter';
 
 import type { IGetExecutePollFunctions, IGetExecuteTriggerFunctions } from './interfaces';
+import { PollJobManager } from './poll-job-manager';
 import { PollTriggerExecutor } from './poll-trigger-executor';
 import { ScheduledTaskManager, type ScheduledTaskGroup } from './scheduled-task-manager';
 import { TriggersAndPollers } from './triggers-and-pollers';
@@ -49,6 +51,10 @@ export class ActiveWorkflowTriggers {
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollTriggerExecutor: PollTriggerExecutor,
+		// Optional port: `@n8n/di` injects `undefined` when no concrete `PollJobManager`
+		// is registered, so an unbound instance falls through to the legacy in-memory
+		// cron path below. When bound, the concrete self-gates via `isActive()`.
+		private readonly pollJobManager?: PollJobManager,
 	) {
 		this.logger = logger.scoped('workflow-publication');
 	}
@@ -356,6 +362,21 @@ export class ActiveWorkflowTriggers {
 		// Get all the trigger times
 		const cronExpressions = (pollTimes.item || []).map(toCronExpression);
 
+		// Reject sub-minute polling up front, so both paths are guarded.
+		for (const expression of cronExpressions) {
+			if (isSubMinuteCron(expression)) {
+				throw new UserError('The polling interval is too short. It has to be at least a minute.');
+			}
+		}
+
+		if (this.pollJobManager?.isActive()) {
+			// Durable path: provision a scheduler job instead of an in-memory cron. The
+			// first poll runs as the job's seeded first occurrence, so there is no
+			// in-memory timer and no inline first poll here.
+			await this.pollJobManager.register(workflowId, node, cronExpressions, workflow.timezone);
+			return;
+		}
+
 		// Capture this node activation's generation; removing or replacing the node
 		// invalidates only this poller, while leaving other workflow triggers intact.
 		const isCurrent = () =>
@@ -371,14 +392,6 @@ export class ActiveWorkflowTriggers {
 		await executePollTrigger(true);
 
 		for (const expression of cronExpressions) {
-			const fields = expression.split(' ');
-			// 6-field expressions include seconds as the first field.
-			// A wildcard there means sub-minute execution, which is too frequent.
-			// 5-field expressions (standard cron) have minute-level granularity at minimum.
-			if (fields.length === 6 && fields[0].includes('*')) {
-				throw new UserError('The polling interval is too short. It has to be at least a minute.');
-			}
-
 			this.scheduledTaskManager.register(
 				{
 					group: workflowScheduleGroup(workflowId),
