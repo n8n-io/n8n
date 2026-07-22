@@ -5824,7 +5824,6 @@
 	"evaluation.compare.scoreChart.toggle.perCaseComingSoon": "Per-case comparison is coming soon.",
 	"evaluation.compare.insights.title": "AI insights",
 	"evaluation.compare.insights.generatedAt": "Generated · {time}",
-	"evaluation.compare.insights.regenerate": "Regenerate",
 	"evaluation.compare.insights.error": "Couldn’t generate insights.",
 	"evaluation.compare.insights.retry": "Retry",
 	"evaluation.compare.insights.fallbackNote": "Computed from raw scores — AI summary unavailable",

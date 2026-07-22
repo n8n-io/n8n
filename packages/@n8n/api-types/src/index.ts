@@ -541,6 +541,8 @@ export {
 	RESERVED_METRIC_KEYS,
 	ONE_TO_FIVE_METRIC_KEYS,
 	normalizeMetricScore,
+	normalizedScores,
+	averageNormalizedScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
 	type MetricScale,
