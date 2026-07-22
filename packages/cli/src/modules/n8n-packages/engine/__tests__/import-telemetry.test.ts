@@ -75,7 +75,7 @@ const scope = (input: {
 		}),
 		variableRequest: {
 			requirements: vars.requirements === 0 ? undefined : new Array(vars.requirements),
-			missingPolicy: 'do-nothing',
+			missingMode: 'do-nothing',
 		},
 	};
 };

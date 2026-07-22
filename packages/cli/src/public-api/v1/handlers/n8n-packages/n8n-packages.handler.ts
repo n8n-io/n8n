@@ -197,7 +197,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					dataTableMatchingMode: payload.data.dataTableMatchingMode,
 					dataTableMissingMode: payload.data.dataTableMissingMode,
 					dataTableSchemaConflictPolicy: payload.data.dataTableSchemaConflictPolicy,
-					variableMissingPolicy: payload.data.variableMissingPolicy,
+					variableMissingMode: payload.data.variableMissingMode,
 					packageBuffer: packageFile.buffer,
 				});
 				return res.status(200).json(result);
