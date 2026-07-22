@@ -14,13 +14,21 @@ export const enum DbLock {
 	TRUSTED_KEY_REFRESH = 1002,
 	WORKFLOW_STATISTICS_ROLLUP = 1003,
 	WORKFLOW_REVIEW_REQUEST_CREATE = 1004,
-	/** Acquired directly by `DbConnection.migrate()`, not through this service */
 	MIGRATIONS = 1005,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
 
 type ReleaseFn = () => void;
+
+/**
+ * `timeoutMs` and `waitIndefinitely` are mutually exclusive — passing both is
+ * a compile-time error.
+ */
+type WithLockOptions = { subKey?: number } & (
+	| { timeoutMs?: number; waitIndefinitely?: never }
+	| { timeoutMs?: never; waitIndefinitely?: boolean }
+);
 
 /**
  * Opaque ownership token created on lock acquisition. The release function
@@ -98,12 +106,18 @@ export class DbLockService {
 	 * or rolls back. Concurrent callers block until the lock is available.
 	 *
 	 * @param options.timeoutMs - Maximum time in milliseconds to wait for the lock.
-	 *   If not provided, waits indefinitely.
+	 *   If not provided, the wait is implicitly capped by the connection's
+	 *   `statement_timeout` on Postgres.
+	 * @param options.waitIndefinitely - Wait for the lock with no upper bound and
+	 *   keep the lock transaction alive however long `fn` takes. Mutually
+	 *   exclusive with `timeoutMs`.
+	 * @param options.subKey - Optional int32 second lock key (Postgres two-int
+	 *   advisory lock form), e.g. to scope a lock ID per tenant schema.
 	 */
 	async withLock<T>(
 		lockId: DbLock,
 		fn: (tx: EntityManager) => Promise<T>,
-		options?: { timeoutMs?: number },
+		options?: WithLockOptions,
 	): Promise<T> {
 		if (this.databaseConfig.type !== 'postgresdb') {
 			const release = await this.acquireLock(lockId, options?.timeoutMs);
@@ -119,13 +133,26 @@ export class DbLockService {
 				// SET doesn't support parameterized queries ($1) in Postgres.
 				// Number() coercion is safe here since timeoutMs is typed as number.
 				await tx.query(`SET LOCAL lock_timeout = '${Number(options.timeoutMs)}'`);
+			} else if (options?.waitIndefinitely) {
+				// A blocked lock acquisition is a single statement, so no statement or
+				// lock timeout may kill the wait, and no idle timeout may reap this
+				// transaction while it idles holding the lock.
+				await tx.query('SET LOCAL statement_timeout = 0');
+				await tx.query('SET LOCAL lock_timeout = 0');
+				await tx.query('SET LOCAL idle_in_transaction_session_timeout = 0');
 			}
+			const lockKeys = options?.subKey === undefined ? [lockId] : [lockId, options.subKey];
 			try {
-				await tx.query('SELECT pg_advisory_xact_lock($1)', [lockId]);
+				await tx.query(
+					lockKeys.length === 1
+						? 'SELECT pg_advisory_xact_lock($1)'
+						: 'SELECT pg_advisory_xact_lock($1, $2)',
+					lockKeys,
+				);
 			} catch (error) {
 				if (error instanceof QueryFailedError && error.message.includes('lock timeout')) {
 					throw new OperationalError(
-						`Timed out waiting for DbLock ${lockId} after ${options?.timeoutMs}ms`,
+						`Timed out waiting for DbLock ${lockKeys.join(':')} after ${options?.timeoutMs}ms`,
 						{ cause: error },
 					);
 				}
