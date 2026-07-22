@@ -82,6 +82,17 @@ export class McpProtectedResource implements ProtectedResource {
 	}
 
 	/**
+	 * RFC 9728 §3.1 metadata URL for this resource: `/.well-known/
+	 * oauth-protected-resource` with the resource's path inserted after it.
+	 * Advertised in `WWW-Authenticate: resource_metadata=...` on 401s so clients
+	 * discover the metadata directly instead of guessing the well-known path.
+	 */
+	getProtectedResourceMetadataUrl(): string {
+		const url = new URL(this.getResourceUrl());
+		return `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
+	}
+
+	/**
 	 * Canonical resource URL first, then the instance-base-URL-derived one when
 	 * a dedicated MCP base URL is configured — clients connecting through the
 	 * main hostname (and tokens minted before the config change) must keep
