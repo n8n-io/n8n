@@ -87,7 +87,7 @@ describe('Google Sheets Functions', () => {
 				.fn()
 				.mockReturnValueOnce({ mode: 'mode', value: 'value' }) // documentId
 				.mockReturnValueOnce('Sheet1') // sheetName extracted value
-				.mockImplementationOnce((_parameterName, defaultValue) => defaultValue); // sheetName resource locator
+				.mockReturnValueOnce(undefined); // sheetName resource locator
 
 			const result = await getSheetHeaderRow.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,

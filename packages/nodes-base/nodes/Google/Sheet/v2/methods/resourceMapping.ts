@@ -24,7 +24,7 @@ export async function getMappingColumns(
 	const sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
 		extractValue: true,
 	}) as string;
-	const { mode: sheetMode } = this.getNodeParameter('sheetName', { mode: null }) as {
+	const { mode: sheetMode } = (this.getNodeParameter('sheetName') ?? { mode: null }) as {
 		mode: ResourceLocator | null;
 	};
 

@@ -117,7 +117,7 @@ describe('Google Sheets, getMappingColumns', () => {
 		loadOptionsFunctions.getNodeParameter
 			.mockReturnValueOnce({ mode: 'id', value: 'spreadsheetId' }) // documentId
 			.mockReturnValueOnce('Sheet1') // sheetName extracted value
-			.mockImplementationOnce((_parameterName, defaultValue) => defaultValue); // sheetName resource locator
+			.mockReturnValueOnce(undefined); // sheetName resource locator
 
 		const result = await getMappingColumns.call(loadOptionsFunctions);
 
