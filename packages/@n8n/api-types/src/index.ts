@@ -560,6 +560,8 @@ export {
 	type EvalVersionsResponse,
 } from './schemas/eval-collections.schema';
 
+export { AGENT_EVALS_FLAG } from './schemas/agent-evals.schema';
+
 export {
 	aiInsightsStatusSchema,
 	aiInsightsPayloadSchema,
