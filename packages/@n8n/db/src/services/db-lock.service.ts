@@ -43,6 +43,10 @@ interface LockState {
 	queue: Array<(token: OwnerToken) => void>;
 }
 
+/** Shared key derivation so SQLite mutexes scope by subKey like Postgres locks do */
+const lockKey = (lockId: number, subKey?: number) =>
+	subKey === undefined ? `${lockId}` : `${lockId}:${subKey}`;
+
 /**
  * Provides serialized execution of critical sections across concurrent
  * callers using database-level advisory locks (Postgres) or an in-process
@@ -91,7 +95,7 @@ interface LockState {
  */
 @Service()
 export class DbLockService {
-	private readonly locks = new Map<number, LockState>();
+	private readonly locks = new Map<string, LockState>();
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -110,9 +114,11 @@ export class DbLockService {
 	 *   `statement_timeout` on Postgres.
 	 * @param options.waitIndefinitely - Wait for the lock with no upper bound and
 	 *   keep the lock transaction alive however long `fn` takes. Mutually
-	 *   exclusive with `timeoutMs`.
+	 *   exclusive with `timeoutMs`. On SQLite the in-process mutex already waits
+	 *   indefinitely without `timeoutMs`.
 	 * @param options.subKey - Optional int32 second lock key (Postgres two-int
-	 *   advisory lock form), e.g. to scope a lock ID per tenant schema.
+	 *   advisory lock form), e.g. to scope a lock ID per tenant schema. Scopes
+	 *   the SQLite in-process mutex the same way.
 	 */
 	async withLock<T>(
 		lockId: DbLock,
@@ -120,7 +126,7 @@ export class DbLockService {
 		options?: WithLockOptions,
 	): Promise<T> {
 		if (this.databaseConfig.type !== 'postgresdb') {
-			const release = await this.acquireLock(lockId, options?.timeoutMs);
+			const release = await this.acquireLock(lockId, options?.timeoutMs, options?.subKey);
 			try {
 				return await this.dataSource.manager.transaction(async (tx) => await fn(tx));
 			} finally {
@@ -194,8 +200,12 @@ export class DbLockService {
 	 * Acquire the in-process lock, blocking until available.
 	 * Returns a one-shot release function bound to this specific acquisition.
 	 */
-	private async acquireLock(lockId: number, timeoutMs?: number): Promise<ReleaseFn> {
-		const lockState = this.getOrCreateLockState(lockId);
+	private async acquireLock(
+		lockId: number,
+		timeoutMs?: number,
+		subKey?: number,
+	): Promise<ReleaseFn> {
+		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
 			const token: OwnerToken = {} as OwnerToken;
@@ -228,7 +238,9 @@ export class DbLockService {
 						lockState.queue.splice(idx, 1);
 					}
 					reject(
-						new OperationalError(`Timed out waiting for DbLock ${lockId} after ${timeoutMs}ms`),
+						new OperationalError(
+							`Timed out waiting for DbLock ${lockKey(lockId, subKey)} after ${timeoutMs}ms`,
+						),
 					);
 				}, timeoutMs);
 			}
@@ -283,11 +295,12 @@ export class DbLockService {
 		};
 	}
 
-	private getOrCreateLockState(lockId: number): LockState {
-		let lockState = this.locks.get(lockId);
+	private getOrCreateLockState(lockId: number, subKey?: number): LockState {
+		const key = lockKey(lockId, subKey);
+		let lockState = this.locks.get(key);
 		if (!lockState) {
 			lockState = { held: null, queue: [] };
-			this.locks.set(lockId, lockState);
+			this.locks.set(key, lockState);
 		}
 		return lockState;
 	}

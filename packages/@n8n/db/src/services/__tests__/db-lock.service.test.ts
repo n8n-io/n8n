@@ -258,6 +258,35 @@ describe('DbLockService', () => {
 			expect(executionOrder).toEqual(['fn1-start', 'fn1-end', 'fn2-start']);
 		});
 
+		it('should scope the in-process mutex by subKey', async () => {
+			let resolveFirst!: () => void;
+			const firstBlocking = new Promise<void>((r) => {
+				resolveFirst = r;
+			});
+
+			const fn1 = vi.fn(async () => {
+				await firstBlocking;
+				return 'first';
+			});
+			const fn2 = vi.fn(async () => 'second');
+			const fn3 = vi.fn(async () => 'third');
+
+			const p1 = service.withLock(1001, fn1, { subKey: 1 });
+			// Different subKey — must not block
+			const p2 = service.withLock(1001, fn2, { subKey: 2 });
+			// Same subKey — must block until fn1 releases
+			const p3 = service.withLock(1001, fn3, { subKey: 1 });
+
+			await new Promise((r) => setImmediate(r));
+			expect(fn1).toHaveBeenCalled();
+			expect(fn2).toHaveBeenCalled();
+			expect(fn3).not.toHaveBeenCalled();
+
+			resolveFirst();
+			const results = await Promise.all([p1, p2, p3]);
+			expect(results).toEqual(['first', 'second', 'third']);
+		});
+
 		it('should not block different lockIds', async () => {
 			let resolveFirst!: () => void;
 			const firstBlocking = new Promise<void>((r) => {
