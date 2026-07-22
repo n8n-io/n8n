@@ -416,6 +416,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('[Preview]');
 			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('relative path');
 			expect(INSTANCE_AI_BUILDER_ADDENDUM).toContain('Do not invent absolute URLs');
+		});
+	});
+
 	describe('resolveAgentName', () => {
 		it('returns the agent display name', async () => {
 			const { delegate, agentsService } = setup();
