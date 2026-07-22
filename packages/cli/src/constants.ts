@@ -37,10 +37,7 @@ export const AI_ASSISTANT_SDK_VERSION = aiAssistantPackageJson.version;
 export const WORKFLOW_SDK_VERSION = workflowSdkPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
-export const STARTING_NODES = [
-	'@n8n/n8n-nodes-langchain.manualChatTrigger',
-	'n8n-nodes-base.manualTrigger',
-];
+export const STARTING_NODES = ['n8n-nodes-base.manualTrigger'];
 
 export const TRIGGER_COUNT_EXCLUDED_NODES = [
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,

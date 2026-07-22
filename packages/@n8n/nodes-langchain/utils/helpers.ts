@@ -56,9 +56,7 @@ const SESSION_KEY_SCOPING_MIN_VERSION: Record<string, number> = {
 	'@n8n/n8n-nodes-langchain.memoryPostgresChat': 1.4,
 	'@n8n/n8n-nodes-langchain.memoryRedisChat': 1.6,
 	'@n8n/n8n-nodes-langchain.memoryMongoDbChat': 1.1,
-	'@n8n/n8n-nodes-langchain.memoryMotorhead': 1.4,
 	'@n8n/n8n-nodes-langchain.memoryXata': 1.5,
-	'@n8n/n8n-nodes-langchain.memoryZep': 1.4,
 };
 
 function shouldScopeSessionKey(ctx: ISupplyDataFunctions | IWebhookFunctions): boolean {

@@ -1,4 +1,4 @@
-import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, LlmTokenUsageData } from '@/Interface';
 import type { IDataObject, INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
 import { isObjectEmpty, NodeConnectionTypes } from 'n8n-workflow';
@@ -298,5 +298,5 @@ export function formatTokenUsageCount(
 }
 
 export function isChatNode(node: INodeUi) {
-	return [CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE].includes(node.type);
+	return node.type === CHAT_TRIGGER_NODE_TYPE;
 }

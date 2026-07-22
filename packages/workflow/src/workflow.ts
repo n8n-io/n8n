@@ -9,7 +9,6 @@ import {
 } from './common';
 
 import {
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
 	NODES_WITH_RENAMABLE_CONTENT,
 	NODES_WITH_RENAMABLE_FORM_HTML_CONTENT,
 	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
@@ -833,11 +832,6 @@ export class Workflow {
 		for (const nodeName of nodeNames) {
 			node = this.nodes[nodeName];
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-
-			// TODO: Identify later differently
-			if (nodeType.description.name === MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE) {
-				continue;
-			}
 
 			if (nodeType && (nodeType.trigger !== undefined || nodeType.poll !== undefined)) {
 				if (node.disabled === true) {

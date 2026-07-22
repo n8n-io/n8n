@@ -60,10 +60,6 @@ Pitfalls:
 - Ensure the correct binary field name is specified in the node configuration
 - Verify file format compatibility before extraction
 
-### HTML Extract (n8n-nodes-base.htmlExtract)
-
-Purpose: Scrapes data from web pages using CSS selectors
-
 ### Split Out (n8n-nodes-base.splitOut)
 
 Purpose: Processes arrays of items individually for sequential operations.
@@ -101,6 +97,15 @@ Pitfalls:
 ### HTTP Request (n8n-nodes-base.httpRequest)
 
 Purpose: Fetches data from APIs or web pages for extraction
+
+### HTML (n8n-nodes-base.html)
+
+Purpose: Extracts data from HTML returned by an HTTP Request
+
+Configuration:
+
+- Select the Extract HTML Content operation
+- JavaScript-rendered pages may return empty content because the HTTP Request node receives the initial HTML only
 
 ### Code (n8n-nodes-base.code)
 

@@ -2591,7 +2591,7 @@ describe('LogStreamingEventRelay', () => {
 				nodeName: 'OpenAI',
 				workflowId: 'wf789',
 				workflowName: 'My Workflow',
-				nodeType: 'n8n-nodes-base.openai',
+				nodeType: '@n8n/n8n-nodes-langchain.openAi',
 			};
 
 			eventService.emit('ai-llm-generated-output', payload);
@@ -2609,7 +2609,7 @@ describe('LogStreamingEventRelay', () => {
 				nodeName: 'OpenAI',
 				workflowId: 'wf123',
 				workflowName: 'My Workflow',
-				nodeType: 'n8n-nodes-base.openai',
+				nodeType: '@n8n/n8n-nodes-langchain.openAi',
 			};
 
 			eventService.emit('ai-llm-errored', payload);

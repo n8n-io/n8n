@@ -67,7 +67,7 @@ const createCredentialCard = (overrides: Partial<NodeSetupState> = {}): SetupCar
 	state: {
 		node: createTestNode({
 			name: overrides.node?.name ?? 'OpenAI',
-			type: 'n8n-nodes-base.openAi',
+			type: '@n8n/n8n-nodes-langchain.openAi',
 		}) as INodeUi,
 		parameterIssues: {},
 		isTrigger: false,

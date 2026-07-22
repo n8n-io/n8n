@@ -57,7 +57,6 @@ import {
 	DRAG_EVENT_DATA_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
@@ -1324,9 +1323,7 @@ const containsChatTriggerNodes = computed(() => {
 	return (
 		!isExecutionWaitingForWebhook.value &&
 		!!workflowDocumentStore?.value?.allNodes.find(
-			(node) =>
-				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
-				node.disabled !== true,
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && node.disabled !== true,
 		)
 	);
 });

@@ -327,8 +327,8 @@ describe('no_unreachable_nodes', () => {
 						position: [400, 400],
 					},
 					{
-						name: 'SearchTool',
-						type: '@n8n/n8n-nodes-langchain.toolSerpApi',
+						name: 'CalculatorTool',
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
 						typeVersion: 1,
 						position: [500, 400],
 					},
@@ -340,7 +340,7 @@ describe('no_unreachable_nodes', () => {
 					SubLLM: {
 						ai_languageModel: [[{ node: 'SubAgent', type: 'ai_languageModel', index: 0 }]],
 					},
-					SearchTool: { ai_tool: [[{ node: 'SubAgent', type: 'ai_tool', index: 0 }]] },
+					CalculatorTool: { ai_tool: [[{ node: 'SubAgent', type: 'ai_tool', index: 0 }]] },
 				},
 			}),
 			makeCtx(),
