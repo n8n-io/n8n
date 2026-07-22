@@ -14,6 +14,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import {
+	LOCAL_TRIAL_FIXTURE_ENABLED,
+	LOCAL_TRIAL_UPGRADE_OFFER,
+} from '@/app/dev/localTrialFixture';
+import {
 	TRIAL_INTRO_MODAL_KEY,
 	TRIAL_INTRO_SEEN_CALLOUT,
 	TRIAL_INTRO_UPGRADE_SOURCE,
@@ -45,7 +49,8 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 	const currentVariant = computed(() => posthogStore.getVariant(TRIAL_INTRO_MODAL_EXPERIMENT.name));
 
 	const isVariantEnabled = computed(
-		() => currentVariant.value === TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+		() =>
+			LOCAL_TRIAL_FIXTURE_ENABLED || currentVariant.value === TRIAL_INTRO_MODAL_EXPERIMENT.variant,
 	);
 
 	const isEligible = computed(
@@ -54,7 +59,7 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 			cloudPlanStore.userIsTrialing &&
 			!cloudPlanStore.trialExpired &&
 			usersStore.isInstanceOwner &&
-			!usersStore.isCalloutDismissed(TRIAL_INTRO_SEEN_CALLOUT),
+			(LOCAL_TRIAL_FIXTURE_ENABLED || !usersStore.isCalloutDismissed(TRIAL_INTRO_SEEN_CALLOUT)),
 	);
 
 	const shouldShowModal = computed(() => isVariantEnabled.value && isEligible.value);
@@ -66,7 +71,9 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 			(shouldShowModal.value && !hasAttemptedModalOpen.value && !uiStore.isAnyModalOpen),
 	);
 
-	const upgradeOffer = ref<Cloud.UpgradeOffer | undefined>();
+	const upgradeOffer = ref<Cloud.UpgradeOffer | undefined>(
+		LOCAL_TRIAL_FIXTURE_ENABLED ? LOCAL_TRIAL_UPGRADE_OFFER : undefined,
+	);
 	const hasFetchedUpgradeOffer = ref(false);
 
 	const starterOffer = computed(() => upgradeOffer.value);
@@ -89,6 +96,10 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 	const fetchUpgradeOfferOnce = async (): Promise<void> => {
 		if (hasFetchedUpgradeOffer.value) return;
 		hasFetchedUpgradeOffer.value = true;
+		if (LOCAL_TRIAL_FIXTURE_ENABLED) {
+			upgradeOffer.value = LOCAL_TRIAL_UPGRADE_OFFER;
+			return;
+		}
 
 		try {
 			const response = await getUpgradeOffer(rootStore.restApiContext);
@@ -104,7 +115,7 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 		hasAttemptedModalOpen.value = true;
 		isModalPresentationActive.value = true;
 		uiStore.openModal(TRIAL_INTRO_MODAL_KEY);
-		void markSeen();
+		if (!LOCAL_TRIAL_FIXTURE_ENABLED) void markSeen();
 		void fetchUpgradeOfferOnce();
 		return true;
 	}

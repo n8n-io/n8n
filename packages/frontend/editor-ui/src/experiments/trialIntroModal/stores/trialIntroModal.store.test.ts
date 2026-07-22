@@ -463,12 +463,15 @@ describe('trialIntroModal store', () => {
 		it('tracks period selection with the period and offer state', () => {
 			store.trackModalInteraction('period_selected', { period: 'monthly' });
 
-			expect(mockTrack).toHaveBeenCalledWith('User selected billing period in trial welcome modal', {
-				period: 'monthly',
-				has_prices: false,
-				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
-				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
-			});
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User selected billing period in trial welcome modal',
+				{
+					period: 'monthly',
+					has_prices: false,
+					variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+					[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				},
+			);
 		});
 
 		it('reports has_prices true once the offer with prices is loaded', async () => {
@@ -482,12 +485,15 @@ describe('trialIntroModal store', () => {
 
 			store.trackModalInteraction('period_selected', { period: 'annual' });
 
-			expect(mockTrack).toHaveBeenCalledWith('User selected billing period in trial welcome modal', {
-				period: 'annual',
-				has_prices: true,
-				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
-				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
-			});
+			expect(mockTrack).toHaveBeenCalledWith(
+				'User selected billing period in trial welcome modal',
+				{
+					period: 'annual',
+					has_prices: true,
+					variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+					[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				},
+			);
 		});
 	});
 

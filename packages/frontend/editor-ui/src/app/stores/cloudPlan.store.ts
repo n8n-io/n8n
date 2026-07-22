@@ -14,6 +14,12 @@ import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
+import {
+	LOCAL_TRIAL_CLOUD_ACCOUNT,
+	LOCAL_TRIAL_FIXTURE_ENABLED,
+	LOCAL_TRIAL_PLAN,
+	LOCAL_TRIAL_USAGE,
+} from '@/app/dev/localTrialFixture';
 
 const DEFAULT_STATE: CloudPlanState = {
 	initialized: false,
@@ -26,8 +32,19 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
-	const state = reactive<CloudPlanState>(DEFAULT_STATE);
-	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
+	const state = reactive<CloudPlanState>(
+		LOCAL_TRIAL_FIXTURE_ENABLED
+			? {
+					initialized: true,
+					data: LOCAL_TRIAL_PLAN,
+					usage: LOCAL_TRIAL_USAGE,
+					loadingPlan: false,
+				}
+			: DEFAULT_STATE,
+	);
+	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(
+		LOCAL_TRIAL_FIXTURE_ENABLED ? LOCAL_TRIAL_CLOUD_ACCOUNT : null,
+	);
 
 	const now = ref<number>(Date.now());
 
@@ -120,12 +137,17 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	});
 
 	const hasCloudPlan = computed<boolean>(() => {
+		if (LOCAL_TRIAL_FIXTURE_ENABLED) return true;
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		return hasPermission(['instanceOwner']) && settingsStore.isCloudDeployment && !!cloudUserId;
 	});
 
 	const getUserCloudAccount = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
+		if (LOCAL_TRIAL_FIXTURE_ENABLED) {
+			currentUserCloudInfo.value = LOCAL_TRIAL_CLOUD_ACCOUNT;
+			return;
+		}
 		let cloudUser: Cloud.UserAccount | null = null;
 		try {
 			cloudUser = await cloudApi.getCloudUserInfo(rootStore.restApiContext);
@@ -142,6 +164,11 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const getOwnerCurrentPlan = async () => {
 		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
 		state.loadingPlan = true;
+		if (LOCAL_TRIAL_FIXTURE_ENABLED) {
+			state.data = LOCAL_TRIAL_PLAN;
+			state.loadingPlan = false;
+			return LOCAL_TRIAL_PLAN;
+		}
 		let plan;
 		try {
 			plan = await getCurrentPlan(rootStore.restApiContext);
@@ -156,6 +183,10 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const getInstanceCurrentUsage = async () => {
+		if (LOCAL_TRIAL_FIXTURE_ENABLED) {
+			state.usage = LOCAL_TRIAL_USAGE;
+			return LOCAL_TRIAL_USAGE;
+		}
 		const usage = await getCurrentUsage({ baseUrl: rootStore.baseUrl, pushRef: '' });
 		state.usage = usage;
 		return usage;
@@ -254,6 +285,13 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const generateCloudDashboardAutoLoginLink = async (data: { redirectionPath: string }) => {
+		if (LOCAL_TRIAL_FIXTURE_ENABLED) {
+			const searchParams = new URLSearchParams({
+				code: 'local-trial',
+				returnPath: data.redirectionPath,
+			});
+			return `https://app.n8n.cloud/login?${searchParams.toString()}`;
+		}
 		const searchParams = new URLSearchParams();
 
 		const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
