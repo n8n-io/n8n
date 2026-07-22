@@ -1,0 +1,32 @@
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_3e31ec08b26a81::t_14877738dcb175 14,75
+packages/@n8n/agents/src/sdk/tool.ts
+  s_3e31ec08b26a81::t_14877738dcb175 9,193-196,306,363
+packages/@n8n/agents/src/utils/tool-input-schema.ts
+  s_3e31ec08b26a81::t_14877738dcb175 1-19
+packages/@n8n/agents/src/sdk/__tests__/from-json-config.test.ts
+  s_3e31ec08b26a81::t_0aa126dc50b890 132-139
+packages/@n8n/agents/AGENTS.md
+  s_3e31ec08b26a81::t_4ea5b02e9d38ff 16-23
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_3e31ec08b26a81::t_0aa126dc50b890 98-108
+  s_3e31ec08b26a81::t_30439c4006a27c 156,159-161
+packages/@n8n/agents/src/sdk/__tests__/tool.test.ts
+  s_3e31ec08b26a81::t_0aa126dc50b890 129-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1a732a3be27077e8ef894904dbb62c1203ce6083",
+  "prompts": {},
+  "sessions": {
+    "s_3e31ec08b26a81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f81af-e9a0-7ed0-9878-9dbf7e2960a0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
