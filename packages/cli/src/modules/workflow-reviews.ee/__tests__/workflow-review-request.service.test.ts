@@ -76,6 +76,7 @@ describe('WorkflowReviewRequestService', () => {
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
 		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx));
+		workflowRepository.findReviewedVersionIdsByRequestIds.mockResolvedValue(new Map());
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
@@ -315,6 +316,9 @@ describe('WorkflowReviewRequestService', () => {
 				updatedAt: new Date('2026-07-20T11:00:00.000Z'),
 			});
 			requestRepository.findRequestsForWorkflow.mockResolvedValue([[request], 3]);
+			workflowRepository.findReviewedVersionIdsByRequestIds.mockResolvedValue(
+				new Map([['req-1', 'ver-1']]),
+			);
 
 			const result = await service.list(user, query);
 
@@ -327,6 +331,8 @@ describe('WorkflowReviewRequestService', () => {
 						decision: 'pending',
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T11:00:00.000Z',
+						reviewer: null,
+						reviewedVersionId: 'ver-1',
 					},
 				],
 			});

@@ -54,4 +54,21 @@ export class WorkflowReviewRequestWorkflowRepository extends Repository<Workflow
 
 		return new Map(rows.map((row) => [row.requestId, row.workflowName]));
 	}
+
+	/** One workflow per review for now; multi-workflow "primary" selection can wait. */
+	async findReviewedVersionIdsByRequestIds(
+		requestIds: string[],
+	): Promise<Map<string, string | null>> {
+		if (requestIds.length === 0) {
+			return new Map();
+		}
+
+		const rows = await this.createQueryBuilder('wrw')
+			.select('wrw.workflowReviewRequestId', 'requestId')
+			.addSelect('wrw.workflowVersionId', 'reviewedVersionId')
+			.where('wrw.workflowReviewRequestId IN (:...requestIds)', { requestIds })
+			.getRawMany<{ requestId: string; reviewedVersionId: string | null }>();
+
+		return new Map(rows.map((row) => [row.requestId, row.reviewedVersionId]));
+	}
 }

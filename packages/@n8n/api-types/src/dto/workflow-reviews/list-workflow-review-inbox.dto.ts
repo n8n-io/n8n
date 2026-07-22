@@ -1,25 +1,16 @@
 import { z } from 'zod';
 
 import {
-	type WorkflowReviewRequestDecision,
+	type WorkflowReviewRequestSummary,
 	type WorkflowReviewRequestState,
 	workflowReviewRequestStateSchema,
 } from '../../workflow-review-request-summary';
 import { Z } from '../../zod-class';
 
-/**
- * Inbox list item — richer than {@link WorkflowReviewRequestSummary}, which is
- * the workflow-scoped list payload used by the review-required toggle sync.
- */
-export interface WorkflowReviewInboxItemDto {
-	id: string;
+export interface WorkflowReviewInboxItem extends WorkflowReviewRequestSummary {
 	projectId: string;
 	title: string;
 	workflowName: string | null;
-	decision: WorkflowReviewRequestDecision;
-	state: WorkflowReviewRequestState;
-	createdAt: string;
-	updatedAt: string;
 }
 
 /**
@@ -34,7 +25,7 @@ export class ListWorkflowReviewInboxQueryDto extends Z.class({
 }) {}
 
 export interface ListWorkflowReviewInboxResponse {
-	data: WorkflowReviewInboxItemDto[];
+	data: WorkflowReviewInboxItem[];
 	nextCursor: string | null;
 	hasMore: boolean;
 }

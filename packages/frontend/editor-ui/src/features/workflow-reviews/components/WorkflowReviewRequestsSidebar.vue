@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { WorkflowReviewInboxItemDto, WorkflowReviewRequestState } from '@n8n/api-types';
+import type { WorkflowReviewInboxItem, WorkflowReviewRequestState } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -15,7 +15,7 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 const props = defineProps<{
-	items: WorkflowReviewInboxItemDto[];
+	items: WorkflowReviewInboxItem[];
 	activeState: WorkflowReviewRequestState;
 	selectedId: string | null;
 	loading: boolean;

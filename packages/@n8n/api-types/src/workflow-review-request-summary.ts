@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { Iso8601DateTimeString } from './datetime';
+import type { MinimalUser } from './user';
 
 export const workflowReviewRequestStateSchema = z.enum(['open', 'closed']);
 export type WorkflowReviewRequestState = z.infer<typeof workflowReviewRequestStateSchema>;
@@ -18,6 +19,8 @@ export type WorkflowReviewRequestSummary = {
 	decision: WorkflowReviewRequestDecision;
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;
+	reviewer: MinimalUser | null;
+	reviewedVersionId: string | null;
 };
 
 export type WorkflowReviewRequestList = {

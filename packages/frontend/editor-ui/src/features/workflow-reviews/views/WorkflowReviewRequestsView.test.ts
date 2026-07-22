@@ -96,6 +96,8 @@ describe('WorkflowReviewRequestsView', () => {
 			state: 'open',
 			createdAt: '2024-01-01T00:00:00.000Z',
 			updatedAt: '2024-01-01T00:00:00.000Z',
+			reviewer: null,
+			reviewedVersionId: 'version-1',
 		};
 
 		const { getByTestId } = renderComponent();

@@ -6,7 +6,7 @@ import type {
 	ListWorkflowReviewInboxQueryDto,
 	ListWorkflowReviewInboxResponse,
 	GetWorkflowReviewInboxSummaryResponse,
-	WorkflowReviewInboxItemDto,
+	WorkflowReviewInboxItem,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
@@ -71,16 +71,19 @@ export class WorkflowReviewRequestService {
 			query.workflowId,
 			{ state: query.state, skip: query.skip, take: query.take },
 		);
+		const reviewedVersionIdsByRequestId =
+			await this.workflowReviewRequestWorkflowRepository.findReviewedVersionIdsByRequestIds(
+				requests.map((request) => request.id),
+			);
 
 		return {
 			count,
-			data: requests.map((request) => ({
-				id: request.id,
-				state: request.state,
-				decision: request.decision,
-				createdAt: request.createdAt.toISOString(),
-				updatedAt: request.updatedAt.toISOString(),
-			})),
+			data: requests.map((request) =>
+				this.toRequestSummary(
+					request,
+					reviewedVersionIdsByRequestId.get(request.id) ?? null,
+				),
+			),
 		};
 	}
 
@@ -172,11 +175,7 @@ export class WorkflowReviewRequestService {
 			);
 
 		return {
-			id: request.id,
-			state: request.state,
-			decision: request.decision,
-			createdAt: request.createdAt.toISOString(),
-			updatedAt: request.updatedAt.toISOString(),
+			...this.toRequestSummary(request, workflowVersionId),
 		};
 	}
 
@@ -210,10 +209,18 @@ export class WorkflowReviewRequestService {
 			await this.workflowReviewRequestWorkflowRepository.findWorkflowNamesByRequestIds(
 				data.map((row) => row.id),
 			);
+		const reviewedVersionIdsByRequestId =
+			await this.workflowReviewRequestWorkflowRepository.findReviewedVersionIdsByRequestIds(
+				data.map((row) => row.id),
+			);
 
 		return {
 			data: data.map((row) =>
-				this.toInboxItemDto(row, workflowNamesByRequestId.get(row.id) ?? null),
+				this.toInboxItem(
+					row,
+					workflowNamesByRequestId.get(row.id) ?? null,
+					reviewedVersionIdsByRequestId.get(row.id) ?? null,
+				),
 			),
 			nextCursor,
 			hasMore,
@@ -298,19 +305,31 @@ export class WorkflowReviewRequestService {
 		return { createdAt, id };
 	}
 
-	private toInboxItemDto(
+	private toRequestSummary(
 		entity: WorkflowReviewRequest,
-		workflowName: string | null,
-	): WorkflowReviewInboxItemDto {
+		reviewedVersionId: string | null,
+	): WorkflowReviewRequestSummary {
 		return {
 			id: entity.id,
-			projectId: entity.projectId,
-			title: entity.title,
-			workflowName,
 			decision: entity.decision,
 			state: entity.state,
 			createdAt: entity.createdAt.toISOString(),
 			updatedAt: entity.updatedAt.toISOString(),
+			reviewer: null,
+			reviewedVersionId,
+		};
+	}
+
+	private toInboxItem(
+		entity: WorkflowReviewRequest,
+		workflowName: string | null,
+		reviewedVersionId: string | null,
+	): WorkflowReviewInboxItem {
+		return {
+			...this.toRequestSummary(entity, reviewedVersionId),
+			projectId: entity.projectId,
+			title: entity.title,
+			workflowName,
 		};
 	}
 }

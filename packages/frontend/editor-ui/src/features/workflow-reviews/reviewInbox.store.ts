@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import type {
 	ListWorkflowReviewInboxResponse,
 	WorkflowReviewRequestState,
-	WorkflowReviewInboxItemDto,
+	WorkflowReviewInboxItem,
 } from '@n8n/api-types';
 import { computed, ref } from 'vue';
 
@@ -21,7 +21,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	const probeSettled = ref(false);
 	const hasAnyReviews = ref(false);
-	const items = ref<WorkflowReviewInboxItemDto[]>([]);
+	const items = ref<WorkflowReviewInboxItem[]>([]);
 	const selectedId = ref<string | null>(null);
 	const activeState = ref<WorkflowReviewRequestState>('open');
 	const nextCursor = ref<string | null>(null);

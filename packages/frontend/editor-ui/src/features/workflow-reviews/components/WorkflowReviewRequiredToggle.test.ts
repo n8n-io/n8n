@@ -113,6 +113,8 @@ describe('WorkflowReviewRequiredToggle', () => {
 				decision: 'pending',
 				createdAt: '2026-07-20T10:00:00.000Z',
 				updatedAt: '2026-07-20T10:00:00.000Z',
+				reviewer: null,
+				reviewedVersionId: 'version-1',
 			} as const;
 			vi.mocked(fetchWorkflowReviewRequests).mockResolvedValueOnce({
 				count: 1,
