@@ -29,8 +29,9 @@ const isRunning = computed(() => status.value === 'running');
 
 const completedCount = computed(() => countSettledRuns(props.versions));
 
-// Hidden while running so a user can't stack a second wave on an unfinished one.
-const canRerun = computed(() => !isRunning.value);
+// Hidden while running (no stacking a second wave) and when there are no
+// versions to re-run — an empty collection would just 400 on the rerun endpoint.
+const canRerun = computed(() => !isRunning.value && props.versions.length > 0);
 
 const rerunning = ref(false);
 

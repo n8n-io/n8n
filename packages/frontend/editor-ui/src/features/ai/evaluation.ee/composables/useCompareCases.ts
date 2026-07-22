@@ -157,7 +157,12 @@ export function useCompareCases(
 					inputs: record?.inputs,
 					outputs: record?.outputs,
 					metrics: record?.metrics,
-					score: averageNormalizedScore(record?.metrics, detail.value?.metricScales),
+					// Normalize on this version's own run scales (its frozen snapshot),
+					// falling back to the collection-wide default.
+					score: averageNormalizedScore(
+						record?.metrics,
+						detail.value?.runs[versionIndex]?.metricScales ?? detail.value?.metricScales,
+					),
 				};
 			});
 

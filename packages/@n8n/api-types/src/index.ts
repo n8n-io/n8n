@@ -539,6 +539,7 @@ export {
 	normalizeMetricScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
+	metricScalesFromSnapshot,
 	type MetricScale,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,

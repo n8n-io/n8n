@@ -1,5 +1,6 @@
 import type { CreateEvaluationCollectionPayload } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { DatabaseConfig } from '@n8n/config';
 import type {
 	EvaluationCollection,
 	EvaluationCollectionRepository,
@@ -13,6 +14,7 @@ import type {
 	WorkflowPublishedVersion,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import type { EntityManager } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -110,6 +112,8 @@ describe('EvaluationCollectionService', () => {
 	let testRunnerService: Mocked<TestRunnerService>;
 	let telemetry: Mocked<Telemetry>;
 	let logger: Mocked<Logger>;
+	let databaseConfig: Mocked<DatabaseConfig>;
+	let tx: Mocked<EntityManager>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
@@ -121,10 +125,26 @@ describe('EvaluationCollectionService', () => {
 		testRunnerService = mock<TestRunnerService>();
 		telemetry = mock<Telemetry>();
 		logger = mock<Logger>();
+		databaseConfig = mock<DatabaseConfig>();
+		tx = mock<EntityManager>();
+		// `.manager` isn't deep-mocked; point it at `tx` so `manager.transaction(cb)`
+		// runs the callback with our mock EntityManager. (`manager` is readonly on
+		// the repo type, so assign through a cast in this test-only wiring.)
+		(collectionRepo as unknown as { manager: EntityManager }).manager = tx;
 
 		// Async no-op cleanup paths used by rerun rollback.
 		collectionRepo.removeRunsFromCollection.mockResolvedValue(undefined);
 		testRunnerService.cancelTestRun.mockResolvedValue(undefined);
+
+		// rerunCollection runs inside a locked transaction and reads the collection +
+		// runs off the tx. Feed those from the same fixture the tests configure on
+		// getDetailByIdAndWorkflowId, so the rerun tests keep setting one mock.
+		tx.transaction.mockImplementation((async (runInTx: (m: EntityManager) => Promise<unknown>) => {
+			const detail = await collectionRepo.getDetailByIdAndWorkflowId('', '');
+			tx.findOne.mockResolvedValue((detail?.collection ?? null) as never);
+			tx.find.mockResolvedValue((detail?.runs ?? []) as never);
+			return await runInTx(tx);
+		}) as never);
 
 		service = new EvaluationCollectionService(
 			collectionRepo,
@@ -136,6 +156,7 @@ describe('EvaluationCollectionService', () => {
 			testRunnerService,
 			telemetry,
 			logger,
+			databaseConfig,
 		);
 
 		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(makeConfig());
@@ -323,6 +344,40 @@ describe('EvaluationCollectionService', () => {
 	});
 
 	describe('rerunCollection', () => {
+		const singleCompletedRun = () => ({
+			collection: makeCollection(),
+			runs: [
+				makeTestRun({ id: 'tr-old', workflowVersionId: 'wfv-a', status: 'completed' as const }),
+			],
+		});
+		const freshRunStarts = () =>
+			testRunnerService.startTestRun.mockResolvedValueOnce({
+				testRun: makeTestRun({ id: 'tr-new', status: 'new' }),
+				finished: Promise.resolve(),
+			});
+
+		it('takes a pessimistic row lock to re-check in-flight runs under Postgres', async () => {
+			databaseConfig.type = 'postgresdb';
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(singleCompletedRun());
+			freshRunStarts();
+
+			await service.rerunCollection(user, 'wf-1', 'col-1');
+
+			const opts = tx.findOne.mock.calls[0]?.[1];
+			expect(opts).toMatchObject({ where: { id: 'col-1', workflowId: 'wf-1' } });
+			expect(opts?.lock).toEqual({ mode: 'pessimistic_write' });
+		});
+
+		it('skips the row lock under SQLite (relies on its own write serialization)', async () => {
+			databaseConfig.type = 'sqlite';
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(singleCompletedRun());
+			freshRunStarts();
+
+			await service.rerunCollection(user, 'wf-1', 'col-1');
+
+			expect(tx.findOne.mock.calls[0]?.[1]?.lock).toBeUndefined();
+		});
+
 		it('re-runs every version with fresh runs and unlinks the old runs', async () => {
 			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
 				collection: makeCollection(),
@@ -736,6 +791,60 @@ describe('EvaluationCollectionService', () => {
 			expect(detail.metricScales).toEqual({});
 			// correctness still scores via the name-based fallback.
 			expect(detail.runs[0].avgScore).toBe(1);
+		});
+
+		it('normalizes a run on its own frozen snapshot scale, not the edited current config', async () => {
+			// The config was edited after the run: "Quality" is now an expression
+			// (unit), but the run scored it 1–5 under its snapshot. It must normalize
+			// on the snapshot scale (oneToFive), not the current config's — otherwise 5
+			// falls outside [0,1] and is dropped (the TRUST-316 failure, across an edit).
+			evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(
+				makeConfig({
+					metrics: [
+						{
+							id: 'm1',
+							name: 'Quality',
+							type: 'expression',
+							config: { expression: '={{ $json.q }}', outputType: 'numeric' },
+						},
+					],
+				}),
+			);
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [
+					makeTestRun({
+						id: 'tr-1',
+						metrics: { Quality: 5 },
+						evaluationConfigSnapshot: {
+							id: 'cfg-1',
+							metrics: [
+								{
+									id: 'm1',
+									name: 'Quality',
+									type: 'llm_judge',
+									config: {
+										preset: 'correctness',
+										provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+										credentialId: 'c',
+										model: 'gpt-4o',
+										outputType: 'numeric',
+										inputs: { actualAnswer: 'a', expectedAnswer: 'b' },
+									},
+								},
+							],
+						},
+					}),
+				],
+			});
+
+			const detail = await service.getCollectionDetail('wf-1', 'col-1');
+
+			// Per-run scale from the snapshot (oneToFive), so 5 → 1.0.
+			expect(detail.runs[0].metricScales).toEqual({ Quality: 'oneToFive' });
+			expect(detail.runs[0].avgScore).toBe(1);
+			// The collection-wide default still reflects the edited current config.
+			expect(detail.metricScales).toEqual({ Quality: 'unit' });
 		});
 	});
 

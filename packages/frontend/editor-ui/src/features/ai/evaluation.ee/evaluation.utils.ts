@@ -153,9 +153,18 @@ export function countSettledRuns(runs: Array<{ status: EvalCollectionRunStatus }
 // operational counts (tokens, latency) normalize to `null` and are dropped, since
 // the bars clamp to max=1 and an absolute count would render a maxed-out bar.
 export function buildScoreShapedMetricGroups(
-	runs: Array<{ metrics: Record<string, number> | null }>,
-	scaleByMetric?: Record<string, MetricScale>,
+	runs: Array<{
+		metrics: Record<string, number> | null;
+		metricScales?: Record<string, MetricScale>;
+	}>,
+	defaultScales?: Record<string, MetricScale>,
 ): Array<{ key: string; values: Array<number | null> }> {
+	// Each run normalizes on its own snapshot scales (falling back to the
+	// collection-wide default) so a metric whose scale changed between runs isn't
+	// misnormalized against a single shared scale.
+	const scaleFor = (run: { metricScales?: Record<string, MetricScale> }, key: string) =>
+		run.metricScales?.[key] ?? defaultScales?.[key];
+
 	const orderedKeys: string[] = [];
 	const seen = new Set<string>();
 	for (const run of runs) {
@@ -171,9 +180,7 @@ export function buildScoreShapedMetricGroups(
 			runs.some((run) => run.metrics?.[key] !== undefined) &&
 			runs.every((run) => {
 				const value = run.metrics?.[key];
-				return (
-					value === undefined || normalizeMetricScore(key, value, scaleByMetric?.[key]) !== null
-				);
+				return value === undefined || normalizeMetricScore(key, value, scaleFor(run, key)) !== null;
 			}),
 	);
 
@@ -182,7 +189,7 @@ export function buildScoreShapedMetricGroups(
 		values: runs.map((run) => {
 			const value = run.metrics?.[key];
 			return typeof value === 'number'
-				? normalizeMetricScore(key, value, scaleByMetric?.[key])
+				? normalizeMetricScore(key, value, scaleFor(run, key))
 				: null;
 		}),
 	}));

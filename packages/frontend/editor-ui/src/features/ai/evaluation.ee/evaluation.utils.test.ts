@@ -1551,6 +1551,30 @@ describe('utils', () => {
 				{ key: 'accuracy', values: [0.9] },
 			]);
 		});
+
+		it('normalizes each run on its own metricScales', () => {
+			// Same metric name, different per-run scale (e.g. its type changed between
+			// runs): each run must normalize on its own snapshot scale.
+			const runs = [
+				{ metrics: { Quality: 5 }, metricScales: { Quality: 'oneToFive' as const } },
+				{ metrics: { Quality: 0.8 }, metricScales: { Quality: 'unit' as const } },
+			];
+
+			expect(buildScoreShapedMetricGroups(runs)).toEqual([{ key: 'Quality', values: [1, 0.8] }]);
+		});
+
+		it("prefers a run's own scale over the default map", () => {
+			const runs = [
+				{ metrics: { Quality: 5 }, metricScales: { Quality: 'oneToFive' as const } },
+				{ metrics: { Quality: 5 }, metricScales: { Quality: 'oneToFive' as const } },
+			];
+
+			// The default map says unit (which would drop 5 as > 1), but each run's own
+			// oneToFive wins.
+			expect(buildScoreShapedMetricGroups(runs, { Quality: 'unit' })).toEqual([
+				{ key: 'Quality', values: [1, 1] },
+			]);
+		});
 	});
 
 	describe('averageNormalizedScore', () => {
