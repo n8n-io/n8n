@@ -46,6 +46,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	keepOpen?: boolean;
 	/** Render as a non-interactive section header label instead of a selectable item. */
 	header?: boolean;
+	/** Whether to expose the item as a menu item checkbox */
+	checkbox?: boolean;
 	/** Additional CSS classes */
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */

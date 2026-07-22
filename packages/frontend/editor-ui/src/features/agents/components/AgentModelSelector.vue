@@ -50,6 +50,7 @@ const {
 	warnMissingCredentials = false,
 	disabled = false,
 	isManagedCredential = false,
+	credentialModalAppendToBody = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
@@ -60,6 +61,8 @@ const {
 	disabled?: boolean;
 	/** The selected model uses the n8n Connect (AI Gateway) managed credential. */
 	isManagedCredential?: boolean;
+	/** Append credential modals to body (needed when embedded in the Memory dialog). */
+	credentialModalAppendToBody?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -447,7 +450,10 @@ function openNewCredential(credentialType: string) {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true },
+			{
+				hideAskAssistant: true,
+				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
+			},
 		);
 	}
 }

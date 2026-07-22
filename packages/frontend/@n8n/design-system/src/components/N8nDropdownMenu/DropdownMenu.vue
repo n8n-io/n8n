@@ -373,6 +373,7 @@ defineExpose({ open, close });
 </template>
 
 <style module lang="scss">
+@use '../../css/common/var';
 @use '../../css/mixins/motion';
 
 .content {
@@ -395,7 +396,7 @@ defineExpose({ open, close });
 	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
-	z-index: 9999;
+	z-index: var.$index-popper;
 	scrollbar-width: none;
 
 	&.searchable {

@@ -34,7 +34,7 @@ function makeClient(): N8nClient {
 describe('runWorkflowBuildEval', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockedCleanupBuild.mockResolvedValue(undefined);
+		mockedCleanupBuild.mockResolvedValue(true);
 		mockedRunBinaryChecks.mockResolvedValue({
 			feedback: [
 				{

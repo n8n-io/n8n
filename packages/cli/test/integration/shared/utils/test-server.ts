@@ -255,6 +255,13 @@ export const setupTestServer = ({
 						break;
 					}
 
+					case 'otel': {
+						const { OtelService } = await import('@/modules/otel/otel.service.js');
+						await Container.get(OtelService).init();
+						await import('@/modules/otel/otel-settings.controller.js');
+						break;
+					}
+
 					case 'sourceControl':
 						await import('@/modules/source-control.ee/source-control.controller.ee.js');
 						break;
@@ -340,6 +347,10 @@ export const setupTestServer = ({
 
 					case 'data-table':
 						await import('@/modules/data-table/data-table.module.js');
+						break;
+
+					case 'workflow-reviews':
+						await import('@/modules/workflow-reviews.ee/workflow-reviews.module.js');
 						break;
 
 					case 'mcp':

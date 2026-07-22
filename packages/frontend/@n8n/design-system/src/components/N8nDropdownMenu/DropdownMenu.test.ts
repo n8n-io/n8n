@@ -4,6 +4,7 @@ import { ref } from 'vue';
 
 import type { DropdownMenuItemProps, DropdownMenuPlacement } from './DropdownMenu.types';
 import DropdownMenu from './DropdownMenu.vue';
+import Tooltip from '../N8nTooltip/Tooltip.vue';
 
 const createItems = (count: number): DropdownMenuItemProps[] => {
 	return Array.from({ length: count }, (_, i) => ({
@@ -590,6 +591,36 @@ describe('N8nDropdownMenu', () => {
 	});
 
 	describe('teleported prop', () => {
+		it('should render a teleported tooltip outside the dropdown content', async () => {
+			render({
+				components: { DropdownMenu, Tooltip },
+				setup() {
+					return {
+						items: [{ id: 'item', label: 'Item' }],
+					};
+				},
+				template: `
+					<DropdownMenu :items="items" :model-value="true">
+						<template #item-label="{ item }">
+							<Tooltip content="Item details" :visible="true" teleported>
+								<span>{{ item.label }}</span>
+							</Tooltip>
+						</template>
+					</DropdownMenu>
+				`,
+			});
+
+			const { dropdown } = await getDropdownContent();
+			const tooltip = await waitFor(() => {
+				const element = document.querySelector('[data-test-id="tooltip-content"]');
+				expect(element).toBeInTheDocument();
+				return element as HTMLElement;
+			});
+
+			expect(dropdown).not.toContainElement(tooltip);
+			expect(document.body).toContainElement(tooltip);
+		});
+
 		it('should teleport to body by default', async () => {
 			const { container } = render(DropdownMenu, {
 				props: {

@@ -10,7 +10,8 @@ import { N8nMarkdownEditor, N8nText } from '@n8n/design-system';
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
-import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useToast } from '@/app/composables/useToast';
 import { useAgentProjectId } from '../composables/useAgentProjectId';
 import { useUsersStore } from '@/features/settings/users/users.store';

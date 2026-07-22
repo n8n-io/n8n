@@ -13,6 +13,7 @@ import type {
 	Workspace,
 } from '@n8n/agents';
 import type {
+	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
@@ -386,6 +387,7 @@ export interface InstanceAiExecutionService {
 			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
+			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
@@ -694,7 +696,9 @@ export interface UpsertEvaluationConfigInput {
 	metrics: EvaluationConfigMetricInput[];
 }
 
-/** A config-based eval as surfaced to the agent. */
+/** A config-based eval as surfaced to the agent. Metrics are reduced to
+ *  identity only — use {@link EvaluationConfigDetail} when the metric bodies
+ *  (expressions, judge model, prompt) are needed. */
 export interface EvaluationConfigSummary {
 	id: string;
 	workflowId: string;
@@ -708,11 +712,20 @@ export interface EvaluationConfigSummary {
 	dataTableId?: string;
 }
 
+/** A config-based eval with its full metric bodies (expressions, judge model,
+ *  prompt) — what the summary omits. Returned by `describe` so the agent can
+ *  read a config before an `update` replaces it wholesale. */
+export interface EvaluationConfigDetail extends Omit<EvaluationConfigSummary, 'metrics'> {
+	metrics: EvaluationMetric[];
+}
+
 /** Create/read/update config-based evaluations attached to a workflow via the
  *  evaluation-config API (distinct from on-canvas eval nodes). */
 export interface InstanceAiEvaluationConfigService {
 	list(workflowId: string): Promise<EvaluationConfigSummary[]>;
 	get(workflowId: string, configId: string): Promise<EvaluationConfigSummary | null>;
+	/** Full-detail read: metric bodies included. */
+	describe(workflowId: string, configId: string): Promise<EvaluationConfigDetail | null>;
 	create(workflowId: string, input: UpsertEvaluationConfigInput): Promise<EvaluationConfigSummary>;
 	update(
 		workflowId: string,
@@ -757,6 +770,8 @@ export interface InstanceAiWebResearchService {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
+			/** When aborted, in-flight search requests should stop promptly. */
+			abortSignal?: AbortSignal;
 		},
 	): Promise<WebSearchResponse>;
 
@@ -766,6 +781,8 @@ export interface InstanceAiWebResearchService {
 			maxContentLength?: number;
 			maxResponseBytes?: number;
 			timeoutMs?: number;
+			/** When aborted, in-flight page fetches should stop promptly. */
+			abortSignal?: AbortSignal;
 			/**
 			 * Called before following each redirect hop and on cache hits with a
 			 * cross-host `finalUrl`. Throw to abort the fetch (the tool will
@@ -786,7 +803,10 @@ export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
 	/** Return tools that belong to the given category (based on annotations.category). */
 	getToolsByCategory(category: string): McpTool[];
-	callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
+	callTool(
+		req: McpToolCallRequest,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpToolCallResult>;
 }
 
 // ── Workspace shapes ────────────────────────────────────────────────────────

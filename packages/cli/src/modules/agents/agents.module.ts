@@ -98,10 +98,12 @@ export class AgentsModule implements ModuleInterface {
 		const { isAgentKnowledgeBaseEnabled } = await import('./agent-knowledge-gate.js');
 		const { AiService } = await import('@/services/ai.service.js');
 		const aiService = Container.get(AiService);
+		const proxyEnabled = aiService.isProxyEnabled();
 		return {
 			enabled: true,
 			modules: [...config.modules],
-			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config, aiService.isProxyEnabled()),
+			knowledgeBaseEnabled: isAgentKnowledgeBaseEnabled(config, proxyEnabled),
+			proxyEnabled,
 		};
 	}
 

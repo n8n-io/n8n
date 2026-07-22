@@ -18,7 +18,7 @@ export const sharedVersionDescription: Pick<
 > = {
 	hidden: true,
 	defaults: {
-		name: 'Message an Agent',
+		name: 'AI Agent',
 	},
 	codex: {
 		categories: ['AI'],
@@ -110,6 +110,11 @@ export const commonProperties: INodeProperties[] = [
 				noDataExpression: true,
 				default: 'allItems',
 				description: 'Whether to call the agent once per input item or a single time for all items',
+				displayOptions: {
+					hide: {
+						'/agentSource': ['inline'],
+					},
+				},
 				options: [
 					{
 						name: 'Once for All Items',
@@ -138,6 +143,11 @@ export const commonProperties: INodeProperties[] = [
 				default: false,
 				description:
 					"Whether to give the agent a tool to read other workflow nodes' execution data, beyond its own input",
+				displayOptions: {
+					hide: {
+						'/agentSource': ['inline'],
+					},
+				},
 			},
 		],
 	},
@@ -274,8 +284,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	// v2 renamed the primary output `response` → `text`
 	const responseKey = this.getNode().typeVersion >= 2 ? 'text' : 'response';
 	const executionId = this.getExecutionId() ?? crypto.randomUUID();
-	// `invokeMode` lives in the `advanced` collection; unset means the default.
-	const invokeMode = this.getNodeParameter('advanced.invokeMode', 0, 'allItems') as string;
+	const agentSource = this.getNodeParameter('agentSource', 0, 'referenced') as string;
+	// Inline agents only support the defaults, including for workflows that retain
+	// values saved before these controls were hidden.
+	const invokeMode =
+		agentSource === 'inline'
+			? 'allItems'
+			: (this.getNodeParameter('advanced.invokeMode', 0, 'allItems') as string);
 	const runOnceForAll = invokeMode === 'allItems';
 	const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
 
@@ -289,7 +304,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				allowOtherNodesData?: boolean;
 			};
 			const sessionIdOverride = advanced.sessionId?.trim();
-			const allowOtherNodesData = advanced.allowOtherNodesData ?? false;
+			const allowOtherNodesData =
+				agentSource === 'inline' ? false : (advanced.allowOtherNodesData ?? false);
 
 			if (sessionIdOverride && sessionIdOverride.length > SESSION_ID_MAX_LENGTH) {
 				throw new NodeOperationError(

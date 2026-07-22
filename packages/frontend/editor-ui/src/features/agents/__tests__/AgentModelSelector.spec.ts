@@ -172,7 +172,7 @@ const modelsByProvider: AgentModelsByProvider = {
 
 async function mountSelector(
 	credentials: Record<string, string | null>,
-	extraProps: { isManagedCredential?: boolean } = {},
+	extraProps: { isManagedCredential?: boolean; credentialModalAppendToBody?: boolean } = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
 	return mount(AgentModelSelector, {
@@ -452,6 +452,24 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			{ hideAskAssistant: true },
+		);
+	});
+
+	it('opens a new model credential at the body level when requested', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { credentialModalAppendToBody: true });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+
+		expect(openNewCredential).toHaveBeenCalledWith(
+			'anthropicApi',
+			false,
+			false,
+			'project-1',
+			undefined,
+			undefined,
+			undefined,
+			{ hideAskAssistant: true, appendToBody: true },
 		);
 	});
 
