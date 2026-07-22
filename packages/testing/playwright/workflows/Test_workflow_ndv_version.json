@@ -11,7 +11,7 @@
 		{
 			"id": "1ea0a87c-3395-4bd9-84fb-cf8b0f769cc4",
 			"name": "Read Spreadsheet File",
-			"type": "spreadsheetFile",
+			"type": "n8n-nodes-base.spreadsheetFile",
 			"typeVersion": 1,
 			"position": [960, 460],
 			"parameters": {}
