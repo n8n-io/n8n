@@ -451,6 +451,9 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 	}
 }
 
+/** The built orchestrator agent type returned by `createInstanceAgent`. */
+type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
+
 @Service()
 export class InstanceAiService {
 	private _mcpClientManager?: McpClientManager;
@@ -896,11 +899,7 @@ export class InstanceAiService {
 	 * Sentry via the errored run/stream result, so reporting them here would only
 	 * re-tag the same (deduped) error.
 	 */
-	private subscribeToAgentErrors(
-		agent: Awaited<ReturnType<typeof createInstanceAgent>>,
-		threadId: string,
-		runId: string,
-	): void {
+	private subscribeToAgentErrors(agent: InstanceAgent, threadId: string, runId: string): void {
 		agent.on(AgentEvent.Error, (event: AgentEventData) => {
 			if (event.type !== AgentEvent.Error || !event.source) return;
 			this.instanceAiErrorReporter.report(event.error, {
@@ -3298,18 +3297,6 @@ export class InstanceAiService {
 			);
 			activeSnapshotStorage = environment.snapshotStorage;
 
-			const mcpFailures = this.mcpClientManager.getConnectionFailures();
-			if (mcpFailures.length > 0) {
-				const names = mcpFailures.map((f) => f.server.name).join(', ');
-				this.eventBus.publish(threadId, {
-					type: 'status',
-					runId,
-					agentId: orchestratorAgentId(runId),
-					payload: {
-						message: `Couldn't reach MCP server${mcpFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
-					},
-				});
-			}
 			const {
 				context,
 				memory,
@@ -3581,13 +3568,24 @@ export class InstanceAiService {
 			const runControl = createOrchestratorRunControl(orchestrationContext);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
-			const agent = await this.createAgentFromEnvironment(
-				environment,
-				threadId,
-				runId,
-				user,
-				tracing,
-			);
+			const { agent, mcpConnectionFailures: runMcpFailures } =
+				await this.createAgentFromEnvironment(environment, threadId, runId, user, tracing);
+
+			// Surface MCP connection failures as a non-fatal status event. Failures
+			// come from createAgentFromEnvironment's result (threaded from the MCP
+			// manager's getRegularTools call), not a shared manager field — so they
+			// reflect this run's config and can't leak another run's server names.
+			if (runMcpFailures.length > 0) {
+				const names = runMcpFailures.map((f) => f.server).join(', ');
+				this.eventBus.publish(threadId, {
+					type: 'status',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					payload: {
+						message: `Couldn't reach MCP server${runMcpFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
+					},
+				});
+			}
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
@@ -4349,7 +4347,7 @@ export class InstanceAiService {
 			tracing,
 			environment.orchestrationContext.messageGroupId,
 		);
-		const agent = await createInstanceAgent({
+		const { agent, mcpConnectionFailures } = await createInstanceAgent({
 			modelId: environment.modelId,
 			context: environment.context,
 			orchestrationContext: environment.orchestrationContext,
@@ -4362,7 +4360,7 @@ export class InstanceAiService {
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 		});
 		this.subscribeToAgentErrors(agent, threadId, runId);
-		return agent;
+		return { agent, mcpConnectionFailures };
 	}
 
 	private async buildFreshInstanceAgent(
@@ -4374,7 +4372,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	): Promise<{
-		agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+		agent: InstanceAgent;
 		modelId: ModelConfig;
 		orchestrationContext: OrchestrationContext;
 	}> {
@@ -4386,7 +4384,7 @@ export class InstanceAiService {
 			messageGroupId,
 			pushRef,
 		);
-		const agent = await this.createAgentFromEnvironment(
+		const { agent } = await this.createAgentFromEnvironment(
 			environment,
 			threadId,
 			runId,
@@ -4447,13 +4445,13 @@ export class InstanceAiService {
 		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
 		let agent;
 		try {
-			agent = await this.createAgentFromEnvironment(
+			({ agent } = await this.createAgentFromEnvironment(
 				environment,
 				orphan.threadId,
 				orphan.runId,
 				user,
 				undefined,
-			);
+			));
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
 		}
@@ -4521,9 +4519,7 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext | undefined,
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
-	): Promise<
-		{ agent: Awaited<ReturnType<typeof createInstanceAgent>>; modelId: ModelConfig } | undefined
-	> {
+	): Promise<{ agent: InstanceAgent; modelId: ModelConfig } | undefined> {
 		try {
 			const rebuilt = await this.buildFreshInstanceAgent(
 				user,

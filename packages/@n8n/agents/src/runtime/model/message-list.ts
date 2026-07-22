@@ -30,13 +30,16 @@ export function buildSystemMessages(
 	observationLogMemory: string | undefined,
 	instructionProviderOptions?: ProviderOptions,
 	volatileInstructions?: string,
+	mcpConnectionNote?: string,
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
 		: {};
-	const volatileSections = [volatileInstructions?.trim(), observationLogMemory?.trim()].filter(
-		(s): s is string => Boolean(s),
-	);
+	const volatileSections = [
+		volatileInstructions?.trim(),
+		mcpConnectionNote?.trim(),
+		observationLogMemory?.trim(),
+	].filter((s): s is string => Boolean(s));
 
 	if (volatileSections.length === 0) {
 		return {
@@ -149,6 +152,14 @@ export class AgentMessageList {
 
 	/** Rendered observation-log memory for this run. Set by buildMessageList / resume. */
 	observationLogMemory: string | undefined;
+
+	/**
+	 * Short, model-facing note about MCP servers that failed to connect for
+	 * this run, so the agent can mention them to the user when relevant. Set
+	 * by `runAgentLoop` from `AgentRuntimeConfig.mcpConnectionFailures`. Folded
+	 * into the uncached volatile system message — never persisted to memory.
+	 */
+	mcpConnectionNote: string | undefined;
 
 	/**
 	 * Bump the monotonic clock so subsequent live messages are timestamped strictly
@@ -284,6 +295,7 @@ export class AgentMessageList {
 				this.observationLogMemory,
 				instructionProviderOptions,
 				volatileInstructions,
+				this.mcpConnectionNote,
 			),
 			messages: toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all))),
 		};

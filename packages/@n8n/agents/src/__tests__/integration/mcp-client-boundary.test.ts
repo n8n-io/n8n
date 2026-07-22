@@ -80,6 +80,23 @@ describe('Agent with MCP boundary errors', () => {
 		await client.close();
 	});
 
+	it('merges externally-reported failures with McpClient-sourced failures in getMcpConnectionFailures()', async () => {
+		const client = new McpClient([{ name: 'dead', url: 'http://127.0.0.1:1/sse' }]);
+		const agent = new Agent('mcp-merge-agent')
+			.model('anthropic/claude-haiku-4-5')
+			.instructions('test')
+			.mcp(client)
+			.mcpConnectionFailures([{ server: 'external_dead', error: 'unreachable' }]);
+
+		await client.listTools();
+
+		const failures = agent.getMcpConnectionFailures();
+		expect(failures.map((f) => f.server)).toEqual(['dead', 'external_dead']);
+		expect(failures.find((f) => f.server === 'external_dead')?.error).toBe('unreachable');
+
+		await client.close();
+	});
+
 	describe('MCP tool name collision detection', () => {
 		let server: TestServer;
 

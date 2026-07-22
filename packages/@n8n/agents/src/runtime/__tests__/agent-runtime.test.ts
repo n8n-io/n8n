@@ -6675,4 +6675,47 @@ describe('AgentRuntime — MCP connection failure warnings', () => {
 
 		expect(chunks.filter((c) => c.type === 'warning')).toEqual([]);
 	});
+
+	it('injects a model-facing mcp-connection-status note into the system message when failures are set', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'mcp-note',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			mcpConnectionFailures: [{ server: 'dead', error: 'fetch failed' }],
+		});
+
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
+		const system = callArgs.system;
+		const systemText = Array.isArray(system)
+			? system.map((e) => String((e as { content: string }).content)).join('')
+			: String((system as { content: string }).content);
+
+		expect(systemText).toContain('<mcp-connection-status>');
+		expect(systemText).toContain('dead');
+		expect(systemText).toContain('fetch failed');
+		expect(systemText).toMatch(/If this affects the user's request/i);
+	});
+
+	it('omits the mcp-connection-status note from the system message when there are no failures', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		await collectChunks(readableStream);
+
+		const callArgs = streamText.mock.calls.at(-1)![0] as Record<string, unknown>;
+		const system = callArgs.system;
+		const systemText = Array.isArray(system)
+			? system.map((e) => String((e as { content: string }).content)).join('')
+			: String((system as { content: string }).content);
+
+		expect(systemText).not.toContain('<mcp-connection-status>');
+	});
 });

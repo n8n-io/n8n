@@ -191,6 +191,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private mcpClients: McpClient[] = [];
 
+	/**
+	 * MCP connection failures reported by a host that loads MCP tools outside
+	 * an attached `McpClient` (e.g. Instance AI's `McpClientManager`).
+	 * Merged with `mcpClients`-sourced failures by `getMcpConnectionFailures()`.
+	 */
+	private externalMcpConnectionFailures: McpConnectionFailedEvent[] = [];
+
 	private defaultExecutionOptions?: ExecutionOptions;
 
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
@@ -532,6 +539,21 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
+	 * Report MCP connection failures for servers whose tools were loaded
+	 * outside an attached `McpClient` (e.g. by a host-side MCP manager that
+	 * caches and approval-wraps tools itself). The runtime surfaces these as
+	 * non-fatal `warning` stream chunks and injects a short note into the
+	 * model's context so the agent can tell the user a server was unavailable.
+	 *
+	 * Servers attached via `.mcp(client)` report their own failures; do not
+	 * double-report them here.
+	 */
+	mcpConnectionFailures(events: McpConnectionFailedEvent[]): this {
+		this.externalMcpConnectionFailures = events;
+		return this;
+	}
+
+	/**
 	 * Per-server MCP connection failures recorded during the last build's
 	 * `listTools()` calls. Tools from these servers were skipped; the run
 	 * continued with the remaining servers' tools. Empty when every server
@@ -542,7 +564,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 * aborting inference.
 	 */
 	getMcpConnectionFailures(): McpConnectionFailedEvent[] {
-		return this.mcpClients.flatMap((c) => [...c.getConnectionFailures()]);
+		return [
+			...this.mcpClients.flatMap((c) => [...c.getConnectionFailures()]),
+			...this.externalMcpConnectionFailures,
+		];
 	}
 
 	/**

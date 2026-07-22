@@ -21,6 +21,18 @@ import type { InstanceAiToolRegistry, McpServerConfig } from '../types';
 
 type McpToolRegistry = InstanceAiToolRegistry;
 
+/** Per-server connection failures recorded while listing tools for one config. */
+type McpConnectionFailure = { server: McpServerConfig; error: string };
+
+/** Result of `getRegularTools`: the loaded tool registry plus any per-server
+ * connection failures for the requested config. Failures travel with the call
+ * result (not shared mutable state) so concurrent runs can't read each other's
+ * failures. */
+interface McpRegularToolsResult {
+	tools: McpToolRegistry;
+	connectionFailures: McpConnectionFailure[];
+}
+
 export interface McpToolCallSettledEvent {
 	server: McpServerConfig;
 	toolName: string;
@@ -136,13 +148,11 @@ function getSafeMcpServers(
  * tracked in one map so `disconnect()` can clean them up.
  */
 export class McpClientManager {
-	private regularToolsByKey = new Map<string, McpToolRegistry>();
+	private regularToolsByKey = new Map<string, McpRegularToolsResult>();
 
-	private inFlightRegularByKey = new Map<string, Promise<McpToolRegistry>>();
+	private inFlightRegularByKey = new Map<string, Promise<McpRegularToolsResult>>();
 
 	private clientsByKey = new Map<string, McpClient>();
-
-	private connectionFailures: Array<{ server: McpServerConfig; error: string }> = [];
 
 	constructor(
 		private readonly ssrfValidator?: SsrfUrlValidator,
@@ -153,9 +163,9 @@ export class McpClientManager {
 		configs: McpServerConfig[],
 		logger: Logger,
 		requireApproval = true,
-	): Promise<McpToolRegistry> {
+	): Promise<McpRegularToolsResult> {
 		const safeConfigs = getSafeMcpServers(configs, logger, 'external MCP');
-		if (safeConfigs.length === 0) return createToolRegistry();
+		if (safeConfigs.length === 0) return { tools: createToolRegistry(), connectionFailures: [] };
 
 		// Approval mode is part of the cache key: the same servers wrapped with vs
 		// without an approval gate are distinct tool sets.
@@ -183,10 +193,6 @@ export class McpClientManager {
 		this.regularToolsByKey.clear();
 		this.inFlightRegularByKey.clear();
 		await Promise.all(clients.map(async (client) => await client.close()));
-	}
-
-	getConnectionFailures(): readonly { server: McpServerConfig; error: string }[] {
-		return this.connectionFailures;
 	}
 
 	private async getOrLoad<T>(
@@ -249,7 +255,7 @@ export class McpClientManager {
 		requireApproval: boolean,
 		logger: Logger,
 		source: string,
-	): Promise<McpToolRegistry> {
+	): Promise<McpRegularToolsResult> {
 		const client = new McpClient(
 			buildNativeMcpConfigs(configs, requireApproval, this.options.onToolCallSettled),
 		);
@@ -260,16 +266,20 @@ export class McpClientManager {
 		// failures. Map each back to the originating host config and surface it
 		// via the manager-level observer + logger so a single misconfigured or
 		// unhealthy MCP server surfaces as a non-fatal warning instead of
-		// aborting the run.
-		this.connectionFailures = [...client.getConnectionFailures()].map((f) => {
-			const server =
-				configs.find((c) => c.name === f.server) ??
-				({
-					name: f.server,
-				} as McpServerConfig);
-			return { server, error: f.error };
-		});
-		for (const failure of this.connectionFailures) {
+		// aborting the run. Failures are returned with the result (not stored on
+		// a shared field) so concurrent runs with different configs can't read
+		// each other's failures.
+		const connectionFailures: McpConnectionFailure[] = [...client.getConnectionFailures()].map(
+			(f) => {
+				const server =
+					configs.find((c) => c.name === f.server) ??
+					({
+						name: f.server,
+					} as McpServerConfig);
+				return { server, error: f.error };
+			},
+		);
+		for (const failure of connectionFailures) {
 			logger.warn('Skipped MCP server that failed to connect', {
 				serverName: failure.server.name,
 				source,
@@ -288,6 +298,6 @@ export class McpClientManager {
 			claimedToolNames: createClaimedToolNames([]),
 			warn: warnSkippedMcpTool(logger),
 		});
-		return safeTools;
+		return { tools: safeTools, connectionFailures };
 	}
 }

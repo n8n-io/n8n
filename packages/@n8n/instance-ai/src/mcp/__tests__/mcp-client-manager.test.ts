@@ -361,15 +361,68 @@ describe('McpClientManager', () => {
 				};
 			});
 
-			const tools = await manager.getRegularTools(configs, mockLogger);
-			expect(tools).toBeDefined();
-			expect(manager.getConnectionFailures()).toEqual([
+			const result = await manager.getRegularTools(configs, mockLogger);
+			expect(result).toBeDefined();
+			expect(result.connectionFailures).toEqual([
 				{ server: { name: 'dead', url: 'https://dead.example.com/' }, error: 'fetch failed' },
 			]);
 			expect(onConnectionFailed).toHaveBeenCalledWith({
 				server: { name: 'dead', url: 'https://dead.example.com/' },
 				error: 'fetch failed',
 			});
+		});
+	});
+
+	describe('connection failure scoping', () => {
+		it('returns the requesting config own failures on a cache hit, not another config\u2019s', async () => {
+			const manager = new McpClientManager();
+			const configA = [{ name: 'dead', url: 'https://dead.example.com/' }];
+			const configB = [{ name: 'ok', url: 'https://ok.example.com/' }];
+
+			// First call for A: cache miss, server 'dead' fails.
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockResolvedValue([]),
+					close: vi.fn().mockResolvedValue(undefined),
+					getConnectionFailures: vi
+						.fn()
+						.mockReturnValue([{ server: 'dead', error: 'fetch failed' }]),
+				};
+			});
+			const resultA1 = await manager.getRegularTools(configA, mockLogger);
+			expect(resultA1.connectionFailures).toHaveLength(1);
+
+			// Call for B: different config, cache miss, no failures.
+			const resultB = await manager.getRegularTools(configB, mockLogger);
+			expect(resultB.connectionFailures).toEqual([]);
+
+			// Call for A again: cache hit. Must return A's own failures, not B's (empty).
+			const resultA2 = await manager.getRegularTools(configA, mockLogger);
+			expect(resultA2.connectionFailures).toEqual([
+				{ server: { name: 'dead', url: 'https://dead.example.com/' }, error: 'fetch failed' },
+			]);
+			// A and B each built once; A's second call hit the cache.
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports no failures for a run with zero MCP servers, even after a prior failing run', async () => {
+			const manager = new McpClientManager();
+
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockResolvedValue([]),
+					close: vi.fn().mockResolvedValue(undefined),
+					getConnectionFailures: vi.fn().mockReturnValue([{ server: 'dead', error: 'boom' }]),
+				};
+			});
+			await manager.getRegularTools(
+				[{ name: 'dead', url: 'https://dead.example.com/' }],
+				mockLogger,
+			);
+
+			// A subsequent run with no MCP servers must not inherit the prior failure.
+			const empty = await manager.getRegularTools([], mockLogger);
+			expect(empty.connectionFailures).toEqual([]);
 		});
 	});
 

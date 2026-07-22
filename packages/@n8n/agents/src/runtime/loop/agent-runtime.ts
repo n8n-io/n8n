@@ -9,6 +9,7 @@ import type { RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
 import {
 	extractSettledToolCalls,
+	formatMcpConnectionNote,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -699,6 +700,10 @@ export class AgentRuntime {
 	private async runAgentLoop<T>(ctx: LoopContext, sink: RunOutputSink<T>): Promise<T> {
 		const { list, options, abortScope, pendingResume } = ctx;
 		this.context.hydrateDeferredToolsFromList(list);
+		// Inject a model-facing note for any MCP servers that failed to connect
+		// during build(). The agent can mention the outage to the user when
+		// relevant; the note is system-message only and never persisted.
+		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
