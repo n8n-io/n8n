@@ -10,8 +10,8 @@ catalogs:
       specifier: ^4.0.113
       version: 4.0.113
     '@ai-sdk/anthropic':
-      specifier: ^3.0.81
-      version: 3.0.81
+      specifier: ^3.0.98
+      version: 3.0.98
     '@ai-sdk/azure':
       specifier: ^3.0.70
       version: 3.0.70
@@ -913,7 +913,7 @@ importers:
         version: 4.0.113(zod@3.25.67)
       '@ai-sdk/anthropic':
         specifier: 'catalog:'
-        version: 3.0.81(zod@3.25.67)
+        version: 3.0.98(zod@3.25.67)
       '@ai-sdk/azure':
         specifier: 'catalog:'
         version: 3.0.70(zod@3.25.67)
@@ -2572,7 +2572,7 @@ importers:
     devDependencies:
       '@ai-sdk/anthropic':
         specifier: 'catalog:'
-        version: 3.0.81(zod@3.25.67)
+        version: 3.0.98(zod@3.25.67)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -3859,7 +3859,7 @@ importers:
         version: 1.4.2
       '@ai-sdk/anthropic':
         specifier: 'catalog:'
-        version: 3.0.81(zod@3.25.67)
+        version: 3.0.98(zod@3.25.67)
       '@apidevtools/json-schema-ref-parser':
         specifier: 12.0.2
         version: 12.0.2
@@ -6882,6 +6882,12 @@ packages:
 
   '@ai-sdk/anthropic@3.0.81':
     resolution: {integrity: sha512-B1JDd9Ugq9R5AgIaW3674lhGCMMYJcPUxnrZh8fzbGojgg4QvHFRv6eZahGQAUsmGHbcf74G9bdSBDLWQGY2GA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: 3.25.67
+
+  '@ai-sdk/anthropic@3.0.98':
+    resolution: {integrity: sha512-JSHw0m15tXsdZWaV64UOjbHFKHGsPVUi9jYApNaz2QOBm987vl+l9aUFnlN1OWmFvDNMIhAPVOYRsFwjK0by/w==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: 3.25.67
@@ -22812,6 +22818,12 @@ snapshots:
     dependencies:
       '@ai-sdk/provider': 3.0.10
       '@ai-sdk/provider-utils': 4.0.27(zod@3.25.67)
+      zod: 3.25.67
+
+  '@ai-sdk/anthropic@3.0.98(zod@3.25.67)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.14
+      '@ai-sdk/provider-utils': 4.0.40(zod@3.25.67)
       zod: 3.25.67
 
   '@ai-sdk/azure@3.0.70(zod@3.25.67)':
