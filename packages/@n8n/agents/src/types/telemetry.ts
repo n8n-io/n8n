@@ -12,6 +12,12 @@ export type AttributeValue = string | number | boolean | string[] | number[] | b
 export type OpaqueTracer = unknown;
 
 /**
+ * Opaque handle for an OTel span link. Same opaque-type rationale as
+ * OpaqueTracer — keeps OTel an optional peer dependency.
+ */
+export type OpaqueSpanLink = unknown;
+
+/**
  * Opaque handle for an OTel tracer provider (for flush/shutdown).
  * Only populated when .otlpEndpoint() is used.
  */
@@ -35,4 +41,11 @@ export interface BuiltTelemetry {
 	readonly provider?: OpaqueTracerProvider;
 	/** Declared credential name for the telemetry provider (e.g. 'langsmith'). */
 	readonly credentialName?: string;
+	/**
+	 * Set automatically by `LangSmithTelemetry.build()`. Discriminates
+	 * LangSmith-flavored telemetry (which wants `langsmith.*` span
+	 * attributes) from generic OTel telemetry (plain OTLP backends, which
+	 * only want the generic `gen_ai.*` attributes).
+	 */
+	readonly isLangSmith?: boolean;
 }

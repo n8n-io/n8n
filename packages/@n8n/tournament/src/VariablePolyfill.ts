@@ -109,6 +109,15 @@ const customPatches: Partial<Record<ParentKind['type'], CustomPatcher>> = {
 			polyfillVar(path, dataNode);
 		}
 	},
+	ArrowFunctionExpression(path, parent: namedTypes.ArrowFunctionExpression, dataNode) {
+		// A concise arrow body that is a bare identifier (`() => process`) must be
+		// routed through the data context like any other free read. Params are not
+		// the body, and body identifiers that reference a param are left alone by
+		// polyfillVar's in-scope check.
+		if (parent.body === path.node) {
+			polyfillVar(path, dataNode);
+		}
+	},
 };
 
 export const jsVariablePolyfill = (
@@ -134,6 +143,7 @@ export const jsVariablePolyfill = (
 				case 'MemberExpression':
 				case 'OptionalMemberExpression':
 				case 'VariableDeclarator':
+				case 'ArrowFunctionExpression':
 					if (!customPatches[parent.type]) {
 						throw new Error(`Couldn't find custom patcher for parent type: ${parent.type}`);
 					}
@@ -174,7 +184,6 @@ export const jsVariablePolyfill = (
 				// Do nothing
 				case 'Super':
 				case 'Identifier':
-				case 'ArrowFunctionExpression':
 				case 'FunctionDeclaration':
 				case 'FunctionExpression':
 				case 'ThisExpression':

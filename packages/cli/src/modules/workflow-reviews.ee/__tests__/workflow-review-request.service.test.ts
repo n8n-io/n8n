@@ -1,4 +1,8 @@
-import type { CreateWorkflowReviewRequestDto } from '@n8n/api-types';
+import type {
+	CreateWorkflowReviewRequestDto,
+	ListWorkflowReviewRequestsQueryDto,
+} from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import type {
 	DbLockService,
 	Project,
@@ -14,6 +18,7 @@ import { DbLock } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -41,9 +46,12 @@ describe('WorkflowReviewRequestService', () => {
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const dbLockService = mock<DbLockService>();
+	const collaborationService = mock<CollaborationService>();
+	const logger = mock<Logger>();
 	const tx = mock<EntityManager>();
 
 	const service = new WorkflowReviewRequestService(
+		logger,
 		workflowReviewPolicyService,
 		workflowFinderService,
 		workflowHistoryService,
@@ -52,6 +60,7 @@ describe('WorkflowReviewRequestService', () => {
 		workflowRepository,
 		authorRepository,
 		dbLockService,
+		collaborationService,
 	);
 
 	beforeEach(() => {
@@ -60,6 +69,7 @@ describe('WorkflowReviewRequestService', () => {
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
 		dbLockService.withLock.mockImplementation(async (_id, fn) => await fn(tx));
+		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
 	describe('create', () => {
@@ -82,7 +92,11 @@ describe('WorkflowReviewRequestService', () => {
 			);
 			requestRepository.findOpenRequestForWorkflow.mockResolvedValue(null);
 			requestRepository.createRequest.mockResolvedValue(
-				mock<WorkflowReviewRequest>({ id: 'req-1' }),
+				mock<WorkflowReviewRequest>({
+					id: 'req-1',
+					createdAt: new Date('2024-01-01T00:00:00.000Z'),
+					updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+				}),
 			);
 
 			const result = await service.create(user, dto);
@@ -171,6 +185,144 @@ describe('WorkflowReviewRequestService', () => {
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
 			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
 			expect(authorRepository.addAuthor).not.toHaveBeenCalled();
+		});
+
+		describe('review state broadcast', () => {
+			const mockSuccessfulCreatePath = () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					mock<WorkflowEntity>({ isArchived: false }),
+				);
+				workflowHistoryService.findVersion.mockResolvedValue(mock());
+				sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
+					mock<Project>({ id: 'project-1' }),
+				);
+				requestRepository.findOpenRequestForWorkflow.mockResolvedValue(null);
+				requestRepository.createRequest.mockResolvedValue(
+					mock<WorkflowReviewRequest>({
+						id: 'req-1',
+						createdAt: new Date('2024-01-01T00:00:00.000Z'),
+						updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+					}),
+				);
+			};
+
+			it('broadcasts exactly once after the lock resolves', async () => {
+				mockSuccessfulCreatePath();
+				let lockResolved = false;
+				dbLockService.withLock.mockImplementation(async (_id, fn) => {
+					const result = await fn(tx);
+					lockResolved = true;
+					return result;
+				});
+				collaborationService.broadcastWorkflowReviewStateChanged.mockImplementation(async () => {
+					expect(lockResolved).toBe(true);
+				});
+
+				await service.create(user, dto);
+
+				expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledTimes(1);
+				expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith(
+					'wf-1',
+				);
+			});
+
+			it('does not broadcast on conflict', async () => {
+				mockSuccessfulCreatePath();
+				requestRepository.findOpenRequestForWorkflow.mockResolvedValue(
+					mock<WorkflowReviewRequest>({ id: 'existing-1' }),
+				);
+
+				await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
+
+				expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+			});
+
+			it('resolves and logs a warning when the broadcast rejects', async () => {
+				mockSuccessfulCreatePath();
+				collaborationService.broadcastWorkflowReviewStateChanged.mockRejectedValue(
+					new Error('push down'),
+				);
+
+				const result = await service.create(user, dto);
+				expect(result.id).toBe('req-1');
+
+				// Let the fire-and-forget rejection handler run.
+				await new Promise(process.nextTick);
+				expect(logger.warn).toHaveBeenCalledWith(
+					'Failed to broadcast review state change',
+					expect.objectContaining({ workflowId: 'wf-1' }),
+				);
+			});
+		});
+	});
+
+	describe('list', () => {
+		const query = mock<ListWorkflowReviewRequestsQueryDto>({
+			workflowId: 'wf-1',
+			state: 'open',
+			skip: 0,
+			take: 1,
+		});
+
+		it('throws when the instance policy is disabled, before any lookup', async () => {
+			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
+
+			await expect(service.list(user, query)).rejects.toThrow(ForbiddenError);
+
+			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+			expect(requestRepository.findRequestsForWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the user has no read access to the workflow', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(service.list(user, query)).rejects.toThrow(NotFoundError);
+
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
+				'workflow:read',
+			]);
+			expect(requestRepository.findRequestsForWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('passes state, skip, and take through to the repository', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			requestRepository.findRequestsForWorkflow.mockResolvedValue([[], 0]);
+
+			await service.list(user, query);
+
+			expect(requestRepository.findRequestsForWorkflow).toHaveBeenCalledWith('wf-1', {
+				state: 'open',
+				skip: 0,
+				take: 1,
+			});
+		});
+
+		it('maps rows to summaries and returns the total count', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
+			const request = mock<WorkflowReviewRequest>({
+				id: 'req-1',
+				state: 'open',
+				decision: 'pending',
+				title: 'Secret title',
+				createdAt: new Date('2026-07-20T10:00:00.000Z'),
+				updatedAt: new Date('2026-07-20T11:00:00.000Z'),
+			});
+			requestRepository.findRequestsForWorkflow.mockResolvedValue([[request], 3]);
+
+			const result = await service.list(user, query);
+
+			expect(result).toEqual({
+				count: 3,
+				data: [
+					{
+						id: 'req-1',
+						state: 'open',
+						decision: 'pending',
+						createdAt: '2026-07-20T10:00:00.000Z',
+						updatedAt: '2026-07-20T11:00:00.000Z',
+					},
+				],
+			});
 		});
 	});
 });

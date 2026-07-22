@@ -45,6 +45,7 @@ function makeTestCase(scenarios: ExecutionScenario[]): WorkflowTestCase {
 		conversation: [{ role: 'user', text: 'build me something' }],
 		complexity: 'complex',
 		tags: ['test'],
+		datasets: ['full'],
 		executionScenarios: scenarios,
 	};
 }

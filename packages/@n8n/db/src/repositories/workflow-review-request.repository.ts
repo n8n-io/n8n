@@ -49,6 +49,33 @@ export class WorkflowReviewRequestRepository extends Repository<WorkflowReviewRe
 		return await this.findOne({ where: { id } });
 	}
 
+	async findRequestsForWorkflow(
+		workflowId: string,
+		options: { state?: WorkflowReviewRequestState; skip?: number; take?: number } = {},
+	): Promise<[WorkflowReviewRequest[], number]> {
+		const qb = this.manager
+			.createQueryBuilder(WorkflowReviewRequest, 'request')
+			.innerJoin(
+				WorkflowReviewRequestWorkflow,
+				'requestWorkflow',
+				'requestWorkflow.workflowReviewRequestId = request.id',
+			)
+			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
+			.orderBy('request.createdAt', 'DESC');
+
+		if (options.state) {
+			qb.andWhere('request.state = :state', { state: options.state });
+		}
+		if (options.skip !== undefined) {
+			qb.skip(options.skip);
+		}
+		if (options.take !== undefined) {
+			qb.take(options.take);
+		}
+
+		return await qb.getManyAndCount();
+	}
+
 	async findOpenRequestForWorkflow(
 		workflowId: string,
 		trx?: EntityManager,

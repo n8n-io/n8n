@@ -602,6 +602,7 @@ describe('buildVerificationArtifact', () => {
 				interceptedRequests: Array.from({ length: 30 }, (_, i) => ({
 					method: 'GET',
 					url: `https://api.example.com/page/${i}`,
+					nodeType: 'n8n-nodes-base.httpRequest',
 					mockResponse: { page: i },
 				})),
 				iterationCount: 1,
