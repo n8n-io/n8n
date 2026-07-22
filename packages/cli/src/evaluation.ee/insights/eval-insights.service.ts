@@ -3,7 +3,9 @@ import type { AiInsightsPayload, AiInsightsResponse, MetricScale } from '@n8n/ap
 import {
 	aiInsightsPayloadSchema,
 	aiInsightsResponseSchema,
+	averageNormalizedScore,
 	metricScalesFromConfig,
+	normalizedScores,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import type { TestRun, User } from '@n8n/db';
@@ -18,7 +20,6 @@ import { Telemetry } from '@/telemetry';
 import { InsightsContextBuilder } from './insights-context-builder';
 import type { InsightsContext, InsightsContextVersion } from './insights-context-builder';
 import { InsightsModelResolver } from './insights-model-resolver';
-import { averageNormalizedScore, normalizedScores } from './insights-scoring';
 
 // System prompt for the insights agent. Kept terse; the per-collection facts
 // (scores, node diffs, regressed cases) arrive in the user prompt, and the

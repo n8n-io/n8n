@@ -1,10 +1,8 @@
-import type { MetricScale } from '@n8n/api-types';
+import { averageNormalizedScore, type MetricScale } from '@n8n/api-types';
 import { TestCaseExecutionRepository, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
-
-import { averageNormalizedScore } from './insights-scoring';
 
 // Bounds that keep the prompt (and its token cost) from ballooning on large
 // datasets / workflows. Per-case fields are truncated and both the case count
