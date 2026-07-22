@@ -121,6 +121,7 @@ export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
+export { n8nIdSchema } from './schemas/id.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,

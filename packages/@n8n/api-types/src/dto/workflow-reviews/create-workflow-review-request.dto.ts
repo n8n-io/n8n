@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
 export class CreateWorkflowReviewRequestDto extends Z.class({
@@ -8,11 +9,11 @@ export class CreateWorkflowReviewRequestDto extends Z.class({
 	workflows: z
 		.array(
 			z.object({
-				workflowId: z.string().min(1).max(36),
-				workflowVersionId: z.string().min(1).max(36),
+				workflowId: n8nIdSchema,
+				workflowVersionId: n8nIdSchema,
 			}),
 		)
 		.length(1),
 	// UI sends at most one reviewer for now; array for future multi-reviewer support (LIGO-601)
-	reviewerUserIds: z.array(z.string().min(1).max(36)).max(10).optional(),
+	reviewerUserIds: z.array(n8nIdSchema).max(10).optional(),
 }) {}
