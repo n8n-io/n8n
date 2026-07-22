@@ -18,7 +18,7 @@ export const sharedVersionDescription: Pick<
 > = {
 	hidden: true,
 	defaults: {
-		name: 'AI Agent',
+		name: 'AI Agent V1',
 	},
 	codex: {
 		categories: ['AI'],
