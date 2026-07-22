@@ -204,14 +204,19 @@ function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDesc
 	if (isAgentNodeV2(node)) {
 		return AGENT_NODE_SIZE[0];
 	}
+
+	// A dynamic-inputs expression (e.g. AI Agent) or any non-main input means the
+	// node renders at the wider configurable size.
 	const { inputs } = nodeTypeDescription;
-	const isConfigurable =
-		typeof inputs === 'string'
-			? true
-			: Array.isArray(inputs)
-				? NodeHelpers.getConnectionTypes(inputs).some((input) => input !== NodeConnectionTypes.Main)
-				: false;
-	return isConfigurable ? CONFIGURABLE_NODE_SIZE[0] : DEFAULT_NODE_SIZE[0];
+	const hasNonMainInput =
+		Array.isArray(inputs) &&
+		NodeHelpers.getConnectionTypes(inputs).some((input) => input !== NodeConnectionTypes.Main);
+
+	if (typeof inputs === 'string' || hasNonMainInput) {
+		return CONFIGURABLE_NODE_SIZE[0];
+	}
+
+	return DEFAULT_NODE_SIZE[0];
 }
 
 export function useCanvasOperations() {
