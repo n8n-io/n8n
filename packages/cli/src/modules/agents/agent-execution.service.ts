@@ -185,6 +185,15 @@ export class AgentExecutionService {
 	}
 
 	/**
+	 * The most recently suspended execution in a thread, or null if there is
+	 * none. Used to recover the original run's `source` when resuming a HITL
+	 * tool call.
+	 */
+	async findLatestSuspendedRun(threadId: string): Promise<AgentExecution | null> {
+		return await this.agentExecutionRepository.findLatestSuspendedByThreadId(threadId);
+	}
+
+	/**
 	 * Backfill `model` on suspended runs in a thread that don't yet have it.
 	 * Called when the resumed run finishes — the model applies to the whole
 	 * suspend/resume cycle but only arrives once the resume completes.

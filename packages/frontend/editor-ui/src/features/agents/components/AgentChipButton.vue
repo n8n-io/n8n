@@ -12,6 +12,7 @@ const props = withDefaults(
 		invalid?: boolean;
 		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
 		invalidReasons?: string[];
+		clickable?: boolean;
 	}>(),
 	{
 		disabled: false,
@@ -19,6 +20,7 @@ const props = withDefaults(
 		active: false,
 		invalid: false,
 		invalidReasons: () => [],
+		clickable: true,
 	},
 );
 
@@ -38,7 +40,11 @@ const emit = defineEmits<{
 		:class="[
 			$style.chip,
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
-			{ [$style.active]: props.active, [$style.invalid]: props.invalid },
+			{
+				[$style.active]: props.active,
+				[$style.invalid]: props.invalid,
+				[$style.nonClickable]: !props.clickable,
+			},
 		]"
 		:disabled="props.disabled"
 		@click="emit('click', $event)"
@@ -100,6 +106,10 @@ const emit = defineEmits<{
 
 .invalidIcon {
 	flex-shrink: 0;
+}
+
+.nonClickable {
+	pointer-events: none;
 }
 
 .suggestion {

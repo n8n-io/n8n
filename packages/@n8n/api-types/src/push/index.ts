@@ -8,6 +8,7 @@ import type { InstanceAiPushMessage } from './instance-ai';
 import type { WebhookPushMessage } from './webhook';
 import type { WorkerPushMessage } from './worker';
 import type { WorkflowPushMessage } from './workflow';
+import type { WorkflowReviewPushMessage } from './workflow-review';
 
 export type PushMessage =
 	| ExecutionPushMessage
@@ -19,7 +20,8 @@ export type PushMessage =
 	| DebugPushMessage
 	| BuilderCreditsPushMessage
 	| ChatHubPushMessage
-	| InstanceAiPushMessage;
+	| InstanceAiPushMessage
+	| WorkflowReviewPushMessage;
 
 export type PushType = PushMessage['type'];
 

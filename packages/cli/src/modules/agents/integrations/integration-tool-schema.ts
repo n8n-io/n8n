@@ -38,7 +38,7 @@ export function buildContextInputSchema(definitions: IntegrationContextQueryDefi
 	const operationSchema = z
 		.object({
 			query: querySchema,
-			input: z.record(z.string(), z.unknown()),
+			input: z.record(z.string(), z.unknown()).optional(),
 		})
 		.strict();
 
@@ -58,20 +58,29 @@ export function buildContextInputSchema(definitions: IntegrationContextQueryDefi
 					});
 				}
 				input.queries.forEach((operation, index) => {
-					validateOperationSchema(definitionsByName, operation, ctx, ['queries', index]);
+					validateOperationSchema(
+						definitionsByName,
+						{ query: operation.query, input: operation.input ?? {} },
+						ctx,
+						['queries', index],
+					);
 				});
 				return;
 			}
 
-			if (input.query === undefined || input.input === undefined) {
+			if (input.query === undefined) {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Provide query and input, or provide queries for a batch.',
+					message: 'Provide a query, or provide queries for a batch.',
 				});
 				return;
 			}
 
-			validateOperationSchema(definitionsByName, { query: input.query, input: input.input }, ctx);
+			validateOperationSchema(
+				definitionsByName,
+				{ query: input.query, input: input.input ?? {} },
+				ctx,
+			);
 		});
 }
 
@@ -119,10 +128,10 @@ export function buildActionInputSchema(definitions: IntegrationActionDefinition[
 }
 
 export function toSingleContextOperation(input: RawContextToolInput): RawContextToolOperation {
-	if (input.query === undefined || input.input === undefined) {
+	if (input.query === undefined) {
 		throw new Error('Integration context tool input was not validated.');
 	}
-	return { query: input.query, input: input.input };
+	return { query: input.query, input: input.input ?? {} };
 }
 
 export function toSingleActionOperation(input: RawActionToolInput): RawActionToolOperation {

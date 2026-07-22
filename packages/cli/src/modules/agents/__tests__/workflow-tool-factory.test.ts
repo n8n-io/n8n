@@ -7,6 +7,7 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import {
+	detectTriggerNode,
 	normalizeTriggerInput,
 	resolveWorkflowTool,
 	validateCompatibility,
@@ -187,6 +188,15 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 });
 
 describe('workflow tool compatibility', () => {
+	it('rejects workflows with only a schedule trigger', () => {
+		const workflow = makeWorkflow(
+			{},
+			makeManualTriggerNode({ type: 'n8n-nodes-base.scheduleTrigger' }),
+		);
+
+		expect(() => detectTriggerNode(workflow)).toThrow('no supported trigger node');
+	});
+
 	it('allows Respond to Webhook nodes in workflow tools', () => {
 		const workflow = makeWorkflow({
 			nodes: [makeWebhookTriggerNode(), makeRespondToWebhookNode()],

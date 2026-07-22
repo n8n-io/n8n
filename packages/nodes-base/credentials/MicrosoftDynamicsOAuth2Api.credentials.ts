@@ -1,5 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+const defaultScopes = ['openid', 'offline_access', 'https://{subdomain}.{region}/.default'];
+
 export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 	name = 'microsoftDynamicsOAuth2Api';
 
@@ -102,10 +104,45 @@ export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 			],
 		},
 		{
+			displayName: 'Custom Scopes',
+			name: 'customScopes',
+			type: 'boolean',
+			default: false,
+			description: 'Define custom scopes',
+		},
+		{
+			displayName:
+				'The default scopes needed for the node to work are already set, If you change these the node may not function correctly. Use the <code>{subdomain}</code> and <code>{region}</code> placeholders to reference the Subdomain and Region values above.',
+			name: 'customScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+		},
+		{
+			displayName: 'Enabled Scopes',
+			name: 'enabledScopes',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+			default: defaultScopes.join(' '),
+			description:
+				'Scopes that should be enabled. Use <code>{subdomain}</code> and <code>{region}</code> as placeholders that will be replaced with the Subdomain and Region values.',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: '=openid offline_access https://{{$self.subdomain}}.{{$self.region}}/.default',
+			default:
+				'={{(($self["customScopes"] && $self["enabledScopes"]) ? $self["enabledScopes"] : "' +
+				defaultScopes.join(' ') +
+				'").replace(/\\{subdomain\\}/g, $self["subdomain"]).replace(/\\{region\\}/g, $self["region"])}}',
 		},
 		{
 			displayName: 'Microsoft Graph API Base URL',

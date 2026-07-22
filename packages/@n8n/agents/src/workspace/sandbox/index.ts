@@ -14,7 +14,11 @@ export {
 	getWorkspaceRoot,
 	type SandboxWorkspace,
 } from './workspace-root';
-export { runInSandbox, type SandboxCommandTarget } from './run-in-sandbox';
+export {
+	runInSandbox,
+	type RunInSandboxOptions,
+	type SandboxCommandTarget,
+} from './run-in-sandbox';
 export { loadDaytona } from './lazy-daytona';
 export { createFilesystem, createSandbox } from './create-workspace';
 export type {

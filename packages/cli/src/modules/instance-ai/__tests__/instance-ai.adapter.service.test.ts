@@ -3134,13 +3134,55 @@ describe('createExecutionAdapter run()', () => {
 			status: 'error',
 		});
 
-		expect(mockActiveExecutions.stopExecution).toHaveBeenCalled();
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'TimeoutExecutionCancelledError' }),
+		);
 		expect(mockTelemetry.track).toHaveBeenCalledWith(
 			'Builder executed workflow',
 			expect.objectContaining({
 				workflow_id: 'wf-1',
 				status: 'error',
 				error: expect.stringContaining('timed out'),
+			}),
+		);
+	});
+
+	it('tracks abort cancellation as a manual cancel, not a timeout', async () => {
+		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+			},
+			{
+				activeExecution: true,
+				postExecutePromise: new Promise(() => {}),
+				threadId: 'thread-1',
+			},
+		);
+		const abortController = new AbortController();
+
+		const runPromise = adapter.run('wf-1', undefined, {
+			timeout: 60_000,
+			abortSignal: abortController.signal,
+		});
+		abortController.abort();
+
+		await expect(runPromise).resolves.toMatchObject({
+			status: 'error',
+			error: 'Execution was cancelled',
+		});
+
+		expect(mockActiveExecutions.stopExecution).toHaveBeenCalledWith(
+			'exec-1',
+			expect.objectContaining({ name: 'ManualExecutionCancelledError' }),
+		);
+		expect(mockTelemetry.track).toHaveBeenCalledWith(
+			'Builder executed workflow',
+			expect.objectContaining({
+				workflow_id: 'wf-1',
+				status: 'error',
+				error: 'Execution was cancelled',
 			}),
 		);
 	});

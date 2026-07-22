@@ -10,11 +10,14 @@ import {
 
 export interface WorkspaceFileTarget {
 	filesystem?: {
-		readFile?: (path: string, options?: { encoding?: 'utf-8' }) => Promise<string | Buffer>;
+		readFile?: (
+			path: string,
+			options?: { encoding?: 'utf-8'; abortSignal?: AbortSignal },
+		) => Promise<string | Buffer>;
 		writeFile: (
 			path: string,
 			content: string | Buffer,
-			options?: { recursive?: boolean },
+			options?: { recursive?: boolean; abortSignal?: AbortSignal },
 		) => Promise<void>;
 	};
 	sandbox?: SandboxWorkspace['sandbox'];
@@ -26,6 +29,7 @@ export interface WorkspaceFileOptions {
 	resourceLabel?: string;
 	/** Base for the exponential retry backoff on transient write errors. Default 1s. */
 	retryBackoffBaseMs?: number;
+	abortSignal?: AbortSignal;
 }
 
 function resourceLabel(options?: WorkspaceFileOptions): string {
@@ -52,7 +56,11 @@ export async function readWorkspaceFile(
 			return decodeWorkspaceFileContent(
 				await retryTransientSandboxIo(
 					// .call preserves the provider's `this` binding (e.g. LazyRuntimeFilesystem).
-					async () => await readFile.call(filesystem, filePath, { encoding: 'utf-8' }),
+					async () =>
+						await readFile.call(filesystem, filePath, {
+							encoding: 'utf-8',
+							abortSignal: options?.abortSignal,
+						}),
 					filePath,
 					options,
 				),
@@ -106,7 +114,11 @@ export async function writeWorkspaceFile(
 	if (filesystem) {
 		try {
 			await retryTransientSandboxIo(
-				async () => await filesystem.writeFile(filePath, content, { recursive: true }),
+				async () =>
+					await filesystem.writeFile(filePath, content, {
+						recursive: true,
+						abortSignal: options?.abortSignal,
+					}),
 				filePath,
 				options,
 			);
@@ -120,8 +132,12 @@ export async function writeWorkspaceFile(
 				});
 				return;
 			} catch (fallbackError) {
+				// Keep the underlying error as `cause`: quota-exhausted proxy failures
+				// carry their machine-readable code there, which terminal-error
+				// classification reads to surface the out-of-credits message.
 				throw new Error(
 					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
+					{ cause: fallbackError },
 				);
 			}
 		}
@@ -132,6 +148,7 @@ export async function writeWorkspaceFile(
 	} catch (error) {
 		throw new Error(
 			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+			{ cause: error },
 		);
 	}
 }
