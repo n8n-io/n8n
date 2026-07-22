@@ -227,6 +227,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			decision: 'pending',
 			createdAt: '2024-01-01T00:00:00.000Z',
 			updatedAt: '2024-01-01T00:00:00.000Z',
+			reviewer: null,
+			reviewedVersionId: 'version-1',
 		});
 	});
 
@@ -540,6 +542,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 						decision: 'pending',
 						createdAt: '2026-07-20T10:00:00.000Z',
 						updatedAt: '2026-07-20T10:00:00.000Z',
+						reviewer: null,
+						reviewedVersionId: 'version-1',
 					},
 				],
 			});

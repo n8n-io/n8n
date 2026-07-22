@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 import {
 	type WorkflowReviewRequestSummary,
-	type WorkflowReviewRequestState,
 	workflowReviewRequestStateSchema,
 } from '../../workflow-review-request-summary';
 import { Z } from '../../zod-class';
