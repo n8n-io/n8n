@@ -1,5 +1,6 @@
 {
 	"id": "data-table-workflow-skill-loading",
+	"maxSteps": 8,
 	"userMessage": "Create me a workflow that implements an n8n form to capture responses into a data table. The form should be a decklist submission form for a MTG tournament, asking for player name and a deck list as text fields they'll fill.",
 	"expectedToolInvocations": {
 		"allOfToolCalls": [
@@ -17,5 +18,5 @@
 		],
 		"noneOf": ["create-tasks"]
 	},
-	"rationale": "Regression coverage for single-workflow build prompts that depend on Data Tables. The orchestrator should load both the data-table-manager skill and the workflow-builder skill, include workflow-local table requirements in the build, and avoid task planning or delegation."
+	"rationale": "Regression coverage for single-workflow build prompts that depend on Data Tables. The orchestrator should load both the data-table-manager skill and the workflow-builder skill, include workflow-local table requirements in the build, and avoid task planning or delegation. maxSteps 8: two skill loads plus node/data-table discovery precede the build call, so the default 5-iteration cap cuts the chain short."
 }
