@@ -30,6 +30,10 @@ function last(value: unknown[]): unknown {
 	return value[value.length - 1];
 }
 
+function reverse(value: unknown[]): unknown[] {
+	return [...value].reverse();
+}
+
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionExtensionError('arguments must be passed to pluck');
@@ -684,6 +688,7 @@ export const arrayExtensions: ExtensionMap = {
 		unique,
 		first,
 		last,
+		reverse,
 		pluck,
 		randomItem,
 		sum,

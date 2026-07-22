@@ -10,6 +10,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import { prepareBinariesDataList } from '../../../utils/binary';
+import { toMailString } from '../utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
@@ -150,15 +151,16 @@ export class EmailSendV1 implements INodeType {
 			try {
 				item = items[itemIndex];
 
-				const fromEmail = this.getNodeParameter('fromEmail', itemIndex) as string;
-				const toEmail = this.getNodeParameter('toEmail', itemIndex) as string;
-				const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
-				const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
-				const subject = this.getNodeParameter('subject', itemIndex) as string;
-				const text = this.getNodeParameter('text', itemIndex) as string;
-				const html = this.getNodeParameter('html', itemIndex) as string;
+				const fromEmail = toMailString(this.getNodeParameter('fromEmail', itemIndex));
+				const toEmail = toMailString(this.getNodeParameter('toEmail', itemIndex));
+				const ccEmail = toMailString(this.getNodeParameter('ccEmail', itemIndex));
+				const bccEmail = toMailString(this.getNodeParameter('bccEmail', itemIndex));
+				const subject = toMailString(this.getNodeParameter('subject', itemIndex));
+				const text = toMailString(this.getNodeParameter('text', itemIndex, ''));
+				const html = toMailString(this.getNodeParameter('html', itemIndex, ''));
 				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 				const options = this.getNodeParameter('options', itemIndex, {});
+				const replyTo = toMailString(options.replyTo);
 
 				const credentials = await this.getCredentials('smtp');
 
@@ -192,7 +194,9 @@ export class EmailSendV1 implements INodeType {
 					subject,
 					text,
 					html,
-					replyTo: options.replyTo as string | undefined,
+					replyTo,
+					disableFileAccess: true,
+					disableUrlAccess: true,
 				};
 
 				if (attachmentPropertyString && item.binary) {

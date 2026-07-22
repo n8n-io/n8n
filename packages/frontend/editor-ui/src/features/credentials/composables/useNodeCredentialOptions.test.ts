@@ -155,6 +155,63 @@ describe('useNodeCredentialOptions', () => {
 		).toEqual(['token-cred', 'oauth-cred']);
 	});
 
+	it('keeps independent credential types out of the main authentication dropdown', () => {
+		const httpBasicAuth = {
+			name: 'httpBasicAuth',
+			displayName: 'Basic Auth',
+			properties: [],
+		} satisfies ICredentialType;
+		const node = computed(
+			() =>
+				({
+					...slackNode,
+					type: 'n8n-nodes-base.discord',
+					parameters: {
+						...slackNode.parameters,
+						incomingAuthentication: 'basicAuth',
+					},
+				}) as INodeUi,
+		);
+		const nodeType = computed(
+			() =>
+				({
+					...slackNodeType,
+					credentials: [
+						...slackNodeType.credentials,
+						{
+							name: 'httpBasicAuth',
+							required: true,
+							displayOptions: {
+								show: {
+									incomingAuthentication: ['basicAuth'],
+								},
+							},
+						},
+					],
+				}) as INodeTypeDescription,
+		);
+		credentialsStore.state.credentialTypes.httpBasicAuth = httpBasicAuth;
+		credentialsStore.state.credentials['basic-auth-cred'] = createCredential({
+			id: 'basic-auth-cred',
+			name: 'Webhook Basic Auth',
+			type: 'httpBasicAuth',
+		});
+
+		const { credentialTypesNodeDescriptionDisplayed } = useNodeCredentialOptions(
+			node,
+			nodeType,
+			'',
+			true,
+		);
+
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[0].options.map((option) => option.type),
+		).toEqual(['slackApi', 'slackOAuth2Api']);
+		expect(
+			credentialTypesNodeDescriptionDisplayed.value[1].options.map((option) => option.type),
+		).toEqual(['httpBasicAuth']);
+	});
+
 	it('disables mixed credential behavior when override is set', () => {
 		const slackApiDescription = slackNodeType.credentials[0];
 		const { showMixedCredentials } = setupOptions('slackApi');

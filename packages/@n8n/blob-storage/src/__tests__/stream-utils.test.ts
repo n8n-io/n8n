@@ -52,7 +52,7 @@ describe('stream-utils', () => {
 			expect(chunks).toEqual([]);
 		});
 
-		it.each([0, -1])('should throw when chunkSize is %s', (chunkSize) => {
+		it.each([0, -1, 1.5])('should throw when chunkSize is %s', (chunkSize) => {
 			expect(() => createFixedSizeChunker(chunkSize)).toThrow(UnexpectedError);
 		});
 	});
