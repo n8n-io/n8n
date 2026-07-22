@@ -70,7 +70,12 @@ export class AgentIntegrationPersistenceService {
 			throw new UserError('Credential integration requires a credential ID.');
 		}
 
-		const existing = agent.integrations ?? [];
+		// Drop a same-type draft entry (empty credentialId, written by the builder
+		// before setup completes) so connecting a real credential replaces it
+		// instead of leaving both the draft and the connected entry behind.
+		const existing = (agent.integrations ?? []).filter(
+			(i) => !(i.type === type && i.credentialId === ''),
+		);
 		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
 
 		agent.integrations = alreadyExists

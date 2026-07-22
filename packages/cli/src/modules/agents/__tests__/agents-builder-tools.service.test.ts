@@ -249,6 +249,15 @@ describe('AgentsBuilderToolsService', () => {
 			expect(toolNames).toContain(BUILDER_TOOLS.RESOLVE_INTEGRATION);
 		});
 
+		it('registers the finish_setup interactive tool in the builder toolset', () => {
+			const { service } = makeService();
+
+			const toolNames = service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.json.map((tool) => tool.name);
+			expect(toolNames).toContain(BUILDER_TOOLS.FINISH_SETUP);
+		});
+
 		it('registers publish and unpublish tools in the builder toolset', () => {
 			const { service } = makeService();
 

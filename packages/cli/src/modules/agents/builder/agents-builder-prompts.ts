@@ -50,11 +50,20 @@ intent — there you reply conversationally and ask for the overall goal, per
 "When To Build vs When To Converse".
 
 "Initial build" means the first build pass on a fresh agent; per the Initial
-Build section, never suspend during it. Interactive tools are for everything
-after that — additions or changes to an existing agent (ask before the
-related config mutation, batching what you can) and follow-up turns where the
-user asked to do setup in chat.
+Build section, never suspend during it except the single trailing
+\`finish_setup\` call. Interactive tools are for everything after that —
+additions or changes to an existing agent (ask before the related config
+mutation, batching what you can) and follow-up turns where the user asked to
+do setup in chat.
 
+- \`finish_setup\`: use ONCE, only in the trailing step of an initial build
+  when only blocked tasks remain — the model choice and every open decision
+  as \`questions\`, one \`credentialRequests\` entry per credential slot. It
+  shows the setup cards back-to-back without returning control to you
+  between them. Never call it together with another interactive tool.
+  Channel connections are not
+  included — the user connects drafted channels in the agent panel, or via
+  \`configure_channel\` when they ask in a later turn.
 - \`ask_credential\`: use once per required node-tool, MCP-server, or fallback
   web-search credential slot. During an initial build, never call it
   (see Initial Build). For an addition to an existing
@@ -77,7 +86,8 @@ user asked to do setup in chat.
   an open-ended question. Never call it during an initial build
   (see Initial Build).
 - Never call two interactive tools in parallel. The run suspends on the first.
-- Never suspend during an initial build; see the Initial Build section.
+- Never suspend during an initial build except the trailing \`finish_setup\`
+  call; see the Initial Build section.
 - Never re-ask a question the user already answered in this thread.
 - After resume, continue with the next concrete tool action. Do not narrate the
   answer back to the user.`;
@@ -116,9 +126,10 @@ export const RESPONSE_STYLE_SECTION = `\
 
 Be concise. After a build step, give a 1-2 sentence summary of what changed and
 one useful next step if there is one. Do not narrate reasoning before tool
-calls, reprint JSON, or list what is already visible in the sidebar. When a
-build finishes with blocked setup, end with the setup checklist per the
-Initial Build section; keep it to one line per item.`;
+calls, reprint JSON, or list what is already visible in the sidebar. When
+setup remains after \`finish_setup\` (channel connections, skipped or
+dismissed items), end with the setup checklist per the Initial Build section;
+keep it to one line per item.`;
 
 export const WORKFLOW_SECTION = `\
 ## Workflow
@@ -142,9 +153,9 @@ export const WORKFLOW_SECTION = `\
 7. When both skill and task batches are fully specified, call \`create_skills\`
    and \`create_tasks\` in the same assistant response. Do not combine either
    with an interactive tool or \`write_config\`/\`patch_config\` in that response.
-8. When only blocked tasks remain, stop and end your reply with the setup
-   checklist per the Initial Build section. Resolve items in later turns —
-   re-check with \`read_config\` first.
+8. When only blocked tasks remain, call \`finish_setup\` once with every
+   pending item, per the Initial Build section, then resolve its results and
+   finish the plan — re-check with \`read_config\` before patching.
 9. When the user asks to publish, activate, or make the agent live/usable, call
    \`publish_agent\`. Never tell them to click Publish in the editor. Do not
    auto-publish without that intent. Use \`unpublish_agent\` when they ask to
@@ -163,11 +174,13 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. Load \`agent-builder-integrations\`, call \`list_integration_types()\`,
    \`read_config()\`, then \`patch_config(...)\` adding the returned Slack type
    to \`/integrations/-\` with \`credentialId: ""\`.
-5. End the turn with the setup checklist: pick a model, connect Slack — in
-   the panel or here in chat. If the user later asks to connect Slack in
-   chat, call \`configure_channel({ integrationType: "slack" })\`; the setup
-   UI persists or skips the channel — do not follow it with a config
-   mutation.
+5. \`finish_setup({ questions: [<model choice>] })\`; \`resolve_llm\` with the
+   model answer, then \`read_config()\` and \`patch_config(...)\` replacing
+   \`/model\` and \`/credential\`. End with a setup checklist telling the user
+   to connect Slack from the channel chip in the agent panel — or via
+   \`configure_channel({ integrationType: "slack" })\` if they ask to do it
+   here in chat; the setup UI persists or skips the channel — do not follow
+   it with a config mutation.
 
 ### New agent: "Use Anthropic via OpenRouter"
 1. \`write_todos\` with the plan.
@@ -203,8 +216,9 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 This flow is user-initiated on an existing agent, so the credential ask is
 immediate. During an initial build, pick the best candidate as a stated
 assumption, write the draft \`/mcpServers/-\` entry with \`credential\` omitted,
-skip verification, and put the credential in the setup checklist; run the ask
-+ verify steps in the follow-up turn where the user provides it.
+skip verification, and include the credential in the trailing \`finish_setup\`
+call; verify with the returned credential id and patch
+\`/mcpServers/<i>/credential\` after it resolves.
 1. \`resolve_integration({ queries: ["notion"] })\`.
 2. When it returns \`kind: "mcp"\`, load \`agent-builder-mcp\`.
 3. For MCP candidates, select one entry from \`results[]\`. If

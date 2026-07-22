@@ -47,9 +47,9 @@ locator values that the target agent cannot reliably guess at runtime.
 
 ${INITIAL_BUILD_NOTE} If the tool needs a credential to resolve a stable
 selector, skip adding that tool for now instead of blocking the rest of the
-build. Run the credential ask, option lookup, and config mutation together in
-the follow-up turn where the user provides the credential, or in an addition
-to an existing agent.
+build. Include the credential in the trailing \`finish_setup\` call, then run
+the option lookup and config mutation with the returned credential in the
+same turn — or in an addition to an existing agent.
 
 ## Workflow
 

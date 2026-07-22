@@ -102,9 +102,10 @@ assumption (above), then \`read_config()\` and \`patch_config\` a draft
 \`/mcpServers/-\` entry using \`name\`, \`url\`, \`transport\`,
 \`authentication\`, and \`metadata.nodeTypeName\` from \`selectedResult\` with
 \`credential\` omitted, and skip \`verify_mcp_server\` — there is nothing to
-authenticate yet. Verify and finish the connection in the follow-up turn once
-the user provides the credential. Existing-agent additions keep the immediate
-ask + verify flow above unchanged.
+authenticate yet. Include the credential in the trailing \`finish_setup\` call;
+verify with the returned credential id and patch the entry's \`credential\`
+after it resolves. Existing-agent additions keep the immediate ask + verify
+flow above unchanged.
 
 If verification succeeds but the tools do not cover the requested capability
 for a generic service request, load \`agent-builder-node-tools\`, call

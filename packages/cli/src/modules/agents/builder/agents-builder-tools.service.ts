@@ -58,6 +58,7 @@ import {
 	buildAskEmbeddingCredentialTool,
 	buildAskQuestionsTool,
 	buildConfigureChannelTool,
+	buildFinishSetupTool,
 	buildResolveLlmTool,
 } from './interactive';
 import type { ModelLookup } from './interactive/resolve-llm.tool';
@@ -614,6 +615,16 @@ export class AgentsBuilderToolsService {
 					this.agentIntegrationPersistenceService
 						.listChatIntegrations()
 						.map((integration) => integration.type),
+			}),
+			buildFinishSetupTool({
+				credentialProvider,
+				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
+				listIntegrationCredentialIds: async () => {
+					const agent = await this.agentsService.findById(agentId, projectId);
+					return (agent?.integrations ?? [])
+						.map((integration) => integration.credentialId)
+						.filter((credentialId) => credentialId.length > 0);
+				},
 			}),
 			buildVerifyMcpServerTool({
 				credentialProvider,

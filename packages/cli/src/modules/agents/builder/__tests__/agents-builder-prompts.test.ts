@@ -183,7 +183,7 @@ describe('chat-channel credential guidance', () => {
 	});
 
 	it('references ask_questions in the batching guidance', () => {
-		expect(WORKFLOW_SECTION).toContain('setup\n   checklist per the Initial Build section');
+		expect(WORKFLOW_SECTION).toContain('call `finish_setup` once');
 		expect(INTERACTIVE_TOOLS_SECTION).toContain(
 			'Batch every\n  question you currently need into a single call',
 		);
@@ -351,6 +351,7 @@ describe('build-first workflow guidance', () => {
 		);
 		expect(INTERACTIVE_TOOLS_SECTION).toContain('Never suspend during an initial build');
 		expect(INTERACTIVE_TOOLS_SECTION).not.toContain('trailing batch');
+		expect(INTERACTIVE_TOOLS_SECTION).toContain('Channel connections are not\n  included');
 		expect(getLlmSelectionPrompt(null)).toContain('leave the draft with `model: ""`');
 		expect(getLlmSelectionPrompt(null)).toContain('never write `model: ""` over an existing model');
 		expect(getLlmSelectionPrompt(null)).toContain('During an initial build, if `resolve_llm`');
@@ -360,9 +361,10 @@ describe('build-first workflow guidance', () => {
 
 describe('canonical initial-build section', () => {
 	it('defines the full initial-build contract once', () => {
-		expect(INITIAL_BUILD_SECTION).toContain('NEVER suspend on an interactive tool');
+		expect(INITIAL_BUILD_SECTION).toContain('NEVER suspend mid-build on an interactive tool');
+		expect(INITIAL_BUILD_SECTION).toContain('the single\n  trailing `finish_setup` call');
 		expect(INITIAL_BUILD_SECTION).toContain('credentialId: ""');
-		expect(INITIAL_BUILD_SECTION).toContain('short setup\n  checklist');
+		expect(INITIAL_BUILD_SECTION).toContain('a short setup checklist');
 		expect(INITIAL_BUILD_SECTION).toContain('sensible assumptions');
 	});
 

@@ -52,7 +52,7 @@ function withNodeCredentialMap(
 }
 
 /** Existing credentials of the requested type — used both for the suspend card and to resolve a display name on resume. */
-async function listExistingCredentials(
+export async function listExistingCredentials(
 	credentialProvider: CredentialProvider,
 	credentialType: string,
 ): Promise<Array<{ id: string; name: string }>> {

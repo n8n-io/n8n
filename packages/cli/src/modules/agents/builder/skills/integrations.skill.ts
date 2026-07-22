@@ -81,9 +81,11 @@ The \`integrations\` array controls how the target agent is triggered.
   \`list_integration_types\` returns the matching type, \`read_config()\` then
   \`patch_config\` adding \`{ "type": "<integrationType>", "credentialId": "" }\`
   to \`/integrations/-\` (include a minimal valid draft \`settings\` object for
-  telegram) so the channel appears in the agent panel as needing setup. Use
-  \`configure_channel\` when the user asks to connect the channel in a
-  follow-up turn.
+  telegram) so the channel appears in the agent panel as needing setup. The
+  connection itself is done by the user: always list the drafted channel in
+  the closing setup checklist, pointing at the channel chip in the agent
+  panel; use \`configure_channel\` only when the user asks to connect a
+  channel in a later chat turn.
 - Preserve existing chat integrations unless the user asked to remove them.
 - To remove an existing chat integration, call \`read_config\` and inspect
   \`config.integrations\`.
