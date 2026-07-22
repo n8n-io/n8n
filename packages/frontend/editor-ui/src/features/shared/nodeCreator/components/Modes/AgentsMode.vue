@@ -6,19 +6,14 @@ import type {
 	LabelCreateElement,
 	NodeTypeSelectedPayload,
 } from '@/Interface';
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	DEBOUNCE_TIME,
-	MESSAGE_AN_AGENT_NODE_TYPE,
-	getDebounceTime,
-} from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE, DEBOUNCE_TIME, MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { useAgentProjectNameResolver } from '@/features/agents/composables/useAgentProjectNameResolver';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useAgentResourcesLocator } from '@/features/ndv/parameters/composables/useAgentResourcesLocator';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 

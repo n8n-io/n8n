@@ -16,11 +16,13 @@ export interface ImportPackageFields {
 	credentialMissingMode?: string;
 	bindings?: string;
 	workflowConflictPolicy: string;
+	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
 	folderConflictPolicy?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
+	variableMissingMode?: string;
 }
 
 export interface ExportPackageFields {

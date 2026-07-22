@@ -7,7 +7,7 @@ import MCPAccessTokenPopoverTab from './MCPAccessTokenPopoverTab.vue';
 const mockCopy = vi.fn();
 const mockCopied = { value: false };
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({
 		copy: mockCopy,
 		copied: mockCopied,

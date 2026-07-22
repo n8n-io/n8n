@@ -7,7 +7,11 @@
 // unit-testable on its own (index.ts runs main() at import time).
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalAgentExecutionResult,
+	InstanceAiEvalExecutionResult,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import type { Run } from 'langsmith/schemas';
 import { z } from 'zod';
 
@@ -50,6 +54,8 @@ const targetOutputSchema = z.object({
 	reasoning: z.string().default(''),
 	workflowId: z.string().optional(),
 	scenarioWorkflowId: z.string().optional(),
+	/** Set when the scenario ran against a built first-class Agent instead of a workflow. */
+	agentId: z.string().optional(),
 	failureCategory: z.string().optional(),
 	rootCause: z.string().optional(),
 	/** Verifier returned no verdict — run is excluded from scoring but stays visible. */
@@ -58,6 +64,9 @@ const targetOutputSchema = z.object({
 	expectationResults: expectationResultsSchema.optional().catch(undefined),
 	execErrors: z.array(z.string()).default([]),
 	evalResult: z.unknown().optional(),
+	agentEvalResult: z.unknown().optional(),
+	/** Rendered agent config + skills — attached to every agent row, deduped on reshape (first write wins). */
+	agentContext: z.string().optional(),
 	/** Only set on the scenario that initiated the build. */
 	buildDurationMs: z.number().optional(),
 	execDurationMs: z.number().default(0),
@@ -73,9 +82,10 @@ const targetOutputSchema = z.object({
 
 export type TargetOutput = Omit<
 	z.infer<typeof targetOutputSchema>,
-	'evalResult' | 'workflowJson' | 'buildTrace'
+	'evalResult' | 'agentEvalResult' | 'workflowJson' | 'buildTrace'
 > & {
 	evalResult?: InstanceAiEvalExecutionResult;
+	agentEvalResult?: InstanceAiEvalAgentExecutionResult;
 	workflowJson?: WorkflowResponse;
 	buildTrace?: BuildTrace;
 };
@@ -92,6 +102,16 @@ function isEvalResult(v: unknown): v is InstanceAiEvalExecutionResult {
 		Array.isArray(v.errors) &&
 		typeof v.hints === 'object' &&
 		v.hints !== null
+	);
+}
+
+function isAgentEvalResult(v: unknown): v is InstanceAiEvalAgentExecutionResult {
+	if (!isPlainObject(v)) return false;
+	return (
+		typeof v.runId === 'string' &&
+		Array.isArray(v.toolCalls) &&
+		Array.isArray(v.modelTurns) &&
+		isPlainObject(v.seed)
 	);
 }
 
@@ -129,6 +149,9 @@ export function parseTargetOutput(raw: unknown): TargetOutput | undefined {
 	return {
 		...parsed.data,
 		evalResult: isEvalResult(parsed.data.evalResult) ? parsed.data.evalResult : undefined,
+		agentEvalResult: isAgentEvalResult(parsed.data.agentEvalResult)
+			? parsed.data.agentEvalResult
+			: undefined,
 		workflowJson: isWorkflowResponse(parsed.data.workflowJson)
 			? parsed.data.workflowJson
 			: undefined,
@@ -216,6 +239,8 @@ export function reshapeLangSmithRuns(
 			const executionScenarioResults: ExecutionScenarioResult[] = [];
 			let workflowBuildSuccess = false;
 			let workflowId: string | undefined;
+			let agentId: string | undefined;
+			let agentArtifactContext: string | undefined;
 			let buildError: string | undefined;
 			let threadId: string | undefined;
 			let workflowChecks: CheckOutcome[] | undefined;
@@ -236,6 +261,9 @@ export function reshapeLangSmithRuns(
 				}
 				if (output.buildSuccess) workflowBuildSuccess = true;
 				if (output.workflowId) workflowId = output.workflowId;
+				if (output.agentId && !agentId) agentId = output.agentId;
+				if (output.agentContext && !agentArtifactContext)
+					agentArtifactContext = output.agentContext;
 				if (output.threadId) threadId = output.threadId;
 				if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
 				if (output.workflowChecks && !workflowChecks) workflowChecks = output.workflowChecks;
@@ -245,7 +273,9 @@ export function reshapeLangSmithRuns(
 					scenario,
 					success: output.passed,
 					evalResult: output.evalResult,
+					...(output.agentEvalResult ? { agentEvalResult: output.agentEvalResult } : {}),
 					workflowId: output.scenarioWorkflowId ?? output.workflowId,
+					...(output.agentId ? { agentId: output.agentId } : {}),
 					score: output.score,
 					reasoning: output.reasoning,
 					failureCategory: output.failureCategory,
@@ -261,6 +291,8 @@ export function reshapeLangSmithRuns(
 				if (output) {
 					workflowBuildSuccess = output.buildSuccess;
 					workflowId = output.workflowId;
+					agentId = output.agentId;
+					agentArtifactContext = output.agentContext;
 					threadId = output.threadId;
 					if (!output.buildSuccess && output.reasoning) buildError = output.reasoning;
 					workflowChecks = output.workflowChecks;
@@ -276,6 +308,8 @@ export function reshapeLangSmithRuns(
 				fileSlug,
 				workflowBuildSuccess,
 				workflowId,
+				agentId,
+				agentArtifactContext,
 				executionScenarioResults,
 				buildError,
 				threadId,
