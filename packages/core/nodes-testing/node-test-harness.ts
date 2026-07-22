@@ -67,7 +67,7 @@ export class NodeTestHarness {
 
 	setupTests(options: TestOptions = {}) {
 		const workflowFilenames =
-			options.workflowFiles?.map((fileName) => path.join(this.relativePath, fileName)) ??
+			options.workflowFiles?.map((fileName) => path.posix.join(this.relativePath, fileName)) ??
 			this.workflowFilenames;
 
 		const tests = this.workflowToTests(workflowFilenames, options);
@@ -150,7 +150,7 @@ export class NodeTestHarness {
 
 	@Memoized
 	private get relativePath() {
-		return path.relative(this.packageDir, this.testDir);
+		return path.relative(this.packageDir, this.testDir).split(path.sep).join(path.posix.sep);
 	}
 
 	@Memoized

@@ -1659,7 +1659,7 @@ describe('JobProcessor', () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			const toolNode = {
 				name: 'Tool HTTP Request',
-				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				type: 'n8n-nodes-base.httpRequestTool',
 				typeVersion: 1,
 				parameters: {},
 				position: [0, 0] as [number, number],
@@ -1697,7 +1697,7 @@ describe('JobProcessor', () => {
 			const nodeTypes = mock<NodeTypes>();
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: {
-					name: 'toolHttpRequest',
+					name: 'httpRequestTool',
 					outputs: [NodeConnectionTypes.AiTool],
 					properties: [],
 				},
@@ -2070,7 +2070,7 @@ describe('JobProcessor', () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			const toolNode = {
 				name: 'Tool HTTP Request',
-				type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+				type: 'n8n-nodes-base.httpRequestTool',
 				typeVersion: 1,
 				parameters: {},
 				position: [0, 0] as [number, number],
@@ -2115,7 +2115,7 @@ describe('JobProcessor', () => {
 			const nodeTypes = mock<NodeTypes>();
 			nodeTypes.getByNameAndVersion.mockReturnValue({
 				description: {
-					name: 'toolHttpRequest',
+					name: 'httpRequestTool',
 					outputs: [NodeConnectionTypes.AiTool],
 					properties: [],
 				},
