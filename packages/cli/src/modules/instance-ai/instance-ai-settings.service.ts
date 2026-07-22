@@ -649,13 +649,14 @@ export class InstanceAiSettingsService {
 
 		const data = connection.data as ICredentialDataDecryptedObject;
 		policy.validate?.({ type: connection.type, data });
-		const updatesCurrent = current?.type === connection.type;
+		const existing =
+			current?.type === connection.type ? { id: current.id, name: current.name } : null;
 		return {
-			event: updatesCurrent ? 'update' : 'create',
+			event: existing ? 'update' : 'create',
 			expectedCredentialId: current?.id ?? null,
 			credential: {
-				id: updatesCurrent ? current.id : null,
-				name: updatesCurrent ? current.name : name,
+				id: existing?.id ?? null,
+				name: existing?.name ?? name,
 				type: connection.type,
 				data,
 			},
