@@ -93,8 +93,8 @@ export class McpController {
 		}
 
 		try {
-			const { enabled: mcpAppsEnabled } = await this.mcpService.resolveMcpAppsVariant(req.user);
-			await this.handleTransportRequest(req, res, mcpAppsEnabled);
+			const { mcpApps } = await this.mcpService.resolveFeatureFlags(req.user);
+			await this.handleTransportRequest(req, res, mcpApps.enabled);
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (!res.headersSent) {
@@ -150,19 +150,20 @@ export class McpController {
 			return;
 		}
 
-		const mcpAppsResolution = await this.mcpService.resolveMcpAppsVariant(req.user);
+		const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
 
 		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			...baseTelemetryPayload,
-			mcp_apps_enabled: mcpAppsResolution.enabled,
-			mcp_apps_variant: mcpAppsResolution.variant,
+			mcp_apps_enabled: featureFlags.mcpApps.enabled,
+			mcp_apps_variant: featureFlags.mcpApps.variant,
+			mcp_canvas_groups_enabled: featureFlags.canvasGroupsEnabled,
 		};
 
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, mcpAppsResolution.enabled, req.body);
+			await this.handleTransportRequest(req, res, featureFlags.mcpApps.enabled, req.body);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
