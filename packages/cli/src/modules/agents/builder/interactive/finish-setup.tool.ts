@@ -1,4 +1,9 @@
-import type { BuiltTool, CredentialProvider, InterruptibleToolContext } from '@n8n/agents';
+import type {
+	BuiltTool,
+	CredentialListItem,
+	CredentialProvider,
+	InterruptibleToolContext,
+} from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	channelSuspendPayloadSchema,
@@ -11,8 +16,15 @@ import {
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { listExistingCredentials } from './ask-credential.tool';
 import { BUILDER_TOOLS } from '../builder-tool-names';
+
+/** Filters an already-fetched credential list down to one type, in the shape the setup cards need. */
+function credentialsOfType(
+	all: CredentialListItem[],
+	credentialType: string,
+): Array<{ id: string; name: string }> {
+	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
+}
 
 export interface FinishSetupToolDeps {
 	credentialProvider: CredentialProvider;
@@ -123,19 +135,6 @@ type FinishSetupCtx = InterruptibleToolContext<FinishSetupSuspendPayload, Finish
 
 type FinishSetupToolResult = { completed: true } & Collected;
 
-/** Resolve a credential's display name for the final result, mirroring ask_credential's resume resolution. */
-async function resolveCredentialName(
-	deps: FinishSetupToolDeps,
-	credentialType: string,
-	credentialId: string,
-): Promise<string> {
-	const existingCredentials = await listExistingCredentials(
-		deps.credentialProvider,
-		credentialType,
-	);
-	return existingCredentials.find((c) => c.id === credentialId)?.name ?? credentialId;
-}
-
 /** Throws for any credential request whose type isn't recognized. */
 function validateCredentialTypes(input: FinishSetupInput, deps: FinishSetupToolDeps): void {
 	for (const request of input.credentialRequests ?? []) {
@@ -184,14 +183,12 @@ async function computeInitialPlan(
 
 	if (input.credentialRequests?.length) {
 		const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
+		const all = await deps.credentialProvider.list();
 		const credentials: Record<string, z.infer<typeof credentialOutcomeSchema>> = {};
 
 		for (const slot of input.credentialRequests) {
 			const key = slot.credentialSlot ?? slot.credentialType;
-			const existingCredentials = await listExistingCredentials(
-				deps.credentialProvider,
-				slot.credentialType,
-			);
+			const existingCredentials = credentialsOfType(all, slot.credentialType);
 			const channelMatch = existingCredentials.find((credential) =>
 				integrationCredentialIds.includes(credential.id),
 			);
@@ -235,6 +232,7 @@ async function mergeResumeIntoCollected(
 		return { ...previous, channels };
 	}
 
+	const all = await deps.credentialProvider.list();
 	const credentials = { ...(previous.credentials ?? {}) };
 	for (const slot of phase.slots) {
 		const key = slot.credentialSlot ?? slot.credentialType;
@@ -242,7 +240,9 @@ async function mergeResumeIntoCollected(
 		credentials[key] = credentialId
 			? {
 					id: credentialId,
-					name: await resolveCredentialName(deps, slot.credentialType, credentialId),
+					name:
+						credentialsOfType(all, slot.credentialType).find((c) => c.id === credentialId)?.name ??
+						credentialId,
 				}
 			: 'skipped';
 	}
@@ -292,6 +292,7 @@ async function suspendForPhase(params: {
 		});
 	}
 
+	const all = await deps.credentialProvider.list();
 	const seenTypes = new Set<string>();
 	const credentialRequests: Array<{
 		credentialType: string;
@@ -304,10 +305,7 @@ async function suspendForPhase(params: {
 		credentialRequests.push({
 			credentialType: slot.credentialType,
 			reason: slot.purpose,
-			existingCredentials: await listExistingCredentials(
-				deps.credentialProvider,
-				slot.credentialType,
-			),
+			existingCredentials: credentialsOfType(all, slot.credentialType),
 		});
 	}
 	return await ctx.suspend({

@@ -48,8 +48,12 @@ locator values that the target agent cannot reliably guess at runtime.
 ${INITIAL_BUILD_NOTE} If the tool needs a credential to resolve a stable
 selector, skip adding that tool for now instead of blocking the rest of the
 build. Include the credential in the trailing \`finish_setup\` call, then run
-the option lookup and config mutation with the returned credential in the
-same turn — or in an addition to an existing agent.
+the option lookup with the returned credential in the same turn and write the
+config mutation only when the result is unambiguous (an exact or single
+filtered match). If options remain ambiguous, do not call \`ask_questions\` —
+leave the tool deferred and add a one-line setup checklist item naming the
+pending selection; resolve it in a later turn. In an addition to an existing
+agent, resolve the credential and any ambiguity immediately instead.
 
 ## Workflow
 
@@ -72,9 +76,10 @@ same turn — or in an addition to an existing agent.
    - current \`nodeParameters\`
    - returned \`credentials\`, when available
    - \`filter\` when the user named a specific team, channel, project, or object
-6. If results are ambiguous, use \`ask_questions\` with the returned option names.
-   If there are many pages, retry with \`paginationToken\` or a narrower
-   \`filter\`.
+6. If results are ambiguous, use \`ask_questions\` with the returned option
+   names (existing agents only — during an initial build, defer per
+   Initial-build timing above). If there are many pages, retry with
+   \`paginationToken\` or a narrower \`filter\`.
 7. Write the selected result's \`parameterValue\` exactly into
    \`nodeParameters\`. For resource locators this is an object with \`__rl\`,
    \`mode\`, and \`value\`; for classic dynamic options this is the raw ID/value.

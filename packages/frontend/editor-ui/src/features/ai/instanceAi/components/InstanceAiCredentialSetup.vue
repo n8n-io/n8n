@@ -141,6 +141,14 @@ const anySelected = computed(() =>
 	props.credentialRequests.some((r) => isStepComplete(r.credentialType)),
 );
 
+/** The submitted-state label: finalize has its own copy; otherwise distinguish a full submit from a mixed skip/select one. */
+const submittedLabelKey = computed(() => {
+	if (isFinalize.value) return 'instanceAi.credential.finalize.applied';
+	return skippedTypes.value.size > 0
+		? 'instanceAi.credential.someSkipped'
+		: 'instanceAi.credential.allSelected';
+});
+
 // ---------------------------------------------------------------------------
 // Auto-advance
 // ---------------------------------------------------------------------------
@@ -411,7 +419,7 @@ async function handleLater() {
 
 	const nextUnhandled = props.credentialRequests.findIndex((r) => !isStepHandled(r.credentialType));
 	if (nextUnhandled >= 0) {
-		userNavigated.value = true;
+		userNavigated.value = false;
 		goToStep(nextUnhandled);
 		return;
 	}
@@ -651,13 +659,7 @@ async function handleSetupAutomatically() {
 			</template>
 			<template v-else>
 				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
-				<span>{{
-					i18n.baseText(
-						isFinalize
-							? 'instanceAi.credential.finalize.applied'
-							: 'instanceAi.credential.allSelected',
-					)
-				}}</span>
+				<span>{{ i18n.baseText(submittedLabelKey) }}</span>
 			</template>
 		</div>
 	</div>

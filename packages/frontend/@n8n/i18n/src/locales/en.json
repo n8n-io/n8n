@@ -6413,6 +6413,7 @@
 	"instanceAi.credential.selected": "Credential selected",
 	"instanceAi.credential.required": "This action requires a credential",
 	"instanceAi.credential.allSelected": "All credentials configured",
+	"instanceAi.credential.someSkipped": "Credentials configured — skipped ones can be added later",
 	"instanceAi.credential.useSelected": "Use selected",
 	"instanceAi.credential.deny": "Later",
 	"instanceAi.credential.confirmAll": "Confirm all credentials",

@@ -280,6 +280,61 @@ describe('resolve_llm tool', () => {
 			});
 			expect(freeCredits.claim).not.toHaveBeenCalled();
 		});
+
+		it('does not claim free credits when a model is requested without a provider', async () => {
+			const credentialProvider = makeProvider([]);
+			const modelLookup = makeModelLookup();
+			const freeCredits = makeFreeCredits(() => true);
+			const tool = buildResolveLlmTool({ credentialProvider, modelLookup, freeCredits });
+			const result = await tool.handler!({ model: 'claude-sonnet-4-6' }, {});
+
+			expect(result).toEqual({ ok: false, reason: 'missing_credential', credentials: [] });
+			expect(freeCredits.claim).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('credentialId', () => {
+		it('resolves a specific credential when credentialId is passed', async () => {
+			const credentialProvider = makeProvider([
+				{ id: 'c1', name: 'Personal OpenRouter', type: 'openRouterApi' },
+				{ id: 'c2', name: 'Work OpenRouter', type: 'openRouterApi' },
+			]);
+			const modelLookup = makeModelLookup();
+			const tool = buildResolveLlmTool({
+				credentialProvider,
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ credentialId: 'c2' }, {});
+
+			expect(result).toEqual({
+				ok: true,
+				provider: 'openrouter',
+				model: 'anthropic/claude-sonnet-4.6',
+				credentialId: 'c2',
+				credentialName: 'Work OpenRouter',
+			});
+		});
+
+		it('returns unknown_credential for a credentialId that is not an LLM credential', async () => {
+			const credentialProvider = makeProvider([
+				{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
+			]);
+			const modelLookup = makeModelLookup();
+			const tool = buildResolveLlmTool({
+				credentialProvider,
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ credentialId: 'nope' }, {});
+
+			expect(result).toEqual({
+				ok: false,
+				reason: 'unknown_credential',
+				credentialId: 'nope',
+				credentials: [{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' }],
+			});
+		});
 	});
 
 	describe('cross-provider auto-pick', () => {

@@ -137,7 +137,9 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 				'claims them automatically and resolves to openai/gpt-5-mini — the result carries ' +
 				'claimedFreeOpenAiCredits: true; tell the user free OpenAI credits were set up. When multiple ' +
 				'providers each have one credential, the tool auto-picks the recommended provider — the result ' +
-				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it.',
+				'carries autoPicked: true and otherProviders; state the pick as changeable, do not ask to confirm it. ' +
+				'When the user picks between multiple credentials of one provider, pass the picked credentialId ' +
+				'from the earlier ambiguous result.',
 		)
 		.input(
 			z.object({
@@ -151,106 +153,147 @@ export function buildResolveLlmTool(deps: ResolveLlmToolDeps): BuiltTool {
 					.describe(
 						'Requested model without the selected provider prefix. For OpenRouter use the routed id, e.g. "anthropic/claude-sonnet-4.6".',
 					),
+				credentialId: z
+					.string()
+					.optional()
+					.describe(
+						'Credential id picked by the user from an earlier ambiguous resolve_llm result.',
+					),
 			}),
 		)
-		.handler(async ({ provider, model }: { provider?: string; model?: string }) => {
-			const all = await deps.credentialProvider.list();
-			const llmCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
+		.handler(
+			async ({
+				provider,
+				model,
+				credentialId,
+			}: {
+				provider?: string;
+				model?: string;
+				credentialId?: string;
+			}) => {
+				const all = await deps.credentialProvider.list();
+				const llmCredentials = all.filter((credential) => LLM_PROVIDER_DEFAULTS[credential.type]);
 
-			if (provider) {
-				const providerEntry = findProviderDefault(provider);
-				if (!providerEntry) {
-					return {
-						ok: false as const,
-						reason: 'unsupported_provider' as const,
-						provider,
-						supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map(
-							(defaults) => defaults.provider,
-						),
-					};
-				}
-
-				const [credentialType, defaults] = providerEntry;
-				const matchingCredentials = llmCredentials.filter(
-					(credential) => credential.type === credentialType,
-				);
-
-				if (matchingCredentials.length === 1) {
-					const credential = matchingCredentials[0];
+				if (credentialId) {
+					const credential = llmCredentials.find((c) => c.id === credentialId);
+					if (!credential) {
+						return {
+							ok: false as const,
+							reason: 'unknown_credential' as const,
+							credentialId,
+							credentials: llmCredentials.map((c) => ({
+								id: c.id,
+								name: c.name,
+								type: c.type,
+							})),
+						};
+					}
+					const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
 					if (model?.trim()) {
 						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
 					}
 					return toLlmResolution(credential, defaults);
 				}
 
-				if (matchingCredentials.length === 0 && defaults.provider === 'openai' && !model?.trim()) {
+				if (provider) {
+					const providerEntry = findProviderDefault(provider);
+					if (!providerEntry) {
+						return {
+							ok: false as const,
+							reason: 'unsupported_provider' as const,
+							provider,
+							supportedProviders: Object.values(LLM_PROVIDER_DEFAULTS).map(
+								(defaults) => defaults.provider,
+							),
+						};
+					}
+
+					const [credentialType, defaults] = providerEntry;
+					const matchingCredentials = llmCredentials.filter(
+						(credential) => credential.type === credentialType,
+					);
+
+					if (matchingCredentials.length === 1) {
+						const credential = matchingCredentials[0];
+						if (model?.trim()) {
+							return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
+						}
+						return toLlmResolution(credential, defaults);
+					}
+
+					if (
+						matchingCredentials.length === 0 &&
+						defaults.provider === 'openai' &&
+						!model?.trim()
+					) {
+						const claimed = await tryClaimFreeCredits(deps.freeCredits);
+						if (claimed) return claimed;
+					}
+
+					return {
+						ok: false as const,
+						reason:
+							matchingCredentials.length === 0
+								? ('missing_credential' as const)
+								: ('ambiguous_credential' as const),
+						provider: defaults.provider,
+						credentialType,
+						credentials: matchingCredentials.map((credential) => ({
+							id: credential.id,
+							name: credential.name,
+						})),
+					};
+				}
+
+				if (llmCredentials.length === 1) {
+					const credential = llmCredentials[0];
+					const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
+					if (model?.trim()) {
+						return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
+					}
+					return toLlmResolution(credential, defaults);
+				}
+
+				if (llmCredentials.length === 0 && !model?.trim()) {
 					const claimed = await tryClaimFreeCredits(deps.freeCredits);
 					if (claimed) return claimed;
+				}
+
+				if (llmCredentials.length > 1 && !model?.trim()) {
+					const byProvider = new Map<string, CredentialListItem[]>();
+					for (const credential of llmCredentials) {
+						const provider = LLM_PROVIDER_DEFAULTS[credential.type].provider;
+						byProvider.set(provider, [...(byProvider.get(provider) ?? []), credential]);
+					}
+
+					const topProvider = LLM_PROVIDER_PRIORITY.find((provider) => byProvider.has(provider));
+					const topCredentials = topProvider ? byProvider.get(topProvider) : undefined;
+					if (topProvider && topCredentials?.length === 1) {
+						return {
+							...toLlmResolution(topCredentials[0], LLM_PROVIDER_DEFAULTS[topCredentials[0].type]),
+							autoPicked: true as const,
+							otherProviders: [...byProvider.keys()].filter((provider) => provider !== topProvider),
+						};
+					}
 				}
 
 				return {
 					ok: false as const,
 					reason:
-						matchingCredentials.length === 0
+						llmCredentials.length === 0
 							? ('missing_credential' as const)
-							: ('ambiguous_credential' as const),
-					provider: defaults.provider,
-					credentialType,
-					credentials: matchingCredentials.map((credential) => ({
-						id: credential.id,
-						name: credential.name,
-					})),
+							: ('ambiguous_provider_or_credential' as const),
+					credentials: llmCredentials.map((credential) => {
+						const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
+						return {
+							id: credential.id,
+							name: credential.name,
+							type: credential.type,
+							provider: defaults.provider,
+						};
+					}),
 				};
-			}
-
-			if (llmCredentials.length === 1) {
-				const credential = llmCredentials[0];
-				const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
-				if (model?.trim()) {
-					return await resolveModelAgainstLookup(credential, defaults, model, deps.modelLookup);
-				}
-				return toLlmResolution(credential, defaults);
-			}
-
-			if (llmCredentials.length === 0) {
-				const claimed = await tryClaimFreeCredits(deps.freeCredits);
-				if (claimed) return claimed;
-			}
-
-			if (llmCredentials.length > 1 && !model?.trim()) {
-				const byProvider = new Map<string, CredentialListItem[]>();
-				for (const credential of llmCredentials) {
-					const provider = LLM_PROVIDER_DEFAULTS[credential.type].provider;
-					byProvider.set(provider, [...(byProvider.get(provider) ?? []), credential]);
-				}
-
-				const topProvider = LLM_PROVIDER_PRIORITY.find((provider) => byProvider.has(provider));
-				const topCredentials = topProvider ? byProvider.get(topProvider) : undefined;
-				if (topProvider && topCredentials?.length === 1) {
-					return {
-						...toLlmResolution(topCredentials[0], LLM_PROVIDER_DEFAULTS[topCredentials[0].type]),
-						autoPicked: true as const,
-						otherProviders: [...byProvider.keys()].filter((provider) => provider !== topProvider),
-					};
-				}
-			}
-
-			return {
-				ok: false as const,
-				reason:
-					llmCredentials.length === 0
-						? ('missing_credential' as const)
-						: ('ambiguous_provider_or_credential' as const),
-				credentials: llmCredentials.map((credential) => {
-					const defaults = LLM_PROVIDER_DEFAULTS[credential.type];
-					return {
-						id: credential.id,
-						name: credential.name,
-						type: credential.type,
-						provider: defaults.provider,
-					};
-				}),
-			};
-		})
+			},
+		)
 		.build();
 }

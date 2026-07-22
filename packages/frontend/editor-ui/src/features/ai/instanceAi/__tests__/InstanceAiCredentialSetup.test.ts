@@ -470,6 +470,25 @@ describe('InstanceAiCredentialSetup', () => {
 				credentials: { type2: 'cred-123' },
 			});
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
+			expect(getByText('instanceAi.credential.someSkipped')).toBeTruthy();
+		});
+
+		it('auto-advances after a selection that follows a skipped step', async () => {
+			const requests = makeCredentialRequestsWithExisting(3);
+
+			const { getByText, getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+			expect(getByText('2 of 3')).toBeTruthy();
+
+			await userEvent.click(getByTestId('credential-picker'));
+			expect(getByText('3 of 3')).toBeTruthy();
 		});
 
 		it('defers the whole card once every credential slot has been skipped', async () => {

@@ -174,8 +174,10 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. Load \`agent-builder-integrations\`, call \`list_integration_types()\`,
    \`read_config()\`, then \`patch_config(...)\` adding the returned Slack type
    to \`/integrations/-\` with \`credentialId: ""\`.
-5. \`finish_setup({ questions: [<model choice>], channels: [{ integrationType: "slack" }] })\`;
-   \`resolve_llm\` with the model answer, then \`read_config()\` and
+5. \`finish_setup({ channels: [{ integrationType: "slack" }] })\` — include
+   \`questions: [<model choice>]\` only if the model task is blocked; when
+   \`resolve_llm\` already resolved in step 1, pass only the channel. For a
+   model answer, call \`resolve_llm\` with it, then \`read_config()\` and
    \`patch_config(...)\` replacing \`/model\` and \`/credential\`. The channel
    card in \`finish_setup\` already persisted or skipped the Slack
    connection — do not follow it with a config mutation. If the user skips
