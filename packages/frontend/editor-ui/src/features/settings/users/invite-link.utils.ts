@@ -1,4 +1,4 @@
-import type { useClipboard } from '@/app/composables/useClipboard';
+import type { useClipboard } from '@n8n/composables/useClipboard';
 import type { useUsersStore } from './users.store';
 
 /**

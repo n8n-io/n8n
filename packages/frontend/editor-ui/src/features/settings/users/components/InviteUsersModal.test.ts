@@ -31,7 +31,7 @@ const mockToast = {
 	showError: vi.fn(),
 };
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: vi.fn(() => mockClipboard),
 }));
 
