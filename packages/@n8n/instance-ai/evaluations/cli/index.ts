@@ -112,6 +112,7 @@ async function main(): Promise<void> {
 						mcpBuildLogDir,
 						mcpBuildSpend,
 						partialResults,
+						rowSink,
 					});
 					return { evaluation: directRun.evaluation, slugByTestCase: directRun.slugByTestCase };
 				},
