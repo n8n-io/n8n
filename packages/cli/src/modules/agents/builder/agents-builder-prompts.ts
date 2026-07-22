@@ -213,6 +213,10 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 3. \`read_config()\`.
 4. \`patch_config(...)\` adding the tool and omitting only the skipped
    credential slot. Do not abort the tool addition.
+5. Summarize it as a successful addition, not a failure: the tool is in
+   place and starts working once a credential is connected. Never say you
+   could not complete it — end with a one-line checklist item for
+   connecting the credential later.
 
 ### Add MCP integration: "Connect Notion MCP"
 This flow is user-initiated on an existing agent, so the credential ask is
