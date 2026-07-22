@@ -1,0 +1,194 @@
+#!/usr/bin/env node
+
+/**
+ * Closure verifier for single-instance-sensitive libraries.
+ *
+ * Given an install root, walks its whole `node_modules` closure (nested installs
+ * and the pnpm `.pnpm` virtual store), resolves every package dir to its realpath
+ * and dedups by realpath. A distinct realpath is a distinct Node runtime module
+ * identity — the exact thing that breaks `instanceof`/singletons — so realpath,
+ * not version or inode, is the ground truth (pnpm hardlinks from the store, so
+ * distinct copies can share inodes yet stay distinct identities).
+ *
+ * It reports EVERY package that resolves to more than one physical copy (a
+ * discovery aid to surface the next single-instance-sensitive lib), and hard-fails
+ * only on curated libraries — minus an expected-duplicates allowlist for a
+ * deliberate, documented migration window.
+ *
+ * Run against the PRUNED production closure (`compiled/`) or an `npm install`
+ * scratch tree — NOT the dev `.pnpm` store, which over-reports latent
+ * peer-context entries that are never co-loaded.
+ *
+ *   node scripts/single-instance/verify-single-instance-deps.mjs <installRoot> [--json]
+ *
+ * `--json` prints a machine-readable report instead of the human summary.
+ */
+
+import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { CURATED_LIBS } from './single-instance-libs.mjs';
+
+/**
+ * Migration-window allowlist: curated duplicates that are known and deliberately
+ * tolerated. Each entry MUST document why it is tolerated and what removes it; remove
+ * an entry once the duplicate is remediated so a regression re-fails. Empty means every
+ * curated library must resolve to a single physical copy.
+ */
+export const EXPECTED_DUPLICATES = {};
+
+/**
+ * Walk `<root>/node_modules` (incl. nested and the pnpm `.pnpm` store) and return
+ * a Map: packageName -> array of { realPath, version, foundAt }.
+ */
+export function collectCopies(root) {
+	const found = new Map();
+	const walkedRealDirs = new Set(); // guard against symlink cycles / re-walks
+
+	const record = (name, dir) => {
+		let real;
+		let pj;
+		try {
+			real = realpathSync(dir);
+			pj = JSON.parse(readFileSync(join(real, 'package.json'), 'utf8'));
+		} catch {
+			return; // not a real package dir (e.g. a decoy source folder)
+		}
+		if (pj.name !== name) return; // guard against name/dir mismatch
+		if (!found.has(name)) found.set(name, []);
+		found.get(name).push({ realPath: real, version: pj.version, foundAt: dir });
+	};
+
+	const readEntries = (dir) => {
+		try {
+			return readdirSync(dir, { withFileTypes: true });
+		} catch {
+			return [];
+		}
+	};
+
+	// pnpm virtual store: each `<name>@<key>` entry holds the real package under its own node_modules.
+	const walkPnpmStore = (storeDir) => {
+		for (const entry of readEntries(storeDir)) walk(join(storeDir, entry.name, 'node_modules'));
+	};
+
+	const walk = (nmDir) => {
+		for (const e of readEntries(nmDir)) {
+			const name = e.name;
+			if (name === '.bin') continue;
+			const full = join(nmDir, name);
+			if (name === '.pnpm') {
+				walkPnpmStore(full);
+			} else if (name.startsWith('.')) {
+				continue;
+			} else if (name.startsWith('@')) {
+				for (const s of readEntries(full))
+					recordAndRecurse(`${name}/${s.name}`, join(full, s.name));
+			} else {
+				recordAndRecurse(name, full);
+			}
+		}
+	};
+
+	const recordAndRecurse = (pkgName, pkgDir) => {
+		record(pkgName, pkgDir);
+		const nested = join(pkgDir, 'node_modules');
+		try {
+			const real = realpathSync(nested);
+			if (statSync(real).isDirectory() && !walkedRealDirs.has(real)) {
+				walkedRealDirs.add(real);
+				walk(nested);
+			}
+		} catch {
+			/* no nested node_modules */
+		}
+	};
+
+	walk(join(root, 'node_modules'));
+	return found;
+}
+
+/** Reduce collected copies to distinct physical copies (dedup by realpath). */
+function distinctCopies(copies) {
+	const byReal = new Map();
+	for (const c of copies) if (!byReal.has(c.realPath)) byReal.set(c.realPath, c);
+	return [...byReal.values()];
+}
+
+/**
+ * Pure core: given collected copies, return { duplicates, failures }.
+ * `duplicates` = every package with >1 physical copy (report). `failures` = the
+ * curated subset that is not allowlisted (hard-fail).
+ */
+export function analyze(found, { allowlist = EXPECTED_DUPLICATES } = {}) {
+	const duplicates = [];
+	for (const [name, copies] of found) {
+		const distinct = distinctCopies(copies);
+		if (distinct.length <= 1) continue;
+		const isCurated = CURATED_LIBS.includes(name);
+		const allowed = Object.hasOwn(allowlist, name);
+		duplicates.push({ name, isCurated, allowed, copies: distinct });
+	}
+	const failures = duplicates.filter((d) => d.isCurated && !d.allowed);
+	return { duplicates, failures };
+}
+
+function main() {
+	const args = process.argv.slice(2);
+	const asJson = args.includes('--json');
+	const root = args.find((a) => !a.startsWith('--')) ?? process.cwd();
+
+	const found = collectCopies(root);
+	const { duplicates, failures } = analyze(found);
+
+	if (asJson) {
+		console.log(JSON.stringify({ root, duplicates, failures }, null, 2));
+		process.exit(failures.length > 0 ? 1 : 0);
+	}
+
+	console.log(`\nSingle-instance dependency verifier — root: ${root}`);
+
+	// The enforced verdict: each curated library, with full paths when duplicated.
+	const curatedDups = new Map(duplicates.filter((d) => d.isCurated).map((d) => [d.name, d]));
+	console.log('\nCurated single-instance libraries (enforced):');
+	for (const lib of CURATED_LIBS) {
+		const dup = curatedDups.get(lib);
+		if (!dup) {
+			const copies = found.has(lib) ? distinctCopies(found.get(lib)) : [];
+			console.log(
+				`  ${lib}: ${copies.length === 0 ? 'not present' : `OK (1 copy, v${copies[0].version})`}`,
+			);
+			continue;
+		}
+		console.log(
+			`  ${lib}: ${dup.allowed ? 'ALLOWED DUP' : 'FAIL'} — ${dup.copies.length} physical copies:`,
+		);
+		for (const c of dup.copies) console.log(`      v${c.version}  ${c.realPath}`);
+		if (dup.allowed) console.log(`      allowlisted: ${EXPECTED_DUPLICATES[lib]}`);
+	}
+
+	// Everything else is a discovery aid only — never fails the build. One line each.
+	const otherDups = duplicates.filter((d) => !d.isCurated);
+	if (otherDups.length > 0) {
+		console.log(`\nOther duplicated packages (report-only, NOT enforced — ${otherDups.length}):`);
+		for (const d of otherDups) {
+			console.log(
+				`  ${d.name}: ${d.copies.length} copies (${d.copies.map((c) => `v${c.version}`).join(', ')})`,
+			);
+		}
+	}
+
+	console.log('');
+	if (failures.length > 0) {
+		console.error(
+			`FAIL: curated ${failures.length === 1 ? 'library resolves' : 'libraries resolve'} to multiple physical copies: ${failures.map((f) => f.name).join(', ')}`,
+		);
+		process.exit(1);
+	}
+	console.log('OK: no un-allowlisted curated duplicates.');
+	process.exit(0);
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+	main();
+}

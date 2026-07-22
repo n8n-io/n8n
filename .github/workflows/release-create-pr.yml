@@ -140,3 +140,30 @@ jobs:
     secrets: inherit
     with:
       pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
+
+  # Full npm-install duplication check (packs every publishable package). Heavy;
+  # runs in parallel, non-blocking for now.
+  verify-single-instance-npm-full:
+    name: Verify single-instance deps (npm-install, full)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # This reusable workflow is called with the release base branch; check it out (as
+      # create-release-pr does) so the full check profiles the release being prepared.
+      - name: Switch to base branch
+        env:
+          BASE_BRANCH: ${{ inputs.base-branch }}
+        run: git checkout "$BASE_BRANCH"
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm build
+      - name: Verify full npm-install closure
+        run: node scripts/single-instance/verify-single-instance-npm-install.mjs --all

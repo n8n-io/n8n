@@ -228,6 +228,22 @@ echo(
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
 
+// Check the production closure for single-instance dependency duplication. A curated
+// library resolving to more than one physical copy silently breaks instanceof /
+// singletons at runtime. Report-first: a duplicate is surfaced loudly but does NOT fail
+// the build — matching the continue-on-error npm-install CI jobs, so a transitive
+// third-party re-split can't hard-break every nightly/release with no config escape.
+// Promote to a hard gate once it has proven stable across releases.
+echo(chalk.yellow('INFO: Verifying single-instance dependency integrity in the production closure...'));
+const verifyProcess = $`cd ${config.rootDir} && node scripts/single-instance/verify-single-instance-deps.mjs ${config.compiledAppDir}`.nothrow();
+verifyProcess.pipe(process.stdout);
+const verifyResult = await verifyProcess;
+if (verifyResult.exitCode === 0) {
+	echo(chalk.green('✅ Single-instance dependency check passed'));
+} else {
+	echo(chalk.red('⚠️  Single-instance dependency duplication reported (see above) — not failing the build (report-first).'));
+}
+
 const packageDeployTime = getElapsedTime('package_deploy');
 
 // Generate SBOM + render THIRD_PARTY_LICENSES.md from the deployed runtime closure.
