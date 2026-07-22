@@ -8,8 +8,7 @@ import {
 	workbookRLC,
 	worksheetRLC,
 } from '../../descriptions/common.descriptions';
-import { runPerItem } from '../../helpers/tableRead';
-import { resolveWorkbookRoot, validatePathSegment } from '../../helpers/utils';
+import { resolveWorkbookRoot, runPerItem, validatePathSegment } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
