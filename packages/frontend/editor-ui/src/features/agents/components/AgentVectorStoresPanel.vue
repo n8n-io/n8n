@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AgentJsonVectorStoreConfig } from '@n8n/api-types';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nActionDropdown,
 	N8nIcon,
 	N8nIconButton,
@@ -155,7 +155,7 @@ function onAction(actionId: VectorStoreAction, vectorStore: AgentJsonVectorStore
 			</N8nTableBase>
 		</div>
 
-		<N8nActionBox
+		<N8nEmptyState
 			v-else
 			:icon="{ type: 'icon', value: 'database' }"
 			:heading="i18n.baseText('agents.builder.vectorStores.panel.empty.title')"

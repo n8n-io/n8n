@@ -48,6 +48,6 @@ describe('GroupedMetricChart', () => {
 
 		// 0.9 ≥ 0.6 keeps its version color; 0.4 < 0.6 flips to danger.
 		expect(bars[0].getAttribute('fill')).toBe(versionColorVar(0));
-		expect(bars[1].getAttribute('fill')).toBe('var(--color--red-700)');
+		expect(bars[1].getAttribute('fill')).toBe('var(--icon-color--danger)');
 	});
 });

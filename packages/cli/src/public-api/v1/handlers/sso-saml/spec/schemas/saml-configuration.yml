@@ -3,12 +3,19 @@ additionalProperties: false
 required:
   - entityID
   - returnUrl
+  - mapping
+  - metadata
+  - metadataUrl
   - ignoreSSL
   - loginBinding
-  - acsBinding
+  - loginEnabled
+  - loginLabel
   - authnRequestsSigned
   - wantAssertionsSigned
   - wantMessageSigned
+  - signingPrivateKey
+  - signingCertificate
+  - acsBinding
   - signatureConfig
   - relayState
 properties:
@@ -26,6 +33,13 @@ properties:
     type: object
     description: Mapping of SAML attributes to n8n user fields.
     additionalProperties: false
+    required:
+      - email
+      - firstName
+      - lastName
+      - userPrincipalName
+      - n8nInstanceRole
+      - n8nProjectRoles
     properties:
       email:
         type: string
@@ -51,11 +65,11 @@ properties:
     type: string
     description: >
       Identity provider metadata in XML format. Redacted on read when set because it
-      contains IdP certificates; never echoed back in plaintext.
+      contains IdP certificates; never echoed back in plaintext. Use an empty string when unset.
     example: '**hidden**'
   metadataUrl:
     type: string
-    description: URL to fetch identity provider metadata from.
+    description: URL to fetch identity provider metadata from. Use an empty string when unset.
   ignoreSSL:
     type: boolean
     description: Whether to ignore SSL certificate errors when fetching metadata from a URL.
@@ -89,13 +103,13 @@ properties:
     type: string
     description: >
       PEM-encoded private key for signing SAML AuthnRequests. Redacted on read when set;
-      never echoed back in plaintext.
+      never echoed back in plaintext. Use an empty string when unset.
     example: '**hidden**'
   signingCertificate:
     type: string
     description: >
       PEM-encoded certificate containing the public key matching the signing private key.
-      Redacted on read when set; never echoed back in plaintext.
+      Redacted on read when set; never echoed back in plaintext. Use an empty string when unset.
     example: '**hidden**'
   acsBinding:
     type: string
@@ -106,6 +120,9 @@ properties:
     type: object
     description: Configuration for the signature in SAML requests and responses.
     additionalProperties: false
+    required:
+      - prefix
+      - location
     properties:
       prefix:
         type: string
@@ -113,6 +130,9 @@ properties:
       location:
         type: object
         additionalProperties: false
+        required:
+          - reference
+          - action
         properties:
           reference:
             type: string
@@ -123,5 +143,5 @@ properties:
             example: after
   relayState:
     type: string
-    description: Default relay state value for SAML requests.
+    description: Default relay state value for SAML requests. Use an empty string when unset.
     example: https://n8n.example.com

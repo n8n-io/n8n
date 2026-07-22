@@ -183,7 +183,12 @@ export class AgentRuntime {
 		this.context = new RuntimeContextBuilder(config, this.deferredToolManager);
 		this.runState = config.runState ?? new RunStateManager(config.checkpointStorage);
 		this.eventBus = config.eventBus ?? new AgentEventBus();
-		this.memory = new MemoryOrchestrator(config, this.backgroundTasks, this.eventBus);
+		this.memory = new MemoryOrchestrator(
+			config,
+			this.backgroundTasks,
+			this.eventBus,
+			this.telemetry,
+		);
 		this.toolExecutor = new ToolCallExecutor({
 			telemetry: this.telemetry,
 			eventBus: this.eventBus,

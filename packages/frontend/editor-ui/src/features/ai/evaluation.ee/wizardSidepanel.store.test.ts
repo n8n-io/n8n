@@ -210,4 +210,160 @@ describe('wizardSidepanel.store', () => {
 		// different workflow can still detect the switch.
 		expect(store.lastWorkflowId).toBe('wf-1');
 	});
+
+	// ── New Tests Panel fields ────────────────────────────────────────────────
+
+	it('viewMode defaults to "list"', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		expect(store.viewMode).toBe('list');
+	});
+
+	it('activeRowIndex defaults to null', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		expect(store.activeRowIndex).toBeNull();
+	});
+
+	it('activeRowId defaults to null', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		expect(store.activeRowId).toBeNull();
+	});
+
+	it('datasetInputsByRow defaults to an empty array', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		expect(store.datasetInputsByRow).toEqual([]);
+	});
+
+	it('openDetail(3) sets viewMode to "detail" and activeRowIndex to 3', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.openDetail(3);
+		expect(store.viewMode).toBe('detail');
+		expect(store.activeRowIndex).toBe(3);
+	});
+
+	it('openDetail(null) sets viewMode to "detail", activeRowIndex to null, and clears activeRowId', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		// Simulate a prior setActiveRow call so activeRowId is non-null
+		store.setActiveRow(2, 99);
+		expect(store.activeRowId).toBe(99);
+		store.openDetail(null);
+		expect(store.viewMode).toBe('detail');
+		expect(store.activeRowIndex).toBeNull();
+		expect(store.activeRowId).toBeNull();
+	});
+
+	it('openDetail(index) clears activeRowId so persistence re-resolves by index', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		// A stale id carried over from a previously-open case (here row 5) must not
+		// leak into a different case — otherwise an edit/delete would hit the wrong
+		// row. openDetail clears it so the id is re-resolved from the index.
+		store.setActiveRow(5, 99);
+		store.openDetail(2);
+		expect(store.activeRowIndex).toBe(2);
+		expect(store.activeRowId).toBeNull();
+	});
+
+	it('setPendingSeedExecution stores the seed and reset() preserves it (cross-view handoff)', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const exec = { id: 'exec-1' } as never;
+		store.setPendingSeedExecution(exec);
+		expect(store.pendingSeedExecution).toEqual(exec);
+		// Bookkeeping — must survive the reset that fires on a cross-view remount.
+		store.reset();
+		expect(store.pendingSeedExecution).toEqual(exec);
+		store.setPendingSeedExecution(null);
+		expect(store.pendingSeedExecution).toBeNull();
+	});
+
+	it("openDetail(index) loads that row's input and expected values into the form", () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.datasetInputsByRow = [{ q: 'first' }, { q: 'second' }, { q: 'third' }];
+		store.datasetExpectedByRow = [
+			{ expectedAnswer: 'a1' },
+			{ expectedAnswer: 'a2' },
+			{ expectedAnswer: 'a3' },
+		];
+
+		store.openDetail(2);
+
+		expect(store.inputs).toEqual({ q: 'third' });
+		expect(store.expectedValues).toEqual({ expectedAnswer: 'a3' });
+	});
+
+	it('openDetail(null) does NOT overwrite the form from row data', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.datasetInputsByRow = [{ q: 'first' }];
+		store.datasetExpectedByRow = [{ expectedAnswer: 'a1' }];
+		store.inputs = { q: 'typed' };
+
+		store.openDetail(null);
+
+		expect(store.inputs).toEqual({ q: 'typed' });
+	});
+
+	it('openList() sets viewMode back to "list"', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.openDetail(1);
+		expect(store.viewMode).toBe('detail');
+		store.openList();
+		expect(store.viewMode).toBe('list');
+	});
+
+	it('setActiveRow(2, 99) sets both activeRowIndex and activeRowId', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.setActiveRow(2, 99);
+		expect(store.activeRowIndex).toBe(2);
+		expect(store.activeRowId).toBe(99);
+	});
+
+	it('setActiveRow(null, null) clears both fields', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.setActiveRow(2, 99);
+		store.setActiveRow(null, null);
+		expect(store.activeRowIndex).toBeNull();
+		expect(store.activeRowId).toBeNull();
+	});
+
+	it('reset() restores all new fields to their defaults', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+
+		store.openDetail(5);
+		store.setActiveRow(5, 42);
+		store.datasetInputsByRow.push({ key: 'value' });
+
+		expect(store.viewMode).toBe('detail');
+		expect(store.activeRowIndex).toBe(5);
+		expect(store.activeRowId).toBe(42);
+		expect(store.datasetInputsByRow).toHaveLength(1);
+
+		store.reset();
+
+		expect(store.viewMode).toBe('list');
+		expect(store.activeRowIndex).toBeNull();
+		expect(store.activeRowId).toBeNull();
+		expect(store.datasetInputsByRow).toEqual([]);
+	});
+
+	it('open() also resets the new fields (since open calls resetState)', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+
+		store.openDetail(3);
+		store.setActiveRow(3, 77);
+		store.datasetInputsByRow.push({ field: 'v' });
+
+		store.open(0);
+
+		expect(store.viewMode).toBe('list');
+		expect(store.activeRowIndex).toBeNull();
+		expect(store.activeRowId).toBeNull();
+		expect(store.datasetInputsByRow).toEqual([]);
+	});
+
+	it('existing behavior: activeStep and isOpen are untouched by the new fields', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(2);
+		store.openDetail(1);
+		// Existing fields are unaffected
+		expect(store.activeStep).toBe(2);
+		expect(store.isOpen).toBe(true);
+	});
 });

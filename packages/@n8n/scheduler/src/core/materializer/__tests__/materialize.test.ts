@@ -31,6 +31,7 @@ const runnerWith =
 
 const options: MaterializerOptions = {
 	windowSeconds: 0,
+	lookaheadSeconds: 0,
 	batchSize: 25,
 	maxPerJob: 100,
 	planRetrySeconds: 3600,
@@ -92,7 +93,18 @@ describe('materialize', () => {
 
 		await materialize(runnerWith(tx), { ...options, batchSize: 25 });
 
-		expect(tx.claimDueJobs).toHaveBeenCalledWith(25);
+		expect(tx.claimDueJobs).toHaveBeenCalledWith(25, 0);
+	});
+
+	it('claims ahead by lookaheadSeconds, passing it to the claim in milliseconds', async () => {
+		const tx = mock<MaterializerTransaction>();
+		tx.claimDueJobs.mockResolvedValue(undefined);
+
+		await materialize(runnerWith(tx), { ...options, batchSize: 25, lookaheadSeconds: 12 });
+
+		// 12s of lookahead reaches the claim as 12_000ms, so a job due within the next
+		// poll interval is claimed now instead of a whole tick after it comes due.
+		expect(tx.claimDueJobs).toHaveBeenCalledWith(25, 12_000);
 	});
 
 	it('reports skipped duplicates, and a throwing reporter does not fail the pass', async () => {

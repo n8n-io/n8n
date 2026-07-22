@@ -13,8 +13,8 @@ import * as checkAccess from '@/permissions.ee/check-access';
 
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderService } from '../builder/agents-builder.service';
-import type { Agent } from '../entities/agent.entity';
 import type { AgentThreadEntity } from '../entities/agent-thread.entity';
+import type { Agent } from '../entities/agent.entity';
 import {
 	INSTANCE_AI_BUILDER_ADDENDUM,
 	InstanceAiBuilderDelegateAdapterService,
@@ -74,6 +74,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const turn = await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			const seen: unknown[] = [];
@@ -83,7 +86,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			await expect(turn.text).resolves.toBe('Hello world');
 		});
 
-		it('builds the sub-agent session from the delegate session: thread id, model config, and addendum', async () => {
+		it('builds the sub-agent session from the delegate session: thread ids, run id, model config, and addendum', async () => {
 			const { delegate, agentsBuilderService, user, credentialProvider } = setup();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
@@ -91,6 +94,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await delegate.streamBuild('agent-1', 'hi', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
 				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 				telemetry: sentinel,
 			});
@@ -103,6 +108,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
@@ -115,7 +122,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			agentsBuilderService.buildAgent.mockReturnValue(asAsyncGenerator<StreamChunk>([]));
 
-			await delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' });
+			await delegate.streamBuild('agent-1', 'hi', {
+				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
+			});
 
 			const [, , , , , sessionArg] = agentsBuilderService.buildAgent.mock.calls[0];
 			expect(sessionArg).not.toHaveProperty('telemetry');
@@ -126,7 +138,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 
 			await expect(
-				delegate.streamBuild('agent-1', 'hi', { threadId: 'ia-builder:t:agent-1' }),
+				delegate.streamBuild('agent-1', 'hi', {
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.buildAgent).not.toHaveBeenCalled();
 		});
@@ -146,7 +163,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			const turn = await delegate.resumeBuild(
 				'agent-1',
 				{ runId: 'run-1', toolCallId: 'call-1', resumeData: { approved: true } },
-				{ threadId: 'ia-builder:t:agent-1', modelConfig: 'anthropic/claude-sonnet-host-resolved' },
+				{
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				},
 			);
 
 			const seen: unknown[] = [];
@@ -164,6 +186,8 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				user,
 				{
 					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
 					modelConfig: 'anthropic/claude-sonnet-host-resolved',
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 				},
@@ -178,7 +202,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 				delegate.resumeBuild(
 					'agent-1',
 					{ runId: 'run-1', toolCallId: 'call-1', resumeData: {} },
-					{ threadId: 'ia-builder:t:agent-1' },
+					{
+						threadId: 'ia-builder:t:agent-1',
+						hostThreadId: 'thread-1',
+						runId: 'run-1',
+						modelConfig: 'anthropic/claude-sonnet-host-resolved',
+					},
 				),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.resumeBuild).not.toHaveBeenCalled();
@@ -224,6 +253,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.findOpenSuspensions('agent-1', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			expect(agentsBuilderService.findOpenCheckpointForThread).toHaveBeenCalledWith(
@@ -243,6 +275,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.findOpenSuspensions('agent-1', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			expect(result).toEqual([]);
@@ -259,6 +294,9 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			const result = await delegate.findOpenSuspensions('agent-1', {
 				threadId: 'ia-builder:t:agent-1',
+				hostThreadId: 'thread-1',
+				runId: 'run-1',
+				modelConfig: 'anthropic/claude-sonnet-host-resolved',
 			});
 
 			expect(result).toEqual([]);
@@ -269,7 +307,12 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 
 			await expect(
-				delegate.findOpenSuspensions('agent-1', { threadId: 'ia-builder:t:agent-1' }),
+				delegate.findOpenSuspensions('agent-1', {
+					threadId: 'ia-builder:t:agent-1',
+					hostThreadId: 'thread-1',
+					runId: 'run-1',
+					modelConfig: 'anthropic/claude-sonnet-host-resolved',
+				}),
 			).rejects.toThrow(ForbiddenError);
 			expect(agentsBuilderService.findOpenCheckpointForThread).not.toHaveBeenCalled();
 		});
@@ -361,6 +404,36 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 
 			await expect(delegate.listAgents()).rejects.toThrow(ForbiddenError);
 			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+				projectId: 'project-1',
+			});
+		});
+	});
+
+	describe('resolveAgentName', () => {
+		it('returns the agent display name', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(mock<Agent>({ id: 'agent-1', name: 'Support Bot' }));
+
+			await expect(delegate.resolveAgentName('agent-1')).resolves.toBe('Support Bot');
+			expect(agentsService.findById).toHaveBeenCalledWith('agent-1', 'project-1');
+		});
+
+		it('returns undefined when the agent does not exist', async () => {
+			const { delegate, agentsService } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentsService.findById.mockResolvedValue(null);
+
+			await expect(delegate.resolveAgentName('agent-missing')).resolves.toBeUndefined();
+		});
+
+		it('rejects when the user lacks agent:read scope', async () => {
+			const { delegate, agentsService, user } = setup();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+			await expect(delegate.resolveAgentName('agent-1')).rejects.toThrow(ForbiddenError);
+			expect(agentsService.findById).not.toHaveBeenCalled();
 			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
 				projectId: 'project-1',
 			});

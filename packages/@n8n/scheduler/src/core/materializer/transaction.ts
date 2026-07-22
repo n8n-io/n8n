@@ -50,11 +50,14 @@ export interface DueJobs {
  */
 export interface MaterializerTransaction {
 	/**
-	 * @returns up to `limit` enabled jobs whose next run is due, oldest first, locking
-	 * them so a concurrent pass claims different jobs, with the database time they were
-	 * judged due at; `undefined` when nothing is due.
+	 * @param lookaheadMs claim a job up to this far before its `nextRunAt`, not only
+	 * once it's already due, so a fixed-interval poll doesn't add a full tick of its
+	 * own on top of the job's schedule (see `MaterializerOptions.lookaheadSeconds`).
+	 * @returns up to `limit` enabled jobs whose next run is due (within `lookaheadMs`),
+	 * oldest first, locking them so a concurrent pass claims different jobs, with the
+	 * database time they were judged due at; `undefined` when nothing is due.
 	 */
-	claimDueJobs(limit: number): Promise<DueJobs | undefined>;
+	claimDueJobs(limit: number, lookaheadMs: number): Promise<DueJobs | undefined>;
 
 	/**
 	 * Record every planned occurrence across all jobs in one batch,

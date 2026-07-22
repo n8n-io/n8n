@@ -4,6 +4,9 @@ Use these guardrails for workflow builds with multiple external systems,
 multiple requested effects, digests or reports, non-trivial branching, or Code
 nodes. They are a runtime checklist, not extra user-facing output.
 
+Do not add sticky notes unless the user explicitly asks for them. Prefer chat
+explanations over canvas stickies.
+
 ## Preserve Source Data
 
 Normalize trigger or source data before side effects. Nodes that create, update,

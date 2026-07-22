@@ -5,6 +5,12 @@
 			"status": "covered",
 			"nodeOperation": "audit:generate"
 		},
+		"GET /settings/security-policy": {
+			"status": "gap"
+		},
+		"PUT /settings/security-policy": {
+			"status": "gap"
+		},
 		"GET /credentials": {
 			"status": "gap"
 		},
@@ -182,6 +188,9 @@
 			"status": "gap"
 		},
 		"GET /settings/sso/saml": {
+			"status": "gap"
+		},
+		"PUT /settings/sso/saml": {
 			"status": "gap"
 		},
 		"GET /settings/log-streaming/event-types": {

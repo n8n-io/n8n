@@ -62,7 +62,7 @@ describe('useCompareData', () => {
 		expect(versions[1].label).toBe('abcdef1');
 	});
 
-	it('charts only score-shaped metrics and picks the best version per metric', () => {
+	it('charts score metrics normalized to [0,1] and picks the best version per metric', () => {
 		const source = ref(
 			detail([
 				{
@@ -72,7 +72,8 @@ describe('useCompareData', () => {
 					runAt: null,
 					completedAt: null,
 					avgScore: 0.7,
-					metrics: { helpfulness: 0.7, totalTokens: 1200 },
+					// helpfulness is a 1–5 AI-judge metric → normalized /5.
+					metrics: { helpfulness: 3.5, totalTokens: 1200 },
 				},
 				{
 					testRunId: 'run-b',
@@ -81,14 +82,14 @@ describe('useCompareData', () => {
 					runAt: null,
 					completedAt: null,
 					avgScore: 0.9,
-					metrics: { helpfulness: 0.9, totalTokens: 1500 },
+					metrics: { helpfulness: 4.5, totalTokens: 1500 },
 				},
 			]),
 		);
 		const { compareData } = useCompareData(source);
 		const groups = compareData.value!.metricGroups;
 
-		// totalTokens (out of [0,1]) is excluded — only helpfulness is charted.
+		// totalTokens is an operational metric → excluded; helpfulness charts at /5.
 		expect(groups).toHaveLength(1);
 		expect(groups[0].key).toBe('helpfulness');
 		expect(groups[0].values).toEqual([0.7, 0.9]);
@@ -108,7 +109,7 @@ describe('useCompareData', () => {
 					avgScore: 0.7,
 					// executionTime happens to be in [0, 1] here, but it's an absolute
 					// operational metric — it must not be charted as a score.
-					metrics: { helpfulness: 0.7, executionTime: 0.4, totalTokens: 1 },
+					metrics: { helpfulness: 3.5, executionTime: 0.4, totalTokens: 1 },
 				},
 			]),
 		);
@@ -128,7 +129,8 @@ describe('useCompareData', () => {
 					runAt: null,
 					completedAt: null,
 					avgScore: 0.6,
-					metrics: { correctness: 0.6 },
+					// correctness/helpfulness are 1–5 AI-judge metrics → normalized /5.
+					metrics: { correctness: 3 },
 				},
 				{
 					testRunId: 'run-b',
@@ -137,7 +139,7 @@ describe('useCompareData', () => {
 					runAt: null,
 					completedAt: null,
 					avgScore: 0.8,
-					metrics: { correctness: 0.8, helpfulness: 0.5 },
+					metrics: { correctness: 4, helpfulness: 2.5 },
 				},
 			]),
 		);

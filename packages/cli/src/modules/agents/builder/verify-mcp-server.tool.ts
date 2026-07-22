@@ -1,4 +1,4 @@
-import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import type { BuiltTool, CredentialProvider, McpClient, ToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import { McpAuthenticationSchemaTypes } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
@@ -7,13 +7,54 @@ import { z } from 'zod';
 import type { OauthService } from '@/oauth/oauth.service';
 
 import { BUILDER_TOOLS } from './builder-tool-names';
-import { listMcpServerTools } from '../json-config/mcp-client-factory';
+import { buildMcpClientForServer } from '../json-config/mcp-client-factory';
 
 export interface VerifyMcpServerDeps {
 	credentialProvider: CredentialProvider;
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+}
+
+/** Default deadline for the whole verify operation (connect + listTools) when the
+ *  caller does not provide `connectionTimeoutMs`. Matches the Instance AI MCP registry default. */
+const DEFAULT_MCP_VERIFICATION_TIMEOUT_MS = 10_000;
+
+/**
+ * Race `client.listTools()` against a timeout and the run's abort signal.
+ * Callers are responsible for closing `client` on rejection — the tool
+ * handler's own `finally` already does this on every exit path, so this
+ * helper only decides when to give up waiting.
+ */
+async function listToolsWithinDeadline(
+	client: McpClient,
+	timeoutMs: number,
+	abortSignal: AbortSignal | undefined,
+): Promise<Awaited<ReturnType<McpClient['listTools']>>> {
+	if (abortSignal?.aborted) {
+		throw new Error('MCP server verification was cancelled');
+	}
+
+	let timeoutId: ReturnType<typeof setTimeout> | undefined;
+	let onAbort: (() => void) | undefined;
+
+	const control = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			reject(new Error(`MCP server verification timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+
+		if (abortSignal) {
+			onAbort = () => reject(new Error('MCP server verification was cancelled'));
+			abortSignal.addEventListener('abort', onAbort, { once: true });
+		}
+	});
+
+	try {
+		return await Promise.race([client.listTools(), control]);
+	} finally {
+		if (timeoutId !== undefined) clearTimeout(timeoutId);
+		if (onAbort) abortSignal?.removeEventListener('abort', onAbort);
+	}
 }
 
 /**
@@ -53,7 +94,9 @@ const verifyMcpServerInputSchema = z.object({
 		.min(1)
 		.max(120_000)
 		.optional()
-		.describe('Connection timeout in milliseconds'),
+		.describe(
+			'Timeout in milliseconds for the whole verification (connect + list tools). Defaults to 10000ms',
+		),
 });
 
 type VerifyMcpServerInput = z.infer<typeof verifyMcpServerInputSchema>;
@@ -68,27 +111,36 @@ export function buildVerifyMcpServerTool(deps: VerifyMcpServerDeps): BuiltTool {
 				'Call this after ask_credential (when authentication is not "none") and before patch_config.',
 		)
 		.input(verifyMcpServerInputSchema)
-		.handler(async (input: VerifyMcpServerInput) => {
+		.handler(async (input: VerifyMcpServerInput, ctx: ToolContext) => {
+			const timeoutMs = input.connectionTimeoutMs ?? DEFAULT_MCP_VERIFICATION_TIMEOUT_MS;
+			let client: McpClient | undefined;
 			try {
-				const tools = await listMcpServerTools(
+				client = await buildMcpClientForServer(
 					{
 						name: input.name,
 						url: input.url,
 						transport: input.transport,
 						authentication: input.authentication,
 						credential: input.credential,
-						...(input.connectionTimeoutMs !== undefined && {
-							connectionTimeoutMs: input.connectionTimeoutMs,
-						}),
+						connectionTimeoutMs: timeoutMs,
 					},
 					deps,
 				);
-				return { ok: true, tools };
+				const tools = await listToolsWithinDeadline(client, timeoutMs, ctx.abortSignal);
+				return {
+					ok: true,
+					tools: tools.map((t) => ({
+						name: t.name,
+						description: t.description ?? '',
+					})),
+				};
 			} catch (error) {
 				return {
 					ok: false,
 					error: error instanceof Error ? error.message : String(error),
 				};
+			} finally {
+				await client?.close().catch(() => {});
 			}
 		})
 		.build();

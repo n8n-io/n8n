@@ -20,10 +20,6 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 
 ### Rules
 
-- Fresh agents need a resolved \`model\` and \`credential\` before config is written.
-- Explicit provider/model requests go to \`resolve_llm\` first.
-- If the user asks to pick, change, confirm, or configure a model or main credential, ask via \`ask_questions\`; do not ask in prose.
-- If \`resolve_llm\` succeeds, persist \`model = "{provider}/{model}"\` and \`credential = credentialId\`.
 - Only OpenAI and Anthropic models support native web search. Use native web
   search by default for those providers only, and only for
   fresh agents or agents with no existing \`config.webSearch\`. Persist
@@ -39,8 +35,6 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
   \`provider: "searxng"\`.
 - If the user explicitly asks for Brave or SearXNG, keep that provider even
   when the selected model also supports native search.
-- If \`resolve_llm\` reports missing or ambiguous credentials/provider, ask via \`ask_questions\` then retry \`resolve_llm\`.
-- If it reports \`unknown_model\`, retry with a plausible returned model value or ask via \`ask_questions\`.
 - For "Anthropic via OpenRouter", pass \`provider: "openrouter"\`; if the user names a routed model, pass the routed id without adding another provider prefix.
 - Prefer a provider the user already has credentials for when choosing from recommendations.
 - Never copy main LLM credential IDs from \`list_credentials\`.
@@ -48,9 +42,10 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 ### Gotchas
 
 - Use \`resolve_llm\` only for the target agent's main model credential.
-- Use \`ask_credential\` for node tools, integrations, and Episodic Memory.
+- Use \`ask_credential\` for node tools, MCP servers, and fallback web-search credentials.
+  Never use it for chat-channel credentials. For Episodic Memory, load
+  \`agent-builder-memory\` and use \`ask_embedding_credential\` instead.
 - For OpenRouter, \`provider\` is \`"openrouter"\`; the model can be a routed id such as \`anthropic/...\`.
-- Model changes must not silently replace existing Brave or SearXNG web search with native search.
 - Do not recommend current, best, latest, or fallback model IDs from memory when the recommendation catalog is unavailable.
 
 ### Verify

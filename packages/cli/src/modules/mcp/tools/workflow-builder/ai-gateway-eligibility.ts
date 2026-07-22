@@ -60,7 +60,7 @@ export function checkAiGatewayEligibility(
 			return {
 				eligible: false,
 				reason: 'hiddenPropertySet',
-				details: `property "${offending}" is hidden when using AI Gateway`,
+				details: `property "${offending}" is hidden when using n8n credits`,
 			};
 		}
 	}

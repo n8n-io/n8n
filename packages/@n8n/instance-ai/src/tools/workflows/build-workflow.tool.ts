@@ -83,6 +83,7 @@ interface BuildCtx {
 	toolCallId?: string;
 	resumeData?: z.infer<typeof confirmationResumeSchema>;
 	suspend?: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+	abortSignal?: AbortSignal;
 }
 
 export const buildWorkflowInputSchema = z
@@ -453,6 +454,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
 						logger: context.logger,
 						resourceLabel: 'Workflow source file',
+						abortSignal: ctx.abortSignal,
 					});
 				} catch (error) {
 					const remediation = createCodeFixableRemediation({
@@ -482,7 +484,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			let sourceCode: string;
 			let sourceHash: string;
 			try {
-				({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(context, filePath));
+				({ source: sourceCode, sourceHash } = await readWorkflowSourceFile(
+					context,
+					filePath,
+					ctx.abortSignal,
+				));
 			} catch (error) {
 				const remediation = createCodeFixableRemediation({
 					reason: 'workflow_source_read_failed',
@@ -545,7 +551,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			let informational: ValidationWarning[] = [];
 
-			let compiled = await compileWorkflowSource(context, filePath, sourceCode);
+			let compiled = await compileWorkflowSource(context, filePath, sourceCode, ctx.abortSignal);
 			if (
 				!compiled.success &&
 				compiled.reason === 'workflow_source_build_failed' &&
@@ -558,8 +564,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						await writeWorkspaceFile(context.workspace, filePath, recovery.source, {
 							logger: context.logger,
 							resourceLabel: 'Workflow source file',
+							abortSignal: ctx.abortSignal,
 						});
-						const retried = await compileWorkflowSource(context, filePath, recovery.source);
+						const retried = await compileWorkflowSource(
+							context,
+							filePath,
+							recovery.source,
+							ctx.abortSignal,
+						);
 						// The corrected source is on disk; keep reported errors/hash in sync with it.
 						sourceCode = recovery.source;
 						sourceHash = hashWorkflowSource(recovery.source);

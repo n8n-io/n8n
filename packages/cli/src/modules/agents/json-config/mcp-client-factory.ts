@@ -214,9 +214,8 @@ export async function buildMcpClientForServer(
 }
 
 /**
- * Connect to an MCP server, list its tools, and close the connection. Shared
- * verification handshake for the builder's and the instance MCP's
- * verify-server tools.
+ * Connect to an MCP server, list its tools, and close the connection.
+ * Verification handshake for the instance MCP's verify-server tool.
  */
 export async function listMcpServerTools(
 	server: AgentJsonMcpServerConfig,

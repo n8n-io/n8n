@@ -26,6 +26,7 @@ import {
 	DISCORD_NODE_TYPE,
 	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
 	REGULAR_NODE_CREATOR_VIEW,
@@ -134,6 +135,10 @@ export function removeTrailingTrigger(searchFilter: string) {
 const AI_GATEWAY_SEARCH_BOOST = 75;
 const AI_GATEWAY_BOOST_MIN_QUERY_LENGTH = 3;
 
+// Must exceed the legacy AI Agent's popularity boost (~98, see node-popularity.json)
+// so the successor node ranks first when both match a query equally.
+const MESSAGE_AN_AGENT_SEARCH_BOOST = 150;
+
 /**
  * 1. exact alias match (any query length): `scrape` → `scrape`
  * 2. whole-alias prefix match at 3+ chars: `scra` → `scrape`
@@ -241,6 +246,7 @@ export function searchNodes(
 	const reRankedResults = reRankSearchResults(searchResults, {
 		...additionalFactors,
 		aiGatewayBoost,
+		messageAnAgentBoost: { [MESSAGE_AN_AGENT_NODE_TYPE]: MESSAGE_AN_AGENT_SEARCH_BOOST },
 	});
 
 	return reRankedResults.map(({ item }) => item);
@@ -444,7 +450,12 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 
 	if (element.properties.tag) return element;
 
-	if (RECOMMENDED_NODES.includes(element.properties.name)) {
+	if (element.properties.name === MESSAGE_AN_AGENT_NODE_TYPE) {
+		element.properties.tag = {
+			preview: true,
+			text: i18n.baseText('nodeCreator.nodeItem.earlyPreview'),
+		};
+	} else if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
 			type: 'info',
 			text: i18n.baseText('generic.recommended'),

@@ -46,16 +46,6 @@
 			"outputs": ["coverage/**", "*.xml"],
 			"env": ["COVERAGE_ENABLED"]
 		},
-		"n8n-nodes-base#test": {
-			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"]
-		},
-		"n8n-nodes-base#test:changed": {
-			"dependsOn": ["^build", "build"],
-			"inputs": ["$TURBO_DEFAULT$", "../cli/src/public-api/v1/**/*.yml"],
-			"outputs": ["coverage/**", "*.xml"],
-			"env": ["COVERAGE_ENABLED", "CHANGED_FILES"],
-			"cache": false
-		},
 		"test:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],

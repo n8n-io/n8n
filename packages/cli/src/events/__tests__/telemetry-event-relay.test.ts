@@ -2223,7 +2223,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-imported` event with params and counts', () => {
 			const event: RelayEventMap['n8n-package-imported'] = {
 				user: { id: 'user123' },
-				projectId: 'project123',
+				projectIds: ['project123'],
 				folderId: 'folder123',
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				options: {
@@ -2235,6 +2235,7 @@ describe('TelemetryEventRelay', () => {
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
 					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'do-nothing',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -2259,6 +2260,11 @@ describe('TelemetryEventRelay', () => {
 						created: 1,
 						requirements: 2,
 					},
+					variables: {
+						matched: 1,
+						missing: 1,
+						requirements: 2,
+					},
 				},
 			};
 
@@ -2274,6 +2280,7 @@ describe('TelemetryEventRelay', () => {
 				data_table_matching_mode: 'by-id',
 				data_table_missing_mode: 'create',
 				data_table_schema_conflict_policy: 'keep-existing',
+				variable_missing_mode: 'do-nothing',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
@@ -2283,6 +2290,9 @@ describe('TelemetryEventRelay', () => {
 				data_tables_matched: 1,
 				data_tables_created: 1,
 				data_tables_required: 2,
+				variables_matched: 1,
+				variables_missing: 1,
+				variables_required: 2,
 			});
 		});
 
@@ -2296,6 +2306,7 @@ describe('TelemetryEventRelay', () => {
 					folders: 1,
 					credentials: 2,
 					dataTables: 1,
+					variables: 4,
 				},
 			};
 
@@ -2307,6 +2318,7 @@ describe('TelemetryEventRelay', () => {
 				folder_count: 1,
 				credential_count: 2,
 				data_table_count: 1,
+				variable_count: 4,
 			});
 		});
 
@@ -3695,6 +3707,102 @@ describe('TelemetryEventRelay', () => {
 			expect(typeof result.major).toBe('number');
 			expect(typeof result.minor).toBe('number');
 			expect(typeof result.patch).toBe('number');
+		});
+	});
+
+	describe('HITL events', () => {
+		it('should track on `hitl-response-actioned` event', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: false,
+			});
+		});
+
+		it('should forward a truthy `authorized` as `is_authorized`', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: true,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: true,
+			});
+		});
+
+		it('should omit `is_authorized` when `authorized` is undefined (email nodes)', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.gmail',
+				approved: false,
+				authorized: undefined,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Advanced HITL response actioned',
+				expect.anything(),
+			);
+			const props = vi.mocked(telemetry.track).mock.calls[0][1];
+			expect(props).not.toHaveProperty('is_authorized');
+			expect(props).toMatchObject({ node_type: 'n8n-nodes-base.gmail', is_approved: false });
+		});
+
+		it('should forward `response_mode` and `advanced_email` for email nodes', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.gmail',
+				approved: true,
+				authorized: undefined,
+				response_mode: 'direct_link',
+				advanced_email: true,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			const props = vi.mocked(telemetry.track).mock.calls[0][1];
+			expect(props).toMatchObject({
+				node_type: 'n8n-nodes-base.gmail',
+				is_approved: true,
+				response_mode: 'direct_link',
+				is_advanced_email: true,
+			});
+		});
+
+		it('should omit `response_mode` and `is_advanced_email` when absent (chat nodes)', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			const props = vi.mocked(telemetry.track).mock.calls[0][1];
+			expect(props).not.toHaveProperty('response_mode');
+			expect(props).not.toHaveProperty('is_advanced_email');
 		});
 	});
 });

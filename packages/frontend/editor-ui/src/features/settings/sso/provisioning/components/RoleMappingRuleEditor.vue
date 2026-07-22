@@ -2,7 +2,7 @@
 import { computed, onMounted } from 'vue';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRoleMappingRules } from '../composables/useRoleMappingRules';

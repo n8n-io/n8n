@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid';
+
 import {
 	AGENT_NODE_NAME,
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
@@ -39,6 +41,21 @@ async function setEditorText(n8n: n8nPage, parameterName: string, value: string)
 	await n8n.page.keyboard.press('ControlOrMeta+a');
 	await n8n.page.keyboard.press('Delete');
 	await codeEditor.fill(value);
+}
+
+const ANTHROPIC_RESPONSE = {
+	id: 'msg_hitl_visibility',
+	type: 'message',
+	role: 'assistant',
+	model: 'claude-sonnet-4-5-20250929',
+	content: [{ type: 'text', text: 'Here is my answer.' }],
+	stop_reason: 'end_turn',
+	stop_sequence: null,
+	usage: { input_tokens: 10, output_tokens: 5 },
+};
+
+interface AnthropicMessagesRequest {
+	tools?: Array<{ name?: string }>;
 }
 
 const hitlForToolsTestConfig = {
@@ -147,6 +164,59 @@ test.describe(
 			await expect(approveButton).toBeVisible({ timeout: 15000 });
 			await approveButton.click({ button: 'middle' });
 			await waitForWorkflowSuccess(n8n);
+		});
+
+		// The duplicated-module bug this guards against only reproduces in the packaged image (container mode)
+		test('agent should send HITL-wrapped tools to the model on the first turn, before approval', async ({
+			n8n,
+			api,
+			services,
+		}) => {
+			// Mock Anthropic so the agent completes one turn; only the request matters
+			await services.proxy.createExpectation({
+				httpRequest: { method: 'POST', path: '/v1/messages' },
+				httpResponse: {
+					statusCode: 200,
+					headers: { 'Content-Type': ['application/json'] },
+					body: JSON.stringify(ANTHROPIC_RESPONSE),
+				},
+			});
+
+			const credential = await api.credentials.createCredential({
+				name: `Anthropic account ${nanoid()}`,
+				type: 'anthropicApi',
+				data: { apiKey: 'test-key' },
+			});
+
+			const imported = await api.workflows.importWorkflowFromFile('hitl-wrapped-tool.json', {
+				transform: (workflow) => {
+					const modelNode = workflow.nodes?.find((node) => node.name === 'Anthropic Chat Model');
+					if (!modelNode) throw new Error('Anthropic Chat Model node not found in fixture');
+					modelNode.credentials = { anthropicApi: { id: credential.id, name: credential.name } };
+					return workflow;
+				},
+			});
+			await n8n.start.fromExistingWorkflow(imported.workflowId);
+
+			await n8n.canvas.clickManualChatButton();
+			await n8n.canvas.logsPanel.sendManualChatMessage('What tools do you have access to?');
+
+			const getMessagesRequests = async () =>
+				(await services.proxy.getAllRequestsMade()).filter(
+					(request) => request.httpRequest?.path === '/v1/messages',
+				);
+
+			await expect
+				.poll(async () => (await getMessagesRequests()).length, { timeout: 30_000 })
+				.toBeGreaterThan(0);
+
+			const body = (await getMessagesRequests())[0]?.httpRequest?.body as {
+				json?: AnthropicMessagesRequest;
+			};
+			const toolNames = (body?.json?.tools ?? []).map((tool) => tool.name);
+
+			expect(toolNames).toContain('Direct_Tool');
+			expect(toolNames).toContain('Get_secret_message');
 		});
 	},
 );

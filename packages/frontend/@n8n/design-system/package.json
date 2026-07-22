@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@n8n/design-system",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "main": "src/index.ts",
   "import": "src/index.ts",
   "scripts": {
@@ -63,6 +63,7 @@
   "dependencies": {
     "@internationalized/date": "catalog:frontend",
     "@n8n/composables": "workspace:*",
+    "@n8n/frontend-utils": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@tanstack/vue-table": "^8.21.2",
     "@tiptap/core": "catalog:",

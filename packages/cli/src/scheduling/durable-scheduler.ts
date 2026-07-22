@@ -4,7 +4,7 @@ import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { RunInTransaction, Scheduler, TaskHandler } from '@n8n/scheduler';
-import { createScheduler, executorLookaheadSeconds } from '@n8n/scheduler';
+import { createScheduler, pollLookaheadSeconds } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
@@ -52,7 +52,7 @@ export class DurableScheduler implements Scheduler {
 						leaseSeconds: config.leaseDurationSeconds,
 						// Claim one executor tick ahead so a task due before the next tick still
 						// fires on time; the horizon must cover the widest gap between two ticks.
-						lookaheadSeconds: executorLookaheadSeconds(
+						lookaheadSeconds: pollLookaheadSeconds(
 							config.executorIntervalSeconds,
 							config.jitterRatio,
 						),
@@ -117,7 +117,8 @@ export function buildMaterializerTransaction(
 		await dataSource.transaction(
 			async (manager) =>
 				await work({
-					claimDueJobs: async (limit) => await jobs.claimDue(manager, limit),
+					claimDueJobs: async (limit, lookaheadMs) =>
+						await jobs.claimDue(manager, limit, lookaheadMs),
 					recordOccurrences: async (occurrences) =>
 						await tasks.insertIgnoringDuplicates(manager, occurrences),
 					advanceJobs: async (planned) => {

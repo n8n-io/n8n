@@ -2,7 +2,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import type { UpdateResult } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -41,6 +41,7 @@ import type {
 	ScheduleTriggerCollectionSession,
 	ScheduleTriggerJobRegistrar,
 } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import type { OwnershipService } from '@/services/ownership.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -413,6 +414,11 @@ describe('ActiveWorkflowManager', () => {
 			scopedLogger = mock<Logger>();
 			const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
+			const ownershipService = mock<OwnershipService>();
+			ownershipService.getWorkflowProjectCached.mockResolvedValue(
+				mock<Project>({ id: 'project-1', name: 'Test Project' }),
+			);
+
 			factory = new TriggerExecutionContextFactory(
 				rootLogger,
 				mock(), // errorReporter
@@ -424,6 +430,7 @@ describe('ActiveWorkflowManager', () => {
 				mock(), // storageConfig
 				mock(), // workflowPublishedDataService
 				mock(), // scheduleTriggerJobRegistrar
+				ownershipService,
 			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
@@ -489,6 +496,8 @@ describe('ActiveWorkflowManager', () => {
 					workflowId: workflowData.id,
 					workflowName: workflowData.name,
 					executionId: 'exec-123',
+					projectId: 'project-1',
+					projectName: 'Test Project',
 					source: 'trigger',
 				});
 			});

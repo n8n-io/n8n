@@ -200,6 +200,10 @@ describe('AgentKnowledgeSandboxService', () => {
 		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('creates a scoped sandbox', async () => {
 		const aiService = makeAiService();
 		const service = makeService({}, mock<Logger>(), aiService);
@@ -327,7 +331,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.snapshot).toBeUndefined();
 	});
 
-	it('requests a proxy token scoped to the project id when the proxy is enabled', async () => {
+	it('requests a proxy token scoped to the project id when the proxy is enabled, even without sandbox env vars', async () => {
 		const client = mock<AiAssistantClient>();
 		client.getSandboxProxyConfig.mockResolvedValue({ image: 'proxy-image' });
 		client.getBuilderApiProxyToken.mockResolvedValue({
@@ -339,7 +343,11 @@ describe('AgentKnowledgeSandboxService', () => {
 			isProxyEnabled: vi.fn().mockReturnValue(true),
 			getClient: vi.fn().mockResolvedValue(client),
 		});
-		const service = makeService({}, mock<Logger>(), aiService);
+		const service = makeService(
+			{ sandboxEnabled: false, sandboxProvider: '' },
+			mock<Logger>(),
+			aiService,
+		);
 
 		await service.warmSandbox(projectId, agentId);
 
@@ -347,6 +355,30 @@ describe('AgentKnowledgeSandboxService', () => {
 			{ id: projectId },
 			expect.anything(),
 		);
+	});
+
+	it('retries transient proxy setup failures', async () => {
+		vi.useFakeTimers();
+		const client = mock<AiAssistantClient>();
+		client.getSandboxProxyConfig
+			.mockRejectedValueOnce(Object.assign(new Error('Bad Gateway'), { statusCode: 502 }))
+			.mockResolvedValue({ image: 'proxy-image' });
+		client.getBuilderApiProxyToken.mockResolvedValue({
+			accessToken: 'proxy-token',
+			tokenType: 'Bearer',
+		});
+		client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
+		const aiService = makeAiService({
+			isProxyEnabled: vi.fn().mockReturnValue(true),
+			getClient: vi.fn().mockResolvedValue(client),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		const promise = service.warmSandbox(projectId, agentId);
+		await vi.advanceTimersByTimeAsync(1000);
+		await promise;
+
+		expect(client.getSandboxProxyConfig).toHaveBeenCalledTimes(2);
 	});
 
 	describe('globKnowledgeFiles', () => {

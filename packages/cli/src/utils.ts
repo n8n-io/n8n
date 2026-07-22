@@ -165,10 +165,12 @@ export async function withExpressionIsolate<T>(
 	workflow: Workflow,
 	fn: () => Promise<T>,
 ): Promise<T> {
-	await workflow.expression.acquireIsolate();
+	// Release is not reference-counted: only release if this scope newly acquired
+	// the isolate, otherwise we'd return the outer caller's bridge to the pool mid-use.
+	const acquired = await workflow.expression.acquireIsolate();
 	try {
 		return await fn();
 	} finally {
-		await workflow.expression.releaseIsolate();
+		if (acquired) await workflow.expression.releaseIsolate();
 	}
 }

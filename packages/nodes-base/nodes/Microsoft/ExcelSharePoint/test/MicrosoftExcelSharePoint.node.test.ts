@@ -1,6 +1,3 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
-
 import { MicrosoftExcel } from '../../Excel/MicrosoftExcel.node';
 import { MicrosoftExcelSharePoint } from '../MicrosoftExcelSharePoint.node';
 
@@ -23,21 +20,8 @@ describe('MicrosoftExcelSharePoint (hidden shell)', () => {
 		expect(node.description.displayName).not.toBe(oneDriveNode.description.displayName);
 	});
 
-	it('should stay a shell — sign-in only, no operations or tool exposure', () => {
+	it('should not be exposed as an AI tool yet', () => {
 		expect(node.description.version).toBe(1);
-		// Any property beyond the sign-in selector would silently no-op through
-		// the pass-through execute; the first action ticket updates this bound.
-		expect(node.description.properties).toHaveLength(1);
 		expect(node.description.usableAsTool).toBeUndefined();
-	});
-
-	it('should pass input through unchanged when executed', async () => {
-		const ctx = mock<IExecuteFunctions>();
-		const items = [{ json: { a: 1 } }, { json: { b: 2 } }];
-		ctx.getInputData.mockReturnValue(items);
-
-		const result = await node.execute.call(ctx);
-
-		expect(result).toEqual([items]);
 	});
 });

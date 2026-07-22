@@ -15,7 +15,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
 import {
-	extractAnswerText,
+	extractCaseAnswer,
 	formatMetricAverage,
 	formatMetricLabel,
 	formatMetricPercent,
@@ -33,6 +33,7 @@ import {
 	type CannedMetricKey,
 } from '../../evaluation.constants';
 import { useSliceInputs } from '../../composables/useSliceInputs';
+import { useUserExecutions } from '../../composables/useUserExecutions';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
 import { useRunEvalWorkflow } from '../../composables/useRunEvalWorkflow';
 import { useDefaultJudgeSelection } from '../../composables/useDefaultJudgeSelection';
@@ -53,6 +54,7 @@ const telemetry = useTelemetry();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
+const { fetchLatestUserExecution } = useUserExecutions();
 const evaluationStore = useEvaluationStore();
 
 const {
@@ -132,6 +134,11 @@ watch(
 // Gate (ticket "Step 0"): the wizard is blocked until the workflow has had at
 // least one successful, non-evaluation execution. `probeComplete` guards against
 // flashing the gate before the execution lookup resolves.
+// Declared before the probe watcher (which runs immediately): the probe writes
+// to `fallbackUserExecution` during setup, so it must exist by then.
+const fallbackUserExecution = ref<IExecutionResponse | null>(null);
+const sliceInputs = useSliceInputs({ fallbackExecution: fallbackUserExecution });
+
 const probeComplete = ref(false);
 
 async function runExecutionProbe() {
@@ -175,27 +182,13 @@ const showProbeLoading = computed(
 // Skip evaluation runs — after a few wizard sessions, lastSuccessfulExecution
 // would always be the compiled eval workflow, not the user's graph.
 async function loadFallbackUserExecution() {
-	const workflowId = workflowDocumentStore.value?.workflowId;
-	if (!workflowId) return;
 	try {
-		const list = await executionsStore.fetchExecutions({
-			status: ['success'],
-			workflowId,
-		});
-		const candidate = list.results.find((e) => e.mode !== 'evaluation' && typeof e.id === 'string');
-		if (!candidate?.id) {
-			fallbackUserExecution.value = null;
-			return;
-		}
-		const full = await executionsStore.fetchExecution(candidate.id);
-		fallbackUserExecution.value = full ?? null;
+		fallbackUserExecution.value = await fetchLatestUserExecution();
 	} catch {
 		fallbackUserExecution.value = null;
 	}
 }
 
-const fallbackUserExecution = ref<IExecutionResponse | null>(null);
-const sliceInputs = useSliceInputs({ fallbackExecution: fallbackUserExecution });
 const expectedFields = computed(() => getExpectedFieldsForMetrics(selectedMetricKeys.value));
 
 watch(
@@ -286,9 +279,7 @@ const resultChecks = computed<ResultCheck[]>(() => {
 	});
 });
 
-const sliceEndNodeName = computed(
-	() => (wizardStore.isSliceMode ? wizardStore.endNodeName : wizardStore.aiNodeName) || '',
-);
+const sliceEndNodeName = computed(() => wizardStore.answerNodeName);
 
 // The expected-output values for a case, taken from the dataset row at the
 // case's `runIndex` (rows are seeded one-per-row in order). Falls back to the
@@ -304,14 +295,11 @@ const executionsByCaseId = ref<Record<string, IExecutionResponse | null>>({});
 // stripped of its JSON envelope (output > text > response > …). Falls back to
 // the case's persisted `outputs` only when the execution isn't loaded.
 function caseAnswer(testCase: TestCaseExecutionRecord): string {
-	const execution = executionsByCaseId.value[testCase.id];
-	const endName = sliceEndNodeName.value;
-	if (execution && endName) {
-		const firstItem =
-			execution.data?.resultData?.runData?.[endName]?.[0]?.data?.main?.[0]?.[0]?.json;
-		if (firstItem !== undefined) return extractAnswerText(firstItem);
-	}
-	return extractAnswerText(testCase.outputs);
+	return extractCaseAnswer(
+		executionsByCaseId.value[testCase.id],
+		sliceEndNodeName.value,
+		testCase.outputs,
+	);
 }
 
 async function loadExecutionForCase(caseId: string, executionId: string) {

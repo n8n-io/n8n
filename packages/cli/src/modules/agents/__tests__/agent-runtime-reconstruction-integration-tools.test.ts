@@ -20,9 +20,11 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiService } from '@/services/ai.service';
@@ -38,6 +40,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
+import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
@@ -245,6 +248,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentSkillsService,
 			runtimeCacheService,
 			credentialsService,
+			mock<WorkflowRepository>(),
 		);
 		agentCustomToolsService = new AgentCustomToolsService(
 			logger,
@@ -258,6 +262,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			telemetry,
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
+			mock<AgentRunTracingService>(),
+			mock<ExternalHooks>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -265,17 +271,27 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 		);
+		agentValidationService = new AgentValidationService(
+			agentRepository,
+			agentTaskRepository,
+			agentTaskSnapshotRepository,
+			mock<NodeTypes>(),
+			mock<WorkflowRepository>(),
+			chatIntegrationRegistry,
+		);
 		agentPublishService = new AgentPublishService(
 			logger,
 			agentRepository,
 			agentHistoryRepository,
 			agentTaskSnapshotRepository,
+			agentTaskRepository,
 			agentCustomToolsService,
 			runtimeCacheService,
 			mock<SubAgentCleanupService>(),
+			agentValidationService,
+			credentialsService,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory);
-		agentValidationService = new AgentValidationService(agentRepository, mock<AiService>());
 		agentsService = new AgentsService(
 			logger,
 			agentRepository,

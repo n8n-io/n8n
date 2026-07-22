@@ -19,7 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
-import { N8nActionBox, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';
+import { N8nEmptyState, N8nButton, N8nHeading, N8nNotice } from '@n8n/design-system';
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 const loading = ref(false);
@@ -184,7 +184,7 @@ onBeforeUnmount(() => {
 			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
 			:class="$style.actionBoxContainer"
 		>
-			<N8nActionBox
+			<N8nEmptyState
 				:heading="getEmptyStateTitle"
 				:description="getEmptyStateDescription"
 				:button-text="getEmptyStateButtonText"

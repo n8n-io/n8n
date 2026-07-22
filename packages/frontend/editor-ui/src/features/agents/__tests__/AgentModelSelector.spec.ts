@@ -135,7 +135,10 @@ const modelsByProvider: AgentModelsByProvider = {
 	},
 };
 
-async function mountSelector(credentials: Record<string, string | null>) {
+async function mountSelector(
+	credentials: Record<string, string | null>,
+	{ credentialModalAppendToBody = false }: { credentialModalAppendToBody?: boolean } = {},
+) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
 	return mount(AgentModelSelector, {
 		props: {
@@ -145,6 +148,7 @@ async function mountSelector(credentials: Record<string, string | null>) {
 			isLoading: false,
 			projectId: 'project-1',
 			warnMissingCredentials: true,
+			credentialModalAppendToBody,
 		},
 	});
 }
@@ -227,6 +231,17 @@ describe('AgentModelSelector', () => {
 		});
 	});
 
+	it('opens the credential selector at the body level when requested', async () => {
+		const wrapper = await mountSelector({ anthropic: null }, { credentialModalAppendToBody: true });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+
+		expect(openModalWithData).toHaveBeenCalledWith({
+			name: 'agentModelCredentialModal',
+			data: expect.objectContaining({ appendToBody: true }),
+		});
+	});
+
 	it('hides the assistant when creating credentials from configure without existing credentials', async () => {
 		credentialsByType.value = {};
 		const wrapper = await mountSelector({ anthropic: null });
@@ -243,6 +258,24 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			{ hideAskAssistant: true },
+		);
+	});
+
+	it('opens a new model credential at the body level when requested', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { credentialModalAppendToBody: true });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+
+		expect(openNewCredential).toHaveBeenCalledWith(
+			'anthropicApi',
+			false,
+			false,
+			'project-1',
+			undefined,
+			undefined,
+			undefined,
+			{ hideAskAssistant: true, appendToBody: true },
 		);
 	});
 

@@ -1,7 +1,7 @@
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { NOT_FOUND_MESSAGE, REQUIRED_PERMISSIONS } from './constants';
+import { NOT_FOUND_CODES, NOT_FOUND_MESSAGE, REQUIRED_PERMISSIONS } from './constants';
 import {
 	toHttpCode,
 	toPermissionKey,
@@ -78,12 +78,15 @@ export function delegatedApiError(this: AuthContext, error: GraphRequestError): 
 			: 'Microsoft Graph refused this request. The credential may be missing a required permission, or the signed-in account may not have access to this resource';
 		description =
 			"Check the credential's scopes (with admin consent if your tenant requires it) and that the signed-in account can access the site, then try again.";
-	} else if (error.error?.error) {
+	} else {
+		// Returns `error` itself, unchanged, when there's no nested Graph error to unwrap
 		const unwrapped = unwrapGraphError(error);
-		message =
-			unwrapped.code === 'NotFound' && unwrapped.message === 'Resource not found'
-				? NOT_FOUND_MESSAGE
-				: unwrapped.message;
+		if (unwrapped !== error) {
+			message =
+				unwrapped.code && NOT_FOUND_CODES.includes(unwrapped.code)
+					? NOT_FOUND_MESSAGE
+					: unwrapped.message;
+		}
 	}
 
 	const sanitizedError: JsonObject = message ? { message } : {};

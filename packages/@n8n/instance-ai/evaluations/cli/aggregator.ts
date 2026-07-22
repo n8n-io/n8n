@@ -6,6 +6,7 @@ import type {
 	ExecutionScenarioAggregation,
 	BuildExpectationAggregation,
 	BuildExpectationResult,
+	CaseVerificationStatus,
 } from '../types';
 
 /**
@@ -85,6 +86,23 @@ function aggregateUnit<T extends { pass: boolean; incomplete?: boolean }>(
 	};
 }
 
+/**
+ * A case is `notVerified` when nothing could be scored: every scenario and every
+ * build expectation came back with 0 evaluated runs (all incomplete, or skipped —
+ * e.g. process expectations with no transcript). A build FAILURE is NOT a gap: the
+ * aggregator substitutes a non-incomplete "scenario not executed" result, so a
+ * build-failed case has evaluated (failing) scenarios and stays `verified`.
+ */
+function computeCaseStatus(
+	scenarios: ExecutionScenarioAggregation[],
+	expectations: BuildExpectationAggregation[],
+): CaseVerificationStatus {
+	const evaluatedUnits =
+		scenarios.reduce((n, sa) => n + sa.evaluatedCount, 0) +
+		expectations.reduce((n, ea) => n + ea.evaluatedCount, 0);
+	return evaluatedUnits > 0 ? 'verified' : 'notVerified';
+}
+
 export function aggregateResults(
 	allRunResults: WorkflowTestCaseResult[][],
 	totalRuns: number,
@@ -147,6 +165,7 @@ export function aggregateResults(
 			buildSuccessCount,
 			executionScenarios,
 			buildExpectations,
+			status: computeCaseStatus(executionScenarios, buildExpectations),
 		});
 	}
 

@@ -51,26 +51,9 @@ export function getConfigRulesSection(): string {
 
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\`.
-- Fresh agents must include
-  \`memory: { "enabled": true, "storage": "n8n" }\`
-  unless the user explicitly asks to disable memory.
-- \`memory.storage\` must be "n8n".
-- \`memory.episodicMemory\` requires \`ask_embedding_credential\` with
-  \`credentialType: "openAiApi"\`; use its returned \`credentialId\` value.
-- Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
-  use only credential IDs returned by \`resolve_llm\` or \`ask_credential\`.
 - Sub-agent configuration lives at top level under \`subAgents\`. Load
   \`agent-builder-sub-agents\` before adding refs or changing
   \`subAgents.maxChildren\`.
-- Web search lives under \`config.webSearch\`. Only OpenAI and Anthropic models
-  support native web search; for those providers, use
-  \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. Every
-  other provider requires fallback search with \`provider: "brave"\` or
-  \`provider: "searxng"\` and a credential. Never write \`{ "enabled": true }\`
-  alone for fallback search. Use exact \`ask_credential\` types:
-  \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
-- Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
-  the user explicitly asks to change web-search method.
 - For OpenAI and Anthropic models, always include
   \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
   never be disabled, even if the user asks. Omit \`config.promptCaching\`

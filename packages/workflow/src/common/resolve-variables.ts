@@ -40,3 +40,27 @@ export function resolveVariables(
 
 	return resolved;
 }
+
+/**
+ * Picks the variable a `$vars.<key>` reference reads for a workflow in
+ * `projectId`, applying the same precedence as {@link resolveVariables}: the
+ * project-scoped variable wins over a same-key global. Unlike
+ * `resolveVariables`, this returns the variable itself rather than a flat
+ * value map, for callers that need its identity (e.g. the package exporter).
+ */
+export function pickVariableForProject<T extends ScopedVariable>(
+	variables: T[],
+	key: string,
+	projectId?: string,
+): T | undefined {
+	let global: T | undefined;
+	for (const variable of variables) {
+		if (variable.key !== key) continue;
+		if (variable.project) {
+			if (projectId && variable.project.id === projectId) return variable;
+		} else {
+			global ??= variable;
+		}
+	}
+	return global;
+}

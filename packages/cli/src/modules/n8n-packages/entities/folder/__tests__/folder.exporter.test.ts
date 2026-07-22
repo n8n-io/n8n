@@ -70,6 +70,7 @@ describe('FolderExporter', () => {
 					},
 				],
 				dataTables: [],
+				variables: [],
 			},
 		});
 

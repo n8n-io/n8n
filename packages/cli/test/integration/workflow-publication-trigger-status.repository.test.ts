@@ -260,9 +260,10 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 			expect(rows).toHaveLength(2);
 		});
 
-		it('excludes stale rows of workflows without an active version', async () => {
-			// Simulates rows orphaned by an interrupted unpublish: the workflow is no
-			// longer active but its `activated` rows were never cleared.
+		it('includes stale rows of workflows without an active version so reconciliation can heal them', async () => {
+			// Rows orphaned by an interrupted unpublish: the workflow is no longer
+			// active but its `activated` rows were never cleared. They must surface as
+			// a deficit so the reconciler re-enqueues the unpublish that clears them.
 			const unpublishedWorkflow = await createWorkflow();
 			await seedVersions(unpublishedWorkflow, ['v-stale']);
 			await repo.replaceForWorkflow(unpublishedWorkflow.id, [
@@ -275,7 +276,9 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 				},
 			]);
 
-			expect(await repo.findActivatedInMemoryTriggers()).toEqual([]);
+			expect(await repo.findActivatedInMemoryTriggers()).toEqual([
+				{ workflowId: unpublishedWorkflow.id, nodeId: 'poll-stale' },
+			]);
 		});
 
 		it('excludes workflows with an in-flight publication record', async () => {

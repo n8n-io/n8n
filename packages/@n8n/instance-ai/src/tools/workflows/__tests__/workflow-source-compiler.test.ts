@@ -113,7 +113,7 @@ describe('compileWorkflowSource', () => {
 		expect(runInSandbox).toHaveBeenCalledWith(
 			context.workspace,
 			"node --import tsx build.mjs '/home/daytona/workspace/src/workflows/main.workflow.ts'",
-			'/home/daytona/workspace',
+			{ cwd: '/home/daytona/workspace', abortSignal: undefined },
 		);
 		expect(result).toMatchObject({
 			success: true,
@@ -164,6 +164,41 @@ describe('compileWorkflowSource', () => {
 			editable: false,
 		});
 		expect(runInSandbox).not.toHaveBeenCalled();
+	});
+
+	it('rethrows AbortError from sandbox execution instead of converting to a build failure', async () => {
+		const abortError = new Error('This operation was aborted');
+		abortError.name = 'AbortError';
+		vi.mocked(runInSandbox).mockRejectedValue(abortError);
+
+		await expect(
+			compileWorkflowSource(makeContext(), 'src/workflows/main.workflow.ts', 'workflow source'),
+		).rejects.toMatchObject({ name: 'AbortError' });
+	});
+
+	it('forwards abortSignal into the sandbox runner', async () => {
+		const controller = new AbortController();
+		vi.mocked(runInSandbox).mockResolvedValue({
+			exitCode: 0,
+			stdout: JSON.stringify({
+				success: true,
+				workflow: { name: 'TS workflow', nodes: [], connections: {} },
+				warnings: [],
+			}),
+			stderr: '',
+		});
+
+		await compileWorkflowSource(
+			makeContext(),
+			'src/workflows/main.workflow.ts',
+			'workflow source',
+			controller.signal,
+		);
+
+		expect(runInSandbox).toHaveBeenCalledWith(expect.anything(), expect.any(String), {
+			cwd: '/home/daytona/workspace',
+			abortSignal: controller.signal,
+		});
 	});
 });
 

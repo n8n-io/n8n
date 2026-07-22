@@ -44,8 +44,9 @@ describe('scheduler cascade-delete safety', () => {
 			taskStore: taskRepo,
 		});
 		scheduler.registerTaskHandler(TASK_TYPE, {
-			execute: async (task) => {
+			execute: async (task, report) => {
 				executed.push(task);
+				return report.notDispatched();
 			},
 		});
 	});

@@ -175,6 +175,43 @@ describe('findMockQuirks (real registry)', () => {
 		});
 	});
 
+	describe('provider-shape quirks (TRUST-309)', () => {
+		it('returns Reddit guidance describing the { json: { data } } write envelope', () => {
+			// Authenticated Reddit resolves the service name to "Oauth" (oauth.reddit.com) —
+			// the hostname pattern must rescue the match.
+			const guidance = findMockQuirks('Oauth', 'POST', '/api/submit', 'oauth.reddit.com');
+			expect(guidance.length).toBeGreaterThan(0);
+			const joined = guidance.join('\n');
+			expect(joined).toMatch(/json/);
+			expect(joined).toMatch(/data/);
+			expect(joined).toMatch(/things/);
+		});
+
+		it('returns HubSpot guidance requiring vid + isNew on contacts/v1 upsert', () => {
+			const guidance = findMockQuirks(
+				'Hubapi',
+				'POST',
+				'/contacts/v1/contact/createOrUpdate/email/jane@example.com',
+				'api.hubapi.com',
+			);
+			expect(guidance.length).toBeGreaterThan(0);
+			const joined = guidance.join('\n');
+			expect(joined).toMatch(/vid/);
+			expect(joined).toMatch(/isNew/);
+		});
+
+		it('returns Google Docs guidance requiring a replies array on batchUpdate', () => {
+			const guidance = findMockQuirks(
+				'Docs',
+				'POST',
+				'/v1/documents/abc123:batchUpdate',
+				'docs.googleapis.com',
+			);
+			expect(guidance.length).toBeGreaterThan(0);
+			expect(guidance.join('\n')).toMatch(/replies/);
+		});
+	});
+
 	it('is case-sensitive on service name (extractServiceName produces capitalized form)', () => {
 		expect(findMockQuirks('notion', 'POST', '/v1/pages')).toEqual([]);
 		expect(findMockQuirks('NOTION', 'POST', '/v1/pages')).toEqual([]);

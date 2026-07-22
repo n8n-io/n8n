@@ -76,7 +76,6 @@ describe('workflow package export — with data tables', () => {
 					{
 						id: dataTable.id,
 						name: 'Customers',
-						sourceProjectId: project.id,
 						usedByWorkflows: [workflow.id],
 					},
 				],
@@ -178,7 +177,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: project.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -298,7 +296,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: salesProject.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -331,7 +328,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: project.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -365,7 +361,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: foreignProject.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -392,7 +387,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: project.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);
@@ -418,7 +412,6 @@ describe('workflow package export — with data tables', () => {
 				{
 					id: dataTable.id,
 					name: 'Customers',
-					sourceProjectId: personalProject.id,
 					usedByWorkflows: [workflow.id],
 				},
 			]);

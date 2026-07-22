@@ -144,6 +144,7 @@ async function provision(dbType) {
 	process.env.DB_TABLE_PREFIX = '';
 	return {
 		dataSourceOptions: { type: 'postgres', ...conn },
+		containerId: container.getId(),
 		cleanup: () => container.stop(),
 	};
 }
@@ -156,10 +157,14 @@ function buildDsn(dbType, provisioned, docker) {
 		return `sqlite://${filePath}`;
 	}
 	const conn = provisioned.dataSourceOptions;
-	// Under Docker, tbls runs in its own container and reaches the host-mapped
-	// Postgres port via host.docker.internal (added below with --add-host).
-	const host = docker ? 'host.docker.internal' : conn.host;
-	return `postgres://${conn.username}:${conn.password}@${host}:${conn.port}/${conn.database}?sslmode=disable&search_path=public`;
+	// Under Docker, tbls shares the Postgres container's network namespace
+	// (--network container:<id> below), so it connects to the unmapped port on
+	// localhost. Going through the host-mapped port instead would break on
+	// hosts whose firewall drops container→host traffic (e.g. nftables setups).
+	if (docker) {
+		return `postgres://${conn.username}:${conn.password}@127.0.0.1:5432/${conn.database}?sslmode=disable&search_path=public`;
+	}
+	return `postgres://${conn.username}:${conn.password}@${conn.host}:${conn.port}/${conn.database}?sslmode=disable&search_path=public`;
 }
 
 /** Pre-pulls the tbls image, retrying on transient registry/network errors. */
@@ -181,7 +186,7 @@ async function pullImageWithRetry(image, env, attempts = 3) {
 }
 
 /** Invokes tbls (binary locally, Docker image in CI). */
-async function tbls(command, dbType, dsn, docker) {
+async function tbls(command, dbType, dsn, docker, networkContainerId) {
 	const config = `.tbls.${dbType}.yml`;
 	const env = { ...process.env, TBLS_DSN: dsn };
 	const args = command === 'diff' ? ['diff'] : ['doc', '--force'];
@@ -195,8 +200,9 @@ async function tbls(command, dbType, dsn, docker) {
 		const dockerArgs = [
 			'run',
 			'--rm',
-			'--add-host',
-			'host.docker.internal:host-gateway',
+			// Join the DB container's network namespace so the DSN's localhost port
+			// resolves inside it — no dependency on container→host connectivity.
+			...(networkContainerId ? ['--network', `container:${networkContainerId}`] : []),
 			'-e',
 			`TBLS_DSN=${dsn}`,
 			'-v',
@@ -282,7 +288,7 @@ async function main() {
 		await dataSource.destroy();
 
 		const dsn = buildDsn(dbType, provisioned, docker);
-		const { code, stdout } = await tbls(command, dbType, dsn, docker);
+		const { code, stdout } = await tbls(command, dbType, dsn, docker, provisioned.containerId);
 
 		if (command === 'diff') {
 			// `tbls diff` prints the unified diff to stdout and exits non-zero when

@@ -178,9 +178,9 @@ function toTurnStream(result: StreamResult): BuilderTurnStream {
 }
 
 /**
- * Build the agent-builder sub-agent: `write_config` (a plain config-mutation
- * tool — its name drives `configUpdated` via `CONFIG_MUTATION_TOOL_NAMES`)
- * and `ask_questions` (an interruptible tool using the real shared contract
+ * Build the agent-builder sub-agent: `write_config` (a mutation tool whose
+ * name drives `configUpdated` via `CONFIG_MUTATION_TOOL_NAMES`) and
+ * `ask_questions` (an interruptible tool using the real shared contract
  * from `@n8n/api-types`, mirroring the cli's own `ask_questions` tool). On
  * resume, `onResume` records the exact `ctx.resumeData` the SDK handed back
  * after validating it against `questionsResumeSchema` — the central
@@ -274,6 +274,8 @@ function createBuilderDelegate(
 		},
 
 		listAgents: async () => await Promise.resolve([]),
+
+		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }
 

@@ -369,6 +369,7 @@ describe('LogsPanel', () => {
 			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
 		).addNodeExecutionStartedData({
 			nodeName: 'AI Agent',
+			sequenceNumber: 0,
 			executionId: '567',
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
 		});

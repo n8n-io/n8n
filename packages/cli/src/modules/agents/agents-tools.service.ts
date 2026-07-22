@@ -1,5 +1,6 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
+import type { CodeBuilderSearchResult } from '@n8n/ai-utilities/node-catalog';
 import {
 	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
 	AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES,
@@ -9,7 +10,11 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { NodeCatalogService } from '@/node-catalog';
-import { isAgentProviderNode } from '@/node-execution';
+import {
+	isAgentProviderNode,
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from '@/node-execution';
 
 import { MCP_REGISTRY_PACKAGE_NAME } from '../mcp-registry/node-description-transform';
 
@@ -70,7 +75,11 @@ const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
 });
 
-const nodeVersionSchema = z.number().describe('Tool node type version from search_nodes');
+const nodeVersionSchema = z
+	.number()
+	.describe(
+		'Tool node type version from node discovery results (search_nodes or resolve_integration kind: "node")',
+	);
 
 const getNodeTypesInputSchema = z.object({
 	nodeIds: z
@@ -87,7 +96,9 @@ const getNodeTypesInputSchema = z.object({
 			]),
 		)
 		.min(1)
-		.describe('Tool node IDs from search_nodes (e.g., ["n8n-nodes-base.gmailTool"])'),
+		.describe(
+			'Tool node IDs from node discovery results (search_nodes or resolve_integration kind: "node"; e.g., ["n8n-nodes-base.gmailTool"])',
+		),
 });
 
 const listCredentialsInputSchema = z.object({
@@ -120,6 +131,13 @@ export class AgentsToolsService {
 		];
 	}
 
+	async searchAgentToolNodes(queries: string[]): Promise<CodeBuilderSearchResult> {
+		await this.nodeCatalogService.initialize();
+		return await this.nodeCatalogService.searchNodes(queries, {
+			nodeFilter: isAgentToolNodeType,
+		});
+	}
+
 	private buildSearchNodesTool(): BuiltTool {
 		return new Tool('search_nodes')
 			.description(
@@ -129,10 +147,7 @@ export class AgentsToolsService {
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
-				await this.nodeCatalogService.initialize();
-				const { results } = await this.nodeCatalogService.searchNodes(queries, {
-					nodeFilter: isAgentToolNodeType,
-				});
+				const { results } = await this.searchAgentToolNodes(queries);
 				return { results };
 			})
 			.build();
@@ -141,13 +156,31 @@ export class AgentsToolsService {
 	private buildGetNodeTypesTool(): BuiltTool {
 		return new Tool('get_node_types')
 			.description(
-				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
-					'by search_nodes. Returns parameter definitions needed to configure a node for execution. ' +
-					'Use the tool node IDs from search_nodes. ' +
-					'You can optionally filter by resource/operation/mode.',
+				'Get detailed parameter schema for specific n8n nodes. Use the node IDs from node ' +
+					'discovery results (search_nodes or resolve_integration kind: "node"). Returns ' +
+					'parameter definitions needed to configure a node for execution. Use the tool node ' +
+					'IDs from discovery, usually ending in Tool. You can optionally filter by ' +
+					'resource/operation/mode.',
 			)
 			.input(getNodeTypesInputSchema)
 			.handler(async ({ nodeIds }: { nodeIds: NodeRequest[] }) => {
+				const unsupportedOperations = nodeIds.flatMap((request) => {
+					if (
+						typeof request === 'string' ||
+						!isUnsupportedEphemeralNodeOperation(request.operation)
+					) {
+						return [];
+					}
+
+					return [
+						`Node "${request.nodeId}": ${unsupportedEphemeralNodeOperationMessage(request.operation)}`,
+					];
+				});
+
+				if (unsupportedOperations.length > 0) {
+					return { results: `# Errors\n\n${unsupportedOperations.join('\n')}` };
+				}
+
 				await this.nodeCatalogService.initialize();
 				const results = await this.nodeCatalogService.getNodeTypes(
 					nodeIds.map(normalizeNodeRequestForCatalog),

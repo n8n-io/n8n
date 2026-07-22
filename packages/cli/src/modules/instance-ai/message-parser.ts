@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import {
 	cleanStoredUserMessage,
+	extractAgentPreviewHandoffContext,
 	extractEditorContextResourceAttachments,
 } from './internal-messages';
 
@@ -457,6 +458,7 @@ export function parseStoredMessages(
 			// Rebuild the editor hand-off's resource attachments (workflow/agent) so
 			// the UI can re-surface them (chip + artifact) after a reload.
 			const attachments = extractEditorContextResourceAttachments(text);
+			const context = extractAgentPreviewHandoffContext(text);
 
 			messages.push({
 				id: msg.id,
@@ -466,6 +468,7 @@ export function parseStoredMessages(
 				reasoning: '',
 				isStreaming: false,
 				...(attachments.length > 0 ? { attachments } : {}),
+				...(context ? { context } : {}),
 			});
 			continue;
 		}

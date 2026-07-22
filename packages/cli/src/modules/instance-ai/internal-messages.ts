@@ -1,5 +1,7 @@
 import {
+	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiResourceAttachmentSchema,
+	type InstanceAiAgentPreviewHandoffContext,
 	type InstanceAiResourceAttachment,
 } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
@@ -28,6 +30,8 @@ export const EDITOR_CONTEXT_OPEN_TAG = '<editor-context>';
 export const EDITOR_CONTEXT_CLOSE_TAG = '</editor-context>';
 export const CREDENTIAL_CONTEXT_OPEN_TAG = '<credential-context>';
 export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
+export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
+export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -36,10 +40,13 @@ export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
+
+/** Captures the leading JSON line inside an agent-preview-context block. */
+const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
 
 /** Matches the per-turn date/time block the service appends to the user message. */
 const CURRENT_DATE_TIME_BLOCK = /\n*<current-date-time>[\s\S]*?<\/current-date-time>\s*$/;
@@ -82,4 +89,19 @@ export function extractEditorContextResourceAttachments(
 		.array(instanceAiResourceAttachmentSchema)
 		.safeParse(jsonParse(match[1], { fallbackValue: undefined }));
 	return parsed.success ? parsed.data : [];
+}
+
+/**
+ * Reconstructs the agent-preview handoff context encoded in a stored user
+ * message so the UI can re-surface it (chip) after a reload.
+ */
+export function extractAgentPreviewHandoffContext(
+	stored: string,
+): InstanceAiAgentPreviewHandoffContext | undefined {
+	const match = AGENT_PREVIEW_CONTEXT_JSON.exec(stored);
+	if (!match) return undefined;
+	const parsed = instanceAiAgentPreviewHandoffContextSchema.safeParse(
+		jsonParse(match[1], { fallbackValue: undefined }),
+	);
+	return parsed.success ? parsed.data : undefined;
 }

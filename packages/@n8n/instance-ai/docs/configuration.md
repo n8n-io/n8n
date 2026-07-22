@@ -167,13 +167,15 @@ The event bus transport is selected automatically:
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
 Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
-`false`). Off, events live only in a bounded in-memory buffer per thread
-(500 events / 2 MB, FIFO-evicted; ids reset on restart, so replay does not
-survive a restart). On, coalesced step-level facts (completed text/reasoning
-blocks, tool calls and results, run lifecycle) are appended to the
-`instance_ai_events` table and replay reads the database; token deltas are
-never persisted. Rows cascade-delete with their thread
-(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`).
+`true` since Gate A of the durable-log rollout; pre-existing runs are
+backfilled by migration). On, coalesced step-level facts (completed
+text/reasoning blocks, tool calls and results, run lifecycle) are appended to
+the `instance_ai_events` table and replay reads the database; token deltas
+are never persisted. Rows cascade-delete with their thread
+(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
+switch until the legacy paths sunset at Gate B: events then live only in a
+bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
+reset on restart, so replay does not survive a restart).
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`

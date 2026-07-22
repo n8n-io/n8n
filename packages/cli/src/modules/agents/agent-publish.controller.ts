@@ -26,7 +26,7 @@ export class AgentPublishController {
 		@Param('agentId') agentId: string,
 		@Body payload: PublishAgentDto,
 	) {
-		const agent = await this.agentPublishService.publishAgent(
+		const { agent, draftValidation } = await this.agentPublishService.publishAgent(
 			agentId,
 			req.params.projectId,
 			req.user,
@@ -36,6 +36,7 @@ export class AgentPublishController {
 			agent,
 			req.params.projectId,
 			req.user,
+			draftValidation,
 		);
 	}
 

@@ -68,17 +68,23 @@ import {
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
 import {
+	abortedWorkflowTestCaseResult,
 	buildWorkflow,
+	executeAgentScenario,
 	executeScenario,
 	cleanupBuild,
+	fetchAgentScenarioContext,
+	findAgentArtifactRef,
 	runWorkflowChecks,
 	effectiveTimeoutMs,
 	runWorkflowTestCase,
 	runWithConcurrency,
 	workflowExpectedForCase,
 	type BuildResult,
+	warnAgentSeedDataTablesIgnored,
 } from '../harness/runner';
 import {
+	classifyScenarioExecutionError,
 	extractErrorMessage,
 	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
@@ -93,6 +99,7 @@ import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
+import { rollupCaseVerification } from '../summary';
 import type {
 	BuildExpectationResult,
 	MultiRunEvaluation,
@@ -185,6 +192,10 @@ interface RunConfig {
 	 *  LangSmith experiment metadata and eval-results.json — the run's only spend
 	 *  record beyond raw session logs, for a suite that's manual-only due to cost. */
 	mcpBuildSpend: McpBuildSpend[];
+	/** Optional sink the direct loop pushes each completed iteration's results into
+	 *  as they finish, so an abort that rejects the run still leaves the caller
+	 *  (runEvalAndPersist) with the scenarios that already completed. */
+	partialResults?: WorkflowTestCaseResult[][];
 }
 
 /** Map eval CLI args to the shared MCP builder's settings. */
@@ -422,66 +433,67 @@ async function main(): Promise<void> {
 	const cleanupBuiltWorkflows =
 		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
+	const mcpBuildSpend: McpBuildSpend[] = [];
+	const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
 
-		let evaluation: MultiRunEvaluation;
-		let experimentName: string | undefined;
-		let experimentUrl: string | undefined;
-		let outcome: ComparisonOutcome | undefined;
-		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
-		const mcpBuildSpend: McpBuildSpend[] = [];
+		// runEvalAndPersist owns the always-write guarantee: it writes
+		// eval-results.json even if the run below throws (a budget/timeout abort, a
+		// lane meltdown, an OOM), aggregating whatever completed scenarios were
+		// pushed into `partialResults` so the dispatcher never finds no file.
+		const { evaluation, slugByTestCase, outcome, gate, jsonPath, prCommentPath } =
+			await runEvalAndPersist(
+				{
+					logger,
+					outputDir: args.outputDir,
+					startTime,
+					iterations: args.iterations,
+					tier: args.tier,
+					commitSha,
+					rerun: ciRerunHint(),
+					mcpBuildSpend,
+				},
+				async (partialResults) => {
+					if (hasLangSmith) {
+						logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
+						const langsmithRun = await runWithLangSmith({
+							args,
+							lanes,
+							logger,
+							testCasesWithFiles,
+							prebuiltManifest,
+							cleanupBuiltWorkflows,
+							mcpBuildLogDir,
+							mcpBuildSpend,
+						});
+						return {
+							evaluation: langsmithRun.evaluation,
+							experimentName: langsmithRun.experimentName,
+							experimentUrl: langsmithRun.experimentUrl,
+							outcome: langsmithRun.outcome,
+							slugByTestCase: langsmithRun.slugByTestCase,
+						};
+					}
+					logger.info(
+						'No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)',
+					);
+					const directRun = await runDirectLoop({
+						args,
+						lanes,
+						logger,
+						testCasesWithFiles,
+						prebuiltManifest,
+						cleanupBuiltWorkflows,
+						mcpBuildLogDir,
+						mcpBuildSpend,
+						partialResults,
+					});
+					return { evaluation: directRun.evaluation, slugByTestCase: directRun.slugByTestCase };
+				},
+			);
 
-		if (hasLangSmith) {
-			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			const langsmithRun = await runWithLangSmith({
-				args,
-				lanes,
-				logger,
-				testCasesWithFiles,
-				prebuiltManifest,
-				cleanupBuiltWorkflows,
-				mcpBuildLogDir,
-				mcpBuildSpend,
-			});
-			evaluation = langsmithRun.evaluation;
-			experimentName = langsmithRun.experimentName;
-			experimentUrl = langsmithRun.experimentUrl;
-			outcome = langsmithRun.outcome;
-			slugByTestCase = langsmithRun.slugByTestCase;
-		} else {
-			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			const directRun = await runDirectLoop({
-				args,
-				lanes,
-				logger,
-				testCasesWithFiles,
-				prebuiltManifest,
-				cleanupBuiltWorkflows,
-				mcpBuildLogDir,
-				mcpBuildSpend,
-			});
-			evaluation = directRun.evaluation;
-			slugByTestCase = directRun.slugByTestCase;
-		}
-
-		const totalDuration = Date.now() - startTime;
-		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
-		// Gated tiers report an absolute green verdict in place of the baseline comparison.
-		const gate = isGatedTier(args.tier) ? evaluateGate(evaluation, { slugByTestCase }) : undefined;
-		const { jsonPath, prCommentPath } = writeEvalResults(
-			evaluation,
-			totalDuration,
-			args.outputDir,
-			experimentName,
-			outcome,
-			commitSha,
-			slugByTestCase,
-			ciRerunHint(),
-			gate,
-			mcpBuildSpend,
-			experimentUrl,
-		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
 		const reportResults = flattenRunsForReport(evaluation);
@@ -624,6 +636,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildTrace?: BuildResult['buildTrace'];
 			timeoutMs: number;
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
+		tracedExecuteAgent: (execArgs: {
+			agentId: string;
+			scenario: ExecutionScenario;
+			agentContext: string;
+			buildTrace?: BuildResult['buildTrace'];
+			timeoutMs: number;
+			testCaseName?: string;
+		}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
 	}
 
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
@@ -644,6 +664,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						seedFile: buildArgs.seedFile,
 						priorConversation: buildArgs.priorConversation,
 						seedThread: buildArgs.seedThread,
+						executionScenarios: buildArgs.executionScenarios,
 						createdCredentialIds: lane.createdCredentialIds,
 						timeoutMs: buildArgs.timeoutMs,
 						preRunWorkflowIds: lane.preRunWorkflowIds,
@@ -680,6 +701,32 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					),
 				{
 					name: 'scenario_execution',
+					run_type: 'chain',
+					client: lsClient,
+					metadata: { lane: laneNum },
+				},
+			),
+			tracedExecuteAgent: traceable(
+				async (execArgs: {
+					agentId: string;
+					scenario: ExecutionScenario;
+					agentContext: string;
+					buildTrace?: BuildResult['buildTrace'];
+					timeoutMs: number;
+					testCaseName?: string;
+				}) =>
+					await executeAgentScenario(
+						lane.client,
+						execArgs.agentId,
+						execArgs.scenario,
+						execArgs.agentContext,
+						logger,
+						execArgs.timeoutMs,
+						execArgs.testCaseName,
+						execArgs.buildTrace,
+					),
+				{
+					name: 'agent_scenario_execution',
 					run_type: 'chain',
 					client: lsClient,
 					metadata: { lane: laneNum },
@@ -871,6 +918,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
 			stashBuildExpectations(key, fileSlug, build, false);
+			stashAgentContext(key, lane.runner.client, build);
 			stashRunDebug(lane.runner.client, build);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
@@ -899,6 +947,16 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (build.threadId && build.transcript) {
 			transcriptByThreadId.set(build.threadId, build.transcript);
 		}
+	}
+
+	// Agent config + skills, fetched once per build and shared by every
+	// scenario row of the case (the agent analog of the cached workflow JSON).
+	const agentContextByKey = new Map<string, Promise<string>>();
+
+	function stashAgentContext(key: string, client: N8nClient, build: BuildResult): void {
+		const agentRef = findAgentArtifactRef(build.artifactRefs);
+		if (!agentRef) return;
+		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
 	}
 
 	function stashRunDebug(client: N8nClient, build: BuildResult): void {
@@ -968,6 +1026,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			const { build, lane } = await cached;
 			// Run-debug capture reads the thread — let it settle before deletion.
 			if (build.threadId) await runDebugByThreadId.get(build.threadId)?.catch(() => {});
+			// cleanupBuild also deletes any built agent (agent-anchored builds).
 			const clean = await cleanupBuild(lane.runner.client, build, logger);
 			if (!clean) {
 				// Leave the entry in buildCache — the end-of-run pass retries it.
@@ -987,6 +1046,27 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const iteration = inputs._iteration ?? 0;
 		try {
 			return await targetRow(inputs, iteration);
+		} catch (error: unknown) {
+			// targetRow guards scenario execution internally, but a build-phase throw
+			// (getOrBuild) or a budget abort must not reject up to evaluate() and
+			// abort the whole experiment — that would discard every OTHER row's
+			// completed results. Record this row as an aborted (framework_issue)
+			// output instead so evaluate() finalizes and writeEvalResults still runs.
+			const message = extractErrorMessage(error);
+			logger.error(`    ERROR [${inputs.scenarioName}] (${inputs.testCaseFile}): ${message}`);
+			const classified = classifyScenarioExecutionError(message);
+			return {
+				buildSuccess: false,
+				passed: false,
+				score: 0,
+				reasoning: classified.reasoning,
+				failureCategory: classified.failureCategory,
+				rootCause: classified.rootCause,
+				execErrors: [message],
+				buildDurationMs: 0,
+				execDurationMs: 0,
+				nodeCount: 0,
+			};
 		} finally {
 			await releaseCaseRow(iteration, inputs.testCaseFile);
 		}
@@ -1005,13 +1085,17 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			lane: builtOnLane,
 			buildDurationMs,
 		} = await getOrBuild(iteration, inputs.testCaseFile);
+		const cacheKey = `${String(iteration)}:${inputs.testCaseFile}`;
+
+		// Agent-anchored build: scenarios target the agent and a missing workflow is
+		// not a build failure (helper workflows are its tools) — mirrors the direct loop.
+		const agentRef = findAgentArtifactRef(build.artifactRefs);
+		const agentRunnable = agentRef !== undefined && build.transcript !== undefined;
 
 		// Stashed at build time with a `.catch` attached, so awaiting never rejects.
 		// Awaited only after each branch's own work is done, keeping the judge off
 		// the scenario critical path while persisting verdicts to run outputs.
-		const verdictsPromise = buildExpectationsByKey.get(
-			`${String(iteration)}:${inputs.testCaseFile}`,
-		);
+		const verdictsPromise = buildExpectationsByKey.get(cacheKey);
 		const attachExpectations = async (output: TargetOutput): Promise<TargetOutput> => {
 			const verdicts = await verdictsPromise;
 			return verdicts && verdicts.length > 0 ? { ...output, expectationResults: verdicts } : output;
@@ -1022,12 +1106,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		// so LangSmith pass metrics stay truthful for scenario-less cases. Checked before
 		// the workflowId guard because answer-only cases legitimately end without a
 		// workflow (workflowExpectedForCase).
-		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME && build.success) {
+		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME && (build.success || agentRunnable)) {
 			const verdicts = await verdictsPromise;
 			const outcome = sentinelOutcomeFromVerdicts(verdicts);
 			return {
 				buildSuccess: true,
 				workflowId: build.workflowId,
+				...(agentRef ? { agentId: agentRef.id } : {}),
+				...(agentRef ? { agentContext: await agentContextByKey.get(cacheKey) } : {}),
 				passed: outcome.passed,
 				score: outcome.score,
 				reasoning: outcome.reasoning,
@@ -1045,7 +1131,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			};
 		}
 
-		if (!build.success || !build.workflowId) {
+		if (!agentRunnable && (!build.success || !build.workflowId)) {
 			return await attachExpectations({
 				buildSuccess: false,
 				passed: false,
@@ -1064,6 +1150,92 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				buildTrace: build.buildTrace,
 				planRejections: build.proxyDecisionStats?.rejection ?? 0,
 			});
+		}
+
+		// Agent scenario path — real model, mocked tool HTTP. Mirrors the
+		// workflow branch below (retry loop, framework_issue guard, output shape).
+		if (agentRunnable && agentRef) {
+			// Dataset rows don't carry seedDataTables — check the authored scenario.
+			warnAgentSeedDataTablesIgnored(
+				logger,
+				scenario.name,
+				testCaseByFileSlug
+					.get(inputs.testCaseFile)
+					?.executionScenarios?.find((s) => s.name === scenario.name)?.seedDataTables,
+			);
+			const agentExecStart = Date.now();
+			const agentContext =
+				(await agentContextByKey.get(cacheKey)) ?? '(agent configuration could not be fetched)';
+			let agentResult;
+			for (let attempt = 1; ; attempt++) {
+				try {
+					agentResult = await builtOnLane.tracedExecuteAgent({
+						agentId: agentRef.id,
+						scenario,
+						agentContext,
+						buildTrace: build.buildTrace,
+						timeoutMs: effectiveTimeoutMs(
+							testCaseByFileSlug.get(inputs.testCaseFile)?.complexity,
+							args.timeoutMs,
+						),
+						testCaseName: inputs.testCaseFile,
+					});
+					break;
+				} catch (error: unknown) {
+					const errorMessage = extractErrorMessage(error);
+					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
+						logger.warn(
+							`    [${scenario.name}] agent execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
+						);
+						await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+						continue;
+					}
+					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+					return await attachExpectations({
+						buildSuccess: true,
+						agentId: agentRef.id,
+						agentContext,
+						passed: false,
+						score: 0,
+						reasoning: `Agent scenario execution error: ${errorMessage}`,
+						failureCategory: 'framework_issue',
+						execErrors: [errorMessage],
+						buildDurationMs,
+						execDurationMs: Date.now() - agentExecStart,
+						nodeCount: 0,
+						threadId: build.threadId,
+						buildTrace: build.buildTrace,
+						planRejections: build.proxyDecisionStats?.rejection ?? 0,
+					});
+				}
+			}
+
+			const agentFailureCategory = agentResult.success ? undefined : agentResult.failureCategory;
+			const agentRootCause = agentResult.success ? undefined : agentResult.rootCause;
+			return await attachExpectations({
+				buildSuccess: true,
+				agentId: agentRef.id,
+				agentContext,
+				agentEvalResult: agentResult.agentEvalResult,
+				passed: agentResult.success,
+				score: agentResult.score,
+				reasoning: agentResult.reasoning,
+				failureCategory: agentFailureCategory,
+				rootCause: agentRootCause,
+				...(agentResult.incomplete ? { incomplete: true } : {}),
+				execErrors: agentResult.agentEvalResult?.errors ?? [],
+				buildDurationMs,
+				execDurationMs: Date.now() - agentExecStart,
+				nodeCount: 0,
+				threadId: build.threadId,
+				buildTrace: build.buildTrace,
+				planRejections: build.proxyDecisionStats?.rejection ?? 0,
+			});
+		}
+		if (!build.workflowId) {
+			// agentRunnable without an agentRef is unreachable; this narrows for TS
+			// and guards the workflow path below.
+			throw new Error(`No runnable artifact for scenario ${scenario.name}`);
 		}
 
 		const execStart = Date.now();
@@ -1091,18 +1263,22 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
 					continue;
 				}
-				// Mirror direct mode's per-scenario guard — without this, n8n API errors
-				// or verifier timeouts from executeWithLlmMock / verifyChecklist would
-				// escape to LangSmith, come back as a Run with null outputs, and be
-				// misclassified as builder regressions by the feedback extractor.
+				// Mirror direct mode's per-scenario guard — without this, n8n API errors,
+				// verifier timeouts, or a per-iteration budget abort from
+				// executeWithLlmMock / verifyChecklist would escape to LangSmith, come
+				// back as a Run with null outputs, and be misclassified as builder
+				// regressions by the feedback extractor. classifyScenarioExecutionError
+				// stamps framework_issue + a timeout-flavoured rootCause for budget aborts.
 				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+				const classified = classifyScenarioExecutionError(errorMessage);
 				return await attachExpectations({
 					buildSuccess: true,
 					workflowId: build.workflowId,
 					passed: false,
 					score: 0,
-					reasoning: `Scenario execution error: ${errorMessage}`,
-					failureCategory: 'framework_issue',
+					reasoning: classified.reasoning,
+					failureCategory: classified.failureCategory,
+					rootCause: classified.rootCause,
 					execErrors: [errorMessage],
 					buildDurationMs,
 					execDurationMs: Date.now() - execStart,
@@ -1558,29 +1734,40 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								tc.fileSlug,
 								iter,
 							);
-							const result = await runWorkflowTestCase({
-								client: lane.client,
-								baseUrl: lane.baseUrl,
-								testCase: tc.testCase,
-								timeoutMs: args.timeoutMs,
-								createdCredentialIds: lane.createdCredentialIds,
-								preRunWorkflowIds: lane.preRunWorkflowIds,
-								claimedWorkflowIds: lane.claimedWorkflowIds,
-								logger,
-								keepWorkflows: args.keepWorkflows,
-								laneTag,
-								prebuiltWorkflowId,
-								pinAiRoots: args.pinAiRoots,
-							});
-							if (
-								prebuiltWorkflowId !== undefined &&
-								cleanupBuiltWorkflows &&
-								result.workflowBuildSuccess &&
-								result.workflowId
-							) {
-								lane.workflowIdsToDelete.add(result.workflowId);
+							try {
+								const result = await runWorkflowTestCase({
+									client: lane.client,
+									baseUrl: lane.baseUrl,
+									testCase: tc.testCase,
+									timeoutMs: args.timeoutMs,
+									createdCredentialIds: lane.createdCredentialIds,
+									preRunWorkflowIds: lane.preRunWorkflowIds,
+									claimedWorkflowIds: lane.claimedWorkflowIds,
+									logger,
+									keepWorkflows: args.keepWorkflows,
+									laneTag,
+									prebuiltWorkflowId,
+									pinAiRoots: args.pinAiRoots,
+								});
+								if (
+									prebuiltWorkflowId !== undefined &&
+									cleanupBuiltWorkflows &&
+									result.workflowBuildSuccess &&
+									result.workflowId
+								) {
+									lane.workflowIdsToDelete.add(result.workflowId);
+								}
+								return result;
+							} catch (error: unknown) {
+								// runWorkflowTestCase guards its own scenario loop, but a throw
+								// from the build phase (or a per-iteration budget abort) would
+								// otherwise reject runWithConcurrency and take every OTHER case's
+								// completed results down with it. Record this one case as an
+								// aborted (framework_issue) result and keep the batch alive.
+								const message = extractErrorMessage(error);
+								logger.error(`  ERROR running ${tc.fileSlug}${laneTag}: ${message}`);
+								return abortedWorkflowTestCaseResult(tc.testCase, lane.baseUrl, message);
 							}
-							return result;
 						},
 						MAX_CONCURRENT_BUILDS,
 					);
@@ -1589,7 +1776,12 @@ async function runDirectLoop(config: RunConfig): Promise<{
 			);
 			const flat = laneResults.flat();
 			flat.sort((a, b) => a.origIdx - b.origIdx);
-			return flat.map((x) => x.result);
+			const iterationResults = flat.map((x) => x.result);
+			// Capture each iteration as it completes (source-ordered, full-length) so
+			// an abort in a LATER iteration still leaves runEvalAndPersist the ones
+			// that finished — every captured array is a complete, index-aligned row.
+			config.partialResults?.push(iterationResults);
+			return iterationResults;
 		}),
 	);
 
@@ -1720,7 +1912,104 @@ function ciRerunHint(): RerunHint | undefined {
 	};
 }
 
-function writeEvalResults(
+/** What `runEval` produces on success — the aggregation plus the LangSmith-only
+ *  comparison metadata (undefined in direct-loop mode). */
+export interface EvalRunOutput {
+	evaluation: MultiRunEvaluation;
+	experimentName?: string;
+	experimentUrl?: string;
+	outcome?: ComparisonOutcome;
+	slugByTestCase?: Map<WorkflowTestCase, string>;
+}
+
+export interface PersistEvalConfig {
+	logger: EvalLogger;
+	outputDir: string | undefined;
+	startTime: number;
+	iterations: number;
+	tier: CliArgs['tier'];
+	commitSha: string | undefined;
+	rerun: RerunHint | undefined;
+	mcpBuildSpend: McpBuildSpend[];
+}
+
+export interface PersistedEval extends EvalRunOutput {
+	gate: GateResult | undefined;
+	jsonPath: string;
+	prCommentPath: string;
+}
+
+/**
+ * Run the eval via `runEval` and ALWAYS persist eval-results.json +
+ * eval-pr-comment.md. On success returns the aggregation + write metadata so the
+ * caller can render the HTML report / terminal summary.
+ *
+ * If `runEval` throws — a per-iteration budget/timeout abort, a lane meltdown, an
+ * OOM — whatever it pushed into `partialResults` before throwing is aggregated
+ * and written before the error is re-thrown. Aggregation already tolerates
+ * missing/incomplete entries, so the scenarios that already completed survive
+ * instead of the dispatcher finding no file and discarding the entire run.
+ */
+export async function runEvalAndPersist(
+	config: PersistEvalConfig,
+	runEval: (partialResults: WorkflowTestCaseResult[][]) => Promise<EvalRunOutput>,
+): Promise<PersistedEval> {
+	const partialResults: WorkflowTestCaseResult[][] = [];
+	let persisted = false;
+	try {
+		const out = await runEval(partialResults);
+		// Gated tiers report an absolute green verdict in place of the baseline comparison.
+		const gate = isGatedTier(config.tier)
+			? evaluateGate(out.evaluation, { slugByTestCase: out.slugByTestCase })
+			: undefined;
+		const { jsonPath, prCommentPath } = writeEvalResults(
+			out.evaluation,
+			Date.now() - config.startTime,
+			config.outputDir,
+			out.experimentName,
+			out.outcome,
+			config.commitSha,
+			out.slugByTestCase,
+			config.rerun,
+			gate,
+			config.mcpBuildSpend,
+			out.experimentUrl,
+		);
+		persisted = true;
+		return { ...out, gate, jsonPath, prCommentPath };
+	} finally {
+		if (!persisted) {
+			try {
+				const evaluation: MultiRunEvaluation =
+					partialResults.length > 0
+						? aggregateResults(partialResults, partialResults.length)
+						: { totalRuns: config.iterations, testCases: [] };
+				const { jsonPath } = writeEvalResults(
+					evaluation,
+					Date.now() - config.startTime,
+					config.outputDir,
+					undefined,
+					undefined,
+					config.commitSha,
+					undefined,
+					config.rerun,
+					undefined,
+					config.mcpBuildSpend,
+					undefined,
+				);
+				config.logger.error(
+					`Eval run did not finish cleanly — wrote partial results (${String(partialResults.length)} iteration(s)) to ${jsonPath}`,
+				);
+			} catch (writeError: unknown) {
+				config.logger.error(
+					`Failed to write partial eval results: ${extractErrorMessage(writeError)}`,
+				);
+			}
+		}
+	}
+}
+
+export function writeEvalResults(
 	evaluation: MultiRunEvaluation,
 	duration: number,
 	outputDir: string | undefined,
@@ -1735,6 +2024,7 @@ function writeEvalResults(
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
+	const verification = rollupCaseVerification(testCases);
 
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
@@ -1756,6 +2046,9 @@ function writeEvalResults(
 			passAtK: metrics.passAtK,
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
+			// Cases where nothing could be scored (all units incomplete / skipped) —
+			// reported apart from the pass rate, never as a silent pass.
+			notVerified: verification.notVerified,
 			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 			...(buildSpendSummary ? { mcpBuild: buildSpendSummary } : {}),
 		},
@@ -1777,6 +2070,9 @@ function writeEvalResults(
 		testCases: testCases.map((tc) => ({
 			name: caseDisplayPrompt(tc.testCase, tc.runs[0]?.transcript).slice(0, 70),
 			testCaseFile: slugByTestCase?.get(tc.testCase),
+			// `notVerified` when no scenario or expectation was scored across runs —
+			// consumers must not treat a zero pass rate here as a pass.
+			status: tc.status,
 			buildSuccessCount: tc.buildSuccessCount,
 			totalRuns,
 			workflowChecksPerRun: tc.runs.map((run) =>
@@ -1800,14 +2096,18 @@ function writeEvalResults(
 				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
 					workflowId: sr.workflowId ?? tc.runs[runIndex]?.workflowId ?? null,
+					...((sr.agentId ?? tc.runs[runIndex]?.agentId)
+						? { agentId: sr.agentId ?? tc.runs[runIndex]?.agentId }
+						: {}),
 					passed: sr.success,
 					...(sr.incomplete ? { incomplete: true } : {}),
 					score: sr.score,
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
 					rootCause: sr.rootCause,
-					execErrors: sr.evalResult?.errors ?? [],
+					execErrors: sr.evalResult?.errors ?? sr.agentEvalResult?.errors ?? [],
 					evalResult: sr.evalResult,
+					...(sr.agentEvalResult ? { agentEvalResult: sr.agentEvalResult } : {}),
 				})),
 			})),
 		})),
@@ -1909,7 +2209,12 @@ async function tryRunComparison(config: {
 	}
 }
 
-main().catch((error) => {
-	console.error('Fatal error:', error);
-	process.exit(1);
-});
+// Only auto-run as the CLI entry point. Importing this module (e.g. from a unit
+// test that exercises the exported runEvalAndPersist / writeEvalResults seams)
+// must not kick off a real eval run against process.argv.
+if (!process.env.VITEST) {
+	main().catch((error) => {
+		console.error('Fatal error:', error);
+		process.exit(1);
+	});
+}

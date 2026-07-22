@@ -77,34 +77,79 @@ export class AgentTaskService {
 	 * scheduling follows the published config (see `registerEnabledForAgent`).
 	 */
 	async create(agentId: string, dto: CreateAgentTaskDto): Promise<AgentTaskDto> {
-		this.assertValidCron(dto.cronExpression);
+		const [task] = await this.createTasksBatch(agentId, undefined, [dto]);
+		return task;
+	}
 
-		const agent = await this.agentRepository.findOne({ where: { id: agentId } });
+	/**
+	 * Create multiple task bodies and attach their `{ type:'task', id, enabled }`
+	 * refs to the agent's draft config in one transaction. Scoped to
+	 * `projectId` to match the builder tool's existing project check. Does not
+	 * register cron jobs — scheduling follows the published config.
+	 */
+	async createTasks(
+		agentId: string,
+		projectId: string,
+		dtos: CreateAgentTaskDto[],
+	): Promise<AgentTaskDto[]> {
+		return await this.createTasksBatch(agentId, projectId, dtos);
+	}
+
+	/**
+	 * Shared implementation behind `create` and `createTasks`. Rejects an empty
+	 * batch before loading the agent. All-or-nothing: every cron is validated
+	 * before any row is created, so an invalid item leaves the agent untouched.
+	 *
+	 * Task rows and the agent config refs are saved in one transaction.
+	 */
+	private async createTasksBatch(
+		agentId: string,
+		projectId: string | undefined,
+		dtos: CreateAgentTaskDto[],
+	): Promise<AgentTaskDto[]> {
+		if (dtos.length === 0) {
+			throw new BadRequestError('At least one task is required');
+		}
+
+		for (const dto of dtos) {
+			this.assertValidCron(dto.cronExpression);
+		}
+
+		const agent = projectId
+			? await this.agentRepository.findByIdAndProjectId(agentId, projectId)
+			: await this.agentRepository.findOne({ where: { id: agentId } });
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (!agent.schema) throw new BadRequestError('Agent has no config yet');
 
-		const taskId = generateAgentResourceId(
-			'task',
-			(agent.schema.tasks ?? []).map((ref) => ref.id),
-		);
-		const task = this.taskRepository.create({
-			id: taskId,
-			agentId,
-			name: dto.name,
-			objective: dto.objective,
-			cronExpression: dto.cronExpression,
+		const tasks = dtos.map((dto) => {
+			const taskId = generateAgentResourceId(
+				'task',
+				(agent.schema?.tasks ?? []).map((ref) => ref.id),
+			);
+			this.attachTaskRef(agent, taskId, dto.enabled ?? true);
+			return this.taskRepository.create({
+				id: taskId,
+				agentId,
+				name: dto.name,
+				objective: dto.objective,
+				cronExpression: dto.cronExpression,
+			});
 		});
 
-		this.attachTaskRef(agent, taskId, dto.enabled ?? true);
 		markAgentDraftDirty(agent);
 
 		await this.agentRepository.manager.transaction(async (em) => {
-			await em.save(task);
+			for (const task of tasks) {
+				await em.save(task);
+			}
 			await em.save(agent);
 		});
 
-		this.logger.debug('[AgentTaskService] Created task', { agentId, taskId });
-		return this.toDto(task);
+		this.logger.debug('[AgentTaskService] Created tasks', {
+			agentId,
+			taskIds: tasks.map((task) => task.id),
+		});
+		return tasks.map((task) => this.toDto(task));
 	}
 
 	/**

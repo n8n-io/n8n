@@ -67,6 +67,7 @@ import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
@@ -318,13 +319,26 @@ export async function executeWorkflow(
 
 	const executionId = await activeExecutions.add(runData);
 
+	const { OwnershipService } = await import('@/services/ownership.service.js');
+	const { projectId, projectName } = await getWorkflowProjectDetailsSafe(
+		Container.get(OwnershipService),
+		workflowData.id,
+	);
+
 	Container.get(EventService).emit('workflow-executed', {
 		user: additionalData.userId ? { id: additionalData.userId } : undefined,
 		workflowId: workflowData.id,
 		workflowName: workflowData.name,
 		executionId,
+		projectId,
+		projectName,
 		source: 'integrated',
 	});
+
+	// A sub-workflow loaded from inline JSON / file / URL (source other than a
+	// stored database workflow) carries no project of its own. Its credentials
+	// must be evaluated against the triggering user, not the parent's project.
+	const isInlineSubworkflow = workflowInfo.code !== undefined && workflowInfo.id === undefined;
 
 	const executionPromise = startExecution(
 		additionalData,
@@ -332,6 +346,7 @@ export async function executeWorkflow(
 		executionId,
 		runData,
 		workflowData,
+		isInlineSubworkflow,
 	);
 
 	if (options.doNotWaitToFinish) {
@@ -484,6 +499,7 @@ async function startExecution(
 	executionId: string,
 	runData: IWorkflowExecutionDataProcess,
 	workflowData: IWorkflowBase,
+	isInlineSubworkflow = false,
 ): Promise<ExecuteWorkflowData> {
 	const nodeTypes = Container.get(NodeTypes);
 	const activeExecutions = Container.get(ActiveExecutions);
@@ -512,7 +528,17 @@ async function startExecution(
 
 	let data;
 	try {
-		await Container.get(CredentialsPermissionChecker).check(workflowData.id, workflowData.nodes);
+		if (isInlineSubworkflow && additionalData.userId) {
+			// Inline sub-workflow triggered by a specific user: its credentials were
+			// never vetted against that user (they live only in the parameter JSON),
+			// so validate them against the user rather than the parent's project.
+			await Container.get(CredentialsPermissionChecker).checkForUser(
+				additionalData.userId,
+				workflowData.nodes,
+			);
+		} else {
+			await Container.get(CredentialsPermissionChecker).check(workflowData.id, workflowData.nodes);
+		}
 		await Container.get(SubworkflowPolicyChecker).check(
 			workflow,
 			options.parentWorkflowId,
@@ -524,6 +550,11 @@ async function startExecution(
 		// different webhooks
 		const workflowSettings = workflowData.settings;
 		const additionalDataIntegrated = await getBase({
+			// Inline sub-workflows carry no project, so the triggering user must be
+			// preserved for nested inline calls to be validated against that user too.
+			// Stored sub-workflows run under their own project scope, so their userId
+			// stays unset (their credentials are validated against the project instead).
+			userId: isInlineSubworkflow ? additionalData.userId : undefined,
 			workflowId: workflowData.id,
 			workflowSettings,
 		});
@@ -805,6 +836,9 @@ export async function getBase({
 		},
 		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
 			eventService.emit(eventName, payload);
+		},
+		logHitlResponse: (payload) => {
+			eventService.emit('hitl-response-actioned', payload);
 		},
 		getRunnerStatus: (taskType: string) =>
 			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).getRunnerStatus(taskType),

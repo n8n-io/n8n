@@ -173,12 +173,15 @@ export class InstanceAiConfig {
 	runDebugEnabled: boolean = false;
 
 	/**
-	 * EXPERIMENTAL: persist Instance AI events to a durable DB log
-	 * (`instance_ai_events`) and serve SSE replay + history from it. Off =
-	 * today's in-memory-only behavior. See RFC: instance-ai durable event log.
+	 * Persist Instance AI events to a durable DB log (`instance_ai_events`)
+	 * and serve SSE replay + history from it. Default on since Gate A of the
+	 * durable-log rollout (pre-existing runs are backfilled by migration);
+	 * `false` restores the legacy in-memory bus + stored-snapshot history as
+	 * an off switch until the legacy paths sunset at Gate B. See RFC:
+	 * instance-ai durable event log.
 	 */
 	@Env('N8N_INSTANCE_AI_DURABLE_LOG')
-	durableLog: boolean = false;
+	durableLog: boolean = true;
 
 	/** Enable extended thinking / reasoning for the orchestrator agent. */
 	@Env('N8N_INSTANCE_AI_THINKING_ENABLED')

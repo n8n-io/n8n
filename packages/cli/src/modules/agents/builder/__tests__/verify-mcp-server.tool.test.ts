@@ -161,7 +161,7 @@ describe('buildVerifyMcpServerTool', () => {
 				transport: 'sse',
 				authentication: 'bearerAuth',
 				credential: 'cred-42',
-				connectionTimeoutMs: 10_000,
+				connectionTimeoutMs: 42_000,
 			},
 			{} as never,
 		);
@@ -173,7 +173,7 @@ describe('buildVerifyMcpServerTool', () => {
 				transport: 'sse',
 				authentication: 'bearerAuth',
 				credential: 'cred-42',
-				connectionTimeoutMs: 10_000,
+				connectionTimeoutMs: 42_000,
 			}),
 			expect.objectContaining({
 				credentialProvider: deps.credentialProvider,
@@ -183,16 +183,77 @@ describe('buildVerifyMcpServerTool', () => {
 		);
 	});
 
-	it('omits connectionTimeoutMs from the factory call when not provided', async () => {
+	it('defaults connectionTimeoutMs to 10000ms when not provided', async () => {
 		const mcpClient = makeMcpClient();
 		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
 
 		const tool = buildVerifyMcpServerTool(makeDeps());
 		await tool.handler!({ name: 'my-server', url: 'https://example.test/mcp' }, {} as never);
 
-		const [serverArg] = buildMcpClientForServerMock.mock.calls[0] as unknown as [
-			Record<string, unknown>,
-		];
-		expect(serverArg).not.toHaveProperty('connectionTimeoutMs');
+		expect(buildMcpClientForServerMock).toHaveBeenCalledWith(
+			expect.objectContaining({ connectionTimeoutMs: 10_000 }),
+			expect.anything(),
+		);
+	});
+
+	it('times out listTools after the resolved deadline and closes the client', async () => {
+		vi.useFakeTimers();
+		try {
+			const closeMock = vi.fn().mockResolvedValue(undefined);
+			const mcpClient = makeMcpClient({
+				listTools: vi.fn(async () => await new Promise<never>(() => {})),
+				close: closeMock,
+			});
+			buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+			const tool = buildVerifyMcpServerTool(makeDeps());
+			const resultPromise = tool.handler!(
+				{ name: 'my-server', url: 'https://example.test/mcp' },
+				{} as never,
+			);
+
+			await vi.advanceTimersByTimeAsync(10_000);
+			const result = await resultPromise;
+
+			expect(result).toEqual({
+				ok: false,
+				error: 'MCP server verification timed out after 10000ms',
+			});
+			expect(closeMock).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('cancels an in-flight verification when the run is aborted and closes the client', async () => {
+		const closeMock = vi.fn().mockResolvedValue(undefined);
+		let notifyListToolsStarted: () => void;
+		const listToolsStarted = new Promise<void>((resolve) => {
+			notifyListToolsStarted = resolve;
+		});
+		const mcpClient = makeMcpClient({
+			listTools: vi.fn(async () => {
+				notifyListToolsStarted();
+				return await new Promise<never>(() => {});
+			}),
+			close: closeMock,
+		});
+		buildMcpClientForServerMock.mockResolvedValue(mcpClient);
+
+		const abortController = new AbortController();
+		const tool = buildVerifyMcpServerTool(makeDeps());
+		const resultPromise = tool.handler!({ name: 'my-server', url: 'https://example.test/mcp' }, {
+			abortSignal: abortController.signal,
+		} as never);
+
+		// Wait until listTools has actually started (and the abort listener is
+		// registered) before aborting, so this exercises true in-flight
+		// cancellation rather than the pre-aborted check.
+		await listToolsStarted;
+		abortController.abort();
+		const result = await resultPromise;
+
+		expect(result).toEqual({ ok: false, error: 'MCP server verification was cancelled' });
+		expect(closeMock).toHaveBeenCalledTimes(1);
 	});
 });

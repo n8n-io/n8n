@@ -5,9 +5,12 @@ import type {
 	EvaluationCollectionDetail,
 	EvaluationCollectionRecord,
 	EvaluationCollectionRunSummary,
+	MetricScale,
 	UpdateEvaluationCollectionPayload,
 } from '@n8n/api-types';
-import type { TestRun, User } from '@n8n/db';
+import { metricScalesFromConfig, normalizeMetricScore } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
@@ -16,8 +19,8 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import type { IDataObject } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -27,10 +30,8 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 /**
- * Bare shape of the {@link EvaluationCollection} fields the service uses for
- * building API records — kept structural (not the full entity class with
- * methods + relations) so callers can pass plain-object spreads from
- * `EvaluationCollectionListItem`.
+ * Structural (not the full entity class) so callers can pass plain-object
+ * spreads from `EvaluationCollectionListItem`.
  */
 type CollectionFields = {
 	id: string;
@@ -44,11 +45,9 @@ type CollectionFields = {
 };
 
 /**
- * Orchestrates eval-collection lifecycle: validating + creating collections,
- * kicking off the per-version test runs that make up a collection,
- * curating membership, and broadcasting collection-level cancellation. The
- * runner itself stays unaware of collections — collection metadata is
- * passed through `TestRunnerService.startTestRun()` as opaque options.
+ * Orchestrates the eval-collection lifecycle. The runner stays unaware of
+ * collections — collection metadata is passed through
+ * `TestRunnerService.startTestRun()` as opaque options.
  */
 @Service()
 export class EvaluationCollectionService {
@@ -61,6 +60,7 @@ export class EvaluationCollectionService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
+		private readonly logger: Logger,
 	) {}
 
 	async createCollection(
@@ -68,9 +68,8 @@ export class EvaluationCollectionService {
 		workflowId: string,
 		input: CreateEvaluationCollectionPayload,
 	): Promise<{ record: EvaluationCollectionRecord; runsStartedIds: string[] }> {
-		// 1. Validate evaluation config belongs to this workflow. Without this
-		// check a caller with access to two workflows could attach config A
-		// to workflow B's collection — the comparison would silently break.
+		// Validate the config belongs to this workflow, else a caller with access
+		// to two workflows could attach config A to workflow B's collection.
 		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 			input.evaluationConfigId,
 			workflowId,
@@ -79,9 +78,8 @@ export class EvaluationCollectionService {
 			throw new NotFoundError('EvaluationConfig not found for this workflow');
 		}
 
-		// 2. Validate version IDs + reused-run IDs. Done up front so we either
-		// commit the whole collection cleanly or reject before any side
-		// effects (collection row, snapshot, runner kickoff).
+		// Validate version + reused-run IDs up front, so we reject before any side
+		// effect (collection row, snapshot, runner kickoff) rather than part-way.
 		for (const [index, v] of input.versions.entries()) {
 			if (v.workflowVersionId) {
 				const exists = await this.workflowHistoryService.findVersion(
@@ -105,12 +103,8 @@ export class EvaluationCollectionService {
 						`versions[${index}]: test run "${v.existingTestRunId}" is not compatible with this collection`,
 					);
 				}
-				// If the caller asks for version A but supplies a run from
-				// version B we'd silently attach B and never schedule A — the
-				// resulting "collection on version A" would actually be
-				// "collection on version B". Reject up front so the caller
-				// can decide whether to omit `workflowVersionId` (use the run
-				// as-is) or change `existingTestRunId` (run a fresh A).
+				// A run pinned to a different version than requested would
+				// silently attach that version instead — reject the mismatch.
 				if (v.workflowVersionId && run.workflowVersionId !== v.workflowVersionId) {
 					throw new BadRequestError(
 						`versions[${index}]: test run "${v.existingTestRunId}" was executed against version "${
@@ -118,20 +112,25 @@ export class EvaluationCollectionService {
 						}", not the requested "${v.workflowVersionId}"`,
 					);
 				}
-				// Unpinned legacy runs (no `workflowVersionId`) cannot be
-				// reused in collections — the whole point is comparability
-				// across pinned versions, and an unpinned run could have
-				// executed against any historical workflow state.
+				// Unpinned legacy runs break the comparability promise — they
+				// could have executed against any historical workflow state.
 				if (!run.workflowVersionId) {
 					throw new BadRequestError(
 						`versions[${index}]: test run "${v.existingTestRunId}" has no pinned workflow version and cannot be reused in a collection`,
 					);
 				}
+				// Only a completed run has comparable scores; reusing a
+				// failed/cancelled/running one would seed a broken version.
+				if (run.status !== 'completed') {
+					throw new BadRequestError(
+						`versions[${index}]: test run "${v.existingTestRunId}" has status "${run.status}" and is not a completed result; omit it to run a fresh evaluation`,
+					);
+				}
 			}
 		}
 
-		// 3. Persist the collection. We do this *before* kicking off any new
-		// runs so the runs can be tagged with `collectionId` at creation time.
+		// Persist before kicking off runs so each run can be tagged with
+		// `collectionId` at creation time.
 		const collection = await this.collectionRepo.createCollection({
 			id: nanoid(),
 			name: input.name,
@@ -141,7 +140,7 @@ export class EvaluationCollectionService {
 			createdById: user.id,
 		});
 
-		// 4. Wire up runs the user wants to reuse.
+		// Attach the runs the user wants to reuse.
 		const existingRunIds = input.versions
 			.filter((v) => v.existingTestRunId)
 			.map((v) => v.existingTestRunId!);
@@ -149,18 +148,10 @@ export class EvaluationCollectionService {
 			await this.collectionRepo.addRunsToCollection(collection.id, existingRunIds);
 		}
 
-		// 5. Kick off new runs for versions that weren't matched to an existing
-		// run. For "current draft" entries we snapshot a `WorkflowHistory` row
-		// first so the new run is pinned to an immutable version — otherwise
-		// the next edit to the live workflow would invalidate the comparison.
-		// Freeze the evaluation config in `evaluationConfigSnapshot` for the
-		// same reason: future config edits must not retroactively change what
-		// a historical run was evaluating.
-		const configSnapshot = {
-			...config,
-			createdAt: config.createdAt.toISOString(),
-			updatedAt: config.updatedAt.toISOString(),
-		};
+		// Kick off runs for unmatched versions. "Current draft" entries snapshot a
+		// `WorkflowHistory` row first so the run pins an immutable version, and the
+		// config is frozen too — later edits must not change what a run evaluated.
+		const configSnapshot = this.freezeConfigSnapshot(config);
 
 		const runsStartedIds: string[] = [];
 		for (const v of input.versions) {
@@ -170,18 +161,15 @@ export class EvaluationCollectionService {
 				v.workflowVersionId ??
 				(await this.workflowHistoryService.snapshotCurrent(workflowId)).versionId;
 
-			const { testRun } = await this.testRunnerService.startTestRun(
-				user,
-				workflowId,
-				input.concurrency ?? 1,
-				{
+			runsStartedIds.push(
+				await this.startCollectionRun(user, workflowId, {
 					collectionId: collection.id,
 					workflowVersionId: versionId,
 					evaluationConfigId: input.evaluationConfigId,
-					evaluationConfigSnapshot: configSnapshot,
-				},
+					configSnapshot,
+					concurrency: input.concurrency ?? 1,
+				}),
 			);
-			runsStartedIds.push(testRun.id);
 		}
 
 		this.telemetry.track('Eval collection created', {
@@ -199,6 +187,118 @@ export class EvaluationCollectionService {
 		return { record, runsStartedIds };
 	}
 
+	/**
+	 * Re-attempts a collection's runs: one fresh run per version it currently
+	 * compares, then unlinks the old runs so the compare view shows only the new
+	 * attempt. Versions are derived from the current runs' distinct pinned
+	 * versions, and the config is re-frozen from its *current* state (a re-run
+	 * usually follows a config fix, so the stale snapshot would just re-fail).
+	 */
+	async rerunCollection(
+		user: User,
+		workflowId: string,
+		collectionId: string,
+	): Promise<{ record: EvaluationCollectionRecord; runsStartedIds: string[] }> {
+		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
+		if (!detail) throw new NotFoundError('Collection not found');
+		const { collection, runs } = detail;
+
+		// Reject while anything is still in flight — a second wave would double
+		// the runs and leave the compare view ambiguous about the current attempt.
+		if (runs.some((r) => r.status === 'new' || r.status === 'running')) {
+			throw new BadRequestError('Collection run already in progress');
+		}
+
+		// Derive versions from the current runs (distinct pinned ids in run order)
+		// BEFORE any unlink, so we capture the on-screen membership.
+		const versionIds: string[] = [];
+		const seenVersions = new Set<string>();
+		for (const run of runs) {
+			if (run.workflowVersionId && !seenVersions.has(run.workflowVersionId)) {
+				seenVersions.add(run.workflowVersionId);
+				versionIds.push(run.workflowVersionId);
+			}
+		}
+		if (versionIds.length === 0) {
+			throw new BadRequestError('Collection has no pinned versions to re-run');
+		}
+
+		// Re-freeze the current eval config (see the doc comment for why).
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
+			collection.evaluationConfigId,
+			workflowId,
+		);
+		if (!config) {
+			throw new BadRequestError(
+				'Evaluation config for this collection no longer exists; cannot re-run',
+			);
+		}
+		const configSnapshot = this.freezeConfigSnapshot(config);
+
+		// Kick off one fresh run per version. If any fails to start, roll back the
+		// fresh runs from this call and leave the old runs untouched, so the
+		// collection stays in its pre-rerun state rather than a partial mix.
+		const runsStartedIds: string[] = [];
+		try {
+			for (const versionId of versionIds) {
+				runsStartedIds.push(
+					await this.startCollectionRun(user, workflowId, {
+						collectionId: collection.id,
+						workflowVersionId: versionId,
+						evaluationConfigId: collection.evaluationConfigId,
+						configSnapshot,
+						concurrency: 1,
+					}),
+				);
+			}
+
+			// Replace the old runs with the fresh attempt in one atomic unlink. Kept
+			// inside the try so a failure here rolls the whole attempt back too; the
+			// unlink is all-or-nothing, so a failure leaves the old runs untouched.
+			await this.collectionRepo.removeRunsFromCollection(
+				collection.id,
+				runs.map((run) => run.id),
+			);
+		} catch (error) {
+			// Restore the pre-rerun state (only the old runs linked): cancel the fresh
+			// runs so they stop consuming compute and can't bust the insights cache
+			// (the runner reads the collectionId captured at start), then unlink them.
+			// The old runs are still linked — their unlink is atomic, so a failure
+			// left them untouched.
+			for (const runId of runsStartedIds) {
+				await this.testRunnerService.cancelTestRun(runId).catch(() => {});
+			}
+			try {
+				await this.collectionRepo.removeRunsFromCollection(collection.id, runsStartedIds);
+			} catch (cleanupError) {
+				// The rollback unlink itself failed — the collection may now hold both
+				// the old and fresh runs. Surface it so the inconsistency isn't silent;
+				// still throw the original error, which is the actionable cause.
+				this.logger.error(
+					'Failed to roll back eval collection re-run; collection may contain a mixed run set',
+					{ collectionId: collection.id, error: cleanupError },
+				);
+			}
+			throw error;
+		}
+
+		// Membership changed — the cached insights envelope is now stale.
+		await this.collectionRepo.updateInsightsCache(collection.id, null);
+
+		this.telemetry.track('Eval collection rerun', {
+			user_id: user.id,
+			workflow_id: workflowId,
+			collection_id: collection.id,
+			evaluation_config_id: collection.evaluationConfigId,
+			version_count: versionIds.length,
+			new_run_count: runsStartedIds.length,
+			dataset_id: this.extractDatasetId(config),
+		});
+
+		const record = this.toRecord(collection, runsStartedIds.length);
+		return { record, runsStartedIds };
+	}
+
 	async listCollections(workflowId: string): Promise<EvaluationCollectionRecord[]> {
 		const items = await this.collectionRepo.listByWorkflowId(workflowId);
 		return items.map(({ runCount, ...c }) => this.toRecord(c, runCount));
@@ -211,8 +311,14 @@ export class EvaluationCollectionService {
 		const detail = await this.collectionRepo.getDetailByIdAndWorkflowId(collectionId, workflowId);
 		if (!detail) throw new NotFoundError('Collection not found');
 
-		const runs = detail.runs.map((r) => this.toRunSummary(r));
-		return { ...this.toRecord(detail.collection, runs.length), runs };
+		// Resolve each metric's scale from the eval config so scores normalize by
+		// scale, not metric name. Passed to the FE via `metricScales`.
+		const scaleByMetric = await this.buildScaleByMetric(
+			detail.collection.evaluationConfigId,
+			workflowId,
+		);
+		const runs = detail.runs.map((r) => this.toRunSummary(r, scaleByMetric));
+		return { ...this.toRecord(detail.collection, runs.length), runs, metricScales: scaleByMetric };
 	}
 
 	async updateCollectionMeta(
@@ -231,19 +337,13 @@ export class EvaluationCollectionService {
 		workflowId: string,
 		collectionId: string,
 	): Promise<{ runsUnlinked: number }> {
-		// Verify the collection belongs to this workflow *before* any
-		// cancellation side effects. Otherwise a caller with `workflow:update`
-		// on workflow A could pass a known collection id from workflow B and
-		// trigger cancellation (abort + pubsub fan-out + DB writes) before
-		// receiving the eventual 404 from `deleteByIdAndWorkflowId`.
+		// Verify ownership before any cancellation side effect, else a caller
+		// could trigger another workflow's cancellation before getting a 404.
 		const owned = await this.collectionRepo.findByIdAndWorkflowId(collectionId, workflowId);
 		if (!owned) throw new NotFoundError('Collection not found');
 
-		// If any runs in this collection are still active, broadcast a
-		// collection-level cancel first so workers stop touching rows we're
-		// about to unlink. The FK is SET NULL anyway, but cancelling avoids
-		// post-delete writes flipping a deleted collection's runs back into
-		// limbo on a foreign main.
+		// Cancel active runs first so workers stop touching rows we're about to
+		// unlink — otherwise post-delete writes on a foreign main strand them.
 		const active = await this.testRunRepo.find({
 			where: [
 				{ collectionId, status: 'running' },
@@ -288,9 +388,7 @@ export class EvaluationCollectionService {
 				'Test run is not compatible with this collection (different evaluation config)',
 			);
 		}
-		// Mirror the create-path invariant: an unpinned legacy run could have
-		// executed against any historical workflow state, so it breaks the
-		// comparability promise the collection exists to provide.
+		// Same invariant as the create path: an unpinned run breaks comparability.
 		if (!run.workflowVersionId) {
 			throw new BadRequestError(
 				'Test run has no pinned workflow version and cannot be added to a collection',
@@ -298,9 +396,7 @@ export class EvaluationCollectionService {
 		}
 
 		await this.collectionRepo.addRunsToCollection(collectionId, [testRunId]);
-		// Membership change invalidates the cached insights envelope — the
-		// cached winner / regressions were computed against the prior set of
-		// runs and can no longer be trusted.
+		// Membership change invalidates the cached insights envelope.
 		await this.collectionRepo.updateInsightsCache(collectionId, null);
 		return await this.getCollectionDetail(workflowId, collectionId);
 	}
@@ -318,24 +414,17 @@ export class EvaluationCollectionService {
 			throw new NotFoundError('Test run is not part of this collection');
 		}
 
-		// Same invariant as `addRunToCollection` — removing a run also
-		// shifts the comparable set, so previously-cached insights would
-		// reference a version that no longer participates.
+		// Same invariant as `addRunToCollection` — the comparable set shifted, so
+		// cached insights are stale.
 		await this.collectionRepo.updateInsightsCache(collectionId, null);
 		return await this.getCollectionDetail(workflowId, collectionId);
 	}
 
 	/**
-	 * Powers the setup wizard's versions table. Lists every named/auto-saved
-	 * workflow history row for the workflow, joined with the last test run
-	 * (if any) executed against the given `evaluationConfigId` on that
-	 * version. The "current draft" row is synthesised on top of that — its
-	 * `workflowVersionId` is null until the user commits.
-	 *
-	 * `★ best` / `⚠ low` annotations are computed in-memory from each
-	 * version's `avgScore`: the highest is `isBest`, anything below 0.6 is
-	 * `isCritical`. The thresholds match the spec mock and stay co-located
-	 * with the data so the FE doesn't have to re-derive them.
+	 * Powers the setup wizard's versions table: each workflow history row joined
+	 * with its last run against `evaluationConfigId`, plus a synthesised "current
+	 * draft" row (null `workflowVersionId` until committed). `isBest` / `isCritical`
+	 * are computed here (highest avg / below 0.6) so the FE doesn't re-derive them.
 	 */
 	async getEvalVersions(
 		workflowId: string,
@@ -346,20 +435,19 @@ export class EvaluationCollectionService {
 			throw new NotFoundError('EvaluationConfig not found for this workflow');
 		}
 
-		// Cheap metadata-only load: `WorkflowHistory.nodes` / `connections` are
-		// fat JSON columns we never reference from the wizard's versions
-		// table. Excluding them keeps response payloads small and avoids
-		// streaming entire workflow canvases just to render labels.
+		// Per-metric scale so the versions-table badges match the compare view.
+		const scaleByMetric = metricScalesFromConfig(config.metrics);
+
+		// Metadata-only load: `nodes` / `connections` are fat JSON columns the
+		// versions table never reads, so exclude them from the select.
 		const history = await this.workflowHistoryRepo.find({
 			where: { workflowId },
 			order: { createdAt: 'DESC' },
 			select: ['versionId', 'name', 'autosaved', 'createdAt'],
 		});
 
-		// One bulk query for the latest run per version against this config
-		// instead of N+1 individual lookups. Sorted descending so the first
-		// run seen per `workflowVersionId` is the latest — picked into the
-		// per-version map below.
+		// One bulk query (not N+1), sorted DESC so the first run seen per version
+		// is the latest — picked into the per-version map below.
 		const lastRuns =
 			history.length === 0
 				? []
@@ -370,31 +458,29 @@ export class EvaluationCollectionService {
 						},
 						order: { createdAt: 'DESC' },
 					});
+		// Surface only the latest *completed* run per version (the wizard offers it
+		// for reuse), so a version whose last run failed shows "no run yet" instead.
 		const latestRunByVersion = new Map<string, TestRun>();
 		for (const run of lastRuns) {
-			if (run.workflowVersionId && !latestRunByVersion.has(run.workflowVersionId)) {
+			if (
+				run.workflowVersionId &&
+				run.status === 'completed' &&
+				!latestRunByVersion.has(run.workflowVersionId)
+			) {
 				latestRunByVersion.set(run.workflowVersionId, run);
 			}
 		}
 
-		// One lookup for which version is currently published, so the
-		// versions table can show "Published" as the source label instead of
-		// the generic "Named" / "Autosaved" — matches spec §4's three-way
-		// taxonomy (current draft / published / named snapshot).
+		// Which version is published, so the table can show "Published" as the
+		// source label instead of the generic "Named" / "Autosaved".
 		const publishedRow = await this.publishedVersionRepo.findOneBy({ workflowId });
 		const publishedVersionId = publishedRow?.publishedVersionId ?? null;
 
 		const versions: EvalVersionEntry[] = [];
 
-		// Current draft row — `workflowVersionId: null` signals "snapshot at
-		// run start". Always first in the list so the wizard surfaces it on
-		// top of the table.
-		//
-		// `lastRun: null` here is intentional: runs without a `workflowVersionId`
-		// (legacy one-offs) are not surfaced as draft history — they're
-		// "Ungrouped runs" in the FE list view. Showing them here would
-		// blur the boundary between draft + pinned-snapshot runs and lead
-		// to off-by-one comparability bugs in the wizard.
+		// Current draft row — `workflowVersionId: null` means "snapshot at run
+		// start"; listed first. `lastRun: null` is intentional: unpinned legacy
+		// runs are "Ungrouped runs" in the FE, not draft history.
 		versions.push({
 			workflowVersionId: null,
 			label: 'Current draft',
@@ -416,7 +502,7 @@ export class EvaluationCollectionService {
 							testRunId: lastRun.id,
 							runAt: (lastRun.runAt ?? lastRun.createdAt).toISOString(),
 							status: lastRun.status,
-							avgScore: this.computeAvgScore(lastRun),
+							avgScore: this.computeAvgScore(lastRun, scaleByMetric),
 							isBest: false, // overwritten below
 							isCritical: false, // overwritten below
 						}
@@ -424,9 +510,8 @@ export class EvaluationCollectionService {
 			});
 		}
 
-		// Pass 2: annotate `isBest` / `isCritical` over the scored entries
-		// only. Skipped if no version has a scored run yet — the wizard then
-		// shows every row as "No run yet".
+		// Annotate `isBest` / `isCritical` over the scored entries only; skipped
+		// when no version has a scored run yet.
 		const scored = versions.filter((v) => v.lastRun?.avgScore !== null && v.lastRun !== null);
 		if (scored.length > 0) {
 			const best = scored.reduce((acc, v) =>
@@ -445,6 +530,52 @@ export class EvaluationCollectionService {
 
 	// ---- internals ----
 
+	/**
+	 * Freeze an eval config into the immutable snapshot every collection run
+	 * compiles against, so a later config edit can't change what a run evaluated.
+	 * Dates are serialized to match the JSON the runner persists on the row.
+	 */
+	private freezeConfigSnapshot(config: EvaluationConfig): IDataObject {
+		return {
+			...config,
+			createdAt: config.createdAt.toISOString(),
+			updatedAt: config.updatedAt.toISOString(),
+		};
+	}
+
+	/**
+	 * Kick off one collection-linked run pinned to a version, compiling the frozen
+	 * config onto its snapshot. Shared by {@link createCollection} and
+	 * {@link rerunCollection} so both schedule identically.
+	 */
+	private async startCollectionRun(
+		user: User,
+		workflowId: string,
+		options: {
+			collectionId: string;
+			workflowVersionId: string;
+			evaluationConfigId: string;
+			configSnapshot: IDataObject;
+			concurrency: number;
+		},
+	): Promise<string> {
+		const { testRun } = await this.testRunnerService.startTestRun(
+			user,
+			workflowId,
+			options.concurrency,
+			{
+				collectionId: options.collectionId,
+				workflowVersionId: options.workflowVersionId,
+				evaluationConfigId: options.evaluationConfigId,
+				evaluationConfigSnapshot: options.configSnapshot,
+				// Compile the eval config onto the version snapshot; without it the
+				// run goes "direct" and fails with EVALUATION_TRIGGER_NOT_FOUND.
+				compileFromConfig: true,
+			},
+		);
+		return testRun.id;
+	}
+
 	private toRecord(collection: CollectionFields, runCount: number): EvaluationCollectionRecord {
 		return {
 			id: collection.id,
@@ -459,25 +590,44 @@ export class EvaluationCollectionService {
 		};
 	}
 
-	private toRunSummary(run: TestRun): EvaluationCollectionRunSummary {
+	private toRunSummary(
+		run: TestRun,
+		scaleByMetric: Record<string, MetricScale>,
+	): EvaluationCollectionRunSummary {
 		return {
 			testRunId: run.id,
 			workflowVersionId: run.workflowVersionId,
 			status: run.status,
 			runAt: run.runAt ? run.runAt.toISOString() : null,
 			completedAt: run.completedAt ? run.completedAt.toISOString() : null,
-			avgScore: this.computeAvgScore(run),
+			avgScore: this.computeAvgScore(run, scaleByMetric),
 			metrics: this.coerceMetrics(run.metrics),
 		};
 	}
 
-	private computeAvgScore(run: TestRun): number | null {
+	private computeAvgScore(run: TestRun, scaleByMetric: Record<string, MetricScale>): number | null {
 		const coerced = this.coerceMetrics(run.metrics);
 		if (!coerced) return null;
-		const values = Object.values(coerced);
-		if (values.length === 0) return null;
-		const sum = values.reduce((acc, v) => acc + v, 0);
-		return sum / values.length;
+		// A "score" is a metric normalized to [0, 1] by its scale; operational
+		// metrics (tokens, time) normalize to null and are excluded. Mirrors the
+		// FE score model so the versions table matches the compare view.
+		const scores = Object.entries(coerced)
+			.map(([key, value]) => normalizeMetricScore(key, value, scaleByMetric[key]))
+			.filter((value): value is number => value !== null);
+		if (scores.length === 0) return null;
+		return scores.reduce((acc, value) => acc + value, 0) / scores.length;
+	}
+
+	/**
+	 * Maps each metric name to its scale. Returns an empty map (name-based
+	 * fallback in `normalizeMetricScore`) when the config can't be found.
+	 */
+	private async buildScaleByMetric(
+		evaluationConfigId: string,
+		workflowId: string,
+	): Promise<Record<string, MetricScale>> {
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+		return config ? metricScalesFromConfig(config.metrics) : {};
 	}
 
 	private coerceMetrics(
@@ -509,15 +659,13 @@ export class EvaluationCollectionService {
 	}
 
 	private formatDateLabel(date: Date): string {
-		// Compact relative-ish label for the source column. Frontend can format
-		// further if it wants; this is a fallback for raw API consumers.
+		// Fallback label for raw API consumers; the FE may reformat.
 		return date.toISOString().slice(0, 10);
 	}
 
 	/**
-	 * Three-way source-label taxonomy from spec §4. Published wins over
-	 * named/autosaved when a version is both (a named snapshot can later be
-	 * published; the wizard should surface it as "Published" then).
+	 * Source-label taxonomy. Published wins over named/autosaved when a version
+	 * is both.
 	 */
 	private formatSourceLabel(
 		h: { name: string | null; autosaved: boolean; createdAt: Date },

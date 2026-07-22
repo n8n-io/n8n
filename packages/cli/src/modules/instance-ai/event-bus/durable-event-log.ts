@@ -84,6 +84,22 @@ interface CoalesceBuffer {
 	 *  so the reducer can REPLACE the segment's streamed deltas on replay. */
 	textResponseId?: string;
 	reasoningResponseId?: string;
+	/** Trailing parts buffered by the in-flight drain batch whose live frames
+	 *  have not been emitted yet (the batch is awaiting its persist).
+	 *  getOpenSegments() excludes them: the client receives those frames live
+	 *  after the bootstrap flips, so serving them too would duplicate text. */
+	textUnemittedParts: number;
+	reasoningUnemittedParts: number;
+}
+
+/** A streamed segment still open in the coalescer — the only place its
+ *  streamed-so-far text exists (deltas are never persisted). */
+export interface OpenSegment {
+	runId: string;
+	agentId: string;
+	responseId?: string;
+	kind: 'text' | 'reasoning';
+	text: string;
 }
 
 type EmitFn = (drained: DrainedEvent) => void;
@@ -158,6 +174,35 @@ export class DurableEventLog {
 
 	async getEventsForRuns(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
 		return await this.repo.getForRuns(threadId, runIds);
+	}
+
+	/**
+	 * The thread's still-open streamed segments, read from the coalesce buffers.
+	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous
+	 * tail, where "no delta lands between this read and live delivery taking
+	 * over" is what makes serving them exactly-once. Parts whose live frames the
+	 * in-flight drain batch has not emitted yet are excluded — the client gets
+	 * those as normal live deltas once the batch's persist resolves.
+	 */
+	getOpenSegments(threadId: string): OpenSegment[] {
+		const threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers) return [];
+		const segments: OpenSegment[] = [];
+		for (const [key, buffer] of threadBuffers) {
+			const separator = key.indexOf(':');
+			const runId = key.slice(0, separator);
+			const agentId = key.slice(separator + 1);
+			for (const kind of ['reasoning', 'text'] as const) {
+				const parts = kind === 'text' ? buffer.text : buffer.reasoning;
+				const unemitted =
+					kind === 'text' ? buffer.textUnemittedParts : buffer.reasoningUnemittedParts;
+				const emitted = unemitted > 0 ? parts.slice(0, parts.length - unemitted) : parts;
+				if (emitted.length === 0) continue;
+				const responseId = kind === 'text' ? buffer.textResponseId : buffer.reasoningResponseId;
+				segments.push({ runId, agentId, kind, responseId, text: emitted.join('') });
+			}
+		}
+		return segments;
 	}
 
 	async getNextEventId(threadId: string): Promise<number> {
@@ -353,6 +398,7 @@ export class DurableEventLog {
 					: undefined;
 			emit({ ...(id !== undefined ? { id } : {}), event: drained.event, live: drained.live });
 		}
+		this.markBufferedPartsEmitted(threadId);
 		settleFlushes();
 	}
 
@@ -498,10 +544,23 @@ export class DurableEventLog {
 		const buffer = this.getOrCreateBuffer(threadId, `${event.runId}:${event.agentId}`);
 		if (event.type === 'text-delta') {
 			buffer.text.push(event.payload.text);
+			buffer.textUnemittedParts++;
 			buffer.textResponseId = event.responseId ?? buffer.textResponseId;
 		} else {
 			buffer.reasoning.push(event.payload.text);
+			buffer.reasoningUnemittedParts++;
 			buffer.reasoningResponseId = event.responseId ?? buffer.reasoningResponseId;
+		}
+	}
+
+	/** All buffered parts have had their live frames emitted (end of a drain
+	 *  batch): open-segment reads may serve them again safely. */
+	private markBufferedPartsEmitted(threadId: string): void {
+		const threadBuffers = this.buffers.get(threadId);
+		if (!threadBuffers) return;
+		for (const buffer of threadBuffers.values()) {
+			buffer.textUnemittedParts = 0;
+			buffer.reasoningUnemittedParts = 0;
 		}
 	}
 
@@ -564,6 +623,7 @@ export class DurableEventLog {
 		if (kind === 'text') {
 			const responseId = buffer.textResponseId;
 			buffer.text = [];
+			buffer.textUnemittedParts = 0;
 			buffer.textResponseId = undefined;
 			return {
 				type: 'text-block',
@@ -575,6 +635,7 @@ export class DurableEventLog {
 		}
 		const responseId = buffer.reasoningResponseId;
 		buffer.reasoning = [];
+		buffer.reasoningUnemittedParts = 0;
 		buffer.reasoningResponseId = undefined;
 		return {
 			type: 'reasoning-block',
@@ -603,7 +664,7 @@ export class DurableEventLog {
 		}
 		let buffer = threadBuffers.get(key);
 		if (!buffer) {
-			buffer = { text: [], reasoning: [] };
+			buffer = { text: [], reasoning: [], textUnemittedParts: 0, reasoningUnemittedParts: 0 };
 			threadBuffers.set(key, buffer);
 		}
 		return buffer;

@@ -7,7 +7,7 @@ import {
 import type { IUpdateInformation } from '@/Interface';
 import type { INodeProperties } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
