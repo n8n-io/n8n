@@ -191,6 +191,30 @@ describe('workflow package import — with variables', () => {
 	});
 
 	describe('must-preexist import policy', () => {
+		it('imports a package with no variable requirements', async () => {
+			const owner = await createOwner();
+			const sourceProject = await createTeamProject('Source', owner);
+			const targetProject = await createTeamProject('Target', owner);
+			const workflow = await buildWorkflowReferencingVariables({
+				name: 'Workflow without vars',
+				project: sourceProject,
+				variableNames: [],
+			});
+
+			const packageBuffer = await exportWorkflowPackage(owner, workflow.id);
+
+			const result = await importPackage({
+				user: owner,
+				projectId: targetProject.id,
+				packageBuffer,
+				variableMissingPolicy: 'must-preexist',
+			});
+
+			expect(result.workflows).toHaveLength(1);
+			expect(result.workflows[0].status).toBe('created');
+			expect(result.variables).toEqual({ matched: [], missing: [] });
+		});
+
 		it('blocks the import and writes nothing when a referenced variable is unresolved', async () => {
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Source', owner);
