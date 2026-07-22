@@ -33,10 +33,10 @@ the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
 
 Statically referenced sub-workflows must also be included in the resulting
-package. For workflow exports, include referenced sub-workflows with additional
-`--workflow-id` flags. For folder exports, referenced sub-workflows must be in
-the exported folder tree or included with `--workflow-id`. For project exports,
-referenced sub-workflows must be in one of the exported projects.
+package. How missing ones are handled depends on
+`--missing-workflow-dependency-policy`. With the default `fail` policy you include them yourself. With `include-in-package`, n8n resolves the static dependency graph and adds any
+missing sub-workflows to the package automatically, so you don't need to list
+them explicitly.
 
 ## `package import`
 
