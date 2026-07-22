@@ -96,6 +96,7 @@ type ExternalHooksMap = {
 		fullRunData: IRun | undefined,
 		workflowData: IWorkflowBase,
 		executionId: string,
+		workflowContext: WorkflowHookContextService,
 	];
 };
 type HookNames = keyof ExternalHooksMap;
