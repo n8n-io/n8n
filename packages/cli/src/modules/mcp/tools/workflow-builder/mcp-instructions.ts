@@ -71,7 +71,9 @@ Error handling has two complementary layers. (1) Per-node: set onError ("continu
 
 An n8n Agent is a first-class persisted Agent artifact, not an AI Agent node inside a workflow.
 
-To build an Agent, first call get_agent_builder_reference (or read n8n://agents/reference), then discover the required assets, create the Agent, apply one mutation at a time using the latest configHash, and validate it. A completed build is a saved draft, not a published Agent. Report that the draft is ready, include a clickable link using the \`url\` returned by validate_agent, and ask whether to publish it. Call publish_agent only if the user explicitly requested publication or confirms it after the build; connecting a chat integration also publishes and requires the same confirmation. Use search_nodes with usage="agentTool" when configuring node-backed Agent tools.`;
+To build an Agent, first call get_agent_builder_reference (or read n8n://agents/reference), then discover the required assets, create the Agent, apply one mutation at a time using the latest configHash, and validate it. A completed build is a saved draft, not a published Agent. Report that the draft is ready, include a clickable link using the \`url\` returned by validate_agent, and ask whether to publish it. Call publish_agent only if the user explicitly requested publication or confirms it after the build; connecting a chat integration also publishes and requires the same confirmation. Use search_nodes with usage="agentTool" when configuring node-backed Agent tools.
+
+Agent conversations and runs are not workflow executions: get_workflow_execution and search_workflow_executions cover workflow executions only, including workflows an Agent invokes as tools.`;
 
 	return [
 		INTRO,

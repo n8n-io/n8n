@@ -158,7 +158,7 @@ describe('OAuthClientsTable', () => {
 					scopeTools: {
 						'workflow:read': ['search_workflows', 'search_nodes'],
 						'workflow:write': ['update_workflow', 'search_nodes'],
-						'execution:read': ['get_execution'],
+						'execution:read': ['get_workflow_execution'],
 					},
 				},
 			});

@@ -118,7 +118,7 @@ export const createListCredentialsTool = (
 	name: 'list_credentials',
 	config: {
 		description:
-			'List credentials the current user can access. Use this to find a credential ID before referencing it from a workflow node. Never returns credential secret data.',
+			'List credentials the current user can access. Use this to find a credential ID before referencing it anywhere one is required. Never returns credential secret data.',
 		inputSchema,
 		outputSchema,
 		annotations: {

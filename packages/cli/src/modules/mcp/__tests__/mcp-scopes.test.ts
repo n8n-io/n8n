@@ -63,7 +63,9 @@ describe('getAllowedToolNames', () => {
 
 	it('unions the tools of all granted scopes', () => {
 		const allowed = getAllowedToolNames(['execution:read', 'tag:read']);
-		expect(allowed).toEqual(new Set(['get_execution', 'search_executions', 'list_tags']));
+		expect(allowed).toEqual(
+			new Set(['get_workflow_execution', 'search_workflow_executions', 'list_workflow_tags']),
+		);
 	});
 
 	it('ignores unknown scopes', () => {

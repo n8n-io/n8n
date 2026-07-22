@@ -239,7 +239,7 @@ describe('OAuthConsentView', () => {
 				scopeTools: {
 					'workflow:read': ['search_workflows', 'get_workflow_details'],
 					'workflow:write': ['update_workflow', 'search_workflows'],
-					'execution:read': ['get_execution'],
+					'execution:read': ['get_workflow_execution'],
 				},
 			};
 			consentStore.consentDetails = detailsWithTools;
