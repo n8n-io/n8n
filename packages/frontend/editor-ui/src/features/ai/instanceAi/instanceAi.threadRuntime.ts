@@ -41,6 +41,7 @@ import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi
 import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
+import { INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY } from './constants';
 import {
 	findToolCallInTree,
 	isOrchestratorLive,
@@ -98,12 +99,10 @@ export interface ThreadRuntimeHooks {
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
 }
 
-const AGENT_BUILDER_TARGET_METADATA_KEY = 'instanceAiAgentBuilderTarget';
-
 export function getAgentBuilderTargetFromThreadMetadata(
 	metadata: Record<string, unknown> | undefined,
 ) {
-	const raw = metadata?.[AGENT_BUILDER_TARGET_METADATA_KEY];
+	const raw = metadata?.[INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY];
 	if (!raw || typeof raw !== 'object') return undefined;
 	const target = raw as Record<string, unknown>;
 	if (typeof target.agentId !== 'string' || typeof target.projectId !== 'string') return undefined;

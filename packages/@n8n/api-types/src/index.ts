@@ -13,6 +13,7 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export * from './workflow-review-request-summary';
 export {
 	chatHubConversationModelSchema,
 	type ChatModelDto,
@@ -537,6 +538,9 @@ export {
 	RESERVED_METRIC_KEYS,
 	ONE_TO_FIVE_METRIC_KEYS,
 	normalizeMetricScore,
+	metricScaleFromConfig,
+	metricScalesFromConfig,
+	type MetricScale,
 	evalCollectionVersionEntrySchema,
 	createEvaluationCollectionSchema,
 	CreateEvaluationCollectionDto,
