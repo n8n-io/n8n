@@ -54,7 +54,7 @@ describe('toolNodeValidator', () => {
 
 	describe('validateNode', () => {
 		it('returns TOOL_NO_PARAMETERS warning for tool node with no parameters', () => {
-			const node = createMockNode('@n8n/n8n-nodes-langchain.toolHttpRequest', {
+			const node = createMockNode('n8n-nodes-base.httpRequestTool', {
 				parameters: {},
 			});
 			const ctx = createMockPluginContext();
@@ -70,7 +70,7 @@ describe('toolNodeValidator', () => {
 		});
 
 		it('returns TOOL_NO_PARAMETERS warning for tool node with undefined parameters', () => {
-			const node = createMockNode('@n8n/n8n-nodes-langchain.toolHttpRequest', {});
+			const node = createMockNode('n8n-nodes-base.httpRequestTool', {});
 			const ctx = createMockPluginContext();
 
 			const issues = toolNodeValidator.validateNode(node, createGraphNode(node), ctx);
@@ -84,7 +84,7 @@ describe('toolNodeValidator', () => {
 		});
 
 		it('returns no warning for tool node with parameters', () => {
-			const node = createMockNode('@n8n/n8n-nodes-langchain.toolHttpRequest', {
+			const node = createMockNode('n8n-nodes-base.httpRequestTool', {
 				parameters: { url: 'https://api.example.com' },
 			});
 			const ctx = createMockPluginContext();
@@ -149,17 +149,6 @@ describe('toolNodeValidator', () => {
 			expect(issues).toHaveLength(0);
 		});
 
-		it('returns no warning for toolSerpApi (does not require parameters)', () => {
-			const node = createMockNode('@n8n/n8n-nodes-langchain.toolSerpApi', {
-				parameters: {},
-			});
-			const ctx = createMockPluginContext();
-
-			const issues = toolNodeValidator.validateNode(node, createGraphNode(node), ctx);
-
-			expect(issues).toHaveLength(0);
-		});
-
 		it('validates tool nodes with "Tool" in name (case sensitive match)', () => {
 			const node = createMockNode('custom.myCustomTool', {
 				parameters: {},
@@ -177,7 +166,7 @@ describe('toolNodeValidator', () => {
 		});
 
 		it('includes nodeName in issues', () => {
-			const node = createMockNode('@n8n/n8n-nodes-langchain.toolHttpRequest', {
+			const node = createMockNode('n8n-nodes-base.httpRequestTool', {
 				parameters: {},
 			});
 			Object.assign(node, { name: 'My HTTP Tool' });
