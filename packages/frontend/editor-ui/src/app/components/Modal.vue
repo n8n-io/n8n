@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, useCssModule } from 'vue';
+import { computed, onMounted, onBeforeUnmount } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import { FocusScope } from 'reka-ui';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ModalKey } from '@/Interface';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
@@ -9,9 +8,6 @@ import { useStyles } from '@/app/composables/useStyles';
 
 import { ElDialog } from 'element-plus';
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
-
-const BODY_APPENDED_MODAL_OVERLAY_CLASS = 'body-appended-modal-overlay';
-
 const props = withDefaults(
 	defineProps<{
 		name: ModalKey;
@@ -59,16 +55,6 @@ const props = withDefaults(
 const emit = defineEmits<{ enter: [] }>();
 
 const { APP_Z_INDEXES } = useStyles();
-const cssModule = useCssModule();
-
-const modalClass = computed(() =>
-	[
-		props.center ? cssModule.center : '',
-		props.appendToBody ? BODY_APPENDED_MODAL_OVERLAY_CLASS : '',
-	]
-		.filter(Boolean)
-		.join(' '),
-);
 
 const styles = computed(() => {
 	const styles: { [prop: string]: string } = {};
@@ -170,18 +156,10 @@ function getCustomClass() {
 		:lock-scroll="lockScroll"
 		:append-to-body="appendToBody"
 		:data-test-id="`${name}-modal`"
-		:modal-class="modalClass"
+		:modal-class="center ? $style.center : ''"
 		:z-index="APP_Z_INDEXES.MODALS"
 		@opened="onOpened"
 	>
-		<FocusScope
-			v-if="appendToBody && uiStore.modalsById[name]?.open"
-			as-child
-			@mount-auto-focus.prevent
-			@unmount-auto-focus.prevent
-		>
-			<span hidden aria-hidden="true" />
-		</FocusScope>
 		<template v-if="$slots.header" #header>
 			<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
 		</template>
@@ -242,10 +220,6 @@ function getCustomClass() {
 	&.scrollable .modal-content {
 		overflow-y: auto;
 	}
-}
-
-.body-appended-modal-overlay {
-	pointer-events: auto;
 }
 </style>
 
