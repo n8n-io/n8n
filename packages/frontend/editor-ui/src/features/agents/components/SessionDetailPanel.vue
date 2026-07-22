@@ -20,7 +20,7 @@ import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { isSubAgentTimelineItem } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 

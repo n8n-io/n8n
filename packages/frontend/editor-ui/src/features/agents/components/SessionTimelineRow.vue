@@ -7,7 +7,7 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, isSubAgentTimelineItem } from '../session-timeline.utils';
+import { isSubAgentTimelineItem } from '../session-timeline.utils';
 import { delegateLabel } from '../utils/delegate-tool';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';

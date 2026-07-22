@@ -6,12 +6,7 @@ import { N8nHoverCard } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import {
-	builtinToolLabelKey,
-	formatDuration,
-	isSubAgentTimelineItem,
-	itemFilterKey,
-} from '../session-timeline.utils';
+import { formatDuration, isSubAgentTimelineItem, itemFilterKey } from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay, resolveToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
