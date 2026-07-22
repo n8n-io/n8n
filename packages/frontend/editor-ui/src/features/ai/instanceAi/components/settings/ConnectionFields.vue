@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { DOMAIN_RESTRICTION_FIELDS, type ICredentialDataDecryptedObject } from 'n8n-workflow';
 import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+
+const HIDDEN_FIELDS = new Set([
+	...DOMAIN_RESTRICTION_FIELDS.map((field) => field.name),
+	'organizationId',
+	'header',
+	'headerName',
+	'headerValue',
+]);
 
 const props = defineProps<{
 	credentialType: string;
@@ -16,6 +24,10 @@ const credentialsStore = useCredentialsStore();
 
 const type = computed(() => credentialsStore.getCredentialTypeByName(props.credentialType));
 
+const properties = computed(() =>
+	(type.value?.properties ?? []).filter((property) => !HIDDEN_FIELDS.has(property.name)),
+);
+
 function onUpdate(parameterData: IUpdateInformation) {
 	emit('update', parameterData.name, parameterData.value);
 }
@@ -23,7 +35,7 @@ function onUpdate(parameterData: IUpdateInformation) {
 
 <template>
 	<CredentialInputs
-		:credential-properties="type?.properties ?? []"
+		:credential-properties="properties"
 		:credential-data="data"
 		:documentation-url="type?.documentationUrl ?? ''"
 		@update="onUpdate"
