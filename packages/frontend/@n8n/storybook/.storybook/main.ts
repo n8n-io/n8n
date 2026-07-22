@@ -31,7 +31,6 @@ const config: StorybookConfig = {
 				},
 			},
 		},
-		getAbsolutePath('@storybook/addon-themes'),
 		getAbsolutePath('storybook-addon-vue-mdx'),
 	],
 	framework: getAbsolutePath('@storybook/vue3-vite'),

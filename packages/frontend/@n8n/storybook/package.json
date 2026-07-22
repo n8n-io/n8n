@@ -33,7 +33,6 @@
     "@n8n/typescript-config": "workspace:*",
     "@storybook/addon-a11y": "catalog:storybook",
     "@storybook/addon-docs": "catalog:storybook",
-    "@storybook/addon-themes": "catalog:storybook",
     "@storybook/addon-vitest": "catalog:storybook",
     "@storybook/vue3": "catalog:storybook",
     "@storybook/vue3-vite": "catalog:storybook",

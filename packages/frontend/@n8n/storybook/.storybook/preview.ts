@@ -9,7 +9,6 @@ import { createPinia } from 'pinia';
 import { createMemoryHistory, createRouter } from 'vue-router';
 
 import './storybook.scss';
-import { allModes } from './modes';
 import { withThemePreview } from './withThemePreview';
 // import '../src/css/tailwind/index.css';
 
@@ -63,10 +62,6 @@ export const parameters = {
 		},
 	},
 	chromatic: {
-		modes: {
-			light: allModes['light'],
-			dark: allModes['dark'],
-		},
 		disableSnapshot: false,
 	},
 };
