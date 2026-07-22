@@ -10,8 +10,8 @@
 		},
 		{
 			"id": "1ea0a87c-3395-4bd9-84fb-cf8b0f769cc4",
-			"name": "Read PDF",
-			"type": "n8n-nodes-base.readPDF",
+			"name": "Read Spreadsheet File",
+			"type": "spreadsheetFile",
 			"typeVersion": 1,
 			"position": [960, 460],
 			"parameters": {}
