@@ -5,6 +5,7 @@ import { waitFor } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { useReviewRequiredStore } from '@/features/workflow-reviews/reviewRequired.store';
+import { useWorkflowReviewStatusStore } from '@/features/workflow-reviews/reviewStatus.store';
 import { createWorkflowReviewRequest } from '@/features/workflow-reviews/workflowReviews.api';
 import WorkflowSubmitForReviewDialog from './WorkflowSubmitForReviewDialog.vue';
 
@@ -16,6 +17,7 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@/features/workflow-reviews/workflowReviews.api', () => ({
 	createWorkflowReviewRequest: vi.fn(),
+	fetchWorkflowReviewRequests: vi.fn().mockResolvedValue({ count: 0, data: [] }),
 }));
 
 const renderComponent = createComponentRenderer(WorkflowSubmitForReviewDialog);
@@ -24,6 +26,8 @@ const renderDialog = async (flushSave = vi.fn().mockResolvedValue('version-1')) 
 	const pinia = createPinia();
 	const reviewRequiredStore = useReviewRequiredStore(pinia);
 	reviewRequiredStore.setReviewRequired('workflow-1', true);
+	const reviewStatusStore = useWorkflowReviewStatusStore(pinia);
+	const fetchStatusSpy = vi.spyOn(reviewStatusStore, 'fetchStatus').mockResolvedValue(undefined);
 	const props = {
 		open: false,
 		workflowId: 'workflow-1',
@@ -36,6 +40,7 @@ const renderDialog = async (flushSave = vi.fn().mockResolvedValue('version-1')) 
 		...result,
 		flushSave,
 		reviewRequiredStore,
+		fetchStatusSpy,
 	};
 };
 
@@ -46,6 +51,8 @@ describe('WorkflowSubmitForReviewDialog', () => {
 			id: 'review-1',
 			state: 'open',
 			decision: 'pending',
+			createdAt: '2024-01-01T00:00:00.000Z',
+			updatedAt: '2024-01-01T00:00:00.000Z',
 		});
 	});
 
@@ -69,7 +76,8 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	});
 
 	it('submits the flushed version and resets review required after success', async () => {
-		const { getByTestId, flushSave, reviewRequiredStore, emitted } = await renderDialog();
+		const { getByTestId, flushSave, reviewRequiredStore, fetchStatusSpy, emitted } =
+			await renderDialog();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), '  Review payments  ');
 		await userEvent.type(getByTestId('workflow-review-description-input'), '  Check retries  ');
@@ -84,6 +92,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		});
 		expect(flushSave).toHaveBeenCalledOnce();
 		expect(reviewRequiredStore.isReviewRequired('workflow-1')).toBe(false);
+		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
 		expect(emitted('submitted')).toHaveLength(1);
 		expect(emitted('update:open')).toContainEqual([false]);
 	});
@@ -95,7 +104,8 @@ describe('WorkflowSubmitForReviewDialog', () => {
 				meta: { workflowReviewRequestId: 'existing-review' },
 			}),
 		);
-		const { getByTestId, findByTestId, reviewRequiredStore, emitted } = await renderDialog();
+		const { getByTestId, findByTestId, reviewRequiredStore, fetchStatusSpy, emitted } =
+			await renderDialog();
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
@@ -103,6 +113,8 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(await findByTestId('workflow-review-conflict-error')).toHaveTextContent(
 			'This workflow already has an open review.',
 		);
+		// The conflict proves an open review — refetch so the toggle locks immediately.
+		expect(fetchStatusSpy).toHaveBeenCalledWith('workflow-1');
 		expect(reviewRequiredStore.isReviewRequired('workflow-1')).toBe(true);
 		expect(emitted('submitted')).toBeUndefined();
 		expect(emitted('update:open')).toBeUndefined();
