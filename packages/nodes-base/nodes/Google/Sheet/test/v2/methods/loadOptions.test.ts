@@ -82,6 +82,21 @@ describe('Google Sheets Functions', () => {
 			expect(result).toEqual([]);
 		});
 
+		it('should return an empty array if sheetName is null', async () => {
+			mockLoadOptionsFunctions.getNodeParameter = vi
+				.fn()
+				.mockReturnValueOnce({ mode: 'mode', value: 'value' }) // documentId
+				.mockReturnValueOnce('Sheet1') // sheetName extracted value
+				.mockImplementationOnce((_parameterName, defaultValue) => defaultValue); // sheetName resource locator
+
+			const result = await getSheetHeaderRow.call(
+				mockLoadOptionsFunctions as ILoadOptionsFunctions,
+			);
+
+			expect(result).toEqual([]);
+			expect(mockGoogleSheetInstance.spreadsheetGetSheet).not.toHaveBeenCalled();
+		});
+
 		it('should throw an error if no data is returned', async () => {
 			mockGoogleSheetInstance.spreadsheetGetSheet.mockResolvedValue({
 				title: 'Sheet1',

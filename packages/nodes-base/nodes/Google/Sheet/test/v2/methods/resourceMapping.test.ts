@@ -112,4 +112,16 @@ describe('Google Sheets, getMappingColumns', () => {
 		expect(result.fields).toHaveLength(3);
 		expect(mockGoogleSheetInstance.getData).toHaveBeenCalledWith('Sheet1!10:10', 'FORMATTED_VALUE');
 	});
+
+	it('should return no fields when sheetName is null', async () => {
+		loadOptionsFunctions.getNodeParameter
+			.mockReturnValueOnce({ mode: 'id', value: 'spreadsheetId' }) // documentId
+			.mockReturnValueOnce('Sheet1') // sheetName extracted value
+			.mockImplementationOnce((_parameterName, defaultValue) => defaultValue); // sheetName resource locator
+
+		const result = await getMappingColumns.call(loadOptionsFunctions);
+
+		expect(result).toEqual({ fields: [] });
+		expect(mockGoogleSheetInstance.spreadsheetGetSheet).not.toHaveBeenCalled();
+	});
 });
