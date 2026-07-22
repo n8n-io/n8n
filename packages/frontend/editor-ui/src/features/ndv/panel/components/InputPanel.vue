@@ -143,8 +143,7 @@ const inputMode = ref<MappingMode>(
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
 
 const showDraggableHint = computed(() => {
-	const toIgnore = [MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
-	if (!currentNode.value || toIgnore.includes(currentNode.value.type)) {
+	if (!currentNode.value || currentNode.value.type === MANUAL_TRIGGER_NODE_TYPE) {
 		return false;
 	}
 
