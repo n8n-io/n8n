@@ -9,7 +9,7 @@
  * the catalog forces one instance so `dependencies` looks fine locally, but on
  * `npm install n8n` a plain dependency lets npm install a second nested copy, which
  * breaks cross-package schema composition / `instanceof` and crashes at boot. This
- * exact regression shipped in 2.28.0 (#32386 moved zod peer→dependencies).
+ * regression has shipped before, when a package moved zod from a peer to a dependency.
  *
  * Report-first rollout (no breaking changes on master): moving a published package's
  * curated lib from `dependencies` to `peerDependencies` is breaking for external
@@ -155,9 +155,7 @@ function main() {
 		console.error(
 			'A plain dependency lets `npm install` create a second physical copy, which breaks',
 		);
-		console.error(
-			'cross-package composition / instanceof and crashes at boot (regressed in 2.28.0).',
-		);
+		console.error('cross-package composition / instanceof and crashes at boot on `npm install`.');
 		console.error('');
 		for (const { name, lib } of failures) {
 			console.error(
