@@ -23,8 +23,8 @@ exhaustive field reference; this skill is the opinionated *how*.
 > approach.** Author the file locally (uncommitted), calibrate it against a real
 > build, then **push it to a lang-tracer suite** with `eval:langtracer-push`
 > (see [Push to a lang-tracer suite](#push-to-a-lang-tracer-suite)) —
-> `--suite n8n-workflows` for the corpus n8n CI runs, or a capability suite
-> like `workflow-building` that runs on LangTracer's own automation.
+> `--suite baseline` for the consolidated corpus n8n CI runs, or a dedicated
+> capability suite like `agents`.
 > The suite is the home for the case; the eval CLI reads it back via
 > `--source langtracer`. You still write the JSON file — it's just the input to
 > the push, not a committed artifact.
@@ -383,7 +383,7 @@ What each piece is doing:
   misses the label filter. Keep the whole script in one turn and encode ordering
   inside it (don't fabricate assistant "done" turns to sequence steps — see
   [`case-shapes.md`](case-shapes.md)). `applies-each-change-when-asked` (in the
-  `n8n-workflows` LangTracer suite) is a good real example.
+  `baseline` LangTracer suite) is a good real example.
 - **`dataSetup` describes only what external services return.** That's the layer
   the harness controls (below).
 
@@ -632,9 +632,9 @@ drifted, leaves the rest unchanged, and never prunes. It's the inverse of
 ```bash
 cd packages/@n8n/instance-ai
 # preview first — no writes (use `npx dotenvx`; the bare `dotenvx` binary is usually not on PATH):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --dry-run --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --dry-run --changed
 # then push (drop --dry-run):
-npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite workflow-building --changed
+npx dotenvx run -f .env.eval -- pnpm eval:langtracer-push --suite baseline --changed
 ```
 
 - **Selectors** (at least one required — no accidental push-all): positional
