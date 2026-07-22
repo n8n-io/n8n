@@ -148,7 +148,7 @@ export type StreamChunk = ContentMetadata &
 		| {
 				/**
 				 * Non-fatal warning emitted during a run. The run continues — this
-				 * chunk only signalsan MCP server that failed to connect so its tools were skipped.
+				 * chunk only signals an MCP server that failed to connect so its tools were skipped.
 				 */
 				type: 'warning';
 				message: string;

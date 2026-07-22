@@ -359,3 +359,30 @@ describe('McpConnection — tool filtering', () => {
 		expect(excludeTools.map((tool) => tool.name)).toEqual(['s2_echo', 's2_add', 's2_subtract']);
 	});
 });
+
+describe('McpConnection — reconnect after disconnect', () => {
+	beforeEach(() => {
+		clientConnect.mockClear();
+		clientClose.mockClear().mockResolvedValue(undefined);
+	});
+
+	it('tears down the new client when reconnected after a disconnect', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+
+		await conn.connect();
+		await conn.disconnect();
+		// First disconnect closes the first client.
+		expect(clientClose).toHaveBeenCalledTimes(1);
+
+		// A retry (listTools() clears its cache on a hard error and re-runs)
+		// creates a new client. The second disconnect must close THAT client,
+		// not no-op because `closed` was left true by the first disconnect.
+		await conn.connect();
+		await conn.disconnect();
+		expect(clientClose).toHaveBeenCalledTimes(2);
+	});
+});

@@ -3568,24 +3568,13 @@ export class InstanceAiService {
 			const runControl = createOrchestratorRunControl(orchestrationContext);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
-			const { agent, mcpConnectionFailures: runMcpFailures } =
-				await this.createAgentFromEnvironment(environment, threadId, runId, user, tracing);
-
-			// Surface MCP connection failures as a non-fatal status event. Failures
-			// come from createAgentFromEnvironment's result (threaded from the MCP
-			// manager's getRegularTools call), not a shared manager field — so they
-			// reflect this run's config and can't leak another run's server names.
-			if (runMcpFailures.length > 0) {
-				const names = runMcpFailures.map((f) => f.server).join(', ');
-				this.eventBus.publish(threadId, {
-					type: 'status',
-					runId,
-					agentId: orchestratorAgentId(runId),
-					payload: {
-						message: `Couldn't reach MCP server${runMcpFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
-					},
-				});
-			}
+			const agent = await this.createAgentFromEnvironment(
+				environment,
+				threadId,
+				runId,
+				user,
+				tracing,
+			);
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
@@ -4335,7 +4324,7 @@ export class InstanceAiService {
 		runId: string,
 		user: User,
 		tracing: InstanceAiTraceContext | undefined,
-	): Promise<Awaited<ReturnType<typeof createInstanceAgent>>> {
+	): Promise<InstanceAgent> {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
@@ -4359,8 +4348,26 @@ export class InstanceAiService {
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
 		});
+		// Surface MCP connection failures as a non-fatal status event. Publishing
+		// here (rather than at each call site) covers the foreground run and both
+		// resume paths (auto-setup rebuild + process-restart resume), so the user
+		// is informed whenever a server is skipped — including after a resume.
+		// Failures come from createInstanceAgent's result (threaded from the MCP
+		// manager's getRegularTools call), not a shared manager field, so they
+		// reflect this run's config and can't leak another run's server names.
+		if (mcpConnectionFailures.length > 0) {
+			const names = mcpConnectionFailures.map((f) => f.server).join(', ');
+			this.eventBus.publish(threadId, {
+				type: 'status',
+				runId,
+				agentId: orchestratorAgentId(runId),
+				payload: {
+					message: `Couldn't reach MCP server${mcpConnectionFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
+				},
+			});
+		}
 		this.subscribeToAgentErrors(agent, threadId, runId);
-		return { agent, mcpConnectionFailures };
+		return agent;
 	}
 
 	private async buildFreshInstanceAgent(
@@ -4384,7 +4391,7 @@ export class InstanceAiService {
 			messageGroupId,
 			pushRef,
 		);
-		const { agent } = await this.createAgentFromEnvironment(
+		const agent = await this.createAgentFromEnvironment(
 			environment,
 			threadId,
 			runId,
@@ -4445,13 +4452,13 @@ export class InstanceAiService {
 		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
 		let agent;
 		try {
-			({ agent } = await this.createAgentFromEnvironment(
+			agent = await this.createAgentFromEnvironment(
 				environment,
 				orphan.threadId,
 				orphan.runId,
 				user,
 				undefined,
-			));
+			);
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
 		}
