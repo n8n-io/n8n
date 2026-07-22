@@ -94,6 +94,11 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 	// isolation; overriding only one silently touches shared Instance AI data.
 	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
 	if (isolationWarning) logger.warn(isolationWarning);
+	if (args.datasetAutoForked) {
+		logger.warn(
+			`--source langtracer auto-forked this run to dataset "${args.dataset}" (baseline prefix "${args.baselinePrefix}") for cohort isolation. Pass --dataset/--baseline-prefix explicitly to target a shared cohort.`,
+		);
+	}
 
 	// Pin eval writes to the eval workspace; our PAT would otherwise default to Prod.
 	const workspaceId = await resolveEvalWorkspaceId();
