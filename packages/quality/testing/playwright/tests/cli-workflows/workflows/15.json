@@ -126,10 +126,11 @@
 		},
 		{
 			"parameters": {
-				"filePath": "/tmp/n8n-logo.png"
+				"fileSelector": "/tmp/n8n-logo.png",
+				"options": {}
 			},
 			"name": "Read Binary File",
-			"type": "n8n-nodes-base.readBinaryFile",
+			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
 			"position": [450, 300],
 			"id": "0ac33c86-3813-4af0-be35-9201501cbd28"

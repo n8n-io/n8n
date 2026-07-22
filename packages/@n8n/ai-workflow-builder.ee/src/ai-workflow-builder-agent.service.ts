@@ -164,7 +164,6 @@ export class AiWorkflowBuilderService {
 		// These types are ignored because they tend to cause issues when generating workflows
 		const ignoredTypes = new Set([
 			'@n8n/n8n-nodes-langchain.toolVectorStore',
-			'@n8n/n8n-nodes-langchain.documentGithubLoader',
 			'@n8n/n8n-nodes-langchain.code',
 		]);
 
