@@ -1,4 +1,4 @@
-import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
+import { CliWorkflowOperationError, isHitlToolType, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode, INodeType, Workflow } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
@@ -26,7 +26,7 @@ export function stripToolSuffix(nodeType: string): string {
  * version to declare `usableAsTool`.
  */
 export function satisfiesToolCapability(syntheticToolName: string, nodeType: INodeType): boolean {
-	return syntheticToolName.endsWith('HitlTool') || !!nodeType.description.usableAsTool;
+	return isHitlToolType(syntheticToolName) || !!nodeType.description.usableAsTool;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {

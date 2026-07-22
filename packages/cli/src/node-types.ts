@@ -7,7 +7,7 @@ import { readdir, readFile } from 'fs/promises';
 import { RoutingNode, UnrecognizedNodeTypeError } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
+import { deepCopy, isHitlToolType, NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
@@ -114,7 +114,7 @@ export class NodeTypes implements INodeTypes {
 			return loadedNodes[origType].type as INodeType;
 		}
 
-		const isHitlTool = origType.endsWith('HitlTool');
+		const isHitlTool = isHitlToolType(origType);
 
 		if (!satisfiesToolCapability(origType, versionedNodeType)) {
 			throw new UserError('Node cannot be used as a tool', { extra: { nodeType: baseName } });
@@ -256,7 +256,7 @@ export class NodeTypes implements INodeTypes {
 		nodeTypeName: string,
 		description: INodeTypeDescription,
 	): INodeTypeDescription {
-		if (nodeTypeName.endsWith('HitlTool')) {
+		if (isHitlToolType(nodeTypeName)) {
 			return convertNodeToHitlTool({ description: deepCopy(description) }).description;
 		}
 
