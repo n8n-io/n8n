@@ -6,6 +6,7 @@ function workflowWebhookOnly(): WorkflowResponse {
 		id: 'wf-1',
 		name: 'Webhook only',
 		active: false,
+		versionId: 'test-version',
 		nodes: [
 			{ name: 'Webhook', type: 'n8n-nodes-base.webhook', parameters: {} },
 			{

@@ -809,19 +809,36 @@ function getServiceName(credentialTypeName: string): string {
 	return getAppNameFromCredType(displayName);
 }
 
-const quickConnectCredentialType = computed(() => {
-	return credentialTypesNodeDescriptions.value.find(
-		(t) =>
-			!!getQuickConnectOption(t.name, props.node.type) || canOAuthCredentialQuickConnect(t.name),
-	)?.name;
-});
+function getRelatedCredentialTypes(type: INodeCredentialDescription): INodeCredentialDescription[] {
+	const authFieldName = mainNodeAuthField.value?.name;
+	// if not the main auth field, return the type itself
+	if (!authFieldName || !type.displayOptions?.show?.[authFieldName]) {
+		return [type];
+	}
+
+	// otherwise, return all credential types that show the main auth field
+	return credentialTypesNodeDescriptions.value.filter(
+		(credentialType) => credentialType.displayOptions?.show?.[authFieldName],
+	);
+}
+
+function canQuickConnect(credentialType: INodeCredentialDescription): boolean {
+	return (
+		!!getQuickConnectOption(credentialType.name, props.node.type) ||
+		canOAuthCredentialQuickConnect(credentialType.name)
+	);
+}
+
+function getQuickConnectCredentialType(type: INodeCredentialDescription): string | undefined {
+	return getRelatedCredentialTypes(type).find(canQuickConnect)?.name;
+}
 
 function showQuickConnectEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !!quickConnectCredentialType.value;
+	return !isCredentialExisting(type) && !!getQuickConnectCredentialType(type);
 }
 
 function showStandardEmptyState(type: INodeCredentialDescription): boolean {
-	return !isCredentialExisting(type) && !quickConnectCredentialType.value;
+	return !isCredentialExisting(type) && !getQuickConnectCredentialType(type);
 }
 
 function canManuallySetUpCredential(credentialTypeName: string): boolean {
@@ -915,7 +932,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					v-else-if="
 						options.length === 0 &&
 						showQuickConnectEmptyState(type) &&
-						quickConnectCredentialType &&
+						getQuickConnectCredentialType(type) &&
 						!isAiGatewayManagedCredentials(type.name)
 					"
 					:class="[$style.quickConnectContainer]"
@@ -924,9 +941,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					<QuickConnectButton
 						size="small"
 						:disabled="quickConnectLoading"
-						:credential-type-name="quickConnectCredentialType"
-						:service-name="getServiceName(quickConnectCredentialType)"
-						@click="onQuickConnectSignIn(quickConnectCredentialType)"
+						:credential-type-name="getQuickConnectCredentialType(type) ?? type.name"
+						:service-name="getServiceName(getQuickConnectCredentialType(type) ?? type.name)"
+						@click="onQuickConnectSignIn(getQuickConnectCredentialType(type) ?? type.name)"
 					/>
 					<span v-if="canManuallySetUpCredential(type.name)" :class="$style.setupManuallyContainer">
 						<N8nText size="small" :class="$style.setupManuallyOr">
