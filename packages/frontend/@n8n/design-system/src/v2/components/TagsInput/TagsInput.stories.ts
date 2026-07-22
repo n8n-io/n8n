@@ -383,7 +383,7 @@ export const CustomTags = {
 						}"
 					/>
 					<TagsInputItemText :class="ui.text" />
-					<TagsInputItemDelete :class="ui.delete" :disabled="disabled">
+					<TagsInputItemDelete :class="ui.delete" :disabled="disabled" @mousedown.prevent>
 						<N8nIcon icon="x" size="small" />
 					</TagsInputItemDelete>
 				</template>

@@ -523,6 +523,29 @@ describe('v2/components/Combobox', () => {
 					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['Option 1']]);
 				});
 			});
+
+			it('should not focus the input or open when removing a tag while unfocused', async () => {
+				const wrapper = render(Combobox, {
+					props: {
+						items: ['Option 1', 'Option 2', 'Option 3'],
+						modelValue: ['Option 2', 'Option 1'],
+						multiple: true,
+					},
+				});
+
+				const input = getComboboxInput(wrapper);
+				expect(input).not.toHaveFocus();
+
+				const tags = wrapper.getAllByTestId('tags-input-tag');
+				await userEvent.click(within(tags[0]).getByRole('button'));
+
+				await waitFor(() => {
+					expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['Option 1']]);
+				});
+
+				expect(input).not.toHaveFocus();
+				expect(document.querySelector('[role="listbox"][data-state="open"]')).toBeNull();
+			});
 		});
 	});
 

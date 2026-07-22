@@ -179,7 +179,11 @@ function getInputClass(isEmpty: boolean): string {
 						:ui="{ text: $style.tagText, delete: $style.tagDelete }"
 					>
 						<TagsInputItemText :class="$style.tagText" />
-						<TagsInputItemDelete :class="$style.tagDelete" :disabled="props.disabled">
+						<TagsInputItemDelete
+							:class="$style.tagDelete"
+							:disabled="props.disabled"
+							@mousedown.prevent
+						>
 							<Icon icon="x" size="small" />
 						</TagsInputItemDelete>
 					</slot>

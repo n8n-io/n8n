@@ -112,6 +112,26 @@ describe('v2/components/TagsInput', () => {
 			});
 		});
 
+		it('should not focus the input when removing a tag while unfocused', async () => {
+			const wrapper = render(TagsInput, {
+				props: {
+					modelValue: ['alpha', 'beta'],
+					placeholder: 'Add tags...',
+				},
+			});
+
+			const input = wrapper.getByRole('textbox');
+			expect(input).not.toHaveFocus();
+
+			await userEvent.click(wrapper.getByRole('button', { name: 'alpha' }));
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['beta']]);
+			});
+
+			expect(input).not.toHaveFocus();
+		});
+
 		it('should add a tag on Enter', async () => {
 			const wrapper = render(TagsInput, {
 				props: {

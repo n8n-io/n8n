@@ -43,7 +43,7 @@ The draft input grows with typed text (`field-sizing: content`) so it wraps to t
 **Slots**
 
 - `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` - Replace the default text input. Apply `class` so the field keeps TagsInput input styles. Re-exported `TagsInputInput` can be used when composing a custom input.
-- `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. `ui.text` / `ui.delete` are the default class names
+- `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. Put `@mousedown.prevent` on `TagsInputItemDelete` so removing a tag does not steal focus. `ui.text` / `ui.delete` are the default class names
 
 
 ### Template usage example
@@ -100,7 +100,7 @@ const tags = ref([
         }"
       />
       <TagsInputItemText :class="ui.text" />
-      <TagsInputItemDelete :class="ui.delete" :disabled="disabled">
+      <TagsInputItemDelete :class="ui.delete" :disabled="disabled" @mousedown.prevent>
         <N8nIcon icon="x" size="small" />
       </TagsInputItemDelete>
     </template>
