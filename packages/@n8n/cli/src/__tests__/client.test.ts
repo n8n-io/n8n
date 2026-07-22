@@ -144,6 +144,7 @@ describe('N8nClient packages', () => {
 					folderId: '',
 					workflowIdPolicy: 'new',
 					credentialMatchingMode: undefined,
+					missingNodeTypeMode: undefined,
 				},
 			);
 
@@ -155,9 +156,11 @@ describe('N8nClient packages', () => {
 			expect(form.get('workflowConflictPolicy')).toBe('fail');
 			expect(form.get('projectId')).toBe('proj-1');
 			expect(form.get('workflowIdPolicy')).toBe('new');
-			// Empty/undefined fields are omitted entirely.
+			// Empty/undefined fields are omitted entirely (an omitted CLI flag
+			// means the instance default decides).
 			expect(form.has('folderId')).toBe(false);
 			expect(form.has('credentialMatchingMode')).toBe(false);
+			expect(form.has('missingNodeTypeMode')).toBe(false);
 
 			const pkg = form.get('package');
 			expect(pkg).toBeInstanceOf(Blob);
@@ -187,6 +190,27 @@ describe('N8nClient packages', () => {
 
 			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
 			expect(form.get('credentialMissingMode')).toBe('create-stub');
+		});
+
+		it('sends missingNodeTypeMode when provided', async () => {
+			fetchMock.mockResolvedValue(
+				jsonResponse(200, {
+					workflows: [],
+					bindings: {},
+					credentials: { matched: [], stubbed: [] },
+				}),
+			);
+
+			await client.importPackage(
+				{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+				{
+					workflowConflictPolicy: 'fail',
+					missingNodeTypeMode: 'import-anyway',
+				},
+			);
+
+			const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+			expect(form.get('missingNodeTypeMode')).toBe('import-anyway');
 		});
 
 		it('sends the data table modes when provided', async () => {
