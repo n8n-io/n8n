@@ -4,7 +4,7 @@ import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../../v2/actions/versionDescription';
-import { ITEM_SIMPLIFY_SELECT } from '../../../v2/helpers/utils';
+import { ITEM_SIMPLIFY_EXPAND, ITEM_SIMPLIFY_SELECT } from '../../../v2/helpers/utils';
 import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
 import * as transport from '../../../v2/transport';
 import type * as _importType0 from '../../../v2/transport';
@@ -118,10 +118,10 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 			'GET',
 			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items/${ITEM_ID}`,
 			{},
-			// Assert the literal $select, so drifting ITEM_SIMPLIFY_SELECT fails here.
+			// Assert the literals, so drifting ITEM_SIMPLIFY_SELECT/EXPAND fails here.
 			{
 				$select: 'id,createdDateTime,lastModifiedDateTime,webUrl',
-				$expand: 'fields($select=Title)',
+				$expand: 'fields(select=Title)',
 			},
 		);
 		expect(result).toEqual([[{ json: buildSimplified(), pairedItem: { item: 0 } }]]);
@@ -181,7 +181,7 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 			'GET',
 			`/v1.0/sites/${ENCODED_SITE_ID}/lists/My%20List%201/items/${ITEM_ID}`,
 			{},
-			{ $select: ITEM_SIMPLIFY_SELECT, $expand: 'fields($select=Title)' },
+			{ $select: ITEM_SIMPLIFY_SELECT, $expand: ITEM_SIMPLIFY_EXPAND },
 		);
 	});
 
@@ -205,7 +205,7 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 			'GET',
 			`/v1.0/sites/${ENCODED_SITE_ID}/lists/${LIST_ID}/items/42`,
 			{},
-			{ $select: ITEM_SIMPLIFY_SELECT, $expand: 'fields($select=Title)' },
+			{ $select: ITEM_SIMPLIFY_SELECT, $expand: ITEM_SIMPLIFY_EXPAND },
 		);
 	});
 

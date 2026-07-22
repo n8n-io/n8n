@@ -36,19 +36,19 @@ export const REQUIRED_PERMISSIONS: Readonly<
 		delegated: 'Sites.ReadWrite.All',
 		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
 	},
-	'item:create': {
-		delegated: 'Sites.ReadWrite.All',
-		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
-	},
-	'item:getAll': {
-		delegated: 'Sites.Read.All',
-		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
-	},
 	'list:get': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
 	'list:getAll': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'item:create': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
+	'item:getAll': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
