@@ -9,7 +9,7 @@ describe('node-type-utils', () => {
 	describe('isTriggerType', () => {
 		it('returns true for types containing "trigger"', () => {
 			expect(isTriggerType('n8n-nodes-base.manualTrigger')).toBe(true);
-			expect(isTriggerType('n8n-nodes-base.cronTrigger')).toBe(true);
+			expect(isTriggerType('n8n-nodes-base.scheduleTrigger')).toBe(true);
 		});
 
 		it('returns true for webhook', () => {
