@@ -304,7 +304,7 @@ similarity_groups:
 
   http_requests:
     - "n8n-nodes-base.httpRequest"
-    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
+    - "n8n-nodes-base.httpRequestTool"
 ```
 
 ### Common Similarity Groups
@@ -320,7 +320,7 @@ ai_agents:
 #### AI Tools
 ```yaml
 ai_tools:
-  - "@n8n/n8n-nodes-langchain.toolHttpRequest"
+  - "n8n-nodes-base.httpRequestTool"
   - "@n8n/n8n-nodes-langchain.toolCalculator"
   - "@n8n/n8n-nodes-langchain.toolCode"
   - "@n8n/n8n-nodes-langchain.toolWorkflow"
@@ -793,7 +793,7 @@ similarity_groups:
     - "@n8n/n8n-nodes-langchain.lmChatOllama"
 
   ai_tools:
-    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
+    - "n8n-nodes-base.httpRequestTool"
     - "@n8n/n8n-nodes-langchain.toolCalculator"
     - "@n8n/n8n-nodes-langchain.toolCode"
 
@@ -884,7 +884,7 @@ similarity_groups:
     - "@n8n/n8n-nodes-langchain.lmChatAws"
 
   ai_tools:
-    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
+    - "n8n-nodes-base.httpRequestTool"
     - "@n8n/n8n-nodes-langchain.toolCalculator"
     - "@n8n/n8n-nodes-langchain.toolCode"
     - "@n8n/n8n-nodes-langchain.toolWorkflow"

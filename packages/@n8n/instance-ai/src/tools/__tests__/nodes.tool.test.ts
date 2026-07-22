@@ -76,8 +76,116 @@ function createMockContext(overrides: Partial<InstanceAiContext> = {}): Instance
 	} as unknown as InstanceAiContext;
 }
 
-describe('nodes tools', () => {
-	describe('search_nodes', () => {
+describe('nodes tool', () => {
+	describe('orchestrator surface', () => {
+		it('should only expose explore-resources action', () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'orchestrator');
+
+			expect(tool.description).toContain('RLC parameters');
+			expect(tool.description).not.toContain('list —');
+			expect(tool.description).not.toContain('search —');
+		});
+
+		it('should call exploreResources for explore-resources action', async () => {
+			const context = createMockContext();
+			const mockResult = {
+				results: [{ name: 'Sheet1', value: 'sheet-1' }],
+				paginationToken: undefined,
+			};
+			(context.nodeService.exploreResources as Mock).mockResolvedValue(mockResult);
+
+			const tool = createNodesTool(context, 'orchestrator');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'explore-resources',
+					nodeType: 'n8n-nodes-base.googleSheets',
+					version: 4.7,
+					methodName: 'spreadSheetsSearch',
+					methodType: 'listSearch',
+					credentialType: 'googleSheetsOAuth2Api',
+					credentialId: 'cred1',
+				},
+				{} as never,
+			);
+
+			expect(context.nodeService.exploreResources).toHaveBeenCalled();
+			expect(result).toEqual({
+				results: [{ name: 'Sheet1', value: 'sheet-1' }],
+				paginationToken: undefined,
+			});
+		});
+	});
+
+	describe('full surface', () => {
+		it('should have a concise description', () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			expect(tool.description).toContain('node types');
+			expect(tool.description).not.toContain('targeted guides');
+		});
+	});
+
+	describe('list action', () => {
+		it('should call nodeService.listAvailable with query', async () => {
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.httpRequest',
+					displayName: 'HTTP Request',
+					description: 'Make HTTP requests',
+					group: ['transform'],
+					version: 1,
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listAvailable as Mock).mockResolvedValue(nodes);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'list', query: 'http' } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: 'http',
+				gatewayCreditsOnly: undefined,
+			});
+			expect(result).toEqual({ nodes });
+		});
+
+		it('should forward gatewayCreditsOnly to nodeService.listAvailable', async () => {
+			const nodes = [
+				{
+					name: '@n8n/n8n-nodes-langchain.openAi',
+					displayName: 'OpenAI',
+					description: 'Use OpenAI',
+					group: ['transform'],
+					version: 1,
+					aiGateway: { supported: true },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listAvailable as Mock).mockResolvedValue(nodes);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'list', gatewayCreditsOnly: true } as never,
+				{} as never,
+			);
+
+			expect(context.nodeService.listAvailable).toHaveBeenCalledWith({
+				query: undefined,
+				gatewayCreditsOnly: true,
+			});
+			expect(result).toEqual({ nodes });
+		});
+	});
+
+	describe('search action', () => {
 		it('should search nodes by query and reuse the searchable node list reference', async () => {
 			const searchableNodes = [
 				{
