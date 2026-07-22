@@ -48,14 +48,11 @@ const props = withDefaults(
 		 * `.tools.enabledOf`.
 		 */
 		scopeTools?: Record<string, string[]>;
-		/** 'stacked' renders the mode cards as full-width rows; 'columns' as one card per column. */
-		modesLayout?: 'stacked' | 'columns';
 	}>(),
 	{
 		rootTestId: 'scopes-selector',
 		readActions: () => DEFAULT_READ_SCOPE_ACTIONS,
 		disabled: false,
-		modesLayout: 'stacked',
 	},
 );
 
@@ -271,11 +268,11 @@ function toggleScope(scope: S, checked: boolean) {
 		<N8nInputLabel :label="baseText('label')" size="small" color="text-dark">
 			<N8nRadioGroup
 				v-model="mode"
-				:orientation="modesLayout === 'columns' ? 'horizontal' : 'vertical'"
+				orientation="vertical"
 				:disabled="disabled"
 				:aria-label="baseText('label')"
 				data-test-id="scopes-mode-radio"
-				:class="[$style.modes, modesLayout === 'columns' && $style.modesColumns]"
+				:class="$style.modes"
 				@update:model-value="onModeChange"
 			>
 				<div
@@ -443,21 +440,6 @@ function toggleScope(scope: S, checked: boolean) {
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	cursor: pointer;
-}
-
-/* One card per column, radio control stacked above the copy. The double class
-   outweighs the DS radio group's `.horizontal` (flex + align-items: center),
-   which would otherwise stop the cards from stretching to equal height. */
-.modes.modesColumns {
-	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	align-items: stretch;
-
-	.modeCard > div {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: var(--spacing--2xs);
-	}
 }
 
 .modeCardActive {
