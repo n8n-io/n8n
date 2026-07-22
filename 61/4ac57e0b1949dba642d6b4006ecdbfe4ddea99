@@ -1,0 +1,25 @@
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  s_c7f2eb05574ce2::t_a25160a1c47fcf 2,13-34
+  s_c7f2eb05574ce2::t_856d2d28ddd90d 35-36
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_c7f2eb05574ce2::t_d6e539fbc2272b 159-193
+  s_c7f2eb05574ce2::t_81039b230f9d9f 4-9
+  s_c7f2eb05574ce2::t_cddfcfc5756d7e 158
+  s_c7f2eb05574ce2::t_fefb54787a045e 194-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "614ac57e0b1949dba642d6b4006ecdbfe4ddea99",
+  "prompts": {},
+  "sessions": {
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}
