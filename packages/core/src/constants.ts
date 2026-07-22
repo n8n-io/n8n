@@ -3,9 +3,6 @@ export const PLACEHOLDER_EMPTY_EXECUTION_ID = '__UNKNOWN__';
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HTTP_REQUEST_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
-export const HTTP_REQUEST_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
-export const GRAPHQL_NODE_TYPE = 'n8n-nodes-base.graphql';
-export const GRAPHQL_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.graphqlTool';
 
 /**
  * Node types whose runtime credential access bypasses the per-node
@@ -19,9 +16,6 @@ export const GRAPHQL_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.graphqlTool';
 export const FULL_ACCESS_NODE_TYPES = new Set<string>([
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
-	HTTP_REQUEST_TOOL_NODE_TYPE,
-	GRAPHQL_NODE_TYPE,
-	GRAPHQL_AS_TOOL_NODE_TYPE,
 ]);
 
 export const RESTRICT_FILE_ACCESS_TO = 'N8N_RESTRICT_FILE_ACCESS_TO';

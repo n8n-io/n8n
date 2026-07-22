@@ -376,7 +376,7 @@ describe('semantic-graph', () => {
 					{
 						id: '3',
 						name: 'Tool',
-						type: '@n8n/n8n-nodes-langchain.toolSerpApi',
+						type: '@n8n/n8n-nodes-langchain.toolCalculator',
 						typeVersion: 1,
 						position: [-100, 100],
 					},
