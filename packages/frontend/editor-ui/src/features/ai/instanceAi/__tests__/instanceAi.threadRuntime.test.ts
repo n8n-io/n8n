@@ -7,6 +7,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage, postCancel, postConfirmation } from '../instanceAi.api';
+import { INSTANCE_AI_THREAD_SOURCE_FALLBACK } from '@n8n/api-types';
 import {
 	createThreadRuntime,
 	getAgentBuilderTargetFromThreadMetadata,
@@ -984,6 +985,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 
 	test('sendMessage tracks whether this is the first user message in the thread', async () => {
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		await activeRuntime(registry).sendMessage('first');
 		await activeRuntime(registry).sendMessage('second');
@@ -992,14 +994,20 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			thread_id: activeThreadId,
 			instance_id: 'instance-1',
 			is_first_message: true,
-			action_source: 'unknown',
+			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 		});
 		expect(mockTelemetryTrack).toHaveBeenNthCalledWith(2, 'User sent builder message', {
 			thread_id: activeThreadId,
 			instance_id: 'instance-1',
 			is_first_message: false,
-			action_source: 'unknown',
+			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 		});
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining(
+				`Missing or invalid thread source for message telemetry (thread ${activeThreadId})`,
+			),
+		);
+		warnSpy.mockRestore();
 	});
 
 	test('sendMessage includes action_source from thread metadata', async () => {
@@ -1010,6 +1018,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		} satisfies Parameters<typeof createThreadRuntime>[1];
 		const runtime = createThreadRuntime(activeThreadId, hooks);
 		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		await runtime.sendMessage('hello');
 
@@ -1019,6 +1028,34 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			is_first_message: true,
 			action_source: 'canvas_action_button',
 		});
+		expect(warnSpy).not.toHaveBeenCalled();
+		warnSpy.mockRestore();
+	});
+
+	test('sendMessage falls back and warns for invalid action_source values', async () => {
+		const hooks = {
+			onTitleUpdated: vi.fn(),
+			onRunFinish: vi.fn(),
+			getThreadMetadata: () => ({ source: 'not_a_real_source' }),
+		} satisfies Parameters<typeof createThreadRuntime>[1];
+		const runtime = createThreadRuntime(activeThreadId, hooks);
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await runtime.sendMessage('hello');
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith('User sent builder message', {
+			thread_id: activeThreadId,
+			instance_id: 'instance-1',
+			is_first_message: true,
+			action_source: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+		});
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining(
+				`Missing or invalid thread source for message telemetry (thread ${activeThreadId})`,
+			),
+		);
+		warnSpy.mockRestore();
 	});
 
 	test('sendMessage forwards pushRef to postMessage', async () => {

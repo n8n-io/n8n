@@ -4,6 +4,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import {
 	buildRunWorkflowSessionGrantKey,
 	INSTANCE_AI_EPHEMERAL_EVENT_TYPES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
@@ -49,6 +50,7 @@ import {
 	shouldRearmRunAfterConfirm,
 	syncLiveRunFromStatus,
 } from './instanceAi.liveRunState';
+import { isInstanceAiThreadSource } from './constants';
 
 export interface PlanEditContext {
 	requestId: string;
@@ -1041,12 +1043,27 @@ export function createThreadRuntime(
 	}
 
 	function trackUserMessageSent(isFirstMessage: boolean): void {
-		const actionSource = hooks.getThreadMetadata?.(threadId)?.source;
+		const rawSource = hooks.getThreadMetadata?.(threadId)?.source;
+		const actionSource = isInstanceAiThreadSource(rawSource)
+			? rawSource
+			: INSTANCE_AI_THREAD_SOURCE_FALLBACK;
+
+		// Create-path validation hard-rejects missing source; this is the read-path
+		// safety net for legacy threads and for entry points that forget to thread
+		// launch metadata through syncThread. Keep telemetry resilient, but make the
+		// gap loud in development so new surfaces can't ship silent unknown attribution.
+		if (import.meta.env.DEV && actionSource === INSTANCE_AI_THREAD_SOURCE_FALLBACK) {
+			console.warn(
+				`[InstanceAI] Missing or invalid thread source for message telemetry (thread ${threadId}). ` +
+					'Pass launch metadata through syncThread so action_source is attributed.',
+			);
+		}
+
 		telemetry.track('User sent builder message', {
 			thread_id: threadId,
 			instance_id: rootStore.instanceId,
 			is_first_message: isFirstMessage,
-			action_source: typeof actionSource === 'string' ? actionSource : 'unknown',
+			action_source: actionSource,
 		});
 	}
 

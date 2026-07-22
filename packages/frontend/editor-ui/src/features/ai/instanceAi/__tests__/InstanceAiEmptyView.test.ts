@@ -832,6 +832,36 @@ describe('InstanceAiEmptyView', () => {
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 
+	it('attributes syncThread to ?source= from an unsaved-canvas hand-off', async () => {
+		routeQuery.source = 'canvas_action_button';
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'canvas_action_button',
+			origin: 'internal',
+		});
+	});
+
+	it('falls back to assistant_page when ?source= is unknown', async () => {
+		routeQuery.source = 'not-a-real-source';
+		store.syncThread.mockResolvedValue(undefined);
+
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
+			source: 'assistant_page',
+			origin: 'internal',
+		});
+	});
+
 	it('preselects the project from ?projectId= without starting a thread on mount', async () => {
 		const redirectedProjectId = 'team-project-42';
 		routeQuery.projectId = redirectedProjectId;

@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -21,7 +21,12 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_PROJECT_ID_QUERY } from './constants';
+import {
+	INSTANCE_AI_THREAD_VIEW,
+	INSTANCE_AI_PROJECT_ID_QUERY,
+	INSTANCE_AI_SOURCE_QUERY,
+	isInstanceAiThreadSource,
+} from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
@@ -106,6 +111,13 @@ function resolveInitialProjectId(): string | undefined {
 	}
 	return projectsStore.personalProject?.id;
 }
+
+/** Prefer a hand-off source from navigation; fall back for direct empty-state visits. */
+function resolveLaunchSource(): InstanceAiThreadSource {
+	const querySource = route.query[INSTANCE_AI_SOURCE_QUERY];
+	return isInstanceAiThreadSource(querySource) ? querySource : 'assistant_page';
+}
+
 const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
 const { isLowCredits } = storeToRefs(store);
@@ -475,7 +487,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	// follow-up `postMessage` would 404.
 	try {
 		await store.syncThread(threadId, selectedProject.value, {
-			source: 'assistant_page',
+			source: resolveLaunchSource(),
 			origin: 'internal',
 		});
 	} catch {
