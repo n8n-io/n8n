@@ -1,5 +1,9 @@
+// The default command is `analyze`; these are the explicit subcommands accepted as argv[0].
+const SUBCOMMANDS = ['baseline', 'rules', 'verify-closure', 'verify-npm-install'] as const;
+type Subcommand = (typeof SUBCOMMANDS)[number];
+
 export interface CliOptions {
-	command: 'analyze' | 'baseline' | 'rules' | 'verify-closure' | 'verify-npm-install';
+	command: 'analyze' | Subcommand;
 	rule?: string;
 	file?: string;
 	ignoreBaseline: boolean;
@@ -7,7 +11,9 @@ export interface CliOptions {
 	args: string[];
 }
 
-const COMMANDS = new Set(['baseline', 'rules', 'verify-closure', 'verify-npm-install']);
+function isSubcommand(value: string): value is Subcommand {
+	return (SUBCOMMANDS as readonly string[]).includes(value);
+}
 
 export function parseArgs(args: string[]): CliOptions {
 	const options: CliOptions = {
@@ -19,8 +25,8 @@ export function parseArgs(args: string[]): CliOptions {
 	let i = 0;
 
 	if (args.length > 0 && !args[0].startsWith('-')) {
-		if (COMMANDS.has(args[0])) {
-			options.command = args[0] as CliOptions['command'];
+		if (isSubcommand(args[0])) {
+			options.command = args[0];
 		}
 		i = 1;
 	}

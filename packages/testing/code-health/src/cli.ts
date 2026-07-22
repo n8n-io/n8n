@@ -13,7 +13,7 @@ import * as path from 'node:path';
 import { parseArgs } from './cli/arg-parser.js';
 import type { CodeHealthContext } from './context.js';
 import { createDefaultRunner } from './index.js';
-import { runVerifyClosure } from './single-instance/collect-copies.js';
+import { runVerifyClosure } from './single-instance/verify-closure.js';
 import { runVerifyNpmInstall } from './single-instance/verify-npm-install.js';
 
 const BASELINE_FILENAME = '.code-health-baseline.json';

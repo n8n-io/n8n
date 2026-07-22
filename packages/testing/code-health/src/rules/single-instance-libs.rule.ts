@@ -1,6 +1,5 @@
 import { BaseRule } from '@n8n/rules-engine';
 import type { Violation } from '@n8n/rules-engine';
-import * as path from 'node:path';
 
 import type { CodeHealthContext } from '../context.js';
 import {
@@ -9,7 +8,11 @@ import {
 	HOST_PACKAGES,
 	PEER_LIBS,
 } from '../single-instance/libs.js';
-import { findPackageJsonFiles, parsePackageJson } from '../utils/package-json-scanner.js';
+import {
+	findPackageJsonFiles,
+	parsePackageJson,
+	relativeDir,
+} from '../utils/package-json-scanner.js';
 
 // Sections that get installed at runtime — a curated lib here can nest a second physical copy.
 const RUNTIME_SECTIONS = new Set(['dependencies', 'optionalDependencies']);
@@ -37,8 +40,7 @@ export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 
 		for (const file of files) {
 			const pkg = parsePackageJson(file);
-			const relDir = path.relative(rootDir, path.dirname(file)).split(path.sep).join('/');
-			if (this.isExempt(pkg.packageName, relDir)) continue;
+			if (this.isExempt(pkg.packageName, relativeDir(rootDir, file))) continue;
 
 			for (const dep of pkg.deps) {
 				if (PEER_LIBS.includes(dep.name) && RUNTIME_SECTIONS.has(dep.section)) {

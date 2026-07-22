@@ -2,15 +2,39 @@ import { describe, expect, it } from 'vitest';
 
 import { closureOf, matchChangedFiles } from './verify-npm-install.js';
 
-const byName = new Map<string, { dir: string; relDir: string; pkg: Record<string, unknown> }>([
+/** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
+function ws(name: string, deps: Array<[string, string]>) {
+	return {
+		dir: `/x/${name}`,
+		relDir: `packages/${name}`,
+		info: {
+			filePath: `/x/${name}/package.json`,
+			packageName: name,
+			private: false,
+			deps: deps.map(([depName, section]) => ({
+				name: depName,
+				version: '',
+				line: 1,
+				usesCatalog: false,
+				section,
+			})),
+		},
+	};
+}
+
+const byName = new Map([
 	[
 		'a',
-		{ dir: '/x/a', relDir: 'packages/a', pkg: { dependencies: { b: 'workspace:*', ext: '^1' } } },
+		ws('a', [
+			['b', 'dependencies'],
+			['ext', 'dependencies'],
+		]),
 	],
-	['b', { dir: '/x/b', relDir: 'packages/b', pkg: { peerDependencies: { c: 'catalog:' } } }],
-	['c', { dir: '/x/c', relDir: 'packages/c', pkg: { optionalDependencies: { d: 'workspace:*' } } }],
-	['d', { dir: '/x/d', relDir: 'packages/d', pkg: {} }],
-	['solo', { dir: '/x/solo', relDir: 'packages/solo', pkg: { dependencies: { ext: '^1' } } }],
+	['b', ws('b', [['c', 'peerDependencies']])],
+	['c', ws('c', [['d', 'optionalDependencies']])],
+	['d', ws('d', [])],
+	['solo', ws('solo', [['ext', 'dependencies']])],
+	['dev-only', ws('dev-only', [['a', 'devDependencies']])],
 ]) as unknown as Parameters<typeof closureOf>[1];
 
 describe('closureOf', () => {
@@ -22,10 +46,14 @@ describe('closureOf', () => {
 		expect(closureOf(['solo'], byName).sort()).toEqual(['solo']);
 	});
 
+	it('does not follow devDependencies (they are not published)', () => {
+		expect(closureOf(['dev-only'], byName).sort()).toEqual(['dev-only']);
+	});
+
 	it('terminates on a dependency cycle', () => {
 		const cyclic = new Map([
-			['a', { dir: '/x/a', relDir: 'packages/a', pkg: { dependencies: { b: 'workspace:*' } } }],
-			['b', { dir: '/x/b', relDir: 'packages/b', pkg: { dependencies: { a: 'workspace:*' } } }],
+			['a', ws('a', [['b', 'dependencies']])],
+			['b', ws('b', [['a', 'dependencies']])],
 		]) as unknown as Parameters<typeof closureOf>[1];
 		expect(closureOf(['a'], cyclic).sort()).toEqual(['a', 'b']);
 	});

@@ -1,43 +1,36 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, relative, sep } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { analyze, collectCopies } from './collect-copies.js';
-import { findPackageJsonFiles } from '../utils/package-json-scanner.js';
+import type { PackageJsonInfo } from '../utils/package-json-scanner.js';
+import {
+	findPackageJsonFiles,
+	parsePackageJson,
+	relativeDir,
+} from '../utils/package-json-scanner.js';
 
 // Repo-relative paths whose change can shift dependency resolution repo-wide (the catalog, the
 // root manifest, or the single-instance tooling itself) — a scoped diff would otherwise miss them.
 const ROOT_TRIGGERS = ['pnpm-workspace.yaml', 'package.json', 'packages/testing/code-health/'];
 
-interface Manifest {
-	name?: string;
-	private?: boolean;
-	dependencies?: Record<string, string>;
-	peerDependencies?: Record<string, string>;
-	optionalDependencies?: Record<string, string>;
-}
+// Sections that follow the publish graph — devDependencies don't ship, so they're not packed.
+const CLOSURE_SECTIONS = new Set(['dependencies', 'peerDependencies', 'optionalDependencies']);
 
 interface WorkspacePkg {
 	dir: string;
 	relDir: string;
-	pkg: Manifest;
+	info: PackageJsonInfo;
 }
 
-/** Every non-private workspace package: name -> { dir, relDir, pkg }. */
+/** Every non-private workspace package: name -> { dir, relDir, info }. */
 async function loadWorkspace(rootDir: string): Promise<Map<string, WorkspacePkg>> {
 	const byName = new Map<string, WorkspacePkg>();
 	for (const file of await findPackageJsonFiles(rootDir)) {
-		let pkg: Manifest;
-		try {
-			pkg = JSON.parse(readFileSync(file, 'utf8')) as Manifest;
-		} catch {
-			continue;
-		}
-		if (pkg.name && !pkg.private) {
-			const relDir = relative(rootDir, dirname(file)).split(sep).join('/');
-			byName.set(pkg.name, { dir: dirname(file), relDir, pkg });
-		}
+		const info = parsePackageJson(file);
+		if (info.private) continue;
+		byName.set(info.packageName, { dir: dirname(file), relDir: relativeDir(rootDir, file), info });
 	}
 	return byName;
 }
@@ -102,13 +95,14 @@ export function closureOf(targets: string[], byName: Map<string, WorkspacePkg>):
 	const seen = new Set<string>();
 	const queue = [...targets];
 	while (queue.length > 0) {
-		const name = queue.shift() as string;
-		if (seen.has(name) || !byName.has(name)) continue;
+		const name = queue.shift();
+		if (name === undefined || seen.has(name)) continue;
+		const entry = byName.get(name);
+		if (!entry) continue;
 		seen.add(name);
-		const { pkg } = byName.get(name) as WorkspacePkg;
-		for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies'] as const) {
-			for (const dep of Object.keys(pkg[field] ?? {})) {
-				if (byName.has(dep) && !seen.has(dep)) queue.push(dep);
+		for (const dep of entry.info.deps) {
+			if (CLOSURE_SECTIONS.has(dep.section) && byName.has(dep.name) && !seen.has(dep.name)) {
+				queue.push(dep.name);
 			}
 		}
 	}
@@ -167,9 +161,11 @@ export async function runVerifyNpmInstall(args: string[], rootDir: string): Prom
 	console.log(`Packing ${toPack.length} workspace package(s) (targets: ${targets.length})...`);
 	const tarballByName: Record<string, string> = {};
 	for (const name of toPack) {
+		const entry = byName.get(name);
+		if (!entry) continue;
 		const before = new Set(readdirSync(tarballs));
 		execFileSync('pnpm', ['pack', '--pack-destination', tarballs], {
-			cwd: (byName.get(name) as WorkspacePkg).dir,
+			cwd: entry.dir,
 			stdio: ['ignore', 'ignore', 'inherit'],
 		});
 		const produced = readdirSync(tarballs).find((f) => !before.has(f) && f.endsWith('.tgz'));
