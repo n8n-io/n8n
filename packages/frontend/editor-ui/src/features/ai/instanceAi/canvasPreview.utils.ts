@@ -495,60 +495,33 @@ export function getLatestAgentArtifactResult(
 }
 
 /** Builder tool calls whose success means the persisted agent changed in a panel-visible way. */
-const AGENT_CONFIG_MUTATION_TOOLS = new Set([
-	'write_config',
-	'patch_config',
-	'create_tasks',
-	'publish_agent',
-	'unpublish_agent',
-	'configure_channel',
-	'finish_setup',
-]);
-
 export interface AgentConfigMutationResult {
 	agentId: string;
-	projectId?: string;
 	/** Unique per mutation — a later mutation in the same build re-fires watchers. */
 	toolCallId: string;
 }
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the latest
- * RESOLVED config-mutating builder tool call, resolved to its target agent.
- * Used to refresh the agent preview immediately after every persisted
- * change, rather than waiting for a suspension or the turn to complete.
- * `create_skills` is deliberately excluded — it stores skill bodies without
- * attaching them, so nothing panel-visible changes until the follow-up patch.
- * `finish_setup` only counts when its trailing (non-suspend) result has at
- * least one connected channel — a run that only collected answers/skipped
- * credentials persists nothing panel-visible on its own, and connecting a
- * channel is otherwise the last card in the chain with no follow-up
- * `patch_config` to refresh the panel.
+ * resolved tool call stamped with `configMutated: true` by the backend.
  */
 export function getLatestAgentConfigMutation(
 	node: InstanceAiAgentNode,
-	fallbackTarget?: AgentArtifactTarget,
 ): AgentConfigMutationResult | undefined {
-	return walkAgentTargetedResult(node, fallbackTarget, matchAgentConfigMutationToolCall).result;
-}
-
-function matchAgentConfigMutationToolCall(
-	tc: InstanceAiToolCallState,
-	callTarget: AgentArtifactTarget | undefined,
-): AgentConfigMutationResult | undefined {
-	if (
-		!tc.isLoading &&
-		AGENT_CONFIG_MUTATION_TOOLS.has(tc.toolName) &&
-		isRecord(tc.result) &&
-		(tc.result.ok === true ||
-			tc.result.connected === true ||
-			(tc.toolName === 'finish_setup' &&
-				tc.result.completed === true &&
-				isRecord(tc.result.channels) &&
-				Object.values(tc.result.channels).some((status) => status === 'connected'))) &&
-		callTarget
-	) {
-		return { ...callTarget, toolCallId: tc.toolCallId };
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestAgentConfigMutation(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (
+			!tc.isLoading &&
+			isRecord(tc.result) &&
+			tc.result.configMutated === true &&
+			typeof tc.result.agentId === 'string'
+		) {
+			return { agentId: tc.result.agentId, toolCallId: tc.toolCallId };
+		}
 	}
 	return undefined;
 }

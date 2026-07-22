@@ -6,6 +6,7 @@ import type {
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import type { ResourceEntry } from '../useResourceRegistry';
 
 // ---------------------------------------------------------------------------
@@ -759,64 +760,54 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
-	describe('refresh agent preview on config mutation', () => {
-		// Target + tool call live directly on the node (no agent-builder child) so
-		// this fixture exercises only the mutation-refresh watcher, not the
-		// separate spawn-open watcher (which switches tabs whenever a fresh
-		// agent-builder child appears, regardless of the active tab).
-		function makeAgentConfigMutationTree(toolCallId: string, toolName = 'patch_config') {
+	describe('signal agent config mutations on the event bus', () => {
+		function makeAgentConfigMutationTree(toolCallId: string) {
 			return makeAgentNode({
-				targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
 				toolCalls: [
 					makeToolCall({
 						toolCallId,
-						toolName,
+						toolName: 'patch_config',
 						isLoading: false,
-						result: { ok: true },
+						result: { ok: true, configMutated: true, agentId: 'agent-1' },
 					}),
 				],
 			});
 		}
 
-		test('increments agentRefreshKey when a config mutation resolves while the target agent tab is active', async () => {
+		test('emits agentUpdated for each new config mutation', async () => {
+			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
 			const ctx = setup();
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			ctx.openAgentPreview('agent-1', 'project-1');
-			const initialKey = ctx.agentRefreshKey.value;
 
 			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
 			await nextTick();
 
-			expect(ctx.agentRefreshKey.value).toBe(initialKey + 1);
-
-			ctx.thread.messages = [
-				makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2', 'write_config') }),
-			];
-			await nextTick();
-			expect(ctx.agentRefreshKey.value).toBe(initialKey + 2);
-		});
-
-		test('does not increment agentRefreshKey when a different tab is active, and not while hydrating', async () => {
-			const ctx = setup();
-			registerAgent(ctx.thread, 'agent-1', 'SEO Auditor', 'project-1');
-			registerAgent(ctx.thread, 'agent-2', 'Other Agent', 'project-1');
-			ctx.openAgentPreview('agent-2', 'project-1');
-			const initialKey = ctx.agentRefreshKey.value;
-
-			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
-			await nextTick();
-
-			expect(ctx.agentRefreshKey.value).toBe(initialKey);
-			expect(ctx.activeTabId.value).toBe('agent-2');
-
-			ctx.openAgentPreview('agent-1', 'project-1');
-			ctx.thread.isHydratingThread = true;
-			const keyBeforeHydration = ctx.agentRefreshKey.value;
+			expect(emitSpy).toHaveBeenCalledWith('agentUpdated', {
+				agentId: 'agent-1',
+				source: 'instance-ai',
+			});
 
 			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-2') })];
 			await nextTick();
 
-			expect(ctx.agentRefreshKey.value).toBe(keyBeforeHydration);
+			expect(emitSpy).toHaveBeenLastCalledWith('agentUpdated', {
+				agentId: 'agent-1',
+				source: 'instance-ai',
+			});
+			expect(emitSpy).toHaveBeenCalledTimes(2);
+
+			emitSpy.mockRestore();
+		});
+
+		test('does not emit while hydrating the thread', async () => {
+			const emitSpy = vi.spyOn(agentsEventBus, 'emit');
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+
+			ctx.thread.messages = [makeMessage({ agentTree: makeAgentConfigMutationTree('tc-1') })];
+			await nextTick();
+
+			expect(emitSpy).not.toHaveBeenCalled();
+			emitSpy.mockRestore();
 		});
 	});
 

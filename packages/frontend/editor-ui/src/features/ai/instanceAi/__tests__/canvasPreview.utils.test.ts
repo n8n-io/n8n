@@ -465,161 +465,62 @@ describe('getLatestAgentArtifactResult', () => {
 });
 
 describe('getLatestAgentConfigMutation', () => {
-	test('finds a resolved patch_config on an agent-builder child, using its targetResource', () => {
-		const builderChild = makeAgentNode({
-			agentId: 'builder-child',
-			kind: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-patch',
-					toolName: 'patch_config',
-					isLoading: false,
-					result: { ok: true },
-				}),
-			],
-		});
-		const orchestrator = makeAgentNode({ children: [builderChild] });
-
-		expect(getLatestAgentConfigMutation(orchestrator)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-patch',
-		});
-	});
-
-	test('uses parent agent target for a nested child mutation with no targetResource of its own', () => {
-		const nestedChild = makeAgentNode({
-			agentId: 'nested-child',
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-nested-patch',
-					toolName: 'patch_config',
-					isLoading: false,
-					result: { ok: true },
-				}),
-			],
-		});
-		const parentAgentBuilder = makeAgentNode({
-			agentId: 'agent-builder',
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			children: [nestedChild],
-		});
-
-		expect(getLatestAgentConfigMutation(parentAgentBuilder)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-nested-patch',
-		});
-	});
-
-	test('ignores in-flight calls, failed results, and non-mutation tools', () => {
-		const inFlight = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			toolCalls: [makeToolCall({ toolName: 'write_config', isLoading: true })],
-		});
-		expect(getLatestAgentConfigMutation(inFlight)).toBeUndefined();
-
-		const failed = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			toolCalls: [
-				makeToolCall({ toolName: 'write_config', isLoading: false, result: { ok: false } }),
-			],
-		});
-		expect(getLatestAgentConfigMutation(failed)).toBeUndefined();
-
-		const nonMutation = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			toolCalls: [
-				makeToolCall({ toolName: 'read_config', isLoading: false, result: { ok: true } }),
-				makeToolCall({ toolName: 'write_todos', isLoading: false, result: { status: 'ok' } }),
-				makeToolCall({
-					toolName: 'create_skills',
-					isLoading: false,
-					result: { ok: true, skills: [] },
-				}),
-			],
-		});
-		expect(getLatestAgentConfigMutation(nonMutation)).toBeUndefined();
-	});
-
-	test('matches a resolved configure_channel via result.connected', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-channel',
-					toolName: 'configure_channel',
-					isLoading: false,
-					result: { connected: true },
-				}),
-			],
-		});
-		expect(getLatestAgentConfigMutation(node)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-channel',
-		});
-	});
-
-	test('matches a resolved finish_setup via result.completed with a connected channel', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-finish-setup',
-					toolName: 'finish_setup',
-					isLoading: false,
-					result: { completed: true, channels: { slack: 'connected' } },
-				}),
-			],
-		});
-		expect(getLatestAgentConfigMutation(node)).toEqual({
-			agentId: 'agent-1',
-			projectId: 'project-1',
-			toolCallId: 'tc-finish-setup',
-		});
-	});
-
-	test('does not match a resolved finish_setup with no connected channel', () => {
-		const node = makeAgentNode({
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'project-1' },
-			toolCalls: [
-				makeToolCall({
-					toolCallId: 'tc-finish-setup',
-					toolName: 'finish_setup',
-					isLoading: false,
-					result: { completed: true, channels: { slack: 'skipped', telegram: 'blocked' } },
-				}),
-			],
-		});
-		expect(getLatestAgentConfigMutation(node)).toBeUndefined();
-	});
-
-	test('returns the latest mutation when several exist, and uses fallbackTarget when no targetResource is in the tree', () => {
+	test('returns the latest stamped mutation with agentId and toolCallId', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-write',
 					toolName: 'write_config',
 					isLoading: false,
-					result: { ok: true },
+					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-patch',
 					toolName: 'patch_config',
 					isLoading: false,
-					result: { ok: true },
+					result: { ok: true, configMutated: true, agentId: 'agent-1' },
 				}),
 			],
 		});
 
-		expect(
-			getLatestAgentConfigMutation(node, { agentId: 'agent-1', projectId: 'project-1' }),
-		).toEqual({
+		expect(getLatestAgentConfigMutation(node)).toEqual({
 			agentId: 'agent-1',
-			projectId: 'project-1',
 			toolCallId: 'tc-patch',
+		});
+	});
+
+	test('ignores loading calls and results without the configMutated marker', () => {
+		const inFlight = makeAgentNode({
+			toolCalls: [makeToolCall({ toolName: 'write_config', isLoading: true })],
+		});
+		expect(getLatestAgentConfigMutation(inFlight)).toBeUndefined();
+
+		const unstamped = makeAgentNode({
+			toolCalls: [
+				makeToolCall({ toolName: 'write_config', isLoading: false, result: { ok: true } }),
+				makeToolCall({ toolName: 'read_config', isLoading: false, result: { ok: true } }),
+			],
+		});
+		expect(getLatestAgentConfigMutation(unstamped)).toBeUndefined();
+	});
+
+	test('finds stamped mutations in nested children, most recent last', () => {
+		const nestedChild = makeAgentNode({
+			agentId: 'nested-child',
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-nested',
+					toolName: 'patch_config',
+					isLoading: false,
+					result: { ok: true, configMutated: true, agentId: 'agent-1' },
+				}),
+			],
+		});
+		const parent = makeAgentNode({ children: [nestedChild] });
+
+		expect(getLatestAgentConfigMutation(parent)).toEqual({
+			agentId: 'agent-1',
+			toolCallId: 'tc-nested',
 		});
 	});
 });

@@ -448,7 +448,7 @@ export function buildFinishSetupTool(deps: FinishSetupToolDeps): BuiltTool {
 				'`"skipped"`, and the result carries `publishBlockedIssues`. Resolve those issues first ' +
 				'(patch in the credentials/model this same call already collected), then call ' +
 				'configure_channel directly for each blocked channel. Returns ' +
-				'{ completed, answers, credentials, channels, publishBlockedIssues }: resolve the model ' +
+				'{ completed, answers, credentials, channels, publishBlockedIssues } (plus configMutated/agentId refresh metadata when completed): resolve the model ' +
 				'answer with resolve_llm, copy returned credential ids into the config, and verify MCP ' +
 				'servers with them. Auto-resolves credential slots that match an existing single ' +
 				'credential or the connected channel credential.',

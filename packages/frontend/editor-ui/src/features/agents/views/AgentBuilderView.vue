@@ -66,6 +66,7 @@ import {
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
+import { getDebounceTime } from '@/app/constants/durations';
 import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderPreviewHeader from '../components/AgentBuilderPreviewHeader.vue';
@@ -80,7 +81,6 @@ const props = withDefaults(
 		artifactMode?: boolean;
 		artifactProjectId?: string;
 		artifactAgentId?: string;
-		artifactRefreshKey?: number;
 		/** True while the AI is actively building/mutating this agent in artifact mode — disables editing/publishing without hiding content. */
 		artifactEditingLocked?: boolean;
 	}>(),
@@ -88,7 +88,6 @@ const props = withDefaults(
 		artifactMode: false,
 		artifactProjectId: undefined,
 		artifactAgentId: undefined,
-		artifactRefreshKey: 0,
 		artifactEditingLocked: false,
 	},
 );
@@ -167,7 +166,6 @@ async function onSendPreviewToAssistant() {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
-const pendingArtifactRefreshKey = ref<number>();
 /** Queues `agentUpdated` bus events that land mid-initialize for replay (see `onExternalAgentUpdated`). */
 const pendingExternalRefresh = ref(false);
 const agentName = ref('');
@@ -874,40 +872,24 @@ function handleArtifactRefreshError(error: unknown) {
 	showError(error, locale.baseText('agents.builder.loadError'));
 }
 
-async function replayPendingArtifactRefresh() {
-	if (!isArtifactMode.value || pendingArtifactRefreshKey.value === undefined) return;
-	pendingArtifactRefreshKey.value = undefined;
-	await refreshArtifactShell();
+let externalRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+function scheduleExternalRefresh() {
+	clearTimeout(externalRefreshTimer);
+	externalRefreshTimer = setTimeout(() => {
+		void refreshArtifactShell().catch(handleArtifactRefreshError);
+	}, getDebounceTime(400));
 }
-
-watch(
-	() => props.artifactRefreshKey,
-	async (refreshKey, previousRefreshKey) => {
-		if (!isArtifactMode.value || refreshKey === previousRefreshKey) return;
-		if (!initialized.value) {
-			pendingArtifactRefreshKey.value = refreshKey;
-			return;
-		}
-		pendingArtifactRefreshKey.value = undefined;
-		try {
-			await refreshArtifactShell();
-		} catch (error: unknown) {
-			handleArtifactRefreshError(error);
-		}
-	},
-);
 
 function onExternalAgentUpdated(event?: AgentUpdatedEvent) {
 	if (event?.source === 'agent-builder') return;
 	if (!event?.agentId || event.agentId !== agentId.value) return;
 	// Mid-initialize the write may have landed after initialize()'s own config
 	// fetch already resolved, so queue a replay instead of dropping the event.
-	// Unlike `replayPendingArtifactRefresh` this isn't gated on artifact mode.
 	if (!initialized.value) {
 		pendingExternalRefresh.value = true;
 		return;
 	}
-	void refreshArtifactShell().catch(handleArtifactRefreshError);
+	scheduleExternalRefresh();
 }
 
 async function replayPendingExternalRefresh() {
@@ -917,7 +899,6 @@ async function replayPendingExternalRefresh() {
 }
 
 agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
-onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onExternalAgentUpdated));
 
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [
@@ -1071,6 +1052,8 @@ async function onHeaderAction(action: string) {
 }
 
 async function initialize() {
+	clearTimeout(externalRefreshTimer);
+	// A refresh queued for the previous agent must not fire against this one.
 	initialized.value = false;
 	// A refresh queued before this (re)initialize is obsolete: it targeted the
 	// agent that was current when the event fired, and the fetches below return
@@ -1143,7 +1126,6 @@ async function initialize() {
 		showError(error, locale.baseText('agents.builder.loadError'));
 	} finally {
 		initialized.value = true;
-		void replayPendingArtifactRefresh().catch(handleArtifactRefreshError);
 		void replayPendingExternalRefresh().catch(handleArtifactRefreshError);
 		warmAgentKnowledgeSandboxForPage();
 	}
@@ -1152,6 +1134,8 @@ async function initialize() {
 watch(agentId, initialize, { immediate: true });
 
 onBeforeUnmount(() => {
+	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
+	clearTimeout(externalRefreshTimer);
 	sessionsStore.stopAutoRefresh();
 	void flushAutosave().catch(() => {});
 });

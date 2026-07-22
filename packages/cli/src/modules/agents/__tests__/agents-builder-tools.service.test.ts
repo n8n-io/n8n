@@ -297,6 +297,49 @@ describe('AgentsBuilderToolsService', () => {
 				config: { ...baseConfig, integrations: [] },
 				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
 			});
+			expect(result).not.toHaveProperty('configMutated');
+		});
+
+		it('write_config success result carries configMutated and agentId', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
+		});
+
+		it('write_config failure result is not stamped with configMutated', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: 'stale-hash',
+					json: JSON.stringify(baseConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ ok: false }));
+			expect(result).not.toHaveProperty('configMutated');
 		});
 
 		it('list_integration_types returns builder guidance for integration versus node-tool choice', async () => {
@@ -404,7 +447,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
 		it('patch_config rejects stale baseConfigHash without updating or echoing the config', async () => {
@@ -473,7 +516,7 @@ describe('AgentsBuilderToolsService', () => {
 					integrations: [currentIntegrations[0], currentIntegrations[2]],
 				}),
 			);
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
 		it('patch_config strips legacy schedule integrations from the current snapshot', async () => {
@@ -543,7 +586,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
 		it('write_config strips legacy schedule integrations before saving', async () => {
@@ -701,7 +744,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
 		it('patch_config allows $fromAI on runtime fields when dynamic selectors are fixed', async () => {
@@ -744,7 +787,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
 		it('write_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
@@ -781,7 +824,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
 		it('patch_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
@@ -820,7 +863,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 		});
 
 		// Native web-search provider-tool derivation (add defaults, fill missing
@@ -916,7 +959,7 @@ describe('AgentsBuilderToolsService', () => {
 				ctx,
 			);
 
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(
 				agentId,
 				projectId,
@@ -994,7 +1037,7 @@ describe('AgentsBuilderToolsService', () => {
 				ctx,
 			);
 
-			expect(result).toEqual({ ok: true });
+			expect(result).toEqual({ ok: true, configMutated: true, agentId });
 			expect(agentsService.updateConfig).toHaveBeenCalledWith(
 				agentId,
 				projectId,
@@ -1476,7 +1519,7 @@ describe('AgentsBuilderToolsService', () => {
 				'Pass every task you currently know how to write in one `tasks` array',
 			);
 			expect(tool.description).toContain('config.tasks');
-			expect(tool.description).toContain('{ ok: true, tasks:');
+			expect(tool.description).toContain('{ ok: true, configMutated: true, agentId, tasks:');
 			expect(tool.description).toContain('{ ok: false, errors }');
 		});
 
@@ -1535,6 +1578,8 @@ describe('AgentsBuilderToolsService', () => {
 			]);
 			expect(result).toEqual({
 				ok: true,
+				configMutated: true,
+				agentId,
 				tasks: [
 					{ id: 'task-1', name: taskOneInput.name, enabled: true },
 					{ id: 'task-2', name: taskTwoInput.name, enabled: true },
@@ -1621,6 +1666,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
+				configMutated: true,
 				agentId,
 				activeVersionId: 'v-active',
 				versionId: 'v-active',
@@ -1647,6 +1693,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
+				configMutated: true,
 				agentId,
 				activeVersionId: 'v-history',
 				versionId: 'v-draft',
@@ -1694,7 +1741,12 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 			});
 			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith(agentId, projectId);
-			expect(result).toEqual({ ok: true, agentId, activeVersionId: null });
+			expect(result).toEqual({
+				ok: true,
+				configMutated: true,
+				agentId,
+				activeVersionId: null,
+			});
 		});
 
 		it('denies unpublish when the user lacks agent:unpublish', async () => {

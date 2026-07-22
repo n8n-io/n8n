@@ -211,6 +211,32 @@ export class AgentsBuilderToolsService {
 		private readonly agentValidationService: AgentValidationService,
 	) {}
 
+	/**
+	 * Stamps `configMutated: true` + the target agentId onto successful results of
+	 * config-mutating tools, so the FE can refresh the agent artifact panel from a
+	 * single semantic field instead of a per-tool allowlist.
+	 */
+	private withConfigMutationMarker(tool: BuiltTool, agentId: string): BuiltTool {
+		const handler = tool.handler;
+		if (!handler) return tool;
+		return {
+			...tool,
+			handler: async (input, ctx) => {
+				const result = await handler(input, ctx);
+				if (
+					typeof result === 'object' &&
+					result !== null &&
+					(('ok' in result && result.ok === true) ||
+						('connected' in result && result.connected === true) ||
+						('completed' in result && result.completed === true))
+				) {
+					return { ...result, configMutated: true, agentId };
+				}
+				return result;
+			},
+		};
+	}
+
 	getTools(
 		agentId: string,
 		projectId: string,
@@ -254,7 +280,7 @@ export class AgentsBuilderToolsService {
 				'Create or replace the agent configuration by writing a complete JSON string. ' +
 					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
 					'write_config/patch_config success or from a stale response. ' +
-					'Returns { ok: true } on success — no config, hash, or timestamps are returned; call ' +
+					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
 					'read_config again before any later inspection or mutation — or ' +
 					'{ ok: false, stage, errors } with path, message, expected, received fields on failure. ' +
 					'On stage: "stale", call read_config and retry once using its fresh config and configHash.',
@@ -340,7 +366,7 @@ export class AgentsBuilderToolsService {
 					'Requires baseConfigHash from the immediately preceding read_config result — never from a prior ' +
 					'write_config/patch_config success or from a stale response. ' +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
-					'Returns { ok: true } on success — no config, hash, or timestamps are returned; call ' +
+					'Returns { ok: true, configMutated: true, agentId } on success — no config, hash, or timestamps are returned; call ' +
 					'read_config again before any later inspection or mutation — or ' +
 					'{ ok: false, stage, errors } on failure. ' +
 					'stage is "parse", "stale", "patch", or "schema". On stage: "stale", call read_config and retry ' +
@@ -490,7 +516,7 @@ export class AgentsBuilderToolsService {
 					'Idempotent when the draft is already the active published version. Pass optional `versionId` to ' +
 					'activate an existing history row instead of publishing the current draft. Call only when the user ' +
 					'asks to publish, activate, or make the agent live/usable — never tell them to click Publish in the editor. ' +
-					'Returns { ok: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
+					'Returns { ok: true, configMutated: true, agentId, activeVersionId, versionId } or { ok: false, errors }.',
 			)
 			.input(
 				z.object({
@@ -536,7 +562,7 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Unpublish this target agent: clears the live version while preserving the draft, disconnects chat ' +
 					'integrations, and stops scheduled tasks. Call when the user asks to unpublish or take the agent offline. ' +
-					'Returns { ok: true, agentId, activeVersionId: null } or { ok: false, errors }.',
+					'Returns { ok: true, configMutated: true, agentId, activeVersionId: null } or { ok: false, errors }.',
 			)
 			.input(z.object({}))
 			.handler(async () => {
@@ -573,12 +599,12 @@ export class AgentsBuilderToolsService {
 
 		const tools: BuiltTool[] = [
 			readConfigTool,
-			writeConfigTool,
-			patchConfigTool,
+			this.withConfigMutationMarker(writeConfigTool, agentId),
+			this.withConfigMutationMarker(patchConfigTool, agentId),
 			listIntegrationTypesTool,
 			listSubAgentsTool,
-			publishAgentTool,
-			unpublishAgentTool,
+			this.withConfigMutationMarker(publishAgentTool, agentId),
+			this.withConfigMutationMarker(unpublishAgentTool, agentId),
 			buildResolveLlmTool({
 				credentialProvider,
 				modelLookup,
@@ -610,46 +636,53 @@ export class AgentsBuilderToolsService {
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
 			}),
 			buildAskQuestionsTool(),
-			buildConfigureChannelTool({
+			this.withConfigMutationMarker(
+				buildConfigureChannelTool({
+					agentId,
+					projectId,
+					listChatIntegrationTypes: () =>
+						this.agentIntegrationPersistenceService
+							.listChatIntegrations()
+							.map((integration) => integration.type),
+				}),
 				agentId,
-				projectId,
-				listChatIntegrationTypes: () =>
-					this.agentIntegrationPersistenceService
-						.listChatIntegrations()
-						.map((integration) => integration.type),
-			}),
-			buildFinishSetupTool({
-				credentialProvider,
+			),
+			this.withConfigMutationMarker(
+				buildFinishSetupTool({
+					credentialProvider,
+					agentId,
+					projectId,
+					isCredentialTypeKnown: (credentialType) =>
+						this.credentialTypes.recognizes(credentialType),
+					listIntegrationCredentialIds: async () => {
+						const agent = await this.agentsService.findById(agentId, projectId);
+						return (agent?.integrations ?? [])
+							.map((integration) => integration.credentialId)
+							.filter((credentialId) => credentialId.length > 0);
+					},
+					listChatIntegrationTypes: () =>
+						this.agentIntegrationPersistenceService
+							.listChatIntegrations()
+							.map((integration) => integration.type),
+					getPublishBlockers: async () => {
+						// Connecting a channel auto-publishes the agent, so gate it on the
+						// same publish validation. Integration issues are excluded: the
+						// draft channel entry itself (`credentialId: ""`) always reports
+						// missing_credential, and that's exactly what this channel phase
+						// is about to resolve.
+						const { issues } = await this.agentValidationService.validateAgentConfiguration(
+							agentId,
+							projectId,
+							credentialProvider,
+							'publish',
+						);
+						return issues
+							.filter((issue) => !issue.path.startsWith('integrations.'))
+							.map((issue) => ({ path: issue.path, code: issue.code }));
+					},
+				}),
 				agentId,
-				projectId,
-				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
-				listIntegrationCredentialIds: async () => {
-					const agent = await this.agentsService.findById(agentId, projectId);
-					return (agent?.integrations ?? [])
-						.map((integration) => integration.credentialId)
-						.filter((credentialId) => credentialId.length > 0);
-				},
-				listChatIntegrationTypes: () =>
-					this.agentIntegrationPersistenceService
-						.listChatIntegrations()
-						.map((integration) => integration.type),
-				getPublishBlockers: async () => {
-					// Connecting a channel auto-publishes the agent, so gate it on the
-					// same publish validation. Integration issues are excluded: the
-					// draft channel entry itself (`credentialId: ""`) always reports
-					// missing_credential, and that's exactly what this channel phase
-					// is about to resolve.
-					const { issues } = await this.agentValidationService.validateAgentConfiguration(
-						agentId,
-						projectId,
-						credentialProvider,
-						'publish',
-					);
-					return issues
-						.filter((issue) => !issue.path.startsWith('integrations.'))
-						.map((issue) => ({ path: issue.path, code: issue.code }));
-				},
-			}),
+			),
 			buildVerifyMcpServerTool({
 				credentialProvider,
 				oauthService: this.oauthService,
@@ -772,7 +805,7 @@ export class AgentsBuilderToolsService {
 					'objective field carries its own structured template. The whole batch is all-or-nothing: an ' +
 					'invalid cron or objective rejects every task in the call. This adds a `{ type: "task", id, ' +
 					'enabled }` ref per task to the agent config (config.tasks) and each task starts running once ' +
-					'the agent is (re)published via `publish_agent`. Returns { ok: true, tasks: [{ id, name, enabled }, ...] } (same ' +
+					'the agent is (re)published via `publish_agent`. Returns { ok: true, configMutated: true, agentId, tasks: [{ id, name, enabled }, ...] } (same ' +
 					'order as input, objectives and crons are not echoed back) or { ok: false, errors }.',
 			)
 			.systemInstruction(
@@ -860,7 +893,7 @@ export class AgentsBuilderToolsService {
 		return [
 			buildCustomToolTool,
 			createSkillsTool,
-			createTasksTool,
+			this.withConfigMutationMarker(createTasksTool, agentId),
 			listWorkflowsTool,
 			buildGetResourceLocatorOptionsTool({
 				dynamicNodeParametersService: this.dynamicNodeParametersService,

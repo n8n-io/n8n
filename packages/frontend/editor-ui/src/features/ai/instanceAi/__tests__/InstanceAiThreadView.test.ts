@@ -184,7 +184,6 @@ const InstanceAiAgentPreviewStub = defineComponent({
 	props: {
 		agentId: { type: String, required: true },
 		projectId: { type: String, required: true },
-		refreshKey: { type: Number, required: true },
 	},
 	setup(props) {
 		return () =>
@@ -192,7 +191,6 @@ const InstanceAiAgentPreviewStub = defineComponent({
 				'data-test-id': 'instance-ai-agent-preview-stub',
 				'data-agent-id': props.agentId,
 				'data-project-id': props.projectId,
-				'data-refresh-key': String(props.refreshKey),
 			});
 	},
 });
@@ -907,10 +905,6 @@ describe('InstanceAiThreadView', () => {
 
 		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(preview).toHaveAttribute('data-project-id', 'proj-1');
-		// The panel mounts fresh on open, so it loads current data without
-		// needing a refresh-key bump — that's reserved for keeping an
-		// already-open panel in sync with later config mutations.
-		expect(preview).toHaveAttribute('data-refresh-key', '0');
 	});
 
 	it('closes the agent artifact preview from the wrapper toggle', async () => {

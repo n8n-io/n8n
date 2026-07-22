@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
+import { agentsEventBus } from '@/features/agents/agents.eventBus';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -82,16 +83,6 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		return tab?.type === 'agent' ? (tab.projectId ?? null) : null;
 	});
 
-	const activeAgentTarget = computed(() => {
-		const agentId = activeAgentId.value;
-		if (!agentId) return undefined;
-		const projectId = activeAgentProjectId.value;
-		return {
-			agentId,
-			...(projectId ? { projectId } : {}),
-		};
-	});
-
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const message of thread.messages) {
@@ -109,7 +100,6 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	});
 
 	const dataTableRefreshKey = ref(0);
-	const agentRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(() => isPreviewOpen.value && activeTabId.value !== undefined);
 
@@ -268,8 +258,7 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// Mirrors the workflow-builder spawn-open above. The builder node id is
 	// stable per target agent (`agent-builder:<id>`), so this opens once per
 	// target per thread — later spawns for the same agent intentionally don't
-	// re-yank the view. Doesn't bump agentRefreshKey — the config-mutation
-	// watch below owns refreshes.
+	// re-yank the view. Config refreshes are driven by the agents event bus.
 
 	const latestAgentBuilderTarget = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
@@ -404,18 +393,16 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		}
 	});
 
-	// --- Refresh agent preview on every persisted builder config mutation ---
-	// The agent panel opens at builder-spawn time (see latestAgentBuilderTarget
-	// above); this is the single trigger that keeps it in sync afterwards —
-	// every successful write_config/patch_config/create_tasks/publish_agent/
-	// unpublish_agent/configure_channel refreshes it immediately, whether that
-	// happens mid-build, right before a suspension, or at turn completion.
+	// --- Signal persisted builder config mutations onto the agents event bus ---
+	// Every successful config-mutating builder tool call (stamped configMutated
+	// by the backend) notifies any mounted AgentBuilderView for that agent —
+	// the artifact panel, or a full-page builder in another route.
 
 	const latestAgentConfigMutation = computed(() => {
 		for (let i = thread.messages.length - 1; i >= 0; i--) {
 			const msg = thread.messages[i];
 			if (msg.agentTree) {
-				const result = getLatestAgentConfigMutation(msg.agentTree, activeAgentTarget.value);
+				const result = getLatestAgentConfigMutation(msg.agentTree);
 				if (result) return result;
 			}
 		}
@@ -427,9 +414,10 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		(toolCallId) => {
 			if (!toolCallId || !latestAgentConfigMutation.value) return;
 			if (thread.isHydratingThread) return;
-			if (activeTabId.value === latestAgentConfigMutation.value.agentId) {
-				agentRefreshKey.value++;
-			}
+			agentsEventBus.emit('agentUpdated', {
+				agentId: latestAgentConfigMutation.value.agentId,
+				source: 'instance-ai',
+			});
 		},
 		{ flush: 'sync' },
 	);
@@ -444,7 +432,6 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 		activeAgentProjectId,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
-		agentRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
 		selectTab,

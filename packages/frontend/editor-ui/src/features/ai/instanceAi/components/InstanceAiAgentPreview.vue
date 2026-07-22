@@ -7,7 +7,6 @@ import { useThread } from '../instanceAi.store';
 const props = defineProps<{
 	projectId: string;
 	agentId: string;
-	refreshKey: number;
 }>();
 
 // === Editing lock ===
@@ -34,7 +33,6 @@ const isAgentBuilding = computed(() => {
 			artifact-mode
 			:artifact-project-id="props.projectId"
 			:artifact-agent-id="props.agentId"
-			:artifact-refresh-key="props.refreshKey"
 			:artifact-editing-locked="isAgentBuilding"
 		/>
 	</div>
