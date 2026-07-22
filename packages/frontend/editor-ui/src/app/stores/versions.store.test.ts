@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useVersionsStore, type VersionsModalOpeners } from './versions.store';
+import { useVersionsStore } from './versions.store';
+import type { ModalOpeners } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { IVersionNotificationSettings } from '@n8n/api-types';
@@ -74,8 +75,8 @@ const toast = useToast();
 
 // Recreated per test (see beforeEach) so call history never leaks between tests —
 // vi.restoreAllMocks() resets spies from vi.spyOn but not standalone vi.fn()s.
-let openModal: VersionsModalOpeners['openModal'];
-let openModalWithData: VersionsModalOpeners['openModalWithData'];
+let openModal: ModalOpeners['openModal'];
+let openModalWithData: ModalOpeners['openModalWithData'];
 
 describe('versions.store', () => {
 	beforeEach(() => {
