@@ -55,6 +55,7 @@ jobs:
     name: Verify single-instance deps (npm-install)
     runs-on: ubuntu-latest
     continue-on-error: true
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
