@@ -31,6 +31,7 @@ const GraphEdgeSchema = z.object({
 	from: z.string(),
 	to: z.string(),
 	outputIndex: z.number().int().nonnegative().optional(),
+	inputIndex: z.number().int().nonnegative().optional(),
 	isBackEdge: z.boolean().optional(),
 });
 

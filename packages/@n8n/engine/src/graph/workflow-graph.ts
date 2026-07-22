@@ -31,6 +31,8 @@ export interface GraphEdge {
 	to: string;
 	/** Which output slot of `from` feeds this edge — multi-output nodes only. */
 	outputIndex?: number;
+	/** Which input slot of `to` this edge feeds — multi-input nodes (e.g. Merge). */
+	inputIndex?: number;
 	/** Closes a cycle (loop iteration). */
 	isBackEdge?: boolean;
 }
