@@ -1,10 +1,10 @@
+import { toJsonValue } from '@n8n/utils/json/to-json-value';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
 	getInlineDelegateSubAgentToolOptions,
 	isDelegateSubAgentTool,
 } from './delegate-sub-agent-tool';
-import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';

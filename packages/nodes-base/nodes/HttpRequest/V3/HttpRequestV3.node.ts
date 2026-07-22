@@ -49,6 +49,7 @@ import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
+import { createErrorDetails } from './utils/error-details';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -823,7 +824,7 @@ export class HttpRequestV3 implements INodeType {
 									secrets = getSecrets(credentials);
 								}
 								const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
-								sanitizedRequests.push(sanitizedRequestOptions);
+								sanitizedRequests[itemIndex] = sanitizedRequestOptions;
 								this.sendMessageToUI(sanitizedRequestOptions);
 							} catch (e) {}
 						}),
@@ -878,6 +879,11 @@ export class HttpRequestV3 implements INodeType {
 						returnItems.push({
 							json: {
 								error: responseData.reason,
+								details: createErrorDetails(
+									this.getNode(),
+									responseData.reason as JsonObject,
+									itemIndex,
+								),
 							},
 							pairedItem: {
 								item: itemIndex,
