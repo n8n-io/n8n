@@ -128,6 +128,18 @@ describe('tsconfigForcesBroad', () => {
 		expect(tsconfigForcesBroad(ts({ baseUrl: '.' }), ts({ baseUrl: './src' }))).toBe(true);
 	});
 
+	it('forces broad when moduleResolution changes', () => {
+		expect(
+			tsconfigForcesBroad(ts({ moduleResolution: 'node' }), ts({ moduleResolution: 'bundler' })),
+		).toBe(true);
+	});
+
+	it('forces broad when customConditions changes', () => {
+		const before = ts({ customConditions: ['development'] });
+		const after = ts({ customConditions: ['production'] });
+		expect(tsconfigForcesBroad(before, after)).toBe(true);
+	});
+
 	it('forces broad when extends changes', () => {
 		const before = ts({}, { extends: '@n8n/typescript-config/modern/tsconfig.json' });
 		const after = ts({}, { extends: '@n8n/typescript-config/modern/tsconfig.go.json' });

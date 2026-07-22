@@ -163,7 +163,12 @@ const isLockfile = (f: string): boolean => f === 'pnpm-lock.yaml';
 export const isTsconfig = (f: string): boolean => /(^|\/)tsconfig([.\w-]*)\.json$/.test(f);
 
 /** compilerOptions keys that change which module a bare import resolves to. */
-const TSCONFIG_RESOLUTION_KEYS = ['paths', 'baseUrl'] as const;
+const TSCONFIG_RESOLUTION_KEYS = [
+	'paths',
+	'baseUrl',
+	'moduleResolution',
+	'customConditions',
+] as const;
 
 /** Tolerant parse for tsconfig (allows comments + trailing commas). Null when
  *  unparseable, which the caller treats as "force broad". */
@@ -186,9 +191,10 @@ function parseTsconfig(raw: string): Record<string, unknown> | null {
 
 /**
  * True when a tsconfig change touches a resolution key (`paths`/`baseUrl`/
- * `extends`), which re-points imports for every spec and can't be attributed in
- * the coverage map → force the full suite. A type-check-only edit (`strict`,
- * `target`, …) resolves to the same modules and is non-impactful.
+ * `moduleResolution`/`customConditions`/`extends`), which re-points imports for
+ * every spec and can't be attributed in the coverage map → force the full
+ * suite. A type-check-only edit (`strict`, `target`, …) resolves to the same
+ * modules and is non-impactful.
  */
 export function tsconfigForcesBroad(before: string, after: string): boolean {
 	const b = parseTsconfig(before);
