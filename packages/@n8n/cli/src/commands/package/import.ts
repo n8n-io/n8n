@@ -76,8 +76,8 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableMissingPolicy: Flags.string({
 			description:
-				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything',
-			options: ['do-nothing'],
+				'What to do when a referenced variable is absent from the target project and the global scope (default on the instance: do-nothing). do-nothing imports the workflows and lists unresolved names as warnings without creating anything; must-preexist rejects the import unless every referenced variable already resolves',
+			options: ['do-nothing', 'must-preexist'],
 			aliases: ['variable-missing-policy'],
 		}),
 		bindings: Flags.string({

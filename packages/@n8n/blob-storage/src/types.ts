@@ -39,8 +39,11 @@ export interface ByteStore {
 
 	delete(keys: ByteStoreKey[]): Promise<void>;
 
-	/** `null` when no object exists. Absent on `fs`, which keeps sidecar entries at the domain layer. */
+	/** `null` when no object exists. Absent on `fs`, where the domain layer keeps companion `.metadata` entries. */
 	getMetadata?(key: ByteStoreKey): Promise<BlobMetadata | null>;
+
+	/** Absolute filesystem path for `key`. Only present on backends addressed by path (fs). */
+	getAbsolutePath?(key: ByteStoreKey): string;
 
 	/** Recursively deletes under `prefix`. Absent where the backend can't list or delegates bulk deletion (e.g. lifecycle policies). */
 	deletePrefix?(prefix: string): Promise<void>;
