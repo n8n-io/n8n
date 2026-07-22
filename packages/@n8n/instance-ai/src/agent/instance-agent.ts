@@ -50,7 +50,7 @@ function splitDeferredTools(
 
 export async function createInstanceAgent(
 	options: CreateInstanceAgentOptions,
-): Promise<{ agent: Agent; mcpConnectionFailures: { server: string; error: string }[] }> {
+): Promise<{ agent: Agent; mcpConnectionFailures: Array<{ server: string; error: string }> }> {
 	const {
 		modelId,
 		context,
