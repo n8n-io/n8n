@@ -56,7 +56,7 @@ describe('describeMetricForWorkflow', () => {
 					},
 					{
 						name: 'Recipe Search',
-						type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						type: 'n8n-nodes-base.httpRequestTool',
 						typeVersion: 1,
 						parameters: {},
 						position: [0, 0],

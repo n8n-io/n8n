@@ -1539,9 +1539,9 @@ describe('PATCH /workflows/:workflowId', () => {
 					},
 					{
 						id: 'uuid-1234',
-						parameters: {},
-						name: 'Cron',
-						type: 'n8n-nodes-base.cron',
+						parameters: utils.SCHEDULE_TRIGGER_PARAMETERS,
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
 						typeVersion: 1,
 						position: [400, 300],
 					},

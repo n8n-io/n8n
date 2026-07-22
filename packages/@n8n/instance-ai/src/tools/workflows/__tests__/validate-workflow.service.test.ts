@@ -216,7 +216,7 @@ describe('validateWorkflowConfig', () => {
 				}),
 			);
 			const node = makeNode({
-				type: 'n8n-nodes-base.openAi',
+				type: '@n8n/n8n-nodes-langchain.openAi',
 				credentials: {
 					openAiApi: {
 						id: null,
@@ -240,7 +240,7 @@ describe('validateWorkflowConfig', () => {
 				}),
 			);
 			const node = makeNode({
-				type: 'n8n-nodes-base.openAi',
+				type: '@n8n/n8n-nodes-langchain.openAi',
 				credentials: {
 					openAiApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n Connect' } as unknown as {
 						id: string;
