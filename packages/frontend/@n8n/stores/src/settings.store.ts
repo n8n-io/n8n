@@ -3,7 +3,9 @@ import {
 	type IUserManagementSettings,
 	type FrontendSettings,
 	type FrontendModuleSettings,
+	type WorkflowReviewsPolicy,
 } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
 import * as eventsApi from '@n8n/rest-api-client/api/events';
@@ -21,19 +23,20 @@ import { useRootStore } from './useRootStore';
 /**
  * Full-page warning rendered when the instance requires a secure cookie but the
  * page is served over an insecure origin (or via Safari, which drops the cookie).
+ * The copy is localized; the structural markup and inline styles stay in code
+ * because this is written via `document.write` before the Vue app mounts.
  */
-const INSECURE_CONNECTION_WARNING = `
+const buildInsecureConnectionWarning = () => `
 <body style="margin-top: 20px; font-family: 'Open Sans', sans-serif; text-align: center;">
 <h1 style="font-size: 40px">&#x1F6AB;</h1>
-<h2>Your n8n server is configured to use a secure cookie, <br/>however you are either visiting this via an insecure URL, or using Safari.
-</h2>
+<h2>${i18n.baseText('settings.authCookie.insecureConnection.title')}</h2>
 <br/>
 <div style="font-size: 18px; max-width: 640px; text-align: left; margin: 10px auto">
-	To fix this, please consider the following options:
+	${i18n.baseText('settings.authCookie.insecureConnection.fixIntro')}
 	<ul>
-		<li>Setup TLS/HTTPS (<strong>recommended</strong>), or</li>
-		<li>If you are running this locally, and not using Safari, try using <a href="http://localhost:5678">localhost</a> instead</li>
-		<li>If you prefer to disable this security feature (<strong>not recommended</strong>), set the environment variable <code>N8N_SECURE_COOKIE</code> to <code>false</code></li>
+		<li>${i18n.baseText('settings.authCookie.insecureConnection.option.tls')}</li>
+		<li>${i18n.baseText('settings.authCookie.insecureConnection.option.localhost', { interpolate: { localhostUrl: 'http://localhost:5678' } })}</li>
+		<li>${i18n.baseText('settings.authCookie.insecureConnection.option.disableSecureCookie', { interpolate: { envVar: 'N8N_SECURE_COOKIE' } })}</li>
 	</ul>
 </div>
 </body>`;
@@ -289,7 +292,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 				location.protocol === 'http:' &&
 				(!['localhost', '127.0.0.1'].includes(location.hostname) || browser.name === 'Safari')
 			) {
-				document.write(INSECURE_CONNECTION_WARNING);
+				document.write(buildInsecureConnectionWarning());
 				return;
 			}
 		}
@@ -297,6 +300,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const setAllowedModules = (allowedModules: FrontendSettings['allowedModules']) => {
 		settings.value.allowedModules = allowedModules;
+	};
+
+	const setWorkflowReviewsPolicy = (policy: WorkflowReviewsPolicy) => {
+		settings.value.workflowReviews = policy;
 	};
 
 	const setSaveDataErrorExecution = (newValue: WorkflowSettings.SaveDataExecution) => {
@@ -496,6 +503,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		stopShowingSetupPage,
 		getSettings,
 		setSettings,
+		setWorkflowReviewsPolicy,
 		initialize,
 		getModuleSettings,
 		moduleSettings,

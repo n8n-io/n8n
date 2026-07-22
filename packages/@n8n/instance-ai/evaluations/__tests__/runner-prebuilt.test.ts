@@ -53,6 +53,7 @@ function makeTestCase(): WorkflowTestCase {
 		conversation: [{ role: 'user', text: 'build me something' }],
 		complexity: 'simple',
 		tags: ['test'],
+		datasets: ['full'],
 		executionScenarios: [],
 	};
 }

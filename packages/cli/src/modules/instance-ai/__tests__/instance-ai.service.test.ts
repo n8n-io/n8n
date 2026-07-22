@@ -3811,6 +3811,9 @@ type TaskControlInternals = {
 	publisher: { publishCommand: Mock };
 	backgroundTasks: { getTaskSnapshots: Mock };
 	logger: { error: Mock };
+	runState: { hasLiveRun: Mock };
+	eventLog: { flush: Mock };
+	interruptedRunSweeper: { cancelUnfinishedRuns: Mock };
 	sendCorrectionToTask: Mock;
 	cancelBackgroundTask: Mock;
 	cancelRun: Mock;
@@ -3828,6 +3831,12 @@ function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
 	service.publisher = { publishCommand: vi.fn().mockResolvedValue(undefined) };
 	service.backgroundTasks = { getTaskSnapshots: vi.fn(() => []) };
 	service.logger = { error: vi.fn() };
+	// Inert cancel-time zombie fallback — its behavior is covered by the
+	// dedicated 'routeCancelRun zombie fallback' suite; these tests are about
+	// routing.
+	service.runState = { hasLiveRun: vi.fn(() => false) };
+	service.eventLog = { flush: vi.fn(async () => {}) };
+	service.interruptedRunSweeper = { cancelUnfinishedRuns: vi.fn(async () => 0) };
 	service.sendCorrectionToTask = vi.fn(() => 'queued');
 	service.cancelBackgroundTask = vi.fn();
 	service.cancelRun = vi.fn();
@@ -4153,5 +4162,50 @@ describe('createAgentMemoryOptions', () => {
 		});
 
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('InstanceAiService — routeCancelRun zombie fallback', () => {
+	function createCancelService() {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			runState: { hasLiveRun: Mock };
+			eventLog: { flush: Mock };
+			interruptedRunSweeper: { cancelUnfinishedRuns: Mock };
+			routeTaskControl: Mock;
+			routeCancelRun: (threadId: string) => Promise<void>;
+		};
+		service.runState = { hasLiveRun: vi.fn(() => false) };
+		service.eventLog = { flush: vi.fn(async () => {}) };
+		service.interruptedRunSweeper = { cancelUnfinishedRuns: vi.fn(async () => 0) };
+		service.routeTaskControl = vi.fn(async () => {});
+		return service;
+	}
+
+	it('terminalizes dead runs after broadcasting when nothing is live locally', async () => {
+		const service = createCancelService();
+
+		await service.routeCancelRun('thread-a');
+
+		expect(service.routeTaskControl).toHaveBeenCalledWith({
+			threadId: 'thread-a',
+			action: 'cancel-thread',
+		});
+		// Drain settles first so a just-finished run cannot be double-terminaled.
+		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
+		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).toHaveBeenCalledWith('thread-a');
+		expect(service.routeTaskControl.mock.invocationCallOrder[0]).toBeLessThan(
+			service.interruptedRunSweeper.cancelUnfinishedRuns.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('skips the fallback when a local run is live (its abort emits the terminal fact)', async () => {
+		const service = createCancelService();
+		service.runState.hasLiveRun = vi.fn(() => true);
+
+		await service.routeCancelRun('thread-a');
+
+		expect(service.routeTaskControl).toHaveBeenCalled();
+		expect(service.eventLog.flush).not.toHaveBeenCalled();
+		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).not.toHaveBeenCalled();
 	});
 });

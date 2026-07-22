@@ -6,15 +6,18 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	VariablesRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createOwner } from '@test-integration/db/users';
+import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -47,6 +50,7 @@ async function importProjects(
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
+		variableMissingPolicy: 'do-nothing',
 		...overrides,
 	};
 	return await Container.get(N8nPackagesService).importPackage(request);
@@ -464,6 +468,158 @@ describe('project shell import', () => {
 		]);
 		expect(result.workflows.find((w) => w.sourceWorkflowId === 'WF')?.projectId).toBe('P1');
 		expect(await findProject('P1')).not.toBeNull();
+	});
+
+	describe('variable resolution', () => {
+		afterEach(async () => {
+			const seeded = await Container.get(VariablesRepository).find();
+			if (seeded.length > 0) {
+				await Container.get(VariablesService).deleteByIds(seeded.map(({ id }) => id));
+			}
+		});
+
+		it('reports variable resolution across projects, deduplicating shared names', async () => {
+			await createVariable('GLOBAL_URL', 'https://global.example.com');
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+					{
+						target: 'projects/stilton',
+						project: serializedProject({ id: 'P2', name: 'stilton' }),
+					},
+				],
+				workflows: [
+					{
+						target: 'projects/brie/workflows/wfa',
+						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+					},
+					{
+						target: 'projects/stilton/workflows/wfb',
+						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+					},
+				],
+				manifestExtras: {
+					requirements: {
+						variables: [
+							{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
+							{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
+						],
+					},
+				},
+			});
+
+			const result = await importProjects(owner, packageBuffer);
+
+			expect(result.variables).toEqual({ matched: ['GLOBAL_URL'], missing: ['ABSENT_VAR'] });
+			// do-nothing policy does not create variables
+			expect(await Container.get(VariablesRepository).count()).toBe(1);
+		});
+
+		it('blocks the import under must-preexist when a referenced variable is unresolved', async () => {
+			await createVariable('GLOBAL_URL', 'https://global.example.com');
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+					{
+						target: 'projects/stilton',
+						project: serializedProject({ id: 'P2', name: 'stilton' }),
+					},
+				],
+				workflows: [
+					{
+						target: 'projects/brie/workflows/wfa',
+						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+					},
+					{
+						target: 'projects/stilton/workflows/wfb',
+						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+					},
+				],
+				manifestExtras: {
+					requirements: {
+						variables: [
+							{ name: 'GLOBAL_URL', usedByWorkflows: ['WFA', 'WFB'] },
+							{ name: 'ABSENT_VAR', usedByWorkflows: ['WFA', 'WFB'] },
+						],
+					},
+				},
+			});
+
+			const error = await importProjects(owner, packageBuffer, undefined, {
+				variableMissingPolicy: 'must-preexist',
+			}).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UnprocessableRequestError);
+			expect((error as UnprocessableRequestError).message).toMatch(/Import blocked/);
+			expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+				{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFA'] },
+				{ type: 'variable-unresolved', name: 'ABSENT_VAR', usedByWorkflows: ['WFB'] },
+			]);
+
+			expect(await findProject('P1')).toBeNull();
+			expect(await findProject('P2')).toBeNull();
+			// must-preexist never creates variables; only the seeded global remains.
+			expect(await Container.get(VariablesRepository).count()).toBe(1);
+		});
+
+		/** Two projects whose workflows both reference `API_URL`. */
+		const twoProjectPackageReferencingApiUrl = async () =>
+			await buildEntityPackageBuffer({
+				projects: [
+					{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+					{
+						target: 'projects/stilton',
+						project: serializedProject({ id: 'P2', name: 'stilton' }),
+					},
+				],
+				workflows: [
+					{
+						target: 'projects/brie/workflows/wfa',
+						workflow: serializedWorkflow({ id: 'WFA', name: 'wfa' }),
+					},
+					{
+						target: 'projects/stilton/workflows/wfb',
+						workflow: serializedWorkflow({ id: 'WFB', name: 'wfb' }),
+					},
+				],
+				manifestExtras: {
+					requirements: {
+						variables: [{ name: 'API_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+					},
+				},
+			});
+
+		it('lists a name under both matched and missing when it resolves in only some projects', async () => {
+			const packageBuffer = await twoProjectPackageReferencingApiUrl();
+			await importProjects(owner, packageBuffer);
+			await createProjectVariable('API_URL', 'https://p1.example.com', (await findProject('P1'))!);
+
+			const result = await importProjects(owner, packageBuffer);
+
+			expect(result.variables).toEqual({ matched: ['API_URL'], missing: ['API_URL'] });
+		});
+
+		it('blocks only on the projects where the variable is unresolved under must-preexist', async () => {
+			const workflowStates = async () =>
+				await Container.get(WorkflowRepository).find({
+					select: ['id', 'versionId', 'updatedAt'],
+					order: { id: 'ASC' },
+				});
+			const packageBuffer = await twoProjectPackageReferencingApiUrl();
+			await importProjects(owner, packageBuffer);
+			await createProjectVariable('API_URL', 'https://p1.example.com', (await findProject('P1'))!);
+			const workflowsBefore = await workflowStates();
+
+			const error = await importProjects(owner, packageBuffer, undefined, {
+				variableMissingPolicy: 'must-preexist',
+			}).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(UnprocessableRequestError);
+			expect((error as UnprocessableRequestError).meta?.issues).toEqual([
+				{ type: 'variable-unresolved', name: 'API_URL', usedByWorkflows: ['WFB'] },
+			]);
+			expect(await workflowStates()).toEqual(workflowsBefore);
+		});
 	});
 
 	it('emits a single n8n-package-imported event aggregating every project in the package', async () => {

@@ -185,6 +185,21 @@ post:
                 column or a type mismatch always rejects. Both policies are
                 non-destructive — the matched target table is never altered, and
                 package columns are never added to it.
+            variableMissingPolicy:
+              type: string
+              enum:
+                - do-nothing
+                - must-preexist
+              default: do-nothing
+              description: >
+                Controls what happens when a variable referenced by the package's
+                workflows is absent from the target project and the global scope
+                (lookup order: project, then global). `do-nothing` (default)
+                imports the workflows without creating the missing variable and
+                lists its name under `variables.missing` in the response so the
+                caller can fill it in afterwards. `must-preexist` rejects the
+                import unless every referenced variable already resolves. Neither
+                policy ever creates a variable.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -199,6 +214,7 @@ post:
               - projects
               - bindings
               - credentials
+              - variables
             properties:
               package:
                 type: object
@@ -382,6 +398,32 @@ post:
                     description: >
                       Source credential ids for which empty placeholder
                       credentials were created in the target project.
+              variables:
+                type: object
+                description: >
+                  Resolution of the package's variable requirements. Names only —
+                  values never travel in the response. For project packages,
+                  resolution runs per project, so a name that resolves in some
+                  projects but not others appears in both lists.
+                required:
+                  - matched
+                  - missing
+                properties:
+                  matched:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names that resolved to an existing variable
+                      (importing project's scope first, then global).
+                  missing:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Variable names that did not resolve. Under
+                      `variableMissingPolicy=do-nothing` these are warnings —
+                      the import still succeeds and nothing is created.
               bindings:
                 type: object
                 description: >
@@ -424,7 +466,8 @@ post:
                   $ref: '../schemas/importBlockingIssue.yml'
     '422':
       description: >
-        Import blocked by non-conflict issues only (e.g. unresolved credentials).
+        Import blocked by non-conflict issues only (e.g. unresolved credentials or
+        variables).
       content:
         application/json:
           schema:
