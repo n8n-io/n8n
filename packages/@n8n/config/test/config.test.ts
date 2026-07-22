@@ -170,6 +170,7 @@ describe('GlobalConfig', () => {
 					'workflow-shared': '',
 					'project-shared': '',
 					'api-key-revoked': '',
+					'mcp-client-revoked': '',
 				},
 			},
 		},
@@ -462,6 +463,8 @@ describe('GlobalConfig', () => {
 			minIntervalSeconds: 0,
 			maxConcurrentPasses: 10,
 			triggerNodeMode: 'legacy',
+			allowSkipDurableScheduler: false,
+			maxAttempts: 5,
 		},
 		evaluation: {
 			collectionsEnabled: false,

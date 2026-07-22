@@ -17,6 +17,10 @@ import type {
 	InstanceAiAgentNode,
 	InstanceAiMessage,
 } from '@n8n/api-types';
+import {
+	getPendingAgentAttachment,
+	stashPendingAgentAttachment,
+} from '../composables/useInstanceAiHandoff';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
@@ -597,6 +601,65 @@ describe('InstanceAiThreadView', () => {
 		await vi.waitFor(() => {
 			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 		});
+	});
+
+	it('opens a pending agent and attaches it only to the first submitted message', async () => {
+		thread.sseState = 'disconnected';
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		thread.producedArtifacts = new Map([
+			[
+				'agent-1',
+				{
+					type: 'agent',
+					id: 'agent-1',
+					projectId: 'project-1',
+					name: 'New agent',
+				},
+			],
+		]) as typeof thread.producedArtifacts;
+		stashPendingAgentAttachment('thread-1', {
+			type: 'agent',
+			id: 'agent-1',
+			name: 'New agent',
+			projectId: 'project-1',
+		});
+
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		const preview = await findByTestId('instance-ai-agent-preview-stub');
+		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
+		expect(preview).toHaveAttribute('data-project-id', 'project-1');
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(
+			1,
+			'Normal message',
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					name: 'New agent',
+					projectId: 'project-1',
+				},
+			],
+			expect.any(String),
+			undefined,
+		);
+		await vi.waitFor(() => {
+			expect(getPendingAgentAttachment('thread-1')).toBeNull();
+		});
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).toHaveBeenNthCalledWith(
+			2,
+			'Normal message',
+			undefined,
+			expect.any(String),
+			undefined,
+		);
 	});
 
 	it('dismisses a pending preview-context chip without sending it', async () => {

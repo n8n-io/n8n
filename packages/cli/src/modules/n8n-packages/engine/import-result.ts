@@ -13,6 +13,7 @@ import type {
 	ImportedWorkflowSummary,
 	ImportPackageSummary,
 	ImportResult,
+	ImportVariableSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -48,7 +49,8 @@ export function buildImportResult(input: {
 	folders: ImportedFolderSummary[];
 	projects: ImportedProjectSummary[];
 	bindings: PackageImportBindings;
-	credentials?: ImportCredentialSummary;
+	credentials: ImportCredentialSummary;
+	variables: ImportVariableSummary;
 }): ImportResult {
 	return {
 		package: input.package,
@@ -56,7 +58,8 @@ export function buildImportResult(input: {
 		folders: input.folders,
 		projects: input.projects,
 		bindings: serializeBindings(input.bindings),
-		credentials: input.credentials ?? { matched: [], stubbed: [] },
+		credentials: input.credentials,
+		variables: input.variables,
 	};
 }
 

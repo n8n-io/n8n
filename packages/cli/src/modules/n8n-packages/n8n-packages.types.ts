@@ -45,11 +45,11 @@ export const FolderConflictPolicy = {
 } as const;
 
 export const MissingWorkflowDependencyPolicy = {
-	/** Fails the export when a static sub-workflow dependency is not included. */
+	/** Fails the export when a workflow dependency is not included. */
 	Fail: 'fail',
-	/** Reserved for exporting missing static sub-workflows as requirements only. */
+	/** Reserved for exporting missing workflow dependencies as requirements only. */
 	ReferenceOnly: 'reference-only',
-	/** Reserved for automatically adding missing static sub-workflows to the package. */
+	/** Reserved for automatically adding missing workflow dependencies to the package. */
 	IncludeInPackage: 'include-in-package',
 } as const;
 
@@ -73,6 +73,11 @@ export const DataTableSchemaConflictPolicy = {
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
 } as const;
+
+export const VariableMissingPolicy = {
+	/** Imports workflows even when referenced variables are absent. Nothing is created; unresolved names are reported as warnings in the response. */
+	DoNothing: 'do-nothing',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -92,6 +97,9 @@ export type DataTableMissingMode = (typeof DataTableMissingMode)[keyof typeof Da
 
 export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
+
+export type VariableMissingPolicy =
+	(typeof VariableMissingPolicy)[keyof typeof VariableMissingPolicy];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -113,7 +121,8 @@ export type ImportPackageRequest = {
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportFolderProperties &
-	ImportDataTableProperties;
+	ImportDataTableProperties &
+	ImportVariableProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -136,6 +145,10 @@ export type ImportDataTableProperties = {
 	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy;
 };
 
+export type ImportVariableProperties = {
+	variableMissingPolicy: VariableMissingPolicy;
+};
+
 /**
  * The actor and resolved destination an import writes into. Threaded through
  * each entity importer so they share one resolved target instead of re-deriving
@@ -151,7 +164,8 @@ export interface ImportContext {
 
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
-	ImportDataTableProperties;
+	ImportDataTableProperties &
+	ImportVariableProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -178,6 +192,11 @@ export type ImportPackageEventCounts = {
 	dataTables: {
 		matched: number;
 		created: number;
+		requirements: number;
+	};
+	variables: {
+		matched: number;
+		missing: number;
 		requirements: number;
 	};
 };
@@ -299,6 +318,11 @@ export interface ImportCredentialSummary {
 	stubbed: string[];
 }
 
+export interface ImportVariableSummary {
+	matched: string[];
+	missing: string[];
+}
+
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
@@ -306,4 +330,5 @@ export interface ImportResult {
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
+	variables: ImportVariableSummary;
 }

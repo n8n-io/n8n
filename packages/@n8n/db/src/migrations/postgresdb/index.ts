@@ -225,6 +225,7 @@ import { AddTriggerKindToWorkflowPublicationTriggerStatus1784000000048 } from '.
 import { AddScheduledTaskDispatchedAt1784000000049 } from '../common/1784000000049-AddScheduledTaskDispatchedAt';
 import { AddHostRunIdToInstanceAiCheckpoints1784000000050 } from '../common/1784000000050-AddHostRunIdToInstanceAiCheckpoints';
 import { BackfillInstanceAiEventLog1784000000051 } from '../common/1784000000051-BackfillInstanceAiEventLog';
+import { CreateWorkflowReviewRequestTables1784000000052 } from '../common/1784000000052-CreateWorkflowReviewRequestTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -455,4 +456,5 @@ export const postgresMigrations: Migration[] = [
 	AddScheduledTaskDispatchedAt1784000000049,
 	AddHostRunIdToInstanceAiCheckpoints1784000000050,
 	BackfillInstanceAiEventLog1784000000051,
+	CreateWorkflowReviewRequestTables1784000000052,
 ];
