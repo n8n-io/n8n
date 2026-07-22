@@ -4,7 +4,6 @@
 		"@n8n/ai-workflow-builder": ["@langchain/core", "zod"],
 		"@n8n/backend-network": ["form-data", "zod"],
 		"@n8n/blob-storage": ["zod"],
-		"@n8n/computer-use": ["zod"],
 		"@n8n/config": ["zod"],
 		"@n8n/db": ["zod"],
 		"@n8n/expression-runtime": ["zod"],

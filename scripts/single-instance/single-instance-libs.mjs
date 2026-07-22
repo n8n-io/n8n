@@ -19,11 +19,11 @@ export const CURATED_LIBS = ['zod', 'form-data', '@langchain/core', 'reflect-met
 export const PIN_ONLY_LIBS = ['reflect-metadata'];
 
 /**
- * Host packages that legitimately provide the single shared runtime instance,
- * so they keep curated libs as real `dependencies` and are exempt from the
- * peer rule and the closure duplication check.
+ * Host / standalone packages that provide their own runtime instance — the end-user CLI
+ * (`n8n`), the task runner, and standalone tools like `@n8n/computer-use`. They legitimately
+ * keep curated libs as real `dependencies` and are exempt from the peerDependency rule.
  */
-export const HOST_PACKAGES = ['n8n', '@n8n/task-runner'];
+export const HOST_PACKAGES = ['n8n', '@n8n/task-runner', '@n8n/computer-use'];
 
 /**
  * Frontend packages that bundle their dependencies (Vite), so runtime-identity
