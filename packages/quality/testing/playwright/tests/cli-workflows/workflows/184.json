@@ -318,12 +318,12 @@
 		},
 		{
 			"parameters": {
-				"mode": "jsonToBinary",
+				"operation": "toJson",
 				"options": {}
 			},
 			"name": "Move Binary Data",
-			"type": "n8n-nodes-base.moveBinaryData",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
 			"position": [960, 500],
 			"id": "2436fc2e-c730-4cfc-aeb9-0fbeda60b653"
 		},
