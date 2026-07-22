@@ -159,6 +159,23 @@ describe('PollTriggerJobRegistrar', () => {
 			);
 		});
 
+		it('reports whether a job was newly inserted, so the caller can seed a fresh node once', async () => {
+			jobProvisioner.provisionForNode.mockResolvedValueOnce({
+				inserted: [{ id: 1, name: 'wf-1:node-1:abc:0' }],
+				redefined: [],
+				unchanged: [],
+				removed: [],
+			});
+			await expect(
+				makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE),
+			).resolves.toEqual({ inserted: true });
+
+			// A pure reconcile (nothing inserted) reports false, so the caller skips the poll.
+			await expect(
+				makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE),
+			).resolves.toEqual({ inserted: false });
+		});
+
 		it('maps a fixed-minute cadence to an interval schedule in `new` mode', async () => {
 			await makeRegistrar({ triggerNodeMode: 'new' }).register(
 				WORKFLOW_ID,

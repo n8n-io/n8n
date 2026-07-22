@@ -73,7 +73,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		node: INode,
 		pollTimes: TriggerTime[],
 		timezone: string,
-	): Promise<void> {
+	): Promise<{ inserted: boolean }> {
 		const resolvedTimezone = resolveTimezone(timezone, this.defaultTimezone);
 		const seed = `${workflowId}:${node.id}`;
 
@@ -106,6 +106,8 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 			unchanged: summary.unchanged.length,
 			removed: summary.removed.length,
 		});
+
+		return { inserted: summary.inserted.length > 0 };
 	}
 
 	/** Delete the node's durable poll jobs on deactivation. No-op when none exist. */

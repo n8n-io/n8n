@@ -19,11 +19,15 @@ export abstract class PollJobManager {
 	 * Provision durable poll jobs for the node's poll times. Takes the structured
 	 * `pollTimes` (not pre-mapped cron strings) so the concrete implementation can
 	 * derive a definition-stable job identity, the same way the Schedule Trigger does.
+	 *
+	 * Returns whether a job was newly inserted (as opposed to only reconciling
+	 * existing ones), so the caller can run the inline first poll for a fresh
+	 * provision but skip it on a pure re-activation (e.g. takeover).
 	 */
 	abstract register(
 		workflowId: string,
 		node: INode,
 		pollTimes: TriggerTime[],
 		timezone: string,
-	): Promise<void>;
+	): Promise<{ inserted: boolean }>;
 }

@@ -1367,9 +1367,10 @@ describe('ActiveWorkflowTriggers', () => {
 				pollJobManager,
 			);
 
-		const buildPollJobManager = (active: boolean) => {
+		const buildPollJobManager = (active: boolean, inserted = false) => {
 			const pollJobManager = mock<PollJobManager>();
 			pollJobManager.isActive.mockReturnValue(active);
+			pollJobManager.register.mockResolvedValue({ inserted });
 			return pollJobManager;
 		};
 
@@ -1415,8 +1416,8 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalled();
 		});
 
-		it('provisions a durable job, skipping the in-memory cron and the inline first poll, when the manager is active', async () => {
-			const pollJobManager = buildPollJobManager(true);
+		it('provisions a durable job and skips the in-memory cron when the manager is active', async () => {
+			const pollJobManager = buildPollJobManager(true, true);
 			const triggers = buildTriggers(pollJobManager);
 
 			await activatePoll(triggers);
@@ -1428,8 +1429,28 @@ describe('ActiveWorkflowTriggers', () => {
 				workflow.timezone,
 			);
 			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
-			// The first poll runs as the durable job's seeded first occurrence, so
-			// activation must not poll inline on this instance.
+		});
+
+		it('polls once inline when a durable job is newly inserted, to seed the cursor', async () => {
+			const pollJobManager = buildPollJobManager(true, true);
+			const triggers = buildTriggers(pollJobManager);
+
+			await activatePoll(triggers);
+
+			// Same inline first poll the legacy path runs, so the seeded occurrence
+			// delivers only the next window rather than re-delivering the first.
+			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledTimes(1);
+			expect(scheduledTaskManager.register).not.toHaveBeenCalled();
+		});
+
+		it('does not poll inline when the provision only reconciles existing jobs', async () => {
+			// A re-activation (e.g. takeover) where nothing is newly inserted must not
+			// re-poll: that would disturb the cursor a running job already advances.
+			const pollJobManager = buildPollJobManager(true, false);
+			const triggers = buildTriggers(pollJobManager);
+
+			await activatePoll(triggers);
+
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
 		});
 
