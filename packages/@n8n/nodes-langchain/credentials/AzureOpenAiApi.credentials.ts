@@ -37,6 +37,15 @@ export class AzureOpenAiApi implements ICredentialType {
 			default: undefined,
 			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
 		},
+		{
+			displayName: 'Approved Models',
+			name: 'approvedModels',
+			type: 'string',
+			default: '',
+			description:
+				'Comma-separated list of approved model/deployment names for the dropdown (e.g., "gpt-4o,gpt-4o-mini,o3-mini"). Leave empty to allow manual entry.',
+			placeholder: 'gpt-4o,gpt-4o-mini,o3-mini',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

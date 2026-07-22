@@ -95,4 +95,145 @@ describe('setupOAuth2Authentication', () => {
 			NodeOperationError,
 		);
 	});
+
+	describe('APIM configuration', () => {
+		it('should not include apimConfig when useApim is false', async () => {
+			// Arrange
+			mockCredential.useApim = false;
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig).toBeUndefined();
+		});
+
+		it('should not include apimConfig when useApim is undefined', async () => {
+			// Arrange - useApim not set (backward compatibility)
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig).toBeUndefined();
+		});
+
+		it('should include apimConfig with basePath when useApim is true', async () => {
+			// Arrange
+			mockCredential.useApim = true;
+			mockCredential.apimBasePath = 'https://my-apim.azure-api.net/openai/deployments';
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig).toBeDefined();
+			expect(result.apimConfig?.basePath).toBe('https://my-apim.azure-api.net/openai/deployments');
+		});
+
+		it('should include apimConfig with query params when useApim is true', async () => {
+			// Arrange
+			mockCredential.useApim = true;
+			mockCredential.apimQueryParams = {
+				params: [
+					{ name: 'subscription-key', value: 'test-sub-key' },
+					{ name: 'custom-param', value: 'custom-value' },
+				],
+			};
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig).toBeDefined();
+			expect(result.apimConfig?.queryParams).toEqual({
+				'subscription-key': 'test-sub-key',
+				'custom-param': 'custom-value',
+			});
+		});
+
+		it('should include apimConfig with headers when useApim is true', async () => {
+			// Arrange
+			mockCredential.useApim = true;
+			mockCredential.apimHeaders = {
+				headers: [
+					{ name: 'Ocp-Apim-Subscription-Key', value: 'test-header-key' },
+					{ name: 'X-Custom-Header', value: 'custom-header-value' },
+				],
+			};
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig).toBeDefined();
+			expect(result.apimConfig?.headers).toEqual({
+				'Ocp-Apim-Subscription-Key': 'test-header-key',
+				'X-Custom-Header': 'custom-header-value',
+			});
+		});
+
+		it('should include full apimConfig with basePath, query params, and headers', async () => {
+			// Arrange
+			mockCredential.useApim = true;
+			mockCredential.apimBasePath = 'https://my-apim.azure-api.net/openai/deployments';
+			mockCredential.apimQueryParams = {
+				params: [{ name: 'subscription-key', value: 'test-sub-key' }],
+			};
+			mockCredential.apimHeaders = {
+				headers: [{ name: 'X-Custom-Header', value: 'custom-value' }],
+			};
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig).toBeDefined();
+			expect(result.apimConfig).toEqual({
+				basePath: 'https://my-apim.azure-api.net/openai/deployments',
+				queryParams: { 'subscription-key': 'test-sub-key' },
+				headers: { 'X-Custom-Header': 'custom-value' },
+			});
+		});
+
+		it('should not include apimConfig when useApim is true but no settings configured', async () => {
+			// Arrange
+			mockCredential.useApim = true;
+			// No basePath, queryParams, or headers set
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig).toBeUndefined();
+		});
+
+		it('should skip empty query param entries', async () => {
+			// Arrange
+			mockCredential.useApim = true;
+			mockCredential.apimQueryParams = {
+				params: [
+					{ name: 'valid-key', value: 'valid-value' },
+					{ name: '', value: 'no-name' }, // Should be skipped
+					{ name: 'no-value', value: '' }, // Should be skipped
+				],
+			};
+			ctx.getCredentials = jest.fn().mockResolvedValue(mockCredential);
+
+			// Act
+			const result = await setupOAuth2Authentication.call(ctx, 'testCredential');
+
+			// Assert
+			expect(result.apimConfig?.queryParams).toEqual({
+				'valid-key': 'valid-value',
+			});
+		});
+	});
 });
