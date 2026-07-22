@@ -29,12 +29,36 @@ export type DisplayGroup =
 			 * (thinking → tools → interactives → final text).
 			 */
 			finalMessage?: AgentsChatMessage;
-			/** Turn execution id from the first folded message that has one. */
+			/**
+			 * Turn execution id from the first folded message that has one.
+			 * Messages with a different defined executionId are never folded in
+			 * (HITL resume history must not inherit the suspended turn's id).
+			 */
 			executionId?: string;
 	  };
 
 export function isGroupable(message: AgentsChatMessage): boolean {
 	return message.role === 'assistant' && !!message.toolCalls?.length && !message.content.trim();
+}
+
+type ToolRunGroup = Extract<DisplayGroup, { kind: 'toolRun' }>;
+
+/**
+ * Whether `message` may join an open toolRun. Same-turn live streams often
+ * lack executionId until `done`; those still fold. Distinct defined ids
+ * (suspended vs resumed HITL executions) must stay separate so Fix CTA
+ * handoff uses the turn that owns the errored tool.
+ */
+function canAppendToToolRun(last: ToolRunGroup, message: AgentsChatMessage): boolean {
+	if (last.finalMessage) return false;
+	if (
+		last.executionId !== undefined &&
+		message.executionId !== undefined &&
+		last.executionId !== message.executionId
+	) {
+		return false;
+	}
+	return true;
 }
 
 /**
@@ -104,7 +128,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 	for (const message of messages) {
 		if (isGroupable(message)) {
 			const last = groups[groups.length - 1];
-			if (last && last.kind === 'toolRun' && !last.finalMessage) {
+			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
 				last.toolCalls = appendToolCalls(last.toolCalls, message.toolCalls ?? []);
 				if (message.thinking) {
 					last.thinking = last.thinking
@@ -131,7 +155,7 @@ export function buildDisplayGroups(messages: AgentsChatMessage[]): DisplayGroup[
 
 		if (message.role === 'assistant') {
 			const last = groups[groups.length - 1];
-			if (last && last.kind === 'toolRun' && !last.finalMessage) {
+			if (last?.kind === 'toolRun' && canAppendToToolRun(last, message)) {
 				last.finalMessage = message;
 				last.executionId ??= message.executionId;
 				if (message.thinking) {

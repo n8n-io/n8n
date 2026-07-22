@@ -31,12 +31,13 @@ vi.mock('@n8n/design-system', () => ({
 	},
 	N8nAiActivityStepGroup: {
 		props: ['label', 'size', 'loading'],
-		template: '<div><slot /></div>',
+		template: '<div data-test-id="n8n-ai-activity-step-group"><slot /></div>',
 	},
 	N8nButton: {
-		props: ['size', 'type', 'icon'],
+		props: ['size', 'variant'],
 		emits: ['click'],
-		template: '<button type="button" @click.stop="$emit(\'click\')"><slot /></button>',
+		template:
+			'<button type="button" @click.stop="$emit(\'click\')"><slot name="icon" /><slot /></button>',
 	},
 	N8nCallout: {
 		props: ['theme'],
@@ -166,6 +167,37 @@ describe('AgentChatToolSteps', () => {
 		).toBe(true);
 		await withFix.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
 		expect(withFix.emitted('fixWithAssistant')?.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('shows Fix with Assistant outside the tool group when a multi-tool turn has an error', () => {
+		const wrapper = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-ok',
+					state: TOOL_CALL_STATE.DONE,
+					output: { nodes: ['Slack'] },
+				},
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-err',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Tool failed',
+				},
+			],
+			{ canFixWithAssistant: true, executionId: 'exec-1' },
+		);
+
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
+
+		const group = wrapper.find('[data-test-id="n8n-ai-activity-step-group"]');
+		expect(group.exists()).toBe(true);
+		expect(group.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists()).toBe(
+			false,
+		);
+		expect(
+			wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(true);
 	});
 
 	it('shows incomplete task count in write_todos summary', async () => {

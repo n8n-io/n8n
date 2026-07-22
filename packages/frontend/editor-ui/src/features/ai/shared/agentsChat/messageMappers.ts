@@ -88,12 +88,6 @@ export function findOpenInteractive(
 	return undefined;
 }
 
-/** Persisted chat message ids are `{executionId}:user|assistant`. */
-function executionIdFromPersistedMessageId(id: string): string | undefined {
-	const match = /^(.*):(user|assistant)$/.exec(id);
-	return match?.[1];
-}
-
 /** True when a suspend payload is the approval tool's renderable input. */
 export function isApprovalSuspendInput(value: unknown): boolean {
 	return parseApprovalInput(value) !== undefined;
@@ -235,7 +229,6 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			}
 		}
 
-		const executionId = msg.id ? executionIdFromPersistedMessageId(msg.id) : undefined;
 		const chatMessage: ChatMessage = {
 			id: msg.id ?? crypto.randomUUID(),
 			role,
@@ -244,7 +237,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			thinking: thinking || undefined,
 			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 			...(status && { status }),
-			...(executionId ? { executionId } : {}),
+			...(msg.executionId ? { executionId: msg.executionId } : {}),
 		};
 		setMessageInteractives(chatMessage, interactives);
 		result.push(chatMessage);

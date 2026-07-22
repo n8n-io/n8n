@@ -10,7 +10,7 @@ import { ExternalHooks } from '@/external-hooks';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
 import { Telemetry } from '@/telemetry';
 
-import { AgentExecutionService } from './agent-execution.service';
+import { AgentExecutionService, type RecordMessageParams } from './agent-execution.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { ExecutionRecorder } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
@@ -262,8 +262,10 @@ export class AgentExecutionOrchestratorService {
 			// or fail while streaming. Don't repeat the original user message — the
 			// pre-suspension execution already has it.
 			const messageRecord = recorder.getMessageRecord();
-			const persist = async () => {
-				const executionId = await this.agentExecutionService.recordMessage({
+			await this.persistRecordedExecution({
+				onExecutionRecorded,
+				failureMessage: 'Failed to record resumed agent execution',
+				params: {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -275,25 +277,8 @@ export class AgentExecutionOrchestratorService {
 						runType,
 						configuration: runtime.telemetryConfiguration,
 					},
-				});
-				onExecutionRecorded?.(executionId);
-			};
-			const logPersistFailure = (error: unknown) => {
-				this.logger.warn('Failed to record resumed agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			};
-			if (onExecutionRecorded) {
-				try {
-					await persist();
-				} catch (error) {
-					logPersistFailure(error);
-				}
-			} else {
-				void persist().catch(logPersistFailure);
-			}
+				},
+			});
 		}
 	}
 
@@ -495,8 +480,10 @@ export class AgentExecutionOrchestratorService {
 			// Always record — even if suspended or failed, the pre-suspension/error
 			// response text and tool calls are valuable.
 			const messageRecord = recorder.getMessageRecord();
-			const persist = async () => {
-				const executionId = await this.agentExecutionService.recordMessage({
+			await this.persistRecordedExecution({
+				onExecutionRecorded,
+				failureMessage: 'Failed to record agent execution',
+				params: {
 					threadId,
 					agentId,
 					agentName: agentInstance.name,
@@ -508,25 +495,40 @@ export class AgentExecutionOrchestratorService {
 					taskId,
 					taskVersionId,
 					telemetry,
-				});
-				onExecutionRecorded?.(executionId);
-			};
-			const logPersistFailure = (error: unknown) => {
-				this.logger.warn('Failed to record agent execution', {
-					agentId,
-					threadId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			};
-			if (onExecutionRecorded) {
-				try {
-					await persist();
-				} catch (error) {
-					logPersistFailure(error);
-				}
-			} else {
-				void persist().catch(logPersistFailure);
+				},
+			});
+		}
+	}
+
+	/**
+	 * Persist a streamed turn. Awaits when `onExecutionRecorded` is set so SSE
+	 * `done` can carry executionId; otherwise fire-and-forget.
+	 */
+	private async persistRecordedExecution(args: {
+		onExecutionRecorded?: (executionId: string) => void;
+		params: RecordMessageParams;
+		failureMessage: string;
+	}): Promise<void> {
+		const { onExecutionRecorded, params, failureMessage } = args;
+		const persist = async () => {
+			const executionId = await this.agentExecutionService.recordMessage(params);
+			onExecutionRecorded?.(executionId);
+		};
+		const logFailure = (error: unknown) => {
+			this.logger.warn(failureMessage, {
+				agentId: params.agentId,
+				threadId: params.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		};
+		if (onExecutionRecorded) {
+			try {
+				await persist();
+			} catch (error) {
+				logFailure(error);
 			}
+		} else {
+			void persist().catch(logFailure);
 		}
 	}
 }
