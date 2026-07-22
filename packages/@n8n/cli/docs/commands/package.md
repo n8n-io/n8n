@@ -33,10 +33,12 @@ the API key to hold `workflow:export` when exporting workflows or folders, or
 `project:export` when exporting projects.
 
 Statically referenced sub-workflows must also be included in the resulting
-package. For workflow exports, include referenced sub-workflows with additional
-`--workflow-id` flags. For folder exports, referenced sub-workflows must be in
-the exported folder tree or included with `--workflow-id`. For project exports,
-referenced sub-workflows must be in one of the exported projects.
+package. When `--missing-workflow-dependency-policy=include-in-package`, missing
+static sub-workflows are automatically added. Otherwise, for workflow exports,
+include referenced sub-workflows with additional `--workflow-id` flags. For
+folder exports, referenced sub-workflows must be in the exported folder tree or
+included with `--workflow-id`. For project exports, referenced sub-workflows
+must be in one of the exported projects.
 
 ## `package import`
 
