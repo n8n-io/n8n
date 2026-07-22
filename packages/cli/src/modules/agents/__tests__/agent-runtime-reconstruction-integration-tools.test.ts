@@ -40,6 +40,7 @@ import { AgentIntegrationPersistenceService } from '../agent-integration-persist
 import type { AgentKnowledgeSandboxService } from '../agent-knowledge-sandbox.service';
 import type { AgentKnowledgeService } from '../agent-knowledge.service';
 import { AgentPublishService } from '../agent-publish.service';
+import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentSkillsService } from '../agent-skills.service';
@@ -261,6 +262,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			telemetry,
 			runtimeCacheService,
 			mock<IntegrationMessageContextService>(),
+			mock<AgentRunTracingService>(),
 			mock<ExternalHooks>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(

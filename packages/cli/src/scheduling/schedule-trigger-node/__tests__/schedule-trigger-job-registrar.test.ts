@@ -37,11 +37,15 @@ const everyThreeWeeksMonday: Cron = {
 describe('ScheduleTriggerJobRegistrar', () => {
 	const jobProvisioner = mock<DurableJobProvisioner>();
 
-	const makeRegistrar = ({ schedulerEnabled = true, publicationEnabled = true } = {}) =>
+	const makeRegistrar = ({
+		schedulerEnabled = true,
+		publicationEnabled = true,
+		allowSkipDurableScheduler = false,
+	} = {}) =>
 		new ScheduleTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({
-				scheduler: { enabled: schedulerEnabled },
+				scheduler: { enabled: schedulerEnabled, allowSkipDurableScheduler },
 				generic: { timezone: 'UTC' },
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
@@ -80,6 +84,39 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		it('does not intercept other node types', () => {
 			const other = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.gmailTrigger' });
 			expect(makeRegistrar().interceptsNode(other)).toBe(false);
+		});
+
+		it('does not intercept a node opted out via skip when the escape hatch is enabled', () => {
+			const skippingNode = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				parameters: { skipDurableScheduler: true },
+			});
+			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(skippingNode)).toBe(
+				false,
+			);
+		});
+
+		it('still intercepts a skipping node when the escape hatch is disabled', () => {
+			const skippingNode = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				parameters: { skipDurableScheduler: true },
+			});
+			expect(makeRegistrar({ allowSkipDurableScheduler: false }).interceptsNode(skippingNode)).toBe(
+				true,
+			);
+		});
+
+		it('intercepts a node that has not opted out even when the escape hatch is enabled', () => {
+			const keepingNode = mock<INode>({
+				id: NODE_ID,
+				type: SCHEDULE_TRIGGER_NODE_TYPE,
+				parameters: { skipDurableScheduler: false },
+			});
+			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(keepingNode)).toBe(
+				true,
+			);
 		});
 	});
 

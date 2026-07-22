@@ -10,8 +10,10 @@ import { computed, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
+import { useRoleDeletion } from '../composables/useRoleDeletion';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
 import InstanceRoleAssignmentsTab from './InstanceRoleAssignmentsTab.vue';
+import DeleteInstanceRoleModal from './components/DeleteInstanceRoleModal.vue';
 import ScopeGroupSelector from './components/ScopeGroupSelector.vue';
 import { ALL_INSTANCE_SCOPES } from './instanceRoleScopes';
 
@@ -21,6 +23,7 @@ const { showMessage, showError } = useToast();
 const i18n = useI18n();
 const message = useMessage();
 const telemetry = useTelemetry();
+const { reassignState, requestDelete, confirmReassignDelete, cancelReassign } = useRoleDeletion();
 
 const props = defineProps<{ roleSlug?: string }>();
 
@@ -60,6 +63,10 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 
 // System roles populate the preset buttons (clicking copies their scopes).
 const presetRoles = computed(() => rolesStore.processedInstanceRoles.filter((r) => r.systemRole));
+
+const reassignTargetRoles = computed(() =>
+	rolesStore.processedInstanceRoles.filter((r) => r.slug !== reassignState.value?.role.slug),
+);
 
 function onBackClick() {
 	void router.push({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } });
@@ -180,42 +187,10 @@ async function handleSubmit() {
 async function deleteRole() {
 	if (!initialState.value) return;
 
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('roles.action.delete.text', {
-			interpolate: { roleName: initialState.value.displayName },
-		}),
-		i18n.baseText('roles.action.delete.title', {
-			interpolate: { roleName: initialState.value.displayName },
-		}),
-		{
-			type: 'warning',
-			confirmButtonText: i18n.baseText('roles.action.delete'),
-			cancelButtonText: i18n.baseText('roles.action.cancel'),
-		},
-	);
-
-	if (deleteConfirmed !== MODAL_CONFIRM) return;
-
-	try {
-		await rolesStore.deleteRole(initialState.value.slug);
-
-		const index = rolesStore.roles.global.findIndex(
-			(role) => role.slug === initialState.value?.slug,
-		);
-		if (index !== -1) {
-			rolesStore.roles.global.splice(index, 1);
-		}
-
-		showMessage({ title: i18n.baseText('roles.action.delete.success'), type: 'success' });
-		telemetry.track('User successfully deleted role', {
-			role_id: initialState.value.slug,
-			role_name: initialState.value.displayName,
-			permissions: initialState.value.scopes,
-		});
-		void router.push({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } });
-	} catch (error) {
-		showError(error, i18n.baseText('roles.action.delete.error'));
-	}
+	await requestDelete(initialState.value, {
+		roleType: 'global',
+		redirectTo: { name: VIEWS.ROLES_SETTINGS, query: { tab: 'instance' } },
+	});
 }
 </script>
 
@@ -278,6 +253,15 @@ async function deleteRole() {
 		<div v-if="roleSlug && activeTab === 'assignments'">
 			<InstanceRoleAssignmentsTab :role-slug="roleSlug" />
 		</div>
+
+		<DeleteInstanceRoleModal
+			:model-value="reassignState !== null"
+			:role="reassignState?.role ?? null"
+			:user-count="reassignState?.userCount ?? 0"
+			:available-roles="reassignTargetRoles"
+			@confirm="confirmReassignDelete"
+			@update:model-value="(open?: boolean) => !open && cancelReassign()"
+		/>
 	</RoleEditorLayout>
 </template>
 
