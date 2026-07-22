@@ -48,8 +48,13 @@ const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
 const credentialsStore = useCredentialsStore();
 const readOnly = computed(() => !store.canManageInstanceCredentials);
-const { credentialTestError, isTestingCredential, testCredential, restoreStoredError } =
-	useInstanceCredentialTest();
+const {
+	credentialTestError,
+	isTestingCredential,
+	testCredential,
+	testSavedCredential,
+	restoreStoredError,
+} = useInstanceCredentialTest();
 const { stepLabel, isLastStep } = useInstanceAiSetupSteps(SETUP_STEP[props.kind]);
 
 provideWorkflowDocumentStore();
@@ -178,9 +183,11 @@ function getExistingCredentials(): InstanceAiProviderConnection[] {
 }
 
 function existingCredentialLabel(credential: InstanceAiProviderConnection): string {
-	return props.kind === 'sandbox'
-		? credential.name
-		: `${credential.name} · ${credentialTypeLabel(credential.type)}`;
+	const detail =
+		props.kind === 'sandbox'
+			? SANDBOX_PROVIDER_LABELS[credential.type === 'daytonaApi' ? 'daytona' : 'n8n-sandbox']
+			: credentialTypeLabel(credential.type);
+	return `${credential.name} · ${detail}`;
 }
 
 function selectionForCredential(credential: InstanceAiProviderConnection): string {
@@ -412,6 +419,14 @@ async function handlePrimary() {
 		}))
 	)
 		return;
+
+	// Pre-test a selected existing connection instead of relying on backend validation alone.
+	// Read-only callers cannot fetch credential data, so the backend stays their safety net.
+	if (selectingExistingCredential.value && !readOnly.value && selectedCredentialId.value) {
+		const credential = existingOptions.value.find(({ id }) => id === selectedCredentialId.value);
+		if (credential && !(await testSavedCredential(credential.id, credential.name, credential.type)))
+			return;
+	}
 
 	if (isChanged.value) {
 		if (usingExisting.value) stageExisting();

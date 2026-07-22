@@ -401,6 +401,49 @@ describe('SettingsInstanceAiView', () => {
 			);
 			expect(save).not.toHaveBeenCalled();
 		});
+
+		it('pre-tests a selected existing connection and blocks the save on failure', async () => {
+			const credentialsStore = useCredentialsStore();
+			credentialsStore.setCredentialTypes([
+				{
+					name: 'anthropicApi',
+					displayName: 'Anthropic',
+					properties: [],
+					test: { request: { url: '/models' } },
+				},
+			] satisfies ICredentialType[]);
+			vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
+				data: { apiKey: '__blank' },
+			} as never);
+			const testCredential = vi.spyOn(credentialsStore, 'testCredential').mockResolvedValue({
+				status: 'Error',
+				message: 'Invalid API key',
+			});
+			store.$patch({
+				instanceModelCredentials: [{ id: 'anthropic-id', name: 'Backup', type: 'anthropicApi' }],
+			});
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, findByTestId, findByText } = renderModelDialog({
+				props: { open: true },
+			});
+			const select = await findByTestId('n8n-agent-model-provider-select');
+
+			await fireEvent.click(select.querySelector('input')!);
+			await fireEvent.click(await findByText('Backup · Anthropic'));
+			const modelNameField = getByTestId('n8n-agent-model-name-input');
+			const modelNameInput =
+				modelNameField.tagName === 'INPUT'
+					? (modelNameField as HTMLInputElement)
+					: modelNameField.querySelector('input')!;
+			await fireEvent.update(modelNameInput, 'claude-sonnet-4');
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
+
+			expect(await findByTestId('n8n-agent-model-credential-test-error')).toBeVisible();
+			expect(testCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'anthropic-id', type: 'anthropicApi' }),
+			);
+			expect(save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('Sandbox credential dialog', () => {
@@ -438,7 +481,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-sandbox-dialog-save')).toBeDisabled();
 
 			await fireEvent.click(select.querySelector('input')!);
-			await fireEvent.click(await findByText('Existing Daytona'));
+			await fireEvent.click(await findByText('Existing Daytona · Daytona'));
 
 			expect(getByTestId('n8n-agent-sandbox-dialog-save')).not.toBeDisabled();
 		});
@@ -551,7 +594,7 @@ describe('SettingsInstanceAiView', () => {
 			const select = await findByTestId('n8n-agent-sandbox-provider-select');
 
 			await fireEvent.click(select.querySelector('input')!);
-			await fireEvent.click(await findByText('Existing Daytona'));
+			await fireEvent.click(await findByText('Existing Daytona · Daytona'));
 			expect(queryByTestId('n8n-agent-sandbox-connection-fields')).toBeNull();
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-save'));
 
@@ -638,6 +681,13 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('allows provider connection managers to select an existing connection', async () => {
+			const credentialsStore = useCredentialsStore();
+			vi.spyOn(credentialsStore, 'getCredentialData').mockResolvedValue({
+				data: { apiKey: '__blank' },
+			} as never);
+			const testCredential = vi
+				.spyOn(credentialsStore, 'testCredential')
+				.mockResolvedValue({ status: 'OK', message: 'ok' } as never);
 			store.$patch({
 				serviceCredentials: [
 					{
@@ -658,7 +708,10 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId('n8n-agent-search-connection-fields')).toBeNull();
 			await fireEvent.click(getByTestId('n8n-agent-search-dialog-save'));
 
-			expect(store.draft).toMatchObject({ searchCredentialId: 'brave-id' });
+			await waitFor(() => expect(store.draft).toMatchObject({ searchCredentialId: 'brave-id' }));
+			expect(testCredential).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'brave-id', type: 'braveSearchApi' }),
+			);
 			expect(save).toHaveBeenCalledOnce();
 		});
 	});
