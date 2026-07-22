@@ -3,7 +3,9 @@ import { UnexpectedError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { Readable } from 'node:stream';
 
+import { assertChunkSize } from './stream-utils';
 import type { ByteStore, ByteStoreKey } from './types';
 
 export type FsByteStoreOptions = {
@@ -21,7 +23,7 @@ export class FsByteStore implements ByteStore {
 		await assertDir(this.options.storagePath);
 	}
 
-	async write(key: ByteStoreKey, body: Buffer) {
+	async write(key: ByteStoreKey, body: Buffer | Readable) {
 		const writePath = this.getAbsolutePath(key);
 		await assertDir(path.dirname(writePath));
 		const tempPath = `${writePath}.tmp.${process.pid}.${randomUUID()}`;
@@ -30,9 +32,10 @@ export class FsByteStore implements ByteStore {
 
 		try {
 			await fs.writeFile(tempPath, body);
+			const bytesWritten = Buffer.isBuffer(body) ? body.length : (await fs.stat(tempPath)).size;
 			await fs.rename(tempPath, writePath);
 			success = true;
-			return body.length;
+			return bytesWritten;
 		} finally {
 			if (!success) {
 				await fs.rm(tempPath, { force: true }).catch((error) => this.options.reportError(error));
@@ -48,6 +51,43 @@ export class FsByteStore implements ByteStore {
 			if (this.isFileNotFound(error)) return null;
 			throw error;
 		}
+	}
+
+	async readStream(key: ByteStoreKey, { chunkSize }: { chunkSize?: number } = {}) {
+		if (chunkSize !== undefined) assertChunkSize(chunkSize);
+		const readPath = this.getAbsolutePath(key);
+		let fileHandle;
+		try {
+			fileHandle = await fs.open(readPath, 'r');
+		} catch (error) {
+			if (this.isFileNotFound(error)) return null;
+			throw error;
+		}
+		try {
+			return fileHandle.createReadStream(chunkSize ? { highWaterMark: chunkSize } : {});
+		} catch (error) {
+			await fileHandle.close().catch(() => {});
+			throw error;
+		}
+	}
+
+	async copy(sourceKey: ByteStoreKey, targetKey: ByteStoreKey) {
+		const targetPath = this.getAbsolutePath(targetKey);
+		await assertDir(path.dirname(targetPath));
+		await fs.copyFile(this.getAbsolutePath(sourceKey), targetPath);
+	}
+
+	async rename(oldKey: ByteStoreKey, newKey: ByteStoreKey) {
+		if (oldKey === newKey) return;
+		const newPath = this.getAbsolutePath(newKey);
+		await assertDir(path.dirname(newPath));
+		await fs.rename(this.getAbsolutePath(oldKey), newPath);
+	}
+
+	async deletePrefix(prefix: string) {
+		const dir = this.getAbsolutePath(prefix);
+		await fs.rm(dir, { recursive: true, force: true });
+		await this.removeEmptyAncestors(path.dirname(dir));
 	}
 
 	async delete(keys: ByteStoreKey[]) {
