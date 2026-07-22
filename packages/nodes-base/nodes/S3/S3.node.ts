@@ -481,6 +481,69 @@ export class S3 implements INodeType {
 				}
 				if (resource === 'file') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CopyObject.html
+					if (operation === 'getPresignedUrl') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const credentials = await this.getCredentials('s3');
+
+						const endpoint = new URL(credentials.endpoint as string);
+
+						// Handle path prefix from endpoint
+						const basepath = endpoint.pathname === '/' ? '' : endpoint.pathname;
+
+						let path: string;
+
+						// Percent-encode key segments
+						const encodedFileKey = fileKey
+							.split('/')
+							.map((segment) => encodeURIComponent(segment))
+							.join('/');
+
+						if (credentials.forcePathStyle) {
+							path = `${basepath}/${bucketName}/${encodedFileKey}`;
+						} else {
+							endpoint.host = `${bucketName}.${endpoint.host}`;
+							path = `${basepath}/${encodedFileKey}`;
+						}
+
+						const { sign } = require('aws4');
+
+						const signOpts: IDataObject = {
+							host: endpoint.host,
+							method: 'GET',
+							path: `${path}?X-Amz-Expires=${additionalFields.expires ?? 3600}`,
+							service: 's3',
+							region: credentials.region,
+							signQuery: true,
+						};
+
+						const securityHeaders = {
+							accessKeyId: `${credentials.accessKeyId}`.trim(),
+							secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+							sessionToken: credentials.temporaryCredentials
+								? `${credentials.sessionToken}`.trim()
+								: undefined,
+						};
+
+						sign(signOpts, securityHeaders);
+
+						const presignedUrl = `${endpoint.protocol}//${signOpts.host}${signOpts.path}`;
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								url: presignedUrl,
+							}),
+							{
+								itemData: {
+									item: i,
+								},
+							},
+						);
+
+						returnData.push(...executionData);
+					}
 					if (operation === 'copy') {
 						const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;

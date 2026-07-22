@@ -472,6 +472,59 @@ export class AwsS3V1 implements INodeType {
 				}
 				if (resource === 'file') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CopyObject.html
+					if (operation === 'getPresignedUrl') {
+						const bucketName = this.getNodeParameter('bucketName', i) as string;
+						const fileKey = this.getNodeParameter('fileKey', i) as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+
+						const credentials = await this.getCredentials('aws');
+						const region = credentials.region as string;
+
+						// Percent-encode key segments
+						const encodedFileKey = fileKey
+							.split('/')
+							.map((segment) => encodeURIComponent(segment))
+							.join('/');
+
+						const path = `/${encodedFileKey}`;
+						const host = `${bucketName}.s3.${region}.amazonaws.com`;
+
+						const { sign } = require('aws4');
+
+						const signOpts: IDataObject = {
+							host,
+							method: 'GET',
+							path: `${path}?X-Amz-Expires=${additionalFields.expires ?? 3600}`,
+							service: 's3',
+							region,
+							signQuery: true,
+						};
+
+						const securityHeaders = {
+							accessKeyId: `${credentials.accessKeyId}`.trim(),
+							secretAccessKey: `${credentials.secretAccessKey}`.trim(),
+							sessionToken: credentials.sessionToken
+								? `${credentials.sessionToken}`.trim()
+								: undefined,
+						};
+
+						sign(signOpts, securityHeaders);
+
+						const presignedUrl = `https://${host}${signOpts.path}`;
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({
+								url: presignedUrl,
+							}),
+							{
+								itemData: {
+									item: i,
+								},
+							},
+						);
+
+						returnData.push(...executionData);
+					}
 					if (operation === 'copy') {
 						const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;

@@ -13,6 +13,12 @@ export const fileOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get Presigned URL',
+				value: 'getPresignedUrl',
+				description: 'Get a presigned URL',
+				action: 'Get a presigned URL',
+			},
+			{
 				name: 'Copy',
 				value: 'copy',
 				description: 'Copy a file',
@@ -48,6 +54,57 @@ export const fileOperations: INodeProperties[] = [
 ];
 
 export const fileFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                file:getPresignedUrl                        */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Bucket Name',
+		name: 'bucketName',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+	},
+	{
+		displayName: 'File Key',
+		name: 'fileKey',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['getPresignedUrl'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Expires (Seconds)',
+				name: 'expires',
+				type: 'number',
+				default: 3600,
+				description: 'The number of seconds until the URL expires',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                file:copy                                   */
 	/* -------------------------------------------------------------------------- */
