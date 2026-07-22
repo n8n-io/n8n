@@ -296,6 +296,6 @@ export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workfl
 export { ListWorkflowReviewRequestsQueryDto } from './workflow-reviews/list-workflow-review-requests-query.dto';
 
 export { UpdateOtelSettingsDto } from './otel/update-otel-settings.dto';
-export { TestOtelConnectionDto } from './otel/test-otel-connection.dto';
+export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
 
 export { InstanceAiExamplesQueryDto } from './instance-ai-examples/instance-ai-examples-query.dto';
