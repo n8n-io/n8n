@@ -11,7 +11,6 @@ interface NodeWithVersion extends INodeTypeDescription {
 // Same as in ai-workflow-builder-agent.service.ts
 const IGNORED_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.toolVectorStore',
-	'@n8n/n8n-nodes-langchain.documentGithubLoader',
 	'@n8n/n8n-nodes-langchain.code',
 ]);
 

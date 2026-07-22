@@ -224,7 +224,7 @@ describe('EvaluationConfigValidator', () => {
 				...makeWorkflow(),
 				nodes: [
 					makeNode({ name: 'TriggerA', type: 'n8n-nodes-base.manualTrigger' }),
-					makeNode({ name: 'TriggerB', type: 'n8n-nodes-base.cron' }),
+					makeNode({ name: 'TriggerB', type: 'n8n-nodes-base.scheduleTrigger' }),
 					makeNode({ name: 'Start' }),
 					makeNode({ name: 'End' }),
 				],
