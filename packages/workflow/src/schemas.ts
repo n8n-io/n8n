@@ -469,7 +469,7 @@ export const INodeCredentialsSchema: z.ZodType<INodeCredentials> = z.record(
 	INodeCredentialsDetailsSchema,
 );
 
-export const INodeSchema: z.ZodType<INode> = z.object({
+const iNodeSchemaObject = z.object({
 	id: z.string(),
 	name: z.string(),
 	typeVersion: z.number(),
@@ -498,20 +498,29 @@ export const INodeSchema: z.ZodType<INode> = z.object({
 		.optional(),
 });
 
+export const INodeSchema: z.ZodType<INode> = iNodeSchemaObject;
+
 export const INodesSchema: z.ZodType<INode[]> = z.array(INodeSchema);
+
+/** Top-level keys that are `.optional()` but not `.nullable()` — nullish values must be omitted. */
+const optionalNonNullableINodeKeys: ReadonlySet<string> = new Set(
+	Object.entries(iNodeSchemaObject.shape)
+		.filter(([, field]) => field.isOptional() && !field.isNullable())
+		.map(([key]) => key),
+);
 
 /**
  * Normalize a node to the {@link INodeSchema} persistence shape.
  *
- * Optional top-level INode fields are `.optional()`, never `.nullable()` — nullish
- * values are omitted. `parameters` is required and always coerced to an object.
+ * Driven by INodeSchema: nullish values are omitted only for top-level keys marked
+ * `.optional()` and not `.nullable()`. Adding a `.nullable()` field preserves `null`
+ * for that key automatically. `parameters` is required and always coerced to an object.
  * Nested nulls (e.g. credential ids) are left intact.
  */
 export function normalizeNodeShape<T extends object>(node: T): T {
 	const cleaned: Record<string, unknown> = { ...(node as Record<string, unknown>) };
 
-	for (const key of Object.keys(cleaned)) {
-		if (key === 'parameters') continue;
+	for (const key of optionalNonNullableINodeKeys) {
 		if (cleaned[key] === null || cleaned[key] === undefined) {
 			delete cleaned[key];
 		}
