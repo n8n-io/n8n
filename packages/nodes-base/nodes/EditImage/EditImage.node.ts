@@ -5,6 +5,7 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	INodeExecutionData,
 	INodeProperties,
 	INodePropertyOptions,
@@ -14,6 +15,19 @@ import type {
 import { NodeOperationError, NodeConnectionTypes, deepCopy } from 'n8n-workflow';
 import { parse as pathParse } from 'path';
 import { file } from 'tmp-promise';
+
+const VALID_IMAGE_FORMATS = new Set(['bmp', 'gif', 'jpeg', 'png', 'tiff', 'tif', 'webp']);
+
+function validateImageFormat(format: unknown, node: INode): string {
+	if (typeof format === 'string' && VALID_IMAGE_FORMATS.has(format)) {
+		return format;
+	}
+
+	throw new NodeOperationError(
+		node,
+		`Invalid image format: ${format}. Valid formats are: ${Array.from(VALID_IMAGE_FORMATS).join(', ')}`,
+	);
+}
 
 const nodeOperations: INodePropertyOptions[] = [
 	{
@@ -1278,7 +1292,8 @@ export class EditImage implements INodeType {
 				}
 
 				if (options.format !== undefined) {
-					gmInstance = gmInstance!.setFormat(options.format as string);
+					const format = validateImageFormat(options.format, this.getNode());
+					gmInstance = gmInstance!.setFormat(format);
 					newItem.binary![dataPropertyName].fileExtension = options.format as string;
 					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
 					const fileName = newItem.binary![dataPropertyName].fileName;

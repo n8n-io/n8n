@@ -1,16 +1,19 @@
-import { SecurityConfig } from '@n8n/config';
+import { DeploymentConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
 import { mkdir, rename, rm } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import simpleGit, { type SimpleGit } from 'simple-git';
 
 import { Git } from '../Git.node';
 import { ALLOWED_CONFIG_KEYS } from '../descriptions';
 
 // Matches the unguessable staging directory the clone operation creates under the base.
-const CLONE_STAGING_RE = /^\/git\/\.n8n-clone-[0-9a-f]{24}$/;
+const CLONE_STAGING_RE = /^[\\/]git[\\/]\.n8n-clone-[0-9a-f]{24}$/;
+const GIT_ROOT_RE = /^[\\/]git$/;
+const GIT_NEW_REPO_RE = /^[\\/]git[\\/]new-repo$/;
 
 // Mock simple-git
 const mockGit = {
@@ -54,9 +57,22 @@ const mockRm = jest.mocked(rm);
 describe('Git Node', () => {
 	let gitNode: Git;
 	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let deploymentConfig: jest.Mocked<DeploymentConfig>;
+	let securityConfig: jest.Mocked<SecurityConfig>;
 
 	beforeEach(() => {
+		jest.clearAllMocks();
 		gitNode = new Git();
+		deploymentConfig = mock<DeploymentConfig>({
+			type: 'default',
+		});
+		securityConfig = mock<SecurityConfig>({
+			disableBareRepos: false,
+			enableGitNodeHooks: true,
+			enableGitNodeAllConfigKeys: false,
+		});
+		Container.set(DeploymentConfig, deploymentConfig);
+		Container.set(SecurityConfig, securityConfig);
 		mockExecuteFunctions = mock<IExecuteFunctions>({
 			getInputData: jest.fn(() => [{ json: {} }]),
 			getNodeParameter: jest.fn(),
@@ -73,8 +89,22 @@ describe('Git Node', () => {
 				pinDirectory: jest.fn(async () => null),
 			},
 		});
-		jest.clearAllMocks();
+		mockExecuteFunctions.getNodeParameter.mockImplementation(
+			(name: string, _itemIndex: number, fallbackValue?: unknown) => {
+				switch (name) {
+					case 'operation':
+						return 'log';
+					case 'repositoryPath':
+						return '/repo';
+					case 'options':
+						return {};
+					default:
+						return fallbackValue ?? '';
+				}
+			},
+		);
 		mockGit.listConfig.mockResolvedValue({ values: {} } as any);
+		mockGit.log.mockResolvedValue({ all: [] } as any);
 		mockMkdir.mockResolvedValue(undefined);
 		mockRename.mockResolvedValue(undefined);
 		mockRm.mockResolvedValue(undefined);
@@ -103,6 +133,151 @@ describe('Git Node', () => {
 			expect(Object.prototype.hasOwnProperty.call(envArg, inheritedEnvKey)).toBe(false);
 			expect(envArg[inheritedEnvKey]).toBeUndefined();
 			expect(envArg.GIT_TERMINAL_PROMPT).toBe('0');
+		});
+	});
+
+	describe('Bare repository configuration', () => {
+		it('should add safe.bareRepository=explicit when deployment type is cloud', async () => {
+			deploymentConfig.type = 'cloud';
+			securityConfig.disableBareRepos = false;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: ['safe.bareRepository=explicit'],
+				}),
+			);
+		});
+
+		it('should add safe.bareRepository=explicit when disableBareRepos is true', async () => {
+			deploymentConfig.type = 'default';
+			securityConfig.disableBareRepos = true;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: ['safe.bareRepository=explicit'],
+				}),
+			);
+		});
+
+		it('should add safe.bareRepository=explicit when both cloud and disableBareRepos are true', async () => {
+			deploymentConfig.type = 'cloud';
+			securityConfig.disableBareRepos = true;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: ['safe.bareRepository=explicit'],
+				}),
+			);
+		});
+
+		it('should not add safe.bareRepository=explicit when neither cloud nor disableBareRepos is true', async () => {
+			deploymentConfig.type = 'default';
+			securityConfig.disableBareRepos = false;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: [],
+				}),
+			);
+		});
+	});
+
+	describe('Hooks configuration', () => {
+		it('should add core.hooksPath=/dev/null when enableGitNodeHooks is false', async () => {
+			securityConfig.enableGitNodeHooks = false;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: ['core.hooksPath=/dev/null'],
+				}),
+			);
+		});
+
+		it('should opt into allowUnsafeHooksPath when enableGitNodeHooks is false', async () => {
+			securityConfig.enableGitNodeHooks = false;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					unsafe: { allowUnsafeHooksPath: true },
+				}),
+			);
+		});
+
+		it('should not add core.hooksPath=/dev/null when enableGitNodeHooks is true', async () => {
+			securityConfig.enableGitNodeHooks = true;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: [],
+				}),
+			);
+		});
+
+		it('should not opt into allowUnsafeHooksPath when enableGitNodeHooks is true', async () => {
+			securityConfig.enableGitNodeHooks = true;
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			const options = mockSimpleGit.mock.calls[0][0] as { unsafe?: unknown };
+			expect(options.unsafe).toBeUndefined();
+		});
+	});
+
+	describe('Restricted file paths', () => {
+		it('should throw an error if the repository path is blocked', async () => {
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(() => true);
+			mockExecuteFunctions.helpers.resolvePath = jest.fn(
+				async () => '/tmp/test-repo' as ResolvedFilePath,
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the repository path is not allowed',
+			);
+		});
+
+		it('should use the resolved repository path for git operations', async () => {
+			const originalPath = '/tmp/link-to-repo';
+			const resolvedPath = '/tmp/actual-repo';
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(name: string, _itemIndex: number, fallbackValue?: unknown) => {
+					switch (name) {
+						case 'operation':
+							return 'log';
+						case 'repositoryPath':
+							return originalPath;
+						case 'options':
+							return {};
+						default:
+							return fallbackValue ?? '';
+					}
+				},
+			);
+			mockExecuteFunctions.helpers.resolvePath = jest.fn(
+				async () => resolvedPath as ResolvedFilePath,
+			);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(() => false);
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					baseDir: resolvedPath,
+				}),
+			);
 		});
 	});
 
@@ -764,6 +939,226 @@ describe('Git Node', () => {
 			expect(mockGit.addConfig).toHaveBeenCalledWith('user.name', 'test user', false);
 		});
 
+		describe('Configured remotes', () => {
+			const expectRemoteOperationNotCalled = (operation: 'fetch' | 'pull' | 'pushTags') => {
+				if (operation === 'fetch') {
+					expect(mockGit.fetch).not.toHaveBeenCalled();
+				} else if (operation === 'pull') {
+					expect(mockGit.pull).not.toHaveBeenCalled();
+				} else {
+					expect(mockGit.pushTags).not.toHaveBeenCalled();
+				}
+			};
+
+			it('should validate remote.origin.url before writing git config', async () => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('addConfig')
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce('remote.origin.url')
+					.mockReturnValueOnce('/outside/repo');
+				mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+					(path: string) => path === '/outside/repo',
+				);
+
+				await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'Access to the source repository path is not allowed',
+				);
+
+				expect(mockGit.addConfig).not.toHaveBeenCalled();
+			});
+
+			it('should validate remote.origin.pushurl before writing git config when custom keys are enabled', async () => {
+				Container.set(
+					SecurityConfig,
+					mock<SecurityConfig>({
+						enableGitNodeAllConfigKeys: true,
+					}),
+				);
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('addConfig')
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce('remote.origin.pushurl')
+					.mockReturnValueOnce('/outside/repo');
+				mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+					(path: string) => path === '/outside/repo',
+				);
+
+				await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'Access to the target repository path is not allowed',
+				);
+
+				expect(mockGit.addConfig).not.toHaveBeenCalled();
+			});
+
+			it.each([
+				{ key: 'remote.upstream.url', repositoryType: 'source' },
+				{ key: 'remote.upstream.pushurl', repositoryType: 'target' },
+				{ key: 'remote.team.upstream.url', repositoryType: 'source' },
+				{ key: 'remote.team.upstream.pushurl', repositoryType: 'target' },
+				{ key: 'remote.upstream.URL', repositoryType: 'source' },
+				{ key: 'remote.upstream.PushURL', repositoryType: 'target' },
+			])(
+				'should validate $key before writing git config when custom keys are enabled',
+				async ({ key, repositoryType }) => {
+					Container.set(
+						SecurityConfig,
+						mock<SecurityConfig>({
+							enableGitNodeAllConfigKeys: true,
+						}),
+					);
+					mockExecuteFunctions.getNodeParameter
+						.mockReturnValueOnce('addConfig')
+						.mockReturnValueOnce('/repo')
+						.mockReturnValueOnce({})
+						.mockReturnValueOnce(key)
+						.mockReturnValueOnce('/outside/repo');
+					mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+						(path: string) => path === '/outside/repo',
+					);
+
+					await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+						`Access to the ${repositoryType} repository path is not allowed`,
+					);
+
+					expect(mockGit.addConfig).not.toHaveBeenCalled();
+				},
+			);
+
+			it.each([
+				{ operation: 'fetch' as const, configKey: 'remote.origin.url', repositoryType: 'source' },
+				{
+					operation: 'fetch' as const,
+					configKey: 'remote.upstream.url',
+					repositoryType: 'source',
+				},
+				{ operation: 'pull' as const, configKey: 'remote.origin.url', repositoryType: 'source' },
+				{
+					operation: 'pull' as const,
+					configKey: 'remote.upstream.url',
+					repositoryType: 'source',
+				},
+				{
+					operation: 'pushTags' as const,
+					configKey: 'remote.origin.url',
+					repositoryType: 'target',
+				},
+				{
+					operation: 'pushTags' as const,
+					configKey: 'remote.origin.pushurl',
+					repositoryType: 'target',
+				},
+				{
+					operation: 'pushTags' as const,
+					configKey: 'remote.upstream.pushurl',
+					repositoryType: 'target',
+				},
+			])(
+				'should validate configured $configKey before $operation',
+				async ({ operation, configKey, repositoryType }) => {
+					mockExecuteFunctions.getNodeParameter
+						.mockReturnValueOnce(operation)
+						.mockReturnValueOnce('/repo')
+						.mockReturnValueOnce({});
+					mockGit.listConfig.mockResolvedValueOnce({
+						values: {
+							'.git/config': {
+								'remote.origin.url': 'https://github.com/test/repo.git',
+								[configKey]: '/outside/repo',
+							},
+						},
+					} as any);
+					mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+						(path: string) => path === '/outside/repo',
+					);
+
+					await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+						`Access to the ${repositoryType} repository path is not allowed`,
+					);
+
+					expectRemoteOperationNotCalled(operation);
+				},
+			);
+
+			it.each(['fetch' as const, 'pull' as const])(
+				'should not validate configured push URLs before %s',
+				async (operation) => {
+					mockExecuteFunctions.getNodeParameter
+						.mockReturnValueOnce(operation)
+						.mockReturnValueOnce('/repo')
+						.mockReturnValueOnce({});
+					mockGit.listConfig.mockResolvedValueOnce({
+						values: {
+							'.git/config': {
+								'remote.origin.url': 'https://github.com/test/repo.git',
+								'remote.origin.pushurl': '/outside/repo',
+							},
+						},
+					} as any);
+					mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+						(path: string) => path === '/outside/repo',
+					);
+
+					await gitNode.execute.call(mockExecuteFunctions);
+
+					if (operation === 'fetch') {
+						expect(mockGit.fetch).toHaveBeenCalled();
+					} else {
+						expect(mockGit.pull).toHaveBeenCalled();
+					}
+				},
+			);
+
+			it('should validate non-origin remotes before default push', async () => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('push')
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce('none');
+				mockGit.listConfig.mockResolvedValueOnce({
+					values: {
+						'.git/config': {
+							'remote.origin.url': 'https://github.com/test/repo.git',
+							'remote.upstream.pushurl': '/outside/repo',
+						},
+					},
+				} as any);
+				mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+					(path: string) => path === '/outside/repo',
+				);
+
+				await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+					'Access to the target repository path is not allowed',
+				);
+
+				expect(mockGit.push).not.toHaveBeenCalled();
+			});
+
+			it('should prefer push URLs over source URLs when validating default push targets', async () => {
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce('push')
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({})
+					.mockReturnValueOnce('none');
+				mockGit.listConfig.mockResolvedValueOnce({
+					values: {
+						'.git/config': {
+							'remote.origin.url': '/outside/source-repo',
+							'remote.origin.pushurl': 'https://github.com/test/push-repo.git',
+						},
+					},
+				} as any);
+				mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+					(path: string) => path === '/outside/source-repo',
+				);
+
+				await gitNode.execute.call(mockExecuteFunctions);
+
+				expect(mockGit.push).toHaveBeenCalled();
+			});
+		});
+
 		it('should handle clone operation and create the parent directory', async () => {
 			const missingParentError = Object.assign(new Error('Directory does not exist'), {
 				code: 'ENOENT',
@@ -783,7 +1178,9 @@ describe('Git Node', () => {
 
 			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git/new-repo');
 			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/git');
-			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({ baseDir: expect.stringMatching(GIT_ROOT_RE) }),
+			);
 
 			// The clone goes into an unguessable staging directory, not the target.
 			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
@@ -796,11 +1193,11 @@ describe('Git Node', () => {
 			// The target is verified and then the staged clone is moved into place.
 			expect(
 				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
-			).toHaveBeenCalledWith('/git/new-repo');
+			).toHaveBeenCalledWith(expect.stringMatching(GIT_NEW_REPO_RE));
 			expect(mockExecuteFunctions.helpers.assertNoSymlinkInPath).toHaveBeenCalledWith(
-				'/git/new-repo',
+				expect.stringMatching(GIT_NEW_REPO_RE),
 			);
-			expect(mockRename).toHaveBeenCalledWith(stagingPath, '/git/new-repo');
+			expect(mockRename).toHaveBeenCalledWith(stagingPath, expect.stringMatching(GIT_NEW_REPO_RE));
 			expect(result[0]).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 		});
 
@@ -834,7 +1231,9 @@ describe('Git Node', () => {
 			expect(
 				mockExecuteFunctions.helpers.ensureParentDirectoryWithoutFollowingSymlinks,
 			).toHaveBeenCalledWith('/git/existing-repo');
-			expect(mockSimpleGit).toHaveBeenCalledWith(expect.objectContaining({ baseDir: '/git' }));
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({ baseDir: expect.stringMatching(GIT_ROOT_RE) }),
+			);
 			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
 			expect(stagingPath).toMatch(CLONE_STAGING_RE);
 			expect(mockGit.clone).toHaveBeenCalledWith('https://github.com/test/repo.git', stagingPath, [
@@ -914,19 +1313,61 @@ describe('Git Node', () => {
 			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 
-		it('should check file URL source repository paths', async () => {
+		it('should not treat Unix local source repository paths with colons as scp-style remotes', async () => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('clone')
 				.mockReturnValueOnce('/git/new-repo')
 				.mockReturnValueOnce({})
-				.mockReturnValueOnce('file:/tmp/source-repo');
+				.mockReturnValueOnce('/blocked/source:repo');
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn(
+				(path: string) => path === '/blocked/source:repo',
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the source repository path is not allowed',
+			);
+
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+
+		it('should keep validating Windows local source repository paths', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('C:\\blocked\\source-repo');
+			mockExecuteFunctions.helpers.resolvePath = jest.fn(
+				async (path: string) => path as ResolvedFilePath,
+			);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn((path: string) =>
+				path.includes('C:\\blocked\\source-repo'),
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the source repository path is not allowed',
+			);
+
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
+		});
+
+		it('should check file URL source repository paths', async () => {
+			const sourcePath = resolve(sep, 'tmp', 'source-repo');
+			const sourceRepository = pathToFileURL(sourcePath).href;
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(sourceRepository);
 
 			await gitNode.execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith('/tmp/source-repo');
+			expect(mockExecuteFunctions.helpers.resolvePath).toHaveBeenCalledWith(sourcePath);
 			const stagingPath = mockGit.clone.mock.calls[0][1] as unknown as string;
 			expect(stagingPath).toMatch(CLONE_STAGING_RE);
-			expect(mockGit.clone).toHaveBeenCalledWith('file:/tmp/source-repo', stagingPath, ['--']);
+			expect(mockGit.clone).toHaveBeenCalledWith(sourceRepository, stagingPath, ['--']);
 			expect(mockRename).toHaveBeenCalledWith(stagingPath, '/git/new-repo');
 		});
 
@@ -946,6 +1387,25 @@ describe('Git Node', () => {
 				expect.stringMatching(CLONE_STAGING_RE),
 				['--'],
 			);
+		});
+
+		it('should reject malformed scp-like source repository references with extra at signs', async () => {
+			const sourceRepository = 'git@malformed@github.com:org/repo.git';
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('clone')
+				.mockReturnValueOnce('/git/new-repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce(sourceRepository);
+			mockExecuteFunctions.helpers.isFilePathBlocked = jest.fn((path: string) =>
+				path.includes('git@malformed@github.com:org'),
+			);
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Access to the source repository path is not allowed',
+			);
+
+			expect(mockSimpleGit).not.toHaveBeenCalled();
+			expect(mockGit.clone).not.toHaveBeenCalled();
 		});
 
 		it('should reject clone source repositories starting with a hyphen', async () => {
@@ -1029,6 +1489,22 @@ describe('Git Node', () => {
 			const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
 			expect(envArg.GIT_ALLOW_PROTOCOL).toBe('file:git:http:https:ssh');
 		});
+
+		it.each(['push', 'pushTags'])(
+			'should disable the file transport for %s when hooks are disabled',
+			async (operation) => {
+				securityConfig.enableGitNodeHooks = false;
+				mockExecuteFunctions.getNodeParameter
+					.mockReturnValueOnce(operation)
+					.mockReturnValueOnce('/repo')
+					.mockReturnValueOnce({});
+
+				await gitNode.execute.call(mockExecuteFunctions);
+
+				const envArg = mockGit.env.mock.calls[0][0] as Record<string, string>;
+				expect(envArg.GIT_ALLOW_PROTOCOL).toBe('git:http:https:ssh');
+			},
+		);
 
 		it('should not place the repository when a target path component is a symlink', async () => {
 			mockExecuteFunctions.getNodeParameter
@@ -1185,6 +1661,48 @@ describe('Git Node', () => {
 			await gitNode.execute.call(mockExecuteFunctions);
 
 			expect(mockGit.addTag).toHaveBeenCalledWith('v1.0.0');
+		});
+	});
+
+	describe('Tag reference validation', () => {
+		it('should accept tag operation when name contains a plus sign', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('tag')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('v1.2.3+build.1');
+
+			await gitNode.execute.call(mockExecuteFunctions);
+
+			expect(mockGit.addTag).toHaveBeenCalledWith('v1.2.3+build.1');
+		});
+
+		it('should reject tag operation when name starts with a hyphen', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('tag')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('--force');
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference cannot start with a hyphen',
+			);
+
+			expect(mockGit.addTag).not.toHaveBeenCalled();
+		});
+
+		it('should reject tag operation when name contains unsafe characters', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('tag')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({})
+				.mockReturnValueOnce('v1;id');
+
+			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Reference contains unsafe characters',
+			);
+
+			expect(mockGit.addTag).not.toHaveBeenCalled();
 		});
 	});
 

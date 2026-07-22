@@ -1,0 +1,26 @@
+diff --git a/_baseSet.js b/_baseSet.js
+index 99f4fbf9c347a74594f975df62ee353d06c85c55..316f9e8b537e294230c5123789c224c41a7034e8 100644
+--- a/_baseSet.js
++++ b/_baseSet.js
+@@ -37,7 +37,7 @@ function baseSet(object, path, value, customizer) {
+       var objValue = nested[key];
+       newValue = customizer ? customizer(objValue, key, nested) : undefined;
+       if (newValue === undefined) {
+-        newValue = isObject(objValue)
++        newValue = isObject(objValue) && Object.prototype.hasOwnProperty.call(nested, key)
+           ? objValue
+           : (isIndex(path[index + 1]) ? [] : {});
+       }
+diff --git a/lodash.js b/lodash.js
+index 902bfd4ee8f96898526f4776b061ce1d1c189ecc..c45042ae7e99ea0b900eb665989bcb72bf880b0f 100644
+--- a/lodash.js
++++ b/lodash.js
+@@ -4045,7 +4045,7 @@
+           var objValue = nested[key];
+           newValue = customizer ? customizer(objValue, key, nested) : undefined;
+           if (newValue === undefined) {
+-            newValue = isObject(objValue)
++            newValue = isObject(objValue) && Object.prototype.hasOwnProperty.call(nested, key)
+               ? objValue
+               : (isIndex(path[index + 1]) ? [] : {});
+           }
