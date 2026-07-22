@@ -29,6 +29,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import {
 	CURATED_LIBS,
@@ -56,8 +57,13 @@ function exempt(name, relDir) {
 const curatedIn = (field, name, relDir, pkg) =>
 	exempt(name, relDir) ? [] : PEER_LIBS.filter((lib) => Object.hasOwn(pkg[field] ?? {}, lib));
 
-/** Curated libs declared as plain `dependencies` (should be peers). */
-export const violationsFor = (name, relDir, pkg) => curatedIn('dependencies', name, relDir, pkg);
+/** Curated libs declared as a plain or optional dependency — either should be a peer. */
+export const violationsFor = (name, relDir, pkg) => [
+	...new Set([
+		...curatedIn('dependencies', name, relDir, pkg),
+		...curatedIn('optionalDependencies', name, relDir, pkg),
+	]),
+];
 
 /** Curated libs declared as `peerDependencies`. */
 export const peersFor = (name, relDir, pkg) => curatedIn('peerDependencies', name, relDir, pkg);
@@ -161,7 +167,7 @@ function main() {
 		console.error('');
 		for (const { name, lib } of failures) {
 			console.error(
-				`  - ${name}: "${lib}" is in "dependencies"; move it to "peerDependencies" (+ devDependencies via catalog:).`,
+				`  - ${name}: "${lib}" is a runtime dependency; move it to "peerDependencies" (+ devDependencies via catalog:).`,
 			);
 		}
 		for (const { name, lib } of dropped) {
@@ -187,6 +193,6 @@ function main() {
 	);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main();
 }

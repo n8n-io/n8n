@@ -16,6 +16,15 @@ describe('violationsFor', () => {
 		);
 	});
 
+	it('flags a curated lib declared in optionalDependencies', () => {
+		assert.deepEqual(
+			violationsFor('pkg-o', 'packages/@n8n/pkg-o', {
+				optionalDependencies: { zod: 'catalog:' },
+			}),
+			['zod'],
+		);
+	});
+
 	it('does not flag a curated lib declared as a peerDependency', () => {
 		assert.deepEqual(
 			violationsFor('pkg-b', 'packages/@n8n/pkg-b', { peerDependencies: { zod: 'catalog:' } }),

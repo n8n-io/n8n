@@ -23,9 +23,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 
 import { collectCopies, analyze } from './verify-single-instance-deps.mjs';
 import { loadWorkspaceManifests, repoRoot } from './workspace-manifests.mjs';
+
+// Repo-relative paths whose change can shift dependency resolution repo-wide (the catalog,
+// the root manifest, or the single-instance tooling itself) — a scoped diff would miss them.
+const ROOT_TRIGGERS = ['pnpm-workspace.yaml', 'package.json', 'scripts/single-instance/'];
 
 /** Every non-private workspace package: name -> { dir, relDir, pkg }. */
 function loadWorkspace() {
@@ -78,7 +83,15 @@ function changedPackages(baseRef, byName) {
 		console.error(`Could not diff against "${baseRef}"; skipping scoped check.`);
 		return [];
 	}
-	return matchChangedFiles(out.split('\n').filter(Boolean), packageDirPrefixes(byName));
+	const files = out.split('\n').filter(Boolean);
+	// A catalog change (pnpm-workspace.yaml / root package.json) or a change to the
+	// single-instance tooling itself can affect resolution repo-wide, and maps to no
+	// package dir — so escalate to the full set rather than silently checking nothing.
+	if (files.some((f) => ROOT_TRIGGERS.some((t) => f === t || f.startsWith(t)))) {
+		console.error('Catalog/tooling change detected; verifying all publishable packages.');
+		return [...byName.keys()];
+	}
+	return matchChangedFiles(files, packageDirPrefixes(byName));
 }
 
 /** BFS the workspace-internal dependency closure of the given target names. */
@@ -197,6 +210,6 @@ function main() {
 	console.log('\nOK: no curated duplicates in the npm-install graph.');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main();
 }

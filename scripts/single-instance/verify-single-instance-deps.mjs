@@ -26,6 +26,7 @@
 
 import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { CURATED_LIBS } from './single-instance-libs.mjs';
 
 /**
@@ -188,6 +189,6 @@ function main() {
 	process.exit(0);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main();
 }
