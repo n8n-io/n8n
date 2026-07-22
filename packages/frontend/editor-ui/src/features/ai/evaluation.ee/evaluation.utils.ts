@@ -3,6 +3,7 @@ import {
 	normalizeMetricScore,
 	ONE_TO_FIVE_METRIC_KEYS,
 	RESERVED_METRIC_KEYS,
+	type MetricScale,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { JsonValue } from 'n8n-workflow';
@@ -14,11 +15,8 @@ import type { EvalCollectionRunStatus } from './evalCollections.types';
 
 /**
  * Extract a human-readable answer string from an end-node output value.
- *
  * Priority: `output` > `text` > `response` > single-key object value > JSON.stringify.
- * Primitives pass through as String(value); null/undefined → ''.
- *
- * Keep in sync with the `endAnswer` n8n expression in buildEvaluationConfigDto.ts.
+ * Keep in sync with the `endAnswer` expression in buildEvaluationConfigDto.ts.
  */
 export function extractAnswerText(json: unknown): string {
 	if (json === null || json === undefined) return '';
@@ -37,10 +35,9 @@ export function extractAnswerText(json: unknown): string {
 }
 
 /**
- * The node-under-test's answer for a case: the end node's output during the
- * test run, stripped of its JSON envelope via `extractAnswerText`. Falls back to
- * the case's persisted `outputs` when the execution isn't loaded (or the compiled
- * config run had no setOutputs node, so `outputs` is empty).
+ * The node-under-test's answer for a case: the end node's output during the test
+ * run, via `extractAnswerText`. Falls back to persisted `outputs` when the
+ * execution isn't loaded (or the run had no setOutputs node).
  */
 export function extractCaseAnswer(
 	execution: IExecutionResponse | null | undefined,
@@ -114,8 +111,7 @@ export function normalizeMetricValue(value: number | undefined): number | undefi
 }
 
 // Index of the max value, ignoring nulls; ties resolve to the first (left-most)
-// entry, matching the version letter order users read. Returns null if every
-// value is null.
+// entry, matching the version letter order. Null if every value is null.
 export function indexOfMax(values: Array<number | null>): number | null {
 	let best: number | null = null;
 	let bestValue = -Infinity;
@@ -128,11 +124,9 @@ export function indexOfMax(values: Array<number | null>): number | null {
 	return best;
 }
 
-// Overall status of a run set: "running" while any run is still queued or
-// executing, "error" when every run failed or was cancelled (so an all-failed
-// collection doesn't read as a green "done"), otherwise "done". Shared by the
-// collection card and the compare header so the two surfaces can't disagree;
-// callers that also have a not-yet-loaded state keep their own `null` guard.
+// Overall status of a run set: "running" while any run is queued/executing,
+// "error" when every run failed or was cancelled (so an all-failed set isn't a
+// green "done"), otherwise "done". Shared so the card and compare header agree.
 export function deriveRunsStatus(
 	runs: Array<{ status: EvalCollectionRunStatus }>,
 ): 'running' | 'done' | 'error' {
@@ -146,17 +140,21 @@ export function deriveRunsStatus(
 	return 'done';
 }
 
-// Reduce per-run aggregate metrics to the score metrics that both the
-// collection-card preview and the compare hero chart render, each normalized to
-// [0, 1] by its scale (AI-judge metrics are 1–5 → /5; see `normalizeMetricScore`).
-// Returns one entry per metric (first-seen order) with a value per run aligned by
-// index — `null` where a run lacks the metric, so a skipped metric never shifts
-// later versions out of their color/letter slot. A metric is included only if
-// every run that reported it yields a score (operational counts like tokens and
-// latency normalize to `null` and are dropped, since the bar charts clamp to
-// max=1 and an absolute count would render a meaningless maxed-out bar).
+// How many runs have settled. Uses the inverse of `deriveRunsStatus`'s in-flight
+// predicate so the "N/M complete" count and the status can't disagree.
+export function countSettledRuns(runs: Array<{ status: EvalCollectionRunStatus }>): number {
+	return runs.filter((run) => run.status !== 'new' && run.status !== 'running').length;
+}
+
+// Reduce per-run aggregate metrics to score metrics, each normalized to [0, 1]
+// by its scale. Values align by run index — `null` where a run lacks the metric,
+// so a skipped metric never shifts later versions out of their color/letter slot.
+// A metric is included only if every run that reported it yields a score;
+// operational counts (tokens, latency) normalize to `null` and are dropped, since
+// the bars clamp to max=1 and an absolute count would render a maxed-out bar.
 export function buildScoreShapedMetricGroups(
 	runs: Array<{ metrics: Record<string, number> | null }>,
+	scaleByMetric?: Record<string, MetricScale>,
 ): Array<{ key: string; values: Array<number | null> }> {
 	const orderedKeys: string[] = [];
 	const seen = new Set<string>();
@@ -173,7 +171,9 @@ export function buildScoreShapedMetricGroups(
 			runs.some((run) => run.metrics?.[key] !== undefined) &&
 			runs.every((run) => {
 				const value = run.metrics?.[key];
-				return value === undefined || normalizeMetricScore(key, value) !== null;
+				return (
+					value === undefined || normalizeMetricScore(key, value, scaleByMetric?.[key]) !== null
+				);
 			}),
 	);
 
@@ -181,21 +181,23 @@ export function buildScoreShapedMetricGroups(
 		key,
 		values: runs.map((run) => {
 			const value = run.metrics?.[key];
-			return typeof value === 'number' ? normalizeMetricScore(key, value) : null;
+			return typeof value === 'number'
+				? normalizeMetricScore(key, value, scaleByMetric?.[key])
+				: null;
 		}),
 	}));
 }
 
 // Mean of a metrics map's score values, each normalized to [0, 1] by its scale.
-// Returns null when no metric qualifies (only operational counts, or an empty
-// map). Single definition so the cards, cases table, and hero chart can't
-// disagree on what a case/run scored.
+// Null when no metric qualifies. Single definition so cards, cases table, and
+// hero chart agree on what a case/run scored.
 export function averageNormalizedScore(
 	metrics: Record<string, number> | null | undefined,
+	scaleByMetric?: Record<string, MetricScale>,
 ): number | null {
 	if (!metrics) return null;
 	const values = Object.entries(metrics)
-		.map(([key, value]) => normalizeMetricScore(key, value))
+		.map(([key, value]) => normalizeMetricScore(key, value, scaleByMetric?.[key]))
 		.filter((value): value is number => value !== null);
 	if (values.length === 0) return null;
 	return values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -240,15 +242,14 @@ export function stringifyValue(value: unknown): string {
 }
 
 // AI-based handlers (correctness, helpfulness) return 1-5; others return 0-1.
-export type MetricScale = 'oneToFive' | 'normalized';
+export type MetricDisplayScale = 'oneToFive' | 'normalized';
 
-export function getMetricScale(category: MetricCategory | undefined): MetricScale {
+export function getMetricScale(category: MetricCategory | undefined): MetricDisplayScale {
 	return category === 'aiBased' ? 'oneToFive' : 'normalized';
 }
 
 // A check as rendered on the wizard results page. `isAiJudged` checks show an
-// average score; the rest are pass/fail (a case passes only on a perfect score).
-// `icon`/`iconBg`/`iconFg` mirror the Step-2 check tile for visual consistency.
+// average score; the rest are pass/fail. Icon fields mirror the check tile.
 export type ResultCheck = {
 	key: string;
 	label: string;
@@ -303,9 +304,8 @@ export function getMetricCategory(metric: string | undefined): MetricCategory {
 	}
 }
 
-// Short "what this measures" copy for the built-in metrics, mirrored from the
-// Evaluation node's metric options. Custom/unknown metrics have no canned
-// description (the UI just shows the name).
+// Short "what this measures" copy for built-in metrics, mirrored from the
+// Evaluation node's options. Custom/unknown metrics have no canned description.
 const METRIC_DESCRIPTION_KEYS: Partial<Record<string, BaseTextKey>> = {
 	correctness: 'evaluation.metric.description.correctness',
 	helpfulness: 'evaluation.metric.description.helpfulness',
@@ -336,9 +336,8 @@ export function formatMetricRawScore(
 	return `${formatScoreNumerator(num)}/5`;
 }
 
-// Average score for the wizard results card: AI-based shows "X / 5", other
-// metrics show the 0–1 average to two decimals (e.g. "0.75"). This is the mean
-// across the run's cases, not a percentage.
+// Average score for the wizard results card: AI-based shows "X / 5", others show
+// the 0–1 average to two decimals. Mean across the run's cases, not a percentage.
 export function formatMetricAverage(
 	value: number | undefined,
 	options: { category?: MetricCategory } = {},
@@ -402,9 +401,8 @@ export function formatDuration(ms: number | undefined): string {
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
-// Short local date + 24h time, e.g. "May 4 18:04". `withSeconds` adds seconds
-// and a comma separator ("May 4, 18:04:05") for surfaces that must disambiguate
-// runs down to the second (the execution picker).
+// Short local date + 24h time, e.g. "May 4 18:04". `withSeconds` adds seconds and
+// a comma ("May 4, 18:04:05") for surfaces that disambiguate runs to the second.
 export function formatShortDateTime(
 	value: string | number | Date,
 	options: { withSeconds?: boolean } = {},
@@ -436,8 +434,7 @@ export function getDefaultOrderedColumns(
 	run?: TestRunRecord,
 	filteredTestCases?: TestCaseExecutionRecord[],
 ) {
-	// Default sort order
-	// -> inputs, outputs, metrics, tokens, executionTime
+	// Default sort order: inputs, outputs, metrics, tokens, executionTime.
 	const metricColumns = Object.keys(run?.metrics ?? {}).filter(
 		(key) => !PREDEFINED_METRIC_KEYS.has(key),
 	);
@@ -491,7 +488,6 @@ export function applyCachedSortOrder(defaultOrder: Column[], cachedOrder?: strin
 		return matchingColumn;
 	});
 
-	// Add any missing columns from defaultOrder that aren't in the cached order
 	const missingColumns = defaultOrder.filter((defaultCol) => !cachedOrder.includes(defaultCol.key));
 	result.push(...missingColumns);
 
@@ -553,7 +549,6 @@ export function getTestTableHeaders(
 	return columnNames
 		.filter((column): column is Column & { disabled: false } => !column.disabled && column.visible)
 		.map((column) => {
-			// Check if any content exceeds 10 characters
 			const hasLongContent = Boolean(
 				testCases.find((row) => {
 					const value = row[column.columnType]?.[column.label];

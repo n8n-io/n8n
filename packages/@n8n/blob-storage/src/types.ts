@@ -1,3 +1,5 @@
+import type { Readable } from 'node:stream';
+
 /** Metadata stored alongside a blob. */
 export type BlobMetadata = {
 	fileName?: string;
@@ -16,13 +18,32 @@ export type ByteStoreKey = string;
 export interface ByteStore {
 	init?(): Promise<void>;
 
-	/** Returns the number of bytes written. */
-	write(key: ByteStoreKey, body: Buffer, contentType?: string): Promise<number>;
+	/** Returns the number of bytes written. `metadata` is stored natively where supported, `fs` ignores it. */
+	write(
+		key: ByteStoreKey,
+		body: Buffer | Readable,
+		metadata?: PreWriteBlobMetadata,
+	): Promise<number>;
 
 	/** Returns `null` when no object exists for `key`. */
 	read(key: ByteStoreKey): Promise<Buffer | null>;
 
+	/** Returns `null` when no object exists. `chunkSize` (positive integer) fixes the emitted chunk size (final chunk may be smaller). */
+	readStream(key: ByteStoreKey, opts?: { chunkSize?: number }): Promise<Readable | null>;
+
+	/** Preserves native metadata where supported. */
+	copy(sourceKey: ByteStoreKey, targetKey: ByteStoreKey): Promise<void>;
+
+	/** Preserves native metadata where supported. Same-key rename is a no-op, even for a missing source. */
+	rename(oldKey: ByteStoreKey, newKey: ByteStoreKey): Promise<void>;
+
 	delete(keys: ByteStoreKey[]): Promise<void>;
+
+	/** `null` when no object exists. Absent on `fs`, which keeps sidecar entries at the domain layer. */
+	getMetadata?(key: ByteStoreKey): Promise<BlobMetadata | null>;
+
+	/** Recursively deletes under `prefix`. Absent where the backend can't list or delegates bulk deletion (e.g. lifecycle policies). */
+	deletePrefix?(prefix: string): Promise<void>;
 }
 
 /** A stored JSON entry. */
