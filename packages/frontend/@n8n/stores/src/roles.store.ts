@@ -101,8 +101,8 @@ export const useRolesStore = defineStore('roles', () => {
 		return await rolesApi.getRoleBySlug(rootStore.restApiContext, payload);
 	};
 
-	const deleteRole = async (slug: string): Promise<Role> => {
-		return await rolesApi.deleteRole(rootStore.restApiContext, slug);
+	const deleteRole = async (slug: string, reassignRoleSlug?: string): Promise<Role> => {
+		return await rolesApi.deleteRole(rootStore.restApiContext, slug, reassignRoleSlug);
 	};
 
 	const updateRole = async (slug: string, body: UpdateRoleDto): Promise<Role> => {

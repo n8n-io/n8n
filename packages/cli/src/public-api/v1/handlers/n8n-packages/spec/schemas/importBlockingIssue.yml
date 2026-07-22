@@ -161,3 +161,23 @@ oneOf:
         type: array
         items:
           type: string
+  - type: object
+    description: >
+      A variable reference that could not be resolved in the target project or the
+      global scope, under `variableMissingPolicy=must-preexist`.
+    required:
+      - type
+      - name
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - variable-unresolved
+      name:
+        type: string
+        description: Requirement name with no match in the target project or global scope.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string

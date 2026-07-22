@@ -1,6 +1,7 @@
 import type { User } from '@n8n/db';
 
 import type { DataTableResolutionFailure } from './entities/data-table/data-table.types';
+import type { VariableResolutionFailure } from './entities/variable/variable.types';
 import type { WorkflowIdConflict } from './entities/workflow/workflow-import-match.service';
 import type {
 	WorkflowConflict,
@@ -73,6 +74,13 @@ export const DataTableSchemaConflictPolicy = {
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
 } as const;
+
+export const VariableMissingPolicy = {
+	/** Imports workflows even when referenced variables are absent. Nothing is created; unresolved names are reported as warnings in the response. */
+	DoNothing: 'do-nothing',
+	/** Blocks the import unless every referenced variable already resolves in the target project or global scope. */
+	MustPreexist: 'must-preexist',
+} as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 
 export type WorkflowConflictPolicy =
@@ -92,6 +100,9 @@ export type DataTableMissingMode = (typeof DataTableMissingMode)[keyof typeof Da
 
 export type DataTableSchemaConflictPolicy =
 	(typeof DataTableSchemaConflictPolicy)[keyof typeof DataTableSchemaConflictPolicy];
+
+export type VariableMissingPolicy =
+	(typeof VariableMissingPolicy)[keyof typeof VariableMissingPolicy];
 
 export interface ExportPackageRequest {
 	user: User;
@@ -113,7 +124,8 @@ export type ImportPackageRequest = {
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
 	ImportFolderProperties &
-	ImportDataTableProperties;
+	ImportDataTableProperties &
+	ImportVariableProperties;
 
 export type ImportCredentialProperties = {
 	credentialMatchingMode: CredentialMatchingMode;
@@ -136,6 +148,10 @@ export type ImportDataTableProperties = {
 	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy;
 };
 
+export type ImportVariableProperties = {
+	variableMissingPolicy: VariableMissingPolicy;
+};
+
 /**
  * The actor and resolved destination an import writes into. Threaded through
  * each entity importer so they share one resolved target instead of re-deriving
@@ -151,7 +167,8 @@ export interface ImportContext {
 
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
-	ImportDataTableProperties;
+	ImportDataTableProperties &
+	ImportVariableProperties;
 
 /** Credential ids involved in a package import, shaped for forward-compatible audit events. */
 export type ImportAuditCredentialIds = {
@@ -178,6 +195,11 @@ export type ImportPackageEventCounts = {
 	dataTables: {
 		matched: number;
 		created: number;
+		requirements: number;
+	};
+	variables: {
+		matched: number;
+		missing: number;
 		requirements: number;
 	};
 };
@@ -238,7 +260,8 @@ export type BlockingIssue =
 			usedByWorkflows: string[];
 	  }
 	| ({ type: 'folder-conflict' } & FolderConflict)
-	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure);
+	| ({ type: 'data-table-unresolved' } & DataTableResolutionFailure)
+	| ({ type: 'variable-unresolved' } & VariableResolutionFailure);
 
 export interface FolderConflict {
 	kind: 'parent-mismatch' | 'id-in-other-project' | 'fail-policy';
@@ -299,6 +322,11 @@ export interface ImportCredentialSummary {
 	stubbed: string[];
 }
 
+export interface ImportVariableSummary {
+	matched: string[];
+	missing: string[];
+}
+
 export interface ImportResult {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
@@ -306,4 +334,5 @@ export interface ImportResult {
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
+	variables: ImportVariableSummary;
 }

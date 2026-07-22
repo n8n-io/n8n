@@ -75,6 +75,30 @@ describe('McpProtectedResource', () => {
 		});
 	});
 
+	describe('getProtectedResourceMetadataUrl', () => {
+		it('should insert the well-known prefix before the resource path (RFC 9728)', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			expect(resource.getProtectedResourceMetadataUrl()).toBe(
+				'https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+			);
+		});
+
+		it('should preserve a subpath in the base URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
+			expect(resource.getProtectedResourceMetadataUrl()).toBe(
+				'https://example.com/.well-known/oauth-protected-resource/n8n/mcp-server/http',
+			);
+		});
+
+		it('should derive from the configured MCP base URL when set', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			mcpConfig.baseUrl = 'https://n8n-mcp.example.com';
+			expect(resource.getProtectedResourceMetadataUrl()).toBe(
+				'https://n8n-mcp.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+			);
+		});
+	});
+
 	describe('getAudiences', () => {
 		it('should accept the canonical resource URL and the legacy audience', () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
