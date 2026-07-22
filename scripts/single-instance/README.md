@@ -15,8 +15,9 @@ of truth, read by every check here).
 | `verify-single-instance-npm-install.mjs` | Packs workspace packages and installs them with npm to reproduce the `npm install` graph. `--changed=<ref>` (CI, scoped) / `--all` (release) / explicit names. |
 | `syncpack.config.mjs` (repo root) | Curated libs must use the pnpm `catalog:` protocol. |
 
-Tests (`*.test.mjs`) run via `pnpm test:single-instance` and the `.github/scripts` `npm test`
-job in CI — **not** `lint:ci` (they test the tools, not repo state).
+Tests (`*.test.mjs`) run in CI via the `.github/scripts` `npm test` job (alongside the
+other `scripts/**` tests) — **not** `lint:ci`, since they test the tools, not repo state.
+Run them locally with `node --test scripts/single-instance/*.test.mjs`.
 
 ## The baseline — `single-instance-peers-baseline.json`
 
