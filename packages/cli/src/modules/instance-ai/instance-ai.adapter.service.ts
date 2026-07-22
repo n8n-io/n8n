@@ -39,6 +39,7 @@ import type {
 	CredentialHostInfo,
 	InstanceAiEvaluationConfigService,
 	EvaluationConfigSummary,
+	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiBuilderDelegate,
 } from '@n8n/instance-ai';
@@ -86,7 +87,6 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { Container, Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
 import {
 	type ICredentialsDecrypted,
@@ -1817,6 +1817,11 @@ export class InstanceAiAdapterService {
 				const config = await evaluationConfigService.get(workflowId, configId);
 				return config ? evaluationConfigToSummary(config) : null;
 			},
+			async describe(workflowId, configId) {
+				await findWorkflow(workflowId, 'workflow:read');
+				const config = await evaluationConfigService.get(workflowId, configId);
+				return config ? evaluationConfigToDetail(config) : null;
+			},
 			async create(workflowId, input) {
 				assertNotReadOnly();
 				const workflow = await findWorkflow(workflowId, 'workflow:update');
@@ -3031,6 +3036,28 @@ export function evaluationConfigToSummary(config: EvaluationConfig): EvaluationC
 			name: metric.name,
 			type: metric.type,
 		})),
+		datasetSource: config.datasetSource,
+		...(dataTableId !== undefined ? { dataTableId } : {}),
+	};
+}
+
+/** Like {@link evaluationConfigToSummary} but keeps the full metric bodies
+ *  (expression strings, judge model, prompt) so the agent can read a config
+ *  before an `update` replaces it wholesale. */
+export function evaluationConfigToDetail(config: EvaluationConfig): EvaluationConfigDetail {
+	const dataTableId =
+		config.datasetSource === 'data_table' && 'dataTableId' in config.datasetRef
+			? config.datasetRef.dataTableId
+			: undefined;
+	return {
+		id: config.id,
+		workflowId: config.workflowId,
+		name: config.name,
+		status: config.status,
+		invalidReason: config.invalidReason,
+		startNodeName: config.startNodeName,
+		endNodeName: config.endNodeName,
+		metrics: config.metrics,
 		datasetSource: config.datasetSource,
 		...(dataTableId !== undefined ? { dataTableId } : {}),
 	};

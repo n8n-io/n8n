@@ -237,10 +237,10 @@ describe('Microsoft SharePoint v2 — File: Upload', () => {
 
 		it('rejects an unsupported file operation', async () => {
 			const node = new MicrosoftSharePointV2(versionDescription);
-			setParams({ ...baseParams, resource: 'file', operation: 'download' });
+			setParams({ ...baseParams, resource: 'file', operation: 'delete' });
 
 			await expect(node.execute.call(ctx)).rejects.toThrow(
-				'The operation "download" is not supported!',
+				'The operation "delete" is not supported!',
 			);
 		});
 	});
