@@ -79,7 +79,9 @@ describe('InsightsModelResolver', () => {
 
 		const result = await resolver.resolve(user, 'wf-1', 'cfg-1');
 
-		expect(result?.modelConfig.url).toBeUndefined();
+		// No `url` forwarded — modelConfig carries only id + key (toEqual ignores
+		// the undefined `url`), so @ai-sdk/google uses its own …/v1beta default.
+		expect(result?.modelConfig).toEqual({ id: 'google/gemini-2.5-pro', apiKey: 'sk-test' });
 		expect(result?.modelId).toBe('google/gemini-2.5-pro');
 	});
 
@@ -95,7 +97,7 @@ describe('InsightsModelResolver', () => {
 
 		const result = await resolver.resolve(user, 'wf-1', 'cfg-1');
 
-		expect(result?.modelConfig.url).toBeUndefined();
+		expect(result?.modelConfig).toEqual({ id: 'cohere/command-r', apiKey: 'sk-test' });
 		expect(result?.modelId).toBe('cohere/command-r');
 	});
 
