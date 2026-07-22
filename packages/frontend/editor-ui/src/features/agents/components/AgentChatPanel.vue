@@ -69,12 +69,14 @@ const {
 	isStreaming,
 	messagingState,
 	fatalError,
+	warnings,
 	loadHistory,
 	sendMessage,
 	stopGenerating,
 	resume,
 	cancelAndSteer,
 	dismissFatalError,
+	dismissWarning,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
@@ -211,6 +213,37 @@ onBeforeUnmount(() => {
 			</template>
 		</N8nCallout>
 
+		<div
+			v-for="(warning, index) in warnings"
+			:key="`${warning.code ?? 'mcp'}-${index}`"
+			:class="$style.warningBanner"
+		>
+			<N8nCallout theme="warning" slim :data-test-id="`agent-chat-warning-${index}`">
+				<div :class="$style.warningBannerBody">
+					<span :class="$style.warningBannerTitle">
+						{{ locale.baseText('agents.chat.warning.mcp.title') }}
+					</span>
+					<span :class="$style.warningBannerDetail">{{
+						warning.server
+							? locale.baseText('agents.chat.warning.mcp.detail', {
+									interpolate: { server: warning.server, error: warning.message },
+								})
+							: warning.message
+					}}</span>
+				</div>
+				<template #trailingContent>
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="xsmall"
+						:aria-label="locale.baseText('agents.chat.warning.dismiss')"
+						:title="locale.baseText('agents.chat.warning.dismiss')"
+						@click="dismissWarning(index)"
+					/>
+				</template>
+			</N8nCallout>
+		</div>
+
 		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
 		<AgentChatMessageList
 			v-else
@@ -294,5 +327,28 @@ onBeforeUnmount(() => {
 .errorBannerDetail {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
+}
+
+.warningBanner {
+	margin: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.warningBannerBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.warningBannerTitle {
+	font-weight: var(--font-weight--bold);
+}
+
+.warningBannerDetail {
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	word-break: break-word;
 }
 </style>

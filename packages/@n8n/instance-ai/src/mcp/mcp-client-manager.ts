@@ -29,6 +29,12 @@ export interface McpToolCallSettledEvent {
 
 export interface McpClientManagerOptions {
 	onToolCallSettled?: (event: McpToolCallSettledEvent) => void;
+	/**
+	 * Invoked once per MCP server that fails to connect during `getRegularTools`.
+	 * The server's tools are skipped; the run continues with the remaining
+	 * servers' tools. Hosts surface these as non-fatal warnings.
+	 */
+	onConnectionFailed?: (event: { server: McpServerConfig; error: string }) => void;
 }
 
 /**
@@ -136,6 +142,8 @@ export class McpClientManager {
 
 	private clientsByKey = new Map<string, McpClient>();
 
+	private connectionFailures: Array<{ server: McpServerConfig; error: string }> = [];
+
 	constructor(
 		private readonly ssrfValidator?: SsrfUrlValidator,
 		private readonly options: McpClientManagerOptions = {},
@@ -175,6 +183,10 @@ export class McpClientManager {
 		this.regularToolsByKey.clear();
 		this.inFlightRegularByKey.clear();
 		await Promise.all(clients.map(async (client) => await client.close()));
+	}
+
+	getConnectionFailures(): readonly { server: McpServerConfig; error: string }[] {
+		return this.connectionFailures;
 	}
 
 	private async getOrLoad<T>(
@@ -244,6 +256,28 @@ export class McpClientManager {
 		this.clientsByKey.set(clientKey, client);
 
 		const registry = toolsToRegistry(await client.listTools());
+		// The SDK client is the single source of truth for per-server connection
+		// failures. Map each back to the originating host config and surface it
+		// via the manager-level observer + logger so a single misconfigured or
+		// unhealthy MCP server surfaces as a non-fatal warning instead of
+		// aborting the run.
+		this.connectionFailures = [...client.getConnectionFailures()].map((f) => {
+			const server =
+				configs.find((c) => c.name === f.server) ??
+				({
+					name: f.server,
+				} as McpServerConfig);
+			return { server, error: f.error };
+		});
+		for (const failure of this.connectionFailures) {
+			logger.warn('Skipped MCP server that failed to connect', {
+				serverName: failure.server.name,
+				source,
+				error: failure.error,
+			});
+			this.options.onConnectionFailed?.(failure);
+		}
+
 		const sanitizedTools = sanitizeMcpToolSchemas(registry, {
 			onError: warnSkippedMcpSchema(logger, source),
 		});

@@ -6,6 +6,7 @@ vi.mock('@n8n/agents', () => ({
 		return {
 			listTools: vi.fn().mockResolvedValue([]),
 			close: vi.fn().mockResolvedValue(undefined),
+			getConnectionFailures: vi.fn().mockReturnValue([]),
 		};
 	}),
 }));
@@ -343,6 +344,32 @@ describe('McpClientManager', () => {
 			// In-flight entry must be cleared so a retry actually re-attempts.
 			await expect(manager.getRegularTools(configs, mockLogger)).resolves.toBeDefined();
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+
+		it('surfaces per-server connection failures without aborting the run', async () => {
+			const onConnectionFailed = vi.fn();
+			const manager = new McpClientManager(undefined, { onConnectionFailed });
+			const configs = [{ name: 'dead', url: 'https://dead.example.com/' }];
+
+			mockedMcpClient.mockImplementationOnce(function () {
+				return {
+					listTools: vi.fn().mockResolvedValue([]),
+					close: vi.fn().mockResolvedValue(undefined),
+					getConnectionFailures: vi
+						.fn()
+						.mockReturnValue([{ server: 'dead', error: 'fetch failed' }]),
+				};
+			});
+
+			const tools = await manager.getRegularTools(configs, mockLogger);
+			expect(tools).toBeDefined();
+			expect(manager.getConnectionFailures()).toEqual([
+				{ server: { name: 'dead', url: 'https://dead.example.com/' }, error: 'fetch failed' },
+			]);
+			expect(onConnectionFailed).toHaveBeenCalledWith({
+				server: { name: 'dead', url: 'https://dead.example.com/' },
+				error: 'fetch failed',
+			});
 		});
 	});
 

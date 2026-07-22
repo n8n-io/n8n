@@ -65,6 +65,7 @@ import type {
 	ThinkingConfig,
 	ThinkingConfigFor,
 	ResumeOptions,
+	McpConnectionFailedEvent,
 } from '../types';
 import type { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
@@ -531,6 +532,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/**
+	 * Per-server MCP connection failures recorded during the last build's
+	 * `listTools()` calls. Tools from these servers were skipped; the run
+	 * continued with the remaining servers' tools. Empty when every server
+	 * connected (or no MCP clients are attached).
+	 *
+	 * The agent runtime surfaces these as non-fatal `warning` stream chunks so
+	 * hosts can show the user that an MCP server was unavailable without
+	 * aborting inference.
+	 */
+	getMcpConnectionFailures(): McpConnectionFailedEvent[] {
+		return this.mcpClients.flatMap((c) => [...c.getConnectionFailures()]);
+	}
+
+	/**
 	 * Set default execution options for all `generate()` and `stream()` calls.
 	 * Options passed directly to those methods take precedence over these defaults.
 	 *
@@ -907,6 +922,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		// Resolve tools from all MCP clients.
 		const mcpToolLists = await Promise.all(this.mcpClients.map(async (c) => await c.listTools()));
 		const mcpTools = mcpToolLists.flat();
+		const mcpConnectionFailures = this.getMcpConnectionFailures();
 
 		// Detect collisions between direct, deferred, and MCP tools.
 		const staticCollisions = findDuplicateToolNames(finalStaticTools);
@@ -1034,6 +1050,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			modelCost,
 			runState,
 			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
+			...(mcpConnectionFailures.length > 0 ? { mcpConnectionFailures } : {}),
 		};
 	}
 

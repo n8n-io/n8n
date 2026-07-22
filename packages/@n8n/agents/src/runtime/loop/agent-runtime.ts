@@ -25,6 +25,7 @@ import type {
 	EpisodicMemoryConfig,
 	FinishReason,
 	GenerateResult,
+	McpConnectionFailedEvent,
 	ObservationalMemoryConfig,
 	ObservationLogMemoryConfig,
 	PendingToolCall,
@@ -114,6 +115,14 @@ export interface AgentRuntimeConfig {
 	runState?: RunStateManager;
 	/** Host callback for observational-memory background task lifecycle events. */
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+	/**
+	 * Per-server MCP connection failures recorded during `Agent.build()` when
+	 * resolving MCP tools. Tools from these servers were skipped; the runtime
+	 * surfaces each as a non-fatal `warning` stream chunk at the start of a
+	 * stream so hosts can tell the user an MCP server was unavailable without
+	 * aborting the run.
+	 */
+	mcpConnectionFailures?: McpConnectionFailedEvent[];
 }
 
 const MAX_LOOP_ITERATIONS = 30;
@@ -889,6 +898,18 @@ export class AgentRuntime {
 			withRootSpan: async (operation, options, runId, fn) =>
 				await this.telemetry.withRootSpan(operation, options, runId, fn),
 			runLoop: async (guard) => {
+				// Surface MCP connection failures as non-fatal warnings before the
+				// first LLM step. Tools from these servers were skipped during
+				// build(); the run continues with the remaining tools.
+				for (const failure of this.config.mcpConnectionFailures ?? []) {
+					void guard.write({
+						type: 'warning',
+						message: failure.error,
+						code: 'mcp_connection_failed',
+						source: 'mcp',
+						server: failure.server,
+					});
+				}
 				sink = new StreamSink(guard, this.createRunServices(), ctx.options);
 				await this.runAgentLoop(ctx, sink);
 			},

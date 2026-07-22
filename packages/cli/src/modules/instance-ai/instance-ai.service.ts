@@ -3297,6 +3297,19 @@ export class InstanceAiService {
 				proxyRunConfig,
 			);
 			activeSnapshotStorage = environment.snapshotStorage;
+
+			const mcpFailures = this.mcpClientManager.getConnectionFailures();
+			if (mcpFailures.length > 0) {
+				const names = mcpFailures.map((f) => f.server.name).join(', ');
+				this.eventBus.publish(threadId, {
+					type: 'status',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					payload: {
+						message: `Couldn't reach MCP server${mcpFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
+					},
+				});
+			}
 			const {
 				context,
 				memory,

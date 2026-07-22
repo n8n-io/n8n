@@ -157,6 +157,13 @@ export interface BuildMcpClientDeps {
 	oauthService: OauthService;
 	projectId: string;
 	proxyFetch: CustomFetch;
+	/**
+	 * Optional observer invoked when this server fails to connect. The
+	 * server's tools are skipped for the run; the run continues with the
+	 * remaining servers' tools. Used for logging/telemetry — the user-facing
+	 * warning is emitted from the agent runtime as a `warning` stream chunk.
+	 */
+	onConnectionFailed?: (event: { server: string; error: string }) => void;
 }
 
 /**
@@ -171,7 +178,7 @@ export async function buildMcpClientForServer(
 	server: AgentJsonMcpServerConfig,
 	deps: BuildMcpClientDeps,
 ): Promise<McpClient> {
-	const { credentialProvider, oauthService, projectId, proxyFetch } = deps;
+	const { credentialProvider, oauthService, projectId, proxyFetch, onConnectionFailed } = deps;
 	const { McpClient } = await import('@n8n/agents');
 
 	const { headers: initialHeaders, credentialData } = await deriveAuthHeaders(
@@ -208,6 +215,12 @@ export async function buildMcpClientForServer(
 		...(server.connectionTimeoutMs !== undefined && {
 			connectionTimeoutMs: server.connectionTimeoutMs,
 		}),
+		...(onConnectionFailed
+			? {
+					onConnectionFailed: (event: { server: string; error: string }) =>
+						onConnectionFailed(event),
+				}
+			: {}),
 	};
 
 	return new McpClient([sdkServerConfig]);

@@ -122,14 +122,14 @@ describe('McpConnection — custom fetch forwarding', () => {
 	});
 });
 
-describe('McpClient — connection error formatting', () => {
+describe('McpClient — connection failure handling', () => {
 	beforeEach(() => {
 		clientConnect.mockReset();
 		clientListTools.mockReset();
 		clientClose.mockReset();
 	});
 
-	it('includes nested fetch causes in the aggregated connection error', async () => {
+	it('skips a failing server, records the failure, and keeps the run going', async () => {
 		clientConnect.mockRejectedValueOnce(
 			new TypeError('fetch failed', {
 				cause: new Error('The request was blocked because it resolves to a restricted IP address'),
@@ -144,9 +144,94 @@ describe('McpClient — connection error formatting', () => {
 			},
 		]);
 
-		await expect(client.listTools()).rejects.toThrow(
-			'MCP connection failed:\n\tcustom_mcp: fetch failed. The request was blocked because it resolves to a restricted IP address',
-		);
+		// The run is NOT aborted — listTools resolves with an empty tool list
+		// (the failing server contributed nothing).
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+
+		// The failure is recorded with the nested cause flattened in.
+		expect(client.getConnectionFailures()).toEqual([
+			{
+				server: 'custom_mcp',
+				error:
+					'fetch failed. The request was blocked because it resolves to a restricted IP address',
+			},
+		]);
+	});
+
+	it('invokes onConnectionFailed for each failing server', async () => {
+		clientConnect.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('boom'));
+
+		clientListTools.mockResolvedValueOnce({
+			tools: [{ name: 'echo', description: '', inputSchema: { type: 'object' } }],
+		});
+
+		const onConnectionFailed = vi.fn();
+		const client = new McpClient([
+			{
+				name: 'ok_server',
+				url: 'https://example.test/mcp',
+				transport: 'streamableHttp',
+				onConnectionFailed,
+			},
+			{
+				name: 'bad_server',
+				url: 'https://example.test/mcp',
+				transport: 'streamableHttp',
+				onConnectionFailed,
+			},
+		]);
+
+		const tools = await client.listTools();
+
+		// Tools from the healthy server survive.
+		expect(tools.map((t) => t.name)).toEqual(['ok_server_echo']);
+		expect(onConnectionFailed).toHaveBeenCalledTimes(1);
+		expect(onConnectionFailed).toHaveBeenCalledWith({
+			server: 'bad_server',
+			error: 'boom',
+		});
+		expect(client.getConnectionFailures()).toEqual([{ server: 'bad_server', error: 'boom' }]);
+	});
+
+	it('swallows a throwing onConnectionFailed observer', async () => {
+		clientConnect.mockRejectedValueOnce(new Error('boom'));
+		const onConnectionFailed = vi.fn().mockImplementation(() => {
+			throw new Error('observer blew up');
+		});
+
+		const client = new McpClient([
+			{
+				name: 'custom_mcp',
+				url: 'http://localhost:5678/mcp/my-mcp-server',
+				transport: 'streamableHttp',
+				onConnectionFailed,
+			},
+		]);
+
+		// A faulty observer must not break the run.
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(client.getConnectionFailures()).toHaveLength(1);
+	});
+
+	it('disconnects a connection that connects but fails to list tools', async () => {
+		// connect() succeeds, but listTools() throws. The connection opened a
+		// transport, so it must be torn down rather than leaked for the run.
+		clientConnect.mockResolvedValueOnce(undefined);
+		clientListTools.mockRejectedValueOnce(new Error('listTools blew up'));
+
+		const client = new McpClient([
+			{ name: 'flaky', url: 'https://example.test/mcp', transport: 'streamableHttp' },
+		]);
+
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(client.getConnectionFailures()).toEqual([
+			{ server: 'flaky', error: 'listTools blew up' },
+		]);
+		// The transport that opened before listTools threw was closed.
+		expect(clientClose).toHaveBeenCalledTimes(1);
 	});
 });
 

@@ -43,31 +43,41 @@ describe('McpClient.listTools()', () => {
 		expect(tools).toHaveLength(0);
 	});
 
-	it('throws and clears cache when server is unreachable', async () => {
+	it('skips an unreachable server, records the failure, and keeps the cache', async () => {
 		const client = new McpClient([{ name: 'dead', url: 'http://127.0.0.1:1/sse' }]);
 
-		await expect(client.listTools()).rejects.toThrow();
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(client.getConnectionFailures().map((f) => f.server)).toEqual(['dead']);
 	});
 
-	it('reports per-server errors for partially-failing multi-server configs', async () => {
+	it('keeps healthy server tools and records the failing server', async () => {
 		const client = new McpClient([
 			{ name: 'ok', url: server.url },
 			{ name: 'dead', url: 'http://127.0.0.1:1/sse' },
 		]);
 
-		await expect(client.listTools()).rejects.toThrow(/dead/);
+		const tools = await client.listTools();
+		expect(tools.map((t) => t.name).sort()).toEqual(['ok_add', 'ok_echo', 'ok_image']);
+		expect(client.getConnectionFailures().map((f) => f.server)).toEqual(['dead']);
 	});
 });
 
 describe('Agent with MCP boundary errors', () => {
-	it('rejects when MCP server is unreachable', async () => {
+	it('exposes MCP connection failures without aborting the agent build', async () => {
 		const client = new McpClient([{ name: 'dead', url: 'http://127.0.0.1:1/sse' }]);
 		const agent = new Agent('bad-mcp-agent')
 			.model('anthropic/claude-haiku-4-5')
 			.instructions('test')
 			.mcp(client);
 
-		await expect(agent.generate('hello')).rejects.toThrow(/dead/i);
+		// `build()` calls `McpClient.listTools()`; invoking it directly populates
+		// the client's recorded failures without kicking off the LLM loop.
+		const tools = await client.listTools();
+		expect(tools).toEqual([]);
+		expect(agent.getMcpConnectionFailures().map((f) => f.server)).toEqual(['dead']);
+
+		await client.close();
 	});
 
 	describe('MCP tool name collision detection', () => {

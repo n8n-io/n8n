@@ -145,6 +145,17 @@ export type StreamChunk = ContentMetadata &
 				structuredOutput?: unknown;
 		  }
 		| { type: 'error'; error: unknown }
+		| {
+				/**
+				 * Non-fatal warning emitted during a run. The run continues — this
+				 * chunk only signalsan MCP server that failed to connect so its tools were skipped.
+				 */
+				type: 'warning';
+				message: string;
+				code?: string;
+				source?: 'mcp';
+				server?: string;
+		  }
 	);
 
 export interface RunOptions {

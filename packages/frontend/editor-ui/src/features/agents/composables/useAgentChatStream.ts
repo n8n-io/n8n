@@ -71,6 +71,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	 * next send so users can fix the config and retry without a manual dismiss.
 	 */
 	const fatalError = ref<FatalAgentError | null>(null);
+	/**
+	 * Non-fatal warnings emitted during a run (e.g. an MCP server that failed to
+	 * connect, so its tools were skipped). The run continues; these are shown to
+	 * the user as a warning callout. Cleared on the next send.
+	 */
+	const warnings = ref<Array<{ message: string; server?: string; code?: string }>>([]);
 
 	const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
 		if (!isStreaming.value) return 'idle';
@@ -390,6 +396,16 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				// Custom (sub-agent / app-defined) message envelope. Reserved
 				// for future use; nothing renders today.
 				break;
+			case 'warning': {
+				// Non-fatal run warning (e.g. an MCP server was unavailable, so its
+				// tools were skipped). The run continues; surfaced as a callout.
+				warnings.value.push({
+					message: event.message,
+					...(event.server !== undefined && { server: event.server }),
+					...(event.code !== undefined && { code: event.code }),
+				});
+				break;
+			}
 			case 'error': {
 				session.errorEmitted = true;
 				dropOrphanMintedBubbles(session);
@@ -647,6 +663,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		if (!trimmed || isStreaming.value) return;
 		// Any new send invalidates a prior misconfig banner — the user is retrying.
 		fatalError.value = null;
+		warnings.value = [];
 		messages.value.push({
 			id: crypto.randomUUID(),
 			role: 'user',
@@ -660,6 +677,10 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		fatalError.value = null;
 	}
 
+	function dismissWarning(index: number): void {
+		warnings.value = warnings.value.filter((_, i) => i !== index);
+	}
+
 	function stopGenerating(): void {
 		abortController.value?.abort();
 	}
@@ -669,6 +690,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		isStreaming,
 		messagingState,
 		fatalError,
+		warnings,
 		loadHistory,
 		clearHistory,
 		sendMessage,
@@ -676,5 +698,6 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		resume,
 		cancelAndSteer,
 		dismissFatalError,
+		dismissWarning,
 	};
 }

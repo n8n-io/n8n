@@ -305,6 +305,67 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(errMsg.content).toBe('Tool execution failed');
 	});
 
+	it('collects non-fatal warning events without aborting the run', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'warning',
+				message: 'fetch failed',
+				code: 'mcp_connection_failed',
+				source: 'mcp',
+				server: 'dead',
+			},
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+
+		expect(hook.warnings.value).toEqual([
+			{ message: 'fetch failed', code: 'mcp_connection_failed', server: 'dead' },
+		]);
+		// The run still produced its assistant text — warnings are non-fatal.
+		expect(hook.messages.value[1].content).toBe('hello');
+	});
+
+	it('clears prior warnings on the next send', async () => {
+		const withWarning: AgentSseEvent[] = [
+			{ type: 'warning', message: 'boom', source: 'mcp', server: 'dead' },
+			{ type: 'done' },
+		];
+		const withoutWarning: AgentSseEvent[] = [{ type: 'done' }];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(withWarning)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+		expect(hook.warnings.value).toHaveLength(1);
+
+		globalThis.fetch = vi.fn(async () => makeSseResponse(withoutWarning)) as typeof fetch;
+		await hook.sendMessage('run again');
+		await nextTick();
+		expect(hook.warnings.value).toHaveLength(0);
+	});
+
+	it('dismissWarning removes a single warning by index', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'warning', message: 'a', source: 'mcp', server: 's1' },
+			{ type: 'warning', message: 'b', source: 'mcp', server: 's2' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await nextTick();
+		expect(hook.warnings.value).toHaveLength(2);
+
+		hook.dismissWarning(0);
+		expect(hook.warnings.value.map((w) => w.server)).toEqual(['s2']);
+	});
+
 	it('sets fatalError (not a message bubble) for agent_misconfigured errors', async () => {
 		const events: AgentSseEvent[] = [
 			{

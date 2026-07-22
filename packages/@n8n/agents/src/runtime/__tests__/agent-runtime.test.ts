@@ -6625,3 +6625,54 @@ describe('AgentRuntime — empty model responses', () => {
 		expect(String((result.error as Error).message)).toContain('no output');
 	});
 });
+
+describe('AgentRuntime — MCP connection failure warnings', () => {
+	it('emits a warning chunk per recorded MCP failure before the LLM loop, then completes', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'mcp-warn',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			eventBus: bus,
+			mcpConnectionFailures: [
+				{ server: 'dead', error: 'fetch failed' },
+				{ server: 'also_dead', error: 'boom' },
+			],
+		});
+
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		const warnings = chunks.filter((c) => c.type === 'warning') as Array<
+			StreamChunk & { type: 'warning'; message: string; server?: string; source?: string }
+		>;
+		expect(warnings).toHaveLength(2);
+		expect(warnings[0]).toMatchObject({
+			type: 'warning',
+			message: 'fetch failed',
+			source: 'mcp',
+			server: 'dead',
+			code: 'mcp_connection_failed',
+		});
+		expect(warnings[1]).toMatchObject({ type: 'warning', server: 'also_dead', message: 'boom' });
+
+		// The run still completes normally — warnings are non-fatal.
+		const finishChunk = chunks.find((c) => c.type === 'finish') as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finishChunk).toBeDefined();
+		expect(finishChunk!.finishReason).not.toBe('error');
+	});
+
+	it('emits no warning chunks when there are no MCP connection failures', async () => {
+		streamText.mockReturnValue(makeStreamSuccess('Hello'));
+
+		const { runtime } = createRuntime();
+		const { stream: readableStream } = await runtime.stream('hello');
+		const chunks = await collectChunks(readableStream);
+
+		expect(chunks.filter((c) => c.type === 'warning')).toEqual([]);
+	});
+});

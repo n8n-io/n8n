@@ -364,6 +364,13 @@ export class AgentRuntimeReconstructionService {
 				oauthService: this.oauthService,
 				projectId,
 				proxyFetch: aiMcpFetch,
+				onConnectionFailed: (event) => {
+					this.logger.warn('Skipped MCP server that failed to connect', {
+						agentId: memoryOwnerAgentId,
+						serverName: event.server,
+						error: event.error,
+					});
+				},
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {

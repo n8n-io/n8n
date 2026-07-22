@@ -1,5 +1,5 @@
 import { McpConnection } from '../runtime/mcp/mcp-connection';
-import type { McpServerConfig, McpVerifyResult } from '../types/sdk/mcp';
+import type { McpConnectionFailedEvent, McpServerConfig, McpVerifyResult } from '../types/sdk/mcp';
 import type { BuiltTool } from '../types/sdk/tool';
 
 function formatErrorWithCause(error: unknown): string {
@@ -49,6 +49,13 @@ export class McpClient {
 	private closePromise: Promise<void> | undefined;
 
 	/**
+	 * Per-server connection failures recorded during the last `listTools()`.
+	 * Tools from these servers were skipped; the run continues with the
+	 * remaining servers' tools. Read via `getConnectionFailures()`.
+	 */
+	private connectionFailures: McpConnectionFailedEvent[] = [];
+
+	/**
 	 * @param configs - Server configurations. Each must have either `url` or `command`.
 	 *   Duplicate names within the list are rejected.
 	 */
@@ -95,8 +102,11 @@ export class McpClient {
 	/**
 	 * Connect to all servers (if not already connected) and return the full
 	 * flat list of tools. Subsequent calls return the cached list without
-	 * additional network round-trips. On error the cache is cleared so the
-	 * caller can retry.
+	 * additional network round-trips. Servers that fail to connect are
+	 * skipped (their tools are omitted and the failure is recorded via
+	 * `getConnectionFailures()`); the call still resolves with the remaining
+	 * servers' tools. On a hard error (e.g. tool-name collision) the cache is
+	 * cleared so the caller can retry.
 	 */
 	async listTools(): Promise<BuiltTool[]> {
 		if (!this.listToolsPromise) {
@@ -183,32 +193,48 @@ export class McpClient {
 		return this.connections.some((conn) => conn.declaresApproval());
 	}
 
+	/**
+	 * Per-server connection failures recorded during the last `listTools()`.
+	 * Empty when every server connected (or no servers were configured). Tools
+	 * from these servers were skipped; the run continued with the remaining
+	 * servers' tools. Callers (e.g. the agent runtime) surface these as
+	 * non-fatal warnings to the user.
+	 */
+	getConnectionFailures(): readonly McpConnectionFailedEvent[] {
+		return this.connectionFailures;
+	}
+
 	private async doListTools(): Promise<BuiltTool[]> {
 		const connectedConnections: McpConnection[] = [];
 
 		const settled = await Promise.allSettled(
 			this.connections.map(async (conn) => {
 				await conn.connect();
-				connectedConnections.push(conn);
 				return await conn.listTools();
 			}),
 		);
 
-		const failed = settled
-			.map((r, i) => ({ result: r, name: this.connections[i].name }))
-			.filter((x) => x.result.status === 'rejected');
-
-		if (failed.length > 0) {
-			await Promise.allSettled(connectedConnections.map(async (c) => await c.disconnect()));
-			const details = failed
-				.map((x) => {
-					const reason =
-						x.result.status === 'rejected' ? formatErrorWithCause(x.result.reason) : '';
-					return `${x.name}: ${reason}`;
-				})
-				.join('\n\t');
-			throw new Error(`MCP connection failed:\n\t${details}`);
+		// A failed server is non-fatal: skip its tools, record the failure,
+		// and notify the observer. The run continues with the remaining
+		// servers' tools so a single misconfigured or unhealthy MCP server
+		// can't block inference.
+		const failures: McpConnectionFailedEvent[] = [];
+		for (let i = 0; i < settled.length; i++) {
+			const result = settled[i];
+			if (result.status === 'rejected') {
+				const config = this.configs[i];
+				const error = formatErrorWithCause(result.reason);
+				failures.push({ server: config.name, error });
+				// The transport may have opened before listTools threw; tear it
+				// down so we don't keep an unusable connection alive for the run.
+				// (connect() failing makes disconnect() a safe no-op.)
+				await this.connections[i].disconnect().catch(() => {});
+				await this.notifyConnectionFailed(config, error);
+			} else {
+				connectedConnections.push(this.connections[i]);
+			}
 		}
+		this.connectionFailures = failures;
 
 		const tools = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
 
@@ -229,6 +255,17 @@ export class McpClient {
 		}
 
 		return tools;
+	}
+
+	private async notifyConnectionFailed(config: McpServerConfig, error: string): Promise<void> {
+		try {
+			await config.onConnectionFailed?.({ server: config.name, error });
+		} catch (observerError) {
+			console.error(
+				`MCP connection-failed observer error for server "${config.name}":`,
+				observerError,
+			);
+		}
 	}
 
 	private async doClose(): Promise<void> {
