@@ -44,6 +44,16 @@ export const REQUIRED_PERMISSIONS: Readonly<
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
 	},
+	'item:get': {
+		delegated: 'Sites.Read.All (or Files.Read.All for document-library items)',
+		application:
+			'Sites.Read.All (or Sites.Selected granted for this site, or Files.Read.All for document-library items)',
+	},
+	'item:delete': {
+		delegated: 'Sites.ReadWrite.All (or Files.ReadWrite.All for document-library items)',
+		application:
+			'Sites.ReadWrite.All (or Sites.Selected granted for this site, or Files.ReadWrite.All for document-library items)',
+	},
 });
 
 export function getSharePointCredentialType(

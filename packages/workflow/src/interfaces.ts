@@ -2201,6 +2201,8 @@ export interface ExecuteAgentWorkflowContext {
 	workflowName?: string;
 	/** Name of the node that invoked the agent */
 	callingNodeName: string;
+	/** ID of the node that invoked the agent */
+	callingNodeId?: string;
 	/** The calling node's input items, already scoped per {@link ExecuteAgentInfo.inputDataScope}. */
 	inputData?: INodeExecutionData[];
 	/** Which slice {@link inputData} represents. */

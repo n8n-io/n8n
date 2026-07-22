@@ -18,6 +18,7 @@
  * raw dispatcher). See CAT-3377 for the consolidation this completes.
  */
 import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/proxy'; // `@n8n/backend-network/proxy` is a DI-free subpath: it pulls in only the proxy-agent libs
+import type { LookupFunction } from 'node:net';
 /* eslint-disable n8n-local-rules/no-uncentralized-http -- langchain consumers pin undici v6, incompatible with backend-network's v7 dispatchers; see block comment below */
 import { Agent, ProxyAgent } from 'undici';
 
@@ -49,15 +50,21 @@ const PROXY_FALLBACK_TARGET = 'https://example.nonexistent/';
  * @param targetUrl - The target URL to check proxy configuration for (optional)
  * @param timeoutOptions - Optional timeout configuration to override defaults. When provided,
  *                         always returns an Agent/ProxyAgent (even without proxy) to ensure timeouts are applied.
- * @returns An Agent (no proxy with timeout options) or ProxyAgent (with proxy) configured with timeouts,
- *          or undefined if no proxy is configured and no timeout options are provided (backward compatible behavior).
+ * @param lookup - Optional DNS lookup to pin the resolved address at connect time (e.g. an egress
+ *                 filter's secure lookup). When provided (without a proxy) an Agent is always returned.
+ * @returns An Agent (no proxy with timeout options or a lookup) or ProxyAgent (with proxy) configured with timeouts,
+ *          or undefined if no proxy, timeout options, nor lookup are provided (backward compatible behavior).
  *
  * @remarks
  * When timeoutOptions are provided, this function always returns an agent to ensure timeouts are properly configured.
  * The default undici timeouts (5 minutes) are too short for many AI operations.
  * When timeoutOptions are NOT provided, returns undefined if no proxy is configured (backward compatible).
  */
-export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutOptions) {
+export function getProxyAgent(
+	targetUrl?: string,
+	timeoutOptions?: AgentTimeoutOptions,
+	lookup?: LookupFunction,
+) {
 	const proxyUrl = resolveProxyUrl(targetUrl, PROXY_FALLBACK_TARGET);
 
 	const agentOptions = {
@@ -69,6 +76,9 @@ export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutO
 	};
 
 	if (!proxyUrl) {
+		if (lookup) {
+			return new Agent({ ...agentOptions, connect: { lookup } });
+		}
 		if (timeoutOptions) {
 			return new Agent(agentOptions);
 		}
@@ -85,14 +95,16 @@ export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutO
  * @param input - The URL to fetch
  * @param init - Standard fetch RequestInit options
  * @param timeoutOptions - Optional timeout configuration to override defaults
+ * @param lookup - Optional connect-time DNS lookup (e.g. an egress filter's secure lookup)
  */
 export async function proxyFetch(
 	input: RequestInfo | URL,
 	init?: RequestInit,
 	timeoutOptions?: AgentTimeoutOptions,
+	lookup?: LookupFunction,
 ): Promise<Response> {
 	const targetUrl = input instanceof Request ? input.url : input.toString();
-	const dispatcher = getProxyAgent(targetUrl, timeoutOptions);
+	const dispatcher = getProxyAgent(targetUrl, timeoutOptions, lookup);
 
 	return await fetch(input, {
 		...init,
