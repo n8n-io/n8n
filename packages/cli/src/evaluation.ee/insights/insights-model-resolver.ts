@@ -1,5 +1,5 @@
 import type { ModelConfig } from '@n8n/agents';
-import type { User } from '@n8n/db';
+import type { EvaluationConfig, User } from '@n8n/db';
 import { EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -22,6 +22,10 @@ const PROVIDER_PREFIX_BY_NODE_TYPE = new Map<string, string>([
 	['@n8n/n8n-nodes-langchain.lmChatOpenRouter', 'openrouter'],
 	['@n8n/n8n-nodes-langchain.lmChatVercelAiGateway', 'vercel'],
 ]);
+
+// Providers whose n8n credential default base URL omits the version path the
+// `@ai-sdk/*` client expects; forward nothing so the SDK uses its own default.
+const SKIP_CREDENTIAL_BASE_URL = new Set(['google', 'cohere']);
 
 export type ResolvedInsightsModel = {
 	// Ready-to-use `@n8n/agents` model config with the decrypted key embedded —
@@ -50,8 +54,13 @@ export class InsightsModelResolver {
 		user: User,
 		workflowId: string,
 		evaluationConfigId: string,
+		// Pass the already-loaded config to avoid a second lookup; omit to fetch.
+		preloadedConfig?: EvaluationConfig | null,
 	): Promise<ResolvedInsightsModel | null> {
-		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
+		const config =
+			preloadedConfig !== undefined
+				? preloadedConfig
+				: await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
 		if (!config) return null;
 
 		// Reuse the first LLM-judge metric's model. Collections score against a
@@ -75,10 +84,13 @@ export class InsightsModelResolver {
 		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : undefined;
 		if (!apiKey) return null;
-		// Most LLM credentials spell the base host as `url`; Google's uses `host`.
-		// `@n8n/agents` normalizes `url` → `baseURL` and defaults it when absent.
-		const base = data.url ?? data.host;
-		const url = typeof base === 'string' ? base : undefined;
+		// Forward the credential's base URL (spelled `url`) so proxy/self-hosted
+		// endpoints work — but NOT for google/cohere: their credential defaults
+		// (`host` = generativelanguage.googleapis.com, `url` = api.cohere.ai) omit
+		// the version path the SDK expects, so passing them verbatim breaks the
+		// call. Skipping lets @ai-sdk use its own correct default (…/v1beta, …/v2).
+		const url =
+			SKIP_CREDENTIAL_BASE_URL.has(prefix) || typeof data.url !== 'string' ? undefined : data.url;
 
 		const modelId = `${prefix}/${judge.config.model}`;
 		return { modelConfig: { id: modelId, apiKey, url }, modelId };

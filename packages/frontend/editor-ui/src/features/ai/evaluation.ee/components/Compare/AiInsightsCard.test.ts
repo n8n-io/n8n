@@ -101,6 +101,15 @@ describe('AiInsightsCard', () => {
 		);
 	});
 
+	it('renders nothing while never ready and nothing cached (no empty shell)', async () => {
+		const { container } = renderComponent({ props: { ready: false } });
+
+		// A collection whose runs never settle shows no card at all — not a
+		// header-only shell with no body and nothing to click.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(container.querySelector('[data-test-id="compare-ai-insights"]')).toBeNull();
+	});
+
 	it('uses cached insights without a manual regenerate affordance', async () => {
 		store.$patch({ insightsByCollectionId: { 'col-1': INSIGHTS } });
 		const { container, queryByTestId } = renderComponent();

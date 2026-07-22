@@ -64,6 +64,41 @@ describe('InsightsModelResolver', () => {
 		});
 	});
 
+	it('does not forward the credential base URL for Google (SDK default has the version path)', async () => {
+		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValueOnce(
+			configWithJudge({
+				provider: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+				model: 'gemini-2.5-pro',
+			}),
+		);
+		// Realistic Gemini credential: base URL lives in `host`, no `url`.
+		credentialsService.decrypt.mockResolvedValueOnce({
+			apiKey: 'sk-test',
+			host: 'https://generativelanguage.googleapis.com',
+		});
+
+		const result = await resolver.resolve(user, 'wf-1', 'cfg-1');
+
+		expect(result?.modelConfig.url).toBeUndefined();
+		expect(result?.modelId).toBe('google/gemini-2.5-pro');
+	});
+
+	it('does not forward the credential base URL for Cohere (default omits the /v2 path)', async () => {
+		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValueOnce(
+			configWithJudge({ provider: '@n8n/n8n-nodes-langchain.lmChatCohere', model: 'command-r' }),
+		);
+		// Cohere's hidden `url` defaults to api.cohere.ai, which the SDK can't use.
+		credentialsService.decrypt.mockResolvedValueOnce({
+			apiKey: 'sk-test',
+			url: 'https://api.cohere.ai',
+		});
+
+		const result = await resolver.resolve(user, 'wf-1', 'cfg-1');
+
+		expect(result?.modelConfig.url).toBeUndefined();
+		expect(result?.modelId).toBe('cohere/command-r');
+	});
+
 	it('checks the credential against the requesting user with credential:read', async () => {
 		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValueOnce(configWithJudge());
 

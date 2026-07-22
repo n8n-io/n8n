@@ -1,4 +1,4 @@
-import { Agent } from '@n8n/agents';
+import type { Agent } from '@n8n/agents';
 import type { AiInsightsPayload, AiInsightsResponse, MetricScale } from '@n8n/api-types';
 import {
 	aiInsightsPayloadSchema,
@@ -8,7 +8,7 @@ import {
 	normalizedScores,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import type { TestRun, User } from '@n8n/db';
+import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import { EvaluationCollectionRepository, EvaluationConfigRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -45,6 +45,14 @@ const INSIGHTS_SYSTEM_PROMPT = [
  * labelling off this — `deterministic` is NOT an AI label.
  */
 export const DETERMINISTIC_MODEL_TAG = 'deterministic';
+
+// Bound a single LLM generation so a hung provider can't pin the request (and
+// the card's loading skeleton) for the transport default (minutes).
+const INSIGHTS_GENERATE_TIMEOUT_MS = 60_000;
+
+// Cap regressions surfaced to the card after dedupe — the model can repeat the
+// same real regression, and the UI only shows a handful.
+const MAX_REGRESSIONS = 10;
 
 /**
  * Per-run summary used to select the winner and seed both the LLM prompt input
@@ -101,24 +109,25 @@ export class EvalInsightsService {
 			throw new NotFoundError('Collection not found');
 		}
 
-		// Cache holds the full envelope, so `status`/`generatedAt`/`modelUsed`
-		// round-trip unchanged.
+		// Serve only a cached *ok* envelope. A cached `fallback` is treated as a
+		// miss and regenerated: without a Regenerate button, caching fallbacks
+		// would otherwise pin a collection to the deterministic summary forever
+		// after one transient LLM error (and never upgrade stub-era fallbacks).
 		if (!options.forceRegenerate && detail.collection.insightsCache) {
 			const cached = detail.collection.insightsCache as AiInsightsResponse;
 			// Regenerate rather than hand a schema-diverged envelope to the FE.
 			const parsed = aiInsightsResponseSchema.safeParse(cached);
-			if (parsed.success) return parsed.data;
-			this.logger.warn('Cached insights failed schema validation; regenerating', {
-				collectionId,
-			});
+			if (parsed.success && parsed.data.status === 'ok') return parsed.data;
 		}
 
-		// Resolve metric scales from the config so scores normalize by scale,
-		// not metric name; falls back to the name-based heuristic when gone.
-		const scaleByMetric = await this.buildScaleByMetric(
+		// Load the eval config once; both the scale map and the judge-model
+		// resolver derive from it (threaded through to avoid a second lookup).
+		const config = await this.evalConfigRepo.findByIdAndWorkflowId(
 			detail.collection.evaluationConfigId,
 			workflowId,
 		);
+		// Scores normalize by scale, not metric name; name-based heuristic when gone.
+		const scaleByMetric = config ? metricScalesFromConfig(config.metrics) : {};
 
 		// Labels (A/B/C) map to each run's index in the *full* collection
 		// (`detail.runs` is `createdAt ASC`), and the FE labels by the same
@@ -146,6 +155,7 @@ export class EvalInsightsService {
 				workflowId,
 				collectionName: detail.collection.name,
 				evaluationConfigId: detail.collection.evaluationConfigId,
+				config,
 				summaries,
 				winner,
 				scaleByMetric,
@@ -169,7 +179,11 @@ export class EvalInsightsService {
 			};
 		}
 
-		await this.collectionRepo.updateInsightsCache(collectionId, response);
+		// Cache only successful envelopes; a fallback stays uncached so the next
+		// view re-attempts the LLM (see the cache short-circuit above).
+		if (response.status === 'ok') {
+			await this.collectionRepo.updateInsightsCache(collectionId, response);
+		}
 
 		this.telemetry.track('Eval collection insights generated', {
 			user_id: user.id,
@@ -213,18 +227,6 @@ export class EvalInsightsService {
 	}
 
 	/**
-	 * Maps each metric name to its scale. Returns an empty map (name-based
-	 * fallback in `normalizeMetricScore`) when the config can't be found.
-	 */
-	private async buildScaleByMetric(
-		evaluationConfigId: string,
-		workflowId: string,
-	): Promise<Record<string, MetricScale>> {
-		const config = await this.evalConfigRepo.findByIdAndWorkflowId(evaluationConfigId, workflowId);
-		return config ? metricScalesFromConfig(config.metrics) : {};
-	}
-
-	/**
 	 * Calls the LLM to produce the insights payload. Reuses the eval-config
 	 * judge model + credential and reasons over the winner-relative context.
 	 * Throws when no supported model is configured or the output can't be
@@ -235,6 +237,7 @@ export class EvalInsightsService {
 		workflowId: string;
 		collectionName: string;
 		evaluationConfigId: string;
+		config: EvaluationConfig | null;
 		summaries: RunSummary[];
 		winner: RunSummary;
 		scaleByMetric: Record<string, MetricScale>;
@@ -244,12 +247,13 @@ export class EvalInsightsService {
 			workflowId,
 			collectionName,
 			evaluationConfigId,
+			config,
 			summaries,
 			winner,
 			scaleByMetric,
 		} = params;
 
-		const resolved = await this.modelResolver.resolve(user, workflowId, evaluationConfigId);
+		const resolved = await this.modelResolver.resolve(user, workflowId, evaluationConfigId, config);
 		if (!resolved) {
 			throw new Error('No supported LLM judge model configured for insights');
 		}
@@ -269,6 +273,10 @@ export class EvalInsightsService {
 			),
 		});
 
+		// Lazy-load the agents SDK (+ `ai` core) so it doesn't enter every
+		// instance's boot via the unconditionally-imported controller — only this
+		// flag-gated path pays for it.
+		const { Agent } = await import('@n8n/agents');
 		// Intentionally tool-less: the prompt embeds untrusted workflow content
 		// (node prompt text + case I/O), so a planted instruction can only bias
 		// the narrative, never trigger a tool/exfil. Reconcile + zod bound the
@@ -278,54 +286,72 @@ export class EvalInsightsService {
 			.instructions(INSIGHTS_SYSTEM_PROMPT)
 			.structuredOutput(aiInsightsPayloadSchema);
 
-		const payload = await this.generateValidated(agent, this.buildUserPrompt(context));
+		const payload = await this.generateValidated(
+			agent,
+			this.buildUserPrompt(context),
+			context.baseVersionLabel,
+		);
 		return { payload: this.reconcile(payload, context), modelId: resolved.modelId };
 	}
 
-	// Keep the model's output consistent with the deterministically-chosen
-	// baseline and the data it was given: force the winner to the base version,
-	// and keep only regressions the context scores actually support — a known,
-	// non-base version that really scored below the base on the named metric.
-	// Drops hallucinated labels/metrics and wrong-direction claims so the copy
-	// can't contradict the scores + diff rendered on the same card.
+	// Keep the model's regressions consistent with the data it was given: one per
+	// (version, metric) — the model can repeat the same real regression — and only
+	// where the context scores actually support it (a known, non-base version that
+	// really scored below the base on the named metric). `delta` is overwritten
+	// with the true percentage-point gap rather than trusting the model's number.
+	// The winner label is validated upstream (see `generateValidated`), so it's
+	// not relabeled here. Capped so the card can't be flooded.
 	private reconcile(payload: AiInsightsPayload, context: InsightsContext): AiInsightsPayload {
 		const versionByLabel = new Map(context.versions.map((version) => [version.label, version]));
 		const base = versionByLabel.get(context.baseVersionLabel);
-		return {
-			...payload,
-			winner: { ...payload.winner, versionLabel: context.baseVersionLabel },
-			regressions: payload.regressions.filter((regression) => {
-				if (regression.versionLabel === context.baseVersionLabel) return false;
-				const versionScore = versionByLabel.get(regression.versionLabel)?.metricScores[
-					regression.metric
-				];
-				const baseScore = base?.metricScores[regression.metric];
-				return (
-					typeof versionScore === 'number' &&
-					typeof baseScore === 'number' &&
-					versionScore < baseScore
-				);
-			}),
-		};
+		const seen = new Set<string>();
+		const regressions: AiInsightsPayload['regressions'] = [];
+		for (const regression of payload.regressions) {
+			if (regression.versionLabel === context.baseVersionLabel) continue;
+			const versionScore = versionByLabel.get(regression.versionLabel)?.metricScores[
+				regression.metric
+			];
+			const baseScore = base?.metricScores[regression.metric];
+			if (typeof versionScore !== 'number' || typeof baseScore !== 'number') continue;
+			if (versionScore >= baseScore) continue;
+			const key = `${regression.versionLabel} ${regression.metric}`;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			regressions.push({ ...regression, delta: versionScore - baseScore });
+			if (regressions.length >= MAX_REGRESSIONS) break;
+		}
+		return { ...payload, regressions };
 	}
 
-	// Generate + validate against the payload schema, with one stricter retry —
-	// a real model's structured output can occasionally drift from the shape.
-	private async generateValidated(agent: Agent, userPrompt: string): Promise<AiInsightsPayload> {
-		const attempt = async (prompt: string) => {
-			const result = await agent.generate(prompt);
-			return aiInsightsPayloadSchema.safeParse(result.structuredOutput);
+	// Generate + validate the payload, with one stricter retry — a real model's
+	// structured output can drift. Invalid = wrong shape OR a winner label other
+	// than the base: a wrong label means the model ignored an explicit instruction,
+	// so we retry then fall back rather than ship copy that contradicts the badge.
+	// Each generation is time-bounded so a hung provider can't pin the request.
+	private async generateValidated(
+		agent: Agent,
+		userPrompt: string,
+		baseVersionLabel: string,
+	): Promise<AiInsightsPayload> {
+		const attempt = async (prompt: string): Promise<AiInsightsPayload | null> => {
+			const result = await agent.generate(prompt, {
+				abortSignal: AbortSignal.timeout(INSIGHTS_GENERATE_TIMEOUT_MS),
+			});
+			const parsed = aiInsightsPayloadSchema.safeParse(result.structuredOutput);
+			if (!parsed.success) return null;
+			if (parsed.data.winner.versionLabel !== baseVersionLabel) return null;
+			return parsed.data;
 		};
 
 		const first = await attempt(userPrompt);
-		if (first.success) return first.data;
+		if (first) return first;
 
 		const retry = await attempt(
-			`${userPrompt}\n\nReturn ONLY a JSON object matching the required schema exactly — no extra keys, no prose.`,
+			`${userPrompt}\n\nReturn ONLY a JSON object matching the required schema exactly — no extra keys, no prose. The winner's versionLabel MUST be "${baseVersionLabel}".`,
 		);
-		if (retry.success) return retry.data;
+		if (retry) return retry;
 
-		throw new Error('LLM insights output failed schema validation after retry');
+		throw new Error('LLM insights output failed validation after retry');
 	}
 
 	private buildUserPrompt(context: InsightsContext): string {

@@ -29,6 +29,14 @@ const loading = computed(() => store.loadingInsights[props.collectionId] ?? fals
 // never sees the card flash in before it vanishes.
 const hidden = computed(() => !licenseChecked.value || !license.isLicensed.value);
 
+// Only render once there's something to show: the runs are ready (insights are
+// generating/generated) or we already have a result/loading/error. A collection
+// that never becomes ready (e.g. all runs errored) shows nothing rather than a
+// permanent empty shell with a header and no body.
+const showCard = computed(
+	() => !hidden.value && (props.ready || !!insights.value || loading.value || errored.value),
+);
+
 const generatedTime = computed(() => {
 	const iso = insights.value?.generatedAt;
 	if (!iso) return '';
@@ -73,7 +81,7 @@ watch(
 </script>
 
 <template>
-	<section v-if="!hidden" :class="$style.card" data-test-id="compare-ai-insights">
+	<section v-if="showCard" :class="$style.card" data-test-id="compare-ai-insights">
 		<header :class="$style.header">
 			<div :class="$style.title">
 				<N8nIcon icon="wand-sparkles" size="small" />
