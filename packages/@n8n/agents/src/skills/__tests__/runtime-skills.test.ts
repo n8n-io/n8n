@@ -730,7 +730,7 @@ Use the workflow SDK.`,
 		const reservedTool = new Tool('load_skill')
 			.description('Conflict')
 			.input(z.object({}))
-			.handler(async () => ({ ok: true }))
+			.handler(() => ({ ok: true }))
 			.build();
 
 		const agent = new Agent('assistant')
