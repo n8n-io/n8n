@@ -15,7 +15,7 @@ import {
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
 } from './mcp.constants';
-import { McpService } from './mcp.service';
+import { McpService, type McpFeatureFlags } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
@@ -93,8 +93,8 @@ export class McpController {
 		}
 
 		try {
-			const { mcpApps } = await this.mcpService.resolveFeatureFlags(req.user);
-			await this.handleTransportRequest(req, res, mcpApps.enabled);
+			const featureFlags = await this.mcpService.resolveFeatureFlags(req.user);
+			await this.handleTransportRequest(req, res, featureFlags);
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (!res.headersSent) {
@@ -163,7 +163,7 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, featureFlags.mcpApps.enabled, req.body);
+			await this.handleTransportRequest(req, res, featureFlags, req.body);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
@@ -198,7 +198,7 @@ export class McpController {
 	private async handleTransportRequest(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
-		mcpAppsEnabled: boolean,
+		featureFlags: McpFeatureFlags,
 		body?: unknown,
 	) {
 		const { StreamableHTTPServerTransport } = await import(
@@ -207,7 +207,7 @@ export class McpController {
 		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
 		const server = await this.mcpService.getServer(
 			req.user,
-			mcpAppsEnabled,
+			featureFlags,
 			getClientInfo(req),
 			grantedScopes,
 		);

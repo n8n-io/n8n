@@ -216,7 +216,7 @@ describe('McpController', () => {
 		);
 	});
 
-	test('resolves the feature flags once and forwards MCP Apps `enabled` to getServer on initialize', async () => {
+	test('resolves the feature flags once and forwards the resolution to getServer on initialize', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
 			connect: vi.fn().mockResolvedValue(undefined),
@@ -242,13 +242,13 @@ describe('McpController', () => {
 		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			true,
+			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
 			undefined,
 		);
 	});
 
-	test('resolves the feature flags and forwards MCP Apps `enabled` to getServer on non-initialize requests', async () => {
+	test('resolves the feature flags and forwards the resolution to getServer on non-initialize requests', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
 			connect: vi.fn().mockResolvedValue(undefined),
@@ -275,7 +275,7 @@ describe('McpController', () => {
 		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			false,
+			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
 			undefined,
 		);
@@ -344,7 +344,7 @@ describe('McpController', () => {
 			expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 			expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'user-1' }),
-				true,
+				{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 				undefined,
 				undefined,
 			);

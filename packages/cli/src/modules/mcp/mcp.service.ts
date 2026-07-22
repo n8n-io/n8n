@@ -245,10 +245,13 @@ export class McpService {
 	 * tokens) exposes all tools. Filtering registration is sufficient
 	 * enforcement: the server is rebuilt per request, so an unregistered tool
 	 * is neither listed nor callable.
+	 *
+	 * `featureFlags` is the caller's per-request resolution (see
+	 * `resolveFeatureFlags`); this method trusts it and never queries PostHog.
 	 */
 	async getServer(
 		user: User,
-		mcpAppsEnabled: boolean,
+		featureFlags: McpFeatureFlags,
 		clientInfo?: McpClientInfo,
 		grantedScopes?: string[],
 	) {
@@ -446,7 +449,7 @@ export class McpService {
 				server,
 				user,
 				dataTableOps,
-				mcpAppsEnabled,
+				featureFlags,
 				registerIfAllowed,
 				allowedToolNames,
 				clientInfo,
@@ -460,7 +463,7 @@ export class McpService {
 		server: InstanceType<typeof McpServer>,
 		user: User,
 		dataTableOps: ReturnType<DataTableProxyService['makeDataTableOperationsForUser']>,
-		mcpAppsEnabled: boolean,
+		featureFlags: McpFeatureFlags,
 		registerIfAllowed: RegisterToolFn,
 		allowedToolNames: Set<string> | undefined,
 		clientInfo?: McpClientInfo,
@@ -515,7 +518,7 @@ export class McpService {
 		// The preview app only accompanies the create tool, so both are gated
 		// together by the granted scopes.
 		const createToolAllowed = !allowedToolNames || allowedToolNames.has(createTool.name);
-		if (mcpAppsEnabled && createToolAllowed) {
+		if (featureFlags.mcpApps.enabled && createToolAllowed) {
 			const appTelemetry = this.buildMcpAppTelemetryConfig();
 			registerWorkflowPreviewApp(server, {
 				instanceOrigin: appTelemetry.instanceOrigin,
