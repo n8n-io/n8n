@@ -2,8 +2,8 @@ import { readFileSync, readdirSync } from 'fs';
 import { basename, join } from 'path';
 import { z } from 'zod';
 
-import type { DiscoveryTestCase } from '../../discovery/types';
 import type { LocalGatewayStatus } from '../../../src/types';
+import type { DiscoveryTestCase } from '../../discovery/types';
 
 const forbiddenToolCallSchema = z
 	.object({

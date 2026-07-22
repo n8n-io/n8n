@@ -9,15 +9,15 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 import { aggregateResults } from './aggregator';
+import type { McpBuildSpend } from './build-orchestrator';
 import { reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
 import { roundRobinCaseRows } from './rows';
-import type { McpBuildSpend } from './build-orchestrator';
-import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
 import type { ComparisonOutcome, ComparisonResult } from '../comparison/compare';
 import { formatComparisonMarkdown, type RerunHint } from '../comparison/format';
 import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
+import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';

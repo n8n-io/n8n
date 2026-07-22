@@ -15,11 +15,11 @@ import { traceable } from 'langsmith/traceable';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { type Lane, type McpBuildSpend } from './build-orchestrator';
+import type { ScenarioRowInputs } from './case-pipeline';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { createEvalSession, MAX_CONCURRENT_BUILDS } from './eval-session';
 import { expandWithIterations } from './iterations';
 import { computePassRatePerIter, summarizeMcpBuildSpend, type RowSink } from './persist';
-import type { ScenarioRowInputs } from './case-pipeline';
 import {
 	isPlainObject,
 	parseTargetOutput,
