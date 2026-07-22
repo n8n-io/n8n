@@ -510,6 +510,38 @@ describe('WaitingWebhooks', () => {
 
 			expect(res.redirect).not.toHaveBeenCalled();
 		});
+
+		it('does not redirect when the waiting endpoints are configured identically', async () => {
+			const identicalEndpointsConfig = mock<EndpointsConfig>({
+				webhookWaiting: 'webhook-waiting',
+				formWaiting: 'webhook-waiting',
+			});
+			const webhooksWithIdenticalEndpoints = new TestWaitingWebhooks(
+				mock(),
+				mock(),
+				executionPersistence,
+				mockWebhookService,
+				mockInstanceSettings,
+				mockEventService,
+				identicalEndpointsConfig,
+			);
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				buildExecution({ nodeType: 'n8n-nodes-base.wait', nodeParameters: { resume: 'form' } }),
+			);
+			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const res = buildRes();
+			const req = mock<WaitingWebhookRequest>({
+				params: { path: 'exec-id', suffix: undefined },
+				method: 'GET',
+				originalUrl: '/webhook-waiting/exec-id?signature=abc',
+			});
+
+			await expect(webhooksWithIdenticalEndpoints.executeWebhook(req, res)).rejects.toThrowError(
+				NotFoundError,
+			);
+			expect(res.redirect).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('createWorkflow', () => {

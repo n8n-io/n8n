@@ -7,6 +7,7 @@ import type express from 'express';
 import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
 	FORM_NODE_TYPE,
+	type INode,
 	type INodes,
 	type IWorkflowBase,
 	NodeConnectionTypes,
@@ -83,6 +84,17 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
+	 * Whether a node continues execution on form submission, and is therefore
+	 * served by the `form-waiting` endpoint rather than `webhook-waiting`.
+	 */
+	protected isFormResumeNode(node: Pick<INode, 'type' | 'parameters'>): boolean {
+		return (
+			node.type === FORM_NODE_TYPE ||
+			(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
+		);
+	}
+
+	/**
 	 * A resume node that continues on form submission is served by the
 	 * `form-waiting` endpoint, not `webhook-waiting`. Users frequently reach for
 	 * `$execution.resumeUrl` (webhook-waiting) instead of `$execution.resumeFormUrl`,
@@ -99,10 +111,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			return false;
 		}
 
-		return (
-			node.type === FORM_NODE_TYPE ||
-			(node.type === WAIT_NODE_TYPE && node.parameters.resume === 'form')
-		);
+		return this.isFormResumeNode(node);
 	}
 
 	/**
@@ -110,13 +119,22 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * equivalent `form-waiting` URL (preserving suffix and query params), so the
 	 * form renders and submits against the endpoint that actually serves it.
 	 * Uses 307 to preserve the request method for direct submissions.
+	 *
+	 * Returns `false` without redirecting when the rewritten URL is unchanged,
+	 * which happens if the two endpoints are configured identically (e.g. a
+	 * custom `N8N_ENDPOINT_WEBHOOK_WAIT` equal to the form-waiting endpoint).
+	 * Redirecting in that case would loop back to this same handler forever.
 	 */
-	private redirectToFormWaiting(req: WaitingWebhookRequest, res: express.Response) {
+	private redirectToFormWaiting(req: WaitingWebhookRequest, res: express.Response): boolean {
 		const location = req.originalUrl.replace(
 			`/${this.endpointsConfig.webhookWaiting}/`,
 			`/${this.endpointsConfig.formWaiting}/`,
 		);
+		if (location === req.originalUrl) {
+			return false;
+		}
 		res.redirect(307, location);
+		return true;
 	}
 
 	// TODO: fix the type here - it should be execution workflowData
@@ -259,8 +277,11 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError(`The execution "${executionId}" does not exist.`);
 		}
 
-		if (!this.includeForms && this.isFormResumeExecution(execution)) {
-			this.redirectToFormWaiting(req, res);
+		if (
+			!this.includeForms &&
+			this.isFormResumeExecution(execution) &&
+			this.redirectToFormWaiting(req, res)
+		) {
 			return { noWebhookResponse: true };
 		}
 
