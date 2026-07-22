@@ -652,6 +652,12 @@ describe('HttpRequestV3', () => {
 	});
 
 	describe('Continued request errors', () => {
+		beforeEach(() => {
+			(executeFunctions.getNode as Mock).mockReturnValue({
+				typeVersion: 4.5,
+			});
+		});
+
 		it('should return null details if response parsing fails', () => {
 			const requestError: JsonObject = {};
 			Object.defineProperty(requestError, 'response', {
