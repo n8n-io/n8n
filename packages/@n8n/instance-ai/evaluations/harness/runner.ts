@@ -19,8 +19,6 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { agentHandler } from './artifacts/agent-handler';
-import { resolveArtifactContext } from './artifacts/artifact-context';
-import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
@@ -38,21 +36,16 @@ import {
 } from './conversation-seed';
 import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
-import { fetchPrebuiltBuild } from './prebuilt-workflows';
 import {
 	classifyScenarioExecutionError,
-	extractErrorMessage,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
-	shouldRetryScenarioExecution,
 } from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
-import { selectAuthorExpectations } from '../build-expectations/select';
-import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
@@ -63,14 +56,12 @@ import {
 } from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
-import { requiresWorkflowOutput } from '../summary';
 import type {
 	ArtifactRef,
 	BuildTrace,
 	ChecklistItem,
 	ChecklistResult,
 	CapturedEvent,
-	BuildExpectationResult,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenarioResult,
@@ -82,7 +73,6 @@ import type {
 } from '../types';
 import {
 	agentTurnsAsText,
-	conversationUserTurnsAsText,
 	failedBuildsPerTurn,
 	lastAgentText,
 	userTurnsAsText,
@@ -121,21 +111,6 @@ export function effectiveTimeoutMs(
 	return complexity === 'complex' ? Math.round(baseMs * 1.5) : baseMs;
 }
 
-function getMaxConcurrentScenarios(): number {
-	const raw = process.env.N8N_EVAL_MAX_CONCURRENT_SCENARIOS;
-	const parsed = raw ? Number.parseInt(raw, 10) : 4;
-	return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
-}
-
-/**
- * Max concurrent scenario executions per test case.
- *
- * Each scenario can trigger multiple LLM calls (mock generation + verifier),
- * so effectively-unbounded fan-out causes provider-side throttling and turns
- * verifier/model errors into noisy batch-wide failures.
- */
-const MAX_CONCURRENT_SCENARIOS = getMaxConcurrentScenarios();
-
 function makeArtifactTimestamp(): string {
 	return new Date().toISOString().replace(/[:.]/g, '-');
 }
@@ -148,10 +123,6 @@ function slugifyArtifactSegment(value: string, fallback: string): string {
 		.slice(0, 64);
 
 	return slug.length > 0 ? slug : fallback;
-}
-
-function deriveTestCaseArtifactName(testCase: WorkflowTestCase): string {
-	return slugifyArtifactSegment(testCase.conversation?.[0]?.text ?? '', 'workflow');
 }
 
 function eventPayload(event: CapturedEvent): Record<string, unknown> {
@@ -243,34 +214,6 @@ async function writeScenarioVerificationSnapshot(input: {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Workflow test case runner — build once, run scenarios against it
-// ---------------------------------------------------------------------------
-
-interface WorkflowTestCaseConfig {
-	client: N8nClient;
-	/** Base URL of the n8n instance behind `client`, forwarded for the HTML report. */
-	baseUrl: string;
-	testCase: WorkflowTestCase;
-	timeoutMs: number;
-	/** Run-level registry of credentials created for test cases; cleaned up by the CLI. */
-	createdCredentialIds: Set<string>;
-	preRunWorkflowIds: Set<string>;
-	claimedWorkflowIds: Set<string>;
-	logger: EvalLogger;
-	keepWorkflows: boolean;
-	/** Optional " [lane N/M]" suffix appended to per-build log lines. */
-	laneTag?: string;
-	/** When set, skip the orchestrator build and verify this existing workflow
-	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
-	prebuiltWorkflowId?: string;
-	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
-	 *  wire-server interception path. Omit (or pass empty) to intercept every
-	 *  interceptable AI root the workflow contains. Server-side gated by the
-	 *  `085_eval_vendor_sdk_interception` PostHog flag. */
-	pinAiRoots?: string[];
-}
-
 /**
  * Synthetic result for a test case whose run threw before it could produce one
  * (a budget/timeout abort, a lane meltdown, an OOM). Recording it — instead of
@@ -298,316 +241,6 @@ export function abortedWorkflowTestCaseResult(
 			...classified,
 		})),
 	};
-}
-
-/**
- * All-in-one test case runner: build workflow + run all scenarios + cleanup.
- * Used by the CLI. The split API (buildWorkflow + executeScenario + cleanupBuild)
- * is available for custom orchestration (e.g. LangSmith evaluate).
- */
-export async function runWorkflowTestCase(
-	config: WorkflowTestCaseConfig,
-): Promise<WorkflowTestCaseResult> {
-	const { client, testCase, logger } = config;
-	const baseTimeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
-	const timeoutMs = effectiveTimeoutMs(testCase.complexity, baseTimeoutMs);
-	if (timeoutMs !== baseTimeoutMs) {
-		logger.info(`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s`);
-	}
-
-	const result: WorkflowTestCaseResult = {
-		testCase,
-		workflowBuildSuccess: false,
-		executionScenarioResults: [],
-		n8nBaseUrl: config.baseUrl,
-	};
-
-	const isPrebuilt = config.prebuiltWorkflowId !== undefined;
-	const build = config.prebuiltWorkflowId
-		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
-		: await buildWorkflow({
-				client,
-				conversation: testCase.conversation,
-				messageBudget: testCase.messageBudget,
-				credentials: testCase.credentials,
-				seedFile: testCase.seedFile,
-				priorConversation: testCase.priorConversation,
-				seedThread: testCase.seedThread,
-				executionScenarios: testCase.executionScenarios,
-				createdCredentialIds: config.createdCredentialIds,
-				timeoutMs,
-				preRunWorkflowIds: config.preRunWorkflowIds,
-				claimedWorkflowIds: config.claimedWorkflowIds,
-				logger,
-				laneTag: config.laneTag,
-				workflowExpected: workflowExpectedForCase(testCase),
-			});
-
-	if (isPrebuilt && build.success && !build.workflowChecks) {
-		// No transcript in prebuilt mode, but the authored conversation still
-		// carries the user's request — feed it so prompt-aware checks (e.g.
-		// fulfills_user_request) grade against real intent instead of "".
-		build.workflowChecks = await runWorkflowChecks({
-			workflow: build.workflowJsons[0],
-			prompt: conversationUserTurnsAsText(testCase.conversation),
-			agentText: undefined,
-			logger,
-		});
-	}
-
-	if (build.conversationMetrics) {
-		result.conversationMetrics = build.conversationMetrics;
-	}
-	if (build.threadId) {
-		result.threadId = build.threadId;
-		if (!isPrebuilt) {
-			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
-		}
-	}
-	if (build.transcript) {
-		result.transcript = build.transcript;
-	}
-	if (build.workflowChecks) {
-		result.workflowChecks = build.workflowChecks;
-	}
-
-	// Optional author expectations — informational, judged concurrently with scenarios.
-	const { expectations: expectationsToJudge, transcript: expectationsTranscript } =
-		selectAuthorExpectations({
-			testCase,
-			transcript: build.transcript,
-			buildSucceeded: build.success,
-			isPrebuilt,
-			logger,
-		});
-	// Render non-workflow artifacts (agent, config-eval) into judge context, so outcome
-	// expectations can assert their existence/absence/content. Independent of whether a
-	// workflow was built — those artifacts save outside the workflow path. Discovery uses the
-	// refs captured from the SSE stream during the build (no thread-message re-fetch); only
-	// needed when there are expectations to judge.
-	const artifactContextPromise: Promise<string | undefined> =
-		expectationsToJudge.length > 0
-			? resolveArtifactContext({
-					artifactRefs: build.artifactRefs ?? [],
-					client,
-					logger,
-				}).catch((error: unknown) => {
-					logger.warn(
-						`  Artifact context resolution failed: ${error instanceof Error ? error.message : String(error)}`,
-					);
-					return undefined;
-				})
-			: Promise.resolve<string | undefined>(undefined);
-
-	const expectationsPromise: Promise<BuildExpectationResult[]> =
-		expectationsToJudge.length > 0
-			? artifactContextPromise
-					.then(
-						async (artifactContext) =>
-							await verifyBuildExpectations(expectationsToJudge, {
-								transcript: expectationsTranscript,
-								workflowJson: build.workflowJsons[0],
-								metrics: build.conversationMetrics,
-								artifactContext,
-							}),
-					)
-					.catch((error: unknown) => {
-						logger.warn(
-							`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
-						);
-						return allFailVerdicts(expectationsToJudge, 'judge error');
-					})
-			: Promise.resolve<BuildExpectationResult[]>([]);
-
-	// An agent ref marks the case agent-anchored: scenarios run against the agent
-	// (real model, mocked tool HTTP); co-built workflows are its tools, not the deliverable.
-	const agentScenarioRef = findAgentArtifactRef(build.artifactRefs);
-	const agentScenarios = testCase.executionScenarios ?? [];
-	if (agentScenarioRef && agentScenarios.length > 0 && build.transcript !== undefined) {
-		logger.info(
-			`  Agent built: ${agentScenarioRef.id} — routing ${String(agentScenarios.length)} scenario(s) to it`,
-		);
-		result.workflowBuildSuccess = true;
-		result.buildTrace = build.buildTrace;
-
-		const agentContext = await fetchAgentScenarioContext(client, agentScenarioRef, logger);
-		result.agentId = agentScenarioRef.id;
-		result.agentArtifactContext = agentContext;
-
-		const agentCaseName = deriveTestCaseArtifactName(testCase);
-		const scenarioStart = Date.now();
-		const scenariosPromise = runWithConcurrency(
-			agentScenarios,
-			async (scenario) => {
-				warnAgentSeedDataTablesIgnored(logger, scenario.name, scenario.seedDataTables);
-				for (let attempt = 1; ; attempt++) {
-					try {
-						return await executeAgentScenario(
-							client,
-							agentScenarioRef.id,
-							scenario,
-							agentContext,
-							logger,
-							timeoutMs,
-							agentCaseName,
-							build.buildTrace,
-						);
-					} catch (error: unknown) {
-						const errorMessage = extractErrorMessage(error);
-						if (shouldRetryScenarioExecution(errorMessage, attempt)) {
-							logger.warn(
-								`    [${scenario.name}] agent execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
-							);
-							await delay(500 * attempt);
-							continue;
-						}
-						logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-						return {
-							scenario,
-							success: false,
-							score: 0,
-							reasoning: `Agent scenario execution error: ${errorMessage}`,
-							failureCategory: 'framework_issue',
-						} satisfies ExecutionScenarioResult;
-					}
-				}
-			},
-			MAX_CONCURRENT_SCENARIOS,
-		);
-
-		const [scenarioResults, expectationResults] = await Promise.all([
-			scenariosPromise,
-			expectationsPromise,
-		]);
-		result.executionScenarioResults = scenarioResults;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
-
-		const scenarioMs = Date.now() - scenarioStart;
-		logger.info(
-			`  Scenarios done: ${String(scenarioResults.length)} agent scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
-		);
-
-		if (!config.keepWorkflows) {
-			await cleanupBuild(client, build, logger);
-		}
-
-		return result;
-	}
-
-	// Answer-only cases (workflowExpectedForCase === false) legitimately end
-	// without a saved workflow — buildWorkflow reports them as a successful
-	// no-workflow build. This also covers agent/config-eval builds: they produce
-	// no workflow by design and are graded on the rendered artifact context via
-	// the author expectations below (scenario-less agent builds land here too).
-	// An agent ref counts as build success even without `build.success` — the
-	// agent is the deliverable (same semantic as the LangSmith BUILD_ONLY row).
-	if ((build.success || agentScenarioRef !== undefined) && !build.workflowId) {
-		result.workflowBuildSuccess = true;
-		result.buildTrace = build.buildTrace;
-		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
-		if (!config.keepWorkflows) {
-			await cleanupBuild(client, build, logger);
-		}
-		return result;
-	}
-
-	// Build failed. A missing workflow is only a build failure when the case actually
-	// expects one (i.e. it has execution scenarios) and the conversation didn't finish;
-	// an artifact/answer case that completed is graded on its expectations instead.
-	if (!build.success || !build.workflowId) {
-		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
-
-		const artifactOnlyCompleted =
-			!requiresWorkflowOutput(testCase) && build.transcript !== undefined;
-		if (!artifactOnlyCompleted) result.buildError = build.error;
-		return result;
-	}
-
-	result.workflowBuildSuccess = true;
-	result.workflowId = build.workflowId;
-	result.workflowJson = build.workflowJsons[0];
-	result.buildTrace = build.buildTrace;
-	const testCaseArtifactName = deriveTestCaseArtifactName(testCase);
-
-	const scenarios = testCase.executionScenarios ?? [];
-	// Rows for a case's pre-seeded scenario tables are swapped in per scenario
-	// (TRUST-311). All scenarios of a case share one table per name, so seeding
-	// must run serially — concurrent scenarios would race on the shared rows.
-	const seedContext =
-		build.seededScenarioTableIdsByName && build.threadId
-			? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
-			: undefined;
-	const scenarioConcurrency = scenariosRequireSerialSeeding(scenarios)
-		? 1
-		: MAX_CONCURRENT_SCENARIOS;
-
-	const scenarioStart = Date.now();
-	const scenariosPromise = runWithConcurrency(
-		scenarios,
-		async (scenario) => {
-			for (let attempt = 1; ; attempt++) {
-				try {
-					return await executeScenario(
-						client,
-						build.workflowId!,
-						scenario,
-						build.workflowJsons,
-						logger,
-						timeoutMs,
-						testCaseArtifactName,
-						build.buildTrace,
-						config.pinAiRoots,
-						seedContext,
-					);
-				} catch (error: unknown) {
-					const errorMessage = extractErrorMessage(error);
-					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
-						logger.warn(
-							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
-						);
-						await delay(500 * attempt);
-						continue;
-					}
-					// executeScenario categorizes builder/mock/verification failures
-					// internally; an error escaping it is an infra/framework problem
-					// (network drop, n8n API error, verifier timeout, per-iteration
-					// budget abort). Tag it framework_issue — with a timeout-flavoured
-					// rootCause when it's a budget abort — so the report and baseline
-					// keep it out of builder regressions instead of scoring it as an
-					// uncategorized failure, and this one timed-out scenario doesn't
-					// take the whole case's already-completed scenarios down with it.
-					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-					return {
-						scenario,
-						success: false,
-						score: 0,
-						...classifyScenarioExecutionError(errorMessage),
-					} satisfies ExecutionScenarioResult;
-				}
-			}
-		},
-		scenarioConcurrency,
-	);
-
-	const [scenarioResults, expectationResults] = await Promise.all([
-		scenariosPromise,
-		expectationsPromise,
-	]);
-	result.executionScenarioResults = scenarioResults;
-	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
-
-	const scenarioMs = Date.now() - scenarioStart;
-	logger.info(
-		`  Scenarios done: ${String(result.executionScenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
-	);
-
-	if (!config.keepWorkflows) {
-		await cleanupBuild(client, build, logger);
-	}
-
-	return result;
 }
 
 // ---------------------------------------------------------------------------

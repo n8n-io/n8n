@@ -7,7 +7,6 @@
 // falls back to a direct loop with the same eval-results.json output.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 import { mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
@@ -20,8 +19,7 @@ import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs, partialIsolationWarning } from './args';
 import type { CliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
-import { LaneAllocator } from './lane-allocator';
-import { expandWithIterations, partitionRoundRobin } from './lanes';
+import { expandWithIterations } from './lanes';
 import { stageLaneMcpConfig, unsupportedMcpBuildSetupFields } from './mcp-builder';
 import { isPlainObject, parseTargetOutput, reshapeLangSmithRuns } from './reshape';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
@@ -49,48 +47,20 @@ import {
 	cleanupPrebuiltWorkflows,
 	loadPrebuiltManifest,
 	partitionByPrebuiltCoverage,
-	pickPrebuiltWorkflowId,
 	type PrebuiltManifest,
 } from '../harness/prebuilt-workflows';
-import {
-	abortedWorkflowTestCaseResult,
-	buildWorkflow,
-	executeAgentScenario,
-	executeScenario,
-	cleanupBuild,
-	runWorkflowTestCase,
-	runWithConcurrency,
-	workflowExpectedForCase,
-	type BuildResult,
-} from '../harness/runner';
 import { extractErrorMessage } from '../harness/transient-error';
 import { syncDataset } from '../langsmith/dataset-sync';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
-import {
-	createBuildOrchestrator,
-	laneHealthy,
-	type BuildArgs,
-	type Lane,
-	type LaneState,
-	type McpBuildSpend,
-} from '../run/build-orchestrator';
-import { createCasePipeline } from '../run/case-pipeline';
+import { type Lane, type McpBuildSpend } from '../run/build-orchestrator';
+import { runDirect } from '../run/direct-driver';
+import { createEvalSession, MAX_CONCURRENT_BUILDS } from '../run/eval-session';
 import { rollupCaseVerification } from '../summary';
-import type {
-	BuildExpectationResult,
-	MultiRunEvaluation,
-	ExecutionScenario,
-	TranscriptTurn,
-	WorkflowTestCase,
-	WorkflowTestCaseResult,
-} from '../types';
+import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
-
-// n8n degrades above ~4 concurrent builds.
-const MAX_CONCURRENT_BUILDS = 4;
 
 /** Framework-noise share above which a baseline capture gets a quality warning. */
 const BASELINE_MAX_FRAMEWORK_NOISE_RATE = 0.05;
@@ -350,7 +320,7 @@ async function main(): Promise<void> {
 					logger.info(
 						'No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)',
 					);
-					const directRun = await runDirectLoop({
+					const directRun = await runDirect({
 						args,
 						lanes,
 						logger,
@@ -461,164 +431,30 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	const lsClient = new Client(workspaceId ? { workspaceId } : {});
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, testCasesWithFiles);
 
-	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
-	// the LangSmith target() output schema doesn't carry the full transcript.
-	const transcriptByThreadId = new Map<string, TranscriptTurn[]>();
-	// Build-expectation verdicts, judged once per build and merged by the build-cache
-	// key (`iteration:fileSlug`) rather than threadId — so prebuilt/MCP builds, which
-	// have no threadId, still get their outcome expectations judged and counted.
-	// Fired during getOrBuild, awaited before reshapeLangSmithRuns.
-	const buildExpectationsByKey = new Map<string, Promise<BuildExpectationResult[]>>();
-	const runDebugByThreadId = new Map<string, Promise<InstanceAiRunDebugResponse[]>>();
-
-	// LangSmith dataset rows carry only per-scenario fields. The build-side
-	// fields (conversation, expectations, declared credentials) are sourced
-	// locally, keyed by fileSlug.
-	const testCaseByFileSlug = new Map<string, WorkflowTestCase>();
-	for (const { testCase, fileSlug } of testCasesWithFiles) {
-		testCaseByFileSlug.set(fileSlug, testCase);
-	}
-
-	const laneStates: LaneState[] = lanes.map((lane, idx) => {
-		const laneNum = idx + 1;
-		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
-		return {
-			runner: lane,
-			laneNum,
-			activeBuilds: 0,
-			inflightKeys: new Set<string>(),
-			tracedBuild: traceable(
-				async (buildArgs: BuildArgs) =>
-					await buildWorkflow({
-						client: lane.client,
-						conversation: buildArgs.conversation,
-						messageBudget: buildArgs.messageBudget,
-						credentials: buildArgs.credentials,
-						seedFile: buildArgs.seedFile,
-						priorConversation: buildArgs.priorConversation,
-						seedThread: buildArgs.seedThread,
-						executionScenarios: buildArgs.executionScenarios,
-						createdCredentialIds: lane.createdCredentialIds,
-						timeoutMs: buildArgs.timeoutMs,
-						preRunWorkflowIds: lane.preRunWorkflowIds,
-						claimedWorkflowIds: lane.claimedWorkflowIds,
-						logger,
-						laneTag,
-						workflowExpected: workflowExpectedForCase(buildArgs),
-					}),
-				{
-					name: 'workflow_build',
-					run_type: 'chain',
-					client: lsClient,
-					metadata: { lane: laneNum },
-				},
-			),
-			tracedExecute: traceable(
-				async (execArgs: {
-					workflowId: string;
-					scenario: ExecutionScenario;
-					workflowJsons: BuildResult['workflowJsons'];
-					buildTrace?: BuildResult['buildTrace'];
-					timeoutMs: number;
-				}) =>
-					await executeScenario(
-						lane.client,
-						execArgs.workflowId,
-						execArgs.scenario,
-						execArgs.workflowJsons,
-						logger,
-						execArgs.timeoutMs,
-						undefined,
-						execArgs.buildTrace,
-						args.pinAiRoots,
-					),
-				{
-					name: 'scenario_execution',
-					run_type: 'chain',
-					client: lsClient,
-					metadata: { lane: laneNum },
-				},
-			),
-			tracedExecuteAgent: traceable(
-				async (execArgs: {
-					agentId: string;
-					scenario: ExecutionScenario;
-					agentContext: string;
-					buildTrace?: BuildResult['buildTrace'];
-					timeoutMs: number;
-					testCaseName?: string;
-				}) =>
-					await executeAgentScenario(
-						lane.client,
-						execArgs.agentId,
-						execArgs.scenario,
-						execArgs.agentContext,
-						logger,
-						execArgs.timeoutMs,
-						execArgs.testCaseName,
-						execArgs.buildTrace,
-					),
-				{
-					name: 'agent_scenario_execution',
-					run_type: 'chain',
-					client: lsClient,
-					metadata: { lane: laneNum },
-				},
-			),
-		};
-	});
-
-	// Work-stealing: each build acquires a lane that isn't already running its
-	// fileSlug, runs there (capped per-lane), then releases. Scenarios re-use
-	// the lane that built their workflow. Health options quarantine a dead lane
-	// instead of letting its instant failures attract the whole queue.
-	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS, {
-		probe: laneHealthy,
-		onQuarantine: (lane) =>
-			logger.error(
-				`[lane ${String(lane.laneNum)}] quarantined after consecutive transport failures; probing ${lane.runner.baseUrl} for recovery`,
-			),
-		onReadmit: (lane) => logger.info(`[lane ${String(lane.laneNum)}] healthy again — re-admitted`),
-		onAllQuarantined: () =>
-			logger.error('All lanes quarantined — builds paused pending lane recovery'),
-	});
-	// Agent config + skills, fetched once per build and shared by every
-	// scenario row of the case (the agent analog of the cached workflow JSON).
-	const agentContextByKey = new Map<string, Promise<string>>();
-
-	// Build phase — cache, lane allocation, transient-retry, and per-build
-	// side-band capture live behind an explicit seam (TRUST-261). LangSmith-aware
-	// tracing stays out here in the lane wrappers.
-	const orchestrator = createBuildOrchestrator({
+	// Shared per-run assembly (lanes → allocator → build orchestrator → case
+	// pipeline). The traceable() hook around the lane functions is the only
+	// LangSmith-aware piece; span names and shape are unchanged.
+	const session = createEvalSession({
 		args,
+		lanes,
 		logger,
-		laneStates,
-		allocator,
-		testCaseByFileSlug,
+		testCasesWithFiles,
 		prebuiltManifest,
 		cleanupBuiltWorkflows,
 		mcpBuildLogDir,
 		mcpBuildSpend,
-		transcriptByThreadId,
-		buildExpectationsByKey,
-		runDebugByThreadId,
-		agentContextByKey,
+		wrap: (name, laneNum, fn) =>
+			// TraceableFunction's conditional type cannot resolve over the generic
+			// hook signature; the runtime shape is exactly `fn`.
+			traceable(fn, {
+				name,
+				run_type: 'chain',
+				client: lsClient,
+				metadata: { lane: laneNum },
+			}) as typeof fn,
 	});
-	const { buildCache, orphanedBuilds, buildDurations } = orchestrator;
-
-	// Per-row execution behind the case-pipeline seam (TRUST-261): sentinel /
-	// build-fail / agent / workflow dispatch, transient retry, expectation
-	// attachment, the framework_issue guard, and eager per-build cleanup.
-	const pipeline = createCasePipeline({
-		args,
-		logger,
-		testCaseByFileSlug,
-		orchestrator,
-		buildExpectationsByKey,
-		agentContextByKey,
-		runDebugByThreadId,
-	});
-	const target = pipeline.runRow;
+	const { buildDurations } = session.orchestrator;
+	const target = session.pipeline.runRow;
 
 	const feedbackExtractor = ({ run }: { run: Run }): EvaluationResult[] => {
 		const output = parseTargetOutput(run.outputs);
@@ -718,22 +554,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		logger.info(`Experiment: ${experimentResults.experimentName}`);
 		await lsClient.awaitPendingTraceBatches();
 
-		const buildExpectationsResolved = new Map<string, BuildExpectationResult[]>();
-		for (const [key, verdictsPromise] of buildExpectationsByKey) {
-			buildExpectationsResolved.set(key, await verdictsPromise);
-		}
-		const runDebugResolved = new Map<string, InstanceAiRunDebugResponse[]>();
-		for (const [threadId, runDebugPromise] of runDebugByThreadId) {
-			runDebugResolved.set(threadId, await runDebugPromise);
-		}
+		const sideBand = await session.resolveSideBand();
 		const allRunResults = reshapeLangSmithRuns(
 			experimentResults.results,
 			testCasesWithFiles,
 			args.iterations,
-			transcriptByThreadId,
-			buildExpectationsResolved,
+			sideBand.transcriptByThreadId,
+			sideBand.buildExpectations,
 			lanes[0]?.baseUrl,
-			runDebugResolved,
+			sideBand.runDebug,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -770,10 +599,6 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					logger,
 				});
 
-		const slugByTestCase = new Map<WorkflowTestCase, string>(
-			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
-		);
-
 		// Best-effort: the report link is nice-to-have, never run-fatal.
 		const experimentUrl = await lsClient
 			.getProjectUrl({ projectName: experimentResults.experimentName })
@@ -784,32 +609,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			experimentName: experimentResults.experimentName,
 			experimentUrl,
 			outcome,
-			slugByTestCase,
+			slugByTestCase: session.slugByTestCase,
 		};
 	} finally {
-		if (!args.keepWorkflows) {
-			// Entries still here had no rows run, or their per-case cleanup failed
-			// (releaseCaseRow leaves those cached so this pass can retry them).
-			await Promise.all(
-				[...buildCache.values()].map(async (promise) => {
-					try {
-						const { build, lane } = await promise;
-						await cleanupBuild(lane.runner.client, build, logger);
-					} catch {
-						// Best-effort
-					}
-				}),
-			);
-			await Promise.all(
-				orphanedBuilds.map(async ({ build, client }) => {
-					try {
-						await cleanupBuild(client, build, logger);
-					} catch {
-						// Best-effort — the lane may still be unreachable
-					}
-				}),
-			);
-		}
+		await session.drainBuilds();
 	}
 }
 
@@ -975,116 +778,6 @@ async function writePerRunPassMetrics(config: {
 	logger.verbose(
 		`Wrote pass metrics feedback for ${String(byExample.size)} example(s) across ${String(runs.length)} run(s)`,
 	);
-}
-
-// ---------------------------------------------------------------------------
-// Direct mode: simple loop, no LangSmith dependency
-// ---------------------------------------------------------------------------
-
-async function runDirectLoop(config: RunConfig): Promise<{
-	evaluation: MultiRunEvaluation;
-	slugByTestCase: Map<WorkflowTestCase, string>;
-}> {
-	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, cleanupBuiltWorkflows } =
-		config;
-
-	const slugByTestCase = new Map<WorkflowTestCase, string>(
-		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
-	);
-	if (testCasesWithFiles.length === 0) {
-		console.log('No workflow test cases selected (check --source / --filter / --exclude / --tier)');
-		return { evaluation: { totalRuns: 0, testCases: [] }, slugByTestCase };
-	}
-
-	const totalScenarios = testCasesWithFiles.reduce(
-		(sum, { testCase }) => sum + (testCase.executionScenarios ?? []).length,
-		0,
-	);
-	logger.info(
-		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s) × ${String(args.iterations)} iteration(s) across ${String(lanes.length)} lane(s)`,
-	);
-
-	// Distribute test cases across lanes by source-order index. Each bucket carries
-	// the original index so we can re-sort lane outputs back to source order — the
-	// aggregator indexes per-iteration results positionally.
-	const indexed = testCasesWithFiles.map((tc, origIdx) => ({ tc, origIdx }));
-	const buckets = partitionRoundRobin(indexed, lanes.length);
-
-	// Iterations are independent — run them in parallel. NOTE: this makes the
-	// 4-per-lane build cap apply per iteration (lanes × iterations × 4 builds at
-	// peak), which is why --build-via-mcp never reaches this loop: parseCliArgs
-	// requires LangSmith for that mode, whose allocator caps builds per lane
-	// globally.
-	const allRunResults: WorkflowTestCaseResult[][] = await Promise.all(
-		Array.from({ length: args.iterations }, async (_unused, iter) => {
-			if (args.iterations > 1) {
-				logger.info(`--- Iteration #${String(iter + 1)}/${String(args.iterations)} starting ---`);
-			}
-			const laneResults = await Promise.all(
-				lanes.map(async (lane, laneIdx) => {
-					const bucket = buckets[laneIdx];
-					const laneTag =
-						lanes.length > 1 ? ` [lane ${String(laneIdx + 1)}/${String(lanes.length)}]` : '';
-					const results = await runWithConcurrency(
-						bucket,
-						async ({ tc }) => {
-							const prebuiltWorkflowId = pickPrebuiltWorkflowId(
-								prebuiltManifest,
-								tc.fileSlug,
-								iter,
-							);
-							try {
-								const result = await runWorkflowTestCase({
-									client: lane.client,
-									baseUrl: lane.baseUrl,
-									testCase: tc.testCase,
-									timeoutMs: args.timeoutMs,
-									createdCredentialIds: lane.createdCredentialIds,
-									preRunWorkflowIds: lane.preRunWorkflowIds,
-									claimedWorkflowIds: lane.claimedWorkflowIds,
-									logger,
-									keepWorkflows: args.keepWorkflows,
-									laneTag,
-									prebuiltWorkflowId,
-									pinAiRoots: args.pinAiRoots,
-								});
-								if (
-									prebuiltWorkflowId !== undefined &&
-									cleanupBuiltWorkflows &&
-									result.workflowBuildSuccess &&
-									result.workflowId
-								) {
-									lane.workflowIdsToDelete.add(result.workflowId);
-								}
-								return result;
-							} catch (error: unknown) {
-								// runWorkflowTestCase guards its own scenario loop, but a throw
-								// from the build phase (or a per-iteration budget abort) would
-								// otherwise reject runWithConcurrency and take every OTHER case's
-								// completed results down with it. Record this one case as an
-								// aborted (framework_issue) result and keep the batch alive.
-								const message = extractErrorMessage(error);
-								logger.error(`  ERROR running ${tc.fileSlug}${laneTag}: ${message}`);
-								return abortedWorkflowTestCaseResult(tc.testCase, lane.baseUrl, message);
-							}
-						},
-						MAX_CONCURRENT_BUILDS,
-					);
-					return bucket.map((b, i) => ({ origIdx: b.origIdx, result: results[i] }));
-				}),
-			);
-			const flat = laneResults.flat();
-			flat.sort((a, b) => a.origIdx - b.origIdx);
-			const iterationResults = flat.map((x) => x.result);
-			// Capture each iteration as it completes (source-ordered, full-length) so
-			// an abort in a LATER iteration still leaves runEvalAndPersist the ones
-			// that finished — every captured array is a complete, index-aligned row.
-			config.partialResults?.push(iterationResults);
-			return iterationResults;
-		}),
-	);
-
-	return { evaluation: aggregateResults(allRunResults, args.iterations), slugByTestCase };
 }
 
 // ---------------------------------------------------------------------------

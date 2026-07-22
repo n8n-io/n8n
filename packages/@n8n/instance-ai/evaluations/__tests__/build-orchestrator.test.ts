@@ -220,6 +220,9 @@ describe('createBuildOrchestrator', () => {
 		expect(build.success).toBe(true);
 		expect(getWorkflow).toHaveBeenCalledWith('wf-123');
 		expect(tracedBuild).not.toHaveBeenCalled();
+		// Prebuilt builds own no created workflows, so cleanupBuild (which only
+		// deletes createdWorkflowIds) can never delete the prebuilt workflow itself.
+		expect(build.createdWorkflowIds).toEqual([]);
 		// Registered for deletion only because cleanup was opted in.
 		expect(lane.runner.workflowIdsToDelete.has('wf-123')).toBe(true);
 		// Prompt-aware checks grade against the authored request, not "".
