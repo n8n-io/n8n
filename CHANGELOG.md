@@ -1,3 +1,11 @@
+## [2.32.2](https://github.com/n8n-io/n8n/compare/n8n@2.32.1...n8n@2.32.2) (2026-07-22)
+
+
+### Bug Fixes
+
+* **editor:** Rename preview AI Agent node to V1 ([#34718](https://github.com/n8n-io/n8n/issues/34718)) ([d946424](https://github.com/n8n-io/n8n/commit/d9464241d7245830aa6fd97a78fbe99b0c548fa6))
+
+
 ## [2.32.1](https://github.com/n8n-io/n8n/compare/n8n@2.32.0...n8n@2.32.1) (2026-07-22)
 
 
