@@ -240,8 +240,16 @@ verifyProcess.pipe(process.stdout);
 const verifyResult = await verifyProcess;
 if (verifyResult.exitCode === 0) {
 	echo(chalk.green('✅ Single-instance dependency check passed'));
-} else {
+} else if (verifyResult.exitCode === 1) {
 	echo(chalk.red('⚠️  Single-instance dependency duplication reported (see above) — not failing the build (report-first).'));
+} else {
+	// Exit >1 means the verifier itself failed to run (e.g. toolchain not built) — the closure was
+	// NOT checked. Keep it non-fatal for now, but flag it as a tooling error, not a clean result.
+	echo(
+		chalk.red(
+			`⚠️  Single-instance verifier failed to run (exit ${verifyResult.exitCode}); the production closure was NOT checked. This is a tooling error, not a duplication report.`,
+		),
+	);
 }
 
 const packageDeployTime = getElapsedTime('package_deploy');
