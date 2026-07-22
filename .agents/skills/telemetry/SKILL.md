@@ -4,25 +4,24 @@ description: >-
   Guides adding, changing, and reviewing telemetry through the `@n8n/telemetry`
   event registry. Use when working on telemetry, analytics, tracking, product
   events, `track()` calls, or RudderStack/PostHog product events, in frontend
-  or backend code — and whenever you need to find which telemetry events exist,
-  what an event means, or what properties it carries: the catalog command
-  answers that without navigating the code.
+  or backend code — and whenever you need to find which registered telemetry
+  events exist, what an event means, or what properties it carries.
 ---
 
 # Telemetry
 
 ## The registry
 
-Every telemetry event n8n emits lives in `packages/@n8n/telemetry` as one entry per event — its exact emitted name, a description, and a zod schema typing its properties — organized per product domain in `src/events/` and composed into `TELEMETRY_EVENT.<DOMAIN>.<EVENT>`. The package defines what n8n emits and never depends on transport SDKs.
+Events migrated to the registry live in `packages/@n8n/telemetry` as one entry per event — its exact emitted name, a description, and a zod schema typing its properties — organized per product domain in `src/events/` and composed into `TELEMETRY_EVENT.<DOMAIN>.<EVENT>`. The package defines registered events and never depends on transport SDKs.
 
-**To find which events n8n emits, what they mean, or what properties they carry, run the catalog — do not navigate or grep the code for `track()` calls:**
+**To find which events are registered, what they mean, or what properties they carry, run the catalog first:**
 
 ```bash
 pnpm --filter @n8n/telemetry catalog          # human-readable, grouped by domain
 pnpm --filter @n8n/telemetry catalog --json   # structured, for programmatic use
 ```
 
-(While domains are still migrating, events not yet registered won't appear in the catalog — fall back to searching the code only when the catalog has no match.)
+The registry is being adopted incrementally. Events not yet registered do not appear in the catalog, so search `track()` call sites when the catalog has no match.
 
 Pass the entry itself to `track()` — it resolves the emitted name internally:
 
@@ -35,12 +34,12 @@ telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT, {
 });
 ```
 
-Both `track()` implementations accept registry entries and plain strings (strings remain supported while call sites migrate; once the migration completes, only entries remain):
+Both `track()` implementations accept registry entries and plain strings. Plain strings remain supported for events that have not yet migrated:
 
 - Frontend: `packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts`
 - Backend: `packages/cli/src/telemetry/index.ts`
 
-Entries get property autocomplete and compile-time checks — typo'd, missing, or wrongly typed properties fail typecheck. At runtime, `track()` additionally validates the payload against the schema via `getEventValidationError` (shared from `@n8n/telemetry`) and logs a warning on mismatch — including unrecognized properties that slipped past structural typing — but never blocks or fails the event.
+Entries get property autocomplete and compile-time checks — typo'd, missing, or wrongly typed properties fail typecheck. When the telemetry transport is initialized, `track()` additionally validates registered-event payloads via `getEventValidationError` (shared from `@n8n/telemetry`) and logs a warning on mismatch, including unrecognized properties that slipped past structural typing. A validation warning does not stop the event from being emitted.
 
 ## Adding an event
 
@@ -60,10 +59,11 @@ Entries get property autocomplete and compile-time checks — typo'd, missing, o
 
 ## Testing
 
-Assert on `entry.name`, not on retyped literals:
+Do not retype event-name literals in tests:
 
-- Frontend: mock `useTelemetry()` (or spy on `window.rudderanalytics.track`) and expect it called with `TELEMETRY_EVENT.<DOMAIN>.<EVENT>.name` and the payload.
-- Backend: spy on the `Telemetry` service's `track` and expect the entry (or its `.name`) with the payload.
+- In call-site tests, mock `useTelemetry().track` or the backend `Telemetry.track` service and expect the registry entry itself with the payload.
+- In frontend transport tests, expect `window.rudderanalytics.track` to receive `entry.name` and the augmented payload.
+- In backend transport tests, expect the RudderStack payload's `event` field to equal `entry.name` and its `properties` to include the event payload.
 
 ## Related
 
