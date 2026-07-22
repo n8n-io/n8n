@@ -12,8 +12,6 @@ export interface AiModelSelectorMenuItemData {
 	credentialType?: string;
 	/** Icon name shown instead of the credential icon (e.g. for "Configure credentials" actions). */
 	leadingIcon?: string;
-	/** Icon name shown right-aligned on the item (e.g. a "+" on create actions). */
-	trailingIcon?: string;
 }
 
 export type AiModelSelectorMenuItem<

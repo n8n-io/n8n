@@ -212,7 +212,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		data: { provider },
 	}));
 
-	// "+ Create credential" — the plus sits on the right (trailing), no leading icon.
+	// "+ Create credential" — leading plus prefix (matches the design).
 	const createCredentialItems: MenuItem[] = canCreateCredentials.value
 		? credentialTypes.length === 1
 			? [
@@ -220,7 +220,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 						id: buildMenuItemId(provider, 'configure', credentialTypes[0]),
 						label: i18n.baseText('agents.modelSelector.configureCredentials'),
 						disabled: false,
-						data: { provider, trailingIcon: 'plus' },
+						data: { provider, leadingIcon: 'plus' },
 					},
 				]
 			: [
@@ -228,12 +228,12 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 						id: `${provider}::configure`,
 						label: i18n.baseText('agents.modelSelector.configureCredentials'),
 						disabled: false,
-						data: { provider },
+						data: { provider, leadingIcon: 'plus' },
 						children: credentialTypes.map<MenuItem>((credentialType) => ({
 							id: buildMenuItemId(provider, 'configure', credentialType),
 							label: getCredentialTypeDisplayName(credentialType),
 							disabled: false,
-							data: { provider, trailingIcon: 'plus' },
+							data: { provider, leadingIcon: 'plus' },
 						})),
 					},
 				]

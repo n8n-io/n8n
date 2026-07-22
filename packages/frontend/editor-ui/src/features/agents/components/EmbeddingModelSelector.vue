@@ -89,7 +89,7 @@ function providerToMenuItem(provider: AgentEmbeddingProvider): MenuItem {
 				{
 					id: buildMenuItemId(provider, 'configure', credentialType),
 					label: i18n.baseText('agents.modelSelector.configureCredentials'),
-					data: { trailingIcon: 'plus' },
+					data: { leadingIcon: 'plus' },
 				},
 			]
 		: [];
