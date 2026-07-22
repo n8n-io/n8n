@@ -2,10 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, MigrationExecutor } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
 import { computeBackoff } from './backoff';
@@ -15,6 +16,7 @@ import { DbConnectionOptions } from './db-connection-options';
 import { readPoolStats, type DbPoolStats } from './db-pool-stats';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
+import { DbLock } from '../services/db-lock.service';
 import { TransactionRunner } from '../services/transaction';
 import { TypeOrmTransactionRunner } from '../services/typeorm-transaction';
 
@@ -84,10 +86,70 @@ export class DbConnection {
 	}
 
 	async migrate() {
-		const { dataSource, connectionState } = this;
+		const { dataSource, connectionState, options } = this;
 		(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
-		await dataSource.runMigrations({ transaction: 'each' });
+		if (options.type === 'postgres') {
+			await this.migrateWithAdvisoryLock(options.schema, options.entityPrefix);
+		} else {
+			// SQLite is single-instance, so concurrent migrations aren't possible.
+			await dataSource.runMigrations({ transaction: 'each' });
+		}
 		connectionState.migrated = true;
+	}
+
+	/**
+	 * Runs migrations while holding a Postgres advisory lock, so instances
+	 * starting concurrently against one database migrate one at a time instead
+	 * of racing (deadlocks, `column ... already exists`, crash-looping pods).
+	 *
+	 * The lock and the migrations share a single pooled connection: holding the
+	 * lock on a second connection would deadlock startup when
+	 * `DB_POSTGRESDB_POOL_SIZE=1`. That rules out transaction-scoped locks
+	 * (`pg_advisory_xact_lock`) — an open lock transaction can't host the
+	 * per-migration transactions — so the lock is session-scoped: explicitly
+	 * released after migrating, and automatically released by the server if the
+	 * connection drops (e.g. the migrating instance crashes), letting a waiter
+	 * take over from the first unapplied migration.
+	 */
+	private async migrateWithAdvisoryLock(schema?: string, entityPrefix?: string) {
+		const { dataSource } = this;
+		// Scoped by schema+prefix so co-hosted tenants in one database don't block each other.
+		const subKey = createHash('sha256')
+			.update(`${schema ?? 'public'}:${entityPrefix ?? ''}`)
+			.digest()
+			.readInt32BE(0);
+		const lockKeys = [DbLock.MIGRATIONS, subKey];
+		const queryRunner = dataSource.createQueryRunner();
+		let lockAcquired = false;
+		try {
+			this.logger.info('Acquiring database migration lock...');
+			// A waiter blocks inside pg_advisory_lock() — a single statement — so it
+			// must not be killed by the driver's statement_timeout (default 5 min).
+			// SET LOCAL confines the override to this transaction; the session-scoped
+			// lock itself survives the COMMIT.
+			await queryRunner.startTransaction();
+			await queryRunner.query('SET LOCAL statement_timeout = 0');
+			await queryRunner.query('SELECT pg_advisory_lock($1, $2)', lockKeys);
+			lockAcquired = true;
+			await queryRunner.commitTransaction();
+
+			const migrationExecutor = new MigrationExecutor(dataSource, queryRunner);
+			migrationExecutor.transaction = 'each';
+			await migrationExecutor.executePendingMigrations();
+		} finally {
+			// Explicit unlock before the connection returns to the pool. If it fails,
+			// the connection is broken and the server has already dropped the lock.
+			if (lockAcquired) {
+				await queryRunner
+					.query('SELECT pg_advisory_unlock($1, $2)', lockKeys)
+					.catch((error: unknown) =>
+						this.logger.warn(
+							`Failed to release database migration lock: ${ensureError(error).message}`,
+						),
+					);
+			}
+			await queryRunner.release();
+		}
 	}
 
 	async close() {

@@ -1,14 +1,21 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
-import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
+import {
+	DataSource,
+	MigrationExecutor,
+	type DataSourceOptions,
+	type QueryRunner,
+} from '@n8n/typeorm';
 import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as migrationHelper from '../../migrations/migration-helpers';
 import type { Migration } from '../../migrations/migration-types';
+import { DbLock } from '../../services/db-lock.service';
 import { DbConnection } from '../db-connection';
 import type { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
@@ -19,6 +26,8 @@ vi.mock('@n8n/typeorm', async () => ({
 	...(await vi.importActual<typeof import('@n8n/typeorm')>('@n8n/typeorm')),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	DataSource: vi.fn(),
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	MigrationExecutor: vi.fn(),
 }));
 
 vi.mock('../db-connection-monitor');
@@ -151,21 +160,83 @@ describe('DbConnection', () => {
 	});
 
 	describe('migrate', () => {
-		it('should wrap migrations and run them', async () => {
-			dataSource.runMigrations.mockResolvedValue([]);
+		const queryRunner = mock<QueryRunner>();
+		const migrationExecutor = mock<MigrationExecutor>();
+		// Mirrors migrate()'s derivation for the test's schema-less, prefix-less options
+		const expectedSubKey = createHash('sha256').update('public:').digest().readInt32BE(0);
+		const lockKeys = [DbLock.MIGRATIONS, expectedSubKey];
 
-			const wrapMigrationSpy = vi
-				.spyOn(migrationHelper, 'wrapMigration')
-				.mockImplementation(() => {});
+		beforeEach(() => {
+			dataSource.createQueryRunner.mockReturnValue(queryRunner);
+			queryRunner.query.mockResolvedValue([]);
+			vi.mocked(MigrationExecutor).mockImplementation(function () {
+				return migrationExecutor;
+			});
+			vi.spyOn(migrationHelper, 'wrapMigration').mockImplementation(() => {});
+		});
 
-			expect(dataSource.runMigrations).not.toHaveBeenCalled();
+		it('should wrap migrations and run them under a session advisory lock on postgres', async () => {
 			expect(dbConnection.connectionState.migrated).toBe(false);
 
 			await dbConnection.migrate();
 
-			expect(wrapMigrationSpy).toHaveBeenCalledTimes(2);
-			expect(dataSource.runMigrations).toHaveBeenCalledWith({ transaction: 'each' });
+			expect(migrationHelper.wrapMigration).toHaveBeenCalledTimes(2);
+			expect(queryRunner.startTransaction).toHaveBeenCalled();
+			expect(queryRunner.query).toHaveBeenCalledWith('SET LOCAL statement_timeout = 0');
+			expect(queryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_lock($1, $2)', lockKeys);
+			expect(queryRunner.commitTransaction).toHaveBeenCalled();
+			expect(MigrationExecutor).toHaveBeenCalledWith(dataSource, queryRunner);
+			expect(migrationExecutor.transaction).toBe('each');
+			expect(migrationExecutor.executePendingMigrations).toHaveBeenCalled();
+			expect(queryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock($1, $2)', lockKeys);
+			expect(queryRunner.release).toHaveBeenCalled();
 			expect(dbConnection.connectionState.migrated).toBe(true);
+		});
+
+		it('should release the lock and propagate migration errors', async () => {
+			migrationExecutor.executePendingMigrations.mockRejectedValue(new Error('migration failed'));
+
+			await expect(dbConnection.migrate()).rejects.toThrow('migration failed');
+
+			expect(queryRunner.query).toHaveBeenCalledWith('SELECT pg_advisory_unlock($1, $2)', lockKeys);
+			expect(queryRunner.release).toHaveBeenCalled();
+			expect(dbConnection.connectionState.migrated).toBe(false);
+		});
+
+		it('should not unlock when lock acquisition fails, but still release the runner', async () => {
+			queryRunner.query.mockRejectedValueOnce(new Error('connection lost'));
+
+			await expect(dbConnection.migrate()).rejects.toThrow('connection lost');
+
+			expect(queryRunner.query).not.toHaveBeenCalledWith(
+				'SELECT pg_advisory_unlock($1, $2)',
+				expect.anything(),
+			);
+			expect(queryRunner.release).toHaveBeenCalled();
+			expect(dbConnection.connectionState.migrated).toBe(false);
+		});
+
+		it('should run migrations directly without the lock on sqlite', async () => {
+			connectionOptions.getOptions.mockReturnValue({
+				type: 'sqlite',
+				database: ':memory:',
+				migrations,
+			});
+			// options are @Memoized and read in the constructor — re-instantiate
+			const sqliteConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				dbConnectionMetrics,
+			);
+			dataSource.runMigrations.mockResolvedValue([]);
+
+			await sqliteConnection.migrate();
+
+			expect(dataSource.createQueryRunner).not.toHaveBeenCalled();
+			expect(dataSource.runMigrations).toHaveBeenCalledWith({ transaction: 'each' });
+			expect(sqliteConnection.connectionState.migrated).toBe(true);
 		});
 	});
 
