@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.test.ts
+  s_6515d070952d92::t_c86466e023372e 111-121
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_6515d070952d92::t_41928cf9f17912 108-114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "4e38782666b57516d51e6591f5dccc76f36329c1",
+  "prompts": {},
+  "sessions": {
+    "s_6515d070952d92": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_6515d070952d92",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}
