@@ -156,9 +156,8 @@ export class UserRepository extends Repository<User> {
 	}
 
 	/**
-	 * Find enabled users whose global role or role on the given project is in
-	 * the given slug sets. Role slugs are passed in so this package stays
-	 * scope-agnostic; resolving scopes to roles is the caller's concern.
+	 * Find enabled users whose global/project is in the given slug sets. Role slugs
+	 * are passed in so this package stays scope-agnostic.
 	 *
 	 * Loads `role` and `authIdentities` because the `@AfterLoad` hook needs
 	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would

@@ -48,12 +48,6 @@ export class WorkflowReviewRequestService {
 		private readonly collaborationService: CollaborationService,
 	) {}
 
-	/**
-	 * Users who may review workflows of the given project: anyone whose project
-	 * role on it or global role grants `workflow:publish` (covers custom roles
-	 * via the role cache), excluding deactivated users, pending users, and the
-	 * requester.
-	 */
 	private async findEligibleReviewers(projectId: string, excludeUserId: string): Promise<User[]> {
 		const [projectRoleSlugs, globalRoleSlugs] = await Promise.all([
 			this.roleService.rolesWithScope('project', ['workflow:publish']),

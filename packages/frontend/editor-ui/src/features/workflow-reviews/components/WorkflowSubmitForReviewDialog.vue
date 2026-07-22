@@ -73,7 +73,6 @@ const loadEligibleReviewers = async () => {
 		});
 		eligibleReviewers.value = data;
 	} catch {
-		// The reviewer field is optional — on failure it stays empty and never blocks submission
 		eligibleReviewers.value = [];
 	} finally {
 		isLoadingReviewers.value = false;
@@ -151,8 +150,6 @@ const submit = async () => {
 		isSubmitting.value = false;
 	}
 };
-
-// TODO(LIGO-601): allow editing the notify list after the review request is created
 </script>
 
 <template>
