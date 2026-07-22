@@ -4,9 +4,10 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| availability | varchar(16) | 'workflow'::character varying | false |  |  | Where the credential may be consumed: workflow execution or an instance-level feature |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | data | text |  | false |  |  |  |
-| id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
+| id | varchar(36) |  | false | [public.chat_hub_agents](public.chat_hub_agents.md) [public.chat_hub_sessions](public.chat_hub_sessions.md) [public.credential_dependency](public.credential_dependency.md) [public.dynamic_credential_entry](public.dynamic_credential_entry.md) [public.dynamic_credential_user_entry](public.dynamic_credential_user_entry.md) [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) [public.instance_credential_assignment](public.instance_credential_assignment.md) [public.shared_credentials](public.shared_credentials.md) |  |  |
 | isGlobal | boolean | false | false |  |  |  |
 | isManaged | boolean | false | false |  |  |  |
 | isResolvable | boolean | false | false |  |  |  |
@@ -20,6 +21,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| credentials_entity_availability_check | CHECK | CHECK (((availability)::text = ANY ((ARRAY['workflow'::character varying, 'instance'::character varying])::text[]))) |
+| credentials_entity_availability_not_null | n | NOT NULL availability |
 | credentials_entity_createdAt_not_null | n | NOT NULL "createdAt" |
 | credentials_entity_data_not_null | n | NOT NULL data |
 | credentials_entity_id_not_null1 | n | NOT NULL id |
@@ -53,10 +56,12 @@ erDiagram
 "public.dynamic_credential_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (credential_id) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.dynamic_credential_user_entry" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
+"public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.shared_credentials" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialsId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.credentials_entity" }o--o| "public.dynamic_credential_resolver" : "FOREIGN KEY (#quot;resolverId#quot;) REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL"
 
 "public.credentials_entity" {
+  varchar_16_ availability
   timestamp_3__with_time_zone createdAt
   text data
   varchar_36_ id
@@ -130,6 +135,10 @@ erDiagram
   json toolFilter
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
+}
+"public.instance_credential_assignment" {
+  varchar_36_ credentialId FK
+  varchar_128_ credentialUseId
 }
 "public.shared_credentials" {
   timestamp_3__with_time_zone createdAt
