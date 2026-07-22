@@ -63,7 +63,7 @@ async function importPackage(params: ImportParams) {
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingPolicy: 'do-nothing',
+		variableMissingMode: 'do-nothing',
 		missingNodeTypeMode: 'fail',
 		...params,
 	});
@@ -86,7 +86,7 @@ async function variablesInProject(projectId: string) {
 }
 
 describe('workflow package import — with variables', () => {
-	describe('do-nothing import policy', () => {
+	describe('do-nothing missing mode', () => {
 		it('imports the workflow, reports the missing name as a warning, and creates no variable', async () => {
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Source', owner);
@@ -105,7 +105,7 @@ describe('workflow package import — with variables', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				variableMissingPolicy: 'do-nothing',
+				variableMissingMode: 'do-nothing',
 			});
 
 			expect(result.workflows).toHaveLength(1);
@@ -169,7 +169,7 @@ describe('workflow package import — with variables', () => {
 			expect(await variablesRepository.count()).toBe(variablesBefore);
 		});
 
-		it('defaults to do-nothing when the caller does not override the policy', async () => {
+		it('defaults to do-nothing when the caller does not override the mode', async () => {
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Source', owner);
 			const targetProject = await createTeamProject('Target', owner);
@@ -193,7 +193,7 @@ describe('workflow package import — with variables', () => {
 		});
 	});
 
-	describe('must-preexist import policy', () => {
+	describe('must-preexist missing mode', () => {
 		it('imports a package with no variable requirements', async () => {
 			const owner = await createOwner();
 			const sourceProject = await createTeamProject('Source', owner);
@@ -210,7 +210,7 @@ describe('workflow package import — with variables', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				variableMissingPolicy: 'must-preexist',
+				variableMissingMode: 'must-preexist',
 			});
 
 			expect(result.workflows).toHaveLength(1);
@@ -237,7 +237,7 @@ describe('workflow package import — with variables', () => {
 					user: owner,
 					projectId: targetProject.id,
 					packageBuffer,
-					variableMissingPolicy: 'must-preexist',
+					variableMissingMode: 'must-preexist',
 				}),
 			).rejects.toMatchObject({
 				message: /Import blocked/,
@@ -269,7 +269,7 @@ describe('workflow package import — with variables', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				variableMissingPolicy: 'must-preexist',
+				variableMissingMode: 'must-preexist',
 			});
 
 			expect(result.workflows).toHaveLength(1);
@@ -296,7 +296,7 @@ describe('workflow package import — with variables', () => {
 				user: owner,
 				projectId: targetProject.id,
 				packageBuffer,
-				variableMissingPolicy: 'must-preexist',
+				variableMissingMode: 'must-preexist',
 			});
 
 			expect(result.workflows).toHaveLength(1);

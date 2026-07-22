@@ -70,7 +70,7 @@ async function importPackage(params: ImportParams) {
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
 		dataTableSchemaConflictPolicy: 'keep-existing',
-		variableMissingPolicy: 'do-nothing',
+		variableMissingMode: 'do-nothing',
 		...params,
 	});
 }

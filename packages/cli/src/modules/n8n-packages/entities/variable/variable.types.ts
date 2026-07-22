@@ -3,7 +3,7 @@ import type { User } from '@n8n/db';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
-import type { VariableMissingPolicy } from '../../n8n-packages.types';
+import type { VariableMissingMode } from '../../n8n-packages.types';
 
 export interface WorkflowVariableRequirement {
 	workflowId: string;
@@ -25,7 +25,7 @@ export interface VariableExportResult {
 
 export interface VariableImportRequest {
 	requirements: PackageVariableRequirement[] | undefined;
-	missingPolicy: VariableMissingPolicy;
+	missingMode: VariableMissingMode;
 }
 
 export interface VariableResolutionFailure {

@@ -20,7 +20,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
-				variableMissingPolicy: 'do-nothing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -45,7 +45,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
-				variableMissingPolicy: 'do-nothing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -72,7 +72,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
-				variableMissingPolicy: 'do-nothing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -98,7 +98,7 @@ describe('ImportPackageRequestDto', () => {
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
 				dataTableSchemaConflictPolicy: 'keep-existing',
-				variableMissingPolicy: 'do-nothing',
+				variableMissingMode: 'do-nothing',
 			});
 		}
 	});
@@ -325,33 +325,33 @@ describe('ImportPackageRequestDto', () => {
 		expect(ImportPackageRequestDto.safeParse(request).success).toBe(false);
 	});
 
-	describe('variableMissingPolicy', () => {
-		it('defaults variableMissingPolicy to do-nothing when omitted', () => {
+	describe('variableMissingMode', () => {
+		it('defaults variableMissingMode to do-nothing when omitted', () => {
 			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.variableMissingPolicy).toBe('do-nothing');
+				expect(result.data.variableMissingMode).toBe('do-nothing');
 			}
 		});
 
 		it.each(['do-nothing', 'must-preexist'] as const)(
-			'accepts %s as a variableMissingPolicy value',
-			(variableMissingPolicy) => {
+			'accepts %s as a variableMissingMode value',
+			(variableMissingMode) => {
 				const result = ImportPackageRequestDto.safeParse({
-					variableMissingPolicy,
+					variableMissingMode,
 					workflowConflictPolicy: 'fail',
 				});
 				expect(result.success).toBe(true);
 				if (result.success) {
-					expect(result.data.variableMissingPolicy).toBe(variableMissingPolicy);
+					expect(result.data.variableMissingMode).toBe(variableMissingMode);
 				}
 			},
 		);
 
-		it('rejects unsupported variableMissingPolicy values', () => {
+		it('rejects unsupported variableMissingMode values', () => {
 			expect(
 				ImportPackageRequestDto.safeParse({
-					variableMissingPolicy: 'create-stub',
+					variableMissingMode: 'invent-variables',
 					workflowConflictPolicy: 'fail',
 				}).success,
 			).toBe(false);

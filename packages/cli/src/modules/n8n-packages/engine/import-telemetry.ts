@@ -79,7 +79,7 @@ export function emitPackageImportedEvent(
 			dataTableMatchingMode: request.dataTableMatchingMode,
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
-			variableMissingPolicy: request.variableMissingPolicy,
+			variableMissingMode: request.variableMissingMode,
 		},
 		packageSourceId: manifest.sourceId,
 		packageVersion: manifest.packageFormatVersion,
