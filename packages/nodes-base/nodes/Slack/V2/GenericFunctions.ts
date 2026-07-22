@@ -96,14 +96,15 @@ export async function slackApiRequest(
 	};
 
 	const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
-	const response = await this.helpers.requestWithAuthentication.call(
-		this,
-		credentialType,
-		options,
-		{
+	let response;
+	try {
+		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
 			oauth2: oAuth2Options,
-		},
-	);
+		});
+	} catch (error) {
+		if (error instanceof NodeOperationError) throw error;
+		throw new NodeOperationError(this.getNode(), error as Error);
+	}
 
 	const responseData = options.resolveWithFullResponse ? response.body : response;
 
