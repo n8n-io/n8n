@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "name": {
-            "type": "string"
-        }
-    },
-    "version": 1
-}

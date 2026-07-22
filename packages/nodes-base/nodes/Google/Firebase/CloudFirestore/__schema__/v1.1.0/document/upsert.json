@@ -1,9 +1,0 @@
-{
-    "type": "object",
-    "properties": {
-        "updateTime": {
-            "type": "string"
-        }
-    },
-    "version": 1
-}

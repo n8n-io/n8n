@@ -1,8 +1,0 @@
-type: object
-properties:
-  force:
-    type: boolean
-    example: true
-  variables:
-    type: object
-    example: { 'foo': 'bar' }
