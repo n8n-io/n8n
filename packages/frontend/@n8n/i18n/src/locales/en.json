@@ -3326,7 +3326,7 @@
 	"experiments.trialIntroModal.step2.executions": "Workflow executions",
 	"experiments.trialIntroModal.step2.aiCredits": "AI credits",
 	"experiments.trialIntroModal.step2.perMonth": "/mo",
-	"experiments.trialIntroModal.step2.annual": "Annual",
+	"experiments.trialIntroModal.step2.annual": "Annually",
 	"experiments.trialIntroModal.step2.monthly": "Monthly",
 	"experiments.trialIntroModal.step2.save": "Save {pct}%",
 	"experiments.trialIntroModal.step2.saveFallback": "Save 25%",

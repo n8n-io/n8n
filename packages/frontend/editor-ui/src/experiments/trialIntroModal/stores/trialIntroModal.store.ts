@@ -25,6 +25,14 @@ function isUpgradeOffer(
 	return 'slug' in response && Boolean(response.slug);
 }
 
+export const TRIAL_INTRO_INTERACTION_EVENTS = {
+	upgrade_now: 'User clicked upgrade now in trial welcome modal',
+	start_building: 'User clicked start building in trial welcome modal',
+	back: 'User clicked back in trial welcome modal',
+	close: 'User closed trial welcome modal',
+	period_selected: 'User selected billing period in trial welcome modal',
+} as const;
+
 export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO_MODAL, () => {
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
@@ -50,6 +58,13 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 	);
 
 	const shouldShowModal = computed(() => isVariantEnabled.value && isEligible.value);
+	const hasAttemptedModalOpen = ref(false);
+	const isModalPresentationActive = ref(false);
+	const shouldSuppressTrialBackground = computed(
+		() =>
+			isModalPresentationActive.value ||
+			(shouldShowModal.value && !hasAttemptedModalOpen.value && !uiStore.isAnyModalOpen),
+	);
 
 	const upgradeOffer = ref<Cloud.UpgradeOffer | undefined>();
 	const hasFetchedUpgradeOffer = ref(false);
@@ -86,10 +101,16 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 	function openIfEligible() {
 		if (!shouldShowModal.value) return false;
 		if (uiStore.isAnyModalOpen) return false;
+		hasAttemptedModalOpen.value = true;
+		isModalPresentationActive.value = true;
 		uiStore.openModal(TRIAL_INTRO_MODAL_KEY);
 		void markSeen();
 		void fetchUpgradeOfferOnce();
 		return true;
+	}
+
+	function completeModalPresentation() {
+		isModalPresentationActive.value = false;
 	}
 
 	const trackModalViewed = (step: 1 | 2) => {
@@ -100,6 +121,35 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 				trial_days_left: cloudPlanStore.trialDaysLeft,
 				executions_limit: cloudPlanStore.currentPlanData?.monthlyExecutionsLimit,
 				ai_credits: cloudPlanStore.currentPlanData?.licenseFeatures?.['quota:instanceAiCredits'],
+			}),
+		);
+	};
+
+	const trackModalInteraction = (
+		action: keyof typeof TRIAL_INTRO_INTERACTION_EVENTS,
+		extra: { step?: 1 | 2; period?: 'annual' | 'monthly' } = {},
+	) => {
+		const onPricingStep = action === 'back' || action === 'period_selected' || extra.step === 2;
+		telemetry.track(
+			TRIAL_INTRO_INTERACTION_EVENTS[action],
+			getExperimentTelemetryPayload(TRIAL_INTRO_MODAL_EXPERIMENT, currentVariant.value, {
+				...(onPricingStep ? { has_prices: Boolean(starterOffer.value?.prices) } : {}),
+				...extra,
+			}),
+		);
+	};
+
+	const trackUpgradeCtaClicked = (period: 'annual' | 'monthly') => {
+		telemetry.track(
+			'User clicked upgrade CTA',
+			getExperimentTelemetryPayload(TRIAL_INTRO_MODAL_EXPERIMENT, currentVariant.value, {
+				source: TRIAL_INTRO_UPGRADE_SOURCE,
+				isTrial: cloudPlanStore.userIsTrialing,
+				deploymentType: settingsStore.deploymentType,
+				trialDaysLeft: cloudPlanStore.trialDaysLeft,
+				executionsLeft: cloudPlanStore.usageLeft.executionsLeft,
+				workflowsLeft: cloudPlanStore.usageLeft.workflowsLeft,
+				period,
 				has_prices: Boolean(starterOffer.value?.prices),
 			}),
 		);
@@ -112,12 +162,16 @@ export const useTrialIntroModalStore = defineStore(STORES.EXPERIMENT_TRIAL_INTRO
 		isVariantEnabled,
 		isEligible,
 		shouldShowModal,
+		shouldSuppressTrialBackground,
 		starterOffer,
 		offerCurrency,
 		markSeen,
 		openIfEligible,
+		completeModalPresentation,
 		fetchUpgradeOfferOnce,
 		trackModalViewed,
+		trackModalInteraction,
+		trackUpgradeCtaClicked,
 		buildUpgradeReturnPath,
 	};
 });

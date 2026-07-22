@@ -170,6 +170,7 @@ const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const readyToRunStore = useReadyToRunStore();
+const trialIntroModalStore = useTrialIntroModalStore();
 
 const documentTitle = useDocumentTitle();
 const { callDebounced } = useDebounce();
@@ -179,6 +180,7 @@ const { fetchDependencyCounts } = useDependencies();
 const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
 const { hasKnownInstanceContent } = useEmptyStateDetection();
 const emptinessResolved = ref(false);
+let stopTrialIntroModalWatcher: (() => void) | undefined;
 
 // Pinia state persists across in-app navigation, so any already-known content
 // keeps the chrome instant; only a hard page load starts with unknown counts.
@@ -729,6 +731,27 @@ const showTemplateRecommendationV3 = computed(() => {
 	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
 });
 
+const stopTrialIntroModalOpenWatcher = () => {
+	stopTrialIntroModalWatcher?.();
+	stopTrialIntroModalWatcher = undefined;
+};
+
+const tryOpenTrialIntroModal = () => {
+	if (!trialIntroModalStore.shouldShowModal || uiStore.isAnyModalOpen) return;
+	if (trialIntroModalStore.openIfEligible()) {
+		stopTrialIntroModalOpenWatcher();
+	}
+};
+
+const watchForTrialIntroModalOpportunity = () => {
+	stopTrialIntroModalOpenWatcher();
+	stopTrialIntroModalWatcher = watch(
+		() => [trialIntroModalStore.shouldShowModal, uiStore.isAnyModalOpen] as const,
+		tryOpenTrialIntroModal,
+	);
+	void nextTick(tryOpenTrialIntroModal);
+};
+
 /**
  * LIFE-CYCLE HOOKS
  */
@@ -738,7 +761,7 @@ onMounted(async () => {
 
 	void usersStore.showPersonalizationSurvey();
 
-	void nextTick(() => useTrialIntroModalStore().openIfEligible());
+	watchForTrialIntroModalOpportunity();
 
 	// ResourcesListLayout's own onMounted fetch can't run while chrome is
 	// deferred (it isn't mounted), so trigger it here or the skeleton never resolves.
@@ -756,6 +779,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	stopTrialIntroModalOpenWatcher();
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);
@@ -2182,8 +2206,12 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
+	<div
+		v-if="trialIntroModalStore.shouldSuppressTrialBackground"
+		data-test-id="trial-intro-background-placeholder"
+	/>
 	<ResourcesListLoadingState
-		v-if="deferChromeForOnboarding"
+		v-else-if="deferChromeForOnboarding"
 		data-test-id="workflows-onboarding-loading"
 	/>
 	<EmptyStateLayout v-else-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />

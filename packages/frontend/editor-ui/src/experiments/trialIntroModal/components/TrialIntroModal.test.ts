@@ -3,10 +3,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	TRIAL_INTRO_MODAL_KEY,
-	TRIAL_INTRO_UPGRADE_SOURCE,
-} from '@/experiments/trialIntroModal/constants';
+import { TRIAL_INTRO_MODAL_KEY } from '@/experiments/trialIntroModal/constants';
 import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import type { Cloud } from '@n8n/rest-api-client/api/cloudPlans';
 import { createTestingPinia } from '@pinia/testing';
@@ -15,12 +12,7 @@ import { waitFor } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import TrialIntroModal from './TrialIntroModal.vue';
 
-const mockTrack = vi.fn();
-vi.mock('@/app/composables/useTelemetry', () => ({
-	useTelemetry: () => ({
-		track: mockTrack,
-	}),
-}));
+const mockCloseDialog = vi.fn();
 
 let mockCountdownText: string | undefined;
 vi.mock('@/experiments/trialIntroModal/useTrialCountdown', async () => {
@@ -33,9 +25,15 @@ vi.mock('@/experiments/trialIntroModal/useTrialCountdown', async () => {
 });
 
 const ModalStub = defineComponent({
-	props: ['name', 'title', 'eventBus'],
+	props: ['name', 'title', 'eventBus', 'closeOnClickModal', 'closeOnPressEscape'],
+	setup: () => ({ closeDialog: mockCloseDialog }),
 	template: `
-		<div :data-test-id="name">
+		<div
+			:data-test-id="name"
+			:data-close-on-click-modal="String(closeOnClickModal)"
+			:data-close-on-press-escape="String(closeOnPressEscape)"
+		>
+			<slot name="header" :close-dialog="closeDialog" />
 			<slot name="content" />
 			<slot name="footer" />
 		</div>
@@ -70,9 +68,8 @@ const trialPlan: Cloud.PlanData = {
 
 const starterOffer: Cloud.UpgradeOffer = {
 	slug: 'starter',
-	displayName: 'Starter',
 	quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 2300 },
-	prices: { monthly: 24, yearlyPerMonth: 18, yearlyTotal: 216, discountPct: 20 },
+	prices: { monthly: 24, yearlyPerMonth: 18, discountPct: 20 },
 };
 
 const loginLink = 'https://app.n8n.cloud/login?code=123&returnPath=%2Freturn%2Fannual';
@@ -81,7 +78,7 @@ describe('TrialIntroModal', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
 
 	beforeEach(() => {
-		mockTrack.mockClear();
+		mockCloseDialog.mockClear();
 		mockCountdownText = '13d 2h 5m';
 
 		pinia = createTestingPinia();
@@ -114,10 +111,12 @@ describe('TrialIntroModal', () => {
 	}
 
 	it('renders step 1 with formatted quotas and tracks the initial view', () => {
-		const { getByTestId, getByText } = renderComponent({ pinia });
+		const { getByRole, getByTestId, getByText } = renderComponent({ pinia });
 
+		expect(
+			getByRole('heading', { level: 1, name: 'Your free trial has started' }),
+		).toBeInTheDocument();
 		expect(getByText('Welcome to n8n')).toBeInTheDocument();
-		expect(getByText('free trial')).toBeInTheDocument();
 		expect(getByTestId('trial-intro-countdown-pill')).toHaveTextContent('Ends in 13d 2h 5m');
 
 		expect(getByTestId('trial-intro-stat-ai-credits')).toHaveTextContent((800).toLocaleString());
@@ -131,6 +130,27 @@ describe('TrialIntroModal', () => {
 
 		const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
 		expect(trialIntroModalStore.trackModalViewed).toHaveBeenCalledWith(1);
+	});
+
+	it('only allows explicit modal actions to dismiss it', () => {
+		const { getByTestId } = renderComponent({ pinia });
+
+		expect(getByTestId(TRIAL_INTRO_MODAL_KEY)).toHaveAttribute(
+			'data-close-on-click-modal',
+			'false',
+		);
+		expect(getByTestId(TRIAL_INTRO_MODAL_KEY)).toHaveAttribute(
+			'data-close-on-press-escape',
+			'false',
+		);
+	});
+
+	it('closes from the header close button', async () => {
+		const { getByTestId } = renderComponent({ pinia });
+
+		await userEvent.click(getByTestId('trial-intro-close-button'));
+
+		expect(mockCloseDialog).toHaveBeenCalledTimes(1);
 	});
 
 	it('hides the AI credits card when the plan has no license features', () => {
@@ -228,14 +248,7 @@ describe('TrialIntroModal', () => {
 
 		await userEvent.click(getByTestId('trial-intro-upgrade-cta'));
 
-		expect(mockTrack).toHaveBeenCalledWith('User clicked upgrade CTA', {
-			source: TRIAL_INTRO_UPGRADE_SOURCE,
-			isTrial: true,
-			deploymentType: 'cloud',
-			trialDaysLeft: 14,
-			executionsLeft: 950,
-			workflowsLeft: 3,
-		});
+		expect(trialIntroModalStore.trackUpgradeCtaClicked).toHaveBeenCalledWith('annual');
 		expect(trialIntroModalStore.buildUpgradeReturnPath).toHaveBeenCalledWith('annual');
 		expect(cloudPlanStore.generateCloudDashboardAutoLoginLink).toHaveBeenCalledWith({
 			redirectionPath: '/return/annual',
@@ -260,5 +273,66 @@ describe('TrialIntroModal', () => {
 		await userEvent.click(getByTestId('trial-intro-upgrade-cta'));
 
 		expect(trialIntroModalStore.buildUpgradeReturnPath).toHaveBeenCalledWith('monthly');
+	});
+
+	describe('interaction tracking', () => {
+		it('tracks upgrade now, period selection, and back', async () => {
+			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('trial-intro-upgrade-now-button'));
+			expect(trialIntroModalStore.trackModalInteraction).toHaveBeenCalledWith('upgrade_now');
+
+			await userEvent.click(getByTestId('trial-intro-period-monthly'));
+			expect(trialIntroModalStore.trackModalInteraction).toHaveBeenCalledWith('period_selected', {
+				period: 'monthly',
+			});
+
+			trialIntroModalStore.trackModalInteraction.mockClear();
+			await userEvent.click(getByTestId('trial-intro-period-monthly'));
+			expect(trialIntroModalStore.trackModalInteraction).not.toHaveBeenCalled();
+
+			await userEvent.click(getByTestId('trial-intro-back-button'));
+			expect(trialIntroModalStore.trackModalInteraction).toHaveBeenCalledWith('back');
+		});
+
+		it('tracks start building and closes the modal', async () => {
+			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
+			const uiStore = mockedStore(useUIStore);
+
+			const { getByTestId } = renderComponent({ pinia });
+
+			await userEvent.click(getByTestId('trial-intro-start-building-button'));
+
+			expect(trialIntroModalStore.trackModalInteraction).toHaveBeenCalledWith('start_building');
+			expect(uiStore.closeModal).toHaveBeenCalledWith(TRIAL_INTRO_MODAL_KEY);
+		});
+
+		it('tracks close with the step it happened on', async () => {
+			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
+
+			const { getByTestId } = renderComponent({ pinia });
+			await goToStepTwo(getByTestId);
+
+			await userEvent.click(getByTestId('trial-intro-close-button'));
+
+			expect(trialIntroModalStore.trackModalInteraction).toHaveBeenCalledWith('close', {
+				step: 2,
+			});
+			expect(mockCloseDialog).toHaveBeenCalled();
+		});
+
+		it('tracks the final upgrade click with the selected period', async () => {
+			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
+
+			const { getByTestId } = renderComponent({ pinia });
+			await goToStepTwo(getByTestId);
+			await userEvent.click(getByTestId('trial-intro-period-monthly'));
+
+			await userEvent.click(getByTestId('trial-intro-upgrade-cta'));
+
+			expect(trialIntroModalStore.trackUpgradeCtaClicked).toHaveBeenCalledWith('monthly');
+		});
 	});
 });

@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	TRIAL_INTRO_MODAL_KEY,
-	TRIAL_INTRO_UPGRADE_SOURCE,
-} from '@/experiments/trialIntroModal/constants';
+import { TRIAL_INTRO_MODAL_KEY } from '@/experiments/trialIntroModal/constants';
 import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 import { useTrialCountdown } from '@/experiments/trialIntroModal/useTrialCountdown';
-import { N8nBadge, N8nButton, N8nCallout, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nCallout,
+	N8nHeading,
+	N8nIcon,
+	N8nLogo,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 
 const props = defineProps<{
@@ -21,9 +24,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const telemetry = useTelemetry();
 const uiStore = useUIStore();
-const settingsStore = useSettingsStore();
 const cloudPlanStore = useCloudPlanStore();
 const trialIntroModalStore = useTrialIntroModalStore();
 const { countdownText } = useTrialCountdown();
@@ -38,6 +39,10 @@ watch(step, (value) => trialIntroModalStore.trackModalViewed(value));
 
 onMounted(() => {
 	trialIntroModalStore.trackModalViewed(1);
+});
+
+onBeforeUnmount(() => {
+	trialIntroModalStore.completeModalPresentation();
 });
 
 const aiCredits = computed(
@@ -67,18 +72,34 @@ function formatPrice(amount: number) {
 }
 
 function onStartBuilding() {
+	trialIntroModalStore.trackModalInteraction('start_building');
 	uiStore.closeModal(modalName.value);
 }
 
+function onUpgradeNow() {
+	trialIntroModalStore.trackModalInteraction('upgrade_now');
+	step.value = 2;
+}
+
+function onBack() {
+	trialIntroModalStore.trackModalInteraction('back');
+	step.value = 1;
+}
+
+function onClose(closeDialog: () => void) {
+	trialIntroModalStore.trackModalInteraction('close', { step: step.value });
+	closeDialog();
+}
+
+function onSelectPeriod(value: 'annual' | 'monthly') {
+	if (period.value !== value) {
+		trialIntroModalStore.trackModalInteraction('period_selected', { period: value });
+	}
+	period.value = value;
+}
+
 async function onUpgradeClick() {
-	telemetry.track('User clicked upgrade CTA', {
-		source: TRIAL_INTRO_UPGRADE_SOURCE,
-		isTrial: cloudPlanStore.userIsTrialing,
-		deploymentType: settingsStore.deploymentType,
-		trialDaysLeft: cloudPlanStore.trialDaysLeft,
-		executionsLeft: cloudPlanStore.usageLeft.executionsLeft,
-		workflowsLeft: cloudPlanStore.usageLeft.workflowsLeft,
-	});
+	trialIntroModalStore.trackUpgradeCtaClicked(period.value);
 	const link = await cloudPlanStore.generateCloudDashboardAutoLoginLink({
 		redirectionPath: trialIntroModalStore.buildUpgradeReturnPath(period.value),
 	});
@@ -92,13 +113,36 @@ async function onUpgradeClick() {
 		width="560px"
 		:center="false"
 		:event-bus="modalBus"
-		:close-on-click-modal="true"
-		:close-on-press-escape="true"
+		:show-close="false"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
 	>
-		<template #content>
-			<div v-if="step === 1" :class="$style.content" data-test-id="trial-intro-step-1">
-				<div v-if="countdownText" :class="$style.topRow">
-					<span :class="$style.countdownPill" data-test-id="trial-intro-countdown-pill">
+		<template #header="{ closeDialog }">
+			<div :class="$style.modalHeader">
+				<N8nLogo
+					v-if="step === 1"
+					size="small"
+					:collapsed="true"
+					:class="$style.headerLogo"
+					data-test-id="trial-intro-logo"
+				/>
+				<N8nButton
+					v-if="step === 2"
+					:class="$style.headerIconButton"
+					variant="ghost"
+					size="small"
+					icon="arrow-left"
+					icon-only
+					:aria-label="i18n.baseText('experiments.trialIntroModal.step2.back')"
+					data-test-id="trial-intro-back-button"
+					@click="onBack"
+				/>
+				<div :class="$style.headerActions">
+					<span
+						v-if="step === 1 && countdownText"
+						:class="$style.countdownPill"
+						data-test-id="trial-intro-countdown-pill"
+					>
 						<N8nIcon icon="clock" size="xsmall" :class="$style.pillIcon" />
 						{{
 							i18n.baseText('experiments.trialIntroModal.endsIn', {
@@ -106,11 +150,30 @@ async function onUpgradeClick() {
 							})
 						}}
 					</span>
+					<N8nButton
+						:class="$style.headerIconButton"
+						variant="ghost"
+						size="small"
+						icon="x"
+						icon-only
+						:aria-label="i18n.baseText('generic.close')"
+						data-test-id="trial-intro-close-button"
+						@click="onClose(closeDialog)"
+					/>
 				</div>
-				<N8nText tag="p" size="xsmall" :bold="true" color="text-light" :class="$style.eyebrow">
+			</div>
+		</template>
+		<template #content>
+			<div
+				v-if="step === 1"
+				:class="$style.content"
+				data-test-id="trial-intro-step-1"
+				@keydown.esc.stop
+			>
+				<N8nText tag="p" size="small" color="text-base" :class="$style.welcomeLabel">
 					{{ i18n.baseText('experiments.trialIntroModal.eyebrow') }}
 				</N8nText>
-				<N8nHeading tag="h1" size="2xlarge" :bold="true" :class="$style.title">
+				<N8nHeading tag="h1" size="xlarge" :bold="true" :class="$style.trialLead">
 					<I18nT keypath="experiments.trialIntroModal.title" tag="span" scope="global">
 						<template #highlight>
 							<span :class="$style.titleHighlight">{{
@@ -128,7 +191,9 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-ai-credits"
 					>
-						<N8nIcon icon="sparkles" :size="22" :class="$style.statIcon" />
+						<span :class="[$style.statIconTile, $style.statIconTileAi]">
+							<N8nIcon icon="sparkles" size="medium" />
+						</span>
 						<N8nHeading tag="div" size="large" :bold="true">{{
 							aiCredits.toLocaleString()
 						}}</N8nHeading>
@@ -141,7 +206,9 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-executions"
 					>
-						<N8nIcon icon="refresh-cw" :size="22" :class="$style.statIcon" />
+						<span :class="[$style.statIconTile, $style.statIconTileExecutions]">
+							<N8nIcon icon="play" size="medium" />
+						</span>
 						<N8nHeading tag="div" size="large" :bold="true">{{
 							executionsLimit.toLocaleString()
 						}}</N8nHeading>
@@ -154,7 +221,9 @@ async function onUpgradeClick() {
 						:class="$style.statCard"
 						data-test-id="trial-intro-stat-days"
 					>
-						<N8nIcon icon="calendar" :size="22" :class="$style.statIcon" />
+						<span :class="[$style.statIconTile, $style.statIconTileDays]">
+							<N8nIcon icon="calendar" size="medium" />
+						</span>
 						<N8nHeading tag="div" size="large" :bold="true">{{
 							trialDays.toLocaleString()
 						}}</N8nHeading>
@@ -172,16 +241,7 @@ async function onUpgradeClick() {
 					</span>
 				</N8nCallout>
 			</div>
-			<div v-else :class="$style.content" data-test-id="trial-intro-step-2">
-				<button
-					type="button"
-					:class="$style.backButton"
-					data-test-id="trial-intro-back-button"
-					@click="step = 1"
-				>
-					<N8nIcon icon="chevron-left" size="small" />
-					{{ i18n.baseText('experiments.trialIntroModal.step2.back') }}
-				</button>
+			<div v-else :class="$style.content" data-test-id="trial-intro-step-2" @keydown.esc.stop>
 				<N8nHeading tag="h1" size="xlarge" :bold="true">
 					{{ i18n.baseText('experiments.trialIntroModal.step2.title') }}
 				</N8nHeading>
@@ -194,7 +254,7 @@ async function onUpgradeClick() {
 						:class="$style.comparisonRow"
 						data-test-id="trial-intro-row-executions"
 					>
-						<N8nIcon icon="refresh-cw" size="small" :class="$style.rowIcon" />
+						<N8nIcon icon="play" size="small" :class="$style.rowIcon" />
 						<span :class="$style.rowLabel">
 							{{ i18n.baseText('experiments.trialIntroModal.step2.executions') }}
 						</span>
@@ -233,15 +293,21 @@ async function onUpgradeClick() {
 						:aria-checked="period === 'annual'"
 						:class="[$style.periodCard, period === 'annual' ? $style.periodCardSelected : '']"
 						data-test-id="trial-intro-period-annual"
-						@click="period = 'annual'"
-						@keydown.enter="period = 'annual'"
-						@keydown.space.prevent="period = 'annual'"
+						@click="onSelectPeriod('annual')"
+						@keydown.enter="onSelectPeriod('annual')"
+						@keydown.space.prevent="onSelectPeriod('annual')"
 					>
 						<span :class="$style.radioDot" />
 						<N8nText size="medium" :bold="true">
 							{{ i18n.baseText('experiments.trialIntroModal.step2.annual') }}
 						</N8nText>
-						<N8nBadge theme="success" data-test-id="trial-intro-save-badge">
+						<N8nBadge
+							theme="success"
+							:bold="true"
+							:show-border="false"
+							:class="$style.savingsBadge"
+							data-test-id="trial-intro-save-badge"
+						>
 							{{ savingsLabel }}
 						</N8nBadge>
 						<div
@@ -266,9 +332,9 @@ async function onUpgradeClick() {
 						:aria-checked="period === 'monthly'"
 						:class="[$style.periodCard, period === 'monthly' ? $style.periodCardSelected : '']"
 						data-test-id="trial-intro-period-monthly"
-						@click="period = 'monthly'"
-						@keydown.enter="period = 'monthly'"
-						@keydown.space.prevent="period = 'monthly'"
+						@click="onSelectPeriod('monthly')"
+						@keydown.enter="onSelectPeriod('monthly')"
+						@keydown.space.prevent="onSelectPeriod('monthly')"
 					>
 						<span :class="$style.radioDot" />
 						<N8nText size="medium" :bold="true">
@@ -297,7 +363,7 @@ async function onUpgradeClick() {
 				>
 					{{ i18n.baseText('experiments.trialIntroModal.startBuilding') }}
 				</N8nButton>
-				<N8nButton data-test-id="trial-intro-upgrade-now-button" @click="step = 2">
+				<N8nButton data-test-id="trial-intro-upgrade-now-button" @click="onUpgradeNow">
 					{{ i18n.baseText('experiments.trialIntroModal.upgradeNow') }}
 				</N8nButton>
 			</div>
@@ -319,10 +385,35 @@ async function onUpgradeClick() {
 	flex-direction: column;
 }
 
-.topRow {
+.modalHeader {
 	display: flex;
-	justify-content: flex-end;
-	margin-bottom: var(--spacing--sm);
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	min-height: var(--height--sm);
+}
+
+.headerActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
+}
+
+.headerIconButton {
+	--button--color: var(--color--info);
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+
+	&:hover,
+	&:active {
+		--button--color: var(--color--primary);
+	}
+}
+
+.welcomeLabel {
+	margin-bottom: var(--spacing--2xs);
+	font-weight: var(--font-weight--medium);
 }
 
 .countdownPill {
@@ -330,25 +421,26 @@ async function onUpgradeClick() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--5xs) var(--spacing--2xs);
-	border: var(--border);
+	border: var(--border-width) var(--border-style) var(--border-color--warning);
 	border-radius: var(--radius--full);
-	background: var(--background--subtle);
-	color: var(--text-color--subtle);
+	background: var(--background--warning);
+	color: var(--text-color--warning);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--medium);
+	font-weight: var(--font-weight--bold);
 	font-variant-numeric: tabular-nums;
+}
+
+.headerLogo {
+	display: flex;
+	align-items: center;
 }
 
 .pillIcon {
 	color: var(--icon-color);
 }
 
-.eyebrow {
-	margin-bottom: var(--spacing--4xs);
-}
-
-.title {
-	letter-spacing: var(--letter-spacing--tight);
+.trialLead {
+	margin: 0;
 }
 
 .titleHighlight {
@@ -356,7 +448,7 @@ async function onUpgradeClick() {
 }
 
 .subtitle {
-	margin-top: var(--spacing--4xs);
+	margin-top: var(--spacing--2xs);
 	margin-bottom: var(--spacing--md);
 }
 
@@ -382,8 +474,29 @@ async function onUpgradeClick() {
 	}
 }
 
-.statIcon {
-	color: var(--text-color--subtle);
+.statIconTile {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	margin: 0 auto;
+	border-radius: var(--radius--lg);
+}
+
+.statIconTileAi {
+	background: linear-gradient(135deg, var(--color--purple-400), var(--color--purple-600));
+	color: var(--color--neutral-white);
+}
+
+.statIconTileExecutions {
+	background: var(--color--purple-50);
+	color: var(--color--purple-500);
+}
+
+.statIconTileDays {
+	background: var(--color--red-50);
+	color: var(--color--red-500);
 }
 
 .calloutTitle {
@@ -393,24 +506,6 @@ async function onUpgradeClick() {
 
 .calloutBody {
 	display: block;
-}
-
-.backButton {
-	display: inline-flex;
-	align-items: center;
-	align-self: flex-start;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--sm);
-	padding: 0;
-	border: none;
-	background: none;
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--xs);
-	cursor: pointer;
-
-	&:hover {
-		color: var(--text-color);
-	}
 }
 
 .comparisonRows {
@@ -452,7 +547,7 @@ async function onUpgradeClick() {
 }
 
 .rowNewValue {
-	color: var(--text-color--success);
+	color: var(--color--success);
 	font-weight: var(--font-weight--bold);
 	font-variant-numeric: tabular-nums;
 }
@@ -521,6 +616,13 @@ async function onUpgradeClick() {
 .priceBlock {
 	margin-left: auto;
 	text-align: right;
+}
+
+.savingsBadge {
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--radius--full);
+	background: var(--color--success);
+	color: var(--button--color--text--success);
 }
 
 .footer {

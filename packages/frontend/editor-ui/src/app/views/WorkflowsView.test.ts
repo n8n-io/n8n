@@ -10,6 +10,7 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -469,13 +470,24 @@ describe('WorkflowsView', () => {
 	});
 
 	describe('trial intro modal', () => {
-		it('calls openIfEligible after mount', async () => {
+		it('opens once eligibility is available and the modal stack is clear', async () => {
 			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
+			const uiStore = mockedStore(useUIStore);
+			trialIntroModalStore.openIfEligible.mockReturnValue(true);
+			trialIntroModalStore.shouldShowModal = false;
+			uiStore.isAnyModalOpen = true;
 
 			renderComponent({ pinia });
-			await waitAllPromises();
+			await nextTick();
+			expect(trialIntroModalStore.openIfEligible).not.toHaveBeenCalled();
 
-			expect(trialIntroModalStore.openIfEligible).toHaveBeenCalled();
+			trialIntroModalStore.shouldShowModal = true;
+			await nextTick();
+			expect(trialIntroModalStore.openIfEligible).not.toHaveBeenCalled();
+
+			uiStore.isAnyModalOpen = false;
+			await nextTick();
+			expect(trialIntroModalStore.openIfEligible).toHaveBeenCalledTimes(1);
 		});
 	});
 });

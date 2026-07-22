@@ -42,6 +42,9 @@ vi.mock('@/app/stores/settings.store', () => ({
 		get isCloudDeployment() {
 			return mockIsCloudDeployment;
 		},
+		get deploymentType() {
+			return mockIsCloudDeployment ? 'cloud' : 'default';
+		},
 	}),
 }));
 
@@ -64,6 +67,7 @@ vi.mock('@/app/stores/cloudPlan.store', () => ({
 		get currentPlanData() {
 			return mockCurrentPlanData;
 		},
+		usageLeft: { workflowsLeft: 3, executionsLeft: 950 },
 	}),
 }));
 
@@ -204,11 +208,31 @@ describe('trialIntroModal store', () => {
 		});
 	});
 
+	describe('shouldSuppressTrialBackground', () => {
+		it('is true while a showable modal is waiting to open with an empty modal stack', () => {
+			expect(store.shouldSuppressTrialBackground).toBe(true);
+		});
+
+		it('is false while another modal is already open', () => {
+			mockIsAnyModalOpen = true;
+
+			expect(store.shouldSuppressTrialBackground).toBe(false);
+		});
+
+		it('stops suppressing after the modal presentation completes', () => {
+			expect(store.openIfEligible()).toBe(true);
+			expect(store.shouldSuppressTrialBackground).toBe(true);
+
+			store.completeModalPresentation();
+
+			expect(store.shouldSuppressTrialBackground).toBe(false);
+		});
+	});
+
 	describe('starterOffer', () => {
 		it('exposes the upgrade offer fetched from the dedicated endpoint', async () => {
 			vi.mocked(getUpgradeOffer).mockResolvedValue({
 				slug: 'starter',
-				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 				currency: { code: 'USD', symbol: '$', position: 'prefix' },
 			});
@@ -217,7 +241,6 @@ describe('trialIntroModal store', () => {
 
 			expect(store.starterOffer).toEqual({
 				slug: 'starter',
-				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 				currency: { code: 'USD', symbol: '$', position: 'prefix' },
 			});
@@ -232,7 +255,6 @@ describe('trialIntroModal store', () => {
 		it('reflects the upgrade offer currency', async () => {
 			vi.mocked(getUpgradeOffer).mockResolvedValue({
 				slug: 'starter',
-				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 				currency: { code: 'EUR', symbol: '€', position: 'suffix' },
 			});
@@ -274,7 +296,6 @@ describe('trialIntroModal store', () => {
 		it('stores a valid offer', async () => {
 			vi.mocked(getUpgradeOffer).mockResolvedValue({
 				slug: 'starter',
-				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 			});
 
@@ -282,7 +303,6 @@ describe('trialIntroModal store', () => {
 
 			expect(store.starterOffer).toEqual({
 				slug: 'starter',
-				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 			});
 		});
@@ -307,7 +327,6 @@ describe('trialIntroModal store', () => {
 			const secondCall = store.fetchUpgradeOfferOnce();
 			resolveRequest({
 				slug: 'starter',
-				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 			});
 			await Promise.all([firstCall, secondCall]);
@@ -367,10 +386,9 @@ describe('trialIntroModal store', () => {
 			};
 			vi.mocked(getUpgradeOffer).mockResolvedValue({
 				slug: 'starter',
-				displayName: 'Starter',
 				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 200 },
 				currency: { code: 'USD', symbol: '$', position: 'prefix' },
-				prices: { monthly: 10, yearlyPerMonth: 8, yearlyTotal: 96, discountPct: 20 },
+				prices: { monthly: 10, yearlyPerMonth: 8, discountPct: 20 },
 			});
 			await store.fetchUpgradeOfferOnce();
 
@@ -381,13 +399,12 @@ describe('trialIntroModal store', () => {
 				trial_days_left: 7,
 				executions_limit: 1000,
 				ai_credits: 500,
-				has_prices: true,
 				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
 				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
 			});
 		});
 
-		it('reports undefined quotas and has_prices false without plan or offer data', () => {
+		it('reports undefined quotas without plan data', () => {
 			store.trackModalViewed(2);
 
 			expect(mockTrack).toHaveBeenCalledWith('User viewed trial welcome modal', {
@@ -395,6 +412,97 @@ describe('trialIntroModal store', () => {
 				trial_days_left: 5,
 				executions_limit: undefined,
 				ai_credits: undefined,
+				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+			});
+		});
+	});
+
+	describe('trackModalInteraction', () => {
+		it.each([
+			['upgrade_now', 'User clicked upgrade now in trial welcome modal'],
+			['start_building', 'User clicked start building in trial welcome modal'],
+		] as const)('tracks %s without extra props', (action, eventName) => {
+			store.trackModalInteraction(action);
+
+			expect(mockTrack).toHaveBeenCalledWith(eventName, {
+				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+			});
+		});
+
+		it('tracks back with the offer state', () => {
+			store.trackModalInteraction('back');
+
+			expect(mockTrack).toHaveBeenCalledWith('User clicked back in trial welcome modal', {
+				has_prices: false,
+				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+			});
+		});
+
+		it('tracks close with the step it happened on', () => {
+			store.trackModalInteraction('close', { step: 1 });
+
+			expect(mockTrack).toHaveBeenCalledWith('User closed trial welcome modal', {
+				step: 1,
+				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+			});
+
+			store.trackModalInteraction('close', { step: 2 });
+
+			expect(mockTrack).toHaveBeenCalledWith('User closed trial welcome modal', {
+				step: 2,
+				has_prices: false,
+				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+			});
+		});
+
+		it('tracks period selection with the period and offer state', () => {
+			store.trackModalInteraction('period_selected', { period: 'monthly' });
+
+			expect(mockTrack).toHaveBeenCalledWith('User selected billing period in trial welcome modal', {
+				period: 'monthly',
+				has_prices: false,
+				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+			});
+		});
+
+		it('reports has_prices true once the offer with prices is loaded', async () => {
+			vi.mocked(getUpgradeOffer).mockResolvedValue({
+				slug: 'starter',
+				quotas: { monthlyExecutionsLimit: 2500, instanceAiCredits: 2300 },
+				currency: { code: 'EUR', symbol: '€', position: 'suffix' },
+				prices: { monthly: 24, yearlyPerMonth: 18, discountPct: 25 },
+			});
+			await store.fetchUpgradeOfferOnce();
+
+			store.trackModalInteraction('period_selected', { period: 'annual' });
+
+			expect(mockTrack).toHaveBeenCalledWith('User selected billing period in trial welcome modal', {
+				period: 'annual',
+				has_prices: true,
+				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
+			});
+		});
+	});
+
+	describe('trackUpgradeCtaClicked', () => {
+		it('tracks the shared upgrade CTA event with experiment and trial context', () => {
+			store.trackUpgradeCtaClicked('annual');
+
+			expect(mockTrack).toHaveBeenCalledWith('User clicked upgrade CTA', {
+				source: TRIAL_INTRO_UPGRADE_SOURCE,
+				isTrial: true,
+				deploymentType: 'cloud',
+				trialDaysLeft: 5,
+				executionsLeft: 950,
+				workflowsLeft: 3,
+				period: 'annual',
 				has_prices: false,
 				variant: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
 				[featureFlagProperty]: TRIAL_INTRO_MODAL_EXPERIMENT.variant,
