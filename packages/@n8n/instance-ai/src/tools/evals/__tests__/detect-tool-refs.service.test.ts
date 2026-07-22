@@ -51,7 +51,7 @@ describe('detectToolRefs', () => {
 				node({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', id: 'a' }),
 				node({
 					name: 'HTTP Tool',
-					type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+					type: 'n8n-nodes-base.httpRequestTool',
 					id: 'h',
 					parameters: { url: "={{ $('Webhook').item.json.endpoint }}" },
 				}),
@@ -160,7 +160,7 @@ describe('detectToolRefs', () => {
 				node({ name: 'Downstream', type: 'n8n-nodes-base.set', id: 'd' }),
 				node({
 					name: 'Tool',
-					type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+					type: 'n8n-nodes-base.httpRequestTool',
 					id: 't',
 					parameters: { url: "={{ $('Downstream').item.json.value }}" },
 				}),
@@ -183,7 +183,7 @@ describe('detectToolRefs', () => {
 				node({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', id: 'a' }),
 				node({
 					name: 'Tool',
-					type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+					type: 'n8n-nodes-base.httpRequestTool',
 					id: 't',
 					parameters: { url: "={{ $('Agent').item.json.output }}" },
 				}),
@@ -205,7 +205,7 @@ describe('detectToolRefs', () => {
 				node({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent', id: 'a' }),
 				node({
 					name: 'Tool',
-					type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+					type: 'n8n-nodes-base.httpRequestTool',
 					id: 'h',
 					parameters: { url: "={{ $('Webhook').item.json.url }}" },
 				}),

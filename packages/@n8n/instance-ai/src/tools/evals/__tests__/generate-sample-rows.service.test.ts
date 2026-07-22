@@ -407,7 +407,7 @@ describe('runBatch', () => {
 
 describe('extractAgentContext', () => {
 	const AGENT_TYPE = '@n8n/n8n-nodes-langchain.agent';
-	const TOOL_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
+	const TOOL_TYPE = 'n8n-nodes-base.httpRequestTool';
 
 	function buildWorkflow(): WorkflowJSON {
 		return {

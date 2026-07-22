@@ -144,13 +144,28 @@
 		},
 		{
 			"parameters": {
-				"fileSelector": "nodes/Crypto/v1/test/fixtures/binary.data"
+				"fileSelector": "nodes/Crypto/v1/test/fixtures/binary.data",
+				"options": {}
 			},
 			"id": "09bbc611-c2ca-4750-94a7-d1bb4fc53a57",
 			"name": "Read Binary Files",
-			"type": "n8n-nodes-base.readBinaryFiles",
+			"type": "n8n-nodes-base.readWriteFile",
 			"typeVersion": 1,
 			"position": [-160, 40]
+		},
+		{
+			"parameters": {
+				"mode": "raw",
+				"jsonOutput": "{}",
+				"options": {
+					"includeBinary": true
+				}
+			},
+			"id": "d847d9db-5d9d-4cf3-8e2d-78a86f41c3e1",
+			"name": "Clear File Metadata",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.3,
+			"position": [20, 40]
 		},
 		{
 			"parameters": {
@@ -321,6 +336,17 @@
 			"main": [[]]
 		},
 		"Read Binary Files": {
+			"main": [
+				[
+					{
+						"node": "Clear File Metadata",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Clear File Metadata": {
 			"main": [
 				[
 					{

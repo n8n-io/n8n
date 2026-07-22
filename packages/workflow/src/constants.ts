@@ -83,7 +83,6 @@ export const NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT = new Set([
 ]);
 
 //@n8n/n8n-nodes-langchain
-export const MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const AGENT_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const CHAIN_LLM_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainLlm';
 export const OPENAI_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.openAi';
@@ -93,8 +92,8 @@ export const CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE =
 export const AGENT_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.agentTool';
 export const CODE_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolCode';
 export const WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolWorkflow';
+export const HTTP_REQUEST_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
 export const RETRIEVER_WORKFLOW_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.retrieverWorkflow';
-export const HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 export const CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.chatTrigger';
 /** Trailing segment of the path a Chat trigger registers its webhooks under: `{webhookId}/chat`. */
 export const CHAT_TRIGGER_PATH_SUFFIX = 'chat';
@@ -119,7 +118,8 @@ export const MINIMAX_LANGCHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.minimax';
 // `classifyTriggerIdentity` checks parameter-by-parameter (IAM-1238).
 export const MANUAL_TRIGGER_NODE_TYPES: readonly string[] = [
 	MANUAL_TRIGGER_NODE_TYPE,
-	MANUAL_CHAT_TRIGGER_LANGCHAIN_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	MCP_TRIGGER_NODE_TYPE,
 ];
 
 export const AI_VENDOR_NODE_TYPES = [
@@ -146,7 +146,6 @@ export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
 export const LANGCHAIN_CUSTOM_TOOLS = [
 	CODE_TOOL_LANGCHAIN_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
-	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 ];
 
 export const SEND_AND_WAIT_OPERATION = 'sendAndWait';

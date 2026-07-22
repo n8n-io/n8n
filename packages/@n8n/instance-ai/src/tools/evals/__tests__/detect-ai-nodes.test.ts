@@ -46,7 +46,7 @@ describe('detectAiNodes', () => {
 				{ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 				{ name: 'Memory', type: '@n8n/n8n-nodes-langchain.memoryBufferWindow' },
 				{ name: 'Chat Model', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' },
-				{ name: 'Search Tool', type: '@n8n/n8n-nodes-langchain.toolSerpApi' },
+				{ name: 'Calculator Tool', type: '@n8n/n8n-nodes-langchain.toolCalculator' },
 				{ name: 'Embeddings', type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi' },
 				{ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
 			]),

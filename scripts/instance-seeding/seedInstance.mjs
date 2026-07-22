@@ -521,11 +521,21 @@ function workflowNodes({ theme, credPick, subWorkflowIds, dataTableRef, centralD
 				lastNode = 'GitHub';
 			} else if (httpCred.type === 'openAiApi') {
 				nodes.push({
-					parameters: { resource: 'text', operation: 'message', model: 'gpt-4o-mini' },
+					parameters: {
+						modelId: {
+							__rl: true,
+							value: 'gpt-4o-mini',
+							mode: 'list',
+							cachedResultName: 'GPT-4O-MINI',
+						},
+						responses: { values: [{ content: 'hello' }] },
+						builtInTools: {},
+						options: {},
+					},
 					id: rand(36),
 					name: 'OpenAI',
-					type: 'n8n-nodes-base.openAi',
-					typeVersion: 1.3,
+					type: '@n8n/n8n-nodes-langchain.openAi',
+					typeVersion: 2.3,
 					position: [680, 300],
 					credentials: { openAiApi: { id: httpCred.id, name: httpCred.name } },
 				});

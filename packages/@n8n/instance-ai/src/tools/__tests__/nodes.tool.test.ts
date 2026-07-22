@@ -140,7 +140,7 @@ describe('nodes tool', () => {
 		it('should forward n8nConnectOnly to nodeService.listAvailable', async () => {
 			const nodes = [
 				{
-					name: 'n8n-nodes-base.openAi',
+					name: '@n8n/n8n-nodes-langchain.openAi',
 					displayName: 'OpenAI',
 					description: 'Use OpenAI',
 					group: ['transform'],
