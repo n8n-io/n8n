@@ -47,9 +47,11 @@ describe('SingleInstanceLibsRule', () => {
 		expect(violations.map((v) => v.message).join()).toContain('form-data');
 	});
 
+	// `@n8n/config` is a non-host package not in REQUIRED_CURATED_PEERS, so these exercise the
+	// catalog-shape check in isolation from the dropped-peer guard below.
 	it('does not flag a curated lib declared as a catalog: peerDependency', async () => {
-		writePackage(tmpDir, 'packages/@n8n/api-types', {
-			name: '@n8n/api-types',
+		writePackage(tmpDir, 'packages/@n8n/config', {
+			name: '@n8n/config',
 			peerDependencies: { zod: 'catalog:' },
 			devDependencies: { zod: 'catalog:' },
 		});
@@ -57,8 +59,8 @@ describe('SingleInstanceLibsRule', () => {
 	});
 
 	it('flags a curated peerDependency that is not catalog:', async () => {
-		writePackage(tmpDir, 'packages/@n8n/api-types', {
-			name: '@n8n/api-types',
+		writePackage(tmpDir, 'packages/@n8n/config', {
+			name: '@n8n/config',
 			peerDependencies: { zod: '^3.25.0' },
 		});
 		const violations = await rule.analyze(context());
@@ -71,8 +73,8 @@ describe('SingleInstanceLibsRule', () => {
 	it.each(['@langchain/core', 'reflect-metadata'])(
 		'flags a non-zod curated peerDependency (%s) that is not catalog:',
 		async (lib) => {
-			writePackage(tmpDir, 'packages/@n8n/api-types', {
-				name: '@n8n/api-types',
+			writePackage(tmpDir, 'packages/@n8n/config', {
+				name: '@n8n/config',
 				peerDependencies: { [lib]: '^1.0.0' },
 			});
 			const violations = await rule.analyze(context());
@@ -81,6 +83,26 @@ describe('SingleInstanceLibsRule', () => {
 			expect(violations[0].message).toContain('must use "catalog:"');
 		},
 	);
+
+	// Dropped-peer guard: `@n8n/api-types` is in REQUIRED_CURATED_PEERS.zod.
+	it('flags a required package that dropped its curated peerDependency', async () => {
+		writePackage(tmpDir, 'packages/@n8n/api-types', {
+			name: '@n8n/api-types',
+			dependencies: { lodash: '^4.0.0' },
+		});
+		const violations = await rule.analyze(context());
+		expect(violations).toHaveLength(1);
+		expect(violations[0].message).toContain('zod');
+		expect(violations[0].message).toContain('required single-instance peer');
+	});
+
+	it('does not flag a required package that still declares its curated peer', async () => {
+		writePackage(tmpDir, 'packages/@n8n/api-types', {
+			name: '@n8n/api-types',
+			peerDependencies: { zod: 'catalog:' },
+		});
+		expect(await rule.analyze(context())).toHaveLength(0);
+	});
 
 	it('exempts host packages', async () => {
 		writePackage(tmpDir, 'packages/cli', { name: 'n8n', dependencies: { zod: 'catalog:' } });

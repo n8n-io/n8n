@@ -8,6 +8,7 @@ import {
 	HOST_PACKAGES,
 	PEER_LIBS,
 } from '../single-instance/libs.js';
+import { REQUIRED_CURATED_PEERS } from '../single-instance/required-peers.js';
 import {
 	findPackageJsonFiles,
 	parsePackageJson,
@@ -37,9 +38,20 @@ export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 		const { rootDir } = context;
 		const files = await findPackageJsonFiles(rootDir);
 		const violations: Violation[] = [];
+		// packageName -> { file, curated libs it declares as peers } — feeds the dropped-peer pass.
+		const declaredPeers = new Map<string, { file: string; libs: Set<string> }>();
 
 		for (const file of files) {
 			const pkg = parsePackageJson(file);
+			declaredPeers.set(pkg.packageName, {
+				file,
+				libs: new Set(
+					pkg.deps
+						.filter((d) => d.section === 'peerDependencies' && CURATED_LIBS.includes(d.name))
+						.map((d) => d.name),
+				),
+			});
+
 			if (this.isExempt(pkg.packageName, relativeDir(rootDir, file))) continue;
 
 			for (const dep of pkg.deps) {
@@ -70,6 +82,25 @@ export class SingleInstanceLibsRule extends BaseRule<CodeHealthContext> {
 						),
 					);
 				}
+			}
+		}
+
+		// Dropped-peer regression guard: a package that a prior snapshot recorded as declaring a
+		// curated peer must keep declaring it. Only checked for packages present in this scan — an
+		// absent package imports nothing here, so it carries no single-instance risk.
+		for (const [lib, requiredPackages] of Object.entries(REQUIRED_CURATED_PEERS)) {
+			for (const packageName of requiredPackages) {
+				const declared = declaredPeers.get(packageName);
+				if (!declared || declared.libs.has(lib)) continue;
+				violations.push(
+					this.createViolation(
+						declared.file,
+						1,
+						1,
+						`"${packageName}" no longer declares "${lib}" as a peerDependency; it is a required single-instance peer, and dropping it lets consumers resolve a second physical copy at runtime.`,
+						`Restore the "${lib}" peerDependency (with "catalog:"), or — if the removal is intentional — update REQUIRED_CURATED_PEERS in packages/testing/code-health/src/single-instance/required-peers.ts.`,
+					),
+				);
 			}
 		}
 
