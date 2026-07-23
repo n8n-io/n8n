@@ -84,7 +84,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -982,6 +982,106 @@ describe('LmChatAnthropic', () => {
 					searchModels: expect.any(Function),
 				},
 			});
+		});
+	});
+
+	describe('prompt caching (v1.6)', () => {
+		function cacheContext(typeVersion: number, options: Record<string, unknown>) {
+			const mockContext = setupMockContext({ typeVersion });
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return options;
+				return undefined;
+			});
+			return mockContext;
+		}
+
+		it('should not set cache_control when prompt caching is disabled', async () => {
+			await lmChatAnthropic.supplyData.call(cacheContext(1.6, {}), 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ invocationKwargs: {} }),
+			);
+		});
+
+		it('should not set cache_control on pre-1.6 versions', async () => {
+			await lmChatAnthropic.supplyData.call(cacheContext(1.5, { enablePromptCaching: true }), 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ invocationKwargs: {} }),
+			);
+		});
+
+		it('should set a default 5m top-level cache_control when enabled', async () => {
+			await lmChatAnthropic.supplyData.call(cacheContext(1.6, { enablePromptCaching: true }), 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: { cache_control: { type: 'ephemeral', ttl: '5m' } },
+				}),
+			);
+		});
+
+		it('should set a 1h cache_control when Cache TTL is 1h', async () => {
+			await lmChatAnthropic.supplyData.call(
+				cacheContext(1.6, { enablePromptCaching: true, cacheTtl: '1h' }),
+				0,
+			);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: { cache_control: { type: 'ephemeral', ttl: '1h' } },
+				}),
+			);
+		});
+
+		it('should add cache_control alongside thinking invocationKwargs', async () => {
+			await lmChatAnthropic.supplyData.call(
+				cacheContext(1.6, {
+					enablePromptCaching: true,
+					thinking: true,
+					thinkingMode: 'adaptive',
+					effort: 'high',
+				}),
+				0,
+			);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: expect.objectContaining({
+						thinking: { type: 'adaptive' },
+						cache_control: { type: 'ephemeral', ttl: '5m' },
+					}),
+				}),
+			);
+		});
+
+		it('should describe Enable Prompt Caching and Cache TTL options gated to v1.6+', () => {
+			const properties = lmChatAnthropic.description.properties;
+			const optionsField = properties.find((p) => p.name === 'options' && p.type === 'collection');
+			const innerOptions = (optionsField as { options: INodeProperties[] }).options;
+
+			const enableField = innerOptions.find((o) => o.name === 'enablePromptCaching');
+			expect(enableField).toBeDefined();
+			expect(enableField!.type).toBe('boolean');
+			expect(enableField!.default).toBe(false);
+			expect(
+				(enableField!.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd
+					?.gte,
+			).toBe(1.6);
+
+			const ttlField = innerOptions.find((o) => o.name === 'cacheTtl');
+			expect(ttlField).toBeDefined();
+			expect(ttlField!.type).toBe('options');
+			expect(ttlField!.default).toBe('5m');
+			expect(
+				(ttlField as { options: Array<{ value: string }> }).options.map((o) => o.value),
+			).toEqual(['5m', '1h']);
+			expect(ttlField!.displayOptions?.show?.enablePromptCaching).toEqual([true]);
+			expect(
+				(ttlField!.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd
+					?.gte,
+			).toBe(1.6);
 		});
 	});
 });
