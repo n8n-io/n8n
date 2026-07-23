@@ -274,7 +274,10 @@ export class McpService {
 				version: builderEnabled ? '1.1.0' : '1.0.0',
 			},
 			{
-				instructions: getMcpInstructions(builderInstructionsEnabled, n8nConnectAvailable),
+				instructions: getMcpInstructions({
+					isBuilderEnabled: builderInstructionsEnabled,
+					isN8nConnectAvailable: n8nConnectAvailable,
+				}),
 			},
 		);
 
