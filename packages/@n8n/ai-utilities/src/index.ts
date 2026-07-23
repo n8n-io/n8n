@@ -95,6 +95,7 @@ export {
 	isBaseChatMessageHistory,
 	isChatInstance,
 	isToolsInstance,
+	isVectorStore,
 } from './guards';
 
 // Types
