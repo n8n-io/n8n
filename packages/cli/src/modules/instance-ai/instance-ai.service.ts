@@ -407,6 +407,14 @@ type RunFinishErrorInfo = {
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+/**
+ * Circuit breaker for machine-started follow-up runs (verification, synthesize,
+ * replan, …). A follow-up that dies before the agent can settle its trigger
+ * (e.g. sandbox setup fails on an exhausted quota) would otherwise be re-armed
+ * by its own post-run scheduler tick, producing an unbounded error loop.
+ */
+const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
+
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 /** Collapse the frontend's typed confirmation union into the flat payload
@@ -500,6 +508,14 @@ export class InstanceAiService {
 
 	/** Per-thread promise chain that serializes schedulePlannedTasks calls. */
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
+
+	/**
+	 * Consecutive machine-started follow-up runs that errored, per thread.
+	 * Gates `startInternalFollowUpRun` so a follow-up whose run keeps failing
+	 * (its trigger left unsettled) cannot re-arm itself forever; reset by any
+	 * run that completes or suspends, i.e. proves the thread is healthy again.
+	 */
+	private readonly failedInternalFollowUpStreaks = new Map<string, number>();
 
 	/**
 	 * Checkpoint re-entries that could not fire when their parent-tagged child
@@ -1493,6 +1509,7 @@ export class InstanceAiService {
 		});
 
 		this.schedulerLocks.delete(threadId);
+		this.failedInternalFollowUpStreaks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
@@ -2863,6 +2880,29 @@ export class InstanceAiService {
 		);
 	}
 
+	/**
+	 * Feed the follow-up circuit breaker from a run's terminal status. Errored
+	 * machine-started follow-ups (`isInternalFollowUp`) extend the streak; any
+	 * run that completes or suspends proves the thread executes again and
+	 * resets it. Cancelled runs carry no signal either way.
+	 */
+	private updateInternalFollowUpFailureStreak(
+		threadId: string,
+		status: MessageTraceFinalization['status'] | undefined,
+		isInternalFollowUp: boolean,
+	): void {
+		if (status === 'completed' || status === 'suspended') {
+			this.failedInternalFollowUpStreaks.delete(threadId);
+			return;
+		}
+		if (status === 'error' && isInternalFollowUp) {
+			this.failedInternalFollowUpStreaks.set(
+				threadId,
+				(this.failedInternalFollowUpStreaks.get(threadId) ?? 0) + 1,
+			);
+		}
+	}
+
 	private async startInternalFollowUpRun(
 		user: User,
 		threadId: string,
@@ -2875,6 +2915,16 @@ export class InstanceAiService {
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
+			return '';
+		}
+
+		const failedStreak = this.failedInternalFollowUpStreaks.get(threadId) ?? 0;
+		if (failedStreak >= MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS) {
+			this.logger.warn('Skipping internal follow-up: consecutive follow-up runs keep failing', {
+				threadId,
+				failedStreak,
+				resumeReason: resumeReasonOverride,
+			});
 			return '';
 		}
 
@@ -3982,6 +4032,13 @@ export class InstanceAiService {
 					this.liveness.consumeRunTimeout(runId);
 				}
 			}
+			// Must precede the reschedule below: the next tick consults the streak
+			// before re-arming another follow-up for the same unsettled trigger.
+			this.updateInternalFollowUpFailureStreak(
+				threadId,
+				messageTraceFinalization?.status,
+				resumeReason !== undefined,
+			);
 			// Post-run planned-task wiring (only when the run is actually ending,
 			// not when it merely suspended for HITL):
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
@@ -5138,6 +5195,13 @@ export class InstanceAiService {
 					this.liveness.consumeRunTimeout(opts.runId);
 				}
 			}
+			// Resumed runs are user-driven, so they never extend the failure
+			// streak — but a healthy one resets it before the reschedule below.
+			this.updateInternalFollowUpFailureStreak(
+				opts.threadId,
+				messageTraceFinalization?.status,
+				false,
+			);
 			// Post-run planned-task wiring — mirror the executeRun finally.
 			// Resumed ordinary-chat runs also need to drive the scheduler in case
 			// a background task settled while they were active or suspended and
