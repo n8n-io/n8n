@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/NodeRecommendationModal.test.ts
+  s_016909303f0252::t_2100f9c3a06fbd 58-59,71,77
+  s_016909303f0252::t_383197c17de63c 1,3-47,60-70,72-76,78-83
+  s_016909303f0252::t_f0fd19ff9cac83 2,48-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7d840a35b20da79acdebb061e8561c8b1c987eda",
+  "prompts": {},
+  "sessions": {
+    "s_016909303f0252": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13f237f5-5620-4811-93b0-d8dad4a05b6b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
