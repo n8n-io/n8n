@@ -1,5 +1,6 @@
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { User } from '@n8n/db';
+import z from 'zod';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -41,6 +42,19 @@ describe('search-workflow-nodes MCP tool', () => {
 		aiGatewayService.isAvailable.mockResolvedValue({ available: false });
 		nodeCatalogService.searchNodes.mockResolvedValue({
 			results: 'search-result',
+			items: [
+				{
+					queryIndex: 0,
+					query: 'gmail',
+					nodeType: 'n8n-nodes-base.gmail',
+					displayName: 'Gmail',
+					package: 'n8n-nodes-base',
+					versions: [2, 2.1],
+					groups: ['communication'],
+					isTrigger: false,
+					relation: 'primary',
+				},
+			],
 			queriesWithNoResults: [],
 		});
 	});
@@ -48,9 +62,24 @@ describe('search-workflow-nodes MCP tool', () => {
 	const createTool = () =>
 		createSearchWorkflowNodesTool(user, nodeCatalogService, telemetry, aiGatewayService);
 
+	test('preserves the existing tool name and input schema', () => {
+		const tool = createTool();
+
+		expect(tool.name).toBe('search_workflow_nodes');
+		expect(Object.keys(tool.config.inputSchema ?? {})).toEqual(['queries']);
+	});
+
 	test('returns search results and tracks queries with no results', async () => {
 		nodeCatalogService.searchNodes.mockResolvedValueOnce({
 			results: 'search-result',
+			items: [
+				{
+					queryIndex: 0,
+					query: 'gmail',
+					nodeType: 'n8n-nodes-base.gmail',
+					relation: 'primary',
+				},
+			],
 			queriesWithNoResults: ['missing-node'],
 		});
 
@@ -59,7 +88,21 @@ describe('search-workflow-nodes MCP tool', () => {
 
 		expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail', 'missing-node']);
 		expect(result.content).toEqual([{ type: 'text', text: 'search-result' }]);
-		expect(result.structuredContent).toEqual({ results: 'search-result' });
+		expect(result.structuredContent).toEqual({
+			schemaVersion: '1.0',
+			queries: ['gmail', 'missing-node'],
+			count: 1,
+			items: [
+				{
+					queryIndex: 0,
+					query: 'gmail',
+					nodeType: 'n8n-nodes-base.gmail',
+					relation: 'primary',
+				},
+			],
+			queriesWithNoResults: ['missing-node'],
+			results: 'search-result',
+		});
 		expect(telemetry.track).toHaveBeenCalledWith(
 			USER_CALLED_MCP_TOOL_EVENT,
 			expect.objectContaining({
@@ -76,6 +119,48 @@ describe('search-workflow-nodes MCP tool', () => {
 				},
 			}),
 		);
+	});
+
+	test('declares and returns a strict structured output contract', async () => {
+		const tool = createTool();
+		const result = await tool.handler({ queries: ['gmail'] }, {} as never);
+		const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
+
+		expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		expect(result.structuredContent).toMatchObject({
+			schemaVersion: '1.0',
+			queries: ['gmail'],
+			count: 1,
+			queriesWithNoResults: [],
+			results: 'search-result',
+		});
+	});
+
+	test('preserves legacy content and legacy structured fields byte-for-byte', async () => {
+		const tool = createTool();
+		const result = await tool.handler({ queries: ['gmail'] }, {} as never);
+
+		expect(result.content).toEqual([{ type: 'text', text: 'search-result' }]);
+		expect(result.structuredContent?.results).toBe('search-result');
+		expect(result.structuredContent?.n8nConnect).toBeUndefined();
+	});
+
+	test('preserves duplicate query order and reports an empty result set exactly', async () => {
+		nodeCatalogService.searchNodes.mockResolvedValueOnce({
+			results: 'no-results',
+			items: [],
+			queriesWithNoResults: ['missing', 'missing'],
+		});
+		const tool = createTool();
+
+		const result = await tool.handler({ queries: ['missing', 'missing'] }, {} as never);
+
+		expect(result.structuredContent).toMatchObject({
+			queries: ['missing', 'missing'],
+			count: 0,
+			items: [],
+			queriesWithNoResults: ['missing', 'missing'],
+		});
 	});
 
 	test('tracks empty no-result metadata when every query has results', async () => {
@@ -120,6 +205,18 @@ describe('search-workflow-nodes MCP tool', () => {
 
 	describe('n8nConnect block', () => {
 		test('includes n8nConnect block when gateway is available', async () => {
+			nodeCatalogService.searchNodes.mockResolvedValueOnce({
+				results: 'search-result',
+				items: [
+					{
+						queryIndex: 0,
+						query: 'openai',
+						nodeType: '@n8n/n8n-nodes-langchain.openAi',
+						relation: 'primary',
+					},
+				],
+				queriesWithNoResults: [],
+			});
 			aiGatewayService.isAvailable.mockResolvedValue({
 				available: true,
 				config: {
@@ -133,6 +230,18 @@ describe('search-workflow-nodes MCP tool', () => {
 			const result = await tool.handler({ queries: ['openai'] }, {} as never);
 
 			expect(result.structuredContent).toEqual({
+				schemaVersion: '1.0',
+				queries: ['openai'],
+				count: 1,
+				items: [
+					{
+						queryIndex: 0,
+						query: 'openai',
+						nodeType: '@n8n/n8n-nodes-langchain.openAi',
+						relation: 'primary',
+					},
+				],
+				queriesWithNoResults: [],
 				results: 'search-result',
 				n8nConnect: {
 					credentialTypes: ['openAiApi'],
@@ -147,8 +256,15 @@ describe('search-workflow-nodes MCP tool', () => {
 
 		test('omits n8nConnect block when unavailable', async () => {
 			const tool = createTool();
-			const result = await tool.handler({ queries: ['openai'] }, {} as never);
-			expect(result.structuredContent).toEqual({ results: 'search-result' });
+			const result = await tool.handler({ queries: ['gmail'] }, {} as never);
+			expect(result.structuredContent).toMatchObject({
+				schemaVersion: '1.0',
+				queries: ['gmail'],
+				count: 1,
+				queriesWithNoResults: [],
+				results: 'search-result',
+			});
+			expect(result.structuredContent).not.toHaveProperty('n8nConnect');
 			expect((result.content[0] as { text: string }).text).toBe('search-result');
 		});
 	});

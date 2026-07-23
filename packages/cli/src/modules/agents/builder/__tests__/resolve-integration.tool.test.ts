@@ -43,19 +43,27 @@ describe('buildResolveIntegrationTool', () => {
 		const agentsToolsService = mock<AgentsToolsService>();
 		mcpRegistryService.search.mockResolvedValue([]);
 		agentsToolsService.searchAgentToolNodes.mockResolvedValue({
-			results: 'slack node results',
-			queriesWithNoResults: ['unknown'],
+			results: 'http request node results',
+			items: [
+				{
+					queryIndex: 0,
+					query: 'http request',
+					nodeType: 'n8n-nodes-base.httpRequestTool',
+					relation: 'primary',
+				},
+			],
+			queriesWithNoResults: [],
 		});
 
 		const tool = buildResolveIntegrationTool({ mcpRegistryService, agentsToolsService });
-		const result = await tool.handler!({ queries: ['slack'] }, ctx);
+		const result = await tool.handler!({ queries: ['http request'] }, ctx);
 
-		expect(mcpRegistryService.search).toHaveBeenCalledWith(['slack']);
-		expect(agentsToolsService.searchAgentToolNodes).toHaveBeenCalledWith(['slack']);
+		expect(mcpRegistryService.search).toHaveBeenCalledWith(['http request']);
+		expect(agentsToolsService.searchAgentToolNodes).toHaveBeenCalledWith(['http request']);
 		expect(result).toEqual({
 			kind: 'node',
-			results: 'slack node results',
-			queriesWithNoResults: ['unknown'],
+			results: 'http request node results',
+			queriesWithNoResults: [],
 		});
 	});
 

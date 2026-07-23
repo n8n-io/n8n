@@ -23,6 +23,7 @@ function makeService() {
 	const nodeCatalogService = mock<NodeCatalogService>();
 	nodeCatalogService.searchNodes.mockResolvedValue({
 		results: 'search-result',
+		items: [],
 		queriesWithNoResults: [],
 	});
 	nodeCatalogService.getNodeTypes.mockResolvedValue('node-types-string');
@@ -139,6 +140,7 @@ describe('AgentsToolsService', () => {
 			});
 			expect(result).toEqual({
 				results: 'search-result',
+				items: [],
 				queriesWithNoResults: [],
 			});
 		});

@@ -185,7 +185,7 @@ export class NodeCatalogService {
 			this.searchStates.set(stateKey, state);
 		}
 
-		const cacheKey = JSON.stringify([...queries].sort());
+		const cacheKey = JSON.stringify(queries);
 		const cached = state.cache.get(cacheKey);
 		if (cached) return cached;
 
