@@ -20,7 +20,7 @@ import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
 
-import './v1/controllers/tags.public.controller';
+import './v1/controllers';
 
 // Renders `x-required-scope` as a badge on each operation. swagger-ui-express
 // serializes this function's source into the page, so it must be self-contained:
@@ -143,20 +143,46 @@ interface EovApiDoc {
 
 /**
  * Test-only express-openapi-validator operation-handler resolver. It is wired in **only** under
- * Vitest (see `operationHandlers` below); production and e2e keep eov's default string resolver
- * and its synchronous `require()`, so runtime behaviour is unchanged.
+ * Vitest (see `operationHandlers` below); production and e2e keep a sync `require()` resolver
+ * so runtime behaviour stays on Node's CJS loader.
  *
  * Why it's needed in tests: eov's default resolver `require()`s each handler module, but under
  * Vitest only the `.ts` handler sources exist on disk (no `.js`) and they're served by Vite, not
  * Node's `require` — so `require()` throws and every route 500s.
- * */
+ *
+ * Both resolvers return a no-op when `x-eov-operation-handler` is absent — those routes are
+ * owned by `@PublicApiController` (mounted before eov).
+ */
 async function importOperationHandlerResolver(
 	handlersPath: string,
-	// Typed as `unknown` (then narrowed) so the signature stays assignable to eov's
-	// `resolver` type, whose `route`/`apiDoc` params are its own internal interfaces.
 	routeArg: unknown,
 	apiDocArg: unknown,
 ): Promise<unknown> {
+	return resolveOperationHandler(handlersPath, routeArg, apiDocArg, 'import');
+}
+
+function requireOperationHandlerResolver(
+	handlersPath: string,
+	routeArg: unknown,
+	apiDocArg: unknown,
+): unknown {
+	return resolveOperationHandler(handlersPath, routeArg, apiDocArg, 'require');
+}
+
+function controllerOwnedNoopHandler() {
+	return [
+		(_req: unknown, _res: unknown, next: (error?: unknown) => void) => {
+			next();
+		},
+	];
+}
+
+function resolveOperationHandler(
+	handlersPath: string,
+	routeArg: unknown,
+	apiDocArg: unknown,
+	loader: 'import' | 'require',
+): unknown | Promise<unknown> {
 	const route = routeArg as EovRoute;
 	const apiDoc = apiDocArg as EovApiDoc;
 	const pathKey = route.openApiRoute.substring(route.basePath.length);
@@ -164,27 +190,42 @@ async function importOperationHandlerResolver(
 	const operationId = operation?.['x-eov-operation-id'] ?? operation?.operationId;
 	const handlerModule = operation?.['x-eov-operation-handler'];
 
-	if (!operationId || !handlerModule) {
-		throw new UnexpectedError(
-			`Missing operation id or handler for [${route.method}] ${route.expressRoute}`,
-		);
+	if (!handlerModule) {
+		return controllerOwnedNoopHandler();
+	}
+
+	if (!operationId) {
+		throw new UnexpectedError(`Missing operation id for [${route.method}] ${route.expressRoute}`);
 	}
 
 	const modulePath = path.join(handlersPath, handlerModule);
-	// `@vite-ignore`: the path is fully dynamic, so Vite's `dynamic-import-vars` plugin can't
-	// analyze it (it throws during transform when this module is loaded under Vitest). Skipping
-	// analysis leaves a plain runtime `import()`, which the test runner and the prod CJS build
-	// (downleveled to `require`) both resolve.
-	const imported = (await import(/* @vite-ignore */ modulePath)) as Record<string, unknown> & {
-		default?: Record<string, unknown>;
-	};
-	const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
 
-	if (!handler) {
-		throw new UnexpectedError(`Could not find handler '${operationId}' in module '${modulePath}'`);
+	if (loader === 'require') {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const imported = require(modulePath) as Record<string, unknown> & {
+			default?: Record<string, unknown>;
+		};
+		const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
+		if (!handler) {
+			throw new UnexpectedError(
+				`Could not find handler '${operationId}' in module '${modulePath}'`,
+			);
+		}
+		return handler;
 	}
 
-	return handler;
+	return (async () => {
+		const imported = (await import(/* @vite-ignore */ modulePath)) as Record<string, unknown> & {
+			default?: Record<string, unknown>;
+		};
+		const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
+		if (!handler) {
+			throw new UnexpectedError(
+				`Could not find handler '${operationId}' in module '${modulePath}'`,
+			);
+		}
+		return handler;
+	})();
 }
 
 function createPublicControllerMiddleware(version: string): RequestHandler {
@@ -240,9 +281,12 @@ function createLazyValidatorMiddleware(
 						// Production/e2e use eov's default resolver (synchronous `require`). Under Vitest,
 						// where handler modules are `.ts` served by Vite, swap in an `import()`-based
 						// resolver so route handlers can load. See `importOperationHandlerResolver`.
-						operationHandlers: process.env.VITEST
-							? { basePath: handlersDirectory, resolver: importOperationHandlerResolver }
-							: handlersDirectory,
+						operationHandlers: {
+							basePath: handlersDirectory,
+							resolver: process.env.VITEST
+								? importOperationHandlerResolver
+								: requireOperationHandlerResolver,
+						},
 						validateRequests: true,
 						validateApiSpec: true,
 						fileUploader: createN8nPackageMulterOptions(globalConfig),

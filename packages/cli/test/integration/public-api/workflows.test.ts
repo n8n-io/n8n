@@ -911,7 +911,7 @@ describe('GET /workflows/:id/history', () => {
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual([]);
+		expect(response.body).toEqual({ data: [], nextCursor: null });
 	});
 
 	test('should retrieve workflow version history', async () => {
@@ -931,25 +931,20 @@ describe('GET /workflows/:id/history', () => {
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveLength(5);
-		expect(response.body[0]).toEqual({
+		expect(response.body.data).toHaveLength(5);
+		expect(response.body.nextCursor).toBeNull();
+		expect(response.body.data[0]).toEqual({
 			versionId: last.versionId,
 			workflowId: last.workflowId,
 			authors: last.authors,
 			name: last.name,
 			description: last.description,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			createdAt: expect.any(String),
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			updatedAt: expect.any(String),
 		});
-		expect(response.body[0]).not.toHaveProperty('autosaved');
-		expect(response.body[0]).not.toHaveProperty('workflowPublishHistory');
-		expect(response.body[0]).not.toHaveProperty('nodes');
-		expect(response.body[0]).not.toHaveProperty('connections');
 	});
 
-	test('should paginate with take and skip', async () => {
+	test('should paginate with limit and cursor', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await Promise.all(
 			new Array(5).fill(undefined).map(
@@ -961,19 +956,54 @@ describe('GET /workflows/:id/history', () => {
 		);
 
 		const firstPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
-			take: '2',
-			skip: '0',
+			limit: '2',
 		});
 		expect(firstPage.statusCode).toBe(200);
-		expect(firstPage.body).toHaveLength(2);
+		expect(firstPage.body.data).toHaveLength(2);
+		expect(firstPage.body.nextCursor).toBeTruthy();
 
 		const secondPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
-			take: '2',
-			skip: '2',
+			limit: '2',
+			cursor: firstPage.body.nextCursor,
 		});
 		expect(secondPage.statusCode).toBe(200);
-		expect(secondPage.body).toHaveLength(2);
-		expect(secondPage.body[0].versionId).not.toBe(firstPage.body[0].versionId);
+		expect(secondPage.body.data).toHaveLength(2);
+		expect(secondPage.body.data[0].versionId).not.toBe(firstPage.body.data[0].versionId);
+		expect(secondPage.body.nextCursor).toBeTruthy();
+
+		const thirdPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			cursor: secondPage.body.nextCursor,
+		});
+		expect(thirdPage.statusCode).toBe(200);
+		expect(thirdPage.body.data).toHaveLength(1);
+		expect(thirdPage.body.nextCursor).toBeNull();
+	});
+
+	test('should paginate with limit and offset', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await Promise.all(
+			new Array(5).fill(undefined).map(
+				async (_, i) =>
+					await createWorkflowHistoryItem(workflow.id, {
+						createdAt: new Date(Date.now() + i),
+					}),
+			),
+		);
+
+		const firstPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			limit: '2',
+			offset: '0',
+		});
+		expect(firstPage.statusCode).toBe(200);
+		expect(firstPage.body.data).toHaveLength(2);
+
+		const secondPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
+			limit: '2',
+			offset: '2',
+		});
+		expect(secondPage.statusCode).toBe(200);
+		expect(secondPage.body.data).toHaveLength(2);
+		expect(secondPage.body.data[0].versionId).not.toBe(firstPage.body.data[0].versionId);
 	});
 
 	test('should retrieve history for non-owned workflow when owner', async () => {
@@ -983,8 +1013,8 @@ describe('GET /workflows/:id/history', () => {
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveLength(1);
-		expect(response.body[0].name).toBe('Member Version');
+		expect(response.body.data).toHaveLength(1);
+		expect(response.body.data[0].name).toBe('Member Version');
 	});
 
 	test('should fail to retrieve history without read permission', async () => {
