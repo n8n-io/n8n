@@ -76,6 +76,19 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
+	describe('countByWorkflowNode', () => {
+		it('counts the jobs owned by the workflow node', async () => {
+			entityManager.count.mockResolvedValueOnce(3);
+
+			const result = await repository.countByWorkflowNode('wf', 'node');
+
+			expect(entityManager.count).toHaveBeenCalledWith(ScheduledJob, {
+				where: { workflowId: 'wf', nodeId: 'node' },
+			});
+			expect(result).toBe(3);
+		});
+	});
+
 	describe('forceDueNowByWorkflowNode', () => {
 		it('sets nextRunAt to now for the node jobs', async () => {
 			const qb = updateQb();

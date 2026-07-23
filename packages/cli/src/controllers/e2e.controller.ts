@@ -257,12 +257,8 @@ export class E2EController {
 	@Get('/scheduled-jobs/count', { skipAuth: true })
 	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const rows = await this.scheduledJobRepository.findManyByWorkflowNode(
-			this.scheduledJobRepository.manager,
-			workflowId,
-			nodeId,
-		);
-		return { count: rows.length };
+		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
+		return { count };
 	}
 
 	/** Lets a test observe a real scheduled dispatch without waiting out the job's cron interval. */
