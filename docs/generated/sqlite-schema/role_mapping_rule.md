@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "role_mapping_rule" ("id" varchar(16) PRIMARY KEY NOT NULL, "expression" text NOT NULL, "role" varchar(128) NOT NULL, "type" varchar(64) NOT NULL, "order" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "UQ_b33ac896ad3099fc8de36fdc1c4" UNIQUE ("type", "order"), CONSTRAINT "FK_bb66e404c35996b0d6946177501" FOREIGN KEY ("role") REFERENCES "role" ("slug") ON DELETE CASCADE ON UPDATE CASCADE)
+CREATE TABLE "role_mapping_rule" ("id" varchar(16) PRIMARY KEY NOT NULL, "expression" text NOT NULL, "role" varchar(128), "type" varchar(64) NOT NULL, "order" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "UQ_b33ac896ad3099fc8de36fdc1c4" UNIQUE ("type", "order"), CONSTRAINT "FK_bb66e404c35996b0d6946177501" FOREIGN KEY ("role") REFERENCES "role" ("slug") ON DELETE CASCADE ON UPDATE CASCADE)
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "role_mapping_rule" ("id" varchar(16) PRIMARY KEY NOT NULL, "expres
 | expression | TEXT |  | false |  |  |  |
 | id | varchar(16) |  | false | [role_mapping_rule_project](role_mapping_rule_project.md) |  |  |
 | order | INTEGER |  | false |  |  |  |
-| role | varchar(128) |  | false |  | [role](role.md) |  |
+| role | varchar(128) |  | true |  | [role](role.md) |  |
 | type | varchar(64) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -46,7 +46,7 @@ CREATE TABLE "role_mapping_rule" ("id" varchar(16) PRIMARY KEY NOT NULL, "expres
 erDiagram
 
 "role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"role_mapping_rule" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
+"role_mapping_rule" }o--o| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 
 "role_mapping_rule" {
   datetime_3_ createdAt

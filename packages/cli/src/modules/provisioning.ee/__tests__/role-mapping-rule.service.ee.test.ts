@@ -1,3 +1,4 @@
+import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -477,6 +478,110 @@ describe('RoleMappingRuleService', () => {
 				{ id: 'rule-new' },
 				{ order: 1 },
 			);
+		});
+	});
+
+	describe('block access', () => {
+		const blockRule = {
+			id: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+			expression: 'claims.group === "contractors"',
+			role: null,
+			type: 'instance',
+			order: 0,
+			projects: [],
+			createdAt: new Date('2025-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+		} as unknown as RoleMappingRule;
+
+		it('should create an instance rule with no role and return the sentinel', async () => {
+			roleMappingRuleRepository.save.mockImplementation(
+				async (r) => ({ ...blockRule, ...r }) as RoleMappingRule,
+			);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(blockRule);
+
+			const result = await service.create({
+				expression: blockRule.expression,
+				role: BLOCK_ACCESS_ASSIGNMENT,
+				type: 'instance',
+				order: 0,
+			});
+
+			expect(roleRepository.findOne).not.toHaveBeenCalled();
+			expect(roleMappingRuleRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ role: null }),
+			);
+			expect(result.role).toBe(BLOCK_ACCESS_ASSIGNMENT);
+		});
+
+		it('should reject block access on a project rule', async () => {
+			await expect(
+				service.create({
+					expression: 'true',
+					role: BLOCK_ACCESS_ASSIGNMENT,
+					type: 'project',
+					order: 0,
+					projectIds: ['p1'],
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should patch an existing rule to block access', async () => {
+			const existingRule = {
+				...blockRule,
+				role: globalRole,
+			} as unknown as RoleMappingRule;
+			roleMappingRuleRepository.findOne.mockImplementation(async (options) => {
+				if (options?.where && 'id' in options.where && options.where.id === blockRule.id) {
+					return { ...existingRule } as RoleMappingRule;
+				}
+				return null;
+			});
+			roleMappingRuleRepository.save.mockImplementation(async (r) => r as RoleMappingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(blockRule);
+
+			const result = await service.patch(blockRule.id, { role: BLOCK_ACCESS_ASSIGNMENT });
+
+			expect(roleMappingRuleRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ role: null }),
+			);
+			expect(result.role).toBe(BLOCK_ACCESS_ASSIGNMENT);
+		});
+
+		it('should keep block access when patching an unrelated field', async () => {
+			roleMappingRuleRepository.findOne.mockImplementation(async (options) => {
+				if (options?.where && 'id' in options.where && options.where.id === blockRule.id) {
+					return { ...blockRule } as RoleMappingRule;
+				}
+				return null;
+			});
+			roleMappingRuleRepository.save.mockImplementation(async (r) => r as RoleMappingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(blockRule);
+
+			const result = await service.patch(blockRule.id, { expression: 'claims.x === 1' });
+
+			expect(roleRepository.findOne).not.toHaveBeenCalled();
+			expect(result.role).toBe(BLOCK_ACCESS_ASSIGNMENT);
+		});
+
+		it('should reject switching a block access rule to project type', async () => {
+			roleMappingRuleRepository.findOne.mockImplementation(async (options) => {
+				if (options?.where && 'id' in options.where && options.where.id === blockRule.id) {
+					return { ...blockRule } as RoleMappingRule;
+				}
+				return null;
+			});
+
+			await expect(
+				service.patch(blockRule.id, { type: 'project', projectIds: ['p1'] }),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should list a block access rule with the sentinel role', async () => {
+			roleMappingRuleRepository.findAndCount.mockResolvedValue([[blockRule], 1]);
+
+			const result = await service.list({ skip: 0, take: 10 });
+
+			expect(result.items[0].role).toBe(BLOCK_ACCESS_ASSIGNMENT);
 		});
 	});
 

@@ -1,10 +1,12 @@
 import {
+	BLOCK_ACCESS_ASSIGNMENT,
 	CreateRoleMappingRuleDto,
 	type ListRoleMappingRuleQueryInput,
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
 import {
 	ProjectRepository,
+	type Role,
 	RoleMappingRule,
 	RoleMappingRuleRepository,
 	RoleRepository,
@@ -83,12 +85,7 @@ export class RoleMappingRuleService {
 	async create(dto: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(dto.type, dto.projectIds, []);
 
-		const role = await this.roleRepository.findOne({ where: { slug: dto.role } });
-		if (!role) {
-			throw new NotFoundError(`Could not find role with slug "${dto.role}"`);
-		}
-
-		assertRoleCompatibleWithMappingType(role, dto.type);
+		const role = await this.resolveAssignedRole(dto.role, dto.type);
 
 		const projects =
 			uniqueProjectIds.length > 0
@@ -187,7 +184,7 @@ export class RoleMappingRuleService {
 		const mergedType = dto.type ?? originalType;
 		const mergedOrder = dto.order ?? rule.order;
 		const mergedExpression = dto.expression ?? rule.expression;
-		const mergedRoleSlug = dto.role ?? rule.role.slug;
+		const mergedRoleSlug = dto.role ?? rule.role?.slug ?? BLOCK_ACCESS_ASSIGNMENT;
 
 		const fallbackProjectIds = rule.projects.map((p) => p.id);
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(
@@ -196,16 +193,7 @@ export class RoleMappingRuleService {
 			fallbackProjectIds,
 		);
 
-		const role =
-			mergedRoleSlug === rule.role.slug
-				? rule.role
-				: await this.roleRepository.findOne({ where: { slug: mergedRoleSlug } });
-
-		if (!role) {
-			throw new NotFoundError(`Could not find role with slug "${mergedRoleSlug}"`);
-		}
-
-		assertRoleCompatibleWithMappingType(role, mergedType);
+		const role = await this.resolveAssignedRole(mergedRoleSlug, mergedType, rule.role);
 
 		await this.assertOrderAvailable(mergedType, mergedOrder, id);
 
@@ -352,11 +340,41 @@ export class RoleMappingRuleService {
 		}
 	}
 
+	/**
+	 * Maps an assignment value from the API to the role to persist. The
+	 * BLOCK_ACCESS_ASSIGNMENT sentinel maps to `null` (deny login on match)
+	 * and is only valid on instance rules.
+	 */
+	private async resolveAssignedRole(
+		roleSlug: string,
+		type: 'instance' | 'project',
+		preloaded?: Role | null,
+	): Promise<Role | null> {
+		if (roleSlug === BLOCK_ACCESS_ASSIGNMENT) {
+			if (type !== 'instance') {
+				throw new BadRequestError('Block access is only supported for instance mapping rules');
+			}
+			return null;
+		}
+
+		const role =
+			preloaded && preloaded.slug === roleSlug
+				? preloaded
+				: await this.roleRepository.findOne({ where: { slug: roleSlug } });
+
+		if (!role) {
+			throw new NotFoundError(`Could not find role with slug "${roleSlug}"`);
+		}
+
+		assertRoleCompatibleWithMappingType(role, type);
+		return role;
+	}
+
 	private toResponse(loaded: RoleMappingRule): RoleMappingRuleResponse {
 		return {
 			id: loaded.id,
 			expression: loaded.expression,
-			role: loaded.role.slug,
+			role: loaded.role?.slug ?? BLOCK_ACCESS_ASSIGNMENT,
 			type: loaded.type as 'instance' | 'project',
 			order: loaded.order,
 			projectIds: loaded.projects.map((p) => p.id),

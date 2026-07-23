@@ -21,9 +21,10 @@ export class RoleMappingRule extends WithTimestampsAndStringId {
 	@Column({ type: 'text' })
 	expression: string;
 
-	@ManyToOne('Role', 'roleMappingRules')
+	/** NULL means the rule blocks access instead of assigning a role. */
+	@ManyToOne('Role', 'roleMappingRules', { nullable: true })
 	@JoinColumn({ name: 'role', referencedColumnName: 'slug' })
-	role: Role;
+	role: Role | null;
 
 	@Column({ type: String, length: 64 })
 	type: string;
