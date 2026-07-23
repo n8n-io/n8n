@@ -3,6 +3,7 @@ import type {
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
+	INodeParameterResourceLocator,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
@@ -14,6 +15,9 @@ import { getExcelSharePointCredentialType, microsoftApiRequest } from '../transp
 
 type Site = IDataObject & { id?: string; displayName?: string; webUrl?: string };
 type Drive = IDataObject & { id?: string; name?: string; webUrl?: string };
+type DriveItem = IDataObject & { id?: string; name?: string; webUrl?: string; file?: IDataObject };
+
+const WORKBOOK_EXTENSIONS = ['.xlsx', '.xlsm'];
 
 /**
  * Fetches one page of a Graph collection. An explicit `paginationToken` (a
@@ -64,6 +68,21 @@ function driveToItem(drive: Drive): INodeListSearchItems {
 		value: String(drive.id),
 		url: drive.webUrl,
 	};
+}
+
+function workbookToItem(item: DriveItem): INodeListSearchItems {
+	return {
+		name: item.name ?? String(item.id),
+		value: String(item.id),
+		url: item.webUrl,
+	};
+}
+
+function isWorkbookFile(item: DriveItem): boolean {
+	const name = String(item.name ?? '').toLowerCase();
+	return (
+		item.file !== undefined && WORKBOOK_EXTENSIONS.some((extension) => name.endsWith(extension))
+	);
 }
 
 /**
@@ -133,6 +152,44 @@ export async function searchLibraries(
 	return {
 		results: toListItems(response.value, driveToItem),
 		paginationToken: response['@odata.nextLink'],
+	};
+}
+
+export async function searchWorkbooks(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const siteId = await resolveSiteId.call(this, 0);
+	const driveId = validatePathSegment(
+		this.getNode(),
+		'Library',
+		String(
+			(this.getNodeParameter('library', 0) as INodeParameterResourceLocator | undefined)?.value ??
+				'',
+		),
+	);
+
+	const typed = filter?.trim() ?? '';
+	const searchText = typed === '' ? WORKBOOK_EXTENSIONS.join(' OR ') : typed;
+	const resource = `/v1.0/sites/${encodeURIComponent(siteId)}/drives/${encodeURIComponent(driveId)}/root/search(q='${encodeURIComponent(searchText.replace(/'/g, "''"))}')`;
+
+	let nextLink = paginationToken;
+	let workbooks: DriveItem[] = [];
+	do {
+		const response = await (fetchPage<DriveItem>).call(
+			this,
+			resource,
+			{ $select: 'id,name,webUrl,file' },
+			nextLink,
+		);
+		workbooks = (response.value ?? []).filter(isWorkbookFile);
+		nextLink = response['@odata.nextLink'];
+	} while (typed !== '' && workbooks.length === 0 && nextLink !== undefined);
+
+	return {
+		results: toListItems(workbooks, workbookToItem),
+		paginationToken: nextLink,
 	};
 }
 
