@@ -248,6 +248,24 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			}
 		});
 
+		it('should fall back to the raw error message on 400 when no Google detail is found', async () => {
+			const handler = await getCustomErrorHandler();
+			const error = {
+				message: 'Request had invalid authentication scopes',
+				response: { status: 400 },
+			};
+
+			try {
+				handler(error);
+				expect.unreachable('handler should throw');
+			} catch (e) {
+				expect(e).toMatchObject({
+					message: 'Bad request - please check your parameters',
+					description: 'Request had invalid authentication scopes',
+				});
+			}
+		});
+
 		it('should rethrow the original error for unmapped statuses', async () => {
 			const handler = await getCustomErrorHandler();
 			const error = { message: 'boom', response: { status: 500 } };

@@ -225,7 +225,10 @@ export class LmChatGoogleVertex implements INodeType {
 						// generic "Bad request" wrapper
 						throw new NodeOperationError(this.getNode(), error as JsonObject, {
 							message: 'Bad request - please check your parameters',
-							description: extractGoogleErrorMessage(error as { message?: string }),
+							description:
+								extractGoogleErrorMessage(error as { message?: string }) ??
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+								(typeof error?.message === 'string' ? (error.message as string) : undefined),
 						});
 					}
 
