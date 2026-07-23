@@ -159,6 +159,64 @@ export const ManyPages: Story = {
 	},
 };
 
+export const ControlledUncontrolled: Story = {
+	name: 'Controlled/Uncontrolled',
+	render: () => ({
+		components: { Pagination },
+		setup() {
+			const currentPage = ref(3);
+			const pageSize = ref(10);
+			return { currentPage, pageSize };
+		},
+		template: `
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--xl); padding: var(--spacing--md);">
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Controlled
+				</h3>
+				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					Parent owns state via <code>v-model:current-page</code> and <code>v-model:page-size</code>.
+				</p>
+				<Pagination
+					key="controlled"
+					v-model:current-page="currentPage"
+					v-model:page-size="pageSize"
+					:total="100"
+					layout="total, prev, pager, next, sizes, jumper"
+					:page-sizes="[10, 20, 50]"
+					show-edges
+				/>
+				<div style="display: flex; gap: var(--spacing--2xs); margin-top: var(--spacing--sm); flex-wrap: wrap;">
+					<button type="button" @click="currentPage = 1">Go to page 1</button>
+					<button type="button" @click="currentPage = 5">Go to page 5</button>
+					<button type="button" @click="pageSize = 20">Set page size 20</button>
+				</div>
+				<p style="margin-top: var(--spacing--sm); font-size: var(--font-size--sm);">
+					Page: <strong>{{ currentPage }}</strong> · Size: <strong>{{ pageSize }}</strong>
+				</p>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Uncontrolled
+				</h3>
+				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					Initial state via <code>default-current-page</code> and <code>default-page-size</code>. The component manages its own state after mount.
+				</p>
+				<Pagination
+					key="uncontrolled"
+					:default-current-page="3"
+					:default-page-size="10"
+					:total="100"
+					layout="total, prev, pager, next, sizes, jumper"
+					:page-sizes="[10, 20, 50]"
+					show-edges
+				/>
+			</section>
+		</div>
+		`,
+	}),
+};
+
 export const ClientSidePagination: Story = {
 	render: () => ({
 		components: { Pagination },

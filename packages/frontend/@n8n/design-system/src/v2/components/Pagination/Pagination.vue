@@ -44,10 +44,27 @@ defineSlots<PaginationSlots>();
 
 const { t } = useI18n();
 
-const page = computed(
-	() => props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage,
+const isPageControlled = computed(
+	() => props.currentPage !== undefined || props.page !== undefined,
+);
+
+const internalPage = ref(
+	props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage ?? 1,
 );
 const itemsPerPage = ref(props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10);
+
+const page = computed(() =>
+	isPageControlled.value ? (props.currentPage ?? props.page ?? 1) : internalPage.value,
+);
+
+watch(
+	() => props.currentPage ?? props.page,
+	(controlledPage: number | undefined) => {
+		if (controlledPage !== undefined) {
+			internalPage.value = controlledPage;
+		}
+	},
+);
 
 watch(
 	() => props.pageSize ?? props.itemsPerPage,
@@ -106,8 +123,6 @@ const deduplicatedLayoutParts = computed(() => {
 
 const rootProps = useForwardPropsEmits(reactivePick(props, 'disabled', 'showEdges'), emit);
 
-const internalPageSize = ref(itemsPerPage.value);
-
 const prevPage = ref(page.value);
 const jumperValue = ref(String(page.value ?? 1));
 
@@ -129,6 +144,10 @@ const handlePageUpdate = (newPage: number) => {
 		emit('next-click', newPage);
 	}
 
+	if (!isPageControlled.value) {
+		internalPage.value = newPage;
+	}
+
 	prevPage.value = newPage;
 	jumperValue.value = String(newPage);
 
@@ -141,7 +160,7 @@ const handlePageSizeUpdate = (newSize: number | string) => {
 	if (props.disabled) return;
 
 	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
-	internalPageSize.value = size;
+	itemsPerPage.value = size;
 	emit('update:pageSize', size);
 	emit('size-change', size);
 
@@ -241,7 +260,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 			<N8nSelect
 				v-else-if="part === 'sizes'"
-				:model-value="String(internalPageSize)"
+				:model-value="String(itemsPerPage)"
 				:items="pageSizeItems"
 				:size="size"
 				:disabled="disabled"
