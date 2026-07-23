@@ -62,6 +62,23 @@ describe('v2/components/Select', () => {
 			const trigger = wrapper.container.querySelector('[role="combobox"]');
 			expect(trigger).toHaveAttribute('data-disabled');
 		});
+
+		it('should render prefix and suffix slots', () => {
+			const wrapper = render(Select, {
+				props: {
+					items: ['10', '20', '50'],
+					modelValue: '10',
+				},
+				slots: {
+					prefix: 'Page size',
+					suffix: 'rows',
+				},
+			});
+
+			expect(wrapper.getByText('Page size')).toBeInTheDocument();
+			expect(wrapper.getByText('10')).toBeInTheDocument();
+			expect(wrapper.getByText('rows')).toBeInTheDocument();
+		});
 	});
 
 	describe('sizes', () => {

@@ -106,4 +106,6 @@ export type SelectSlots<
 	['item-trailing']: SlotProps;
 	header?: () => unknown;
 	footer?: () => unknown;
+	prefix?: () => unknown;
+	suffix?: () => unknown;
 };

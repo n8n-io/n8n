@@ -29,19 +29,10 @@ export default {
 			control: 'text',
 			description: 'Layout string (comma-separated: prev, pager, next, sizes, jumper, total)',
 		},
-		background: {
-			control: 'boolean',
-			description: 'Add background color to pagination buttons',
-		},
 		size: {
 			control: 'select',
 			options: ['small', 'medium'],
 			description: 'Size variant',
-		},
-		variant: {
-			control: 'select',
-			options: ['default', 'ghost'],
-			description: 'Visual variant',
 		},
 		disabled: {
 			control: 'boolean',
@@ -54,16 +45,18 @@ export default {
 	},
 } satisfies Meta<typeof Pagination>;
 
-const Template = (args: Record<string, unknown>) => ({
+type Story = StoryObj<typeof Pagination>;
+
+const Template: NonNullable<Story['render']> = (args) => ({
 	components: { Pagination },
 	setup() {
-		const currentPage = ref((args as { currentPage?: number }).currentPage || 1);
+		const currentPage = ref(args.currentPage ?? 1);
 		return { args, currentPage };
 	},
 	template: '<Pagination v-bind="args" v-model:current-page="currentPage" />',
 });
 
-export const Default: StoryObj = {
+export const Default: Story = {
 	args: {
 		total: 100,
 		pageSize: 10,
@@ -73,108 +66,158 @@ export const Default: StoryObj = {
 	render: Template,
 };
 
-export const WithBackground: StoryObj = {
+export const OnePage: Story = {
 	render: Template,
 	args: {
-		total: 150,
-		pageSize: 20,
-		background: true,
-		pagerCount: 5,
+		total: 8,
+		pageSize: 10,
+		layout: 'prev, pager, next',
 	},
 };
-export const FullLayout: StoryObj = {
+
+export const FullLayout: Story = {
 	render: Template,
 	args: {
 		total: 500,
 		pageSize: 20,
 		layout: 'total, prev, pager, next, sizes',
 		pageSizes: [10, 20, 50, 100],
-		background: true,
 	},
 };
 
-export const WithJumper: StoryObj = {
+export const WithJumper: Story = {
 	render: Template,
 	args: {
 		total: 300,
 		pageSize: 30,
 		layout: 'prev, pager, next, jumper',
-		background: true,
 	},
 };
 
-export const SmallSize: StoryObj = {
-	render: Template,
-	args: {
-		total: 200,
-		pageSize: 10,
-		background: true,
-		size: 'small',
-	},
-};
-
-export const MediumSize: StoryObj = {
-	render: Template,
-	args: {
-		total: 200,
-		pageSize: 10,
-		background: true,
-		size: 'medium',
-	},
-};
-
-export const GhostVariant: StoryObj = {
-	render: Template,
-	args: {
-		total: 100,
-		pageSize: 10,
-		variant: 'ghost',
-	},
-};
-
-export const Disabled: StoryObj = {
-	render: Template,
-	args: {
-		total: 100,
-		pageSize: 10,
-		background: true,
-		disabled: true,
-	},
-};
-
-export const HideOnSinglePage: StoryObj = {
-	render: Template,
-	args: {
-		total: 15,
-		pageSize: 20,
-		hideOnSinglePage: true,
-	},
-};
-
-export const CustomText: StoryObj = {
-	render: Template,
-	args: {
-		total: 100,
-		pageSize: 10,
-		background: true,
-		prevText: 'Previous',
-		nextText: 'Next',
-	},
-};
-
-export const ManyPages: StoryObj = {
-	render: Template,
+export const Sizes: Story = {
+	render: (args) => ({
+		components: { Pagination },
+		setup() {
+			const mediumPage = ref(args.currentPage ?? 1);
+			const smallPage = ref(args.currentPage ?? 1);
+			return { args, mediumPage, smallPage };
+		},
+		template: `
+		<div style="display: flex; flex-direction: column; gap: 24px; padding: 16px;">
+			<div>
+				<h3 style="margin: 0 0 8px;">Medium</h3>
+				<Pagination v-bind="args" size="medium" v-model:current-page="mediumPage" />
+			</div>
+			<div>
+				<h3 style="margin: 0 0 8px;">Small</h3>
+				<Pagination v-bind="args" size="small" v-model:current-page="smallPage" />
+			</div>
+		</div>
+		`,
+	}),
 	args: {
 		total: 1000,
 		pageSize: 10,
-		background: true,
-		pagerCount: 7,
+		layout: 'prev, pager, next, jumper',
 		showEdges: true,
 		currentPage: 50,
 	},
 };
 
-export const ClientSidePagination: StoryObj = {
+export const Disabled: Story = {
+	render: Template,
+	args: {
+		total: 100,
+		pageSize: 10,
+		currentPage: 3,
+		disabled: true,
+		layout: 'total, prev, pager, next, sizes, jumper',
+		pageSizes: [10, 20, 50],
+	},
+};
+
+export const CustomButtons: Story = {
+	name: 'Custom navigation buttons',
+	render: Template,
+	args: {
+		total: 100,
+		pageSize: 10,
+		prevText: 'Previous',
+		nextText: 'Next',
+	},
+};
+
+export const ManyPages: Story = {
+	render: Template,
+	args: {
+		total: 1000,
+		pageSize: 10,
+		pagerCount: 7,
+		showEdges: true,
+		currentPage: 50,
+		layout: 'prev, pager, next, jumper',
+	},
+};
+
+export const ControlledUncontrolled: Story = {
+	name: 'Controlled/Uncontrolled',
+	render: () => ({
+		components: { Pagination },
+		setup() {
+			const currentPage = ref(3);
+			const pageSize = ref(10);
+			return { currentPage, pageSize };
+		},
+		template: `
+		<div style="display: flex; flex-direction: column; gap: var(--spacing--xl); padding: var(--spacing--md);">
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Controlled
+				</h3>
+				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					Parent owns state via <code>v-model:current-page</code> and <code>v-model:page-size</code>.
+				</p>
+				<Pagination
+					key="controlled"
+					v-model:current-page="currentPage"
+					v-model:page-size="pageSize"
+					:total="100"
+					layout="total, prev, pager, next, sizes, jumper"
+					:page-sizes="[10, 20, 50]"
+					show-edges
+				/>
+				<div style="display: flex; gap: var(--spacing--2xs); margin-top: var(--spacing--sm); flex-wrap: wrap;">
+					<button type="button" @click="currentPage = 1">Go to page 1</button>
+					<button type="button" @click="currentPage = 5">Go to page 5</button>
+					<button type="button" @click="pageSize = 20">Set page size 20</button>
+				</div>
+				<p style="margin-top: var(--spacing--sm); font-size: var(--font-size--sm);">
+					Page: <strong>{{ currentPage }}</strong> · Size: <strong>{{ pageSize }}</strong>
+				</p>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--sm); font-weight: var(--font-weight--bold);">
+					Uncontrolled
+				</h3>
+				<p style="margin: 0 0 var(--spacing--sm); font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+					Initial state via <code>default-current-page</code> and <code>default-page-size</code>. The component manages its own state after mount.
+				</p>
+				<Pagination
+					key="uncontrolled"
+					:default-current-page="3"
+					:default-page-size="10"
+					:total="100"
+					layout="total, prev, pager, next, sizes, jumper"
+					:page-sizes="[10, 20, 50]"
+					show-edges
+				/>
+			</section>
+		</div>
+		`,
+	}),
+};
+
+export const ClientSidePagination: Story = {
 	render: () => ({
 		components: { Pagination },
 		setup() {
@@ -190,7 +233,7 @@ export const ClientSidePagination: StoryObj = {
 			return { allItems, currentPage, pageSize };
 		},
 		template: `
-		<div>
+		<div style="padding: 16px;">
 			<div style="margin-bottom: 16px;">
 				<div v-for="item in paginatedItems" :key="item.id" style="padding: 8px; border-bottom: 1px solid #eee;">
 					{{ item.name }}
@@ -200,7 +243,6 @@ export const ClientSidePagination: StoryObj = {
 				v-model:current-page="currentPage"
 				:page-size="pageSize"
 				:total="allItems.length"
-				background
 			/>
 		</div>
 	`,
