@@ -154,6 +154,9 @@ const sizes: Record<PaginationSizes, string> = {
 };
 const sizeClass = computed(() => sizes[props.size]);
 
+const isPrevDisabled = computed(() => props.disabled || (page.value ?? 1) <= 1);
+const isNextDisabled = computed(() => props.disabled || (page.value ?? 1) >= pageCount.value);
+
 const pageSizeItems = computed(() =>
 	props.pageSizes.map((s) => ({
 		value: String(s),
@@ -264,11 +267,12 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 					@keydown="handlePagerKeydown"
 				>
 					<PaginationPrev v-if="layoutParts.includes('prev')" as-child>
-						<slot name="prev">
+						<slot name="prev" :disabled="isPrevDisabled">
 							<N8nButton
 								v-if="prevText"
 								variant="ghost"
 								:size="size"
+								:disabled="isPrevDisabled"
 								:aria-label="t('pagination.previousPage')"
 								data-test-id="pagination-prev"
 							>
@@ -280,6 +284,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 								icon-only
 								:icon="prevIcon"
 								:size="size"
+								:disabled="isPrevDisabled"
 								:aria-label="t('pagination.previousPage')"
 								data-test-id="pagination-prev"
 							/>
@@ -311,11 +316,12 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 					</template>
 
 					<PaginationNext v-if="layoutParts.includes('next')" as-child>
-						<slot name="next">
+						<slot name="next" :disabled="isNextDisabled">
 							<N8nButton
 								v-if="nextText"
 								variant="ghost"
 								:size="size"
+								:disabled="isNextDisabled"
 								:aria-label="t('pagination.nextPage')"
 								data-test-id="pagination-next"
 							>
@@ -327,6 +333,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 								icon-only
 								:icon="nextIcon"
 								:size="size"
+								:disabled="isNextDisabled"
 								:aria-label="t('pagination.nextPage')"
 								data-test-id="pagination-next"
 							/>

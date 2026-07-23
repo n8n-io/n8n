@@ -478,6 +478,57 @@ describe('v2/components/Pagination', () => {
 
 			expect(wrapper.getByTestId('custom-next')).toBeInTheDocument();
 		});
+
+		it('should forward disabled to prev and next slots when pagination is disabled', () => {
+			const wrapper = render(Pagination, {
+				props: {
+					total: 100,
+					currentPage: 2,
+					pageSize: 10,
+					disabled: true,
+				},
+				slots: {
+					prev: `<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>`,
+					next: `<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>`,
+				},
+			});
+
+			expect(wrapper.getByTestId('custom-prev')).toBeDisabled();
+			expect(wrapper.getByTestId('custom-next')).toBeDisabled();
+		});
+
+		it('should disable prev slot on the first page and next slot on the last page', () => {
+			const firstPage = render(Pagination, {
+				props: {
+					total: 30,
+					currentPage: 1,
+					pageSize: 10,
+				},
+				slots: {
+					prev: `<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>`,
+					next: `<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>`,
+				},
+			});
+
+			expect(firstPage.getByTestId('custom-prev')).toBeDisabled();
+			expect(firstPage.getByTestId('custom-next')).not.toBeDisabled();
+			firstPage.unmount();
+
+			const lastPage = render(Pagination, {
+				props: {
+					total: 30,
+					currentPage: 3,
+					pageSize: 10,
+				},
+				slots: {
+					prev: `<template #prev="{ disabled }"><button data-test-id="custom-prev" :disabled="disabled">Prev</button></template>`,
+					next: `<template #next="{ disabled }"><button data-test-id="custom-next" :disabled="disabled">Next</button></template>`,
+				},
+			});
+
+			expect(lastPage.getByTestId('custom-prev')).not.toBeDisabled();
+			expect(lastPage.getByTestId('custom-next')).toBeDisabled();
+		});
 	});
 
 	describe('ellipsis rendering', () => {
