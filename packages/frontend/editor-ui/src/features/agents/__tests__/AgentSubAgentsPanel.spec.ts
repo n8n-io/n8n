@@ -280,6 +280,31 @@ describe('AgentSubAgentsPanel', () => {
 		expect(last?.subAgents?.modelsByDifficulty?.low?.credential).toBe(AI_GATEWAY_MANAGED_TAG);
 	});
 
+	it('persists a real credential chosen before the model, not the global fallback', async () => {
+		// Global fallback for anthropic is `anthropic-cred`; the user picks a different
+		// real credential row first, then a model.
+		const wrapper = await mountPanel();
+		await enableCustomModelRouting(wrapper);
+
+		emitDifficultyCredentialChange(
+			'agent-sub-agents-difficulty-low-model',
+			'anthropic',
+			'anthropic-cred-2',
+		);
+		emitDifficultyModelChange('agent-sub-agents-difficulty-low-model', {
+			provider: 'anthropic',
+			model: 'claude-sonnet-4-5',
+		});
+
+		const updates = wrapper.emitted('update:config') as
+			| Array<[{ subAgents?: unknown }]>
+			| undefined;
+		const last = updates?.at(-1)?.[0] as {
+			subAgents?: { modelsByDifficulty?: Record<string, { credential?: string }> };
+		};
+		expect(last?.subAgents?.modelsByDifficulty?.low?.credential).toBe('anthropic-cred-2');
+	});
+
 	it('shows inline difficulty model selectors when custom routing is enabled', async () => {
 		const wrapper = await mountPanel();
 		await enableCustomModelRouting(wrapper);

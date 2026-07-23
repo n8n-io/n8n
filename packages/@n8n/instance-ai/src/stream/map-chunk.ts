@@ -200,9 +200,7 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 			const { message } = parseResponseBody(error.responseBody);
 			if (message) info.content = message;
 		} else {
-			// The ai-sdk APICallError can arrive wrapped (thrown inside the model
-			// fetch), so its responseBody — e.g. the n8n Connect gateway's actionable
-			// message — lives on the cause chain. Mirrors `readErrorCode`'s unwrap.
+			// No direct responseBody — unwrap the cause chain (mirrors `readErrorCode`).
 			const wrappedBody = readResponseBody(error.cause);
 			if (wrappedBody) {
 				info.technicalDetails = wrappedBody;

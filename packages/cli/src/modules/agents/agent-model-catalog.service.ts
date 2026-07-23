@@ -92,6 +92,12 @@ export class AgentModelCatalogService {
 				provider,
 				error: error instanceof Error ? error.message : String(error),
 			});
+			// Managed slot: the gateway allowlist is the contract, so don't fall back
+			// to the static catalog (it may list models the gateway won't serve). A
+			// verified empty list shows nothing rather than un-served models.
+			if (credentialId === AI_GATEWAY_MANAGED_TAG) {
+				return { provider, verified: true, models: [] };
+			}
 			return { provider, verified: false, models: Object.values(catalogModels) };
 		}
 

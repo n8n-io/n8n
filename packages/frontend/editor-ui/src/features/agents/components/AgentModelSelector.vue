@@ -77,7 +77,6 @@ const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const aiGateway = useAiGateway();
 
-// Reflect available n8n credits as a pill on the managed option; refresh on mount.
 const aiGatewayBalancePill = computed(() => {
 	const balance = aiGateway.balance.value;
 	if (balance === undefined) return undefined;
@@ -200,9 +199,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		(selectedProviderCredentialId !== null &&
 			credentialOptions.some((credential) => credential.id === selectedProviderCredentialId));
 
-	// Flat list of the project's existing credentials for this provider; selecting
-	// one activates it and keeps the dropdown open so a model can be picked next.
-	// Credentials render without a leading icon — only models carry one.
+	// Existing credentials as selectable rows; `keepOpen` lets a model be picked next.
 	const credentialItems: MenuItem[] = credentialOptions.map<MenuItem>((credential) => ({
 		id: buildMenuItemId(provider, 'select', credential.id),
 		label: credential.name,
@@ -212,7 +209,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		data: { provider },
 	}));
 
-	// "+ Create credential" — leading plus prefix (matches the design).
 	const createCredentialItems: MenuItem[] = canCreateCredentials.value
 		? credentialTypes.length === 1
 			? [
@@ -249,13 +245,10 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 					id: buildMenuItemId(provider, 'n8nConnect', credentialTypes[0]),
 					label: i18n.baseText('aiGateway.credentialMode.n8nConnect.title'),
 					disabled: false,
-					// Active state shows as the native right-aligned checkmark; the row
-					// toggles the managed tag and keeps the dropdown open. No leading icon.
 					checked: isAiGatewayManagedSelected,
 					keepOpen: true,
 					data: {
 						provider,
-						// Green "remaining" pill (N8nActionPill), matching the workflow node.
 						actionPill: aiGatewayBalancePill.value,
 					},
 				},
@@ -362,8 +355,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		data: {
 			provider,
 			credentialType: credentialTypes[0],
-			// Providers covered by n8n Connect get the same green "Free credits" N8nActionPill
-			// as the node creator.
 			actionPill: isAiGatewayManagedAvailable
 				? { text: i18n.baseText('generic.freeCredits'), type: 'default' as const }
 				: undefined,
