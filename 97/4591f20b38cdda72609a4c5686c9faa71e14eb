@@ -1,0 +1,128 @@
+packages/frontend/editor-ui/src/features/ai/assistant/focusedNodes.store.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 12-13
+packages/frontend/editor-ui/src/features/settings/users/views/SettingsUsersView.vue
+  s_8f8f0bbd7e6bd6::t_cc12b931b78541 12-13
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Panel/NodesListPanel.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 18
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 13-14
+packages/frontend/editor-ui/src/app/stores/pushConnection.store.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 6-7
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/SuiteConfig.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 15-16
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ExpressionEditModal.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 20
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableDetailsView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 17
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 20-21
+packages/frontend/editor-ui/src/features/setupPanel/setupPanel.store.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 2
+packages/frontend/editor-ui/src/features/shared/editors/plugins/codemirror/typescript/client/useTypescript.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 2
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_8f8f0bbd7e6bd6::t_7fad0eeafbed1c 7-8
+packages/frontend/editor-ui/src/experiments/resourceCenter/views/ResourceCenterView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 23-24
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRuleDetail.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 4-5
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 12-13
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.vue
+  s_8f8f0bbd7e6bd6::t_0d8459046fd325 9,16
+packages/frontend/editor-ui/src/features/settings/apiKeys/views/SettingsApiView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 6-7
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_8f8f0bbd7e6bd6::t_e46b869150a5dd 69
+packages/frontend/editor-ui/src/app/composables/useActivityDetection.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 4-5
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/Condition.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 27
+packages/frontend/editor-ui/src/features/agents/views/AgentsListView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 7-8
+packages/frontend/editor-ui/src/app/components/BreakpointsObserver.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 11
+packages/frontend/editor-ui/src/app/components/layouts/ResourcesListLayout.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 11
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.test.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 74-75
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 12
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 7
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectSharing.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 11-12
+packages/frontend/editor-ui/src/features/execution/executions/components/ExecutionsFilter.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 4
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_8f8f0bbd7e6bd6::t_c34165a813b601 3
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocatorDropdown.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 2
+packages/frontend/editor-ui/src/features/ndv/runData/components/RunDataSearch.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 6,9
+packages/frontend/editor-ui/src/experiments/credentialsAppSelection/components/AppSelectionPage.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 5
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Tests/TestCaseDetail.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 16-17
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceLocator/ResourceLocator.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 7
+packages/frontend/editor-ui/src/features/ndv/panel/components/NDVSubConnections.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 15
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 67
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsModal.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 13-14
+packages/frontend/editor-ui/src/features/ai/assistant/components/AssistantsHub.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 6
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 6-7
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 26
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 14
+packages/frontend/editor-ui/src/features/ndv/parameters/components/FilterConditions/FilterConditions.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 21
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesSearchView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 15
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/AddColumnButton.test.ts
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 23
+packages/frontend/editor-ui/src/features/core/dataTable/components/dataGrid/DataTableTable.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 27
+packages/frontend/editor-ui/src/features/core/dataTable/DataTableView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 14,29
+packages/frontend/editor-ui/src/features/execution/executions/views/WorkflowExecutionsView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 15
+packages/frontend/editor-ui/src/features/agents/components/AgentSectionEditor.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 10-11
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AssignmentCollection/AssignmentCollection.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 2
+packages/frontend/editor-ui/src/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 9
+packages/frontend/editor-ui/src/app/components/WorkflowSettings/WorkflowSettings.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 56
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ToolsManagerModal.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 25-26
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_8f8f0bbd7e6bd6::t_90d9732e980a14 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "974591f20b38cdda72609a4c5686c9faa71e14eb",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8f8f0bbd7e6bd6": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1fb2e55-9c3a-43cf-81f4-589686468eed",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
