@@ -496,7 +496,9 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
+			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+		});
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);

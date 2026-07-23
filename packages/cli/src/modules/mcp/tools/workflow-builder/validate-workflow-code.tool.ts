@@ -1,14 +1,35 @@
 import type { User } from '@n8n/db';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	isNodeConnectionType,
+	validateWorkflowGroups,
+	type IConnections,
+	type INode,
+	type INodeConnections,
+} from 'n8n-workflow';
 import z from 'zod';
 
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
+import { makeGetNodeTypeForGrouping } from '@/workflow-helpers';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
+
+/** Warning code carried by node-group rule violations in the tool response. */
+export const INVALID_NODE_GROUP_WARNING_CODE = 'INVALID_NODE_GROUP';
+
+export type ValidateWorkflowCodeToolOptions = {
+	/**
+	 * `102_mcp_canvas_groups` rollout flag: when true, node-group rule violations
+	 * are surfaced as warnings and traced in telemetry. Off by default — the tool
+	 * then behaves exactly as before groups were validated.
+	 */
+	canvasGroupsEnabled?: boolean;
+};
 
 const inputSchema = {
 	code: z
@@ -45,6 +66,31 @@ const outputSchema = {
 } satisfies z.ZodRawShape;
 
 /**
+ * Bridges the SDK's connections to `n8n-workflow`'s `IConnections`. The two
+ * declare duplicate but formally separate connection types (the SDK types
+ * `IConnection.type` as plain `string`), so the values are re-keyed through the
+ * `isNodeConnectionType` guard. Serializer output only ever carries known
+ * connection types; if an unknown one ever slips through, that connection is
+ * skipped here and the save path still rejects the workflow.
+ */
+function toWorkflowConnections(connections: WorkflowJSON['connections']): IConnections {
+	const bySourceNode: IConnections = {};
+	for (const [sourceNode, byType] of Object.entries(connections ?? {})) {
+		const nodeConnections: INodeConnections = {};
+		for (const [connectionType, outputs] of Object.entries(byType)) {
+			nodeConnections[connectionType] = outputs.map(
+				(outputConnections) =>
+					outputConnections?.flatMap((connection) =>
+						isNodeConnectionType(connection.type) ? [{ ...connection, type: connection.type }] : [],
+					) ?? null,
+			);
+		}
+		bySourceNode[sourceNode] = nodeConnections;
+	}
+	return bySourceNode;
+}
+
+/**
  * MCP tool that validates n8n Workflow SDK code.
  * Parses and validates the code, returning the workflow JSON if valid or errors if not.
  */
@@ -52,6 +98,7 @@ export const createValidateWorkflowCodeTool = (
 	user: User,
 	telemetry: Telemetry,
 	nodeTypes: NodeTypes,
+	options: ValidateWorkflowCodeToolOptions = {},
 ): ToolDefinition<typeof inputSchema> => ({
 	name: CODE_BUILDER_VALIDATE_TOOL.toolName,
 	config: {
@@ -94,11 +141,57 @@ export const createValidateWorkflowCodeTool = (
 			);
 			if (invalidToolSourceResponse) return invalidToolSourceResponse;
 
+			// `102_mcp_canvas_groups` rollout: surface node-group rule violations at
+			// validate time, with the same messages the save path rejects with. Flag
+			// off: output and telemetry are identical to before groups existed.
+			const groupWarnings: Array<{ code: string; message: string }> = [];
+			let groupViolationCodes: string[] = [];
+			if (options.canvasGroupsEnabled && (result.workflow.nodeGroups?.length ?? 0) > 0) {
+				// The group validator only reads id/name/type (+ typeVersion via
+				// getNodeType); map the SDK's NodeJSON (optional name/parameters)
+				// to the INode shape it expects. Parameters are never read, so an
+				// empty object is passed instead of bridging the parameter types.
+				const groupValidationNodes: INode[] = result.workflow.nodes.map((node) => ({
+					id: node.id,
+					name: node.name ?? '',
+					type: node.type,
+					typeVersion: node.typeVersion,
+					position: node.position,
+					parameters: {},
+				}));
+				const groupsResult = validateWorkflowGroups({
+					nodes: groupValidationNodes,
+					connectionsBySourceNode: toWorkflowConnections(result.workflow.connections),
+					nodeGroups: result.workflow.nodeGroups,
+					getNodeType: makeGetNodeTypeForGrouping(nodeTypes),
+				});
+				if (!groupsResult.valid) {
+					groupWarnings.push(
+						...groupsResult.violations.map((violation) => ({
+							code: INVALID_NODE_GROUP_WARNING_CODE,
+							message: violation.message,
+						})),
+					);
+					groupViolationCodes = [
+						...new Set(groupsResult.violations.map((violation) => violation.code)),
+					];
+				}
+			}
+
 			telemetryPayload.results = {
 				success: true,
 				data: {
 					nodeCount: result.workflow.nodes.length,
+					// SDK validation warnings only — group violations are counted
+					// separately so the metric keeps its meaning across flag cohorts.
 					warningCount: result.warnings.length,
+					...(options.canvasGroupsEnabled
+						? {
+								groupCount: result.workflow.nodeGroups?.length ?? 0,
+								groupViolationCount: groupWarnings.length,
+								...(groupViolationCodes.length > 0 ? { groupViolationCodes } : {}),
+							}
+						: {}),
 				},
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
@@ -108,8 +201,9 @@ export const createValidateWorkflowCodeTool = (
 				nodeCount: result.workflow.nodes.length,
 			};
 
-			if (result.warnings.length > 0) {
-				response.warnings = result.warnings;
+			const warnings = [...result.warnings, ...groupWarnings];
+			if (warnings.length > 0) {
+				response.warnings = warnings;
 			}
 
 			return {
