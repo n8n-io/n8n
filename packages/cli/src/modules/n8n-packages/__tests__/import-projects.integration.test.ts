@@ -870,6 +870,30 @@ describe('project shell import', () => {
 				expect(layout).toHaveLength(3);
 			});
 
+			it('counts a shared global variable once during aggregate quota preflight', async () => {
+				licenseMocker.setQuota('quota:maxVariables', 1);
+				const packageBuffer = await twoProjectPackage({
+					catalog: [{ id: 'v1', name: 'SHARED_URL', target: 'variables/shared_url' }],
+					requirements: [{ name: 'SHARED_URL', usedByWorkflows: ['WFA', 'WFB'] }],
+				});
+
+				const result = await importProjects(owner, packageBuffer, undefined, {
+					variableMissingMode: 'create-stub',
+				});
+
+				expect(result.variables).toEqual({
+					matched: [],
+					missing: [],
+					stubbed: ['SHARED_URL'],
+				});
+				const created = await Container.get(VariablesRepository).find({
+					relations: { project: true },
+				});
+				expect(
+					created.map((variable) => ({ key: variable.key, project: variable.project })),
+				).toEqual([{ key: 'SHARED_URL', project: null }]);
+			});
+
 			it('lists a name under both matched and stubbed when it pre-exists in only some projects', async () => {
 				const packageBuffer = await apiUrlPackage();
 				await importProjects(owner, packageBuffer);
