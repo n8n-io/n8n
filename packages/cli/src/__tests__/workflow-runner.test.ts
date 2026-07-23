@@ -1,17 +1,16 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import {
-	type User,
-	type ExecutionEntity,
-	GLOBAL_OWNER_ROLE,
-	Project,
-	ExecutionRepository,
-} from '@n8n/db';
-import { Container, Service } from '@n8n/di';
+import type { Project, User, ExecutionEntity } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { DirectedGraph, WorkflowExecute, WorkflowHasIssuesError } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
+	type ExecutionError,
 	type IExecuteData,
 	type INode,
 	type IRun,
@@ -25,7 +24,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
 	Workflow,
-	ExecutionError,
 	TimeoutExecutionCancelledError,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -38,31 +36,17 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { ScalingService } from '@/scaling/scaling.service';
+import type { Job } from '@/scaling/scaling.types';
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can
 // reference the class without a temporal-dead-zone error — a describe-scoped
 // class isn't initialised when the hoisted factory first resolves.
-const setupQueue = vi.fn();
-const addJob = vi.fn();
-
-@Service()
-class MockScalingService {
-	setupQueue = setupQueue;
-
-	addJob = addJob;
-}
-
-vi.mock('@/scaling/scaling.service', () => ({
-	ScalingService: MockScalingService,
-}));
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -75,7 +59,20 @@ mockInstance(OwnershipService, {
 	getWorkflowProjectCached: vi.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
 });
 
+// Mock ScalingService instance to be used in tests
+const mockScalingService = {
+	setupQueue: vi.fn().mockResolvedValue(undefined),
+	addJob: vi.fn().mockResolvedValue({ id: 'mock-job-id' }),
+	waitForJobResult: vi.fn().mockResolvedValue({}),
+	popJobResult: vi.fn().mockResolvedValue(undefined),
+	stopJob: vi.fn().mockResolvedValue(undefined),
+	isInitialized: false,
+};
+
 beforeAll(async () => {
+	// Register the mock ScalingService so the runner uses it
+	// Cast to unknown first to satisfy the ScalingService type in tests
+	Container.set(ScalingService, mockScalingService as unknown as ScalingService);
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 
 	runner = Container.get(WorkflowRunner);
@@ -413,30 +410,37 @@ describe('run', () => {
 });
 
 describe('enqueueExecution', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		// Optionally reset the mock's state (e.g., isInitialized)
+		mockScalingService.isInitialized = false;
+	});
 	it('should setup queue when scalingService is not initialized', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
+
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 		});
 		const error = new Error('stop for test purposes');
 
-		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Vitest does not move on to tear down the suite until the PCancelable settles
-		addJob.mockRejectedValueOnce(error);
+		vi.spyOn(scalingService, 'addJob').mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
-		expect(setupQueue).toHaveBeenCalledTimes(1);
+		expect(scalingService.setupQueue).toHaveBeenCalledTimes(1);
 	});
 
 	it('should include restartExecutionId in job data when provided', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
+
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
@@ -445,9 +449,7 @@ describe('enqueueExecution', () => {
 		});
 		const error = new Error('stop for test purposes');
 
-		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Vitest does not move on to tear down the suite until the PCancelable settles
-		addJob.mockRejectedValueOnce(error);
+		vi.spyOn(scalingService, 'addJob').mockRejectedValueOnce(error);
 
 		const restartExecutionId = 'restart-execution-id';
 
@@ -456,7 +458,7 @@ describe('enqueueExecution', () => {
 			runner.enqueueExecution('1', 'workflow-xyz', data, false, false, restartExecutionId),
 		).rejects.toThrowError(error);
 
-		expect(addJob).toHaveBeenCalledWith(
+		expect(scalingService.addJob).toHaveBeenCalledWith(
 			expect.objectContaining({
 				workflowId: 'workflow-xyz',
 				executionId: '1',
@@ -466,10 +468,209 @@ describe('enqueueExecution', () => {
 		);
 	});
 
+	it('should execute successfully via waitForJobResult', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
+
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			},
+		);
+		vi.spyOn(activeExecutions, 'getResponseMode').mockReturnValue(undefined);
+		const finalizeSpy = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		// @ts-expect-error Private method
+		vi.spyOn(runner, 'needsFullExecutionData').mockReturnValue(false);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({ id: 'job-id' });
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
+
+		const mockResult = {
+			success: true,
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			status: 'success',
+		};
+		vi.spyOn(scalingService, 'waitForJobResult').mockResolvedValue(mockResult as any);
+		vi.spyOn(scalingService, 'popJobResult').mockResolvedValue(undefined);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		expect(capturedExecution).toBeDefined();
+		await capturedExecution!;
+
+		expect(scalingService.waitForJobResult).toHaveBeenCalledWith(
+			'exec-id',
+			undefined,
+			undefined,
+			expect.any(AbortSignal),
+		);
+		expect(finalizeSpy).toHaveBeenCalledWith(
+			'exec-id',
+			expect.objectContaining({
+				finished: true,
+				jobId: 'job-id',
+				status: 'success',
+			}),
+		);
+		expect(scalingService.popJobResult).not.toHaveBeenCalled();
+	});
+
+	it('should handle timeout error in waitForJobResult', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
+
+		const processErrorSpy = vi.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			},
+		);
+		const finalizeSpy = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({
+			id: 'job-id',
+			data: { executionId: 'exec-id', workflowId: 'wf-id' },
+		});
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'waitForJobResult').mockRejectedValue(
+			new Error('Timeout waiting for job result for execution exec-id'),
+		);
+		vi.spyOn(scalingService, 'popJobResult').mockResolvedValue(undefined);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		await expect(capturedExecution!).rejects.toThrow(
+			'Job completion lost or timed out for execution exec-id',
+		);
+
+		expect(processErrorSpy).toHaveBeenCalled();
+		expect(finalizeSpy).not.toHaveBeenCalled();
+		expect(scalingService.popJobResult).toHaveBeenCalledWith('exec-id');
+	});
+
+	it('should handle manual cancellation path', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
+
+		const processErrorSpy = vi.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			},
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({
+			id: 'job-id',
+			data: { executionId: 'exec-id', workflowId: 'wf-id' },
+		});
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'stopJob').mockResolvedValue(true);
+
+		vi.spyOn(scalingService, 'waitForJobResult').mockImplementation(
+			async (
+				_executionId: string,
+				_timeout: number | undefined,
+				_pollIntervalMs: number | undefined,
+				abortSignal?: AbortSignal,
+			) => {
+				return await new Promise((_, reject) => {
+					abortSignal?.addEventListener('abort', () => reject(new Error('aborted')));
+				});
+			},
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		capturedExecution!.cancel();
+
+		await expect(capturedExecution!).rejects.toThrow('The execution was cancelled manually');
+
+		expect(scalingService.stopJob).toHaveBeenCalledWith(mockJob);
+		expect(processErrorSpy).toHaveBeenCalled();
+	});
+
+	it('should verify AbortController is aborted when execution is cancelled', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
+
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+
+		let capturedExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation(
+			(_executionId, workflowExecution) => {
+				capturedExecution = workflowExecution;
+			},
+		);
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionMode: 'webhook',
+		});
+
+		const mockJob = mock<Job>({ id: 'job-id' });
+		vi.spyOn(scalingService, 'addJob').mockResolvedValue(mockJob);
+		vi.spyOn(scalingService, 'stopJob').mockResolvedValue(true);
+
+		const abortSpy = vi.spyOn(AbortController.prototype, 'abort');
+
+		vi.spyOn(scalingService, 'waitForJobResult').mockImplementation(
+			async (
+				_executionId: string,
+				_timeout: number | undefined,
+				_pollIntervalMs: number | undefined,
+				abortSignal?: AbortSignal,
+			) => {
+				return await new Promise((_, reject) => {
+					abortSignal?.addEventListener('abort', () => reject(new Error('aborted')));
+				});
+			},
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('exec-id', 'workflow-xyz', data);
+
+		capturedExecution!.cancel();
+
+		expect(abortSpy).toHaveBeenCalledTimes(1);
+
+		await expect(capturedExecution!).rejects.toThrow('The execution was cancelled manually');
+
+		abortSpy.mockRestore();
+	});
+
 	it('should carry the manual-execution identity into job data', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
+		const scalingService = Container.get(ScalingService);
+
 		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
 		vi.spyOn(runner, 'processError').mockResolvedValue();
+
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
@@ -477,14 +678,12 @@ describe('enqueueExecution', () => {
 		});
 		const error = new Error('stop for test purposes');
 
-		// mock a rejection to stop execution flow before we create the PCancelable promise,
-		// so that Vitest does not move on to tear down the suite until the PCancelable settles
-		addJob.mockRejectedValueOnce(error);
+		vi.spyOn(scalingService, 'addJob').mockRejectedValueOnce(error);
 
 		// @ts-expect-error Private method
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
-		expect(addJob).toHaveBeenCalledWith(
+		expect(scalingService.addJob).toHaveBeenCalledWith(
 			expect.objectContaining({
 				encryptedRunnerIdentity: 'encrypted-identity-blob',
 			}),
