@@ -1489,9 +1489,9 @@ describe('ActiveWorkflowTriggers', () => {
 		});
 
 		// Durable rows track the workflow's published state and are torn down by the
-		// cli lifecycle (deactivate/delete/republish), not by this in-memory teardown.
-		// So removeTriggers only clears the legacy cron and never touches the durable
-		// manager, which is why the manager exposes no teardown method to call here.
+		// cli lifecycle (deactivate/delete/republish), not this in-memory teardown; so
+		// removeTriggers only clears the legacy cron and never touches the durable
+		// manager (which is why the manager exposes no teardown method here).
 		it('removeTriggers clears only the legacy cron for a removed poll node', async () => {
 			const pollJobManager = buildPollJobManager(true);
 			const triggers = buildTriggers(pollJobManager);

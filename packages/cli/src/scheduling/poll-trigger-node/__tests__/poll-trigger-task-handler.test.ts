@@ -122,7 +122,7 @@ describe('PollTriggerTaskHandler', () => {
 	});
 
 	describe('task type', () => {
-		test('declares the poll-trigger task type it is bound under at composition', () => {
+		test('declares the poll-trigger task type it is bound under', () => {
 			expect(handler.taskType).toBe(POLL_TRIGGER_TASK_TYPE);
 		});
 	});
@@ -211,7 +211,7 @@ describe('PollTriggerTaskHandler', () => {
 			// still-down source instead of running the error workflow.
 			await expect(handler.execute(buildTask(), report)).resolves.toBeDefined();
 
-			// The cursor is not advanced (no __emit -> no saveStaticData); the error is
+			// The cursor is not advanced (no __emit, so no saveStaticData); the error is
 			// handed off to the error workflow via __emitError.
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(pollFunctions.__emitError).toHaveBeenCalledWith(error);

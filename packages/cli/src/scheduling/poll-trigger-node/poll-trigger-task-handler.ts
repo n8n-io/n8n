@@ -46,7 +46,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		);
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
-		// The factory assembles the poll context so it stays identical to the activation path.
+		// Factory assembles the poll context, identical to the activation path.
 		const { workflow, pollFunctions } =
 			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node);
 
@@ -82,12 +82,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			});
 			return report.notDispatched();
 		} catch (error) {
-			// Runtime poll() failures (e.g. source API down) go to the error workflow via
-			// __emitError, like the legacy poller (PollTriggerExecutor). We don't rethrow:
-			// that would let the executor retry to N8N_SCHEDULER_MAX_ATTEMPTS and dead-letter,
-			// turning an outage into a re-poll storm that skips the error workflow. __emitError
-			// skips saveStaticData, so the cursor holds and the next tick re-fetches the same
-			// window once the source recovers.
+			// A runtime poll() failure (e.g. source API down) goes to the error workflow
+			// via __emitError, like the legacy poller (PollTriggerExecutor). We don't
+			// rethrow: that would retry to N8N_SCHEDULER_MAX_ATTEMPTS and dead-letter,
+			// skipping the error workflow. __emitError skips saveStaticData, so the cursor
+			// holds and the next tick re-fetches the same window once the source recovers.
 			pollFunctions.__emitError(ensureError(error));
 			this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 				taskId: task.id,

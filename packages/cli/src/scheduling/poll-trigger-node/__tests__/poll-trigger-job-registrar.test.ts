@@ -132,8 +132,8 @@ describe('PollTriggerJobRegistrar', () => {
 		});
 
 		it('seeds a generated cadence deterministically, so re-activation keeps the same job identity', async () => {
-			// The B1 fix: the seconds field is derived from `${workflowId}:${nodeId}`,
-			// not randomised per activation, so a re-activation produces the identical
+			// The seconds field is derived from `${workflowId}:${nodeId}`, not
+			// randomised per activation, so a re-activation produces the identical
 			// cron (hence the identical job name), not a new row with a fresh clock.
 			const registrar = makeRegistrar();
 

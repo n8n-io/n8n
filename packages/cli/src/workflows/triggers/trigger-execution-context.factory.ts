@@ -276,12 +276,11 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Assembles the poll execution context, matching the activation path
-	 * (WorkflowTriggerActivator / ActiveWorkflowTriggers.activatePollTrigger): the
-	 * Workflow instance, additionalData, and the resolve-at-emit-time closure are
-	 * built the exact same way, so the durable poll-trigger handler runs `poll()`
-	 * against the same context as the legacy in-memory poller. The closure keeps
-	 * reading fresh (non-cached) so the poll cursor in staticData is never stale.
+	 * Assemble the poll execution context the same way the activation path does
+	 * (ActiveWorkflowTriggers.activatePollTrigger), so the durable poll-trigger
+	 * handler runs `poll()` against the same Workflow, additionalData, and
+	 * resolve-at-emit closure as the legacy in-memory poller. The closure reads
+	 * fresh (non-cached) so the poll cursor in staticData is never stale.
 	 */
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
@@ -347,13 +346,13 @@ export class TriggerExecutionContextFactory {
 
 	/**
 	 * Builds the {@link IWorkflowBase} to execute for an active trigger from the
-	 * published data. `pinData` and `meta` are deliberately left out — they are
+	 * published data. `pinData` and `meta` are deliberately left out: they are
 	 * irrelevant to a production trigger execution.
 	 *
 	 * Pass `bypassCache` on the poll path: pollers mutate `staticData` (the poll
-	 * cursor) every tick via `saveStaticData`, and that write does not refresh the
-	 * cache (only the publication applier does), so the cache would serve a stale
-	 * cursor forever. The cursor must be read live.
+	 * cursor) every tick via `saveStaticData`, a write that does not refresh the
+	 * cache (only the publication applier does), so a cached read would serve a
+	 * stale cursor. Read it live.
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */

@@ -17,12 +17,11 @@ import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
  * the publication path's counterpart to the in-memory `ScheduledTaskManager`,
  * and the concrete backing for core's {@link PollJobManager} port.
  *
- * Every poll time is a plain `cron` job (poll triggers only ever have a fixed
- * cadence). Jobs reconcile in place by a definition-derived name, so an
- * unchanged poll time keeps its row and clock across re-activation. To make that
- * hold, the seconds field is seeded deterministically from the node identity
- * (see {@link seededCron}) rather than randomised per activation. Payload is just
- * `{ workflowId, nodeId }`; the handler re-runs `poll()` each fire, so there is
+ * Each poll time becomes a plain `cron` job. Jobs reconcile in place by a
+ * definition-derived name, so an unchanged poll time keeps its row and clock
+ * across re-activation; to hold that, the seconds field is seeded from the node
+ * identity (see {@link seededCron}), not randomised. The payload is just
+ * `{ workflowId, nodeId }`: the handler re-runs `poll()` each fire, so there is
  * no per-occurrence dedup key.
  */
 @Service()
@@ -98,9 +97,8 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	}
 
 	/**
-	 * Map each poll time to a `cron` job in the node's resolved timezone, with its
-	 * first fire computed ungated and a name stable across re-activation (see the
-	 * class doc).
+	 * Map each poll time to a `cron` job in the resolved timezone, with a name
+	 * stable across re-activation (see the class doc).
 	 */
 	private toDesiredJobs(
 		workflowId: string,
@@ -147,9 +145,9 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	/**
 	 * Delete the workflow's durable poll jobs within a caller-owned transaction, so
 	 * a publication deactivation commits their removal atomically with its
-	 * `active = false` write. Durable rows are DB state: a removal deferred to a
-	 * later step could be lost, leaving jobs firing an inactive workflow. Keyed and
-	 * idempotent like {@link removeWorkflow}.
+	 * `active = false` write; a removal deferred to a later step could be lost,
+	 * leaving jobs firing an inactive workflow. Keyed and idempotent like
+	 * {@link removeWorkflow}.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
 		await this.jobProvisioner.deprovisionWorkflowInTransaction(
@@ -171,10 +169,10 @@ function resolveTimezone(timezone: string, defaultTimezone: string): string {
 
 /**
  * Deterministic integer in `[min, max)` from `seed`+`label`, used to fill the
- * unspecified parts of a generated poll time's cron (the second, and the minute
- * for every-N-hours). Seeding on `${workflowId}:${nodeId}` keeps the value stable
- * across re-activation, so the durable job's cron string, and therefore its
- * reconcile-in-place identity, does not move; different nodes still spread apart.
+ * unspecified fields of a generated poll time's cron. Seeding on the node
+ * identity keeps the value stable across re-activation, so the cron string (and
+ * thus the job's reconcile-in-place identity) does not move; different nodes
+ * still spread apart.
  */
 function stableInt(seed: string, label: string, min: number, max: number): number {
 	const hash = createHash('sha256').update(`${seed}:${label}`).digest();

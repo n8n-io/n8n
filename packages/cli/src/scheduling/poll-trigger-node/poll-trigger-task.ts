@@ -1,7 +1,7 @@
-/** Task type poll-trigger jobs are materialized under and their handler registers for. */
+/** Task type poll-trigger jobs are materialised under and their handler registers for. */
 export const POLL_TRIGGER_TASK_TYPE = 'workflow:poll-trigger';
 
-/** What a poll-trigger job carries through materialization to its handler. */
+/** What a poll-trigger job carries through materialisation to its handler. */
 export interface PollTriggerTaskPayload {
 	workflowId: string;
 	nodeId: string;

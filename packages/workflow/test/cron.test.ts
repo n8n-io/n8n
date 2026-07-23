@@ -84,7 +84,7 @@ describe('Cron', () => {
 			['* * * * *', false],
 			// Tolerates surrounding and repeated whitespace.
 			['  */5  * * * * *  ', true],
-		] as Array<[CronExpression, boolean]>)('is %j -> %s', (expression, expected) => {
+		] as Array<[CronExpression, boolean]>)('returns %s for %j', (expression, expected) => {
 			expect(isSubMinuteCron(expression)).toBe(expected);
 		});
 	});
