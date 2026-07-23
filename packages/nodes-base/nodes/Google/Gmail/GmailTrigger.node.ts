@@ -8,7 +8,7 @@ import type {
 	INodeTypeDescription,
 	IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isSafeObjectProperty, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import {
 	googleApiRequest,
@@ -20,7 +20,6 @@ import {
 import type {
 	GmailTriggerFilters,
 	GmailTriggerOptions,
-	GmailWorkflowStaticData,
 	GmailWorkflowStaticDataDictionary,
 	Label,
 	ListMessage,
@@ -35,6 +34,8 @@ export class GmailTrigger implements INodeType {
 		name: 'gmailTrigger',
 		icon: 'file:gmail.svg',
 		group: ['trigger'],
+		// Older versions are aliases of 1.4: all run the same implementation so that
+		// stored workflows keep loading, but legacy per-version behavior is gone
 		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description:
 			'Fetches emails from Gmail and starts the workflow on specified polling intervals.',
@@ -127,11 +128,6 @@ export class GmailTrigger implements INodeType {
 				},
 				description:
 					'Maximum number of emails to fetch each time the node polls for new messages. If more emails arrive between polls, the remaining ones will be picked up in subsequent polls.',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { gte: 1.4 } }],
-					},
-				},
 			},
 			{
 				displayName: 'Filters',
@@ -279,34 +275,42 @@ export class GmailTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowStaticData = this.getWorkflowStaticData('node') as
-			| GmailWorkflowStaticData
-			| GmailWorkflowStaticDataDictionary;
+		const staticData = this.getWorkflowStaticData('node');
 		const node = this.getNode();
-
-		let nodeStaticData = (workflowStaticData ?? {}) as GmailWorkflowStaticData;
-		if (node.typeVersion > 1) {
-			const nodeName = node.name;
-			const dictionary = workflowStaticData as GmailWorkflowStaticDataDictionary;
-			if (!(nodeName in workflowStaticData)) {
-				dictionary[nodeName] = {};
-			}
-
-			nodeStaticData = dictionary[nodeName];
+		// State is keyed by node name, so the name must be a safe object key
+		if (!isSafeObjectProperty(node.name)) {
+			throw new NodeOperationError(
+				node,
+				`The node name '${node.name}' is reserved, please rename the node`,
+			);
 		}
+		// Upgrade from v1: move root-level state under the node name once
+		if (staticData.lastTimeChecked !== undefined && !Object.hasOwn(staticData, node.name)) {
+			staticData[node.name] = {
+				lastTimeChecked: staticData.lastTimeChecked,
+				possibleDuplicates: staticData.possibleDuplicates,
+			};
+			delete staticData.lastTimeChecked;
+			delete staticData.possibleDuplicates;
+		}
+		const workflowStaticData = staticData as GmailWorkflowStaticDataDictionary;
+		if (!Object.hasOwn(workflowStaticData, node.name) || !workflowStaticData[node.name]) {
+			workflowStaticData[node.name] = {};
+		}
+		const nodeStaticData = workflowStaticData[node.name];
 
-		const now = Math.floor(DateTime.now().toSeconds()).toString();
+		const now = Math.floor(DateTime.now().toSeconds());
 
 		if (this.getMode() !== 'manual') {
-			nodeStaticData.lastTimeChecked ??= +now;
+			nodeStaticData.lastTimeChecked ??= now;
 		}
-		const startDate = nodeStaticData.lastTimeChecked ?? +now;
+		const startDate = nodeStaticData.lastTimeChecked ?? now;
 
 		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 		const simple = this.getNodeParameter('simple') as boolean;
 
-		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
+		const shouldLimitMessages = this.getMode() !== 'manual';
 		const maxResults = shouldLimitMessages
 			? (this.getNodeParameter('maxResults', 10) as number)
 			: Infinity;
@@ -326,7 +330,7 @@ export class GmailTrigger implements INodeType {
 			}
 
 			if (!date || isNaN(date)) {
-				return +startDate;
+				return startDate;
 			}
 
 			return date;
@@ -343,12 +347,7 @@ export class GmailTrigger implements INodeType {
 			return qs;
 		};
 
-		let includeDrafts = false;
-		if (node.typeVersion > 1.1) {
-			includeDrafts = filters.includeDrafts ?? false;
-		} else {
-			includeDrafts = filters.includeDrafts ?? true;
-		}
+		const includeDrafts = filters.includeDrafts ?? false;
 
 		const fetchAndProcessMessage = async (
 			messageId: string,
@@ -370,11 +369,7 @@ export class GmailTrigger implements INodeType {
 			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
 				return;
 			}
-			if (
-				node.typeVersion > 1.2 &&
-				fullMessage.labelIds?.includes('SENT') &&
-				!fullMessage.labelIds?.includes('INBOX')
-			) {
+			if (fullMessage.labelIds?.includes('SENT') && !fullMessage.labelIds?.includes('INBOX')) {
 				return;
 			}
 
@@ -390,8 +385,7 @@ export class GmailTrigger implements INodeType {
 		try {
 			let budget = maxResults;
 
-			// Process pending messages from previous poll first.
-			// These are IDs that were listed but not fetched last time due to maxResults.
+			// Drain IDs listed but not fetched on previous polls before listing more
 			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
 			if (shouldLimitMessages && pendingIds.length > 0) {
 				const idsToFetch = pendingIds.slice(0, budget);
@@ -404,10 +398,8 @@ export class GmailTrigger implements INodeType {
 
 				budget -= idsToFetch.length;
 
-				// Record drained IDs in possibleDuplicates so Gmail's boundary-inclusive
-				// `after:` query can't re-list a message we just emitted and push it back
-				// into pendingMessageIds as overflow. Also covers the early-return path,
-				// where the state update at the end of poll() is skipped.
+				// Track drained IDs as boundary duplicates now — the early-return below
+				// skips the state update at the end of poll()
 				if (allFetchedMessages.length > 0) {
 					const merged = new Set([
 						...(nodeStaticData.possibleDuplicates ?? []),
@@ -430,42 +422,86 @@ export class GmailTrigger implements INodeType {
 				}
 			}
 
-			// List new messages from Gmail.
-			const qs: IDataObject = {};
-			const allFilters: GmailTriggerFilters = { ...filters, receivedAfter: startDate };
+			const buildListQs = (receivedAfter: number): IDataObject => {
+				const listFilters: GmailTriggerFilters = { ...filters, receivedAfter };
+				const listQs: IDataObject = {};
 
-			if (this.getMode() === 'manual') {
-				qs.maxResults = 1;
-				delete allFilters.receivedAfter;
-			}
-
-			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
-
-			if (node.typeVersion > 1.3) {
-				if (qs.q) {
-					qs.q += ' -in:scheduled';
-				} else {
-					qs.q = '-in:scheduled';
+				if (this.getMode() === 'manual') {
+					listQs.maxResults = 1;
+					delete listFilters.receivedAfter;
 				}
+
+				Object.assign(listQs, prepareQuery.call(this, listFilters, 0));
+
+				if (listQs.q) {
+					listQs.q += ' -in:scheduled';
+				} else {
+					listQs.q = '-in:scheduled';
+				}
+				return listQs;
+			};
+
+			// List only as many pages as the budget needs. A leftover cursor is stored
+			// with its query boundary (tokens are only valid for their original query)
+			// and resumed once pending IDs have drained.
+			let messages: ListMessage[];
+			if (shouldLimitMessages) {
+				const listPages = async (listQs: IDataObject, initialPageToken?: string) => {
+					const collected: ListMessage[] = [];
+					let pageToken = initialPageToken;
+					do {
+						const response: MessageListResponse = await googleApiRequest.call(
+							this,
+							'GET',
+							'/gmail/v1/users/me/messages',
+							{},
+							{ ...listQs, ...(pageToken ? { pageToken } : {}) },
+						);
+						collected.push.apply(collected, response.messages ?? []);
+						pageToken = response.nextPageToken;
+					} while (pageToken && collected.length < budget);
+					return { messages: collected, nextPageToken: pageToken };
+				};
+
+				const cursor = nodeStaticData.backlogCursor;
+				let listResult: Awaited<ReturnType<typeof listPages>> | undefined;
+				let listBoundary = startDate;
+				if (cursor) {
+					try {
+						listResult = await listPages(buildListQs(cursor.receivedAfter), cursor.pageToken);
+						listBoundary = cursor.receivedAfter;
+					} catch {
+						// Stored page token no longer valid (expired or filters changed)
+					}
+				}
+				listResult ??= await listPages(buildListQs(startDate));
+
+				if (listResult.nextPageToken) {
+					nodeStaticData.backlogCursor = {
+						pageToken: listResult.nextPageToken,
+						receivedAfter: listBoundary,
+					};
+				} else {
+					delete nodeStaticData.backlogCursor;
+				}
+				messages = listResult.messages;
+			} else {
+				const messagesResponse: MessageListResponse = await googleApiRequest.call(
+					this,
+					'GET',
+					'/gmail/v1/users/me/messages',
+					{},
+					buildListQs(startDate),
+				);
+				messages = messagesResponse.messages ?? [];
 			}
-
-			const messagesResponse: MessageListResponse = await googleApiRequest.call(
-				this,
-				'GET',
-				'/gmail/v1/users/me/messages',
-				{},
-				qs,
-			);
-
-			let messages: ListMessage[] = messagesResponse.messages ?? [];
 
 			if (!messages.length && !allFetchedMessages.length) {
 				return null;
 			}
 
-			// For v1.4+, filter out boundary duplicates before fetching to save API calls.
 			// Gmail's `after:` query is inclusive at the second boundary, so messages at
-			// the lastTimeChecked timestamp can reappear.
+			// the lastTimeChecked timestamp can re-list; skip them before fetching
 			if (shouldLimitMessages) {
 				const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 				if (possibleDuplicates.size > 0) {
@@ -477,7 +513,6 @@ export class GmailTrigger implements INodeType {
 				}
 			}
 
-			// Take only what fits in the remaining budget, store the rest as pending.
 			let messagesToProcess = messages;
 			if (shouldLimitMessages && messages.length > budget) {
 				messagesToProcess = messages.slice(0, budget);
@@ -486,9 +521,6 @@ export class GmailTrigger implements INodeType {
 
 			if (messagesToProcess.length > 0) {
 				const fetchQs = buildFetchQs();
-				Object.assign(fetchQs, options);
-				delete fetchQs.includeDrafts;
-
 				for (const message of messagesToProcess) {
 					await fetchAndProcessMessage(message.id, fetchQs);
 				}
@@ -528,8 +560,8 @@ export class GmailTrigger implements INodeType {
 
 		const nextPollPossibleDuplicates = allFetchedMessages.map((m) => m.id);
 
-		// For older versions, filter at the response level since the pre-fetch filter
-		// above is gated to v1.4+. v1.4+ already skipped these before fetching.
+		// In manual mode the pre-fetch duplicate filter above is skipped, so filter
+		// at the response level instead.
 		if (!shouldLimitMessages) {
 			const prevDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 			if (prevDuplicates.size > 0) {
@@ -540,11 +572,11 @@ export class GmailTrigger implements INodeType {
 			}
 		}
 
-		const effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, +startDate)) || +startDate;
+		const effectiveLastTimeChecked = Math.floor(Math.max(lastEmailDate, startDate)) || startDate;
 
-		// When lastTimeChecked didn't advance (e.g., only older pending messages were processed),
-		// preserve existing possibleDuplicates — they're still at the query boundary.
-		if (effectiveLastTimeChecked === +startDate && nodeStaticData.possibleDuplicates?.length) {
+		// When lastTimeChecked didn't advance (e.g. only older pending messages were
+		// processed), existing possibleDuplicates are still at the query boundary
+		if (effectiveLastTimeChecked === startDate && nodeStaticData.possibleDuplicates?.length) {
 			const merged = new Set([...nodeStaticData.possibleDuplicates, ...nextPollPossibleDuplicates]);
 			nodeStaticData.possibleDuplicates = Array.from(merged);
 		} else {
