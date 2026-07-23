@@ -6,8 +6,8 @@ import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators'
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { BINARY_ENCODING, sleep, jsonStringify, UnexpectedError } from 'n8n-workflow';
-import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { sleep, jsonStringify, UnexpectedError } from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -30,6 +30,7 @@ import type {
 	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
+import { WebhookResponseRelay } from './webhook-response-relay';
 
 @Service()
 export class ScalingService {
@@ -47,6 +48,7 @@ export class ScalingService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
+		private readonly webhookResponseRelay: WebhookResponseRelay,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -352,7 +354,7 @@ export class ScalingService {
 					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
 					break;
 				case 'respond-to-webhook':
-					const decodedResponse = this.decodeWebhookResponse(msg.response);
+					const decodedResponse = this.webhookResponseRelay.decodeResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
@@ -489,22 +491,6 @@ export class ScalingService {
 	}
 
 	// #endregion
-
-	private decodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (
-			typeof response === 'object' &&
-			typeof response.body === 'object' &&
-			response.body !== null &&
-			'__@N8nEncodedBuffer@__' in response.body &&
-			typeof response.body['__@N8nEncodedBuffer@__'] === 'string'
-		) {
-			response.body = Buffer.from(response.body['__@N8nEncodedBuffer@__'], BINARY_ENCODING);
-		}
-
-		return response;
-	}
 
 	private assertQueue() {
 		if (this.queue) return;
