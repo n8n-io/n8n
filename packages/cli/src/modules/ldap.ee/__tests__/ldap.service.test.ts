@@ -317,7 +317,17 @@ describe('LdapService', () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
-				'LDAP cannot be enabled if SSO in enabled',
+				'LDAP cannot be enabled while another authentication method is active',
+			);
+		});
+
+		it('should throw the same error if login is enabled and the current authentication method is neither saml/oidc nor email/ldap', async () => {
+			config.set('userManagement.authenticationMethod', 'token-exchange');
+
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+				'LDAP cannot be enabled while another authentication method is active',
 			);
 		});
 

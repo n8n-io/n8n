@@ -1,11 +1,9 @@
 import { LdapSyncDto, UpdateLdapConfigurationDto } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import {
-	getLdapSynchronizations,
-	getLdapSynchronizationsWithCount,
-} from '@/modules/ldap.ee/helpers.ee';
+import { getLdapSynchronizationsWithCount } from '@/modules/ldap.ee/helpers.ee';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 
 import {
@@ -57,6 +55,7 @@ const ldapHandlers: LdapHandlers = {
 				const updated = toLdapConfigUpdate(payload.data, current);
 				await ldapService.updateConfig(updated);
 			} catch (e) {
+				if (e instanceof ResponseError) throw e;
 				throw new BadRequestError((e as Error).message);
 			}
 
@@ -90,14 +89,15 @@ const ldapHandlers: LdapHandlers = {
 				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}
 
+			let syncHistory;
 			try {
-				await Container.get(LdapService).runSync(payload.data.type);
+				syncHistory = await Container.get(LdapService).runSync(payload.data.type);
 			} catch (e) {
+				if (e instanceof ResponseError) throw e;
 				throw new BadRequestError((e as Error).message);
 			}
 
-			const [latest] = await getLdapSynchronizations(0, 1);
-			return res.json(latest ? toLdapSyncHistoryResponse(latest) : { success: true });
+			return res.json(toLdapSyncHistoryResponse(syncHistory));
 		},
 	],
 };

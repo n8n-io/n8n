@@ -254,8 +254,8 @@ export const processUsers = async (
  */
 export const saveLdapSynchronization = async (
 	data: Omit<AuthProviderSyncHistory, 'id' | 'providerType'>,
-): Promise<void> => {
-	await Container.get(AuthProviderSyncHistoryRepository).save(
+): Promise<AuthProviderSyncHistory> => {
+	return await Container.get(AuthProviderSyncHistoryRepository).save(
 		{
 			...data,
 			providerType: 'ldap',

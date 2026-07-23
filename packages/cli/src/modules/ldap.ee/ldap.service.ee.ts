@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { isValidEmail, SettingsRepository, User } from '@n8n/db';
-import type { RunningMode, SyncStatus } from '@n8n/db';
+import type { AuthProviderSyncHistory, RunningMode, SyncStatus } from '@n8n/db';
 import type { IPasswordAuthHandler } from '@n8n/decorators';
 import { AuthHandler } from '@n8n/decorators';
 import { Constructable, Container } from '@n8n/di';
@@ -107,8 +107,14 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			throw new UnexpectedError(message);
 		}
 
-		if (ldapConfig.loginEnabled && ['saml', 'oidc'].includes(getCurrentAuthenticationMethod())) {
-			throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
+		if (
+			ldapConfig.loginEnabled &&
+			!isEmailCurrentAuthenticationMethod() &&
+			!isLdapCurrentAuthenticationMethod()
+		) {
+			throw new BadRequestError(
+				`LDAP cannot be enabled while another authentication method is active (current: ${getCurrentAuthenticationMethod()})`,
+			);
 		}
 
 		this.setConfig({ ...ldapConfig });
@@ -361,7 +367,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 	 * Run the synchronization job.
 	 * If the job runs in "live" mode, changes to LDAP users are persisted in the database, else the users are not modified
 	 */
-	async runSync(mode: RunningMode): Promise<void> {
+	async runSync(mode: RunningMode): Promise<AuthProviderSyncHistory> {
 		this.logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
 
 		let adUsers: LdapUser[] = [];
@@ -431,7 +437,7 @@ export class LdapService implements IPasswordAuthHandler<User> {
 			errorMessage = error instanceof Error ? error.message : String(error);
 		}
 
-		await saveLdapSynchronization({
+		const syncHistory = await saveLdapSynchronization({
 			startedAt,
 			endedAt,
 			created: filteredUsersToCreate.length,
@@ -456,6 +462,8 @@ export class LdapService implements IPasswordAuthHandler<User> {
 		} else {
 			this.logger.error('LDAP - Synchronization finished with errors', { error: errorMessage });
 		}
+
+		return syncHistory;
 	}
 
 	/** Stop the current job scheduled, if any */

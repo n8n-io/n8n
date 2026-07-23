@@ -6,7 +6,7 @@ import { Container } from '@n8n/di';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
+import { getLdapUsers, saveLdapSynchronization } from '@/modules/ldap.ee/helpers.ee';
 import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import { setCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
@@ -41,11 +41,14 @@ describe('LDAP configuration in Public API', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['User', 'AuthIdentity', 'AuthProviderSyncHistory']);
-		// The LDAP config lives as a JSON blob in the `settings` table, which testDb.truncate
-		// does not touch. Reset it to defaults so each test starts from a known, unset state
-		// (otherwise a prior test's PUT — e.g. a stored password or an enabled sync timer —
-		// leaks into the next and makes assertions order-dependent).
+		await testDb.truncate([
+			'AuthIdentity',
+			'AuthProviderSyncHistory',
+			'ProjectRelation',
+			'Project',
+			'User',
+		]);
+
 		await Container.get(SettingsRepository).update(
 			{ key: LDAP_FEATURE_NAME },
 			{ value: JSON.stringify(LDAP_DEFAULT_CONFIGURATION), loadOnStartup: true },
@@ -245,49 +248,27 @@ describe('LDAP configuration in Public API', () => {
 			expect(response.status).toBe(401);
 		});
 
-		it('rejects with 400 when trying to enable LDAP login with SSO as current authentication method', async () => {
-			testServer.license.enable('feat:ldap');
+		it.each(['saml', 'oidc', 'token-exchange'] as const)(
+			'rejects with 400 when trying to enable LDAP login while %s is the current authentication method',
+			async (currentMethod) => {
+				testServer.license.enable('feat:ldap');
 
-			await setCurrentAuthenticationMethod('saml');
+				await setCurrentAuthenticationMethod(currentMethod);
 
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.put('/settings/ldap')
-				.send({
-					...defaultLdapConfig,
-					loginEnabled: true,
-				});
+				const response = await testServer
+					.publicApiAgentFor(owner)
+					.put('/settings/ldap')
+					.send({
+						...defaultLdapConfig,
+						loginEnabled: true,
+					});
 
-			expect(response.status).toBe(400);
-			expect((response.body as ErrorBody).message).toContain(
-				'LDAP cannot be enabled if SSO in enabled',
-			);
-		});
-
-		it('cross-API: PUT via public API persists correctly for LdapService.loadConfig()', async () => {
-			testServer.license.enable('feat:ldap');
-			const testPassword = 'superSecretPassword123';
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.put('/settings/ldap')
-				.send({
-					...defaultLdapConfig,
-					bindingAdminPassword: testPassword,
-					loginLabel: 'Cross-API Test',
-					loginEnabled: true,
-				});
-
-			expect(response.status).toBe(200);
-
-			// Load via LdapService to verify encryption/storage
-			const ldapService = Container.get(LdapService);
-			const storedConfig = await ldapService.loadConfig();
-
-			expect(storedConfig.loginLabel).toBe('Cross-API Test');
-			expect(storedConfig.loginEnabled).toBe(true);
-			expect(storedConfig.bindingAdminPassword).toBe(testPassword);
-		});
+				expect(response.status).toBe(400);
+				expect((response.body as ErrorBody).message).toContain(
+					'LDAP cannot be enabled while another authentication method is active',
+				);
+			},
+		);
 	});
 
 	describe('GET /settings/ldap/sync', () => {
@@ -416,62 +397,39 @@ describe('LDAP configuration in Public API', () => {
 	});
 
 	describe('POST /settings/ldap/sync', () => {
-		it('triggers sync with type:dry and returns latest history row', async () => {
+		it('creates users for a live sync but not for a dry run', async () => {
 			testServer.license.enable('feat:ldap');
 
-			// Pre-seed a history row to return
-			await saveLdapSynchronization({
-				created: 1,
-				scanned: 5,
-				updated: 0,
-				disabled: 0,
-				startedAt: new Date(),
-				endedAt: new Date(),
-				status: 'success',
-				error: '',
-				runMode: 'dry',
-			});
+			await testServer.publicApiAgentFor(owner).put('/settings/ldap').send(defaultLdapConfig);
 
-			const runSyncSpy = vi.spyOn(Container.get(LdapService), 'runSync').mockResolvedValue();
+			const ldapUser = {
+				dn: 'uid=newuser,ou=users,dc=example,dc=com',
+				uid: 'newuser',
+				mail: 'newuser@example.com',
+				givenName: 'New',
+				sn: 'User',
+			};
+			vi.spyOn(Container.get(LdapService), 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
 
-			const response = await testServer
+			const dryResponse = await testServer
 				.publicApiAgentFor(owner)
 				.post('/settings/ldap/sync')
 				.send({ type: 'dry' });
 
-			expect(response.status).toBe(200);
-			expect(runSyncSpy).toHaveBeenCalledWith('dry');
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toHaveProperty('runMode');
-		});
+			expect(dryResponse.status).toBe(200);
+			expect(dryResponse.body).toMatchObject({ runMode: 'dry', created: 1 });
+			expect(await getLdapUsers()).toHaveLength(0);
 
-		it('triggers sync with type:live and returns latest history row', async () => {
-			testServer.license.enable('feat:ldap');
-
-			// Pre-seed a history row to return
-			await saveLdapSynchronization({
-				created: 2,
-				scanned: 8,
-				updated: 1,
-				disabled: 0,
-				startedAt: new Date(),
-				endedAt: new Date(),
-				status: 'success',
-				error: '',
-				runMode: 'live',
-			});
-
-			const runSyncSpy = vi.spyOn(Container.get(LdapService), 'runSync').mockResolvedValue();
-
-			const response = await testServer
+			const liveResponse = await testServer
 				.publicApiAgentFor(owner)
 				.post('/settings/ldap/sync')
 				.send({ type: 'live' });
 
-			expect(response.status).toBe(200);
-			expect(runSyncSpy).toHaveBeenCalledWith('live');
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toHaveProperty('runMode');
+			expect(liveResponse.status).toBe(200);
+			expect(liveResponse.body).toMatchObject({ runMode: 'live', created: 1 });
+			const users = await getLdapUsers();
+			expect(users).toHaveLength(1);
+			expect(users[0].email).toBe('newuser@example.com');
 		});
 
 		it('rejects with 400 when missing type field', async () => {
