@@ -143,7 +143,7 @@ export class UserProxyLlm {
 		}
 
 		const prompt = buildConfirmationPrompt(this.promptContext(), event);
-		const decision = await this.agent.decide(prompt);
+		const decision = await this.agent.decide(prompt, 'confirmation');
 		if (!decision) {
 			this.logger?.warn(`[user-proxy] no decision; event=${summarizeEvent(event)}`);
 			this.bumpStat('fallback-no-decision');
@@ -203,10 +203,15 @@ export class UserProxyLlm {
 		}
 
 		const prompt = buildFollowUpPrompt(this.promptContext());
-		const decision = await this.agent.decide(prompt);
+		const decision = await this.agent.decide(prompt, 'user-turn');
 		if (!decision) {
 			const [next] = this.remainingUserScriptTurns();
-			if (!next || hasStageDirection(next.text)) return { kind: 'done' };
+			if (!next || hasStageDirection(next.text)) {
+				this.logger?.warn(
+					'[user-proxy] no user-turn decision and no plain scripted turn to fall back to — ending conversation',
+				);
+				return { kind: 'done' };
+			}
 			const scriptedMessage = this.consumeNextRemainingUserScriptTurn();
 			if (!scriptedMessage) return { kind: 'done' };
 			this.messagesSent++;
@@ -219,6 +224,13 @@ export class UserProxyLlm {
 			this.messagesSent++;
 			this.actualTranscript.push({ role: 'user', text: message });
 			return { kind: 'followUp', message };
+		}
+		if (decision.action !== 'declare_done') {
+			// The user-turn schema offers only the two actions above, so this only
+			// fires for injected test agents or schema drift — never drop it silently.
+			this.logger?.warn(
+				`[user-proxy] user-turn decision returned confirmation-only action=${decision.action} — treating as done`,
+			);
 		}
 		return { kind: 'done' };
 	}
