@@ -96,6 +96,7 @@ type Props = {
 	hideDelete?: boolean;
 	indent?: boolean;
 	isReadOnly?: boolean;
+	isForCredential?: boolean;
 	hiddenIssuesInputs?: string[];
 	entryIndex?: number;
 	isNested?: boolean;
@@ -1047,6 +1048,7 @@ watch(
 					:options-overrides="optionsOverrides"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
+					:is-for-credential="isForCredential"
 					:hide-label="layout === 'inline'"
 					:node-values="nodeValues"
 					:show-delete="
