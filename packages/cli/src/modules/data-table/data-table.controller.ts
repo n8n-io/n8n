@@ -308,7 +308,7 @@ export class DataTableController {
 	}
 
 	@Get('/:dataTableId/download-csv')
-	@ProjectScope('dataTable:read')
+	@ProjectScope('dataTable:readRow')
 	async downloadDataTableCsv(
 		req: AuthenticatedRequest<{ projectId: string; dataTableId: string }>,
 		_res: Response,
