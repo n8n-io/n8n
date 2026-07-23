@@ -77,7 +77,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.instance_ai_thread_grants](public.instance_ai_thread_grants.md) | 5 |  | BASE TABLE |
 | [public.instance_ai_threads](public.instance_ai_threads.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_workflow_snapshots](public.instance_ai_workflow_snapshots.md) | 7 |  | BASE TABLE |
-| [public.instance_credential_assignment](public.instance_credential_assignment.md) | 2 |  | BASE TABLE |
+| [public.instance_credential_assignment](public.instance_credential_assignment.md) | 4 |  | BASE TABLE |
 | [public.instance_version_history](public.instance_version_history.md) | 5 |  | BASE TABLE |
 | [public.invalid_auth_token](public.invalid_auth_token.md) | 2 |  | BASE TABLE |
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
@@ -1002,8 +1002,10 @@ erDiagram
   varchar_255_ workflowName
 }
 "public.instance_credential_assignment" {
+  timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId
+  timestamp_3__with_time_zone updatedAt
 }
 "public.instance_version_history" {
   timestamp_3__with_time_zone createdAt

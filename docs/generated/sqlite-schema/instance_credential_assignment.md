@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_credential_assignment" ("credentialUseId" varchar(128) PRIMARY KEY NOT NULL, "credentialId" varchar(36) NOT NULL, CONSTRAINT "FK_instance_credential_assignment_credential" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE RESTRICT)
+CREATE TABLE "instance_credential_assignment" ("credentialUseId" varchar(128) PRIMARY KEY NOT NULL, "credentialId" varchar(36) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_instance_credential_assignment_credential" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE RESTRICT)
 ```
 
 </details>
@@ -15,8 +15,10 @@ CREATE TABLE "instance_credential_assignment" ("credentialUseId" varchar(128) PR
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | credentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
 | credentialUseId | varchar(128) |  | false |  |  |  |
+| updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
 ## Constraints
 
@@ -41,8 +43,10 @@ erDiagram
 "instance_credential_assignment" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 
 "instance_credential_assignment" {
+  datetime_3_ createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId PK
+  datetime_3_ updatedAt
 }
 "credentials_entity" {
   datetime_3_ createdAt

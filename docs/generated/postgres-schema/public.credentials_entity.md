@@ -137,8 +137,10 @@ erDiagram
   uuid userId FK
 }
 "public.instance_credential_assignment" {
+  timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId
+  timestamp_3__with_time_zone updatedAt
 }
 "public.shared_credentials" {
   timestamp_3__with_time_zone createdAt

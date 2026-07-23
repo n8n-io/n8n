@@ -137,8 +137,10 @@ erDiagram
   varchar userId FK
 }
 "instance_credential_assignment" {
+  datetime_3_ createdAt
   varchar_36_ credentialId FK
   varchar_128_ credentialUseId PK
+  datetime_3_ updatedAt
 }
 "shared_credentials" {
   datetime_3_ createdAt
