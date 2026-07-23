@@ -1,6 +1,7 @@
 import {
 	AgentDisconnectIntegrationDto,
 	AgentIntegrationSchema,
+	isDraftIntegration,
 	type AgentIntegrationStatusResponse,
 	CreateSlackAgentAppDto,
 	type CreateSlackAgentAppResponse,
@@ -220,7 +221,7 @@ export class AgentIntegrationsController {
 		// them as disconnected so channel-setup UIs don't render an already-
 		// connected state and hide their own setup form.
 		const chatIntegrations = (agent.integrations ?? [])
-			.filter((i) => i.credentialId !== '')
+			.filter((i) => !isDraftIntegration(i))
 			.map((i) => ({
 				type: i.type,
 				credentialId: i.credentialId,

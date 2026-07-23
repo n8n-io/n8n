@@ -5,7 +5,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 
-import { createValidateWorkflowCodeTool } from '../tools/workflow-builder/validate-workflow-code.tool';
+import {
+	createValidateWorkflowCodeTool,
+	type ValidateWorkflowCodeToolOptions,
+} from '../tools/workflow-builder/validate-workflow-code.tool';
 
 // Mocks referenced inside vi.mock factories must come from vi.hoisted.
 const { mockParseAndValidate, mockStripImportStatements } = vi.hoisted(() => ({
@@ -61,7 +64,8 @@ describe('validate-workflow-code MCP tool', () => {
 		}) as typeof nodeTypes.getByNameAndVersion);
 	});
 
-	const createTool = () => createValidateWorkflowCodeTool(user, telemetry, nodeTypes);
+	const createTool = (options?: ValidateWorkflowCodeToolOptions) =>
+		createValidateWorkflowCodeTool(user, telemetry, nodeTypes, options);
 
 	describe('smoke tests', () => {
 		test('creates tool with correct name and readOnlyHint=true', () => {
@@ -267,6 +271,214 @@ describe('validate-workflow-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('canvas groups (102_mcp_canvas_groups)', () => {
+		const makeGroupedWorkflow = (
+			nodeGroups: Array<{ id: string; name: string; nodeIds: string[] }>,
+		) => ({
+			name: 'wf',
+			nodes: [
+				{
+					id: 'trigger',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'a',
+					name: 'A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'b',
+					name: 'B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'A', type: 'main', index: 0 }]] },
+				A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+			},
+			nodeGroups,
+		});
+
+		/** results of the last tracked telemetry event */
+		const trackedResults = () => {
+			const payload = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1] as {
+				results?: { success?: boolean; error?: string; data?: Record<string, unknown> };
+			};
+			return payload.results;
+		};
+
+		/** results.data of the last tracked telemetry event */
+		const trackedData = () => trackedResults()?.data;
+
+		beforeEach(() => {
+			// The group validator resolves trigger-ness via description.group.
+			nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === 'n8n-nodes-base.manualTrigger') {
+					return { description: { group: ['trigger'], outputs: [NodeConnectionTypes.Main] } };
+				}
+				return { description: { group: ['transform'], outputs: [NodeConnectionTypes.Main] } };
+			}) as typeof nodeTypes.getByNameAndVersion);
+		});
+
+		test('flag off: groups are not validated and output/telemetry are unchanged', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }]),
+				warnings: [],
+			});
+
+			const tool = createTool();
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.valid).toBe(true);
+			expect(response).not.toHaveProperty('warnings');
+			// Telemetry payload is byte-identical to the pre-flag shape.
+			expect(trackedData()).toEqual({ nodeCount: 3, warningCount: 0 });
+		});
+
+		test('flag on: a valid group produces no errors and is counted in telemetry', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]),
+				warnings: [],
+			});
+
+			const tool = createTool({ canvasGroupsEnabled: true });
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.valid).toBe(true);
+			expect(response).not.toHaveProperty('warnings');
+			expect(trackedData()).toEqual({
+				nodeCount: 3,
+				warningCount: 0,
+				groupCount: 1,
+			});
+		});
+
+		test('flag on: group violations fail validation with the save-path message', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }]),
+				warnings: [],
+			});
+
+			const tool = createTool({ canvasGroupsEnabled: true });
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response).toEqual({
+				valid: false,
+				errors: ['Node group "Group" (g1) cannot contain trigger nodes: Trigger.'],
+			});
+			expect(trackedResults()).toEqual({
+				success: false,
+				error: 'Node group "Group" (g1) cannot contain trigger nodes: Trigger.',
+				data: {
+					groupCount: 1,
+					groupViolationCount: 1,
+					groupViolationCodes: ['trigger-selected'],
+				},
+			});
+		});
+
+		test('flag on: all group violations are reported as errors, one entry each', async () => {
+			const sdkWarning = { code: 'deprecated', message: 'Node X is deprecated' };
+			mockParseAndValidate.mockResolvedValue({
+				workflow: makeGroupedWorkflow([
+					{ id: 'g1', name: 'Group', nodeIds: ['a', 'missing'] },
+					{ id: 'g2', name: 'Group', nodeIds: ['b'] },
+				]),
+				warnings: [sdkWarning],
+			});
+
+			const tool = createTool({ canvasGroupsEnabled: true });
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(result.isError).toBe(true);
+			expect(response.valid).toBe(false);
+			expect(response.errors).toEqual([
+				'Group "Group" references node ID "missing" that does not exist in the workflow.',
+				'Duplicate node group name "Group".',
+			]);
+			// Error responses carry only errors, matching the other invalid paths.
+			expect(response).not.toHaveProperty('warnings');
+			expect(trackedResults()).toEqual({
+				success: false,
+				error:
+					'Group "Group" references node ID "missing" that does not exist in the workflow. ' +
+					'Duplicate node group name "Group".',
+				data: {
+					groupCount: 2,
+					groupViolationCount: 2,
+					groupViolationCodes: ['unknown-node-id', 'duplicate-group-name'],
+				},
+			});
+		});
+
+		test('flag on: connections under unsafe object keys are skipped, not assigned', async () => {
+			// Built via JSON.parse: an object literal with a "__proto__" key would
+			// invoke the prototype setter instead of creating an own property.
+			// Both entries would be boundary-crossing ai_languageModel connections
+			// into the group if their keys were honored; skipping them is the
+			// deliberate trade-off for never writing object-internal keys.
+			const hostileConnections = JSON.parse(
+				'{"__proto__": {"ai_languageModel": [[{"node": "A", "type": "ai_languageModel", "index": 0}]]},' +
+					' "constructor": {"ai_languageModel": [[{"node": "B", "type": "ai_languageModel", "index": 0}]]}}',
+			) as Record<string, unknown>;
+			const workflow = makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]);
+			mockParseAndValidate.mockResolvedValue({
+				workflow: {
+					...workflow,
+					connections: { ...workflow.connections, ...hostileConnections },
+				},
+				warnings: [],
+			});
+
+			const tool = createTool({ canvasGroupsEnabled: true });
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(result.isError).toBeUndefined();
+			expect(response.valid).toBe(true);
+			expect(response).not.toHaveProperty('warnings');
+			expect(trackedData()).toEqual({
+				nodeCount: 3,
+				warningCount: 0,
+				groupCount: 1,
+			});
+		});
+
+		test('flag on: workflows without groups report groupCount 0', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: makeGroupedWorkflow([]),
+				warnings: [],
+			});
+
+			const tool = createTool({ canvasGroupsEnabled: true });
+			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
+
+			const response = parseResult(result);
+			expect(response.valid).toBe(true);
+			expect(response).not.toHaveProperty('warnings');
+			expect(trackedData()).toEqual({
+				nodeCount: 3,
+				warningCount: 0,
+				groupCount: 0,
+			});
 		});
 	});
 });
