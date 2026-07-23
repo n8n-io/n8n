@@ -124,7 +124,13 @@ export function useCompareCases(
 	});
 
 	const mismatch = computed<DatasetMismatch>(() => {
-		const counts = casesByVersion.value.map((cases) => cases.length);
+		const runs = detail.value?.runs ?? [];
+		// Only compare counts across runs that completed. A run that errored (or
+		// hasn't finished) seeds no cases — that's a failed run, not dataset drift,
+		// and must not read as a mismatch (e.g. a spurious "12, 0" banner).
+		const counts = casesByVersion.value
+			.filter((_cases, index) => runs[index]?.status === 'completed')
+			.map((cases) => cases.length);
 		const maxCount = counts.length ? Math.max(...counts) : 0;
 		return {
 			counts,

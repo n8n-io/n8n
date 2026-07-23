@@ -17,6 +17,7 @@ export const BUILDER_TOOLS = {
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILLS: 'create_skills',
 	CREATE_TASKS: 'create_tasks',
+	FINISH_SETUP: 'finish_setup',
 	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',

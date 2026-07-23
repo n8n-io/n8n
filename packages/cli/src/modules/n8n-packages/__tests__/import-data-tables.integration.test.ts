@@ -17,6 +17,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
@@ -42,6 +43,9 @@ const licenseMocker = new LicenseMocker();
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages', 'data-table']);
 	await testDb.init();
+	// Register node types so the plan-phase missing-node-type check can resolve
+	// the node types used by the package fixtures.
+	await initNodeTypes();
 	mockDataTableSizeValidator();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	service = Container.get(N8nPackagesService);
@@ -65,6 +69,7 @@ async function importPackage(params: ImportParams) {
 		workflowConflictPolicy: 'fail',
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
+		missingNodeTypeMode: 'fail',
 		folderConflictPolicy: 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',

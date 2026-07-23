@@ -316,3 +316,141 @@ describe('createCasePipeline', () => {
 		expect(lane.tracedExecuteAgent).toHaveBeenCalledTimes(1);
 	});
 });
+
+function deferred(): { promise: Promise<unknown>; resolve: (v: unknown) => void } {
+	let resolve!: (v: unknown) => void;
+	const promise = new Promise<unknown>((r) => (resolve = r));
+	return { promise, resolve };
+}
+
+describe('seed-table scenarios (TRUST-311 parity)', () => {
+	function seededCase(names: string[]): WorkflowTestCase {
+		return {
+			...scenarioCase(names),
+			executionScenarios: names.map((name) => ({
+				name,
+				description: 'd',
+				dataSetup: 's',
+				successCriteria: 'c',
+				seedDataTables: [
+					{
+						id: 'seed-table-1',
+						name: 'Jobs',
+						columns: [{ name: 'id', type: 'string' as const }],
+						rows: [{ id: 'row_001' }],
+					},
+				],
+			})),
+		};
+	}
+
+	it('merges the authored scenario and passes the build seed context to execution', async () => {
+		const lane = makeLane();
+		vi.mocked(lane.tracedExecute).mockResolvedValue({
+			success: true,
+			score: 1,
+			reasoning: 'ok',
+		} as never);
+		const orchestrator = makeOrchestrator({
+			build: okBuild({ threadId: 'thread-1', seededScenarioTableIdsByName: { Jobs: 'dt-real-1' } }),
+			lane,
+			buildDurationMs: 1,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', seededCase(['happy-path'])]]),
+			}),
+		);
+
+		await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(lane.tracedExecute).toHaveBeenCalledWith(
+			expect.objectContaining({
+				scenario: expect.objectContaining({
+					seedDataTables: [expect.objectContaining({ name: 'Jobs' })],
+				}) as unknown,
+				seedContext: { threadId: 'thread-1', tableIdsByName: { Jobs: 'dt-real-1' } },
+			}),
+		);
+	});
+
+	it('refuses to run a seeded scenario when the build carries no seeded-table mapping', async () => {
+		const lane = makeLane();
+		// MCP/prebuilt-shaped build: success, but no thread or table mapping —
+		// running would grade the workflow against empty tables.
+		const orchestrator = makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 1 });
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', seededCase(['happy-path'])]]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(lane.tracedExecute).not.toHaveBeenCalled();
+		expect(output).toMatchObject({
+			passed: false,
+			failureCategory: 'framework_issue',
+			reasoning: expect.stringContaining('no seeded-table mapping') as unknown,
+		});
+	});
+
+	it('serializes rows of a seeded case so table reseeding cannot interleave', async () => {
+		const lane = makeLane();
+		const started: string[] = [];
+		const first = deferred();
+		const second = deferred();
+		vi.mocked(lane.tracedExecute).mockImplementation(((execArgs: {
+			scenario: { name: string };
+		}) => {
+			started.push(execArgs.scenario.name);
+			return (started.length === 1 ? first.promise : second.promise) as never;
+		}) as never);
+		const orchestrator = makeOrchestrator({
+			build: okBuild({ threadId: 'thread-1', seededScenarioTableIdsByName: { Jobs: 'dt-real-1' } }),
+			lane,
+			buildDurationMs: 1,
+		});
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', seededCase(['s1', 's2'])]]),
+			}),
+		);
+
+		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
+		await vi.waitFor(() => expect(started).toHaveLength(1));
+		for (let i = 0; i < 5; i++) await Promise.resolve();
+		// The second seeded row must not start while the first still runs.
+		expect(started).toEqual(['s1']);
+
+		first.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await vi.waitFor(() => expect(started).toHaveLength(2));
+		second.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await rows;
+	});
+
+	it('does not serialize rows of an unseeded case', async () => {
+		const lane = makeLane();
+		const started: string[] = [];
+		const first = deferred();
+		const second = deferred();
+		vi.mocked(lane.tracedExecute).mockImplementation(((execArgs: {
+			scenario: { name: string };
+		}) => {
+			started.push(execArgs.scenario.name);
+			return (started.length === 1 ? first.promise : second.promise) as never;
+		}) as never);
+		const orchestrator = makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 1 });
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', scenarioCase(['s1', 's2'])]]),
+			}),
+		);
+
+		const rows = Promise.all([pipeline.runRow(rowInputs('s1')), pipeline.runRow(rowInputs('s2'))]);
+		await vi.waitFor(() => expect(started).toHaveLength(2));
+		first.resolve({ success: true, score: 1, reasoning: 'ok' });
+		second.resolve({ success: true, score: 1, reasoning: 'ok' });
+		await rows;
+	});
+});
