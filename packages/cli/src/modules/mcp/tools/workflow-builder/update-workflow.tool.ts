@@ -156,7 +156,8 @@ const operationInputSchema = z
 				z.object({
 					id: z.string().optional(),
 					name: z.string(),
-					nodeIds: z.array(z.string()),
+					nodeNames: z.array(z.string()),
+					description: z.string().optional(),
 				}),
 			)
 			.optional()

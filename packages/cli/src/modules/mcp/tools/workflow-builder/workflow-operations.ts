@@ -295,9 +295,9 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 				z.object({
 					id: z.string().trim().min(1).optional().describe('Group id. Generated if omitted.'),
 					name: z.string().trim().min(1).describe('Unique group name.'),
-					nodeIds: z
+					nodeNames: z
 						.array(z.string().trim().min(1))
-						.describe('IDs of the nodes that belong to this group.'),
+						.describe('Names of the nodes that belong to this group.'),
 					description: z
 						.string()
 						.trim()
@@ -309,7 +309,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 				}),
 			)
 			.describe(
-				'Replaces the workflow node groups entirely. Pass [] to remove all groups. Each nodeId must reference an existing node, and every group must form a valid, connected, trigger-free section of the graph (validated on save).',
+				'Replaces the workflow node groups entirely. Pass [] to remove all groups. Each nodeName must reference an existing node, and every group must form a valid, connected, trigger-free section of the graph (validated on save).',
 			),
 	}),
 ]);
@@ -732,16 +732,29 @@ export function applyOperations(
 			}
 
 			case 'setNodeGroups': {
-				workflow.nodeGroups = op.nodeGroups.map((group) => {
+				// Groups are persisted with node IDs, but the op references nodes by
+				// name like every other operation; resolve against the current batch
+				// state so nodes added/renamed earlier in the same call are found.
+				const nodeGroups: IWorkflowGroup[] = [];
+				for (const group of op.nodeGroups) {
+					const nodeIds = new Set<string>();
+					for (const nodeName of group.nodeNames) {
+						const node = nodeByName.get(nodeName);
+						if (!node) {
+							return fail(i, `node '${nodeName}' in group '${group.name}' not found`);
+						}
+						nodeIds.add(node.id);
+					}
 					// Omit blank descriptions so groups without one stay unset, matching the editor.
 					const description = group.description?.trim();
-					return {
+					nodeGroups.push({
 						id: group.id ?? uuid(),
 						name: group.name,
-						nodeIds: [...group.nodeIds],
+						nodeIds: [...nodeIds],
 						...(description ? { description } : {}),
-					};
-				});
+					});
+				}
+				workflow.nodeGroups = nodeGroups;
 				break;
 			}
 

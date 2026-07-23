@@ -974,9 +974,9 @@ describe('applyOperations', () => {
 	});
 
 	describe('setNodeGroups', () => {
-		test('sets node groups on the workflow', () => {
+		test('sets node groups on the workflow, resolving node names to ids', () => {
 			const result = applyOperations(baseWorkflow(), [
-				{ type: 'setNodeGroups', nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }] },
+				{ type: 'setNodeGroups', nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }] },
 			]);
 			expect(result.success).toBe(true);
 			if (!result.success) return;
@@ -987,7 +987,7 @@ describe('applyOperations', () => {
 
 		test('generates an id when omitted', () => {
 			const result = applyOperations(baseWorkflow(), [
-				{ type: 'setNodeGroups', nodeGroups: [{ name: 'Group', nodeIds: ['a'] }] },
+				{ type: 'setNodeGroups', nodeGroups: [{ name: 'Group', nodeNames: ['A'] }] },
 			]);
 			expect(result.success).toBe(true);
 			if (!result.success) return;
@@ -1004,10 +1004,44 @@ describe('applyOperations', () => {
 			expect(result.workflow.nodeGroups).toEqual([]);
 		});
 
+		test('fails when a node name does not exist', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodeGroups', nodeGroups: [{ name: 'Group', nodeNames: ['A', 'Missing'] }] },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("node 'Missing' in group 'Group' not found");
+		});
+
+		test('resolves nodes added earlier in the same operation batch', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'addNode',
+					node: { id: 'c', name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 },
+				},
+				{ type: 'setNodeGroups', nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['C'] }] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['c'] }]);
+		});
+
+		test('dedupes duplicate node names within a group', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'setNodeGroups',
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A', 'B', 'A'] }],
+				},
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0].nodeIds).toEqual(['a', 'b']);
+		});
+
 		test('does not mutate the input workflow', () => {
 			const wf = baseWorkflow();
 			applyOperations(wf, [
-				{ type: 'setNodeGroups', nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }] },
+				{ type: 'setNodeGroups', nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A'] }] },
 			]);
 			expect((wf as { nodeGroups?: unknown }).nodeGroups).toBeUndefined();
 		});
@@ -1015,16 +1049,26 @@ describe('applyOperations', () => {
 		test('schema parses a valid setNodeGroups op', () => {
 			const parsed = partialUpdateOperationSchema.safeParse({
 				type: 'setNodeGroups',
-				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A', 'B'] }],
 			});
 			expect(parsed.success).toBe(true);
+		});
+
+		test('schema rejects a group without nodeNames', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'setNodeGroups',
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+			});
+			expect(parsed.success).toBe(false);
 		});
 
 		test('persists a group description', () => {
 			const result = applyOperations(baseWorkflow(), [
 				{
 					type: 'setNodeGroups',
-					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'], description: 'What this does' }],
+					nodeGroups: [
+						{ id: 'g1', name: 'Group', nodeNames: ['A'], description: 'What this does' },
+					],
 				},
 			]);
 			expect(result.success).toBe(true);
@@ -1038,7 +1082,7 @@ describe('applyOperations', () => {
 			const result = applyOperations(baseWorkflow(), [
 				{
 					type: 'setNodeGroups',
-					nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'], description: '   ' }],
+					nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A'], description: '   ' }],
 				},
 			]);
 			expect(result.success).toBe(true);
@@ -1049,7 +1093,7 @@ describe('applyOperations', () => {
 		test('schema rejects a description over the max length', () => {
 			const parsed = partialUpdateOperationSchema.safeParse({
 				type: 'setNodeGroups',
-				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'], description: 'x'.repeat(1000) }],
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A'], description: 'x'.repeat(1000) }],
 			});
 			expect(parsed.success).toBe(false);
 		});
