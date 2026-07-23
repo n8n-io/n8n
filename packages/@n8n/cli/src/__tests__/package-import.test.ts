@@ -14,13 +14,14 @@ interface ImportFlags {
 	conflictPolicy: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
+	missingNodeTypeMode?: string;
 	folderConflictPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
 	dataTableMatchingMode?: string;
 	dataTableMissingMode?: string;
 	dataTableSchemaConflictPolicy?: string;
-	variableMissingPolicy?: string;
+	variableMissingMode?: string;
 	bindings?: string;
 }
 
@@ -59,13 +60,14 @@ describe('package import command', () => {
 			conflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			missingNodeTypeMode: 'import-anyway',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingPolicy: 'do-nothing',
+			variableMissingMode: 'do-nothing',
 			bindings: '{}',
 		});
 
@@ -82,13 +84,14 @@ describe('package import command', () => {
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			missingNodeTypeMode: 'import-anyway',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
 			dataTableMatchingMode: 'by-id',
 			dataTableMissingMode: 'create',
 			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingPolicy: 'do-nothing',
+			variableMissingMode: 'do-nothing',
 			bindings: '{}',
 		});
 	});

@@ -13,6 +13,7 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export {
 	chatHubConversationModelSchema,
@@ -120,6 +121,7 @@ export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
+export { n8nIdSchema } from './schemas/id.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -362,7 +364,8 @@ export {
 	InstanceAiFilesystemResponseDto,
 	instanceAiEvalSeedDataTableSchema,
 	applyBranchReadOnlyOverrides,
-	normalizeInstanceAiThreadSource,
+	INSTANCE_AI_THREAD_SOURCES,
+	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -538,6 +541,8 @@ export {
 	RESERVED_METRIC_KEYS,
 	ONE_TO_FIVE_METRIC_KEYS,
 	normalizeMetricScore,
+	normalizedScores,
+	averageNormalizedScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
 	type MetricScale,

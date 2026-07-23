@@ -313,6 +313,9 @@ describe('project package export — with folders / workflows', () => {
 			entries.find((e) => e.name === `${credentialEntry.target}/credential.json`),
 		).toBeDefined();
 		expect(manifest.requirements).toEqual({
+			nodeTypes: [
+				{ type: 'n8n-nodes-base.httpRequest', typeVersion: 1, usedByWorkflows: [workflow.id] },
+			],
 			credentials: [
 				{
 					id: credential.id,
@@ -347,6 +350,7 @@ describe('project package export — with folders / workflows', () => {
 		expect(variableEntry.target).toMatch(new RegExp(`^${projectEntry.target}/variables/[^/]+$`));
 		expect(entries.find((e) => e.name === `${variableEntry.target}/variable.json`)).toBeDefined();
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			variables: [
 				{ name: 'API_URL', value: 'https://team.example.com', usedByWorkflows: [workflow.id] },
 			],
