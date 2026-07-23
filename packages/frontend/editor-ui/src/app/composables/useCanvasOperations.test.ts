@@ -5585,6 +5585,181 @@ describe('useCanvasOperations', () => {
 			});
 		});
 
+		it('should relink credentials whose id is unknown but whose name matches exactly one existing credential', async () => {
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes: nodes as INodeUi[],
+						connections,
+					}),
+			);
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+			credentialsStore.getCredentialsByType = vi
+				.fn()
+				.mockImplementation((type: string) =>
+					type === 'openAiApi'
+						? [mock<ICredentialsResponse>({ id: 'local-id', name: 'My OpenAI Cred' })]
+						: [],
+				);
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(
+				{
+					nodes: [
+						createTestNode({
+							id: 'imported-1',
+							name: 'Imported Node',
+							credentials: { openAiApi: { id: 'foreign-instance-id', name: 'My OpenAI Cred' } },
+						}),
+					],
+					connections: {},
+				},
+				'file',
+			);
+
+			expect(addNodeSpy).toHaveBeenCalled();
+			expect(addNodeSpy.mock.calls[0][0].credentials).toEqual({
+				openAiApi: { id: 'local-id', name: 'My OpenAI Cred' },
+			});
+		});
+
+		it('should relink credentials whose id is unknown to the most recently updated credential matching the name', async () => {
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes: nodes as INodeUi[],
+						connections,
+					}),
+			);
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+			credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([
+				mock<ICredentialsResponse>({
+					id: 'local-id-1',
+					name: 'My OpenAI Cred',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				}),
+				mock<ICredentialsResponse>({
+					id: 'local-id-2',
+					name: 'My OpenAI Cred',
+					updatedAt: '2024-06-01T00:00:00.000Z',
+				}),
+				mock<ICredentialsResponse>({
+					id: 'local-id-3',
+					name: 'Other OpenAI Cred',
+					updatedAt: '2024-12-01T00:00:00.000Z',
+				}),
+			]);
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(
+				{
+					nodes: [
+						createTestNode({
+							id: 'imported-1',
+							name: 'Imported Node',
+							credentials: { openAiApi: { id: 'foreign-instance-id', name: 'My OpenAI Cred' } },
+						}),
+					],
+					connections: {},
+				},
+				'file',
+			);
+
+			expect(addNodeSpy).toHaveBeenCalled();
+			expect(addNodeSpy.mock.calls[0][0].credentials).toEqual({
+				openAiApi: { id: 'local-id-2', name: 'My OpenAI Cred' },
+			});
+		});
+
+		it('should relink credentials whose id and name are unknown to the most recently updated credential of the type', async () => {
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes: nodes as INodeUi[],
+						connections,
+					}),
+			);
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+			credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([
+				mock<ICredentialsResponse>({
+					id: 'local-id-1',
+					name: 'Old OpenAI Cred',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				}),
+				mock<ICredentialsResponse>({
+					id: 'local-id-2',
+					name: 'Recent OpenAI Cred',
+					updatedAt: '2024-06-01T00:00:00.000Z',
+				}),
+			]);
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(
+				{
+					nodes: [
+						createTestNode({
+							id: 'imported-1',
+							name: 'Imported Node',
+							credentials: { openAiApi: { id: 'foreign-instance-id', name: 'Unknown Cred' } },
+						}),
+					],
+					connections: {},
+				},
+				'file',
+			);
+
+			expect(addNodeSpy).toHaveBeenCalled();
+			expect(addNodeSpy.mock.calls[0][0].credentials).toEqual({
+				openAiApi: { id: 'local-id-2', name: 'Recent OpenAI Cred' },
+			});
+		});
+
+		it('should remove credentials whose id and name are both unknown', async () => {
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) =>
+					createTestWorkflowObject({
+						nodes: nodes as INodeUi[],
+						connections,
+					}),
+			);
+
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+			credentialsStore.getCredentialsByType = vi.fn().mockReturnValue([]);
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(
+				{
+					nodes: [
+						createTestNode({
+							id: 'imported-1',
+							name: 'Imported Node',
+							credentials: { openAiApi: { id: 'foreign-instance-id', name: 'Unknown Cred' } },
+						}),
+					],
+					connections: {},
+				},
+				'file',
+			);
+
+			expect(addNodeSpy).toHaveBeenCalled();
+			expect(addNodeSpy.mock.calls[0][0].credentials).toEqual({});
+		});
+
 		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
 			'should regenerate webhook ids for node type "%s" on pasting into canvas and sync default paths',
 			async (type) => {

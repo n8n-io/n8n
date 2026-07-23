@@ -13,7 +13,10 @@ import type {
 	XYPosition,
 } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
@@ -2657,17 +2660,40 @@ export function useCanvasOperations() {
 	 * Import operations
 	 */
 
+	function mostRecentlyUpdatedCredential(
+		credentials: ICredentialsResponse[],
+	): ICredentialsResponse | undefined {
+		return credentials.reduce<ICredentialsResponse | undefined>(
+			(mostRecent, current) =>
+				mostRecent && mostRecent.updatedAt > current.updatedAt ? mostRecent : current,
+			undefined,
+		);
+	}
+
 	function removeUnknownCredentials(workflow: WorkflowDataUpdate) {
 		if (!workflow?.nodes) return;
 
 		for (const node of workflow.nodes) {
 			if (!node.credentials) continue;
 
-			for (const [name, credential] of Object.entries(node.credentials)) {
+			for (const [type, credential] of Object.entries(node.credentials)) {
 				if (typeof credential === 'string' || credential.id === null) continue;
+				if (credentialsStore.getCredentialById(credential.id)) continue;
 
-				if (!credentialsStore.getCredentialById(credential.id)) {
-					delete node.credentials[name];
+				// The id is unknown locally, e.g. the workflow was exported from another
+				// instance. Prefer re-matching by name, then fall back to the most
+				// recently updated credential of the type. This mirrors the NDV's
+				// auto-select: without it the node would warn on canvas only until it
+				// is opened, at which point that same credential gets assigned anyway.
+				const candidates = credentialsStore.getCredentialsByType(type);
+				const nameMatches = candidates.filter((cred) => cred.name === credential.name);
+				const replacement =
+					mostRecentlyUpdatedCredential(nameMatches) ?? mostRecentlyUpdatedCredential(candidates);
+
+				if (replacement) {
+					node.credentials[type] = { id: replacement.id, name: replacement.name };
+				} else {
+					delete node.credentials[type];
 				}
 			}
 		}
