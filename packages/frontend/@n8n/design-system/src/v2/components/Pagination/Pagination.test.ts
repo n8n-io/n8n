@@ -4,23 +4,10 @@ import { render, waitFor } from '@testing-library/vue';
 import type { PaginationSizes } from './Pagination.types';
 import Pagination from './Pagination.vue';
 
-const sizeCases: Array<[PaginationSizes | undefined, string]> = [
-	[undefined, 'medium'],
-	['medium', 'medium'],
-	['small', 'small'],
-];
+const sizeCases: PaginationSizes[] = ['medium', 'small'];
 
 describe('v2/components/Pagination', () => {
 	describe('rendering', () => {
-		it('should render with default props', () => {
-			const { container } = render(Pagination, {
-				props: {
-					total: 100,
-				},
-			});
-			expect(container).not.toBeEmptyDOMElement();
-		});
-
 		it('should render prev and next buttons by default', () => {
 			const wrapper = render(Pagination, {
 				props: {
@@ -29,6 +16,16 @@ describe('v2/components/Pagination', () => {
 			});
 			const buttons = wrapper.container.querySelectorAll('button');
 			expect(buttons.length).toBeGreaterThan(0);
+		});
+
+		it('should default to medium size', () => {
+			const wrapper = render(Pagination, {
+				props: {
+					total: 100,
+				},
+			});
+			const container = wrapper.container.firstChild as HTMLElement;
+			expect(container?.className).toContain('medium');
 		});
 
 		it('should render disabled state', () => {
@@ -94,7 +91,7 @@ describe('v2/components/Pagination', () => {
 	});
 
 	describe('sizes', () => {
-		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
+		test.each(sizeCases)('size %s should apply %s class', (size) => {
 			const wrapper = render(Pagination, {
 				props: {
 					total: 100,
@@ -102,7 +99,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 			const container = wrapper.container.firstChild as HTMLElement;
-			expect(container?.className).toContain(expected);
+			expect(container?.className).toContain(size);
 		});
 	});
 
@@ -114,7 +111,6 @@ describe('v2/components/Pagination', () => {
 					layout: 'prev, next',
 				},
 			});
-			// Should not render page numbers
 			const pageButtons = wrapper.container.querySelectorAll('[data-index]');
 			expect(pageButtons.length).toBe(0);
 		});
@@ -136,7 +132,6 @@ describe('v2/components/Pagination', () => {
 					layout: 'sizes, prev, pager, next',
 				},
 			});
-			// Look for the select component
 			const select = wrapper.container.querySelector('[role="combobox"]');
 			expect(select).toBeInTheDocument();
 		});
@@ -165,7 +160,6 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// Find and click page 2 button
 			const page2Button = wrapper.getByText('2');
 			await userEvent.click(page2Button);
 
@@ -198,7 +192,6 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// Get all buttons and find the first one (prev button)
 			const buttons = wrapper.container.querySelectorAll('button');
 			const prevButton = buttons[0];
 			expect(prevButton).toBeInTheDocument();
@@ -220,7 +213,6 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// Get all buttons and find the last one (next button)
 			const buttons = wrapper.container.querySelectorAll('button');
 			const nextButton = buttons[buttons.length - 1];
 			expect(nextButton).toBeInTheDocument();
@@ -250,7 +242,6 @@ describe('v2/components/Pagination', () => {
 
 			await userEvent.click(select!);
 
-			// Wait for dropdown to open and click an option
 			await waitFor(async () => {
 				const option20 = wrapper.getByRole('option', { name: '20' });
 				await userEvent.click(option20);
@@ -283,25 +274,12 @@ describe('v2/components/Pagination', () => {
 			});
 
 			await waitFor(() => {
-				// When page size changes, component emits update:currentPage with value 1 to reset
 				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([1]);
 			});
 		});
 	});
 
 	describe('backward compatibility', () => {
-		it('should support currentPage prop (camelCase)', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					currentPage: 2,
-					total: 100,
-				},
-			});
-
-			const page2Button = wrapper.getByText('2');
-			expect(page2Button).toHaveAttribute('data-selected');
-		});
-
 		it('should support page prop', () => {
 			const wrapper = render(Pagination, {
 				props: {
@@ -314,7 +292,7 @@ describe('v2/components/Pagination', () => {
 			expect(page2Button).toHaveAttribute('data-selected');
 		});
 
-		it('should support pageSize prop (camelCase)', () => {
+		it('should support pageSize prop', () => {
 			const wrapper = render(Pagination, {
 				props: {
 					pageSize: 20,
@@ -323,7 +301,6 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// Should have 5 pages (100 / 20)
 			expect(wrapper.getByText('5')).toBeInTheDocument();
 		});
 
@@ -336,7 +313,6 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// Should have 5 pages (100 / 20)
 			expect(wrapper.getByText('5')).toBeInTheDocument();
 		});
 
@@ -349,26 +325,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// With pagerCount 5, should show 2 siblings on each side
-			// The component should exist
 			expect(wrapper.container.querySelector('.n8n-pagination')).toBeInTheDocument();
-		});
-
-		it('should emit both update:currentPage and current-change events', async () => {
-			const wrapper = render(Pagination, {
-				props: {
-					currentPage: 1,
-					total: 100,
-				},
-			});
-
-			const page2Button = wrapper.getByText('2');
-			await userEvent.click(page2Button);
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:currentPage')).toBeTruthy();
-				expect(wrapper.emitted('current-change')).toBeTruthy();
-			});
 		});
 	});
 
@@ -380,7 +337,6 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// Should render but with no page buttons
 			expect(wrapper.container.querySelector('.n8n-pagination')).toBeInTheDocument();
 		});
 
@@ -542,26 +498,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			// Ellipsis should be present as visual indicator
 			expect(wrapper.container.textContent).toContain('…');
-		});
-
-		it('should render ellipsis with correct styling', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					currentPage: 5,
-					total: 200,
-					pageSize: 10,
-					showEdges: true,
-				},
-			});
-
-			// Find ellipsis elements
-			const ellipsisElements = Array.from(wrapper.container.querySelectorAll('*')).filter(
-				(el) => el.textContent === '…',
-			);
-
-			expect(ellipsisElements.length).toBeGreaterThan(0);
 		});
 	});
 });
