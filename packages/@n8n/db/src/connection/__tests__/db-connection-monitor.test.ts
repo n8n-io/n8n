@@ -310,6 +310,36 @@ describe('DbConnectionMonitor', () => {
 			expect(pool.connect).not.toHaveBeenCalled();
 		});
 
+		it('should reschedule the next ping when the data source is not initialized', async () => {
+			// Recovery leaves isInitialized=false from destroy() until a successful
+			// initialize() — a window that spans every failed attempt plus backoff during
+			// an outage. A ping tick landing in that window must keep the loop alive:
+			// returning without rescheduling kills the monitor permanently, freezing
+			// `connected` at its last value with no pings, no future recovery and no logs.
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = false;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(scheduleNextPingSpy).toHaveBeenCalled();
+		});
+
+		it('should not reschedule pings once the monitor is stopped', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			void monitor.stop();
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(scheduleNextPingSpy).not.toHaveBeenCalled();
+		});
+
 		it('should not query if monitor is stopped', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;

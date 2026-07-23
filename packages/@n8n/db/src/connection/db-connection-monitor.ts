@@ -147,11 +147,16 @@ export class DbConnectionMonitor {
 	}
 
 	private async ping() {
-		if (this.stopped || !this.dataSource.isInitialized) {
+		if (this.stopped) {
 			return;
 		}
 
-		if (this.recovering) {
+		// Recovery leaves `isInitialized === false` from `destroy()` until a successful
+		// `initialize()` — a window that spans every failed attempt plus backoff. Skip
+		// the ping but keep the loop alive: returning without rescheduling would kill
+		// the monitor permanently, freezing `connected` at its last value with no
+		// pings, no future recovery and no logs.
+		if (this.recovering || !this.dataSource.isInitialized) {
 			this.scheduleNextPing();
 			return;
 		}
