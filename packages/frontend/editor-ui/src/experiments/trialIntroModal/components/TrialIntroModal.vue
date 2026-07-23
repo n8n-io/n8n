@@ -32,6 +32,21 @@ const modalBus = createEventBus();
 
 const modalName = computed(() => props.modalName ?? TRIAL_INTRO_MODAL_KEY);
 
+// Same overrides as the trial banner's upgrade CTA (TrialBanner.vue), applied
+// inline because the button variant defines these custom properties itself.
+const upgradeButtonStyle: Record<string, string> = {
+	'--button--color--background': 'var(--color--success)',
+	'--button--color--background-hover': 'var(--color--success--shade-1)',
+	'--button--color--background-active': 'var(--color--success--shade-1)',
+	'--button--color': 'var(--color--neutral-white)',
+	'--button--shadow': '0 0 0 1px var(--color--success)',
+	'--button--shadow--hover': '0 0 0 1px var(--color--success--shade-1)',
+	'--button--shadow--active': '0 0 0 1px var(--color--success--shade-1)',
+	'--button--border-color': 'var(--color--success)',
+	'--button--border-color--hover': 'var(--color--success--shade-1)',
+	'--button--border-color--active': 'var(--color--success--shade-1)',
+};
+
 const step = ref<1 | 2>(1);
 const period = ref<'annual' | 'monthly'>('annual');
 
@@ -363,13 +378,18 @@ async function onUpgradeClick() {
 				>
 					{{ i18n.baseText('experiments.trialIntroModal.startBuilding') }}
 				</N8nButton>
-				<N8nButton data-test-id="trial-intro-upgrade-now-button" @click="onUpgradeNow">
+				<N8nButton
+					:style="upgradeButtonStyle"
+					data-test-id="trial-intro-upgrade-now-button"
+					@click="onUpgradeNow"
+				>
 					{{ i18n.baseText('experiments.trialIntroModal.upgradeNow') }}
 				</N8nButton>
 			</div>
 			<N8nButton
 				v-else
 				:class="$style.ctaButton"
+				:style="upgradeButtonStyle"
 				data-test-id="trial-intro-upgrade-cta"
 				@click="onUpgradeClick"
 			>
@@ -559,8 +579,8 @@ async function onUpgradeClick() {
 }
 
 .periodCards {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-auto-rows: 1fr;
 	gap: var(--spacing--2xs);
 }
 
