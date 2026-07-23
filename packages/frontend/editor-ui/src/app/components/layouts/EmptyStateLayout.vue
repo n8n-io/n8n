@@ -96,7 +96,6 @@ const handleAppSelectionContinue = () => {
 		:class="[
 			$style.emptyStateLayout,
 			{
-				[$style.noTemplatesContent]: !showAppSelection,
 				[$style.builderLayout]: showAppSelection,
 			},
 		]"
@@ -219,17 +218,13 @@ const handleAppSelectionContinue = () => {
 	justify-content: center;
 	align-content: center;
 	height: 100%;
-	padding: var(--spacing--4xl) var(--spacing--2xl) 0;
+	// Vertical padding must stay symmetric so justify-content centers the content
+	padding: 0 var(--spacing--2xl);
 	max-width: var(--content-container--width);
 	width: 100%;
 
 	@media (max-width: vars.$breakpoint-lg) {
-		padding: var(--spacing--xl) var(--spacing--xs) 0;
-	}
-
-	// Vertical padding must stay symmetric (0/0) so justify-content centers the content
-	&.noTemplatesContent {
-		padding-top: 0;
+		padding: 0 var(--spacing--xs);
 	}
 
 	&.builderLayout {
