@@ -197,10 +197,16 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 				}
 			};
 
-			const pollInterval = window.setInterval(
-				() => void pollStatus(),
-				SLACK_APP_SETUP_POLL_INTERVAL_MS,
-			);
+			const pollInterval = window.setInterval(() => {
+				// User closed the popup — the OAuth flow can't complete anymore. Check
+				// status once more (the install may have just finished), then give up
+				// instead of blocking the UI until the full timeout.
+				if (popup.closed) {
+					void pollStatus().finally(() => settle(false));
+					return;
+				}
+				void pollStatus();
+			}, SLACK_APP_SETUP_POLL_INTERVAL_MS);
 			const timeout = window.setTimeout(() => settle(false), SLACK_APP_SETUP_TIMEOUT_MS);
 
 			oauthChannel.addEventListener('message', (event: MessageEvent) => {

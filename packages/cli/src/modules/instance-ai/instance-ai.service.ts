@@ -3552,6 +3552,7 @@ export class InstanceAiService {
 						runId,
 						agentRunId: result.agentRunId,
 						agent,
+						orchestrationContext,
 						threadId,
 						user,
 						toolCallId: result.suspension.toolCallId,
@@ -4376,6 +4377,7 @@ export class InstanceAiService {
 				runId: orphan.runId,
 				agentRunId: orphan.checkpointKey,
 				agent,
+				orchestrationContext: environment.orchestrationContext,
 				threadId: orphan.threadId,
 				user,
 				toolCallId: orphan.toolCallId,
@@ -4434,7 +4436,12 @@ export class InstanceAiService {
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
 	): Promise<
-		{ agent: Awaited<ReturnType<typeof createInstanceAgent>>; modelId: ModelConfig } | undefined
+		| {
+				agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+				modelId: ModelConfig;
+				orchestrationContext: OrchestrationContext;
+		  }
+		| undefined
 	> {
 		try {
 			const rebuilt = await this.buildFreshInstanceAgent(
@@ -4447,7 +4454,11 @@ export class InstanceAiService {
 				this.threadPushRef.get(threadId),
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
-			return { agent: rebuilt.agent, modelId: rebuilt.modelId };
+			return {
+				agent: rebuilt.agent,
+				modelId: rebuilt.modelId,
+				orchestrationContext: rebuilt.orchestrationContext,
+			};
 		} catch (error: unknown) {
 			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
 				threadId,
@@ -4488,6 +4499,7 @@ export class InstanceAiService {
 			checkpoint,
 			plannedBuild,
 			runHandoff,
+			orchestrationContext,
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
@@ -4561,8 +4573,16 @@ export class InstanceAiService {
 		});
 		const effectiveTracing = resumeTracing ?? tracing;
 
+		// Orchestration tools (e.g. build-agent) read `context.tracing` at call
+		// time from this shared object; without the rebind the resumed sub-agent
+		// emits spans through the suspended turn's shut-down trace runtime.
+		if (orchestrationContext && effectiveTracing) {
+			orchestrationContext.tracing = effectiveTracing;
+		}
+
 		let resumeAgent = agent;
 		let resumeModelId = modelId;
+		let resumeOrchestrationContext = orchestrationContext;
 		if (data.autoSetup) {
 			const rebuilt = await this.rebuildAgentForAutoSetupResume(
 				activeUser,
@@ -4579,6 +4599,7 @@ export class InstanceAiService {
 			}
 			resumeAgent = rebuilt.agent;
 			resumeModelId = rebuilt.modelId;
+			resumeOrchestrationContext = rebuilt.orchestrationContext;
 		}
 
 		this.startProcessResumedStream(resumeAgent, resumeData, {
@@ -4593,6 +4614,7 @@ export class InstanceAiService {
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
 			tracing: effectiveTracing,
+			orchestrationContext: resumeOrchestrationContext,
 			modelId: resumeModelId,
 			checkpoint,
 			plannedBuild,
@@ -4622,6 +4644,7 @@ export class InstanceAiService {
 			abortController: AbortController;
 			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
+			orchestrationContext?: OrchestrationContext;
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 			plannedBuild?: PlannedBuildFollowUp;
@@ -4704,6 +4727,7 @@ export class InstanceAiService {
 						runId: opts.runId,
 						agentRunId: result.agentRunId,
 						agent,
+						orchestrationContext: opts.orchestrationContext,
 						threadId: opts.threadId,
 						user: opts.user,
 						toolCallId: result.suspension.toolCallId,
