@@ -75,7 +75,6 @@ scripts/.lucide-tags-cache.json
 packages/cli/src/commands/export/outputs
 *.bak
 .data
-.data/
 .claude/settings.local.json
 .claude/plans/
 .claude/worktrees/
