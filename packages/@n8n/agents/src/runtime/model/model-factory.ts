@@ -98,6 +98,12 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 			})(model);
 		},
 	},
+	baseten: {
+		build: (creds, model, fetch) => {
+			const { createBaseten } = require('@ai-sdk/baseten') as typeof import('@ai-sdk/baseten');
+			return createBaseten({ ...creds, fetch })(model);
+		},
+	},
 	anthropic: {
 		build: (creds, model, fetch) => {
 			const { createAnthropic } =

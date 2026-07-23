@@ -12,6 +12,7 @@ catalog:
   '@ai-sdk/amazon-bedrock': ^5.0.31
   '@ai-sdk/anthropic': ^4.0.27
   '@ai-sdk/azure': ^4.0.21
+  '@ai-sdk/baseten': ^1.0.65
   '@ai-sdk/cohere': ^4.0.12
   '@ai-sdk/deepseek': ^3.0.13
   '@ai-sdk/gateway': ^4.0.37

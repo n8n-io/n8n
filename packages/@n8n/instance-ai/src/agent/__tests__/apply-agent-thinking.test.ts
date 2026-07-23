@@ -63,6 +63,36 @@ describe('applyAgentThinking', () => {
 		},
 	);
 
+	it.each(['openai/zai-org/GLM-5.2', 'openai/zai-org/GLM-5.2-Fast'] as const)(
+		'maps medium effort to high reasoning effort for legacy OpenAI-compatible Baseten %s',
+		(modelId) => {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, modelId);
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+				reasoningEffort: 'high',
+			});
+		},
+	);
+
+	it.each(['baseten/zai-org/GLM-5.2', 'baseten/zai-org/GLM-5.2-Fast'] as const)(
+		'maps medium effort to high reasoning effort for Baseten %s',
+		(modelId) => {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, modelId);
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('baseten', {
+				reasoningEffort: 'high',
+			});
+		},
+	);
+
+	it('enables medium reasoning effort for other Baseten models', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'baseten/deepseek-ai/DeepSeek-V4-Pro');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('baseten', {
+			reasoningEffort: 'medium',
+		});
+	});
+
 	it('skips providers without thinking support', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'google/gemini-2.5-pro');
