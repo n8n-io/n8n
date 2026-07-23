@@ -102,6 +102,9 @@ be a direct agent tool or a workflow tool:
   reusable, manually callable, or usable outside the agent. Build the workflow
   first, pass it to `build-agent` via `workflowContext`, and set
   `embeds_other: true`.
+- Create required **data tables** via `data-table-manager` → `data-tables`
+  before `build-agent` when the agent will store or query tabular data — the
+  builder cannot create tables.
 
 Count the nodes required inside one tool invocation, not the total number of
 tools on the agent. For example, looking up and inserting Data Table rows are

@@ -3,6 +3,7 @@ import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api
 import {
 	FEW_SHOT_FLOWS_SECTION,
 	INTERACTIVE_TOOLS_SECTION,
+	PREREQUISITES_SECTION,
 	READ_CONFIG_FRESHNESS_SECTION,
 	WORKFLOW_SECTION,
 	buildBuilderPrompt,
@@ -29,6 +30,22 @@ describe('builder prompt stability', () => {
 		expect(prompt).not.toContain('## Important');
 		expect(prompt).toContain(
 			'Always call `read_config` first whenever a request touches the config',
+		);
+	});
+});
+
+describe('prerequisites the builder cannot create', () => {
+	it('states workflow and data-table limits and forbids asking the user to create them', () => {
+		const prompt = buildBuilderPrompt({
+			agentPreviewPath: '/projects/project-1/agents/agent-1/preview',
+			modelRecommendationsSection: null,
+		});
+
+		expect(prompt).toContain('## Prerequisites you cannot create');
+		expect(PREREQUISITES_SECTION).toContain('cannot create n8n workflows or data tables');
+		expect(PREREQUISITES_SECTION).toContain('Do not ask the user to create them in this chat');
+		expect(prompt.indexOf('## Prerequisites you cannot create')).toBeLessThan(
+			prompt.indexOf('## When To Build vs When To Converse'),
 		);
 	});
 });
