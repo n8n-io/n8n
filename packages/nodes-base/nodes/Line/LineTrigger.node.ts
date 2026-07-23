@@ -1,0 +1,102 @@
+import { createHmac } from 'crypto';
+
+import type {
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+} from 'n8n-workflow';
+
+export class LineTrigger implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Line Trigger',
+		name: 'lineTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+		icon: 'file:line.png',
+		group: ['trigger'],
+		version: 1,
+		description: 'Starts the workflow when LINE Messaging API webhook events are received',
+		defaults: { name: 'Line Trigger' },
+		inputs: [],
+		outputs: ['main'],
+		credentials: [{ name: 'lineApi', required: true }],
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				path: 'line-webhook',
+			},
+		],
+		triggerPanel: {
+			header: 'Waiting for LINE webhook events',
+			executionsHelp: {
+				active: 'The webhook is active. Set the Webhook URL in the LINE Developers Console.',
+				inactive: 'Activate the workflow to generate a Webhook URL.',
+			},
+		},
+		properties: [
+			{
+				displayName: 'Event Types',
+				name: 'events',
+				type: 'multiOptions',
+				options: [
+					{ name: 'Follow', value: 'follow' },
+					{ name: 'Message', value: 'message' },
+					{ name: 'Postback', value: 'postback' },
+					{ name: 'Unfollow', value: 'unfollow' },
+				],
+				default: ['message'],
+				description: 'The LINE event types to process',
+			},
+		],
+	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const req = this.getRequestObject();
+		const res = this.getResponseObject();
+
+		const credentials = await this.getCredentials('lineApi');
+		const channelSecret = (
+			credentials.environment === 'test' ? credentials.testChannelSecret : credentials.channelSecret
+		) as string;
+
+		if (channelSecret) {
+			const signature = req.headers['x-line-signature'] as string;
+			const rawBody = (req as unknown as { rawBody: Buffer }).rawBody;
+
+			if (!signature) {
+				res.status(401).send('Missing x-line-signature header');
+				return { noWebhookResponse: true };
+			}
+
+			const expectedSig = createHmac('SHA256', channelSecret).update(rawBody).digest('base64');
+
+			if (signature !== expectedSig) {
+				res.status(401).send('Invalid signature');
+				return { noWebhookResponse: true };
+			}
+		}
+
+		const body = this.getBodyData() as { events?: IDataObject[] };
+		const events = body.events ?? [];
+
+		if (events.length === 0) {
+			res.status(200).send('OK');
+			return { noWebhookResponse: true };
+		}
+
+		const selectedEvents = this.getNodeParameter('events') as string[];
+		const filtered = events.filter((e) => selectedEvents.includes(e.type as string));
+
+		if (filtered.length === 0) {
+			res.status(200).send('OK');
+			return { noWebhookResponse: true };
+		}
+
+		return {
+			workflowData: [filtered.map((e) => ({ json: e }))],
+		};
+	}
+}
