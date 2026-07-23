@@ -5,19 +5,19 @@ export function nodeToolsSkill(): RuntimeSkill {
 		id: 'agent-builder-node-tools',
 		name: 'Agent Builder Node Tools',
 		description:
-			'Use when add-integration returns kind: "node" or the user explicitly requests an n8n node-backed tool: search_nodes/describe-nodes discovery, nodeParameters, node credential slots, $fromAI usage, or other n8n expressions.',
+			'Use when resolve_integration returns kind: "node" or the user explicitly requests an n8n node-backed tool: search_nodes/get_node_types discovery, nodeParameters, node credential slots, $fromAI usage, or other n8n expressions.',
 		recommendedTools: [
-			'add-integration',
+			'resolve_integration',
 			'search_nodes',
-			'describe-nodes',
+			'get_node_types',
 			'ask_credential',
 			'read_config',
 			'patch_config',
 		],
 		allowedTools: [
-			'add-integration',
+			'resolve_integration',
 			'search_nodes',
-			'describe-nodes',
+			'get_node_types',
 			'ask_credential',
 			'get_resource_locator_options',
 			'ask_questions',
@@ -34,12 +34,12 @@ Use this to discover, configure, and wire node tools into the target agent's
 
 ## Workflow
 
-- For a generic external-service request, call \`add-integration\` before
+- For a generic external-service request, call \`resolve_integration\` before
   node discovery unless a resolver result is already available.
 - If it returns \`kind: "mcp"\`, load \`agent-builder-mcp\` and stop this node-tool
   workflow.
 - If it returns \`kind: "node"\`, use its returned node results and call
-  \`describe-nodes\`; do not repeat the same search with \`search_nodes\`.
+  \`get_node_types\`; do not repeat the same search with \`search_nodes\`.
 - Call \`search_nodes\` directly only when the user explicitly requests an n8n
   node, when refining node results, or when a verified MCP server lacks the
   requested capability.

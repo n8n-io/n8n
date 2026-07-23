@@ -34,21 +34,13 @@ describe('formatToolNameForDisplay', () => {
 		expect(getToolNameTranslationKey('custom_web_search')).toBeUndefined();
 	});
 
-	it('returns translation keys for builder tools, including legacy aliases', () => {
-		expect(getToolNameTranslationKey('add-integration')).toBe('instanceAi.tools.add-integration');
+	it('returns translation keys for stable builder tool IDs', () => {
 		expect(getToolNameTranslationKey('resolve_integration')).toBe(
-			'instanceAi.tools.add-integration',
+			'instanceAi.tools.resolve_integration',
 		);
-		expect(getToolNameTranslationKey('describe-nodes')).toBe('instanceAi.tools.describe-nodes');
-		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.describe-nodes');
-		expect(getToolNameTranslationKey('inspect-credentials')).toBe(
-			'instanceAi.tools.inspect-credentials',
-		);
-		expect(getToolNameTranslationKey('list_credentials')).toBe(
-			'instanceAi.tools.inspect-credentials',
-		);
-		expect(getToolNameTranslationKey('list-workflows')).toBe('instanceAi.tools.list-workflows');
-		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list-workflows');
+		expect(getToolNameTranslationKey('get_node_types')).toBe('instanceAi.tools.get_node_types');
+		expect(getToolNameTranslationKey('list_credentials')).toBe('instanceAi.tools.list_credentials');
+		expect(getToolNameTranslationKey('list_workflows')).toBe('instanceAi.tools.list_workflows');
 	});
 
 	it('returns an empty string for missing or blank names', () => {

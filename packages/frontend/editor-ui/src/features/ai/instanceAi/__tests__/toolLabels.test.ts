@@ -7,11 +7,11 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
 				'instanceAi.tools.read_config': 'Reading agent config',
-				'instanceAi.tools.add-integration': 'Adding integration',
+				'instanceAi.tools.resolve_integration': 'Adding integration',
 				'instanceAi.tools.build-agent': 'Building agent',
-				'instanceAi.tools.describe-nodes': 'Reading node schema',
-				'instanceAi.tools.inspect-credentials': 'Inspecting credentials',
-				'instanceAi.tools.list-workflows': 'Listing workflows',
+				'instanceAi.tools.get_node_types': 'Reading node schema',
+				'instanceAi.tools.list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
@@ -67,8 +67,8 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('build-workflow-with-agent')).toBe('share');
 	});
 
-	test('returns share for renamed builder integration tools', () => {
-		expect(getToolIcon('add-integration')).toBe('share');
+	test('returns share for resolve_integration', () => {
+		expect(getToolIcon('resolve_integration')).toBe('share');
 	});
 
 	test('returns table for data-table tools', () => {
@@ -81,7 +81,7 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
 		expect(getToolIcon('search_nodes')).toBe('workflow');
-		expect(getToolIcon('describe-nodes')).toBe('workflow');
+		expect(getToolIcon('get_node_types')).toBe('workflow');
 		expect(getToolIcon('submit-workflow')).toBe('workflow');
 		expect(getToolIcon('materialize-node-type')).toBe('workflow');
 	});
@@ -131,7 +131,7 @@ describe('useToolLabel', () => {
 	test('getToolLabel returns translated label when found', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('read_config')).toBe('Reading agent config');
-		expect(getToolLabel('add-integration')).toBe('Adding integration');
+		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
 		expect(getToolLabel('build-agent')).toBe('Building agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
@@ -153,7 +153,7 @@ describe('useToolLabel', () => {
 		).toBe('Inspecting import rows script');
 	});
 
-	test('getToolLabel normalizes legacy builder tool names to their new labels', () => {
+	test('getToolLabel humanizes builder tools via i18n keys for the stable tool IDs', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
 		expect(getToolLabel('get_node_types')).toBe('Reading node schema');

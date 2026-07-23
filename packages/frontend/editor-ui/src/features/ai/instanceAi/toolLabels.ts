@@ -8,13 +8,6 @@ const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 type I18n = ReturnType<typeof useI18n>;
 type SkillFileGroup = 'references' | 'scripts' | 'templates' | 'examples' | 'assets';
 
-const LEGACY_TOOL_NAME_ALIASES: Record<string, string> = {
-	resolve_integration: 'add-integration',
-	get_node_types: 'describe-nodes',
-	list_credentials: 'inspect-credentials',
-	list_workflows: 'list-workflows',
-};
-
 const SKILL_FILE_GROUP_LABELS: Record<
 	SkillFileGroup,
 	{ verbKey: BaseTextKey; kindKey: BaseTextKey; appendKind: boolean }
@@ -102,44 +95,36 @@ function extractSkillScriptPath(command: string): string | undefined {
 	return sandboxSkillDirMatch?.[1];
 }
 
-function normalizeToolName(toolName: string): string {
-	return LEGACY_TOOL_NAME_ALIASES[toolName] ?? toolName;
-}
-
 export function getToolIcon(toolName: string): IconName {
-	const normalizedToolName = normalizeToolName(toolName);
-
 	if (toolName === 'complete-checkpoint') return 'circle-check';
 	if (toolName.endsWith('-with-agent')) return 'share';
-	if (normalizedToolName === 'add-integration') return 'share';
+	if (toolName === 'resolve_integration') return 'share';
 	if (toolName === 'list_skills' || toolName === 'load_skill' || toolName === 'n8n-docs')
 		return 'book-open';
 	if (toolName === 'data-tables') return 'table';
 	if (
-		normalizedToolName === 'workflows' ||
-		normalizedToolName === 'executions' ||
-		normalizedToolName === 'nodes' ||
-		normalizedToolName === 'templates' ||
-		normalizedToolName === 'search_nodes' ||
-		normalizedToolName === 'describe-nodes'
+		toolName === 'workflows' ||
+		toolName === 'executions' ||
+		toolName === 'nodes' ||
+		toolName === 'templates' ||
+		toolName === 'search_nodes' ||
+		toolName === 'get_node_types'
 	)
 		return 'workflow';
-	if (normalizedToolName === 'research') return 'search';
-	if (normalizedToolName === 'credentials') return 'key-round';
-	if (normalizedToolName === 'task-control' || normalizedToolName === 'updateWorkingMemory')
-		return 'brain';
-	if (normalizedToolName === 'filesystem') return 'file-text';
-	if (normalizedToolName === 'workspace' || normalizedToolName.startsWith('workspace_'))
-		return 'folder';
-	if (normalizedToolName.includes('data-table')) return 'table';
+	if (toolName === 'research') return 'search';
+	if (toolName === 'credentials') return 'key-round';
+	if (toolName === 'task-control' || toolName === 'updateWorkingMemory') return 'brain';
+	if (toolName === 'filesystem') return 'file-text';
+	if (toolName === 'workspace' || toolName.startsWith('workspace_')) return 'folder';
+	if (toolName.includes('data-table')) return 'table';
 	if (
-		normalizedToolName.includes('workflow') ||
-		normalizedToolName === 'submit-workflow' ||
-		normalizedToolName === 'materialize-node-type'
+		toolName.includes('workflow') ||
+		toolName === 'submit-workflow' ||
+		toolName === 'materialize-node-type'
 	) {
 		return 'workflow';
 	}
-	if (normalizedToolName.includes('credential')) return 'key-round';
+	if (toolName.includes('credential')) return 'key-round';
 	// Fallback for tools without a dedicated mapping.
 	return 'wrench';
 }
@@ -184,14 +169,13 @@ export function useToolLabel() {
 			return i18n.baseText('instanceAi.tools.workspace_execute_command.skill');
 		}
 
-		const normalizedToolName = normalizeToolName(toolName);
 		const action = typeof args?.action === 'string' ? args.action : undefined;
 		if (action) {
-			const actionKey = `instanceAi.tools.${normalizedToolName}.${action}` as BaseTextKey;
+			const actionKey = `instanceAi.tools.${toolName}.${action}` as BaseTextKey;
 			const actionTranslated = i18n.baseText(actionKey);
 			if (actionTranslated !== actionKey) return actionTranslated;
 		}
-		const key = `instanceAi.tools.${normalizedToolName}` as BaseTextKey;
+		const key = `instanceAi.tools.${toolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
 		return translated === key ? toolName : translated;
 	}

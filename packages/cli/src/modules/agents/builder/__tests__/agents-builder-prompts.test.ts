@@ -217,9 +217,11 @@ describe('external integration routing guidance', () => {
 		expect(toolsPrompt).toContain(
 			"first decide whether it is the target agent's chat or trigger surface",
 		);
-		expect(toolsPrompt).toContain('Do not call `add-integration` for chat/trigger integrations.');
 		expect(toolsPrompt).toContain(
-			'For each requested non-chat callable service, call `add-integration` separately',
+			'Do not call `resolve_integration` for chat/trigger integrations.',
+		);
+		expect(toolsPrompt).toContain(
+			'For each requested non-chat callable service, call `resolve_integration` separately',
 		);
 
 		const slackFlow = normalizeWhitespace(
@@ -227,7 +229,7 @@ describe('external integration routing guidance', () => {
 		);
 		expect(slackFlow).toContain('`list_integration_types()`');
 		expect(slackFlow).toContain('`configure_channel({ integrationType: "slack" })`');
-		expect(slackFlow).not.toContain('`add-integration`');
+		expect(slackFlow).not.toContain('`resolve_integration`');
 	});
 
 	it('selects an MCP candidate before credential and verification', () => {
@@ -235,7 +237,7 @@ describe('external integration routing guidance', () => {
 		const mcpInstructions = normalizeWhitespace(mcpSkill?.instructions);
 
 		expect(mcpInstructions).toContain(
-			'`add-integration` returns `{ kind: "mcp", results: [...] }`',
+			'`resolve_integration` returns `{ kind: "mcp", results: [...] }`',
 		);
 		expect(mcpInstructions).toContain('Never read server fields from the wrapper');
 		expect(mcpInstructions).toContain('never choose by array order');
