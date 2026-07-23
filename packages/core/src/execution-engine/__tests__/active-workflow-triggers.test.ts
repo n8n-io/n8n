@@ -1353,8 +1353,7 @@ describe('ActiveWorkflowTriggers', () => {
 			expect(realScheduledTaskManager.getTargetIds(workflowGroup())).toEqual(['fresh-node']);
 		});
 	});
-
-	describe('durable poll job path', () => {
+	describe('poll triggers via the durable scheduler', () => {
 		const customCron = '0 * * * *' as CronExpression;
 
 		const buildTriggers = (pollJobManager?: PollJobManager) =>

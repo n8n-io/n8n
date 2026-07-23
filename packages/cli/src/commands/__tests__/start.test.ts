@@ -133,8 +133,6 @@ describe('Start - AuthRolesService initialization', () => {
 			BinaryDataConfig,
 			mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) }),
 		);
-		// `Start.init` binds the concrete `PollJobManager`, which would otherwise pull
-		// the full durable-scheduler DB chain (ScheduledJobRepository) at construction.
 		Container.set(PollTriggerJobRegistrar, mockInstance(PollTriggerJobRegistrar));
 
 		start = new Start();

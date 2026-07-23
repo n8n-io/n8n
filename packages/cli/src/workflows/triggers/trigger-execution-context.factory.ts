@@ -215,8 +215,6 @@ export class TriggerExecutionContextFactory {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecutePollFunctions(
-		// Accepts a plain `IWorkflowBase` so the durable poll-trigger handler can
-		// pass the published workflow data it loads (not a DB entity) unchanged.
 		workflowData: IWorkflowBase,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
@@ -276,11 +274,9 @@ export class TriggerExecutionContextFactory {
 	}
 
 	/**
-	 * Assemble the poll execution context the same way the activation path does
-	 * (ActiveWorkflowTriggers.activatePollTrigger), so the durable poll-trigger
-	 * handler runs `poll()` against the same Workflow, additionalData, and
-	 * resolve-at-emit closure as the legacy in-memory poller. The closure reads
-	 * fresh (non-cached) so the poll cursor in staticData is never stale.
+	 * Assemble the poll execution context: the Workflow, additionalData, and
+	 * resolve-at-emit closure needed to run `poll()`. The closure reads fresh
+	 * (non-cached) so the poll cursor in staticData is never stale.
 	 */
 	async createPollExecutionContext(
 		workflowData: IWorkflowBase,
@@ -305,8 +301,6 @@ export class TriggerExecutionContextFactory {
 		const resolveWorkflowData = async () =>
 			await this.loadPublishedWorkflowData(workflowData.id, { bypassCache: true });
 
-		// 'trigger' / 'update' are the execution/activation modes the activation path uses
-		// for poll triggers (see WorkflowTriggerActivator.registerNonWebhookTriggers).
 		const getPollFunctions = this.getExecutePollFunctions(
 			workflowData,
 			additionalData,
@@ -314,8 +308,8 @@ export class TriggerExecutionContextFactory {
 			'update',
 			resolveWorkflowData,
 		);
-		// Mirror the core caller (ActiveWorkflowTriggers.activatePollTrigger): the factory
-		// closed over additionalData/mode/activation, but the type still expects all five.
+		// The factory already closed over additionalData/mode/activation, but its
+		// signature still requires them, so pass them again.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');
 
 		return { workflow, pollFunctions };
@@ -352,7 +346,7 @@ export class TriggerExecutionContextFactory {
 	 * Pass `bypassCache` on the poll path: pollers mutate `staticData` (the poll
 	 * cursor) every tick via `saveStaticData`, a write that does not refresh the
 	 * cache (only the publication applier does), so a cached read would serve a
-	 * stale cursor. Read it live.
+	 * stale cursor. Read it live.  explain what the flag does, not why
 	 *
 	 * TODO: Add error handling / fallback strategy for transient DB failures.
 	 */

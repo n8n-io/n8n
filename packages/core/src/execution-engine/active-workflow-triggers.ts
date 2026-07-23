@@ -383,9 +383,8 @@ export class ActiveWorkflowTriggers {
 		);
 
 		if (this.pollJobManager?.isActive()) {
-			// Durable path: provision a scheduler job instead of an in-memory cron. The
-			// structured poll times let the registrar derive a stable job identity;
-			// recurring fires run as the job's seeded occurrences, with no in-memory timer.
+			// Provision a scheduler job instead of an in-memory cron; recurring fires
+			// run as the job's occurrences, with no in-memory timer.
 			const { inserted } = await this.pollJobManager.register(
 				workflowId,
 				node,
@@ -393,10 +392,8 @@ export class ActiveWorkflowTriggers {
 				workflow.timezone,
 			);
 			// A freshly provisioned node polls once inline to seed the cursor and fail
-			// activation loudly on a broken source, as the legacy path does. A pure
-			// reconcile (e.g. re-activation on takeover, all jobs unchanged) skips it, so
-			// the node is not re-polled and its cursor is not disturbed. This poll runs
-			// inside the activation's outer acquireIsolate window (testingTrigger).
+			// activation loudly on a broken source. A pure reconcile (all jobs
+			// unchanged) skips it, leaving the cursor undisturbed.
 			if (inserted) await executePollTrigger(true);
 			return;
 		}

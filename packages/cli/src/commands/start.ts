@@ -215,12 +215,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		// Bind the concrete `PollJobManager` before `ActiveWorkflowManager` (and its
-		// `ActiveWorkflowTriggers`) is first constructed below: core resolves the
-		// abstract `PollJobManager` port at construction, and an unbound port falls
-		// through to the legacy in-memory cron path. The concrete self-gates on its
-		// config flags, so binding it unconditionally is safe when the durable poll
-		// path is off.
+		// Must be before `ActiveWorkflowManager`
 		Container.set(PollJobManager, Container.get(PollTriggerJobRegistrar));
 
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);

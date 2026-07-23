@@ -254,11 +254,10 @@ export class SchedulerConfig {
 
 	/**
 	 * Routes poll triggers through the durable scheduler instead of the in-process
-	 * timer, independently of the Schedule Trigger, so poller nodes can be rolled
-	 * onto the durable scheduler on their own timeline.
+	 * timer, so poller nodes can be rolled onto it on their own timeline.
 	 */
-	@Env('N8N_SCHEDULER_DURABLE_POLL_TRIGGERS')
-	durablePollTriggers: boolean = false;
+	@Env('N8N_SCHEDULER_ENABLE_FOR_POLL_TRIGGERS')
+	enabledForPollTriggers: boolean = false;
 
 	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).

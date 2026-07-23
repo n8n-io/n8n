@@ -13,16 +13,11 @@ import type { PollTriggerTaskPayload } from './poll-trigger-task';
 import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
 
 /**
- * Registers a Poll Trigger node's poll times as durable `scheduled_job` rows:
- * the publication path's counterpart to the in-memory `ScheduledTaskManager`,
- * and the concrete backing for core's {@link PollJobManager} port.
- *
- * Each poll time becomes a plain `cron` job. Jobs reconcile in place by a
- * definition-derived name, so an unchanged poll time keeps its row and clock
- * across re-activation; to hold that, the seconds field is seeded from the node
- * identity (see {@link seededCron}), not randomised. The payload is just
- * `{ workflowId, nodeId }`: the handler re-runs `poll()` each fire, so there is
- * no per-occurrence dedup key.
+ * Concrete {@link PollJobManager}: registers a Poll Trigger node's poll times as
+ * `scheduled_job` rows. Each poll time becomes a `cron` job that reconciles in
+ * place by a definition-derived name, so an unchanged poll time keeps its row and
+ * clock across re-activation. The payload is just `{ workflowId, nodeId }`; the
+ * handler re-runs `poll()` each fire, so there is no per-occurrence dedup key.
  */
 @Service()
 export class PollTriggerJobRegistrar extends PollJobManager {
@@ -30,7 +25,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	private readonly intercepting: boolean;
 
 	/** The poll opt-in on top of {@link intercepting}. */
-	private readonly durablePollTriggers: boolean;
+	private readonly enabledForPollTriggers: boolean;
 
 	/** Instance-default timezone, used to resolve the `'DEFAULT'`/empty sentinel. */
 	private readonly defaultTimezone: string;
@@ -44,7 +39,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		super();
 		this.intercepting =
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
-		this.durablePollTriggers = globalConfig.scheduler.durablePollTriggers;
+		this.enabledForPollTriggers = globalConfig.scheduler.enabledForPollTriggers;
 		this.defaultTimezone = globalConfig.generic.timezone;
 		this.logger = this.logger.scoped('scheduler');
 
@@ -57,7 +52,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 
 	// The run side is gated where the scheduler loops start, not on instanceType here.
 	isActive(): boolean {
-		return this.intercepting && this.durablePollTriggers;
+		return this.intercepting && this.enabledForPollTriggers;
 	}
 
 	/**
@@ -84,7 +79,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 			desired,
 		);
 
-		this.logger.debug('Provisioned durable poll jobs for trigger node', {
+		this.logger.debug('Provisioned scheduler jobs for poll trigger node', {
 			workflowId,
 			nodeId: node.id,
 			inserted: summary.inserted.length,
@@ -115,7 +110,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 				timezone,
 			};
 			// `computeFirstRunAt` validates the expression/timezone, throwing on a
-			// malformed rule like the legacy engine's parse-at-registration.
+			// malformed rule.
 			const firstRunAt = computeFirstRunAt(schedule, new Date());
 			const fingerprint = scheduleFingerprint(schedule, firstRunAt !== null);
 			const occurrence = seen.get(fingerprint) ?? 0;
@@ -128,13 +123,13 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		});
 	}
 
-	/** Delete the node's durable poll jobs on deactivation. No-op when none exist. */
+	/** Delete the node's poll jobs on deactivation. No-op when none exist. */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
 		await this.jobProvisioner.deprovision(workflowId, nodeId);
 	}
 
 	/**
-	 * Delete every durable poll job for the workflow, keyed by workflow alone so a
+	 * Delete every poll job for the workflow, keyed by workflow alone so a
 	 * deactivation retried after in-memory state is gone still finds the rows. No-op
 	 * when none exist, so it is safe on the legacy deactivation paths too.
 	 */
@@ -143,10 +138,9 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	}
 
 	/**
-	 * Delete the workflow's durable poll jobs within a caller-owned transaction, so
-	 * a publication deactivation commits their removal atomically with its
-	 * `active = false` write; a removal deferred to a later step could be lost,
-	 * leaving jobs firing an inactive workflow. Keyed and idempotent like
+	 * Delete the workflow's poll jobs within a caller-owned transaction, so their
+	 * removal commits atomically with the `active = false` write; deferring it
+	 * could leave jobs firing an inactive workflow. Keyed and idempotent like
 	 * {@link removeWorkflow}.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
@@ -160,8 +154,8 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 
 /**
  * Resolve `workflow.timezone` to a concrete IANA zone. The `'DEFAULT'` sentinel
- * and empty string (no override) would fail `validateCron`, but the legacy engine
- * tolerated them, so fall back to the instance default.
+ * and empty string (no override) would fail `validateCron`, so fall back to the
+ * instance default.
  */
 function resolveTimezone(timezone: string, defaultTimezone: string): string {
 	return !timezone || timezone === 'DEFAULT' ? defaultTimezone : timezone;

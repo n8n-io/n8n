@@ -11,7 +11,6 @@ import type { DurableJobProvisioner } from '../../durable-job-provisioner';
 import { PollTriggerJobRegistrar } from '../poll-trigger-job-registrar';
 import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
 
-// Monday. Deterministic clock so first-fire assertions are exact.
 const NOW = new Date('2026-01-05T00:00:00.000Z');
 const NEXT_NINE = new Date('2026-01-05T09:00:00.000Z');
 const NEXT_TEN = new Date('2026-01-05T10:00:00.000Z');
@@ -35,19 +34,18 @@ describe('PollTriggerJobRegistrar', () => {
 	const makeRegistrar = ({
 		schedulerEnabled = true,
 		publicationEnabled = true,
-		durablePollTriggers = true,
+		enabledForPollTriggers = true,
 	} = {}) =>
 		new PollTriggerJobRegistrar(
 			mockLogger(),
 			mock<GlobalConfig>({
-				scheduler: { enabled: schedulerEnabled, durablePollTriggers },
+				scheduler: { enabled: schedulerEnabled, enabledForPollTriggers },
 				generic: { timezone: TIMEZONE },
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),
 			jobProvisioner,
 		);
 
-	/** The desired jobs of the most recent `provision` call. */
 	const lastDesired = () => jobProvisioner.provision.mock.calls.at(-1)![4];
 
 	beforeEach(() => {
@@ -71,39 +69,43 @@ describe('PollTriggerJobRegistrar', () => {
 			{
 				schedulerEnabled: true,
 				publicationEnabled: true,
-				durablePollTriggers: true,
+				enabledForPollTriggers: true,
 				expected: true,
 			},
 			{
 				schedulerEnabled: false,
 				publicationEnabled: true,
-				durablePollTriggers: true,
+				enabledForPollTriggers: true,
 				expected: false,
 			},
 			{
 				schedulerEnabled: true,
 				publicationEnabled: false,
-				durablePollTriggers: true,
+				enabledForPollTriggers: true,
 				expected: false,
 			},
 			{
 				schedulerEnabled: true,
 				publicationEnabled: true,
-				durablePollTriggers: false,
+				enabledForPollTriggers: false,
 				expected: false,
 			},
 		] as const)(
-			'is $expected for scheduler=$schedulerEnabled publication=$publicationEnabled durablePoll=$durablePollTriggers',
-			({ schedulerEnabled, publicationEnabled, durablePollTriggers, expected }) => {
+			'is $expected for scheduler=$schedulerEnabled publication=$publicationEnabled pollTriggers=$enabledForPollTriggers',
+			({ schedulerEnabled, publicationEnabled, enabledForPollTriggers, expected }) => {
 				expect(
-					makeRegistrar({ schedulerEnabled, publicationEnabled, durablePollTriggers }).isActive(),
+					makeRegistrar({
+						schedulerEnabled,
+						publicationEnabled,
+						enabledForPollTriggers,
+					}).isActive(),
 				).toBe(expected);
 			},
 		);
 	});
 
 	describe('register', () => {
-		it('provisions one durable job per poll time, named by its definition, with the first fire planned', async () => {
+		it('provisions one scheduler job per poll time, named by its definition, with the first fire planned', async () => {
 			await makeRegistrar().register(
 				WORKFLOW_ID,
 				pollNode,
@@ -164,7 +166,6 @@ describe('PollTriggerJobRegistrar', () => {
 				makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE),
 			).resolves.toEqual({ inserted: true });
 
-			// A pure reconcile (nothing inserted) reports false, so the caller skips the poll.
 			await expect(
 				makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], TIMEZONE),
 			).resolves.toEqual({ inserted: false });
@@ -238,8 +239,6 @@ describe('PollTriggerJobRegistrar', () => {
 				await makeRegistrar().register(WORKFLOW_ID, pollNode, [DAILY_AT_NINE], sentinel);
 
 				const [{ schedule, firstRunAt }] = lastDesired();
-				// TIMEZONE is the instance default (globalConfig.generic.timezone), so the
-				// stored zone must be the resolved value, never the sentinel.
 				expect((schedule as CronDefinition).timezone).toBe(TIMEZONE);
 				expect(firstRunAt).toEqual(NEXT_NINE);
 			},
@@ -262,7 +261,7 @@ describe('PollTriggerJobRegistrar', () => {
 	});
 
 	describe('remove', () => {
-		it('removes the durable jobs of a deactivated node', async () => {
+		it('removes the scheduler jobs of a deactivated node', async () => {
 			await makeRegistrar().remove(WORKFLOW_ID, NODE_ID);
 
 			expect(jobProvisioner.deprovision).toHaveBeenCalledWith(WORKFLOW_ID, NODE_ID);
@@ -270,7 +269,7 @@ describe('PollTriggerJobRegistrar', () => {
 	});
 
 	describe('removeWorkflow', () => {
-		it('removes the durable poll jobs of all nodes of a deactivated workflow', async () => {
+		it('removes the poll jobs of all nodes of a deactivated workflow', async () => {
 			await makeRegistrar().removeWorkflow(WORKFLOW_ID);
 
 			expect(jobProvisioner.deprovisionWorkflow).toHaveBeenCalledWith(
@@ -281,7 +280,7 @@ describe('PollTriggerJobRegistrar', () => {
 	});
 
 	describe('removeWorkflowInTransaction', () => {
-		it('removes the durable poll jobs of a workflow within the given transaction', async () => {
+		it('removes the poll jobs of a workflow within the given transaction', async () => {
 			const manager = mock<EntityManager>();
 
 			await makeRegistrar().removeWorkflowInTransaction(manager, WORKFLOW_ID);
@@ -295,14 +294,13 @@ describe('PollTriggerJobRegistrar', () => {
 	});
 
 	describe('configuration warning', () => {
-		// The registrar scopes its logger, so warnings land on the scoped instance.
 		const construct = ({ schedulerEnabled = true, publicationEnabled = true } = {}) => {
 			const scopedLogger = mockLogger();
 			const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 			new PollTriggerJobRegistrar(
 				logger,
 				mock<GlobalConfig>({
-					scheduler: { enabled: schedulerEnabled, durablePollTriggers: true },
+					scheduler: { enabled: schedulerEnabled, enabledForPollTriggers: true },
 					generic: { timezone: TIMEZONE },
 				}),
 				mock<WorkflowsConfig>({ useWorkflowPublicationService: publicationEnabled }),

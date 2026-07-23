@@ -74,8 +74,6 @@ describe('durable scheduler process lifecycle and flag gating', () => {
 			instanceSettings,
 			globalConfig,
 			Container.get(Tracing),
-			// The auto-registered schedule- and poll-trigger handlers are harmless
-			// here: no such occurrences are seeded, so neither ever fires.
 			Container.get(ScheduleTriggerTaskHandler),
 			Container.get(PollTriggerTaskHandler),
 			Container.get(PrometheusSchedulerMetricsService),

@@ -944,7 +944,7 @@ export class ActiveWorkflowManager {
 			} catch (error) {
 				this.errorReporter.error(error);
 				this.logger.error(
-					`Could not remove durable jobs of workflow "${workflowId}" because of error: "${error.message}"`,
+					`Could not remove durable scheduler jobs of workflow "${workflowId}" because of error: "${error.message}"`,
 				);
 			}
 
@@ -1022,7 +1022,7 @@ export class ActiveWorkflowManager {
 		} catch (error) {
 			this.errorReporter.error(error);
 			this.logger.error(
-				`Could not remove durable jobs of workflow "${workflowId}" because of error: "${error.message}"`,
+				`Could not remove durable scheduler jobs of workflow "${workflowId}" because of error: "${error.message}"`,
 			);
 		}
 

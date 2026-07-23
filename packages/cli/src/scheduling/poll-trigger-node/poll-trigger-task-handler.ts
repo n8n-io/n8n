@@ -16,13 +16,10 @@ import {
 
 /**
  * Runs a due poll occurrence's `poll()` once and hands off only when it returns
- * new data.
- *
- * Unlike the schedule handler, which hands off a fixed item every time, a poll
- * trigger executes against its source: it reuses the poll execution context the
- * activation path builds, so the cursor and `__emit` run path match the legacy
- * in-memory poller. A null result means no new data, so nothing is dispatched.
- * No dedup key: two polls at the same instant can legitimately differ.
+ * new data. Reuses the poll execution context the activation path builds, so the
+ * cursor and `__emit` run path are unchanged. A null result means no new data,
+ * so nothing is dispatched. No dedup key: two polls at the same instant can
+ * legitimately differ.
  */
 @Service()
 export class PollTriggerTaskHandler implements TaskHandler {
@@ -62,8 +59,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			);
 
 			if (pollResponse !== null) {
-				// Fire-and-forget, exactly as the legacy poll path does: __emit saves the
-				// poll cursor and kicks off the run without us awaiting it.
+				// Fire-and-forget, matching the in-memory poll path: __emit saves the
+				// cursor and kicks off the run without us awaiting it.
 				pollFunctions.__emit(pollResponse);
 				this.logger.debug('Poll returned new data; handed off to a new execution', {
 					taskId: task.id,
@@ -82,11 +79,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			});
 			return report.notDispatched();
 		} catch (error) {
-			// A runtime poll() failure (e.g. source API down) goes to the error workflow
-			// via __emitError, like the legacy poller (PollTriggerExecutor). We don't
-			// rethrow: that would retry to N8N_SCHEDULER_MAX_ATTEMPTS and dead-letter,
-			// skipping the error workflow. __emitError skips saveStaticData, so the cursor
-			// holds and the next tick re-fetches the same window once the source recovers.
+			// A runtime poll() failure goes to the error workflow via __emitError. We
+			// don't rethrow: that would retry to N8N_SCHEDULER_MAX_ATTEMPTS and
+			// dead-letter, skipping the error workflow. __emitError skips
+			// saveStaticData, so the cursor holds and the next tick re-fetches the
+			// same window once the source recovers.
 			pollFunctions.__emitError(ensureError(error));
 			this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 				taskId: task.id,
@@ -117,7 +114,6 @@ export class PollTriggerTaskHandler implements TaskHandler {
 	): INode {
 		const node = workflowData.nodes.find((candidate) => candidate.id === nodeId);
 		if (!node || node.disabled) {
-			// The job outlived its trigger node: deactivation should have removed it.
 			throw new UnexpectedError(
 				'Poll-trigger task points to a node that is missing or disabled in the published workflow',
 				{ extra: { taskId: task.id, jobId: task.jobId, workflowId: workflowData.id, nodeId } },

@@ -10,7 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
-import { POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
+import { isPollTriggerTaskPayload, POLL_TRIGGER_TASK_TYPE } from '../poll-trigger-task';
 import { PollTriggerTaskHandler } from '../poll-trigger-task-handler';
 
 describe('PollTriggerTaskHandler', () => {
@@ -27,9 +27,7 @@ describe('PollTriggerTaskHandler', () => {
 		triggersAndPollers,
 	);
 
-	// The executor's dispatch-marker callback; cleared each test by vi.clearAllMocks().
 	const onDispatch = vi.fn();
-	// The reporter the executor hands to `execute`; `dispatched()` fires the spy above.
 	const report = createDispatchReporter(onDispatch);
 
 	const triggerNode: INode = {
@@ -42,8 +40,6 @@ describe('PollTriggerTaskHandler', () => {
 		disabled: false,
 	};
 
-	// Plain data object, not a mock proxy: the handler reads it as a value and
-	// the factory builds a real Workflow from it.
 	const buildWorkflowData = (overrides: Partial<IWorkflowBase> = {}): IWorkflowBase =>
 		({
 			id: 'wf-1',
@@ -59,8 +55,6 @@ describe('PollTriggerTaskHandler', () => {
 			...overrides,
 		}) as IWorkflowBase;
 
-	// A real Workflow so the handler's isolate acquire/release runs against a real
-	// WorkflowExpression, observable via the prototype spies below.
 	const buildWorkflow = (workflowData: IWorkflowBase): Workflow =>
 		new Workflow({
 			id: workflowData.id,
@@ -111,8 +105,6 @@ describe('PollTriggerTaskHandler', () => {
 
 		triggersAndPollers.runPollFunction.mockResolvedValue(pollData);
 
-		// The factory builds the Workflow, so spy the isolate primitives on the
-		// prototype to observe acquire/release without a real VM evaluator.
 		acquireIsolate = vi
 			.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
 			.mockResolvedValue(false);
@@ -145,8 +137,6 @@ describe('PollTriggerTaskHandler', () => {
 					bypassCache: true,
 				},
 			);
-			// The resolved trigger node and the freshly loaded data are handed to the
-			// factory, which owns the Workflow/additionalData/poll-context assembly.
 			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
 				workflowData,
 				triggerNode,
@@ -161,8 +151,6 @@ describe('PollTriggerTaskHandler', () => {
 		test('reads workflow data fresh (non-cached) so the poll cursor is never stale', async () => {
 			await handler.execute(buildTask(), report);
 
-			// The poll cursor lives in staticData and mutates every tick, so the handler
-			// must read live from the DB, never through the publish-time cache.
 			expect(triggerExecutionContextFactory.loadPublishedWorkflowData).toHaveBeenCalledWith(
 				'wf-1',
 				{
@@ -250,6 +238,23 @@ describe('PollTriggerTaskHandler', () => {
 				'missing or disabled in the published workflow',
 			);
 			expect(triggersAndPollers.runPollFunction).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isPollTriggerTaskPayload', () => {
+		test('accepts a payload with workflowId and nodeId', () => {
+			expect(isPollTriggerTaskPayload({ workflowId: 'wf-1', nodeId: 'node-1' })).toBe(true);
+		});
+
+		test.each([
+			['empty payload', {}],
+			['missing nodeId', { workflowId: 'wf-1' }],
+			['missing workflowId', { nodeId: 'node-1' }],
+			['empty workflowId', { workflowId: '', nodeId: 'node-1' }],
+			['empty nodeId', { workflowId: 'wf-1', nodeId: '' }],
+			['non-string ids', { workflowId: 42, nodeId: true }],
+		])('rejects %s', (_name, payload) => {
+			expect(isPollTriggerTaskPayload(payload)).toBe(false);
 		});
 	});
 });
