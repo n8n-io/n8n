@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 
@@ -125,7 +126,7 @@ const properties: INodeProperties[] = [
 					minValue: 0,
 				},
 				description:
-					'Specifies the relative position of the new row. If not defined, the addition happens at the end. Any row below the inserted row will be shifted downwards. First row index is 0.',
+					"Specifies the relative position of the new row. If not defined, the addition happens at the end. Any row below the inserted row will be shifted downwards. First row index is 0. An index higher than the table's current row count will fail.",
 			},
 			{
 				displayName: 'RAW Data',
@@ -207,20 +208,30 @@ export async function execute(
 			body.index = options.index;
 		}
 
-		const responseData = await (withWorkbookSession<ExcelResponse>).call(
-			this,
-			workbookRoot,
-			async (headers) =>
-				await (microsoftApiRequest<ExcelResponse>).call(
-					this,
-					'POST',
-					`${tableEndpoint}/rows/add`,
-					body,
-					{},
-					undefined,
-					headers,
-				),
-		);
+		let responseData: ExcelResponse;
+		try {
+			responseData = await (withWorkbookSession<ExcelResponse>).call(
+				this,
+				workbookRoot,
+				async (headers) =>
+					await (microsoftApiRequest<ExcelResponse>).call(
+						this,
+						'POST',
+						`${tableEndpoint}/rows/add`,
+						body,
+						{},
+						undefined,
+						headers,
+					),
+			);
+		} catch (error) {
+			// Graph answers an out-of-range index with only "The argument is invalid
+			// or missing or has an incorrect format" — point at the likely culprit
+			if (body.index !== undefined && error instanceof NodeApiError && error.httpCode === '400') {
+				error.description = `This can happen when the 'Index' option (${options.index}) is higher than the table's current row count. Use a smaller index, or remove the option to append at the end.`;
+			}
+			throw error;
+		}
 
 		const output = prepareOutput.call(this, this.getNode(), responseData, {
 			columnsRow,

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -175,6 +176,31 @@ describe('Microsoft Excel (SharePoint) — Table: Append', () => {
 			undefined,
 			SESSION_HEADER,
 		);
+	});
+
+	it('names the Index option when Graph rejects an out-of-range insert position', async () => {
+		setParams({ ...baseParams, options: { index: 50 } });
+		ctx.getInputData.mockReturnValue([{ json: { Name: 'Frank' } }]);
+		apiRequestAllItems.mockResolvedValue([{ name: 'Name' }]);
+		const graphMessage = 'The argument is invalid or missing or has an incorrect format.';
+		apiRequest.mockImplementation(async (_method: string, resource: string) => {
+			if (resource.endsWith('/createSession')) return { id: 'session-1' };
+			if (resource.endsWith('/rows/add')) {
+				throw new NodeApiError(
+					mock<INode>(),
+					{ message: graphMessage },
+					{ message: graphMessage, httpCode: '400' },
+				);
+			}
+			return {};
+		});
+
+		await expect(node.execute.call(ctx)).rejects.toMatchObject({
+			message: graphMessage,
+			description: expect.stringContaining(
+				"the 'Index' option (50) is higher than the table's current row count",
+			),
+		});
 	});
 
 	it('pairs each appended row with the input item that produced it', async () => {
