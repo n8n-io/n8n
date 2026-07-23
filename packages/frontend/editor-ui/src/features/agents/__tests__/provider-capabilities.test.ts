@@ -17,6 +17,7 @@ describe('provider-capabilities', () => {
 		expect(PROVIDER_CAPABILITIES.anthropic.thinking).toBe('budgetTokens');
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.openrouter.thinking).toBe('reasoningEffort');
+		expect(PROVIDER_CAPABILITIES.baseten.thinking).toBe('reasoningEffort');
 		expect(PROVIDER_CAPABILITIES.xai.thinking).toBe('reasoningEffort');
 	});
 
