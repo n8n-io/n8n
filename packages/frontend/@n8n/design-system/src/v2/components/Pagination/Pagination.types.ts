@@ -2,7 +2,7 @@ import type { PaginationRootEmits, PaginationRootProps } from 'reka-ui';
 
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
-export type PaginationSizes = 'default' | 'small';
+export type PaginationSizes = 'small' | 'medium';
 
 export type PaginationProps = Omit<
 	PaginationRootProps,

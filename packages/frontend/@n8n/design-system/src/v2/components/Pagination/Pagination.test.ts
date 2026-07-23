@@ -5,8 +5,8 @@ import type { PaginationSizes } from './Pagination.types';
 import Pagination from './Pagination.vue';
 
 const sizeCases: Array<[PaginationSizes | undefined, string]> = [
-	[undefined, 'default'],
-	['default', 'default'],
+	[undefined, 'medium'],
+	['medium', 'medium'],
 	['small', 'small'],
 ];
 

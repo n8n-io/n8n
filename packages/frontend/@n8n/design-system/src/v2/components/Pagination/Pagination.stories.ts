@@ -31,7 +31,7 @@ export default {
 		},
 		size: {
 			control: 'select',
-			options: ['default', 'small'],
+			options: ['small', 'medium'],
 			description: 'Size variant',
 		},
 		disabled: {
@@ -98,15 +98,15 @@ export const Sizes: Story = {
 	render: (args) => ({
 		components: { Pagination },
 		setup() {
-			const defaultPage = ref(args.currentPage ?? 1);
+			const mediumPage = ref(args.currentPage ?? 1);
 			const smallPage = ref(args.currentPage ?? 1);
-			return { args, defaultPage, smallPage };
+			return { args, mediumPage, smallPage };
 		},
 		template: `
 		<div style="display: flex; flex-direction: column; gap: 24px; padding: 16px;">
 			<div>
-				<h3 style="margin: 0 0 8px;">Default</h3>
-				<Pagination v-bind="args" size="default" v-model:current-page="defaultPage" />
+				<h3 style="margin: 0 0 8px;">Medium</h3>
+				<Pagination v-bind="args" size="medium" v-model:current-page="mediumPage" />
 			</div>
 			<div>
 				<h3 style="margin: 0 0 8px;">Small</h3>
