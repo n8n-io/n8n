@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+
 import { prompt, PromptBuilder } from './prompt-builder';
 
 describe('PromptBuilder', () => {
@@ -554,6 +556,27 @@ describe('PromptBuilder', () => {
 			expect(middleIndex).toBeLessThan(bIndex);
 		});
 
+		it('should merge a builder into itself once', () => {
+			const output = execFileSync(
+				process.execPath,
+				[
+					'--eval',
+					`
+						const { prompt } = require('@n8n/ai-utilities/prompt-builder');
+						const builder = prompt().section('A', 'first').section('B', 'second');
+						process.stdout.write(builder.merge(builder).build());
+					`,
+				],
+				{ encoding: 'utf8', timeout: 500 },
+			);
+
+			expect(output).toBe(
+				['<a>\nfirst\n</a>', '<b>\nsecond\n</b>', '<a>\nfirst\n</a>', '<b>\nsecond\n</b>'].join(
+					'\n\n',
+				),
+			);
+		});
+
 		it('should handle merging empty builder', () => {
 			const empty = prompt();
 			const result = prompt().section('A', 'content').merge(empty).build();
@@ -673,6 +696,12 @@ describe('PromptBuilder', () => {
 
 			// Should sanitize to valid XML tag
 			expect(result).toMatch(/<[a-z0-9_]+>/);
+		});
+
+		it('should use a fallback tag when a section name has no tag characters', () => {
+			const result = prompt().section('!!!', 'content').build();
+
+			expect(result).toBe('<section>\ncontent\n</section>');
 		});
 
 		it('should handle multiline content', () => {
