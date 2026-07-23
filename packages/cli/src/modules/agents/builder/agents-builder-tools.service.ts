@@ -694,7 +694,7 @@ export class AgentsBuilderToolsService {
 					this.ssrfProtectionService,
 				),
 				applyCredentialToMcpServer: async (serverName, credentialId) =>
-					this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId),
+					await this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 			buildResolveIntegrationTool({
