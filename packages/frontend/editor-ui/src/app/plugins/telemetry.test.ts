@@ -277,6 +277,24 @@ describe('telemetry', () => {
 
 			warnSpy.mockRestore();
 		});
+
+		it('should warn about schema mismatches even when RudderStack is not available', () => {
+			const originalRudderanalytics = window.rudderanalytics;
+			// @ts-expect-error simulating a disabled telemetry client
+			window.rudderanalytics = undefined;
+			const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			telemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, {
+				workflow_id: 123 as unknown as string,
+			});
+
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining('"User tested registry entry" failed schema validation'),
+			);
+
+			window.rudderanalytics = originalRudderanalytics;
+			warnSpy.mockRestore();
+		});
 	});
 
 	describe('trackNodeParametersValuesChange - advanced HITL', () => {

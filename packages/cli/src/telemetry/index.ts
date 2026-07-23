@@ -563,15 +563,15 @@ export class Telemetry {
 	track<T extends TelemetryEventDef>(event: T, properties: InferTelemetryProps<T>): void;
 	track(eventName: string, properties?: ITelemetryTrackProperties): void;
 	track(event: string | TelemetryEventDef, properties: ITelemetryTrackProperties = {}) {
-		if (!this.rudderStack) {
-			return;
-		}
-
 		const eventName = typeof event === 'string' ? event : event.name;
 
 		if (typeof event !== 'string') {
 			const validationError = getEventValidationError(event, properties);
 			if (validationError) this.logger.warn(validationError);
+		}
+
+		if (!this.rudderStack) {
+			return;
 		}
 
 		const { instanceId } = this.instanceSettings;

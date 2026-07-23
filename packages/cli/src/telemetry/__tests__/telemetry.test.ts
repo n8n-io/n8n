@@ -1158,6 +1158,26 @@ describe('Telemetry', () => {
 				}),
 			);
 		});
+
+		test('should warn about schema mismatches even when RudderStack is not initialized', () => {
+			const logger = mock<Logger>();
+			const uninitializedTelemetry = new Telemetry(
+				logger,
+				new PostHogClient(instanceSettings, mock()),
+				mock(),
+				instanceSettings,
+				mock(),
+				globalConfig,
+				mock(),
+				mock(),
+			);
+
+			uninitializedTelemetry.track(TEST_TELEMETRY.USER_TESTED_REGISTRY_ENTRY, {
+				workflow_id: 123 as unknown as string,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('failed schema validation'));
+		});
 	});
 });
 
