@@ -44,8 +44,31 @@ export const expectationResultsSchema = z.array(
 		pass: z.boolean(),
 		reason: z.string().default(''),
 		incomplete: z.boolean().optional(),
+		shadowPass: z.boolean().optional(),
+		shadowReason: z.string().optional(),
+		shadowIncomplete: z.boolean().optional(),
 	}),
 );
+
+const judgeTokenUsageSchema = z.object({
+	promptTokens: z.number().optional(),
+	completionTokens: z.number().optional(),
+	totalTokens: z.number().optional(),
+	costUsd: z.number().optional(),
+});
+
+/** Mirrors `ShadowJudgeVerdict` — observational side-by-side judge experiment data. */
+const shadowJudgeVerdictSchema = z.object({
+	model: z.string(),
+	pass: z.boolean().optional(),
+	reasoning: z.string().optional(),
+	failureCategory: z.string().optional(),
+	rootCause: z.string().optional(),
+	incomplete: z.boolean().optional(),
+	latencyMs: z.number(),
+	usage: judgeTokenUsageSchema.optional(),
+	error: z.string().optional(),
+});
 
 const targetOutputSchema = z.object({
 	buildSuccess: z.boolean().default(false),
@@ -83,6 +106,10 @@ const targetOutputSchema = z.object({
 	buildTrace: z.unknown().optional(),
 	/** Plan rejections the proxy issued — deterministic conversation counter. Multi-turn only. */
 	planRejections: z.number().optional(),
+	/** Shadow-judge experiment verdict — observational only, `.catch` so a malformed
+	 *  blob can't void the row. */
+	shadowJudge: shadowJudgeVerdictSchema.optional().catch(undefined),
+	judgeUsage: judgeTokenUsageSchema.optional().catch(undefined),
 });
 
 export type TargetOutput = Omit<
@@ -298,6 +325,8 @@ export function reshapeLangSmithRuns(
 					failureCategory: output.failureCategory,
 					rootCause: output.rootCause,
 					...(output.incomplete ? { incomplete: true } : {}),
+					...(output.shadowJudge ? { shadowJudge: output.shadowJudge } : {}),
+					...(output.judgeUsage ? { judgeUsage: output.judgeUsage } : {}),
 				});
 			}
 

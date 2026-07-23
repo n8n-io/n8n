@@ -46,6 +46,22 @@ export function buildCIMetadata(): CIMetadata {
 	};
 }
 
+/** Harness model overrides active for this run — recorded on the experiment
+ *  metadata so A/B arms are identifiable in LangSmith without artifact digging.
+ *  Empty for default runs. */
+export function harnessModelMetadata(): Record<string, string> {
+	const entries: Record<string, string> = {};
+	const evalModel = process.env.N8N_INSTANCE_AI_EVAL_MODEL?.trim();
+	const mock = process.env.N8N_INSTANCE_AI_EVAL_MOCK_MODEL?.trim();
+	const judge = process.env.N8N_INSTANCE_AI_EVAL_JUDGE_MODEL?.trim();
+	const shadow = process.env.N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL?.trim();
+	if (evalModel) entries.evalModel = evalModel;
+	if (mock) entries.evalMockModel = mock;
+	if (judge) entries.evalJudgeModel = judge;
+	if (shadow) entries.evalShadowJudgeModel = shadow;
+	return entries;
+}
+
 /**
  * Compute an informative experiment name prefix from branch and commit info.
  * Falls back to a generic name if no git context is available.

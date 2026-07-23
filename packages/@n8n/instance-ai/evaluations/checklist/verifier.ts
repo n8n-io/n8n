@@ -4,7 +4,10 @@ import { z } from 'zod';
 import {
 	EPHEMERAL_CACHE,
 	createEvalAgent,
+	getShadowJudgeModel,
 	resolveEvalModelConfig,
+	type EvalAgentRole,
+	type EvalModelConfig,
 } from '../../src/utils/eval-agents';
 import type { VerificationArtifact } from '../harness/runner';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
@@ -58,9 +61,24 @@ export interface VerifierAttemptDebug {
 	acceptedResultsCount: number;
 }
 
+/** Shadow judge's run over the identical verifier input — comparison data only. */
+export interface ShadowVerifyResult {
+	model: string;
+	results: ChecklistResult[];
+	attempts: VerifierAttemptDebug[];
+	latencyMs: number;
+	/** Set when the shadow call failed outright (bad config, missing key). */
+	error?: string;
+}
+
 export interface VerifyChecklistResult {
 	results: ChecklistResult[];
 	attempts: VerifierAttemptDebug[];
+	/** Present only when `N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL` is set. */
+	shadow?: ShadowVerifyResult;
+	/** The exact judge messages, captured for offline replay when
+	 *  `N8N_INSTANCE_AI_EVAL_PERSIST_JUDGE_INPUT=true` (written to local snapshots only). */
+	judgeInput?: Message[];
 }
 
 function parseStructuredOutputFromText(
@@ -160,13 +178,13 @@ export function supportsOpenAiReasoning(modelId: string): boolean {
 async function runNativeOpenAiVerifier(
 	userMessage: string,
 	abortSignal: AbortSignal,
+	model: EvalModelConfig,
 ): Promise<{
 	finishReason: unknown;
 	usage: unknown;
 	assistantText: string;
 	parsed: z.infer<typeof checklistResultSchema> | undefined;
 }> {
-	const model = resolveEvalModelConfig();
 	const requestBody = {
 		model: model.providerModelId,
 		...(supportsOpenAiReasoning(model.providerModelId) ? { reasoning: { effort: 'high' } } : {}),
@@ -384,13 +402,49 @@ export async function verifyChecklist(
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');
 	if (llmItems.length === 0) return { results: [], attempts: [] };
 
+	const judgeInput =
+		process.env.N8N_INSTANCE_AI_EVAL_PERSIST_JUDGE_INPUT === 'true'
+			? buildVerifierMessages(llmItems, artifact)
+			: undefined;
+	const shadowModel = getShadowJudgeModel();
+	const primaryPromise = runVerifierAttempts(llmItems, artifact, { role: 'judge' });
+	if (!shadowModel) {
+		const primary = await primaryPromise;
+		return judgeInput ? { ...primary, judgeInput } : primary;
+	}
+
+	// Shadow judge: identical input, same retry/timeout machinery, strictly
+	// observational — a shadow failure lands on the result, never on the primary.
+	const shadowStart = Date.now();
+	const shadowPromise: Promise<ShadowVerifyResult> = runVerifierAttempts(llmItems, artifact, {
+		model: shadowModel,
+	})
+		.then((r) => ({ model: shadowModel, ...r, latencyMs: Date.now() - shadowStart }))
+		.catch((error: unknown) => ({
+			model: shadowModel,
+			results: [],
+			attempts: [],
+			latencyMs: Date.now() - shadowStart,
+			error: error instanceof Error ? error.message : String(error),
+		}));
+	const [primary, shadow] = await Promise.all([primaryPromise, shadowPromise]);
+	return { ...primary, shadow, ...(judgeInput ? { judgeInput } : {}) };
+}
+
+async function runVerifierAttempts(
+	llmItems: ChecklistItem[],
+	artifact: VerificationArtifact,
+	modelSelection: { model?: string; role?: EvalAgentRole },
+): Promise<{ results: ChecklistResult[]; attempts: VerifierAttemptDebug[] }> {
 	const nativeUserMessage = buildNativeVerifierMessage(llmItems, artifact);
 	const messages = buildVerifierMessages(llmItems, artifact);
 
 	const validIds = new Set(llmItems.map((i) => i.id));
 	const attempts: VerifierAttemptDebug[] = [];
-	const model = resolveEvalModelConfig();
+	const model = resolveEvalModelConfig(modelSelection.model, modelSelection.role);
 	const useNativeOpenAiVerifier = model.provider === 'openai';
+	// Only the shadow run passes an explicit model — label its noise apart from the primary's.
+	const label = modelSelection.model ? 'shadow-verifier' : 'verifier';
 
 	logVerifierDebug('request summary', {
 		checklistIds: Array.from(validIds),
@@ -438,6 +492,7 @@ export async function verifyChecklist(
 				const nativeResult = await runNativeOpenAiVerifier(
 					nativeUserMessage,
 					abortController.signal,
+					model,
 				);
 				assistantText = nativeResult.assistantText;
 				parsed = nativeResult.parsed;
@@ -448,6 +503,8 @@ export async function verifyChecklist(
 				const agent = createEvalAgent('eval-checklist-verifier', {
 					instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 					cache: true,
+					model: modelSelection.model,
+					role: modelSelection.role,
 				}).structuredOutput(checklistResultSchema);
 
 				// The inactivity watchdog arms on the FIRST chunk (inside the consume
@@ -514,7 +571,7 @@ export async function verifyChecklist(
 					}),
 				);
 				console.warn(
-					`[verifier] attempt ${attempt}/${maxAttempts} returned model error: ${modelError}`,
+					`[${label}] attempt ${attempt}/${maxAttempts} returned model error: ${modelError}`,
 				);
 				continue;
 			}
@@ -546,7 +603,7 @@ export async function verifyChecklist(
 					acceptedResultsCount: results.length,
 				}),
 			);
-			console.warn(`[verifier] attempt ${attempt}/${maxAttempts} produced no parseable results`);
+			console.warn(`[${label}] attempt ${attempt}/${maxAttempts} produced no parseable results`);
 		} catch (error: unknown) {
 			const msg = abortReason ?? (error instanceof Error ? error.message : String(error));
 			attempts.push(
@@ -556,13 +613,13 @@ export async function verifyChecklist(
 					error: msg,
 				}),
 			);
-			console.warn(`[verifier] attempt ${attempt}/${maxAttempts} failed: ${msg}`);
+			console.warn(`[${label}] attempt ${attempt}/${maxAttempts} failed: ${msg}`);
 		} finally {
 			clearTimeout(capTimer);
 			if (inactivityTimer) clearTimeout(inactivityTimer);
 		}
 	}
 
-	console.warn(`[verifier] exhausted ${maxAttempts} attempts, returning empty result`);
+	console.warn(`[${label}] exhausted ${maxAttempts} attempts, returning empty result`);
 	return { results: [], attempts };
 }

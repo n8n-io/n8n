@@ -16,7 +16,7 @@ import { traceable } from 'langsmith/traceable';
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { type Lane, type McpBuildSpend } from './build-orchestrator';
 import type { ScenarioRowInputs } from './case-pipeline';
-import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
+import { buildCIMetadata, computeExperimentPrefix, harnessModelMetadata } from './ci-metadata';
 import { createEvalSession, MAX_CONCURRENT_BUILDS } from './eval-session';
 import { expandWithIterations } from './iterations';
 import { computePassRatePerIter, summarizeMcpBuildSpend, type RowSink } from './persist';
@@ -200,6 +200,32 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 				});
 			}
 		}
+		// Shadow-judge experiment keys (observational only): disagreement analysis
+		// becomes a LangSmith column filter instead of artifact spelunking.
+		if (output.shadowJudge) {
+			const shadow = output.shadowJudge;
+			const shadowScored =
+				shadow.error === undefined && shadow.incomplete !== true && shadow.pass !== undefined;
+			if (shadowScored) {
+				feedback.push({
+					key: 'shadow_scenario_pass',
+					score: shadow.pass ? 1 : 0,
+					comment: shadow.reasoning ?? undefined,
+				});
+				feedback.push({
+					key: 'shadow_failure_category',
+					value: shadow.pass ? 'none' : (shadow.failureCategory ?? 'unknown'),
+				});
+				if (!output.incomplete) {
+					feedback.push({
+						key: 'shadow_judge_disagree',
+						score: shadow.pass === output.passed ? 0 : 1,
+					});
+				}
+			} else {
+				feedback.push({ key: 'shadow_judge_error', value: shadow.error ?? 'incomplete' });
+			}
+		}
 		return feedback;
 	};
 
@@ -240,6 +266,7 @@ export async function runWithLangSmith(config: RunConfig): Promise<{
 				maxBuilds: MAX_CONCURRENT_BUILDS,
 				lanes: lanes.length,
 				iterations: args.iterations,
+				...harnessModelMetadata(),
 				...buildCIMetadata(),
 			},
 		});

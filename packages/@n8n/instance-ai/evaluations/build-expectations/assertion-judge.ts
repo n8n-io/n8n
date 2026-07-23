@@ -1,7 +1,12 @@
 import type { Message } from '@n8n/agents';
 import { z } from 'zod';
 
-import { SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
+import {
+	SONNET_MODEL,
+	createEvalAgent,
+	getShadowJudgeModel,
+	type EvalAgentRole,
+} from '../../src/utils/eval-agents';
 import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
 import type { BuildExpectationResult } from '../types';
 
@@ -50,11 +55,57 @@ export async function judgeExpectations(
 ): Promise<BuildExpectationResult[]> {
 	if (assertions.length === 0) return [];
 
+	const shadowModel = getShadowJudgeModel();
+	const primaryPromise = judgeExpectationsWithModel(messages, assertions, {
+		model: JUDGE_MODEL,
+		role: 'judge',
+	});
+	if (!shadowModel) return await primaryPromise;
+
+	// Shadow judge: identical messages, same retry machinery, verdicts merged onto
+	// the primary entries as shadow* fields — never counted, never thrown.
+	const shadowStart = Date.now();
+	const shadowPromise = judgeExpectationsWithModel(messages, assertions, {
+		model: shadowModel,
+	}).catch((error: unknown) =>
+		allFailVerdicts(
+			assertions,
+			`shadow judge error: ${error instanceof Error ? error.message : String(error)}`,
+		),
+	);
+	const [primary, shadow] = await Promise.all([primaryPromise, shadowPromise]);
+	const shadowLatencyMs = Date.now() - shadowStart;
+	const merged = primary.map((verdict, i) => {
+		const shadowVerdict = shadow[i];
+		if (!shadowVerdict) return verdict;
+		return {
+			...verdict,
+			shadowPass: shadowVerdict.pass,
+			shadowReason: shadowVerdict.reason,
+			...(shadowVerdict.incomplete ? { shadowIncomplete: true } : {}),
+		};
+	});
+	const scored = merged.filter((v) => !v.incomplete && v.shadowIncomplete !== true);
+	const agree = scored.filter((v) => v.pass === v.shadowPass).length;
+	console.log(
+		`[shadow-judge] expectations model=${shadowModel} agree=${String(agree)}/${String(scored.length)} latencyMs=${String(shadowLatencyMs)}`,
+	);
+	return merged;
+}
+
+async function judgeExpectationsWithModel(
+	messages: Message[],
+	assertions: string[],
+	modelSelection: { model?: string; role?: EvalAgentRole },
+): Promise<BuildExpectationResult[]> {
+	// Only the primary run carries the judge role — label shadow noise apart.
+	const label = modelSelection.role ? 'expectations' : 'shadow-expectations';
 	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
 		const agent = createEvalAgent('eval-build-expectations-verifier', {
 			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
 			cache: true,
-			model: JUDGE_MODEL,
+			model: modelSelection.model,
+			role: modelSelection.role,
 		}).structuredOutput(expectationResultSchema);
 
 		const abortController = new AbortController();
@@ -70,7 +121,7 @@ export async function judgeExpectations(
 			result = await agent.generate(messages, { abortSignal: abortController.signal });
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
-			console.warn(`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
+			console.warn(`[${label}] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
 			continue;
 		} finally {
 			clearTimeout(timer);
@@ -100,11 +151,11 @@ export async function judgeExpectations(
 		}
 
 		console.warn(
-			`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
+			`[${label}] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
 		);
 	}
 
-	console.warn(`[expectations] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning all-fail`);
+	console.warn(`[${label}] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning all-fail`);
 	return allFailVerdicts(assertions, 'judge produced no result');
 }
 

@@ -29,7 +29,7 @@ export async function generateJson<T>(
 ): Promise<T | undefined> {
 	for (let attempt = 1; attempt <= MAX_GENERATOR_ATTEMPTS; attempt++) {
 		try {
-			const agent = createEvalAgent(agentName, { instructions });
+			const agent = createEvalAgent(agentName, { instructions, role: 'mock' });
 			const result = await agent.generate(userPrompt, {
 				providerOptions: { anthropic: { maxTokens: 4096 } },
 				abortSignal: AbortSignal.timeout(GENERATOR_TIMEOUT_MS),

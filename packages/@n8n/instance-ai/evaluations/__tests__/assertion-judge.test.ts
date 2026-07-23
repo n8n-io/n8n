@@ -4,14 +4,16 @@ import { vi } from 'vitest';
 
 vi.mock('../../src/utils/eval-agents', () => ({
 	createEvalAgent: vi.fn(),
+	getShadowJudgeModel: vi.fn(),
 	EPHEMERAL_CACHE: {},
 	SONNET_MODEL: 'test-sonnet-model',
 }));
 
-import { createEvalAgent } from '../../src/utils/eval-agents';
+import { createEvalAgent, getShadowJudgeModel } from '../../src/utils/eval-agents';
 import { judgeExpectations } from '../build-expectations/assertion-judge';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
+const mockGetShadowJudgeModel = getShadowJudgeModel as MockedFunction<typeof getShadowJudgeModel>;
 
 type JudgeResponse = {
 	structuredOutput?: { results: Array<{ index: number; pass: boolean; reason: string }> };
@@ -33,7 +35,9 @@ const MESSAGES: Message[] = [{ role: 'user', content: [{ type: 'text', text: 'ct
 describe('judgeExpectations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockGetShadowJudgeModel.mockReturnValue(undefined);
 		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		vi.spyOn(console, 'log').mockImplementation(() => undefined);
 	});
 
 	it('returns empty and never calls the agent when there are no assertions', async () => {
@@ -133,5 +137,83 @@ describe('judgeExpectations', () => {
 
 		const [messages] = generate.mock.calls[0] as [Message[], unknown];
 		expect(messages).toBe(MESSAGES);
+	});
+
+	describe('shadow judge', () => {
+		/** Route the primary (role: 'judge') and shadow (explicit model, no role) calls
+		 *  to separate generate mocks. */
+		function mockJudgePair(primaryGenerate: GenerateMock, shadowGenerate: GenerateMock): void {
+			mockCreateEvalAgent.mockImplementation((_name, options) => {
+				const generate = options.role === 'judge' ? primaryGenerate : shadowGenerate;
+				return { structuredOutput: vi.fn().mockReturnValue({ generate }) } as unknown as ReturnType<
+					typeof createEvalAgent
+				>;
+			});
+		}
+
+		it('merges shadow verdicts as shadow* fields and gives the shadow the same messages', async () => {
+			mockGetShadowJudgeModel.mockReturnValue('openrouter/test-shadow');
+			const primaryGenerate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+				structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+			});
+			const shadowGenerate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+				structuredOutput: { results: [{ index: 0, pass: false, reason: 'nope' }] },
+			});
+			mockJudgePair(primaryGenerate, shadowGenerate);
+
+			const results = await judgeExpectations(MESSAGES, ['only assertion']);
+
+			expect(results).toEqual([
+				{
+					expectation: 'only assertion',
+					pass: true,
+					reason: 'ok',
+					shadowPass: false,
+					shadowReason: 'nope',
+				},
+			]);
+			const [shadowMessages] = shadowGenerate.mock.calls[0] as [Message[], unknown];
+			expect(shadowMessages).toBe(MESSAGES);
+			// Shadow agent is created with the explicit shadow model and no role, so a
+			// judge-role env override can never redirect it back onto the primary model.
+			const shadowCall = mockCreateEvalAgent.mock.calls.find(([, opts]) => opts.role !== 'judge');
+			expect(shadowCall?.[1].model).toBe('openrouter/test-shadow');
+		});
+
+		it('keeps primary verdicts intact when every shadow attempt fails', async () => {
+			mockGetShadowJudgeModel.mockReturnValue('openrouter/test-shadow');
+			const primaryGenerate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+				structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+			});
+			const shadowGenerate: GenerateMock = vi
+				.fn<GenerateFn>()
+				.mockRejectedValue(new Error('shadow provider down'));
+			mockJudgePair(primaryGenerate, shadowGenerate);
+
+			const results = await judgeExpectations(MESSAGES, ['only assertion']);
+
+			expect(results).toEqual([
+				{
+					expectation: 'only assertion',
+					pass: true,
+					reason: 'ok',
+					shadowPass: false,
+					shadowReason: 'judge produced no result',
+					shadowIncomplete: true,
+				},
+			]);
+		});
+
+		it('does not create a shadow agent when the shadow env is unset', async () => {
+			const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+				structuredOutput: { results: [{ index: 0, pass: true, reason: 'ok' }] },
+			});
+			mockJudge(generate);
+
+			const results = await judgeExpectations(MESSAGES, ['only assertion']);
+
+			expect(results).toEqual([{ expectation: 'only assertion', pass: true, reason: 'ok' }]);
+			expect(mockCreateEvalAgent).toHaveBeenCalledTimes(1);
+		});
 	});
 });
