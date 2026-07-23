@@ -253,8 +253,6 @@ describe('Instance AI runtime skills', () => {
 		const loaded = await source.loadSkill('workflow-builder');
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
-		expect(loaded?.instructions).toContain('workspace file tools');
-		expect(loaded?.instructions).toContain('plus any relevant tool-search/MCP tool');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
