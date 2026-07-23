@@ -1,4 +1,5 @@
 import type { Folder, Project, WorkflowEntity } from '@n8n/db';
+import type { INode } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -248,6 +249,30 @@ describe('StaticWorkflowDependencyExporter', () => {
 		]);
 	});
 
+	it('collects each dependency node list into requirements.nodeTypes', () => {
+		const nodeA = {
+			id: 'n1',
+			name: 'HTTP',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		} as INode;
+		const a = makeWorkflow({ id: 'wf-a', name: 'Alpha', nodes: [nodeA] });
+		const b = makeWorkflow({ id: 'wf-b', name: 'Beta' });
+		const exporter = makeExporter();
+		const writer = new CapturingWriter();
+
+		const result = exporter.export(
+			emptyRequest(writer, [dependency({ workflow: a }), dependency({ workflow: b })]),
+		);
+
+		expect(result.requirements.nodeTypes).toEqual([
+			{ workflowId: 'wf-a', nodes: [nodeA] },
+			{ workflowId: 'wf-b', nodes: [] },
+		]);
+	});
+
 	it('does not extract requirements from a skipped (already-exported) dependency', () => {
 		const credentialExtractor = mock<CredentialRequirementsExtractor>();
 		credentialExtractor.extract.mockReturnValue([]);
@@ -255,7 +280,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		const writer = new CapturingWriter();
 		const workflow = makeWorkflow({ id: 'wf-dup', name: 'Already Here' });
 
-		exporter.export({
+		const result = exporter.export({
 			...emptyRequest(writer, [dependency({ workflow })]),
 			existingWorkflowEntries: [
 				{ id: 'wf-dup', name: 'Already Here', target: 'workflows/already-here' },
@@ -263,6 +288,7 @@ describe('StaticWorkflowDependencyExporter', () => {
 		});
 
 		expect(credentialExtractor.extract).not.toHaveBeenCalled();
+		expect(result.requirements.nodeTypes).toEqual([]);
 	});
 
 	it('reserves the workflows/ segment so a child folder named "workflows" does not collide with its parent workflow directory', () => {
