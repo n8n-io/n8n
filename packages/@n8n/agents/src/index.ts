@@ -107,6 +107,12 @@ export {
 
 export { createCancellation, isCancellation, CANCELLATION_TYPE } from './sdk/cancellation';
 export type { Cancellation } from './sdk/cancellation';
+export {
+	createAbortError,
+	isAbortError,
+	raceWithAbort,
+	throwIfAborted,
+} from './sdk/abort';
 export { Tool, wrapToolForApproval, sanitizeToolName } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
@@ -396,11 +402,14 @@ export type {
 	FileContent,
 	FileStat,
 	FileEntry,
+	AbortableOptions,
+	AppendOptions,
 	ReadOptions,
 	WriteOptions,
 	ListOptions,
 	RemoveOptions,
 	CopyOptions,
+	MkdirOptions,
 	ProviderStatus,
 	SandboxInfo,
 	LocalFilesystemOptions,

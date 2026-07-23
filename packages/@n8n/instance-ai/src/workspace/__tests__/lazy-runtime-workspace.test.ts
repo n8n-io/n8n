@@ -215,4 +215,25 @@ describe('createLazyRuntimeWorkspace', () => {
 		expect(lazyWorkspace.filesystem?.status).toBe('destroyed');
 		expect(lazyWorkspace.sandbox?.status).toBe('destroyed');
 	});
+
+	it('aborts writeFile while lazy workspace bring-up is still pending', async () => {
+		const abortController = new AbortController();
+		const ensureWorkspace = vi.fn(
+			async () =>
+				await new Promise<Workspace>(() => {
+					// Never resolves — simulates Daytona create/start hanging.
+				}),
+		);
+		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
+		const writePromise = lazyWorkspace.filesystem!.writeFile('/workflow.ts', 'export {}', {
+			abortSignal: abortController.signal,
+		});
+
+		abortController.abort('Agent run was aborted');
+
+		await expect(writePromise).rejects.toMatchObject({
+			name: 'AbortError',
+			message: 'Agent run was aborted',
+		});
+	});
 });

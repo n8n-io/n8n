@@ -7,6 +7,7 @@ import {
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -21,6 +22,7 @@ import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-conf
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
@@ -35,6 +37,7 @@ export class AgentConfigService {
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly credentialsService: CredentialsService,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	/**
@@ -124,6 +127,10 @@ export class AgentConfigService {
 		// `webSearch` state. This is the single write path, so persisted config
 		// always agrees with read/compose paths.
 		const validatedConfig = reconcileNativeWebSearch(result.config);
+
+		if (validatedConfig.tools !== undefined) {
+			await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig.tools, projectId);
+		}
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided

@@ -678,6 +678,17 @@ describe('WorkflowValidationService', () => {
 				trigger: async () => ({ closeFunction: async () => {} }),
 			}) as unknown as INodeType;
 
+		// A "Send and Wait for Response" (HITL) action node — or its AI-tool variant.
+		// It carries a `webhook` method for the approval callback but is NOT a trigger
+		// (group is `transform`/`output`, not `trigger`).
+		const createSendAndWaitNodeType = (): INodeType =>
+			({
+				description: {
+					group: ['transform'],
+				},
+				webhook: async () => ({}),
+			}) as unknown as INodeType;
+
 		const SYSTEM_RESOLVER = 'system-resolver';
 		const CUSTOM_RESOLVER = 'custom-resolver';
 
@@ -887,6 +898,35 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
 				if (type === 'n8n-nodes-base.manualTrigger') return createTriggerNodeType();
+				return {} as INodeType;
+			}) as any);
+
+			const result = await service.validateDynamicCredentials(nodes, mockNodeTypes);
+
+			expect(result.isValid).toBe(true);
+		});
+
+		it('should not treat a Send-and-Wait action node (webhook method, non-trigger group) as a trigger', async () => {
+			// Regression: an MCP trigger (n8n identity) alongside a Gmail tool node using
+			// "Send and Wait for Response". The tool carries a HITL `webhook`, so the old
+			// method-based check mistook it for an identity-less trigger and blocked publish.
+			const nodes: INode[] = [
+				createNode('MCP Server Trigger', '@n8n/n8n-nodes-langchain.mcpTrigger', {
+					parameters: { authentication: 'n8nOAuth2' },
+				}),
+				createNode('Send a message in Gmail', 'n8n-nodes-base.gmailTool', {
+					credentials: { gmailOAuth2: { id: 'cred-1' } },
+				}),
+			];
+
+			mockCredentialsRepository.find.mockResolvedValue([
+				{ id: 'cred-1', name: 'Gmail account' } as any,
+			]);
+			useSystemResolver();
+
+			mockNodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.mcpTrigger') return createTriggerNodeType();
+				if (type === 'n8n-nodes-base.gmailTool') return createSendAndWaitNodeType();
 				return {} as INodeType;
 			}) as any);
 

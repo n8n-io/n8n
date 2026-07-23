@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon';
 
 const props = withDefaults(
@@ -8,11 +8,19 @@ const props = withDefaults(
 		disabled?: boolean;
 		variant?: 'default' | 'suggestion';
 		active?: boolean;
+		/** Marks the chip as having an unresolved configuration error (e.g. a missing credential). */
+		invalid?: boolean;
+		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
+		invalidReasons?: string[];
+		clickable?: boolean;
 	}>(),
 	{
 		disabled: false,
 		variant: 'default',
 		active: false,
+		invalid: false,
+		invalidReasons: () => [],
+		clickable: true,
 	},
 );
 
@@ -32,7 +40,11 @@ const emit = defineEmits<{
 		:class="[
 			$style.chip,
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
-			{ [$style.active]: props.active },
+			{
+				[$style.active]: props.active,
+				[$style.invalid]: props.invalid,
+				[$style.nonClickable]: !props.clickable,
+			},
 		]"
 		:disabled="props.disabled"
 		@click="emit('click', $event)"
@@ -50,6 +62,17 @@ const emit = defineEmits<{
 		<N8nText size="small" color="text-dark" :class="$style.text">
 			<slot />
 		</N8nText>
+		<N8nTooltip v-if="props.invalid" :disabled="props.invalidReasons.length === 0" placement="top">
+			<N8nIcon
+				icon="triangle-alert"
+				:size="14"
+				:class="$style.invalidIcon"
+				data-testid="agent-chip-invalid-icon"
+			/>
+			<template #content>
+				<div v-for="reason in props.invalidReasons" :key="reason">{{ reason }}</div>
+			</template>
+		</N8nTooltip>
 	</button>
 </template>
 
@@ -75,6 +98,18 @@ const emit = defineEmits<{
 .chip:disabled {
 	cursor: not-allowed;
 	opacity: 0.6;
+}
+
+.invalid {
+	border-color: var(--canvas-node--border-color--error, var(--color--danger));
+}
+
+.invalidIcon {
+	flex-shrink: 0;
+}
+
+.nonClickable {
+	pointer-events: none;
 }
 
 .suggestion {

@@ -7,6 +7,7 @@ import {
 import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
+import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import type {
@@ -301,7 +302,25 @@ export class ToolCallExecutor {
 		for (let batchStart = 0; batchStart < executableCalls.length; ) {
 			if (ctx.isAborted()) {
 				this.deps.onCancelled();
-				throw new Error('Agent run was aborted');
+				for (const id of unexecutedIds) {
+					const tc = executableCallsById.get(id)!;
+					const modelOutput = '[Skipped: run was aborted]';
+					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+					results.push({
+						toolCallId: tc.toolCallId,
+						toolName: tc.toolName,
+						input: tc.input,
+						toolEntry: {
+							tool: tc.toolName,
+							input: tc.input,
+							output: modelOutput,
+							transformed: false,
+							canceled: true,
+						},
+						modelOutput,
+					});
+				}
+				return { results, suspensions, errors, pending };
 			}
 
 			const batch = this.takeNextToolCallBatch(executableCalls, batchStart, toolMap);
@@ -372,6 +391,14 @@ export class ToolCallExecutor {
 						modelOutput: result.value.modelOutput,
 						customMessage: result.value.customMessage,
 					});
+				} else if (result.value.outcome === 'cancelled') {
+					results.push({
+						toolCallId: tc.toolCallId,
+						toolName: tc.toolName,
+						input: toolInput,
+						toolEntry: result.value.toolEntry,
+						modelOutput: result.value.modelOutput,
+					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
 						toolCallId: tc.toolCallId,
@@ -382,6 +409,29 @@ export class ToolCallExecutor {
 				} else if (result.value.outcome === 'noop') {
 					// noop
 				}
+			}
+
+			if (ctx.isAborted()) {
+				this.deps.onCancelled();
+				for (const id of unexecutedIds) {
+					const tc = executableCallsById.get(id)!;
+					const modelOutput = '[Skipped: run was aborted]';
+					list.setToolCallResult(tc.toolCallId, modelOutput, { canceled: true });
+					results.push({
+						toolCallId: tc.toolCallId,
+						toolName: tc.toolName,
+						input: tc.input,
+						toolEntry: {
+							tool: tc.toolName,
+							input: tc.input,
+							output: modelOutput,
+							transformed: false,
+							canceled: true,
+						},
+						modelOutput,
+					});
+				}
+				break;
 			}
 
 			if (hasSuspension) {
@@ -624,6 +674,10 @@ export class ToolCallExecutor {
 		try {
 			toolResult = await this.runToolHandler(params, builtTool, input);
 		} catch (error) {
+			if (isAbortError(error) || params.abortSignal?.aborted) {
+				this.deps.onCancelled();
+				return this.buildCancelledOutcome(params, 'Run aborted');
+			}
 			return this.toolError(params, error as Error);
 		}
 
@@ -741,14 +795,18 @@ export class ToolCallExecutor {
 			input,
 			resolvedTelemetry,
 			async () =>
-				await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
-					runId,
-					persistence,
-					emitEvent: (event) => this.eventBus.emit(event),
+				await raceWithAbort(
+					async () =>
+						await executeTool(input, builtTool, resumeData, resolvedTelemetry, toolCallId, {
+							runId,
+							persistence,
+							emitEvent: (event) => this.eventBus.emit(event),
+							abortSignal,
+							executionCounter,
+							suspendPayload,
+						}),
 					abortSignal,
-					executionCounter,
-					suspendPayload,
-				}),
+				),
 		);
 	}
 

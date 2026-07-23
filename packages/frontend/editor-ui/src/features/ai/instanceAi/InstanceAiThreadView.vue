@@ -23,7 +23,11 @@ import {
 } from '@n8n/design-system';
 import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment, InstanceAiHandoffContext } from '@n8n/api-types';
+import type {
+	InstanceAiAgentAttachment,
+	InstanceAiAttachment,
+	InstanceAiHandoffContext,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
@@ -35,8 +39,10 @@ import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
+	clearPendingAgentAttachment,
 	consumePendingFirstMessage,
 	consumePendingHandoffContext,
+	getPendingAgentAttachment,
 } from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
@@ -86,6 +92,7 @@ const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const telemetry = useTelemetry();
 const pendingComposerContext = ref<InstanceAiHandoffContext | null>(null);
+const pendingAgentAttachment = ref<InstanceAiAgentAttachment | null>(null);
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -536,6 +543,11 @@ function reconnectThreadAfterHydration(): void {
 	// Apply preview/credential composer context before hydration so a quick first
 	// submit cannot race past attachment while the composer is already enabled.
 	pendingComposerContext.value = consumePendingHandoffContext(props.threadId);
+	const agentAttachment = getPendingAgentAttachment(props.threadId);
+	if (agentAttachment) {
+		pendingAgentAttachment.value = agentAttachment;
+		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
+	}
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -646,12 +658,23 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	}
 
 	const handoffContext = pendingComposerContext.value ?? undefined;
+	const agentAttachment = pendingAgentAttachment.value;
+	const submittedAttachments = agentAttachment
+		? [...(attachments ?? []), agentAttachment]
+		: attachments;
 
-	void thread.sendMessage(message, attachments, rootStore.pushRef, handoffContext).then((sent) => {
-		if (sent && handoffContext && pendingComposerContext.value === handoffContext) {
-			pendingComposerContext.value = null;
-		}
-	});
+	void thread
+		.sendMessage(message, submittedAttachments, rootStore.pushRef, handoffContext)
+		.then((sent) => {
+			if (!sent) return;
+			if (handoffContext && pendingComposerContext.value === handoffContext) {
+				pendingComposerContext.value = null;
+			}
+			if (agentAttachment && pendingAgentAttachment.value === agentAttachment) {
+				clearPendingAgentAttachment(props.threadId);
+				pendingAgentAttachment.value = null;
+			}
+		});
 }
 
 function handleStop() {

@@ -2,7 +2,7 @@ import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } fr
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { CredentialsEntity, IExecutionResponse, Project, Variables } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
-import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
 	ExecutionError,
@@ -524,6 +524,18 @@ describe('validateWorkflowNodeGroups', () => {
 		).toThrow('Group "Empty Group" references node ID "bad1"');
 	});
 
+	it('should throw when a group has no members', () => {
+		expect(() =>
+			validateWorkflowNodeGroups(
+				{
+					nodes: [makeNode('n1')],
+					nodeGroups: [{ id: 'g1', name: 'My Group', nodeIds: [] }],
+				},
+				null,
+			),
+		).toThrow('Group "My Group" has no members.');
+	});
+
 	it('should throw when a node belongs to multiple groups', () => {
 		expect(() =>
 			validateWorkflowNodeGroups(
@@ -616,6 +628,63 @@ describe('validateWorkflowNodeGroups', () => {
 					null,
 				),
 			).not.toThrow();
+		});
+
+		describe('sticky notes', () => {
+			const makeStickyNode = (id: string) =>
+				({
+					id,
+					name: `Sticky ${id}`,
+					type: STICKY_NODE_TYPE,
+					position: [0, 0],
+					parameters: {},
+				}) as never;
+			const stickyType = { name: STICKY_NODE_TYPE, group: ['input'] } as never;
+			const getNodeType = (node: { type: string }) =>
+				node.type === STICKY_NODE_TYPE ? stickyType : regularType;
+
+			it('passes for a group containing a sticky alongside a connected chain', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [...connectedNodes, makeStickyNode('s1')],
+							connections,
+							nodeGroups: [{ id: 'g1', name: 'Chain', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('passes for a sticky-only group', () => {
+				// Groups can degenerate to sticky-only when their last connectable
+				// node is deleted; such groups must keep saving.
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeStickyNode('s1'), makeStickyNode('s2')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Notes', nodeIds: ['s1', 's2'] }],
+						},
+						getNodeType,
+					),
+				).not.toThrow();
+			});
+
+			it('still rejects disconnected connectable nodes when a sticky is present', () => {
+				expect(() =>
+					validateWorkflowNodeGroups(
+						{
+							nodes: [makeNode('n1'), makeNode('n2'), makeStickyNode('s1')],
+							connections: {},
+							nodeGroups: [{ id: 'g1', name: 'Disconnected', nodeIds: ['n1', 'n2', 's1'] }],
+						},
+						getNodeType,
+					),
+				).toThrow(
+					'Node group "Disconnected" (g1) must form a single connected subgraph with a single entry and exit.',
+				);
+			});
 		});
 	});
 });

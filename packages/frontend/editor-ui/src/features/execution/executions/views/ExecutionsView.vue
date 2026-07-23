@@ -153,7 +153,7 @@ async function onExecutionStop() {
 		</template>
 		<div>
 			<ResourcesListEmptyState
-				resource-key="workflows"
+				resource-key="executions"
 				:button-disabled="readOnlyEnv || !projectPermissions.workflow.create"
 				:disabled-tooltip-text="
 					readOnlyEnv ? i18n.baseText('readOnlyEnv.cantAdd.workflow') : undefined

@@ -22,7 +22,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 vi.mock('@n8n/design-system', () => ({
-	N8nActionBox: { template: '<div />', props: ['icon', 'description'] },
+	N8nEmptyState: { template: '<div />', props: ['icon', 'description'] },
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCard: {
 		name: 'N8nCard',

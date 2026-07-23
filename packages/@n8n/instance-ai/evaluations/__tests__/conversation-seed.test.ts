@@ -42,6 +42,7 @@ function makeSeed(): ConversationSeed {
 			},
 		],
 		workflows: [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }],
+		dataTables: [],
 	};
 }
 

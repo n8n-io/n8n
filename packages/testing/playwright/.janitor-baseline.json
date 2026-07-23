@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"generated": "2026-07-17T15:21:33.743Z",
-	"totalViolations": 63,
+	"totalViolations": 61,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -335,22 +335,6 @@
 				"line": 299,
 				"message": "Raw API call detected: fetch(",
 				"hash": "34b1d021857e"
-			}
-		],
-		"tests/e2e/dynamic-credentials/execution-status.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 203,
-				"message": "Raw API call detected: request.get(",
-				"hash": "c6217f17d2d7"
-			}
-		],
-		"tests/e2e/dynamic-credentials/external-user-trigger.spec.ts": [
-			{
-				"rule": "api-purity",
-				"line": 173,
-				"message": "Raw API call detected: request.get(",
-				"hash": "cc21f9656cd4"
 			}
 		],
 		"tests/e2e/nodes/community-nodes.spec.ts": [
