@@ -148,6 +148,56 @@ describe('useCompareCases', () => {
 		expect(caseRows.value).toHaveLength(1);
 	});
 
+	it('silently refetches case rows on each detail refresh while a run is in progress', async () => {
+		const fetchSpy = vi.fn(async () => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		const runningDetail = (): EvaluationCollectionDetail => ({
+			...detailWith(['run-a']),
+			runs: [{ ...run('run-a'), status: 'running' as const }],
+		});
+		const detail = ref<EvaluationCollectionDetail | null>(runningDetail());
+		const { loading, casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush(); // initial (non-silent) load settles
+		expect(casesLoaded.value).toBe(true);
+		const callsAfterInitial = fetchSpy.mock.calls.length;
+
+		// A poll tick replaces the detail object while the run is still in progress.
+		detail.value = runningDetail();
+		await flush();
+
+		// Rows were refetched live, without flipping the table back into loading.
+		expect(fetchSpy.mock.calls.length).toBeGreaterThan(callsAfterInitial);
+		expect(loading.value).toBe(false);
+	});
+
+	it('stops refetching once the runs have settled', async () => {
+		const fetchSpy = vi.fn(async () => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		const detail = ref<EvaluationCollectionDetail | null>({
+			...detailWith(['run-a']),
+			runs: [{ ...run('run-a'), status: 'running' as const }],
+		});
+		const { casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush();
+		expect(casesLoaded.value).toBe(true);
+
+		// Run settles → one final refetch captures the last cases, then polling stops.
+		detail.value = { ...detailWith(['run-a']), runs: [run('run-a')] };
+		await flush();
+		const callsAtSettle = fetchSpy.mock.calls.length;
+
+		// A later detail change (e.g. re-render) must not keep refetching.
+		detail.value = { ...detailWith(['run-a']), runs: [run('run-a')] };
+		await flush();
+		expect(fetchSpy.mock.calls.length).toBe(callsAtSettle);
+	});
+
 	it('flags casesError when a run fetch rejects (not a real mismatch)', async () => {
 		store.fetchTestCaseExecutions = vi.fn(async ({ runId }: { runId: string }) => {
 			if (runId === 'run-b') throw new Error('network');

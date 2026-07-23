@@ -71,17 +71,24 @@ export function useCompareCases(
 	// out from under the collection the user has since switched to.
 	let loadToken = 0;
 
-	async function load() {
+	// `silent` refetches (live polling) keep the current rows on screen and don't
+	// touch `loading`/`casesLoaded`, so the table doesn't flash its loading state
+	// every few seconds. Rows/scores update reactively as the store data changes.
+	async function load({ silent = false }: { silent?: boolean } = {}) {
 		const runs = detail.value?.runs ?? [];
 		const token = ++loadToken;
 		if (runs.length === 0) {
-			loading.value = false;
-			casesError.value = false;
-			casesLoaded.value = true;
+			if (!silent) {
+				loading.value = false;
+				casesError.value = false;
+				casesLoaded.value = true;
+			}
 			return;
 		}
-		loading.value = true;
-		casesLoaded.value = false;
+		if (!silent) {
+			loading.value = true;
+			casesLoaded.value = false;
+		}
 		casesError.value = false;
 		try {
 			const results = await Promise.allSettled(
@@ -98,7 +105,7 @@ export function useCompareCases(
 			casesError.value = results.some((result) => result.status === 'rejected');
 			casesLoaded.value = true;
 		} finally {
-			if (token === loadToken) loading.value = false;
+			if (token === loadToken && !silent) loading.value = false;
 		}
 	}
 
@@ -192,6 +199,26 @@ export function useCompareCases(
 			if (key !== null) await load();
 		},
 		{ immediate: true },
+	);
+
+	// Live updates: the store re-polls the collection detail every few seconds
+	// while runs execute (replacing `detail.value` each tick). Piggyback on that to
+	// silently refetch the per-case rows, so cases/scores stream in during the run
+	// instead of freezing at the first (partially-seeded) snapshot. Also fires once
+	// on the running→settled transition to capture the final cases, then stops.
+	let wasRunning = false;
+	watch(
+		() => detail.value,
+		async () => {
+			// The run-set watch above owns the first fetch; don't double-fetch until it lands.
+			if (!casesLoaded.value) return;
+			const runs = detail.value?.runs ?? [];
+			const running = runs.some((run) => run.status === 'new' || run.status === 'running');
+			if (running || wasRunning) {
+				wasRunning = running;
+				await load({ silent: true });
+			}
+		},
 	);
 
 	return { caseRows, mismatch, loading, casesLoaded, casesError, load };
