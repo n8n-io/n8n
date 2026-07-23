@@ -19,6 +19,7 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { createOwner } from '@test-integration/db/users';
 import { createProjectVariable, createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
@@ -46,6 +47,7 @@ async function importProjects(
 		workflowConflictPolicy: 'new-version',
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
+		missingNodeTypeMode: 'fail',
 		folderConflictPolicy: 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
@@ -86,6 +88,9 @@ async function isAdminOf(projectId: string, userId: string): Promise<boolean> {
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	// Register node types so the plan-phase missing-node-type check can resolve
+	// the node types used by the package fixtures.
+	await initNodeTypes();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	licenseMocker.setDefaults({
 		features: ['feat:projectRole:admin', 'feat:folders'],
@@ -441,6 +446,60 @@ describe('project shell import', () => {
 		expect(await findFolder('FB')).toBeNull();
 		expect(await findProject('P1')).toBeNull();
 		expect(await findProject('P2')).toBeNull();
+	});
+
+	it('reports missing node types per project scope and writes nothing', async () => {
+		const unknownNode = {
+			id: 'unknown-node',
+			name: 'Unknown Node',
+			type: 'n8n-nodes-community.chatBot',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: {},
+		};
+		const packageBuffer = await buildEntityPackageBuffer({
+			projects: [
+				{ target: 'projects/brie', project: serializedProject({ id: 'P1', name: 'brie' }) },
+				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/brie/workflows/wfa',
+					workflow: serializedWorkflow({ id: 'WFA', name: 'wfa', nodes: [unknownNode] }),
+				},
+				{
+					target: 'projects/stilton/workflows/wfb',
+					workflow: serializedWorkflow({ id: 'WFB', name: 'wfb', nodes: [unknownNode] }),
+				},
+			],
+		});
+
+		// Every project scope is planned before anything is written; the same missing
+		// pair yields one issue per scope, each with that scope's workflows.
+		const importPromise = importProjects(owner, packageBuffer);
+		await expect(importPromise).rejects.toBeInstanceOf(UnprocessableRequestError);
+		await expect(importPromise).rejects.toMatchObject({
+			meta: {
+				issues: [
+					{
+						type: 'missing-node-type',
+						nodeType: 'n8n-nodes-community.chatBot',
+						typeVersion: 1,
+						usedByWorkflows: ['WFA'],
+					},
+					{
+						type: 'missing-node-type',
+						nodeType: 'n8n-nodes-community.chatBot',
+						typeVersion: 1,
+						usedByWorkflows: ['WFB'],
+					},
+				],
+			},
+		});
+
+		expect(await findProject('P1')).toBeNull();
+		expect(await findProject('P2')).toBeNull();
+		expect(await Container.get(WorkflowRepository).count()).toBe(0);
 	});
 
 	it('creates a new project under publish-all, planned before the project exists', async () => {

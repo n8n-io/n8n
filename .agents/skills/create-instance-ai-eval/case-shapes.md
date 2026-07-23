@@ -10,7 +10,7 @@ Example cases in the corpus get renamed and churned, so this file names as few
 cases as possible — search the LangTracer suite by tag/field instead (the
 `search_test_cases` MCP tool, or export the suite and grep). The one stable
 pointer worth naming: **`applies-each-change-when-asked`** (in the
-`n8n-workflows` suite) for a well-built director conversation.
+`baseline` suite) for a well-built director conversation.
 
 The schema
 ([`harness/schema.ts`](../../../packages/@n8n/instance-ai/evaluations/harness/schema.ts))

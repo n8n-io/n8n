@@ -3,16 +3,21 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import type { Project, User } from '@n8n/db';
 import { FolderRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { INode, INodeParameterResourceLocator, Workflow } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { createFolder } from '@test-integration/db/folders';
 import { createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
+import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportPackageRequest } from '../n8n-packages.types';
@@ -38,6 +43,9 @@ const licenseMocker = new LicenseMocker();
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages', 'data-table']);
 	await testDb.init();
+	// Register node types so the plan-phase missing-node-type check can resolve
+	// the node types used by the package fixtures.
+	await initNodeTypes();
 	mockDataTableSizeValidator();
 	licenseMocker.mockLicenseState(Container.get(LicenseState));
 	service = Container.get(N8nPackagesService);
@@ -61,6 +69,7 @@ async function importPackage(params: ImportParams) {
 		workflowConflictPolicy: 'fail',
 		workflowPublishingPolicy: 'preserve-published-state',
 		workflowIdPolicy: 'new',
+		missingNodeTypeMode: 'fail',
 		folderConflictPolicy: 'merge',
 		dataTableMatchingMode: 'by-id',
 		dataTableMissingMode: 'create',
@@ -556,6 +565,34 @@ describe('workflow package import — with data tables', () => {
 
 			expect(result.workflows).toHaveLength(1);
 			expect(await tablesInProject(project.id)).toHaveLength(0);
+		});
+
+		it("imported workflow's data table reference fails fast with a node error", async () => {
+			const table = serializedDataTable();
+			const { packageBuffer } = await buildDataTablePackage([table]);
+
+			const result = await importPackage({
+				user: owner,
+				projectId: project.id,
+				packageBuffer,
+				dataTableMissingMode: 'do-nothing',
+			});
+
+			const imported = await workflowRepository.findOneOrFail({
+				where: { id: result.workflows[0].localId },
+			});
+			const reference = imported.nodes[0].parameters.dataTableId as INodeParameterResourceLocator;
+			expect(reference.value).toBe(table.id);
+
+			const promise = Container.get(DataTableProxyService).getDataTableProxy(
+				mock<Workflow>({ id: imported.id }),
+				mock<INode>({ type: 'n8n-nodes-base.dataTable' }),
+				reference.value as string,
+				project.id,
+			);
+
+			await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+			await expect(promise).rejects.toThrow(table.id);
 		});
 	});
 
