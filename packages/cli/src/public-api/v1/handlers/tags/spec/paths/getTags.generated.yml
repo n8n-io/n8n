@@ -1,0 +1,51 @@
+operationId: getTags
+tags:
+  - Tags
+description: Retrieve all tags from your instance.
+x-required-scope: tag:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Successful response
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+                  createdAt:
+                    type: string
+                    nullable: true
+                  updatedAt:
+                    type: string
+                    nullable: true
+                required:
+                  - id
+                  - name
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml

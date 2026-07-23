@@ -4,6 +4,7 @@ export { RootLevelController } from './root-level-controller';
 export { PublicApiController } from './public-api-controller';
 export { ApiKeyScope } from './api-key-scope';
 export { ApiResponse } from './api-response';
+export { ApiDescription } from './api-description';
 export { Get, Post, Put, Patch, Delete, Head, Options } from './route';
 export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
@@ -12,10 +13,13 @@ export { GlobalScope, ProjectScope } from './scoped';
 export type {
 	AccessScope,
 	ApiKeyScopeRequirement,
+	Arg,
 	Controller,
 	CorsOptions,
+	HandlerName,
 	Method,
 	ResponseDtoClass,
+	RouteMetadata,
 	StaticRouterMetadata,
 } from './types';
 export {
