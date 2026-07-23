@@ -1,13 +1,9 @@
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 
 /**
- * Reorders workflows so that a sub-workflow dependency is always imported before
- * the workflows that call it, using the manifest's `requirements.workflows` graph.
- *
- * Edges come from each requirement's `usedByWorkflows` (every parent depends on
- * the requirement's `id`). Only ids present in `workflows` participate; unknown
- * ids are ignored. Cycles — including a workflow that calls itself — are
- * tolerated: their members keep a stable relative order rather than looping.
+ * Orders workflows so each sub-workflow is placed before the workflows that call it,
+ * using the manifest's `requirements.workflows` graph. Ids not present in `workflows`
+ * are ignored, and cycles (including self-references) are tolerated.
  */
 export function orderBySubWorkflowDependencies<T extends { sourceWorkflowId: string }>(
 	workflows: T[],
@@ -19,8 +15,7 @@ export function orderBySubWorkflowDependencies<T extends { sourceWorkflowId: str
 	const workflowsById = new Map(workflows.map((workflow) => [workflow.sourceWorkflowId, workflow]));
 
 	const ordered: T[] = [];
-	// Ids already seen: either placed in `ordered`, or still on the recursion stack.
-	// Re-entering one on the stack means a cycle — skipping it breaks the loop.
+	// Re-entering an id still on the recursion stack means a cycle; skip it to break the loop.
 	const seen = new Set<string>();
 
 	const visit = (workflow: T): void => {

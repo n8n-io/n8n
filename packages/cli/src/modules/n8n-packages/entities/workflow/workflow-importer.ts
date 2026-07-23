@@ -146,11 +146,9 @@ export class WorkflowImporter {
 		plan: WorkflowImportPlan,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportResult> {
-		// Every workflow's target id is known from the plan (create → decidedId,
-		// update/skip → existing id), so resolve the complete source→target map before
-		// writing anything. Sub-workflow references then resolve regardless of import
-		// order or reference cycles. `bindings.workflows` may already carry ids from
-		// other scopes (a project package seeds the package-wide map here).
+		// Resolve the full source→target id map from the plan before writing, so sub-workflow
+		// references resolve regardless of import order or cycles. `bindings.workflows` may
+		// already carry ids from other scopes (a project package seeds the package-wide map).
 		const workflowBindings = new Map([
 			...bindings.workflows,
 			...collectPlannedWorkflowBindings(plan.items),
@@ -232,10 +230,7 @@ function planItemTargetId(item: WorkflowPlanItem): string {
 	return item.action === 'create' ? item.decidedId : item.existing.id;
 }
 
-/**
- * The source→target workflow id map for a batch of planned items. Known before any
- * write, so callers can pre-seed it across scopes (e.g. a whole project package).
- */
+/** Source→target id map for a batch of planned items, known before any write. */
 export function collectPlannedWorkflowBindings(items: WorkflowPlanItem[]): ImportBindingMap {
 	return new Map(items.map((item) => [item.sourceWorkflowId, planItemTargetId(item)]));
 }
@@ -274,11 +269,7 @@ function applyCredentialBindingsInPlace(
 	}
 }
 
-/**
- * Rewrites each Execute Workflow / Workflow Tool node's referenced sub-workflow
- * id from the source id to its imported target id. A no-op under the `source` id
- * policy (ids are preserved); the remap matters under `new`.
- */
+/** Rewrites each workflow-selector node's referenced sub-workflow id to its imported target id. */
 function applySubWorkflowBindingsInPlace(
 	entity: WorkflowEntity,
 	workflowBindings: ImportBindingMap,
@@ -297,15 +288,12 @@ function applySubWorkflowBindingsInPlace(
 }
 
 /**
- * `settings.callerIds` is a comma-separated allowlist of workflow ids permitted to
- * call this workflow as a sub-workflow. They are source-instance ids, so remap each
- * through the same binding map used for node references; ids for workflows outside
- * the package are left untouched (best effort).
+ * `settings.callerIds` is a comma-separated allowlist of workflow ids allowed to call this
+ * workflow. Remap each through the binding map; ids outside the package are left as-is.
  */
 function remapCallerIdsInPlace(entity: WorkflowEntity, workflowBindings: ImportBindingMap): void {
 	const { settings } = entity;
-	// Package settings are validated only as an opaque object, so guard the runtime type:
-	// a non-string `callerIds` (e.g. a number or array) would otherwise crash `.split`.
+	// settings is opaque at the schema level, so a non-string callerIds would crash `.split`.
 	if (!settings?.callerIds || typeof settings.callerIds !== 'string') return;
 
 	settings.callerIds = settings.callerIds

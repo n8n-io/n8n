@@ -108,9 +108,7 @@ describe('Package import of workflows with sub-workflows', () => {
 		const importedParent = await findImported(result, 'CHEDDAR');
 		const importedSub = await findImported(result, 'BRIE');
 
-		// New ids were minted (not the source ids)...
 		expect(importedSub.id).not.toBe('BRIE');
-		// ...and the parent's reference now points at the sub-workflow's imported id.
 		expect(subWorkflowRefOf(importedParent)).toBe(importedSub.id);
 		expect(result.bindings.workflows).toMatchObject({
 			CHEDDAR: importedParent.id,
