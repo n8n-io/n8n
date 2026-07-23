@@ -344,6 +344,17 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('or-test');
 		});
 
+		it('should create model for baseten via openai-compatible', () => {
+			const model = createModel({
+				id: 'baseten/zai-org/GLM-5.2-Fast',
+				apiKey: 'bt-test',
+			}) as unknown as Record<string, unknown>;
+			expect(model.provider).toBe('baseten');
+			expect(model.modelId).toBe('zai-org/GLM-5.2-Fast');
+			expect(model.apiKey).toBe('bt-test');
+			expect(model.baseURL).toBe('https://inference.baseten.co/v1');
+		});
+
 		it('should create model for nvidia', () => {
 			const model = createModel({
 				id: 'nvidia/nvidia/llama-3.3-nemotron-super-49b-v1',

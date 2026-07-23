@@ -44,6 +44,8 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 				return {
 					anthropic: {
 						thinking: { type: 'adaptive', display: cfg.display ?? 'summarized' },
+						// AI SDK maps `effort` onto Anthropic's `output_config.effort`.
+						...(cfg.effort !== undefined ? { effort: cfg.effort } : {}),
 					},
 				};
 			}
@@ -98,6 +100,26 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 			return { xai: { reasoningEffort: cfg.reasoningEffort ?? 'high' } };
 		},
 	},
+	openrouter: {
+		// OpenRouter's AI SDK provider reads `providerOptions.openrouter.reasoning`
+		// and forwards it as the chat-completions `reasoning` body field.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return {
+				openrouter: {
+					reasoning: { effort: cfg.reasoningEffort ?? 'medium' },
+				},
+			};
+		},
+	},
+	baseten: {
+		// Baseten Model APIs use the OpenAI-compatible chat schema; reasoning maps to
+		// the top-level `reasoning_effort` body field via providerOptions.baseten.
+		thinkingToProviderOptions: (thinking) => {
+			const cfg = thinking as OpenAIThinkingConfig;
+			return { baseten: { reasoningEffort: 'none' } };
+		},
+	},
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
@@ -106,6 +128,27 @@ export function getProviderQuirks(providerId: string): ProviderQuirks {
 
 export function providerIdFromModelId(modelId: string): string {
 	return modelId.split('/')[0];
+}
+
+/** GLM 5.2 default output cap on Baseten/Z.AI (131072 max; 65536 is the API default). */
+export const GLM_52_DEFAULT_MAX_OUTPUT_TOKENS = 65_536;
+
+function isGlm52Model(modelId: string): boolean {
+	const modelName = modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId;
+	return modelName.toLowerCase().includes('glm-5.2');
+}
+
+/**
+ * Provider/model-specific default for AI SDK `maxOutputTokens`. Baseten GLM 5.2
+ * otherwise falls back to a 4096 cap that reasoning-heavy agent turns can exhaust
+ * before emitting text or tool calls.
+ */
+export function resolveDefaultMaxOutputTokens(modelId: string): number | undefined {
+	const provider = providerIdFromModelId(modelId);
+	if ((provider === 'baseten' || provider === 'openai') && isGlm52Model(modelId)) {
+		return GLM_52_DEFAULT_MAX_OUTPUT_TOKENS;
+	}
+	return undefined;
 }
 
 /** Merge every registered tool providerOptions default under its provider namespace; explicit tool values win. */

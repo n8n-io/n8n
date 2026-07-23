@@ -33,18 +33,78 @@ function resolveModelProvider(modelId: ModelConfig): string | undefined {
 	return provider && model ? normalizeProvider(provider) : undefined;
 }
 
+function resolveModelIdString(modelId: ModelConfig): string | undefined {
+	if (typeof modelId === 'string') return modelId;
+	if (!isRecord(modelId)) return undefined;
+
+	const id = getStringProperty(modelId, 'id');
+	if (id) return id;
+
+	const provider = getStringProperty(modelId, 'provider') ?? getProviderFromConfig(modelId);
+	const model = getStringProperty(modelId, 'modelId');
+	return provider && model ? `${provider}/${model}` : undefined;
+}
+
+/** Moonshot Kimi K3 via OpenRouter (`openrouter/moonshotai/kimi-k3`, dated slugs, etc.). */
+function isKimiK3Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	return id.includes('kimi-k3');
+}
+
+/** Grok 4.5 via xAI (`xai/grok-4.5`) or OpenRouter (`openrouter/x-ai/grok-4.5`). */
+function isGrok45Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	return id.includes('grok-4.5');
+}
+
+/** GLM 5.2 on Baseten (`openai/zai-org/GLM-5.2`, `openai/zai-org/GLM-5.2-Fast`, etc.). */
+function isGlm52Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	return id.includes('glm-5.2');
+}
+
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	const provider = resolveModelProvider(modelId);
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
+	if (provider === 'baseten') {
+		if (isGlm52Model(modelId)) {
+			// GLM 5.2 only accepts none/high/max — map our medium tier to high.
+			agent.thinking('baseten', { reasoningEffort: 'high' });
+			return;
+		}
+		agent.thinking('baseten', { reasoningEffort: 'medium' });
+		return;
+	}
+
 	if (provider === 'openai') {
-		agent.thinking('openai', { reasoningEffort: 'high' });
+		if (isGlm52Model(modelId)) {
+			// Legacy OpenAI-compatible Baseten routing — same GLM effort mapping.
+			agent.thinking('openai', { reasoningEffort: 'high' });
+			return;
+		}
+		// Pin medium for GPT-5.6 family (sol/terra/luna) via AI SDK `reasoningEffort`.
+		agent.thinking('openai', { reasoningEffort: 'medium' });
 		return;
 	}
 
 	if (provider === 'anthropic') {
-		agent.thinking('anthropic', { mode: 'adaptive' });
+		agent.thinking('anthropic', { mode: 'adaptive', effort: 'medium' });
 		return;
+	}
+
+	if (provider === 'openrouter') {
+		// Pin medium effort for models that default to heavy/max thinking.
+		if (isKimiK3Model(modelId) || isGrok45Model(modelId)) {
+			agent.thinking('openrouter', { reasoningEffort: 'medium' });
+		}
+		return;
+	}
+
+	if (provider === 'xai') {
+		if (isGrok45Model(modelId)) {
+			agent.thinking('xai', { reasoningEffort: 'medium' });
+		}
 	}
 }

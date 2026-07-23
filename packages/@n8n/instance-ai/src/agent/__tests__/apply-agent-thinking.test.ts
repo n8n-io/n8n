@@ -22,38 +22,116 @@ describe('applyAgentThinking', () => {
 		vi.clearAllMocks();
 	});
 
-	it('enables adaptive thinking for Anthropic', () => {
+	it('enables adaptive thinking with medium effort for Anthropic', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'anthropic/claude-opus-4-8');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
 	});
 
-	it('enables adaptive thinking for dotted Anthropic provider IDs', () => {
+	it('enables adaptive thinking with medium effort for dotted Anthropic provider IDs', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'anthropic.messages/claude-opus-4-8');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
 	});
 
-	it('enables adaptive thinking for AI SDK Anthropic model objects', () => {
+	it('enables adaptive thinking with medium effort for AI SDK Anthropic model objects', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, {
 			modelId: 'claude-opus-4-8',
 			config: { provider: 'anthropic.messages' },
 		} as unknown as Parameters<typeof applyAgentThinking>[1]);
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', { mode: 'adaptive' });
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+			effort: 'medium',
+		});
 	});
 
-	it('enables OpenAI reasoning for supported models', () => {
+	it.each(['openai/gpt-5.6-sol', 'openai/gpt-5.6-terra', 'openai/gpt-5.6-luna'] as const)(
+		'enables medium OpenAI reasoning effort for %s',
+		(modelId) => {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, modelId);
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+				reasoningEffort: 'medium',
+			});
+		},
+	);
+
+	it.each(['openai/zai-org/GLM-5.2', 'openai/zai-org/GLM-5.2-Fast'] as const)(
+		'maps medium effort to high reasoning effort for legacy OpenAI-compatible Baseten %s',
+		(modelId) => {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, modelId);
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
+				reasoningEffort: 'high',
+			});
+		},
+	);
+
+	it.each(['baseten/zai-org/GLM-5.2', 'baseten/zai-org/GLM-5.2-Fast'] as const)(
+		'maps medium effort to high reasoning effort for Baseten %s',
+		(modelId) => {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, modelId);
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('baseten', {
+				reasoningEffort: 'high',
+			});
+		},
+	);
+
+	it('enables medium reasoning effort for other Baseten models', () => {
 		const agent = new Agent('test');
-		applyAgentThinking(agent, 'openai/gpt-5.5');
-		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openai', {
-			reasoningEffort: 'high',
+		applyAgentThinking(agent, 'baseten/deepseek-ai/DeepSeek-V4-Pro');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('baseten', {
+			reasoningEffort: 'medium',
 		});
 	});
 
 	it('skips providers without thinking support', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'google/gemini-2.5-pro');
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('enables medium reasoning effort for Kimi K3 via OpenRouter', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openrouter/moonshotai/kimi-k3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+			reasoningEffort: 'medium',
+		});
+	});
+
+	it('enables medium reasoning effort for Grok 4.5 via OpenRouter', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openrouter/x-ai/grok-4.5');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+			reasoningEffort: 'medium',
+		});
+	});
+
+	it('enables medium reasoning effort for Grok 4.5 via xAI', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'xai/grok-4.5');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('xai', {
+			reasoningEffort: 'medium',
+		});
+	});
+
+	it('skips OpenRouter models without a pinned-effort default', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openrouter/openai/gpt-4o');
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+	});
+
+	it('skips xAI models that are not Grok 4.5', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'xai/grok-3');
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 });

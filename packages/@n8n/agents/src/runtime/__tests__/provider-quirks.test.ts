@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 
-import { applyToolProviderOptionDefaults, getProviderQuirks } from '../model/provider-quirks';
+import {
+	GLM_52_DEFAULT_MAX_OUTPUT_TOKENS,
+	applyToolProviderOptionDefaults,
+	getProviderQuirks,
+	resolveDefaultMaxOutputTokens,
+} from '../model/provider-quirks';
 
 describe('getProviderQuirks', () => {
 	it('returns an empty object for an unknown provider', () => {
@@ -44,9 +49,40 @@ describe('thinkingToProviderOptions', () => {
 		});
 	});
 
-	it('openai: defaults reasoningEffort to medium', () => {
+	it('anthropic: adaptive mode forwards effort when set', () => {
+		expect(
+			getProviderQuirks('anthropic').thinkingToProviderOptions?.({
+				mode: 'adaptive',
+				effort: 'low',
+			}),
+		).toEqual({
+			anthropic: {
+				thinking: { type: 'adaptive', display: 'summarized' },
+				effort: 'low',
+			},
+		});
+	});
+
+	it('openai: defaults reasoningEffort to medium (AI SDK providerOptions form)', () => {
 		expect(getProviderQuirks('openai').thinkingToProviderOptions?.({})).toEqual({
 			openai: { reasoningEffort: 'medium' },
+		});
+	});
+
+	it('openai: forwards GPT-5.6 Sol compatible reasoningEffort values', () => {
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.({
+				reasoningEffort: 'medium',
+			}),
+		).toEqual({
+			openai: { reasoningEffort: 'medium' },
+		});
+		expect(
+			getProviderQuirks('openai').thinkingToProviderOptions?.({
+				reasoningEffort: 'xhigh',
+			}),
+		).toEqual({
+			openai: { reasoningEffort: 'xhigh' },
 		});
 	});
 
@@ -65,5 +101,53 @@ describe('thinkingToProviderOptions', () => {
 		expect(getProviderQuirks('xai').thinkingToProviderOptions?.({})).toEqual({
 			xai: { reasoningEffort: 'high' },
 		});
+	});
+
+	it('openrouter: maps reasoningEffort to reasoning.effort', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.({
+				reasoningEffort: 'low',
+			}),
+		).toEqual({
+			openrouter: { reasoning: { effort: 'low' } },
+		});
+	});
+
+	it('openrouter: defaults reasoning effort to medium', () => {
+		expect(getProviderQuirks('openrouter').thinkingToProviderOptions?.({})).toEqual({
+			openrouter: { reasoning: { effort: 'medium' } },
+		});
+	});
+
+	it('baseten: maps reasoningEffort to providerOptions.baseten', () => {
+		expect(
+			getProviderQuirks('baseten').thinkingToProviderOptions?.({
+				reasoningEffort: 'high',
+			}),
+		).toEqual({
+			baseten: { reasoningEffort: 'high' },
+		});
+	});
+
+	it('baseten: defaults reasoning effort to medium', () => {
+		expect(getProviderQuirks('baseten').thinkingToProviderOptions?.({})).toEqual({
+			baseten: { reasoningEffort: 'medium' },
+		});
+	});
+});
+
+describe('resolveDefaultMaxOutputTokens', () => {
+	it.each([
+		'baseten/zai-org/GLM-5.2',
+		'baseten/zai-org/GLM-5.2-Fast',
+		'openai/zai-org/GLM-5.2',
+		'openai/zai-org/GLM-5.2-Fast',
+	] as const)('raises the output cap for GLM 5.2 models (%s)', (modelId) => {
+		expect(resolveDefaultMaxOutputTokens(modelId)).toBe(GLM_52_DEFAULT_MAX_OUTPUT_TOKENS);
+	});
+
+	it('leaves unrelated models unset', () => {
+		expect(resolveDefaultMaxOutputTokens('baseten/deepseek-ai/DeepSeek-V4-Pro')).toBeUndefined();
+		expect(resolveDefaultMaxOutputTokens('anthropic/claude-sonnet-4-5')).toBeUndefined();
 	});
 });
