@@ -12,9 +12,7 @@ export interface NewExecutionRecord {
 }
 
 /**
- * Persistence port for executions. The core (`StartExecutionService`) depends
- * on this interface, not on TypeORM, so the storage backend stays swappable and
- * the policy is testable without a database. The adapter lives in `database/`.
+ * The persistence store for executions.
  */
 export interface ExecutionStore {
 	/** Persist a new execution record; returns its generated id. */

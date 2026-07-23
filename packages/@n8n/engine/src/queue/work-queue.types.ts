@@ -1,11 +1,7 @@
 /**
- * Engine work queue — see design doc §2.2.
+ * The work queue for engine tasks.
  *
- * The production deployment uses Redis as the queue backbone (orchestration
- * queue + step queue, both consumed with BRPOP). For M1 we ship an in-memory
- * impl by default; the consumer (orchestration worker) is in a later ticket
- * and the queue *boundary* is the contract we want to lock in now, not the
- * impl.
+ * TODO: add additional message types and functionality as we build the engine components.
  */
 
 export interface ExecutionEnqueuedEvent {
