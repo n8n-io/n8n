@@ -1,6 +1,8 @@
 import type { Folder, Project, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
+import type { WorkflowNodeTypeSource } from './node-type-usage';
 import type { StaticWorkflowDependency } from './static-workflow-dependency-resolver';
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
@@ -15,7 +17,6 @@ import { ProjectSerializer } from '../project/project.serializer';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
-import { UnexpectedError } from 'n8n-workflow';
 
 export interface StaticWorkflowDependencyExportRequest {
 	writer: PackageWriter;
@@ -88,6 +89,7 @@ export class StaticWorkflowDependencyExporter {
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
+		const nodeTypes: WorkflowNodeTypeSource[] = [];
 
 		for (const dependency of request.dependencies) {
 			if (workflowEntriesById.has(dependency.workflow.id)) continue;
@@ -113,13 +115,17 @@ export class StaticWorkflowDependencyExporter {
 			credentials.push(...this.credentialRequirementsExtractor.extract(dependency.workflow));
 			dataTables.push(...this.dataTableRequirementsExtractor.extract(dependency.workflow));
 			variables.push(...this.variableRequirementsExtractor.extract(dependency.workflow));
+			nodeTypes.push({
+				workflowId: dependency.workflow.id,
+				nodes: dependency.workflow.nodes ?? [],
+			});
 		}
 
 		return {
 			workflowEntries,
 			folderEntries,
 			projectEntries,
-			requirements: { credentials, dataTables, variables },
+			requirements: { credentials, dataTables, variables, nodeTypes },
 			projectTargetsById,
 		};
 	}
