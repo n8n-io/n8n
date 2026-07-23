@@ -2,7 +2,7 @@ import type { namedTypes } from 'ast-types';
 import { builders as b } from 'ast-types';
 import type { ExpressionKind, StatementKind } from 'ast-types/lib/gen/kinds';
 import type { types } from 'recast';
-import { parse, visit, print } from 'recast';
+import { parse, visit, print, prettyPrint } from 'recast';
 
 import type { TournamentHooks } from './ast';
 import { splitExpression } from './ExpressionSplitter';
@@ -83,6 +83,31 @@ const hasTemplateString = (node: types.namedTypes.ASTNode) => {
 	});
 
 	return hasTemp;
+};
+
+// Detects template literals that span multiple lines (i.e. contain a real
+// newline that `fixStringNewLines` will escape). recast's incremental printer
+// (`print`) reuses the original source and inserts a spurious space before
+// `${...}` when the preceding quasi was reprinted and ends in an identifier
+// character (e.g. `chk_${x}` -> `chk_ ${x}`). Pretty-printing the whole program
+// avoids that source-reuse path. We only opt into it when needed so every other
+// expression keeps its existing output untouched.
+// See https://github.com/n8n-io/n8n/issues/32262
+const hasMultilineTemplateString = (node: types.namedTypes.ASTNode) => {
+	let hasMultiline = false;
+
+	visit(node, {
+		visitTemplateElement(path) {
+			if (path.node.value.raw.includes('\n')) {
+				hasMultiline = true;
+				return false;
+			}
+			this.traverse(path);
+			return;
+		},
+	});
+
+	return hasMultiline;
 };
 
 const wrapInErrorHandler = (node: StatementKind) => {
@@ -197,6 +222,12 @@ export const getExpressionCode = (
 		.filter((c) => c.type === 'code')
 		.some((c) => hasTemplateString(c.parsed));
 
+	// Must be computed before `fixStringNewLines` runs, since that escapes the
+	// real newlines we're looking for here.
+	const hasMultilineTempString = chunks
+		.filter((c) => c.type === 'code')
+		.some((c) => hasMultilineTemplateString(c.parsed));
+
 	// So for compatibility we parse expressions the same way that `tmpl` does.
 	// This means we always have an initial text chunk but if there's only a blank
 	// text chunk and a code chunk then we want to return the actual value of the
@@ -290,5 +321,7 @@ export const getExpressionCode = (
 		newProg.body.push(retData);
 	}
 
-	return [print(newProg).code, { has: { function: hasFn, templateString: hasTempString } }];
+	const code = hasMultilineTempString ? prettyPrint(newProg).code : print(newProg).code;
+
+	return [code, { has: { function: hasFn, templateString: hasTempString } }];
 };
