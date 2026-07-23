@@ -654,7 +654,11 @@ export class Expression {
 		return returnValue;
 	}
 
-	private renderExpression(expression: string, data: IWorkflowDataProxyData, trustedTemplate = false) {
+	private renderExpression(
+		expression: string,
+		data: IWorkflowDataProxyData,
+		trustedTemplate = false,
+	) {
 		// Use VM evaluator if engine is set to 'vm' and we're not in the browser.
 		// Trusted templates (node-description code) skip the VM and run on the
 		// in-process engine — they need no isolate.

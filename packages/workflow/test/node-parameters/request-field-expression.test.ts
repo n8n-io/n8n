@@ -25,7 +25,7 @@ describe('matchSimpleRequestFieldPath', () => {
 		["={{ $json.body[ 'spaced' ] }}", ".body[ 'spaced' ]"],
 		// mixed quoting: double quotes inside single-quoted key and vice versa
 		['={{ $json.body[\'say "hi"\'] }}', '.body[\'say "hi"\']'],
-		["={{ $json.body[\"it's\"] }}", '.body["it\'s"]'],
+		['={{ $json.body["it\'s"] }}', '.body["it\'s"]'],
 		// whitespace tolerance around the template
 		['=  {{ $json.body.x }}  ', '.body.x'],
 		['={{$json.body.x }}', '.body.x'],
@@ -139,6 +139,8 @@ describe('resolveRequestFieldPath', () => {
 
 	it("should not throw when reading ['__proto__'] or ['constructor']", () => {
 		expect(() => resolveRequestFieldPath(source, ".body['__proto__']")).not.toThrow();
-		expect(() => resolveRequestFieldPath(source, ".body['constructor']['constructor']")).not.toThrow();
+		expect(() =>
+			resolveRequestFieldPath(source, ".body['constructor']['constructor']"),
+		).not.toThrow();
 	});
 });

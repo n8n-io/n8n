@@ -100,7 +100,12 @@ describe('trusted template evaluation', () => {
 		});
 
 		it.runIf(isVm)('trust is consumed by a single call and does not leak to later ones', () => {
-			expression.getTrustedSimpleParameterValue(node, '={{ $parameter["value1"] }}', 'internal', {});
+			expression.getTrustedSimpleParameterValue(
+				node,
+				'={{ $parameter["value1"] }}',
+				'internal',
+				{},
+			);
 			expect(() =>
 				expression.getSimpleParameterValue(node, '={{ $parameter["value1"] }}', 'internal', {}),
 			).toThrow();
