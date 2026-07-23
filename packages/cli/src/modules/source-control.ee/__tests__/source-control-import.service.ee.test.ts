@@ -135,6 +135,7 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				versionId: 'v1',
 				name: 'Test Workflow',
+				description: 'Test description',
 				owner: {
 					type: 'personal',
 					personalEmail: 'email@email.com',
@@ -152,6 +153,7 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					versionId: 'v1',
 					name: 'Test Workflow',
+					description: 'Test description',
 				}),
 			);
 		});
@@ -228,6 +230,7 @@ describe('SourceControlImportService', () => {
 			const mockWorkflowData1 = {
 				id: '1',
 				name: 'Workflow 1',
+				description: 'Workflow 1 description',
 				active: false,
 				nodes: [
 					{
@@ -290,6 +293,7 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: mockWorkflowData1.id,
 					name: mockWorkflowData1.name,
+					description: mockWorkflowData1.description,
 					nodes: mockWorkflowData1.nodes,
 					connections: mockWorkflowData1.connections,
 					nodeGroups: mockWorkflowData1.nodeGroups,
@@ -317,6 +321,50 @@ describe('SourceControlImportService', () => {
 					name: mockWorkflowFile2,
 				},
 			]);
+		});
+
+		it('should not touch the local description when the file has no description key', async () => {
+			const mockUserId = 'user-id-123';
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), {
+					id: 'personal-project-id-123',
+					name: 'Personal Project',
+					type: 'personal',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+			);
+			const legacyWorkflowData = {
+				id: '1',
+				name: 'Legacy Workflow',
+				active: false,
+				nodes: [],
+				connections: {},
+				versionId: 'v1',
+				owner: {
+					type: 'personal',
+					personalEmail: 'user@example.com',
+				},
+				parentFolderId: null,
+				nodeGroups: [],
+			};
+			const candidates = [mock<SourceControlledFile>({ file: '/mock/legacy.json', id: '1' })];
+
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: '1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+			fsReadFile.mockResolvedValue(JSON.stringify(legacyWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowRepository.upsert).toHaveBeenCalledTimes(1);
+			const [upsertedWorkflow] = workflowRepository.upsert.mock.calls[0];
+			expect('description' in upsertedWorkflow).toBe(false);
 		});
 
 		it('should log and throw an error if a workflow file cannot be parsed', async () => {
