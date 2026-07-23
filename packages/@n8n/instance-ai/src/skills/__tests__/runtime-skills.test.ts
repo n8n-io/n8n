@@ -271,6 +271,19 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
+		expect(loaded?.instructions).toContain('Prefer n8n sources over guessing');
+		expect(loaded?.instructions).toContain('knowledge base');
+		expect(loaded?.instructions).toContain('n8n-docs-assistant');
+		expect(loaded?.instructions).toContain('never load `templates/index.json`');
+		expect(loaded?.instructions).toContain('node-types/index.txt');
+		expect(loaded?.instructions).toContain('## Trigger URL Sharing');
+		expect(loaded?.instructions).toContain('{formBaseUrl}/{path}');
+		expect(loaded?.instructions).toContain('**Open chat** button');
+		expect(loaded?.instructions).toContain('batch\n`nodes(action="type-definition")`');
+		expect(loaded?.instructions).toContain('together with the `load_skill` call');
+		expect(loaded?.instructions).toContain('Do not create a plan\njust for verification');
+		expect(loaded?.instructions).toContain('never stop before the first\n`build-workflow` call');
+		expect(loaded?.instructions).toContain('inspect it first via `debugging-executions`');
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
@@ -302,6 +315,8 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('planning');
 		expect(loaded?.instructions).toContain('## When NOT to use this skill');
+		expect(loaded?.instructions).toContain('Consult the knowledge base before planning');
+		expect(loaded?.instructions).toContain('never load `templates/index.json` wholesale');
 		expect(loaded?.instructions).toContain(
 			'Before calling `create-tasks`, load it via `load_tool`',
 		);
