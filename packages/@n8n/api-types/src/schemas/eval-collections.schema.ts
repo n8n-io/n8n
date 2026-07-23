@@ -83,6 +83,37 @@ export function normalizeMetricScore(
 	return normalized >= 0 && normalized <= 1 ? normalized : null;
 }
 
+/**
+ * Per-metric scores normalized to [0, 1] by scale (via {@link normalizeMetricScore});
+ * operational/unknown-scale values are dropped and booleans coerce to 0/1. The
+ * single definition shared by the FE compare surfaces and the BE insights agent so
+ * they can't disagree on which metrics count or how they're scaled.
+ */
+export function normalizedScores(
+	metrics: Record<string, number | boolean> | null | undefined,
+	scaleByMetric: Record<string, MetricScale> = {},
+): Record<string, number> {
+	const out: Record<string, number> = {};
+	if (!metrics) return out;
+	for (const [key, raw] of Object.entries(metrics)) {
+		const value = typeof raw === 'boolean' ? (raw ? 1 : 0) : raw;
+		if (typeof value !== 'number') continue;
+		const score = normalizeMetricScore(key, value, scaleByMetric[key]);
+		if (score !== null) out[key] = score;
+	}
+	return out;
+}
+
+/** Mean of the normalized score metrics, or null when none qualify. */
+export function averageNormalizedScore(
+	metrics: Record<string, number | boolean> | null | undefined,
+	scaleByMetric: Record<string, MetricScale> = {},
+): number | null {
+	const values = Object.values(normalizedScores(metrics, scaleByMetric));
+	if (values.length === 0) return null;
+	return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 // One version on a create-collection request: reference an existing run to
 // reuse it, or omit it to schedule a fresh run pinned to `workflowVersionId`.
 // `workflowVersionId: null` = "current draft", snapshotted at run start.

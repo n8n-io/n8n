@@ -1,5 +1,6 @@
 import type { User, WorkflowEntity } from '@n8n/db';
 import { jsonParse } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -309,6 +310,32 @@ describe('WorkflowExporter', () => {
 		expect(requirements.variables).toEqual<WorkflowVariableRequirement[]>([
 			{ workflowId: 'wf-a', variableName: 'VAR_FROM_wf-a' },
 			{ workflowId: 'wf-b', variableName: 'VAR_FROM_wf-b' },
+		]);
+	});
+
+	it('collects each workflow node list into requirements.nodeTypes', async () => {
+		const nodeA: INode = {
+			id: 'n1',
+			name: 'HTTP',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const a = makeWorkflow({ id: 'wf-a', nodes: [nodeA] });
+		const b = makeWorkflow({ id: 'wf-b' });
+		const { exporter } = makeExporter([a, b]);
+		const writer = new CapturingWriter();
+
+		const { requirements } = await exporter.export({
+			user,
+			workflowIds: [a.id, b.id],
+			writer,
+		});
+
+		expect(requirements.nodeTypes).toEqual([
+			{ workflowId: 'wf-a', nodes: [nodeA] },
+			{ workflowId: 'wf-b', nodes: [] },
 		]);
 	});
 });

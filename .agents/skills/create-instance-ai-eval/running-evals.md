@@ -54,7 +54,7 @@ inspection; `--iterations N` runs each case N times for pass@k / pass^k.
 | Source | When to use it |
 |---|---|
 | **`disk`** (default) | **Preferred for local development** — authoring and calibrating the case in front of you: drop the JSON into `data/workflows/`, `--filter` it, iterate. Also the only home of the `agents` tier and the seeded carve-out cases; since the corpus migration the directory holds only those, not the full suite. |
-| **`langtracer`** (`--source langtracer --suite n8n-workflows`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
+| **`langtracer`** (`--source langtracer --suite baseline`) | Bigger runs (the full corpus or a whole tier), re-running specific cases that already live in the suite, and CI — which always runs this way. Needs `LANGTRACER_URL`/`LANGTRACER_API_KEY` in your env. |
 
 ## Configuration & secrets
 
@@ -194,7 +194,7 @@ for low noise:
 # with your env loaded and LANGSMITH_API_KEY set, from packages/@n8n/instance-ai/
 # (--dataset/--baseline-prefix mirror CI's pins — langtracer mode otherwise
 # derives suite-scoped names and later runs would never find this baseline)
-pnpm eval:instance-ai --source langtracer --suite n8n-workflows \
+pnpm eval:instance-ai --source langtracer --suite baseline \
   --dataset instance-ai-workflow-evals --baseline-prefix instance-ai-baseline- \
   --experiment-name instance-ai-baseline --iterations 10
 ```
