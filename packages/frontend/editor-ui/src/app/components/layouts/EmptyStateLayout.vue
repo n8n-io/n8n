@@ -229,8 +229,6 @@ const handleAppSelectionContinue = () => {
 
 	&.builderLayout {
 		align-items: center;
-		justify-content: center;
-		width: 100%;
 		max-width: none;
 		padding: var(--spacing--lg);
 	}
