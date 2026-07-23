@@ -92,6 +92,7 @@ export const API_KEY_RESOURCES = {
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
 	saml: ['manage'] as const,
+	otel: ['manage'] as const,
 	project: ['create', 'update', 'delete', 'list', 'export'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
@@ -110,6 +111,7 @@ export const API_KEY_RESOURCES = {
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
+export const GLOBAL_ADMIN_ROLE_SLUG = 'global:admin';
 export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';

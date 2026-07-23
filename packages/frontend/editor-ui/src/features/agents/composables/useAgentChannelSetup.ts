@@ -7,6 +7,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import type { Project } from '@/features/collaboration/projects/projects.types';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
 import { createSlackAgentApp } from './useAgentApi';
@@ -42,6 +43,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	const pendingNewCredentialType = ref<string | null>(null);
 	const channelSetupRef = ref<ChannelSetupComponent>();
 	const loadedIntegrations = ref<ChatIntegrationDescriptor[]>([]);
+	const fetchedProjectForPermissions = ref<Project | null>(null);
 
 	const projectId = computed(() => toValue(options.projectId));
 	const agentId = computed(() => toValue(options.agentId));
@@ -49,9 +51,17 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 	const connectedCredentials = computed(() => toValue(options.connectedCredentials));
 
 	const projectForPermissions = computed(() => {
-		if (projectsStore.currentProject?.id === projectId.value) return projectsStore.currentProject;
-		if (projectsStore.personalProject?.id === projectId.value) return projectsStore.personalProject;
-		return projectsStore.myProjects.find((project) => project.id === projectId.value) ?? null;
+		const storedProject =
+			[
+				projectsStore.currentProject,
+				projectsStore.personalProject,
+				...projectsStore.myProjects,
+			].find((project) => project?.id === projectId.value) ?? null;
+		if (storedProject?.scopes !== undefined) return storedProject;
+		if (fetchedProjectForPermissions.value?.id === projectId.value) {
+			return fetchedProjectForPermissions.value;
+		}
+		return storedProject;
 	});
 
 	const credentialPermissions = computed(() => {
@@ -78,6 +88,17 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 			if (!selectedCredentials.value[channelType]) {
 				selectedCredentials.value[channelType] = credentialId;
 			}
+		}
+	}
+
+	async function ensureProjectPermissions() {
+		if (!projectId.value || projectForPermissions.value?.scopes !== undefined) return;
+
+		try {
+			const project = await projectsStore.fetchProject(projectId.value);
+			if (project.id === projectId.value) fetchedProjectForPermissions.value = project;
+		} catch {
+			// Keep permissions fail-closed when the project cannot be loaded.
 		}
 	}
 
@@ -111,6 +132,7 @@ export function useAgentChannelSetup(options: UseAgentChannelSetupOptions) {
 
 	async function loadChannelState(integrations: ChatIntegrationDescriptor[]) {
 		await Promise.all([
+			ensureProjectPermissions(),
 			options.fetchStatus(integrations.map((integration) => integration.type)),
 			fetchCredentials(integrations),
 		]);

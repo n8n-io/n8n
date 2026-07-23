@@ -11,6 +11,7 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	ITaskDataConnections,
+	IWorkflowExecuteAdditionalData,
 	NodeOutput,
 } from 'n8n-workflow';
 import {
@@ -40,6 +41,10 @@ export type EphemeralWorkflowToolLike = {
 	nodeTypeVersion: number;
 	nodeParameters: INodeParameters;
 	credentials?: Record<string, INodeCredentialsDetails> | null;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 };
 
 export interface InlineNodeExecutionRequest {
@@ -54,6 +59,10 @@ export interface InlineNodeExecutionRequest {
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
 	projectId: string;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 }
 
 export interface NodeExecutionResult {
@@ -275,7 +284,7 @@ export class EphemeralNodeExecutor {
 	) {
 		const node: INode = {
 			id: uuid(),
-			name: 'Target Node',
+			name: tool.nodeName ?? 'Target Node',
 			type: tool.nodeType,
 			typeVersion: tool.nodeTypeVersion,
 			position: [0, 0],
@@ -293,6 +302,7 @@ export class EphemeralNodeExecutor {
 			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
 			additionalData.dataTableProjectId = tool.projectId;
 		}
+		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
@@ -411,6 +421,8 @@ export class EphemeralNodeExecutor {
 			nodeTypeVersion: request.nodeTypeVersion,
 			nodeParameters: request.nodeParameters,
 			credentials: mergedCredentials,
+			nodeName: request.nodeName,
+			configureAdditionalData: request.configureAdditionalData,
 		};
 
 		// Native tool nodes (toolWikipedia, toolCalculator, etc.) expose their real

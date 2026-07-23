@@ -1,5 +1,8 @@
 import type { CurrentUserResponse } from '@n8n/rest-api-client/api/users';
+import type { FrontendSettings } from '@n8n/api-types';
 import { useUsersStore } from './users.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { PERSONALIZATION_MODAL_KEY } from './users.constants';
 import { createPinia, setActivePinia } from 'pinia';
 
 const { loginCurrentUser, inviteUsers, login, logout } = vi.hoisted(() => {
@@ -201,6 +204,61 @@ describe('users.store', () => {
 			expect(errorAsyncHook).toHaveBeenCalled();
 			expect(successAsyncHook).toHaveBeenCalled();
 			expect(successHook).toHaveBeenCalled();
+		});
+	});
+
+	describe('showPersonalizationSurvey', () => {
+		const enableSurvey = () => {
+			// Assign the settings ref directly; setSettings() runs extra bootstrap logic
+			// (auth cookie handling) that a partial fixture can't satisfy.
+			useSettingsStore().settings = {
+				telemetry: { enabled: true },
+				personalizationSurveyEnabled: true,
+			} as unknown as FrontendSettings;
+		};
+
+		const setCurrentUser = (usersStore: ReturnType<typeof useUsersStore>) => {
+			usersStore.usersById['1'] = {
+				...mockUser,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+			usersStore.currentUserId = '1';
+		};
+
+		it('opens the personalization modal through the registered opener', async () => {
+			const usersStore = useUsersStore();
+			enableSurvey();
+			setCurrentUser(usersStore);
+
+			const openModal = vi.fn();
+			usersStore.registerModalOpener(openModal);
+
+			await usersStore.showPersonalizationSurvey();
+
+			expect(openModal).toHaveBeenCalledWith(PERSONALIZATION_MODAL_KEY);
+		});
+
+		it('does not open the modal when the survey is disabled', async () => {
+			const usersStore = useUsersStore();
+			setCurrentUser(usersStore);
+
+			const openModal = vi.fn();
+			usersStore.registerModalOpener(openModal);
+
+			await usersStore.showPersonalizationSurvey();
+
+			expect(openModal).not.toHaveBeenCalled();
+		});
+
+		it('does not throw when no opener is registered', async () => {
+			const usersStore = useUsersStore();
+			enableSurvey();
+			setCurrentUser(usersStore);
+
+			// No registerModalOpener() — the default no-op opener must not break the flow.
+			await expect(usersStore.showPersonalizationSurvey()).resolves.toBeUndefined();
 		});
 	});
 

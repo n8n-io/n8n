@@ -2,10 +2,11 @@ import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, MigrationExecutor } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
 import { computeBackoff } from './backoff';
@@ -15,6 +16,7 @@ import { DbConnectionOptions } from './db-connection-options';
 import { readPoolStats, type DbPoolStats } from './db-pool-stats';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
+import { DbLock, DbLockService } from '../services/db-lock.service';
 import { TransactionRunner } from '../services/transaction';
 import { TypeOrmTransactionRunner } from '../services/typeorm-transaction';
 
@@ -84,10 +86,50 @@ export class DbConnection {
 	}
 
 	async migrate() {
-		const { dataSource, connectionState } = this;
+		const { dataSource, connectionState, options } = this;
 		(dataSource.options.migrations as Migration[]).forEach(wrapMigration);
-		await dataSource.runMigrations({ transaction: 'each' });
+		if (options.type === 'postgres') {
+			await this.migrateWithAdvisoryLock(options);
+		} else {
+			// SQLite is single-instance, so concurrent migrations aren't possible.
+			await dataSource.runMigrations({ transaction: 'each' });
+		}
 		connectionState.migrated = true;
+	}
+
+	/**
+	 * Runs all pending migrations while holding a Postgres advisory lock, so
+	 * concurrently starting instances migrate one at a time. The migrations run
+	 * on the lock transaction's own connection, which keeps
+	 * `DB_POSTGRESDB_POOL_SIZE=1` working; the trade-off is that they commit or
+	 * roll back as one unit.
+	 */
+	private async migrateWithAdvisoryLock(options: {
+		schema?: string;
+		entityPrefix?: string;
+		statementTimeout?: number;
+	}) {
+		const { dataSource } = this;
+		// Scoped by schema+prefix so co-hosted tenants in one database don't block each other.
+		const subKey = createHash('sha256')
+			.update(`${options.schema ?? 'public'}:${options.entityPrefix ?? ''}`)
+			.digest()
+			.readInt32BE(0);
+		this.logger.info('Acquiring database migration lock...');
+		await Container.get(DbLockService).withLock(
+			DbLock.MIGRATIONS,
+			async (tx) => {
+				if (options.statementTimeout) {
+					// Restore the driver's per-statement cap for the migration statements
+					await tx.query(`SET LOCAL statement_timeout = ${Number(options.statementTimeout)}`);
+				}
+				const migrationExecutor = new MigrationExecutor(dataSource, tx.queryRunner);
+				// 'none': the executor manages no transactions and runs inside the lock's
+				migrationExecutor.transaction = 'none';
+				await migrationExecutor.executePendingMigrations();
+			},
+			{ subKey, waitIndefinitely: true },
+		);
 	}
 
 	async close() {
