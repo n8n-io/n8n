@@ -660,6 +660,7 @@ type TerminalGuardOrderServiceInternals = {
 	backgroundTasks: { getRunningTasks: Mock };
 	temporaryWorkflowService: { reapForRun: Mock };
 	creditService: { claimRunUsage: Mock };
+	failedInternalFollowUpStreaks: Map<string, number>;
 	schedulePlannedTasks: Mock;
 	drainPendingCheckpointReentries: Mock;
 	taskProjector: { syncFromWorkflowLoop: Mock };
@@ -756,6 +757,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.backgroundTasks = { getRunningTasks: vi.fn(() => []) };
 	service.temporaryWorkflowService = { reapForRun: vi.fn(async () => []) };
 	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
+	service.failedInternalFollowUpStreaks = new Map();
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.drainPendingCheckpointReentries = vi.fn(async () => {});
 	service.preserveHitlOnShutdown = new Set();
@@ -3910,6 +3912,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		runState: { clearThread: Mock };
 		backgroundTasks: { cancelThread: Mock };
 		schedulerLocks: Map<string, unknown>;
+		failedInternalFollowUpStreaks: Map<string, number>;
 		liveness: { clearThreadState: Mock };
 		domainAccessTrackersByThread: Map<string, unknown>;
 		evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
@@ -3938,6 +3941,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
 		service.schedulerLocks = new Map();
+		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
@@ -4065,3 +4069,174 @@ describe('createAgentMemoryOptions', () => {
 		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(1);
 	});
 });
+<<<<<<< HEAD
+=======
+
+describe('InstanceAiService — routeCancelRun zombie fallback', () => {
+	function createCancelService() {
+		const service = Object.create(InstanceAiService.prototype) as unknown as {
+			runState: { hasLiveRun: Mock };
+			eventLog: { flush: Mock };
+			interruptedRunSweeper: { cancelUnfinishedRuns: Mock };
+			routeTaskControl: Mock;
+			routeCancelRun: (threadId: string) => Promise<void>;
+		};
+		service.runState = { hasLiveRun: vi.fn(() => false) };
+		service.eventLog = { flush: vi.fn(async () => {}) };
+		service.interruptedRunSweeper = { cancelUnfinishedRuns: vi.fn(async () => 0) };
+		service.routeTaskControl = vi.fn(async () => {});
+		return service;
+	}
+
+	it('terminalizes dead runs after broadcasting when nothing is live locally', async () => {
+		const service = createCancelService();
+
+		await service.routeCancelRun('thread-a');
+
+		expect(service.routeTaskControl).toHaveBeenCalledWith({
+			threadId: 'thread-a',
+			action: 'cancel-thread',
+		});
+		// Drain settles first so a just-finished run cannot be double-terminaled.
+		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');
+		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).toHaveBeenCalledWith('thread-a');
+		expect(service.routeTaskControl.mock.invocationCallOrder[0]).toBeLessThan(
+			service.interruptedRunSweeper.cancelUnfinishedRuns.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('skips the fallback when a local run is live (its abort emits the terminal fact)', async () => {
+		const service = createCancelService();
+		service.runState.hasLiveRun = vi.fn(() => true);
+
+		await service.routeCancelRun('thread-a');
+
+		expect(service.routeTaskControl).toHaveBeenCalled();
+		expect(service.eventLog.flush).not.toHaveBeenCalled();
+		expect(service.interruptedRunSweeper.cancelUnfinishedRuns).not.toHaveBeenCalled();
+	});
+});
+
+type FollowUpStreakServiceInternals = {
+	failedInternalFollowUpStreaks: Map<string, number>;
+	updateInternalFollowUpFailureStreak: (
+		threadId: string,
+		status: 'completed' | 'cancelled' | 'error' | 'suspended' | undefined,
+		isInternalFollowUp: boolean,
+	) => void;
+	startInternalFollowUpRun: (user: User, threadId: string, message: string) => Promise<string>;
+	startExecuteRun: Mock;
+	defaultTimeZone: string;
+	runState: {
+		hasLiveRun: Mock;
+		startRun: Mock;
+		getTimeZone: Mock;
+	};
+	logger: { warn: Mock; debug: Mock; error: Mock };
+};
+
+function createFollowUpStreakService(): FollowUpStreakServiceInternals {
+	// Bypass the constructor — we only exercise the follow-up circuit breaker
+	// and the run-start path it gates.
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as FollowUpStreakServiceInternals;
+
+	service.failedInternalFollowUpStreaks = new Map();
+	service.startExecuteRun = vi.fn();
+	service.defaultTimeZone = 'UTC';
+	service.runState = {
+		hasLiveRun: vi.fn(() => false),
+		startRun: vi.fn(() => ({ runId: 'follow-up-run', abortController: new AbortController() })),
+		getTimeZone: vi.fn(() => undefined),
+	};
+	service.logger = { warn: vi.fn(), debug: vi.fn(), error: vi.fn() };
+
+	return service;
+}
+
+describe('InstanceAiService — internal follow-up failure streak', () => {
+	describe('updateInternalFollowUpFailureStreak', () => {
+		it('counts consecutive errored internal follow-up runs per thread', () => {
+			const service = createFollowUpStreakService();
+
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBe(2);
+			expect(service.failedInternalFollowUpStreaks.get('thread-b')).toBeUndefined();
+		});
+
+		it('does not count errored runs that were not internal follow-ups', () => {
+			const service = createFollowUpStreakService();
+
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', false);
+
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBeUndefined();
+		});
+
+		it('resets the streak when a run completes or suspends', () => {
+			const service = createFollowUpStreakService();
+
+			service.failedInternalFollowUpStreaks.set('thread-a', 3);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'completed', false);
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBeUndefined();
+
+			service.failedInternalFollowUpStreaks.set('thread-a', 3);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'suspended', true);
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBeUndefined();
+		});
+
+		it('keeps the streak unchanged on cancelled runs and missing terminal status', () => {
+			const service = createFollowUpStreakService();
+			service.failedInternalFollowUpStreaks.set('thread-a', 2);
+
+			service.updateInternalFollowUpFailureStreak('thread-a', 'cancelled', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', undefined, true);
+
+			expect(service.failedInternalFollowUpStreaks.get('thread-a')).toBe(2);
+		});
+	});
+
+	describe('startInternalFollowUpRun circuit breaker', () => {
+		it('starts the follow-up while the streak is below the cap', async () => {
+			const service = createFollowUpStreakService();
+			service.failedInternalFollowUpStreaks.set('thread-a', 2);
+
+			const runId = await service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify');
+
+			expect(runId).toBe('follow-up-run');
+			expect(service.startExecuteRun).toHaveBeenCalled();
+		});
+
+		it('skips the follow-up once the streak reaches the cap', async () => {
+			const service = createFollowUpStreakService();
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+
+			const runId = await service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify');
+
+			expect(runId).toBe('');
+			expect(service.startExecuteRun).not.toHaveBeenCalled();
+			expect(service.logger.warn).toHaveBeenCalledWith(
+				'Skipping internal follow-up: consecutive follow-up runs keep failing',
+				expect.objectContaining({ threadId: 'thread-a', failedStreak: 3 }),
+			);
+		});
+
+		it('allows follow-ups again after a healthy run resets the streak', async () => {
+			const service = createFollowUpStreakService();
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'error', true);
+			service.updateInternalFollowUpFailureStreak('thread-a', 'completed', false);
+
+			const runId = await service.startInternalFollowUpRun(fakeUser, 'thread-a', 'verify');
+
+			expect(runId).toBe('follow-up-run');
+			expect(service.startExecuteRun).toHaveBeenCalled();
+		});
+	});
+});
+>>>>>>> 5aac66d8 (fix(core): Stop Instance AI follow-up runs from looping when they keep failing before the agent starts (#34767))
