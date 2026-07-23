@@ -15,6 +15,7 @@ import { ProjectSerializer } from '../project/project.serializer';
 import type { WorkflowExportRequirements } from '../requirements.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
 import type { WorkflowVariableRequirement } from '../variable/variable.types';
+import { UnexpectedError } from 'n8n-workflow';
 
 export interface StaticWorkflowDependencyExportRequest {
 	writer: PackageWriter;
@@ -234,7 +235,12 @@ export class StaticWorkflowDependencyExporter {
 		}
 
 		if (!parentTarget) {
-			throw new Error('Cannot place workflow in an empty folder chain');
+			throw new UnexpectedError('Cannot place workflow in an empty folder chain', {
+				extra: {
+					baseDir: options.baseDir,
+					folderIds: options.chain.map((folder) => folder.id),
+				},
+			});
 		}
 
 		return parentTarget;
