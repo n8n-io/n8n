@@ -8,7 +8,8 @@ const credentialTypes = [
 	'googleApi',
 	'gitlabApi',
 	'jenkinsApi',
-	'metabaseApi',
+	'metabaseUserApi',
+	'metabaseKeyApi',
 	'notionApi',
 ];
 
