@@ -41,7 +41,7 @@ export type CreateWorkflowFromCodeToolOptions = {
 	 * default — groups are then dropped at the entity assembly, exactly like
 	 * before groups were supported. Note that with the flag on, invalid groups
 	 * fail the creation: `WorkflowCreationService.createWorkflow` rejects them
-	 * with the same message the `validate_workflow` tool reports as a warning,
+	 * with the same messages the `validate_workflow` tool reports as errors,
 	 * so agents can catch group problems before calling this tool.
 	 */
 	canvasGroupsEnabled?: boolean;

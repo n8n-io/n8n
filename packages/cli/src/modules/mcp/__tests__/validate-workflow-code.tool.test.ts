@@ -7,7 +7,6 @@ import { Telemetry } from '@/telemetry';
 
 import {
 	createValidateWorkflowCodeTool,
-	INVALID_NODE_GROUP_WARNING_CODE,
 	type ValidateWorkflowCodeToolOptions,
 } from '../tools/workflow-builder/validate-workflow-code.tool';
 
@@ -313,13 +312,16 @@ describe('validate-workflow-code MCP tool', () => {
 			nodeGroups,
 		});
 
-		/** results.data of the last tracked telemetry event */
-		const trackedData = () => {
+		/** results of the last tracked telemetry event */
+		const trackedResults = () => {
 			const payload = vi.mocked(telemetry.track).mock.calls.at(-1)?.[1] as {
-				results?: { data?: Record<string, unknown> };
+				results?: { success?: boolean; error?: string; data?: Record<string, unknown> };
 			};
-			return payload.results?.data;
+			return payload.results;
 		};
+
+		/** results.data of the last tracked telemetry event */
+		const trackedData = () => trackedResults()?.data;
 
 		beforeEach(() => {
 			// The group validator resolves trigger-ness via description.group.
@@ -347,7 +349,7 @@ describe('validate-workflow-code MCP tool', () => {
 			expect(trackedData()).toEqual({ nodeCount: 3, warningCount: 0 });
 		});
 
-		test('flag on: a valid group produces no warnings but is counted in telemetry', async () => {
+		test('flag on: a valid group produces no errors and is counted in telemetry', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }]),
 				warnings: [],
@@ -363,11 +365,10 @@ describe('validate-workflow-code MCP tool', () => {
 				nodeCount: 3,
 				warningCount: 0,
 				groupCount: 1,
-				groupViolationCount: 0,
 			});
 		});
 
-		test('flag on: group violations are surfaced as warnings with the save-path message', async () => {
+		test('flag on: group violations fail validation with the save-path message', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['trigger', 'a'] }]),
 				warnings: [],
@@ -377,27 +378,29 @@ describe('validate-workflow-code MCP tool', () => {
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
 			const response = parseResult(result);
-			expect(response.valid).toBe(true);
-			expect(result.isError).toBeUndefined();
-			expect(response.warnings).toEqual([
-				{
-					code: INVALID_NODE_GROUP_WARNING_CODE,
-					message: 'Node group "Group" (g1) cannot contain trigger nodes: Trigger.',
+			expect(result.isError).toBe(true);
+			expect(response).toEqual({
+				valid: false,
+				errors: ['Node group "Group" (g1) cannot contain trigger nodes: Trigger.'],
+			});
+			expect(trackedResults()).toEqual({
+				success: false,
+				error: 'Node group "Group" (g1) cannot contain trigger nodes: Trigger.',
+				data: {
+					groupCount: 1,
+					groupViolationCount: 1,
+					groupViolationCodes: ['trigger-selected'],
 				},
-			]);
-			expect(trackedData()).toEqual({
-				nodeCount: 3,
-				warningCount: 0,
-				groupCount: 1,
-				groupViolationCount: 1,
-				groupViolationCodes: ['trigger-selected'],
 			});
 		});
 
-		test('flag on: group warnings are appended after SDK warnings', async () => {
+		test('flag on: all group violations are reported as errors, one entry each', async () => {
 			const sdkWarning = { code: 'deprecated', message: 'Node X is deprecated' };
 			mockParseAndValidate.mockResolvedValue({
-				workflow: makeGroupedWorkflow([{ id: 'g1', name: 'Group', nodeIds: ['a', 'missing'] }]),
+				workflow: makeGroupedWorkflow([
+					{ id: 'g1', name: 'Group', nodeIds: ['a', 'missing'] },
+					{ id: 'g2', name: 'Group', nodeIds: ['b'] },
+				]),
 				warnings: [sdkWarning],
 			});
 
@@ -405,21 +408,24 @@ describe('validate-workflow-code MCP tool', () => {
 			const result = await tool.handler({ code: 'const wf = ...' }, {} as never);
 
 			const response = parseResult(result);
-			expect(response.warnings).toEqual([
-				sdkWarning,
-				{
-					code: INVALID_NODE_GROUP_WARNING_CODE,
-					message:
-						'Group "Group" references node ID "missing" that does not exist in the workflow.',
-				},
+			expect(result.isError).toBe(true);
+			expect(response.valid).toBe(false);
+			expect(response.errors).toEqual([
+				'Group "Group" references node ID "missing" that does not exist in the workflow.',
+				'Duplicate node group name "Group".',
 			]);
-			// SDK warnings keep their own count; group violations are counted separately.
-			expect(trackedData()).toEqual({
-				nodeCount: 3,
-				warningCount: 1,
-				groupCount: 1,
-				groupViolationCount: 1,
-				groupViolationCodes: ['unknown-node-id'],
+			// Error responses carry only errors, matching the other invalid paths.
+			expect(response).not.toHaveProperty('warnings');
+			expect(trackedResults()).toEqual({
+				success: false,
+				error:
+					'Group "Group" references node ID "missing" that does not exist in the workflow. ' +
+					'Duplicate node group name "Group".',
+				data: {
+					groupCount: 2,
+					groupViolationCount: 2,
+					groupViolationCodes: ['unknown-node-id', 'duplicate-group-name'],
+				},
 			});
 		});
 
@@ -453,7 +459,6 @@ describe('validate-workflow-code MCP tool', () => {
 				nodeCount: 3,
 				warningCount: 0,
 				groupCount: 1,
-				groupViolationCount: 0,
 			});
 		});
 
@@ -473,7 +478,6 @@ describe('validate-workflow-code MCP tool', () => {
 				nodeCount: 3,
 				warningCount: 0,
 				groupCount: 0,
-				groupViolationCount: 0,
 			});
 		});
 	});

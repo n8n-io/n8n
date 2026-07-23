@@ -172,7 +172,7 @@ export type WorkflowGroupsValidationResult =
  * Validates a workflow's `nodeGroups` without throwing, collecting all violations.
  * Single source of truth for group rules: persistence (CLI save path) rejects with
  * the first violation's message, and validate-time surfaces (e.g. the MCP
- * `validate_workflow` tool) report all of them as warnings.
+ * `validate_workflow` tool) report all of them as errors.
  *
  * Basic checks (always run): unique group IDs, unique group names, at least one
  * member, all referenced node IDs exist, and each node belongs to at most one group.

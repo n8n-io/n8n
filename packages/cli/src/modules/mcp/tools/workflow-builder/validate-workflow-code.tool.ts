@@ -20,14 +20,12 @@ import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { CODE_BUILDER_VALIDATE_TOOL } from './constants';
 
-/** Warning code carried by node-group rule violations in the tool response. */
-export const INVALID_NODE_GROUP_WARNING_CODE = 'INVALID_NODE_GROUP';
-
 export type ValidateWorkflowCodeToolOptions = {
 	/**
 	 * `102_mcp_canvas_groups` rollout flag: when true, node-group rule violations
-	 * are surfaced as warnings and traced in telemetry. Off by default — the tool
-	 * then behaves exactly as before groups were validated.
+	 * are reported as validation errors (`valid: false`) — they hard-block the
+	 * save path — and traced in telemetry. Off by default — the tool then
+	 * behaves exactly as before groups were validated.
 	 */
 	canvasGroupsEnabled?: boolean;
 };
@@ -149,11 +147,10 @@ export const createValidateWorkflowCodeTool = (
 			);
 			if (invalidToolSourceResponse) return invalidToolSourceResponse;
 
-			// `102_mcp_canvas_groups` rollout: surface node-group rule violations at
-			// validate time, with the same messages the save path rejects with. Flag
-			// off: output and telemetry are identical to before groups existed.
-			const groupWarnings: Array<{ code: string; message: string }> = [];
-			let groupViolationCodes: string[] = [];
+			// `102_mcp_canvas_groups` rollout: report node-group rule violations as
+			// validation errors, with the same messages the save path rejects with —
+			// like the ai_tool-source check above, they hard-block saving. Flag off:
+			// output and telemetry are identical to before groups existed.
 			if (options.canvasGroupsEnabled && (result.workflow.nodeGroups?.length ?? 0) > 0) {
 				// The group validator only reads id/name/type (+ typeVersion via
 				// getNodeType); map the SDK's NodeJSON (optional name/parameters)
@@ -174,15 +171,27 @@ export const createValidateWorkflowCodeTool = (
 					getNodeType: makeGetNodeTypeForGrouping(nodeTypes),
 				});
 				if (!groupsResult.valid) {
-					groupWarnings.push(
-						...groupsResult.violations.map((violation) => ({
-							code: INVALID_NODE_GROUP_WARNING_CODE,
-							message: violation.message,
-						})),
-					);
-					groupViolationCodes = [
-						...new Set(groupsResult.violations.map((violation) => violation.code)),
-					];
+					const errorMessages = groupsResult.violations.map((violation) => violation.message);
+
+					telemetryPayload.results = {
+						success: false,
+						error: errorMessages.join(' '),
+						data: {
+							groupCount: result.workflow.nodeGroups?.length ?? 0,
+							groupViolationCount: groupsResult.violations.length,
+							groupViolationCodes: [
+								...new Set(groupsResult.violations.map((violation) => violation.code)),
+							],
+						},
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+					const output = { valid: false, errors: errorMessages };
+					return {
+						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+						structuredContent: output,
+						isError: true,
+					};
 				}
 			}
 
@@ -190,15 +199,11 @@ export const createValidateWorkflowCodeTool = (
 				success: true,
 				data: {
 					nodeCount: result.workflow.nodes.length,
-					// SDK validation warnings only — group violations are counted
-					// separately so the metric keeps its meaning across flag cohorts.
 					warningCount: result.warnings.length,
+					// Rollout monitoring for `102_mcp_canvas_groups`; absent when the
+					// flag is off so the payload stays identical across cohorts.
 					...(options.canvasGroupsEnabled
-						? {
-								groupCount: result.workflow.nodeGroups?.length ?? 0,
-								groupViolationCount: groupWarnings.length,
-								...(groupViolationCodes.length > 0 ? { groupViolationCodes } : {}),
-							}
+						? { groupCount: result.workflow.nodeGroups?.length ?? 0 }
 						: {}),
 				},
 			};
@@ -209,9 +214,8 @@ export const createValidateWorkflowCodeTool = (
 				nodeCount: result.workflow.nodes.length,
 			};
 
-			const warnings = [...result.warnings, ...groupWarnings];
-			if (warnings.length > 0) {
-				response.warnings = warnings;
+			if (result.warnings.length > 0) {
+				response.warnings = result.warnings;
 			}
 
 			return {
