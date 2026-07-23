@@ -1,10 +1,12 @@
-import type {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionTypes,
+	NodeOperationError,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type IPollFunctions,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, type IPollFunctions } from 'n8n-workflow';
 
 interface PollResponseBody {
 	items?: IDataObject[];
@@ -32,7 +34,7 @@ export class E2eTestPollingTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'GET endpoint to poll. Expected to return JSON of shape { "items": [...] }',
+				description: 'GET endpoint to poll. Expected to return JSON of shape { "items": [...] }.',
 			},
 		],
 	};
