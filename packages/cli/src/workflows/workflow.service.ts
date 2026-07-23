@@ -988,7 +988,6 @@ export class WorkflowService {
 			await this.externalHooks.run('workflow.deactivate', [workflow]);
 		} catch (error) {
 			throw new WorkflowDeactivationBadRequestError(ensureError(error).message, {
-				nodeId: getErrorNodeId(error),
 				description: getErrorDescription(error),
 			});
 		}

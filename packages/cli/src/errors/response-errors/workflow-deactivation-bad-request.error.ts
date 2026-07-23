@@ -7,7 +7,7 @@ import { BadRequestError } from './bad-request.error';
 export class WorkflowDeactivationBadRequestError extends BadRequestError {
 	constructor(
 		message: string,
-		readonly meta: { nodeId?: string; validationError?: boolean; description?: string } = {},
+		readonly meta: { description?: string } = {},
 	) {
 		super(message);
 		this.name = 'WorkflowDeactivationBadRequestError';
