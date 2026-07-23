@@ -23,7 +23,7 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
 
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';

@@ -8,7 +8,7 @@ import {
 	LLM_PROVIDER_DEFAULTS,
 	LLM_PROVIDER_PRIORITY,
 	type LlmProviderDefault,
-} from './llm-provider-defaults';
+} from '../../llm-provider-defaults';
 
 export interface ModelLookup {
 	list(
