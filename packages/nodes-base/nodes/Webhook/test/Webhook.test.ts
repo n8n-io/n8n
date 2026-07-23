@@ -303,7 +303,7 @@ describe('Test Webhook Node', () => {
 			],
 		});
 
-		const setup = (parameters: Record<string, unknown>) => {
+		const setup = (parameters: Record<string, unknown>, typeVersion = 2.2) => {
 			context = mock<IWebhookFunctions>({ nodeHelpers: mock(), logger: mock() });
 			req = mock<Request>();
 
@@ -312,7 +312,7 @@ describe('Test Webhook Node', () => {
 			context.getChildNodes.mockReturnValue([]);
 			context.getNode.mockReturnValue({
 				type: 'n8n-nodes-base.webhook',
-				typeVersion: 2,
+				typeVersion,
 				name: 'Webhook',
 				parameters,
 			} as any);
@@ -406,14 +406,31 @@ describe('Test Webhook Node', () => {
 			);
 		});
 
-		it('still evaluates the legacy options.onlyRunIf in the default mode', async () => {
+		it('ignores the legacy options.onlyRunIf on version 2.2, so the default mode runs every request', async () => {
 			setup({ options: { onlyRunIf: '={{ false }}' } });
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
+			expect(context.evaluateExpression).not.toHaveBeenCalled();
+		});
+
+		it('evaluates the legacy options.onlyRunIf on versions below 2.2', async () => {
+			setup({ options: { onlyRunIf: '={{ false }}' } }, 2.1);
 			context.evaluateExpression.mockReturnValue(false);
 
 			const result = await node.webhook(context);
 
 			expect(result).toEqual({});
 			expect(context.evaluateExpression).toHaveBeenCalledWith('{{ false }}', 0);
+		});
+
+		it('ignores the new mode parameters on versions below 2.2', async () => {
+			setup({ onlyRunIfMode: 'conditions', onlyRunIfConditions: conditionsFor('other') }, 2.1);
+
+			const result = await node.webhook(context);
+
+			expect(result.workflowData).toBeDefined();
 		});
 	});
 });

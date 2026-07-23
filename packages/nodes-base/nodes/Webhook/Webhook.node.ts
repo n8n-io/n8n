@@ -53,8 +53,8 @@ export class Webhook extends Node {
 		iconColor: 'magenta',
 		name: 'webhook',
 		group: ['trigger'],
-		version: [1, 1.1, 2, 2.1],
-		defaultVersion: 2.1,
+		version: [1, 1.1, 2, 2.1, 2.2],
+		defaultVersion: 2.2,
 		description: 'Starts the workflow when a webhook is called',
 		eventTriggerDescription: 'Waiting for you to call the Test URL',
 		activationMessage: 'You can now make calls to your production webhook URL.',
@@ -264,42 +264,47 @@ export class Webhook extends Node {
 		// Read "Only Run If" configuration from the raw parameters: resolving it
 		// via getNodeParameter would evaluate the contained expressions through
 		// the expression engine, defeating the native fast path.
-		const onlyRunIfMode = (node.parameters?.onlyRunIfMode as string) ?? 'all';
-		if (onlyRunIfMode === 'conditions') {
-			const rawConditions = node.parameters?.onlyRunIfConditions as FilterValue | undefined;
-			if (rawConditions?.conditions?.length) {
-				try {
-					const pass = evaluateOnlyRunIfConditions(context, rawConditions, {
-						body: req.body,
-						headers: req.headers,
-						params: req.params,
-						query: req.query,
-					} as unknown as IDataObject);
-					if (!pass) return {};
-				} catch (error) {
-					context.logger.warn(
-						`Webhook "Only Run If" conditions failed to evaluate; allowing request through. ${(error as Error).message}`,
-						{ nodeName: node.name },
-					);
+		const evaluatesToRun = (rawOnlyRunIf: unknown): boolean => {
+			if (typeof rawOnlyRunIf !== 'string' || !rawOnlyRunIf.startsWith('=')) return true;
+			try {
+				return Boolean(context.evaluateExpression(rawOnlyRunIf.slice(1), 0));
+			} catch (error) {
+				context.logger.warn(
+					`Webhook "Only Run If" expression failed to evaluate; allowing request through. ${(error as Error).message}`,
+					{ nodeName: node.name },
+				);
+				return true;
+			}
+		};
+		if (node.typeVersion >= 2.2) {
+			// From 2.2 the top-level "Only Run Workflow If" mode is the only
+			// filter; the deprecated options.onlyRunIf is ignored so that the
+			// default "Always" mode truly runs every request.
+			const onlyRunIfMode = (node.parameters?.onlyRunIfMode as string) ?? 'all';
+			if (onlyRunIfMode === 'conditions') {
+				const rawConditions = node.parameters?.onlyRunIfConditions as FilterValue | undefined;
+				if (rawConditions?.conditions?.length) {
+					try {
+						const pass = evaluateOnlyRunIfConditions(context, rawConditions, {
+							body: req.body,
+							headers: req.headers,
+							params: req.params,
+							query: req.query,
+						} as unknown as IDataObject);
+						if (!pass) return {};
+					} catch (error) {
+						context.logger.warn(
+							`Webhook "Only Run If" conditions failed to evaluate; allowing request through. ${(error as Error).message}`,
+							{ nodeName: node.name },
+						);
+					}
 				}
+			} else if (onlyRunIfMode === 'expression') {
+				if (!evaluatesToRun(node.parameters?.onlyRunIfExpression)) return {};
 			}
 		} else {
 			const rawOptions = node.parameters?.options as { onlyRunIf?: unknown } | undefined;
-			const rawOnlyRunIf =
-				onlyRunIfMode === 'expression'
-					? node.parameters?.onlyRunIfExpression
-					: rawOptions?.onlyRunIf;
-			if (typeof rawOnlyRunIf === 'string' && rawOnlyRunIf.startsWith('=')) {
-				try {
-					const result = context.evaluateExpression(rawOnlyRunIf.slice(1), 0);
-					if (!result) return {};
-				} catch (error) {
-					context.logger.warn(
-						`Webhook "Only Run If" expression failed to evaluate; allowing request through. ${(error as Error).message}`,
-						{ nodeName: node.name },
-					);
-				}
-			}
+			if (!evaluatesToRun(rawOptions?.onlyRunIf)) return {};
 		}
 
 		const prepareOutput = setupOutputConnection(context, requestMethod, {

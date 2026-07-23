@@ -266,6 +266,11 @@ export const onlyRunIfModeProperty: INodeProperties = {
 		},
 	],
 	default: 'all',
+	displayOptions: {
+		show: {
+			'@version': [{ _cnd: { gte: 2.2 } }],
+		},
+	},
 	description:
 		'Whether to filter incoming requests before running the workflow. Requests that do not match receive a 200 response and no execution is created.',
 };
@@ -284,6 +289,7 @@ export const onlyRunIfConditionsProperty: INodeProperties = {
 	},
 	displayOptions: {
 		show: {
+			'@version': [{ _cnd: { gte: 2.2 } }],
 			onlyRunIfMode: ['conditions'],
 		},
 	},
@@ -300,6 +306,7 @@ export const onlyRunIfExpressionProperty: INodeProperties = {
 	placeholder: "{{ $json.body.campaign_id === 'user-research-invite' }}",
 	displayOptions: {
 		show: {
+			'@version': [{ _cnd: { gte: 2.2 } }],
 			onlyRunIfMode: ['expression'],
 		},
 	},
@@ -369,6 +376,14 @@ export const optionsProperty: INodeProperties = {
 			type: 'string',
 			default: '',
 			placeholder: "{{ $json.body.campaign_id === 'user-research-invite' }}",
+			// Deprecated in favor of the top-level "Only Run Workflow If" mode on
+			// Webhook >= 2.2. Kept for earlier Webhook versions and for the Wait
+			// node (1.x), which shares this options collection.
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { lt: 2.2 } }],
+				},
+			},
 			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
 			description:
 				'Expression evaluated against the incoming request. The workflow will run only if the expression returns true. <code>$json</code> exposes the request as <code>{ body, headers, params, query }</code>. Requests that do not match receive a 200 response, without creating an execution. If the expression fails to evaluate, the request is allowed through and the error is logged.',
