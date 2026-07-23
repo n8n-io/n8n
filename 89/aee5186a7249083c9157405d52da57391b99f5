@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/workflow-reviews/composables/useWorkflowReviewStatusSync.test.ts
+  s_41e37076417c9b::t_36568853bf16d1 117
+  s_41e37076417c9b::t_c86203d51301b3 153
+  s_41e37076417c9b::t_a4784fa8543092 140
+  s_41e37076417c9b::t_32673780d9a43b 104
+  s_41e37076417c9b::t_840eb77674d106 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "89aee5186a7249083c9157405d52da57391b99f5",
+  "prompts": {},
+  "sessions": {
+    "s_41e37076417c9b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "480c8620-d708-419e-ac08-fca1f0d2cb0a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

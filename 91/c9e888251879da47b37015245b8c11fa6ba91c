@@ -1,0 +1,19 @@
+packages/cli/src/workflows/publication/__tests__/workflow-publication-status.service.test.ts
+  s_b1ae3677d6bc36::t_d80d31a56d2b67 66,81,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "91c9e888251879da47b37015245b8c11fa6ba91c",
+  "prompts": {},
+  "sessions": {
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
