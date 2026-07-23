@@ -24,6 +24,7 @@ import {
 	publicApiScope,
 	projectScope,
 	validCursor,
+	deprecated,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
@@ -386,9 +387,11 @@ const workflowHandlers: WorkflowHandlers = {
 	],
 	publishWorkflow,
 	unpublishWorkflow,
-	// `activate`/`deactivate` are legacy aliases; they share the exact same code path.
-	activateWorkflow: publishWorkflow,
-	deactivateWorkflow: unpublishWorkflow,
+	activateWorkflow: [deprecated({ since: new Date('2026-07-23T00:00:00Z') }), ...publishWorkflow],
+	deactivateWorkflow: [
+		deprecated({ since: new Date('2026-07-23T00:00:00Z') }),
+		...unpublishWorkflow,
+	],
 	getWorkflowTags: [
 		publicApiScope('workflowTags:list'),
 		projectScope('workflow:read', 'workflow'),
