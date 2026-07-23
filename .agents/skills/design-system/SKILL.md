@@ -23,6 +23,7 @@ Reference these guidelines when:
 - When working with animations or transitions, ALWAYS prefer using mixins from `packages/frontend/@n8n/design-system/src/css/mixins/motion.scss`
 - When reviewing animations, follow the guides in `rules/web-animation-guidelines.md`
 - When reviewing UI changes or adding new components, follow `rules/web-interface-guidelines.md`
+- When authoring or reviewing **v2** components under `packages/frontend/@n8n/design-system/src/v2`, also follow [n8n:vue-component-conventions](../vue-component-conventions/SKILL.md) (Tree is the canonical reference; v2 forbids custom transitions)
 
 ## Examples
 - "Add a modal dialog for confirming workflow deletion" → Use `N8nDialog`
