@@ -294,7 +294,7 @@ async function finishSetup(): Promise<boolean> {
 }
 
 async function handleModelSaved() {
-	if (setupChain.value && !isSandboxConfigured.value) {
+	if (setupChain.value) {
 		activeDialog.value = 'sandbox';
 		return;
 	}

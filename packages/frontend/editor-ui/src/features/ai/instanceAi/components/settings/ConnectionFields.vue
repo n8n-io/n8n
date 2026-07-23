@@ -5,13 +5,7 @@ import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
-const HIDDEN_FIELDS = new Set([
-	...DOMAIN_RESTRICTION_FIELDS.map((field) => field.name),
-	'organizationId',
-	'header',
-	'headerName',
-	'headerValue',
-]);
+const HIDDEN_FIELDS = new Set(DOMAIN_RESTRICTION_FIELDS.map((field) => field.name));
 
 const props = defineProps<{
 	credentialType: string;

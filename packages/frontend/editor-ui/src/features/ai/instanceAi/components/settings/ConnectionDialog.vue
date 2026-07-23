@@ -22,6 +22,7 @@ import {
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import type { IUpdateInformation } from '@/Interface';
 import Banner from '@/app/components/Banner.vue';
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { SANDBOX_PROVIDER_LABELS, type InstanceAiConnectionKind } from '../../constants';
@@ -67,6 +68,7 @@ const fieldsData = ref<ICredentialDataDecryptedObject>({});
 /** The one extra input a kind may have: the model name (model) or the API key (n8n sandbox). */
 const extraValue = ref('');
 const isLoading = ref(false);
+const { next: nextHydration } = useLatestFetch();
 
 let hydratedSelection = '';
 let hydratedData: ICredentialDataDecryptedObject = {};
@@ -144,9 +146,7 @@ function getAssignedId(): string | null {
 
 function getAssignedSelection(): string {
 	if (props.kind === 'sandbox') {
-		if (store.settings?.daytonaCredentialId) return 'daytona';
-		if (store.settings?.n8nSandboxCredentialId) return 'n8n-sandbox';
-		return '';
+		return getAssignedId() ? (store.settings?.sandboxProvider ?? '') : '';
 	}
 	const credentials =
 		props.kind === 'model' ? store.instanceModelCredentials : store.serviceCredentials;
@@ -209,11 +209,7 @@ function seedData(selected: string): ICredentialDataDecryptedObject {
 }
 
 function applyLoadedData(data: ICredentialDataDecryptedObject): void {
-	if (
-		props.kind === 'sandbox' &&
-		!store.settings?.daytonaCredentialId &&
-		store.settings?.n8nSandboxCredentialId
-	) {
+	if (props.kind === 'sandbox' && selection.value === 'n8n-sandbox') {
 		extraValue.value = typeof data.value === 'string' ? data.value : '';
 		return;
 	}
@@ -293,9 +289,14 @@ function stageClear(): void {
 	}
 }
 
-function refreshCredentials(): void {
-	if (props.kind === 'model') void store.refreshInstanceModelCredentials();
-	else void store.refreshCredentials();
+async function refreshCredentials(): Promise<void> {
+	isLoading.value = true;
+	try {
+		if (props.kind === 'model') await store.refreshInstanceModelCredentials();
+		else await store.refreshCredentials();
+	} finally {
+		isLoading.value = false;
+	}
 }
 
 const assignedId = computed(getAssignedId);
@@ -322,32 +323,38 @@ function snapshot() {
 }
 
 async function hydrate() {
+	const isCurrent = nextHydration();
+	const credentialId = assignedId.value;
 	extraValue.value = props.kind === 'model' ? (store.settings?.modelName ?? '') : '';
-	selectedCredentialId.value = assignedId.value ?? '';
+	selectedCredentialId.value = credentialId ?? '';
 	selectingExistingCredential.value = false;
 	selection.value = readOnly.value
 		? getAssignedSelection()
 		: getAssignedSelection() || getDefaultSelection();
 	fieldsData.value = seedData(selection.value);
-	if (assignedId.value && !readOnly.value) {
+	isLoading.value = false;
+	if (credentialId && !readOnly.value) {
 		isLoading.value = true;
 		try {
-			const credential = await credentialsStore.getCredentialData({ id: assignedId.value });
+			const credential = await credentialsStore.getCredentialData({ id: credentialId });
+			if (!isCurrent()) return;
 			const data = (
 				credential && 'data' in credential ? (credential.data ?? {}) : {}
 			) as ICredentialDataDecryptedObject;
 			applyLoadedData(data);
 		} catch {
+			if (!isCurrent()) return;
 			fieldsData.value = seedData(selection.value);
 		} finally {
-			isLoading.value = false;
+			if (isCurrent()) isLoading.value = false;
 		}
 	}
+	if (!isCurrent()) return;
 	hydratedSelection = selection.value;
 	hydratedData = { ...fieldsData.value };
 	hydratedExtra = extraValue.value;
 	hydratedSnapshot = snapshot();
-	restoreStoredError(assignedId.value);
+	restoreStoredError(credentialId);
 }
 
 watch(
@@ -438,20 +445,21 @@ async function handlePrimary() {
 		else stageNew(connectionData);
 		if (!(await store.save())) return;
 	}
-	refreshCredentials();
+	await refreshCredentials();
+	if (!open.value) return;
 	// Emit before closing so the host can transition to the next dialog without an all-closed gap.
 	emit('saved');
 	open.value = false;
 }
 
 function handleBack() {
-	if (store.isSaving || isTestingCredential.value) return;
+	if (isBusy.value) return;
 	emit('back');
 	open.value = false;
 }
 
 function handleOpenChange(value: boolean) {
-	if (!value && (store.isSaving || isTestingCredential.value)) return;
+	if (!value && isBusy.value) return;
 	open.value = value;
 }
 
@@ -478,7 +486,7 @@ const primaryLabel = computed(() => {
 	<N8nDialog
 		:open="open"
 		size="medium"
-		:show-close-button="!store.isSaving && !isTestingCredential"
+		:show-close-button="!isBusy"
 		:data-test-id="`${copy.idPrefix}-dialog`"
 		@update:open="handleOpenChange"
 	>
@@ -621,7 +629,7 @@ const primaryLabel = computed(() => {
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('generic.back')"
-				:disabled="store.isSaving || isTestingCredential"
+				:disabled="isBusy"
 				:data-test-id="`${copy.idPrefix}-dialog-back`"
 				@click="handleBack"
 			/>
@@ -630,7 +638,7 @@ const primaryLabel = computed(() => {
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('settings.n8nAgent.setup.skip')"
-				:disabled="store.isSaving || isTestingCredential"
+				:disabled="isBusy"
 				:data-test-id="`${copy.idPrefix}-dialog-skip`"
 				@click="handleClose"
 			/>
@@ -639,7 +647,7 @@ const primaryLabel = computed(() => {
 				variant="outline"
 				size="medium"
 				:label="i18n.baseText('generic.cancel')"
-				:disabled="store.isSaving || isTestingCredential"
+				:disabled="isBusy"
 				:data-test-id="`${copy.idPrefix}-dialog-cancel`"
 				@click="handleClose"
 			/>

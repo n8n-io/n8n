@@ -981,7 +981,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId('n8n-agent-search-dialog-step')).toBeNull();
 		});
 
-		it('lets the user go back from the search step to the sandbox step', async () => {
+		it('keeps the setup chain when navigating back from search to model', async () => {
 			vi.mocked(fetchSettings).mockResolvedValue(store.settings!);
 			const { findByTestId, findByText, getByTestId } = renderComponent();
 
@@ -992,6 +992,10 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-search-dialog-step')).toBeVisible());
 
 			await fireEvent.click(getByTestId('n8n-agent-search-dialog-back'));
+			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
+			await fireEvent.click(getByTestId('n8n-agent-sandbox-dialog-back'));
+			await waitFor(() => expect(getByTestId('n8n-agent-model-dialog-step')).toBeVisible());
+			await fireEvent.click(getByTestId('n8n-agent-model-dialog-save'));
 			await waitFor(() => expect(getByTestId('n8n-agent-sandbox-dialog-step')).toBeVisible());
 		});
 

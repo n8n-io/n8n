@@ -294,6 +294,51 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
+	describe('settings persistence', () => {
+		const response = {
+			enabled: true,
+			permissions: {},
+			mcpServers: '',
+			mcpAccessEnabled: true,
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			sandboxImage: '',
+			sandboxTimeout: 60,
+			daytonaCredentialId: null,
+			n8nSandboxCredentialId: null,
+			searchCredentialId: null,
+			modelCredentialId: null,
+			modelName: null,
+			modelEnvConfigured: false,
+			sandboxEnvConfigured: false,
+			searchEnvConfigured: false,
+			localGatewayDisabled: false,
+		};
+
+		beforeEach(() => {
+			setModuleSettings(settingsStore, { enabled: false });
+			mockUpdateSettings.mockResolvedValue(response);
+			settingsStore.getModuleSettings = vi.fn().mockRejectedValue(new Error('refresh failed'));
+		});
+
+		it('keeps a settings save successful when the module refresh fails', async () => {
+			store.setField('mcpAccessEnabled', true);
+
+			await expect(store.save()).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(store.draft).toEqual({});
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+
+		it('keeps an enablement save successful when the module refresh fails', async () => {
+			await expect(store.persistEnabled(true)).resolves.toBe(true);
+
+			expect(store.settings).toEqual(response);
+			expect(settingsStore.moduleSettings['instance-ai']?.enabled).toBe(true);
+		});
+	});
+
 	describe('refreshModuleSettings', () => {
 		it('fetches preferences when they are not loaded yet', async () => {
 			const prefsResponse = {

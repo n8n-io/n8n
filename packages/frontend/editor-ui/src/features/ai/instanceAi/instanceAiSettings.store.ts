@@ -205,8 +205,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				title: i18n.baseText('settings.n8nAgent.toast.saved'),
 				type: 'success',
 			});
-			await settingsStore.getModuleSettings();
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
+			await settingsStore.getModuleSettings().catch(() => {});
 			return true;
 		} catch (error) {
 			clearDraft();
@@ -224,8 +224,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			const result = await updateSettings(rootStore.restApiContext, { enabled: value });
 			settings.value = result;
 			delete draft.enabled;
-			await settingsStore.getModuleSettings();
 			syncInstanceAiFlagIntoGlobalModuleSettings(result);
+			await settingsStore.getModuleSettings().catch(() => {});
 			toast.showMessage({
 				title: i18n.baseText('settings.n8nAgent.toast.saved'),
 				type: 'success',
