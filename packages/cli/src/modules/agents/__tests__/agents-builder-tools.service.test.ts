@@ -1007,10 +1007,7 @@ describe('AgentsBuilderToolsService', () => {
 
 			expect(result).toEqual({
 				ok: false,
-				errors: expect.arrayContaining([
-					expect.objectContaining({ path: 'model' }),
-					expect.objectContaining({ path: 'credential' }),
-				]),
+				errors: expect.arrayContaining([expect.objectContaining({ path: 'model' })]),
 			});
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});

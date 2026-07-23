@@ -576,7 +576,7 @@ describe('AgentValidationService — structured issues', () => {
 							code: '',
 							descriptor: { name: 'search_product_docs' },
 						},
-					},
+					} as unknown as Agent['tools'],
 				},
 			),
 		);

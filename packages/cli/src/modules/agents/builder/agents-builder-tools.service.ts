@@ -143,8 +143,11 @@ function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot
  * it surfaces as a `missing_credential` validation issue instead.
  */
 function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConfig | null) {
-	const result = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(incoming));
-	if (result.success && !isDraftAgentConfig(currentConfig) && isDraftAgentConfig(result.data)) {
+	const sanitized = sanitizeAgentJsonConfig(incoming);
+	if (
+		!isDraftAgentConfig(currentConfig) &&
+		isDraftAgentConfig(sanitized as { model?: string } | null | undefined)
+	) {
 		return {
 			success: false as const,
 			error: new z.ZodError([
@@ -156,7 +159,7 @@ function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConf
 			]),
 		};
 	}
-	return result;
+	return AgentJsonConfigSchema.safeParse(sanitized);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { z, type ZodError } from 'zod';
 
-import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { isDraftAgentConfig } from './agent-config-lifecycle';
+import { AgentIntegrationConfigSchema } from './agent-integration.schema';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
  * so validation stays in sync with the JSON config schema.
