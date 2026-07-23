@@ -3,7 +3,6 @@
 delete process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS;
 
 import { testDb } from '@n8n/backend-test-utils';
-
 import { createOwner } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
@@ -22,8 +21,8 @@ beforeEach(async () => {
 	ownerAgent = testServer.authAgentFor(owner);
 });
 
-describe('POST /workflow-review-requests (env flag off)', () => {
-	test('is unreachable (404) even though the license is present', async () => {
+describe('workflow-review-requests (env flag off)', () => {
+	test('POST is unreachable (404) even though the license is present', async () => {
 		await ownerAgent
 			.post('/workflow-review-requests')
 			.send({
@@ -31,5 +30,19 @@ describe('POST /workflow-review-requests (env flag off)', () => {
 				workflows: [{ workflowId: 'wf-1', workflowVersionId: 'version-1' }],
 			})
 			.expect(404);
+	});
+
+	test('GET inbox is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/inbox').expect(404);
+	});
+
+	test('GET summary is unreachable (404)', async () => {
+		await ownerAgent.get('/workflow-review-requests/summary').expect(404);
+	});
+});
+
+describe('GET /workflow-review-requests (env flag off)', () => {
+	test('is unreachable (404) even though the license is present', async () => {
+		await ownerAgent.get('/workflow-review-requests').query({ workflowId: 'wf-1' }).expect(404);
 	});
 });

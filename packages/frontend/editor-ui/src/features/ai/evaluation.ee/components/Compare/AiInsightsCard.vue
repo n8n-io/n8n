@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 import { useEvalCollectionsStore } from '../../evalCollections.store';
 import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
@@ -9,6 +9,9 @@ import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
 const props = defineProps<{
 	workflowId: string;
 	collectionId: string;
+	// True once the collection's runs are all settled with ≥2 completed — i.e. the
+	// backend can actually produce insights. Drives auto-generation on completion.
+	ready: boolean;
 }>();
 
 const i18n = useI18n();
@@ -25,6 +28,14 @@ const loading = computed(() => store.loadingInsights[props.collectionId] ?? fals
 // an error. Stay hidden until the license check resolves so an unlicensed user
 // never sees the card flash in before it vanishes.
 const hidden = computed(() => !licenseChecked.value || !license.isLicensed.value);
+
+// Only render once there's something to show: the runs are ready (insights are
+// generating/generated) or we already have a result/loading/error. A collection
+// that never becomes ready (e.g. all runs errored) shows nothing rather than a
+// permanent empty shell with a header and no body.
+const showCard = computed(
+	() => !hidden.value && (props.ready || !!insights.value || loading.value || errored.value),
+);
 
 const generatedTime = computed(() => {
 	const iso = insights.value?.generatedAt;
@@ -45,18 +56,32 @@ async function load(forceRegenerate: boolean) {
 	}
 }
 
+// Generate once the runs are settled and there's nothing cached — covering both
+// "opened an already-finished collection" and "runs finished while watching".
+// Not tied to mount, so insights appear when the second run completes without a
+// manual retry. `ready` only flips false→true once per collection, so this won't
+// loop; a cached envelope or an in-flight load also short-circuits it.
+async function maybeGenerate() {
+	if (!licenseChecked.value || !license.isLicensed.value) return;
+	if (!props.ready) return;
+	if (store.getInsights(props.collectionId) || loading.value) return;
+	await load(false);
+}
+
 onMounted(async () => {
 	await license.ensureLicenseLoaded();
 	licenseChecked.value = true;
-	if (!license.isLicensed.value) return;
-	if (!store.getInsights(props.collectionId)) {
-		await load(false);
-	}
+	await maybeGenerate();
 });
+
+watch(
+	() => props.ready,
+	() => void maybeGenerate(),
+);
 </script>
 
 <template>
-	<section v-if="!hidden" :class="$style.card" data-test-id="compare-ai-insights">
+	<section v-if="showCard" :class="$style.card" data-test-id="compare-ai-insights">
 		<header :class="$style.header">
 			<div :class="$style.title">
 				<N8nIcon icon="wand-sparkles" size="small" />
@@ -71,15 +96,6 @@ onMounted(async () => {
 					}}
 				</N8nText>
 			</div>
-			<N8nButton
-				variant="ghost"
-				size="small"
-				icon="refresh-cw"
-				:loading="loading"
-				:label="i18n.baseText('evaluation.compare.insights.regenerate')"
-				data-test-id="compare-ai-insights-regenerate"
-				@click="load(true)"
-			/>
 		</header>
 
 		<div v-if="loading" :class="$style.takeaways" data-test-id="compare-ai-insights-loading">

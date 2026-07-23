@@ -368,7 +368,7 @@ describe('SlackAppSetupService', () => {
 			'project-1',
 			user,
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
 			'agent-1',
@@ -429,7 +429,7 @@ describe('SlackAppSetupService', () => {
 			'project-1',
 			user,
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		expect(
 			agentIntegrationPersistenceService.saveCredentialIntegration.mock.invocationCallOrder[0],

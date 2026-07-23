@@ -424,6 +424,8 @@ export class FrontendService {
 			evaluation: {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 				collectionsEnabled: this.globalConfig.evaluation.collectionsEnabled,
+				configEvalsEnabled: this.globalConfig.evaluation.configEvalsEnabled,
+				agentEvalsEnabled: this.globalConfig.evaluation.agentEvalsEnabled,
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
 			canvasOnly: this.globalConfig.canvasOnly,

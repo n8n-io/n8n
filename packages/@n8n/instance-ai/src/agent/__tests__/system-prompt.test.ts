@@ -68,6 +68,16 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('reply language', () => {
+		it('keeps every user-visible message in the user language, tool-call narration included', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain("Reply in the user's language");
+			expect(prompt).toContain('narration between tool calls');
+			expect(prompt).toContain('do not let them pull your replies into English');
+		});
+	});
+
 	describe('clarifying questions', () => {
 		it('routes clarifying questions through ask-user instead of plain text', () => {
 			const prompt = getSystemPrompt({});

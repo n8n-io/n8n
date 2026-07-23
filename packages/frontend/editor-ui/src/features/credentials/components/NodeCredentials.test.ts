@@ -1061,6 +1061,179 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Dropbox')).toBeInTheDocument();
 		});
 
+		it('should show sibling OAuth quick connect when the auth field is kept in NDV', () => {
+			setupQuickConnectStores();
+
+			const discordOAuth2ApiType: ICredentialType = {
+				...slackOAuth2ApiType,
+				name: 'discordOAuth2Api',
+				displayName: 'Discord OAuth2 API',
+			};
+			const discordNode: INodeUi = {
+				parameters: { authentication: 'botToken' },
+				type: 'n8n-nodes-base.discord',
+				typeVersion: 2,
+				position: [0, 0],
+				id: 'discord-node-id',
+				name: 'Discord',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				discordOAuth2Api: discordOAuth2ApiType,
+				discordBotApi: {
+					name: 'discordBotApi',
+					displayName: 'Discord Bot API',
+					properties: [],
+				},
+			};
+			mockedStore(useNodeTypesStore).setNodeTypes([
+				{
+					displayName: 'Discord',
+					name: 'n8n-nodes-base.discord',
+					group: ['output'],
+					version: 2,
+					description: '',
+					defaults: { name: 'Discord' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'discordBotApi',
+							required: true,
+							displayOptions: { show: { authentication: ['botToken'] } },
+						},
+						{
+							name: 'discordOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Connection Type',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{ name: 'Bot Token', value: 'botToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'botToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+			ndvStore.activeNode = discordNode;
+
+			renderComponent(
+				{
+					props: {
+						node: discordNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.getByText('Connect to Discord')).toBeInTheDocument();
+		});
+
+		it('should not show sibling OAuth quick connect for an independent credential field', () => {
+			setupQuickConnectStores();
+
+			const pipedriveOAuth2ApiType: ICredentialType = {
+				...slackOAuth2ApiType,
+				name: 'pipedriveOAuth2Api',
+				displayName: 'Pipedrive OAuth2 API',
+			};
+			const pipedriveNode: INodeUi = {
+				parameters: {
+					authentication: 'apiToken',
+					incomingAuthentication: 'basicAuth',
+				},
+				type: 'n8n-nodes-base.pipedriveTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'pipedrive-trigger-node-id',
+				name: 'Pipedrive Trigger',
+				credentials: {},
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				pipedriveOAuth2Api: pipedriveOAuth2ApiType,
+				pipedriveApi: {
+					name: 'pipedriveApi',
+					displayName: 'Pipedrive API',
+					properties: [],
+				},
+				httpBasicAuth: {
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					properties: [],
+				},
+			};
+			mockedStore(useNodeTypesStore).setNodeTypes([
+				{
+					displayName: 'Pipedrive Trigger',
+					name: 'n8n-nodes-base.pipedriveTrigger',
+					group: ['trigger'],
+					version: 1,
+					description: '',
+					defaults: { name: 'Pipedrive Trigger' },
+					inputs: [],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'pipedriveApi',
+							required: true,
+							displayOptions: { show: { authentication: ['apiToken'] } },
+						},
+						{
+							name: 'pipedriveOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+						{
+							name: 'httpBasicAuth',
+							required: true,
+							displayOptions: { show: { incomingAuthentication: ['basicAuth'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							required: true,
+							options: [
+								{ name: 'API Token', value: 'apiToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'apiToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+			ndvStore.activeNode = pipedriveNode;
+
+			renderComponent(
+				{
+					props: {
+						node: pipedriveNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getAllByTestId('quick-connect-empty-state')).toHaveLength(1);
+			expect(screen.getAllByTestId('node-credentials-empty-state')).toHaveLength(1);
+		});
+
 		it('should show standard dropdown when credential already exists', () => {
 			setupQuickConnectStores();
 

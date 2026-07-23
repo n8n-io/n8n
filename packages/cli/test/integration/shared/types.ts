@@ -22,6 +22,7 @@ type EndpointGroup =
 	| 'community-packages'
 	| 'ldap'
 	| 'saml'
+	| 'otel'
 	| 'sourceControl'
 	| 'eventBus'
 	| 'license'
