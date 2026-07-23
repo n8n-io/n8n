@@ -1,4 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
+import { BLOCK_ACCESS_ASSIGNMENT } from '@n8n/api-types';
 import { useUserRoleProvisioningForm } from './useUserRoleProvisioningForm';
 import * as provisioningApi from '@n8n/rest-api-client/api/provisioning';
 import * as roleMappingRuleApi from '@n8n/rest-api-client/api/roleMappingRule';
@@ -373,6 +374,113 @@ describe('useUserRoleProvisioningForm', () => {
 
 			expect(roleAssignment.value).toBe('instance');
 			expect(mappingMethod.value).toBe('idp');
+		});
+
+		it('should reset defaultInstanceRole to the stored value', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					defaultInstanceRole: 'global:admin',
+				}),
+			);
+
+			const { roleAssignment, defaultInstanceRole, revertRoleAssignment } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(defaultInstanceRole.value).toBe('global:admin'));
+
+			roleAssignment.value = 'instance_and_project';
+			defaultInstanceRole.value = BLOCK_ACCESS_ASSIGNMENT;
+
+			revertRoleAssignment();
+
+			expect(defaultInstanceRole.value).toBe('global:admin');
+		});
+	});
+
+	describe('defaultInstanceRole', () => {
+		it('seeds from config.defaultInstanceRole', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					defaultInstanceRole: 'global:admin',
+				}),
+			);
+
+			const { defaultInstanceRole } = useUserRoleProvisioningForm('oidc');
+
+			await vi.waitFor(() => expect(defaultInstanceRole.value).toBe('global:admin'));
+		});
+
+		it('defaults to global:member when the config field is unset', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+
+			const { defaultInstanceRole } = useUserRoleProvisioningForm('oidc');
+
+			await vi.waitFor(() => expect(defaultInstanceRole.value).toBe('global:member'));
+		});
+
+		it('includes defaultInstanceRole in the PATCH payload (round-trips the sentinel)', async () => {
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
+			);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					defaultInstanceRole: BLOCK_ACCESS_ASSIGNMENT,
+				}),
+			);
+
+			const { roleAssignment, defaultInstanceRole, saveProvisioningConfig } =
+				useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
+
+			defaultInstanceRole.value = BLOCK_ACCESS_ASSIGNMENT;
+			await saveProvisioningConfig(false);
+
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ defaultInstanceRole: BLOCK_ACCESS_ASSIGNMENT }),
+			);
+		});
+
+		it('triggers a save when only the default condition changes', async () => {
+			// Stored assignment/method are unchanged; only the default role differs.
+			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+					defaultInstanceRole: 'global:member',
+				}),
+			);
+			vi.mocked(provisioningApi.saveProvisioningConfig).mockResolvedValue(
+				mockProvisioningConfig({
+					scopesProvisionInstanceRole: true,
+					scopesProvisionProjectRoles: true,
+					defaultInstanceRole: 'global:admin',
+				}),
+			);
+
+			const {
+				roleAssignment,
+				defaultInstanceRole,
+				isUserRoleProvisioningChanged,
+				saveProvisioningConfig,
+			} = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
+
+			expect(isUserRoleProvisioningChanged.value).toBe(false);
+			defaultInstanceRole.value = 'global:admin';
+			expect(isUserRoleProvisioningChanged.value).toBe(true);
+
+			const result = await saveProvisioningConfig(false);
+
+			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ defaultInstanceRole: 'global:admin' }),
+			);
+			expect(result).toEqual({ configChanged: true });
 		});
 	});
 

@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
 import Draggable from 'vuedraggable';
-import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type {
 	RoleMappingRuleResponse,
 	RoleMappingRuleType,
 } from '@n8n/rest-api-client/api/roleMappingRule';
 import RuleRow from './RuleRow.vue';
+import DefaultConditionRow from './DefaultConditionRow.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -33,15 +33,7 @@ const emit = defineEmits<{
 	'update:fallbackRole': [value: string];
 }>();
 
-const rolesStore = useRolesStore();
-
-const EXCLUDED_GLOBAL_ROLES = ['global:owner', 'global:chatUser'];
-
-const fallbackRoleOptions = computed(() =>
-	rolesStore.roles.global
-		.filter((role) => !EXCLUDED_GLOBAL_ROLES.includes(role.slug))
-		.map((role) => ({ label: role.displayName, value: role.slug })),
-);
+const i18n = useI18n();
 
 function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	if (
@@ -82,35 +74,21 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 				/>
 			</template>
 		</Draggable>
-		<!-- Default fallback row -->
-		<div :class="$style.defaultRow">
+		<!-- Default condition row: instance rules assign a fallback role (or Block
+		     access); project rules simply grant no access when nothing matches. -->
+		<DefaultConditionRow
+			v-if="props.type !== 'project'"
+			:model-value="props.fallbackRole"
+			:label="i18n.baseText('settings.sso.settings.roleMappingRules.defaultCondition.instance')"
+			:disabled="props.disabled"
+			@update:model-value="emit('update:fallbackRole', String($event))"
+		/>
+		<div v-else :class="$style.defaultRow">
 			<div :class="$style.defaultCellIcon">
 				<N8nIcon icon="lock" size="small" color="text-light" />
 			</div>
 			<div :class="$style.defaultCellText">
-				{{
-					props.type === 'project'
-						? 'Default condition - If no rules match, no project access given'
-						: 'Default condition - If no rules above match'
-				}}
-			</div>
-			<div v-if="props.type !== 'project'" :class="$style.defaultCellRole">
-				<span :class="$style.label">assign</span>
-				<N8nSelect
-					:model-value="props.fallbackRole"
-					size="small"
-					:disabled="props.disabled"
-					data-test-id="fallback-role-select"
-					:class="$style.fallbackSelect"
-					@update:model-value="emit('update:fallbackRole', String($event))"
-				>
-					<N8nOption
-						v-for="option in fallbackRoleOptions"
-						:key="option.value"
-						:label="option.label"
-						:value="option.value"
-					/>
-				</N8nSelect>
+				{{ i18n.baseText('settings.sso.settings.roleMappingRules.defaultCondition.project') }}
 			</div>
 			<div :class="$style.defaultCellSpacer" />
 		</div>
@@ -165,28 +143,10 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	min-width: 0;
 }
 
-.defaultCellRole {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: 0 var(--spacing--2xs);
-	flex-shrink: 0;
-}
-
 .defaultCellSpacer {
 	// Match 2 × cellAction (24px each) from RuleRow
 	width: 48px;
 	flex-shrink: 0;
-}
-
-.label {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	white-space: nowrap;
-}
-
-.fallbackSelect {
-	width: 130px;
 }
 
 .ghost {
