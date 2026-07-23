@@ -26,16 +26,22 @@ export function createAgentSequence(
 	model: BaseChatModel,
 	tools: Array<DynamicStructuredTool | Tool>,
 	prompt: ChatPromptTemplate,
-	_options: { maxIterations?: number; returnIntermediateSteps?: boolean },
+	_options: {
+		enableStreaming?: boolean;
+		maxIterations?: number;
+		returnIntermediateSteps?: boolean;
+	},
 	outputParser?: N8nOutputParser,
 	memory?: BaseChatMemory,
 	fallbackModel?: BaseChatModel | null,
 ) {
+	const streamRunnable = _options.enableStreaming === true;
+
 	const agent = createToolCallingAgent({
 		llm: model,
 		tools: getAllTools(model, tools),
 		prompt,
-		streamRunnable: false,
+		streamRunnable,
 	});
 
 	let fallbackAgent: AgentRunnableSequence | undefined;
@@ -44,7 +50,7 @@ export function createAgentSequence(
 			llm: fallbackModel,
 			tools: getAllTools(fallbackModel, tools),
 			prompt,
-			streamRunnable: false,
+			streamRunnable,
 		});
 	}
 	const runnableAgent = RunnableSequence.from([
@@ -54,7 +60,7 @@ export function createAgentSequence(
 	]) as AgentRunnableSequence;
 
 	runnableAgent.singleAction = true;
-	runnableAgent.streamRunnable = false;
+	runnableAgent.streamRunnable = streamRunnable;
 
 	return runnableAgent;
 }
