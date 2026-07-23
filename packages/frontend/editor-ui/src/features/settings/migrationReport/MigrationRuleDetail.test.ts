@@ -2,18 +2,23 @@ import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
+import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUIStore } from '@/app/stores/ui.store';
+import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 
 vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReportForRule: vi.fn(),
+	migrateWorkflowForRule: vi.fn(),
 }));
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
+let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowWithIssue = {
@@ -70,6 +75,7 @@ const mockRuleResult: BreakingChangeWorkflowRuleResult = {
 			description: 'Please update to the latest version',
 		},
 	],
+	migratable: false,
 	affectedWorkflows: [mockWorkflowWithIssue, mockWorkflowWithMultipleNodes],
 };
 
@@ -83,6 +89,7 @@ const createMockRuleResult = (
 		ruleSeverity: 'critical',
 		ruleDocumentationUrl: 'https://docs.example.com/rule-1',
 		recommendations: [],
+		migratable: false,
 		affectedWorkflows: [],
 		...overrides,
 	};
@@ -99,6 +106,7 @@ describe('MigrationRuleDetail', () => {
 			baseUrl: 'http://localhost:5678',
 			pushRef: 'test-push-ref',
 		};
+		uiStore = mockedStore(useUIStore);
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -150,6 +158,54 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText(/Last executed/)).toBeInTheDocument();
 				expect(screen.getByText(/Last updated/)).toBeInTheDocument();
 			});
+		});
+	});
+
+	describe('migration', () => {
+		it('should not render a Migrate button when the rule is not migratable', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Test Rule')).toBeInTheDocument());
+			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('opens the migrate modal with the rule and workflow when Migrate is clicked', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await userEvent.click(await screen.findByTestId('migrate-workflow-button'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith(
+				expect.objectContaining({
+					name: MIGRATE_WORKFLOW_MODAL_KEY,
+					data: expect.objectContaining({
+						ruleId: 'rule-1',
+						workflow: expect.objectContaining({ id: mockWorkflowWithIssue.id }),
+					}),
+				}),
+			);
+			// Nothing is migrated yet — the modal drives that.
+			expect(screen.getByTestId('migrate-workflow-button')).toBeInTheDocument();
+		});
+
+		it('marks the row migrated when the modal reports a successful migration', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await userEvent.click(await screen.findByTestId('migrate-workflow-button'));
+
+			// Emit on the same bus the detail passed into the modal.
+			const { data } = vi.mocked(uiStore.openModalWithData).mock.calls[0][0];
+			(data.eventBus as EventBus).emit('migrated', { workflowId: mockWorkflowWithIssue.id });
+
+			await waitFor(() =>
+				expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument(),
+			);
 		});
 	});
 
