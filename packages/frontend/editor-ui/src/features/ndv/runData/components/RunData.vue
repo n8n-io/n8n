@@ -2273,6 +2273,10 @@ defineExpose({ enterEditMode });
 	margin-bottom: var(--ndv--spacing);
 	padding: var(--ndv--spacing) var(--spacing--3xs) 0 var(--ndv--spacing);
 	position: relative;
+	/* Scroll overflowing header controls within the header itself, so they stay
+	   reachable on narrow panels without dragging the whole panel's background along */
+	overflow-x: auto;
+	overflow-y: hidden;
 	min-height: calc(30px + var(--ndv--spacing));
 	scrollbar-width: thin;
 	container-type: inline-size;
