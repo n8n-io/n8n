@@ -1000,6 +1000,7 @@ watch(
 			/>
 			<FilterConditions
 				v-else-if="item.parameter.type === 'filter'"
+				:key="node?.name ?? ''"
 				:parameter="item.parameter"
 				:value="getParameterValue<FilterValue>(item.parameter.name)"
 				:path="item.path"
