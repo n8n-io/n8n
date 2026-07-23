@@ -2,6 +2,7 @@ import type {
 	AddDatasetRowDto,
 	DatasetCandidateResponse,
 	EvaluationConfigDto,
+	MetricScale,
 	StartTestRunPayload,
 	UpsertEvaluationConfigDto,
 } from '@n8n/api-types';
@@ -14,6 +15,10 @@ export interface TestRunRecord {
 	workflowId: string;
 	status: 'new' | 'running' | 'completed' | 'error' | 'cancelled' | 'warning' | 'success';
 	metrics?: Record<string, number> | null;
+	// Per-metric scale, resolved server-side from the run's frozen config
+	// snapshot, so the runs page normalizes scores the same way the compare view
+	// does. Absent for runs with no snapshot (→ FE name-based fallback).
+	metricScales?: Record<string, MetricScale>;
 	createdAt: string;
 	updatedAt: string;
 	runAt: string;

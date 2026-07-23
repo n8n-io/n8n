@@ -245,6 +245,17 @@ export function getMetricScale(category: MetricCategory | undefined): MetricDisp
 	return category === 'aiBased' ? 'oneToFive' : 'normalized';
 }
 
+// Display scale for a metric: prefer the authoritative `MetricScale` resolved
+// from the run's config (oneToFive vs. the 0–1 `normalized` bucket that covers
+// unit + boolean); fall back to the coarse category heuristic when absent.
+function resolveDisplayScale(options: {
+	category?: MetricCategory;
+	scale?: MetricScale;
+}): MetricDisplayScale {
+	if (options.scale) return options.scale === 'oneToFive' ? 'oneToFive' : 'normalized';
+	return getMetricScale(options.category);
+}
+
 // A check as rendered on the wizard results page. `isAiJudged` checks show an
 // average score; the rest are pass/fail. Icon fields mirror the check tile.
 export type ResultCheck = {
@@ -262,14 +273,22 @@ export function casePassed(value: number | undefined): boolean {
 	return normalizeMetricValue(value) === 1;
 }
 
-// aiBased: 1-5 → value/5*100 (so 5 → 100%). Otherwise: |v|≤1 is a 0-1 score
-// scaled to percent; out-of-range values are assumed to be percentages already.
+// With a resolved `scale` (from the run's config snapshot) the score goes
+// through the shared `normalizeMetricScore`, so the runs page matches the
+// compare view — a 1–5 judge metric renders 100%, not its raw 5. Without a
+// scale the legacy category heuristic applies: aiBased 1–5 → value/5*100;
+// otherwise |v|≤1 is a 0-1 score scaled to percent and out-of-range values are
+// assumed to be percentages already.
 export function formatMetricPercent(
 	value: number | undefined,
-	options: { category?: MetricCategory } = {},
+	options: { key?: string; category?: MetricCategory; scale?: MetricScale } = {},
 ): string {
 	const num = normalizeMetricValue(value);
 	if (num === undefined) return '–';
+	if (options.scale) {
+		const score = normalizeMetricScore(options.key ?? '', num, options.scale);
+		return score === null ? '–' : `${Math.round(score * 100)}%`;
+	}
 	const scaled =
 		getMetricScale(options.category) === 'oneToFive'
 			? (num / 5) * 100
@@ -325,9 +344,9 @@ function formatScoreNumerator(value: number): string {
 // `x/5` form for AI-based per-case rows (only — 0-1 metrics duplicate the %).
 export function formatMetricRawScore(
 	value: number | undefined,
-	options: { category?: MetricCategory } = {},
+	options: { category?: MetricCategory; scale?: MetricScale } = {},
 ): string {
-	if (getMetricScale(options.category) !== 'oneToFive') return '';
+	if (resolveDisplayScale(options) !== 'oneToFive') return '';
 	const num = normalizeMetricValue(value);
 	if (num === undefined) return '';
 	return `${formatScoreNumerator(num)}/5`;
@@ -349,11 +368,11 @@ export function formatMetricAverage(
 // Run-level totals: "13/15" (AI-based: sum / 5×count) or "1.11/6" (0-1: sum / count).
 export function formatMetricRawScoreSum(
 	values: Array<number | undefined>,
-	options: { category?: MetricCategory } = {},
+	options: { category?: MetricCategory; scale?: MetricScale } = {},
 ): string {
 	const usable = values.map(normalizeMetricValue).filter((v): v is number => v !== undefined);
 	if (usable.length === 0) return '';
-	const isOneToFive = getMetricScale(options.category) === 'oneToFive';
+	const isOneToFive = resolveDisplayScale(options) === 'oneToFive';
 	const perCaseMax = isOneToFive ? 5 : 1;
 	const numeratorSum = usable.reduce((sum, value) => sum + value, 0);
 	const denominator = perCaseMax * usable.length;
@@ -366,11 +385,11 @@ export function formatMetricRawScoreSum(
 // Signed delta in percentage points (e.g. "+4%" / "-28%"). 1-5: +1 → +20%; 0-1: +0.04 → +4%.
 export function formatDeltaPercent(
 	delta: number | undefined,
-	options: { category?: MetricCategory } = {},
+	options: { category?: MetricCategory; scale?: MetricScale } = {},
 ): string {
 	if (delta === undefined || Number.isNaN(delta)) return '';
 	const scaled =
-		getMetricScale(options.category) === 'oneToFive'
+		resolveDisplayScale(options) === 'oneToFive'
 			? (delta / 5) * 100
 			: Math.abs(delta) <= 1
 				? delta * 100

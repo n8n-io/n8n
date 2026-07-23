@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { MetricScale } from '@n8n/api-types';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import {
 	formatDeltaPercent,
@@ -11,10 +12,13 @@ import {
 const props = defineProps<{
 	delta: number | undefined;
 	category?: MetricCategory;
+	scale?: MetricScale;
 }>();
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
-const label = computed(() => formatDeltaPercent(props.delta, { category: props.category }));
+const label = computed(() =>
+	formatDeltaPercent(props.delta, { category: props.category, scale: props.scale }),
+);
 const icon = computed(() => (tone.value === 'negative' ? 'trending-down' : 'trending-up'));
 </script>
 

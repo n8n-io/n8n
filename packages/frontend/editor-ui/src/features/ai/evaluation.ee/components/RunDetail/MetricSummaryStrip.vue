@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ElScrollbar } from 'element-plus';
+import type { MetricScale } from '@n8n/api-types';
 import {
 	computeDelta,
 	getUserDefinedMetricNames,
@@ -13,6 +14,9 @@ const props = defineProps<{
 	currentMetrics: Record<string, number> | null | undefined;
 	previousMetrics: Record<string, number> | null | undefined;
 	metricSources?: Record<string, MetricSource>;
+	// Per-metric scale from the run's config snapshot — drives scale-correct
+	// score formatting (a 1–5 metric → 100%, not 5%).
+	metricScales?: Record<string, MetricScale>;
 	// Per-case raw values per metric — surfaces "sum/count" tooltips on each card.
 	caseValuesByKey?: Record<string, Array<number | undefined>>;
 }>();
@@ -27,6 +31,7 @@ const cards = computed(() =>
 			currentValue: normalizeMetricValue(props.currentMetrics?.[name]),
 			delta: computeDelta(props.currentMetrics?.[name], props.previousMetrics?.[name]),
 			category: source?.category,
+			scale: props.metricScales?.[name],
 			sourceNodeName: source?.nodeName,
 			caseValues: props.caseValuesByKey?.[name] ?? [],
 		};
@@ -49,6 +54,7 @@ const cards = computed(() =>
 				:current-value="card.currentValue"
 				:delta="card.delta"
 				:category="card.category"
+				:scale="card.scale"
 				:source-node-name="card.sourceNodeName"
 				:case-values="card.caseValues"
 			/>
