@@ -1,5 +1,6 @@
 import {
 	AgentIntegrationSchema,
+	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
@@ -66,11 +67,16 @@ export class AgentIntegrationPersistenceService {
 		const validated = parseResult.data;
 		const { type, credentialId } = validated;
 
-		if (credentialId === '') {
+		if (isDraftIntegration(validated)) {
 			throw new UserError('Credential integration requires a credential ID.');
 		}
 
-		const existing = agent.integrations ?? [];
+		// Drop a same-type draft entry (empty credentialId, written by the builder
+		// before setup completes) so connecting a real credential replaces it
+		// instead of leaving both the draft and the connected entry behind.
+		const existing = (agent.integrations ?? []).filter(
+			(i) => !(i.type === type && isDraftIntegration(i)),
+		);
 		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
 
 		agent.integrations = alreadyExists

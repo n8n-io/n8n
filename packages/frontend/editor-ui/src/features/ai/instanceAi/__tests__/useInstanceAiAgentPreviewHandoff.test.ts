@@ -17,13 +17,16 @@ vi.mock('../composables/useInstanceAiHandoff', () => ({
 	buildInstanceAiAgentPreviewHandoffContext: ({
 		agentId,
 		threadId,
+		executionId,
 	}: {
 		agentId: string;
 		threadId: string;
+		executionId?: string;
 	}) => ({
 		source: 'agent-preview',
 		agentId,
 		threadId,
+		...(executionId ? { executionId } : {}),
 	}),
 	useInstanceAiHandoff: () => ({ openThreadWithContext: openThreadWithContextMock }),
 }));
@@ -63,6 +66,41 @@ describe('useInstanceAiAgentPreviewHandoff', () => {
 		expect(trackMock).toHaveBeenCalledWith('Instance AI opened from agent preview', {
 			agent_id: 'agent-1',
 			preview_thread_id: 'thread-1',
+		});
+	});
+
+	it('passes executionId into preview handoff context and telemetry', async () => {
+		openThreadWithContextMock.mockResolvedValue(true);
+		const { useInstanceAiAgentPreviewHandoff } = await import(
+			'../composables/useInstanceAiAgentPreviewHandoff'
+		);
+
+		await useInstanceAiAgentPreviewHandoff().sendPreviewSessionToInstanceAi({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'exec-1',
+		});
+
+		expect(openThreadWithContextMock).toHaveBeenCalledWith(
+			'project-1',
+			{
+				source: 'agent-preview',
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'exec-1',
+			},
+			{
+				source: 'agent_preview',
+				origin: 'internal',
+				sourceContext: { agentId: 'agent-1', previewThreadId: 'thread-1' },
+			},
+			{ newTab: true },
+		);
+		expect(trackMock).toHaveBeenCalledWith('Instance AI opened from agent preview', {
+			agent_id: 'agent-1',
+			preview_thread_id: 'thread-1',
+			preview_execution_id: 'exec-1',
 		});
 	});
 

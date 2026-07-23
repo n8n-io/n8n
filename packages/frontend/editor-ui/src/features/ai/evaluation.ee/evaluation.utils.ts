@@ -188,20 +188,10 @@ export function buildScoreShapedMetricGroups(
 	}));
 }
 
-// Mean of a metrics map's score values, each normalized to [0, 1] by its scale.
-// Null when no metric qualifies. Single definition so cards, cases table, and
-// hero chart agree on what a case/run scored.
-export function averageNormalizedScore(
-	metrics: Record<string, number> | null | undefined,
-	scaleByMetric?: Record<string, MetricScale>,
-): number | null {
-	if (!metrics) return null;
-	const values = Object.entries(metrics)
-		.map(([key, value]) => normalizeMetricScore(key, value, scaleByMetric?.[key]))
-		.filter((value): value is number => value !== null);
-	if (values.length === 0) return null;
-	return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
+// Mean of a metrics map's score values, normalized to [0, 1] by scale. Single
+// definition in @n8n/api-types so the FE compare surfaces and the BE insights
+// agent can't disagree on what a case/run scored.
+export { averageNormalizedScore } from '@n8n/api-types';
 
 export function computeDelta(
 	current: number | undefined,

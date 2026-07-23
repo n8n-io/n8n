@@ -111,6 +111,58 @@ describe('workflow package export', () => {
 			}
 		});
 
+		it('folds node type usage into manifest.requirements.nodeTypes', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const trigger = (id: string) => ({
+				id,
+				name: `Trigger ${id}`,
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			});
+			const wfA = await createWorkflow(
+				{ name: 'Alpha', nodes: [trigger('t1')], connections: {} },
+				project,
+			);
+			const wfB = await createWorkflow(
+				{
+					name: 'Beta',
+					nodes: [
+						trigger('t2'),
+						{
+							id: 's1',
+							name: 'Set',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3.4,
+							position: [200, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+				},
+				project,
+			);
+
+			const stream = await service.exportPackage({
+				user: owner,
+				workflowIds: [wfA.id, wfB.id],
+			});
+			const { manifest } = await readExport(stream);
+
+			expect(manifest.requirements).toEqual({
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						usedByWorkflows: [wfA.id, wfB.id],
+					},
+					{ type: 'n8n-nodes-base.set', typeVersion: 3.4, usedByWorkflows: [wfB.id] },
+				],
+			});
+		});
+
 		it('disambiguates targets when two workflows share a name', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
@@ -226,6 +278,13 @@ describe('workflow package export', () => {
 
 			expect(manifest.requirements).toEqual({
 				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1,
+						usedByWorkflows: [parent.id],
+					},
+				],
 			});
 		});
 
@@ -271,6 +330,13 @@ describe('workflow package export', () => {
 
 			expect(manifest.requirements).toEqual({
 				workflows: [{ id: child.id, name: child.name, usedByWorkflows: [parent.id] }],
+				nodeTypes: [
+					{
+						type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+						typeVersion: 2.2,
+						usedByWorkflows: [parent.id],
+					},
+				],
 			});
 		});
 
@@ -334,6 +400,13 @@ describe('workflow package export', () => {
 
 			expect(manifest.requirements).toEqual({
 				workflows: [{ id: child.id, name: child.name, usedByWorkflows: expectedUsedByWorkflows }],
+				nodeTypes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflow',
+						typeVersion: 1,
+						usedByWorkflows: [parentA.id, parentB.id],
+					},
+				],
 			});
 		});
 

@@ -125,6 +125,32 @@ oneOf:
         nullable: true
         description: 'For `id-in-other-project`: the project that already owns the id.'
   - type: object
+    description: >
+      A node type — or a version of a node type — used by a package workflow that
+      this instance does not have, under `missingNodeTypeMode=fail`. One issue is
+      reported per missing `(nodeType, typeVersion)` pair.
+    required:
+      - type
+      - nodeType
+      - typeVersion
+      - usedByWorkflows
+    properties:
+      type:
+        type: string
+        enum:
+          - missing-node-type
+      nodeType:
+        type: string
+        description: Full node type name as used by the package's workflows.
+      typeVersion:
+        type: number
+        description: Node type version the package's workflows use.
+      usedByWorkflows:
+        type: array
+        items:
+          type: string
+        description: Package workflow ids that use this node type and version.
+  - type: object
     description: A credential reference that could not be resolved in the target project.
     required:
       - type
