@@ -731,13 +731,34 @@ describe('validateWorkflowGroups', () => {
 			{
 				groupId: 'g2',
 				code: 'node-in-multiple-groups',
-				message: 'Node "a" belongs to multiple groups: "First" and "Second".',
+				message: 'Node "A" belongs to multiple groups: "First" and "Second".',
 			},
 			// The clean first group still fails its graph rules against the second.
 			{
 				groupId: 'g1',
 				code: 'node-already-grouped',
-				message: 'Node group "First" (g1) contains nodes that already belong to another group: a.',
+				message: 'Node group "First" (g1) contains nodes that already belong to another group: A.',
+			},
+		]);
+	});
+
+	it('falls back to the node id in messages when the node has no name', () => {
+		const unnamed = makeNode({ id: 'node-id-1', name: '' });
+
+		const result = validateWorkflowGroups({
+			nodes: [unnamed],
+			connectionsBySourceNode: {},
+			nodeGroups: [
+				{ id: 'g1', name: 'First', nodeIds: ['node-id-1'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['node-id-1'] },
+			],
+			getNodeType: null,
+		});
+
+		expectViolations(result, [
+			{
+				code: 'node-in-multiple-groups',
+				message: 'Node "node-id-1" belongs to multiple groups: "First" and "Second".',
 			},
 		]);
 	});

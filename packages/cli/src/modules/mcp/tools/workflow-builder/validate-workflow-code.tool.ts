@@ -115,6 +115,8 @@ export const createValidateWorkflowCodeTool = (
 		},
 	},
 	handler: async ({ code }: { code: string }) => {
+		console.log('[🤖 VALIDATE TOOL] groups: ', options.canvasGroupsEnabled);
+
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: CODE_BUILDER_VALIDATE_TOOL.toolName,

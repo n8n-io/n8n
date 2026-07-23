@@ -211,7 +211,10 @@ export function validateWorkflowGroups<TNode extends INode>({
 		violations.push({ groupId: group.id, groupName: group.name, code, message });
 	};
 
-	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+	const nodeById = new Map(nodes.filter((node) => Boolean(node.id)).map((node) => [node.id, node]));
+	// Node names are how users and agents identify nodes, so messages use them;
+	// the id is only a fallback for members without a resolvable name.
+	const nodeLabel = (nodeId: string) => nodeById.get(nodeId)?.name || nodeId;
 	const seenGroupIds = new Set<string>();
 	const seenGroupNames = new Set<string>();
 	const nodeToGroup = new Map<string, string>();
@@ -240,7 +243,7 @@ export function validateWorkflowGroups<TNode extends INode>({
 
 		for (const nodeId of group.nodeIds) {
 			// All referenced nodes must exist
-			if (!nodeIds.has(nodeId)) {
+			if (!nodeById.has(nodeId)) {
 				addBasicViolation(
 					'unknown-node-id',
 					`Group "${group.name}" references node ID "${nodeId}" that does not exist in the workflow.`,
@@ -252,7 +255,7 @@ export function validateWorkflowGroups<TNode extends INode>({
 			if (existingGroup) {
 				addBasicViolation(
 					'node-in-multiple-groups',
-					`Node "${nodeId}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
+					`Node "${nodeLabel(nodeId)}" belongs to multiple groups: "${existingGroup}" and "${group.name}".`,
 				);
 			} else {
 				nodeToGroup.set(nodeId, group.name);
@@ -261,7 +264,6 @@ export function validateWorkflowGroups<TNode extends INode>({
 	}
 
 	if (getNodeType) {
-		const nodeById = new Map(nodes.map((node) => [node.id, node]));
 		const connections = connectionsBySourceNode ?? {};
 
 		for (const group of nodeGroups) {
@@ -277,7 +279,7 @@ export function validateWorkflowGroups<TNode extends INode>({
 				existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
 			});
 			if (!result.valid) {
-				addViolation(group, result.reason, groupRuleViolationMessage(group, result));
+				addViolation(group, result.reason, groupRuleViolationMessage(group, result, nodeLabel));
 			}
 		}
 	}
@@ -295,6 +297,7 @@ export function validateWorkflowGroups<TNode extends INode>({
 function groupRuleViolationMessage(
 	group: IWorkflowGroup,
 	result: Extract<NodeGroupValidationResult, { valid: false }>,
+	nodeLabel: (nodeId: string) => string,
 ): string {
 	const label = `Node group "${group.name}" (${group.id})`;
 	switch (result.reason) {
@@ -307,7 +310,7 @@ function groupRuleViolationMessage(
 		case 'multiple-output-branches':
 			return `${label} has multiple output branches at node "${result.node}".`;
 		case 'node-already-grouped':
-			return `${label} contains nodes that already belong to another group: ${result.nodeIds.join(', ')}.`;
+			return `${label} contains nodes that already belong to another group: ${result.nodeIds.map(nodeLabel).join(', ')}.`;
 		case 'non-main-boundary':
 			return `${label} cannot cross the "${result.connection.type}" connection between "${result.connection.source}" and "${result.connection.target}".`;
 	}
