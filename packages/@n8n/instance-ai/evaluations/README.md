@@ -441,6 +441,12 @@ How it differs from the manifest flow:
   `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
   `claude` prints, so a build that times out or never emits the trailer can leave
   its workflow behind on the lane even though cleanup is on.
+- **Per-case spend reporting.** Each build's `claude` cost/turns (summed across
+  attempts — failed attempts cost money too) land as `build_cost_usd` /
+  `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
+  `buildTurnsPerRun` per case in `eval-results.json`, alongside the run-level
+  `summary.mcpBuild` totals. `pnpm eval:build-cost-report` joins these with an
+  AIA arm's backend-trace cost for builder cost comparisons.
 
 **Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
 LangSmith path, whose lane allocator caps builds at 4 per lane globally (the

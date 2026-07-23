@@ -59,7 +59,8 @@ analytics pipeline reads them), the direct driver passes identity.
 - **`eval-pr-comment.md`** is posted verbatim by CI; the comment is found by its
   `### Instance AI Workflow Eval` prefix.
 - **LangSmith feedback keys** (`scenario_pass`, `failure_category`,
-  `evals.workflows.*`, `pass_at_k`, `pass_hat_k`) and the traced span names
+  `evals.workflows.*`, `pass_at_k`, `pass_hat_k` — plus `build_cost_usd` /
+  `build_turns` on `--build-via-mcp` rows) and the traced span names
   feed the LangSmith→BigQuery analytics.
 - **`pnpm eval:*` script names** are invoked by CI workflows and
   `run-eval-lanes.sh`.
