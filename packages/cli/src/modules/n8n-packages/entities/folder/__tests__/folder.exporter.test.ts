@@ -71,6 +71,7 @@ describe('FolderExporter', () => {
 				],
 				dataTables: [],
 				variables: [],
+				nodeTypes: [],
 			},
 		});
 

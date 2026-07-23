@@ -62,7 +62,7 @@ describe('McpController', () => {
 	const telemetry = { track: vi.fn() } as unknown as Telemetry;
 	const mcpService = {
 		getServer: vi.fn(),
-		resolveMcpAppsVariant: vi.fn(),
+		resolveFeatureFlags: vi.fn(),
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
 	const mcpProtectedResource = {
@@ -76,13 +76,13 @@ describe('McpController', () => {
 	beforeEach(async () => {
 		vi.clearAllMocks();
 
-		// Default mock — the controller now resolves the MCP Apps variant for
-		// every request, so tests that don't care about the variant still need
-		// a sane default. Individual tests override this with `mockResolvedValue`
-		// when the variant matters.
-		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
-			enabled: false,
-			variant: 'unassigned',
+		// Default mock — the controller resolves the MCP feature flags for
+		// every request, so tests that don't care about them still need a sane
+		// default. Individual tests override this with `mockResolvedValue`
+		// when a flag matters.
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'unassigned' },
+			canvasGroupsEnabled: false,
 		});
 
 		Container.set(Logger, logger);
@@ -105,12 +105,12 @@ describe('McpController', () => {
 		expect(res.status).toHaveBeenCalledWith(403);
 		expect(res.json).toHaveBeenCalledWith({ message: 'MCP access is disabled' });
 		expect(mcpService.getServer as unknown as Mock).not.toHaveBeenCalled();
-		// MCP Apps variant resolution is skipped for rejected requests to
+		// Feature-flag resolution is skipped for rejected requests to
 		// avoid an unnecessary PostHog lookup.
-		expect(mcpService.resolveMcpAppsVariant as Mock).not.toHaveBeenCalled();
+		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
 	});
 
-	test('tracks disabled-access init errors without MCP Apps variant fields', async () => {
+	test('tracks disabled-access init errors without feature-flag fields', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
 		const res = createRes();
 
@@ -134,7 +134,7 @@ describe('McpController', () => {
 			mcp_connection_status: 'error',
 			error: 'MCP access is disabled',
 		});
-		expect(mcpService.resolveMcpAppsVariant as Mock).not.toHaveBeenCalled();
+		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
 	});
 
 	test('creates mcp server if MCP access is enabled', async () => {
@@ -148,15 +148,15 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalled();
 	});
 
-	test('tracks successful initialize connections with auth type and MCP Apps variant', async () => {
+	test('tracks successful initialize connections with auth type and feature flags', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
 			connect: vi.fn().mockResolvedValue(undefined),
 			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
-			enabled: true,
-			variant: 'variant',
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: true, variant: 'variant' },
+			canvasGroupsEnabled: true,
 		});
 		const res = createRes();
 
@@ -180,6 +180,7 @@ describe('McpController', () => {
 			mcp_connection_status: 'success',
 			mcp_apps_enabled: true,
 			mcp_apps_variant: 'variant',
+			mcp_canvas_groups_enabled: true,
 		});
 	});
 
@@ -189,9 +190,9 @@ describe('McpController', () => {
 			connect: vi.fn().mockResolvedValue(undefined),
 			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
-			enabled: true,
-			variant: 'env_override',
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: true, variant: 'env_override' },
+			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -215,15 +216,15 @@ describe('McpController', () => {
 		);
 	});
 
-	test('resolves the MCP Apps variant once and forwards `enabled` to getServer on initialize', async () => {
+	test('resolves the feature flags once and forwards the resolution to getServer on initialize', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
 			connect: vi.fn().mockResolvedValue(undefined),
 			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
-			enabled: true,
-			variant: 'variant',
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: true, variant: 'variant' },
+			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -238,24 +239,24 @@ describe('McpController', () => {
 			res,
 		);
 
-		expect(mcpService.resolveMcpAppsVariant as Mock).toHaveBeenCalledTimes(1);
+		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			true,
+			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
 			undefined,
 		);
 	});
 
-	test('resolves the MCP Apps variant and forwards `enabled` to getServer on non-initialize requests', async () => {
+	test('resolves the feature flags and forwards the resolution to getServer on non-initialize requests', async () => {
 		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
 		(mcpService.getServer as unknown as Mock).mockReturnValue({
 			connect: vi.fn().mockResolvedValue(undefined),
 			close: vi.fn().mockResolvedValue(undefined),
 		});
-		(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
-			enabled: false,
-			variant: 'control',
+		(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+			mcpApps: { enabled: false, variant: 'control' },
+			canvasGroupsEnabled: false,
 		});
 		const res = createRes();
 
@@ -271,10 +272,10 @@ describe('McpController', () => {
 
 		// Resolution happens for every request so the registered tools stay
 		// consistent with what was advertised at handshake time.
-		expect(mcpService.resolveMcpAppsVariant as Mock).toHaveBeenCalledTimes(1);
+		expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 			expect.objectContaining({ id: 'user-1' }),
-			false,
+			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
 			undefined,
 		);
@@ -329,9 +330,9 @@ describe('McpController', () => {
 
 		test('delegates to transport.handleRequest', async () => {
 			(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
-			(mcpService.resolveMcpAppsVariant as Mock).mockResolvedValue({
-				enabled: true,
-				variant: 'variant',
+			(mcpService.resolveFeatureFlags as Mock).mockResolvedValue({
+				mcpApps: { enabled: true, variant: 'variant' },
+				canvasGroupsEnabled: false,
 			});
 			(mcpService.getServer as unknown as Mock).mockReturnValue({
 				connect: vi.fn().mockResolvedValue(undefined),
@@ -340,10 +341,10 @@ describe('McpController', () => {
 			const req = createReq();
 			const res = createRes();
 			await controller.handleGet(req, res);
-			expect(mcpService.resolveMcpAppsVariant as Mock).toHaveBeenCalledTimes(1);
+			expect(mcpService.resolveFeatureFlags as Mock).toHaveBeenCalledTimes(1);
 			expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'user-1' }),
-				true,
+				{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 				undefined,
 				undefined,
 			);
