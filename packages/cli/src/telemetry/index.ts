@@ -565,7 +565,7 @@ export class Telemetry {
 		const eventName = typeof event === 'string' ? event : event.name;
 
 		if (typeof event !== 'string') {
-			const validationError = event.validateProperties(properties);
+			const validationError = event.getValidationError(properties);
 			if (validationError) this.logger.warn(validationError);
 		}
 

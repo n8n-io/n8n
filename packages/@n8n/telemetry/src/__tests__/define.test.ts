@@ -23,7 +23,7 @@ describe('defineTelemetryEvents', () => {
 
 	it('attaches a validator that returns null for matching properties', () => {
 		expect(
-			FIXTURE.USER_CLICKED_EXECUTE_WORKFLOW.validateProperties({
+			FIXTURE.USER_CLICKED_EXECUTE_WORKFLOW.getValidationError({
 				workflow_id: 'wf-1',
 				source: 'canvas',
 			}),
@@ -31,7 +31,7 @@ describe('defineTelemetryEvents', () => {
 	});
 
 	it('attaches a validator that reports schema mismatches', () => {
-		const error = FIXTURE.USER_CLICKED_EXECUTE_WORKFLOW.validateProperties({
+		const error = FIXTURE.USER_CLICKED_EXECUTE_WORKFLOW.getValidationError({
 			workflow_id: 123,
 			source: 'canvas',
 		});
