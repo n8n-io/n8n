@@ -6,7 +6,7 @@
 
 /** True while no model has been chosen yet (setup pending). */
 export function isDraftAgentConfig(config: { model?: string } | null | undefined): boolean {
-	return !config?.model?.trim();
+	return typeof config?.model !== 'string' || config.model.trim() === '';
 }
 
 /** True while no credential is connected yet (setup pending). */

@@ -1,8 +1,12 @@
-import { mount } from '@vue/test-utils';
+import { mount, VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import AgentChannelModal from '../components/AgentChannelModal.vue';
+
+type SlackSetupStubWrapper = VueWrapper<{
+	disconnectSlackApp: () => Promise<void>;
+}>;
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -128,10 +132,10 @@ describe('AgentChannelModal', () => {
 			connectedChannels: ['slack'],
 		});
 
-		const disconnectSlackApp = wrapper
-			.findComponent('[data-testid="slack-setup"]')
-			.props('disconnectSlackApp') as () => Promise<void>;
-		await disconnectSlackApp();
+		const slackSetup = wrapper.findComponent(
+			'[data-testid="slack-setup"]',
+		) as SlackSetupStubWrapper;
+		await slackSetup.vm.disconnectSlackApp();
 
 		expect(disconnectMock).toHaveBeenCalledWith('slack', '');
 		expect(wrapper.emitted('channel-disconnected')).toEqual([['slack']]);

@@ -1012,6 +1012,27 @@ describe('AgentsBuilderToolsService', () => {
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
 		});
 
+		it('write_config rejects a non-string model with a structured error instead of throwing', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const malformedConfig = { ...currentConfig, model: 123 };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(malformedConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: expect.arrayContaining([expect.objectContaining({ path: 'model' })]),
+			});
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+		});
+
 		it('patch_config succeeds on a draft config without model and credential', async () => {
 			const { service, agentsService } = makeService();
 			const { credential: _credential, ...noCredential } = baseConfig;
