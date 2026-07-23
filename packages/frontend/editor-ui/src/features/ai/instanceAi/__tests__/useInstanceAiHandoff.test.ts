@@ -89,6 +89,21 @@ describe('useInstanceAiHandoff', () => {
 		});
 	});
 
+	it('forwards executionId when provided', () => {
+		expect(
+			buildInstanceAiAgentPreviewHandoffContext({
+				agentId: 'agent-1',
+				threadId: 'thread-1',
+				executionId: 'exec-1',
+			}),
+		).toEqual({
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			executionId: 'exec-1',
+		});
+	});
+
 	it('forwards agentName, agentIcon and sessionTitle when provided', () => {
 		expect(
 			buildInstanceAiAgentPreviewHandoffContext({

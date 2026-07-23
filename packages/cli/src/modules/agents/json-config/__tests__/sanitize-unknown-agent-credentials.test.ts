@@ -22,11 +22,15 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 	it('preserves known credential fields', () => {
 		const result = sanitizeUnknownAgentCredentials(
-			{ credential: 'known-cred', name: 'Agent' },
+			{ credential: 'known-cred', model: 'anthropic/claude-sonnet-4-5', name: 'Agent' },
 			accessibleCredentialIds,
 		);
 
-		expect(result).toEqual({ credential: 'known-cred', name: 'Agent' });
+		expect(result).toEqual({
+			credential: 'known-cred',
+			model: 'anthropic/claude-sonnet-4-5',
+			name: 'Agent',
+		});
 	});
 
 	it('preserves managed proxy credential tokens only for episodic memory embeddings', () => {
@@ -268,5 +272,26 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		expect(sanitizeUnknownAgentCredentials('credential', accessibleCredentialIds)).toBe(
 			'credential',
 		);
+	});
+
+	it('clears a top-level credential when model is empty', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ model: '', credential: 'known-cred' },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({ model: '', credential: '' });
+	});
+
+	it('preserves a top-level credential when model is set', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ model: 'anthropic/claude-sonnet-4-5', credential: 'known-cred' },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'known-cred',
+		});
 	});
 });

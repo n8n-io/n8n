@@ -79,7 +79,7 @@ import {
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
 import { readLockfileImporters } from './core/read-lockfile-importers.js';
-import { readManifestDiffs } from './core/read-manifest-diffs.js';
+import { readManifestDiffs, readTsconfigDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
@@ -686,6 +686,8 @@ function runSelect(options: CliOptions): void {
 	// devDependency-only classifier can drop a devDep-only lockfile change.
 	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
 	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
+	// Same for tsconfig diffs, feeding the resolution-key classifier.
+	const tsconfigs = options.baseRef ? readTsconfigDiffs(changedFiles, options.baseRef) : undefined;
 	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
 	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
 	// change would parse it for nothing.
@@ -698,6 +700,7 @@ function runSelect(options: CliOptions): void {
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
 		manifests,
+		tsconfigs,
 		lockfileImporters,
 	});
 	console.log(JSON.stringify(result));

@@ -16,6 +16,7 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import type { CliArgs } from '../cli/args';
 import { buildWorkflowViaMcp, type McpBuildSettings } from '../cli/mcp-builder';
 import type { N8nClient } from '../clients/n8n-client';
+import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -31,6 +32,7 @@ import {
 	type BuildResult,
 	type executeAgentScenario,
 	type executeScenario,
+	type ScenarioSeedContext,
 } from '../harness/runner';
 import { isTransientNetworkError } from '../harness/transient-error';
 import type {
@@ -96,6 +98,7 @@ export interface LaneState {
 		workflowJsons: BuildResult['workflowJsons'];
 		buildTrace?: BuildResult['buildTrace'];
 		timeoutMs: number;
+		seedContext?: ScenarioSeedContext;
 	}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	tracedExecuteAgent: (execArgs: {
 		agentId: string;
@@ -290,6 +293,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	function stashBuildExpectations(
 		key: string,
 		fileSlug: string,
+		client: N8nClient,
 		build: BuildResult,
 		isPrebuilt: boolean,
 	): void {
@@ -305,11 +309,21 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		if (expectations.length === 0) return;
 		buildExpectationsByKey.set(
 			key,
-			verifyBuildExpectations(expectations, {
-				transcript,
-				workflowJson: build.workflowJsons[0],
-				metrics: build.conversationMetrics,
-			}).catch((error: unknown) =>
+			(async () =>
+				await verifyBuildExpectations(expectations, {
+					transcript,
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+					// Rendered non-workflow artifacts (agent AND config-eval), sectioned
+					// with "(no <type> produced)" fallbacks, so outcome expectations can
+					// judge artifact existence, absence and content — parity with the
+					// retired direct loop, which always threaded resolveArtifactContext.
+					artifactContext: await resolveArtifactContext({
+						artifactRefs: build.artifactRefs ?? [],
+						client,
+						logger,
+					}),
+				}))().catch((error: unknown) =>
 				allFailVerdicts(
 					expectations,
 					`judge error: ${error instanceof Error ? error.message : String(error)}`,
@@ -364,7 +378,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				stashTranscript(build);
 				// isPrebuilt=true: MCP builds have no build transcript, so only
 				// outcome expectations are judged (against the workflow), like prebuilt.
-				stashBuildExpectations(key, fileSlug, build, true);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
@@ -390,7 +404,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, build, true);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				stashRunDebug(lane.runner.client, build);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
@@ -452,8 +466,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			}
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
-			stashBuildExpectations(key, fileSlug, build, false);
 			stashAgentContext(key, lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			stashRunDebug(lane.runner.client, build);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,

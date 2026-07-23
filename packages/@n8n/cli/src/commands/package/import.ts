@@ -9,10 +9,10 @@ export default class PackageImport extends BaseCommand {
 	static override description = 'Import an n8n package (.n8np) into a project';
 
 	static override examples = [
-		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail',
-		'<%= config.bin %> package import --file=export.n8np --project=<id> --conflict-policy=new-version',
-		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail --credential-missing-mode=must-preexist',
-		'<%= config.bin %> package import --file=export.n8np --conflict-policy=fail --bindings=\'{"credentials":{"<sourceId>":"<targetId>"}}\'',
+		'<%= config.bin %> package import --file=export.n8np',
+		'<%= config.bin %> package import --file=export.n8np --project=<id> --workflow-conflict-policy=skip',
+		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --credential-missing-mode=must-preexist',
+		'<%= config.bin %> package import --file=export.n8np --workflow-conflict-policy=fail --bindings=\'{"credentials":{"<sourceId>":"<targetId>"}}\'',
 	];
 
 	static override flags = {
@@ -24,11 +24,11 @@ export default class PackageImport extends BaseCommand {
 		folder: Flags.string({
 			description: 'Target folder ID within the project (defaults to the project root)',
 		}),
-		conflictPolicy: Flags.string({
+		workflowConflictPolicy: Flags.string({
 			description: 'What to do when a workflow already exists in the target project',
 			options: ['new-version', 'fail', 'skip'],
-			required: true,
-			aliases: ['conflict-policy'],
+			default: 'new-version',
+			aliases: ['workflow-conflict-policy'],
 		}),
 		workflowPublishingPolicy: Flags.string({
 			description:
@@ -40,6 +40,12 @@ export default class PackageImport extends BaseCommand {
 			description: 'Whether imported workflows keep their source ID or receive a new one',
 			options: ['new', 'source'],
 			aliases: ['workflow-id-policy'],
+		}),
+		missingNodeTypeMode: Flags.string({
+			description:
+				'What to do when a workflow uses a node type or version this instance does not have (default on the instance: fail). With import-anyway, affected workflows are imported but never published',
+			options: ['fail', 'import-anyway'],
+			aliases: ['missing-node-type-mode'],
 		}),
 		folderConflictPolicy: Flags.string({
 			description: 'What to do when a package folder already exists in the target project',
@@ -103,9 +109,10 @@ export default class PackageImport extends BaseCommand {
 					{
 						projectId: flags.project,
 						folderId: flags.folder,
-						workflowConflictPolicy: flags.conflictPolicy,
+						workflowConflictPolicy: flags.workflowConflictPolicy,
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
+						missingNodeTypeMode: flags.missingNodeTypeMode,
 						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,

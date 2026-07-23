@@ -81,6 +81,7 @@ export function buildInstanceAiAgentPreviewHandoffContext(params: {
 	agentName?: string;
 	agentIcon?: string;
 	sessionTitle?: string;
+	executionId?: string;
 }): InstanceAiHandoffContext {
 	return {
 		source: 'agent-preview',
@@ -89,6 +90,7 @@ export function buildInstanceAiAgentPreviewHandoffContext(params: {
 		...(params.agentName ? { agentName: params.agentName } : {}),
 		...(params.agentIcon ? { agentIcon: params.agentIcon } : {}),
 		...(params.sessionTitle ? { sessionTitle: params.sessionTitle } : {}),
+		...(params.executionId ? { executionId: params.executionId } : {}),
 	};
 }
 
