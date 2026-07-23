@@ -1,0 +1,19 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_76e4428ad7a8e8::t_acd5d7658e4c33 508-512,515,518-522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae1dd2081f36e79a10ccba62b39e2275752d152d",
+  "prompts": {},
+  "sessions": {
+    "s_76e4428ad7a8e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb4eaf60-7b3e-4afc-a08b-bca9808a8f08",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
