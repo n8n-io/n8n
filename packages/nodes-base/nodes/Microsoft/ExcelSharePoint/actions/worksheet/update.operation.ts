@@ -67,6 +67,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. [["Sara","1/2/2006","Berlin"],["George","5/3/2010","Paris"]]',
 		description: 'Raw values for the specified range as array of string arrays in JSON format',
+		hint: "Without a range, the data must match the sheet's used range dimensions exactly",
 		displayOptions: {
 			show: {
 				dataMode: ['raw'],
