@@ -1,6 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { Client, SSEClientTransport, SdkErrorCode, SdkError } from "@modelcontextprotocol/client";
 import { proxyFetch } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
 import { StructuredToolkit } from 'n8n-core';
@@ -21,8 +19,9 @@ import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
 import { buildMcpToolName } from '../utils';
 
-vi.mock('@modelcontextprotocol/sdk/client/sse.js');
-vi.mock('@modelcontextprotocol/sdk/client/index.js');
+vi.mock('@modelcontextprotocol/client');
+/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
+vi.mock('@modelcontextprotocol/client');
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
@@ -692,7 +691,6 @@ describe('McpClientTool', () => {
 
 			expect(callToolSpy).toHaveBeenCalledWith(
 				expect.any(Object),
-				expect.any(Object),
 				expect.objectContaining({ signal: abortController.signal }),
 			);
 		});
@@ -808,7 +806,7 @@ describe('McpClientTool', () => {
 			const callToolSpy = vi
 				.spyOn(Client.prototype, 'callTool')
 				.mockRejectedValue(
-					new McpError(ErrorCode.RequestTimeout, 'Request timed out', { timeout: 200 }),
+					new SdkError(SdkErrorCode.RequestTimeout, 'Request timed out', { timeout: 200 }),
 				);
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
@@ -843,8 +841,7 @@ describe('McpClientTool', () => {
 				'MCP error -32001: Request timed out',
 			);
 			expect(callToolSpy).toHaveBeenCalledWith(
-				expect.any(Object), // params
-				expect.any(Object), // schema
+				expect.any(Object), // params // schema
 				expect.objectContaining({ timeout: 200 }),
 			); // options
 		});
@@ -911,7 +908,6 @@ describe('McpClientTool', () => {
 					name: 'get_weather',
 					arguments: { location: 'Berlin' },
 				},
-				expect.anything(),
 				expect.anything(),
 			);
 		});
@@ -982,7 +978,6 @@ describe('McpClientTool', () => {
 						arguments: { location: 'Berlin' },
 					},
 					expect.anything(),
-					expect.anything(),
 				);
 			},
 		);
@@ -1034,7 +1029,6 @@ describe('McpClientTool', () => {
 					name: 'flexible_tool',
 					arguments: { foo: 'bar', extra: 'data' },
 				},
-				expect.anything(),
 				expect.anything(),
 			);
 		});
@@ -1436,7 +1430,6 @@ describe('McpClientTool', () => {
 					arguments: { location: 'Berlin' },
 				},
 				expect.anything(),
-				expect.anything(),
 			);
 		});
 
@@ -1487,7 +1480,6 @@ describe('McpClientTool', () => {
 					name: 'get_weather',
 					arguments: { location: 'Berlin' },
 				},
-				CallToolResultSchema,
 				expect.objectContaining({ timeout: 12345, signal: abortController.signal }),
 			);
 		});
@@ -1577,7 +1569,6 @@ describe('McpClientTool', () => {
 
 			expect(Client.prototype.callTool).toHaveBeenCalledWith(
 				expect.any(Object),
-				CallToolResultSchema,
 				expect.objectContaining({ signal: abortController.signal }),
 			);
 		});
@@ -1925,7 +1916,6 @@ describe('McpClientTool', () => {
 
 			expect(Client.prototype.callTool).toHaveBeenCalledWith(
 				{ name: 'get_weather', arguments: { location: 'Berlin' } },
-				expect.anything(),
 				expect.anything(),
 			);
 		});

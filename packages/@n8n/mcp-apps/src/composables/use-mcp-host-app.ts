@@ -1,5 +1,5 @@
 import { App, type McpUiHostContext } from '@modelcontextprotocol/ext-apps';
-import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
+import type { Implementation } from "@modelcontextprotocol/server";
 import { onMounted, ref, shallowRef } from 'vue';
 
 type UseMcpHostAppOptions = {

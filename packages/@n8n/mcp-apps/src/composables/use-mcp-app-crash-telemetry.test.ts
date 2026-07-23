@@ -1,4 +1,4 @@
-import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
+import type { Implementation } from "@modelcontextprotocol/server";
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp, defineComponent, shallowRef } from 'vue';
 

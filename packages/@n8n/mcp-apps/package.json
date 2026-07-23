@@ -46,7 +46,6 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
-    "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
@@ -62,7 +61,8 @@
     "vite-plugin-singlefile": "catalog:",
     "vite-svg-loader": "catalog:frontend",
     "vitest": "catalog:",
-    "vue-tsc": "catalog:frontend"
+    "vue-tsc": "catalog:frontend",
+    "@modelcontextprotocol/server": "2.0.0-beta.5"
   },
   "peerDependencies": {
     "@modelcontextprotocol/sdk": "catalog:"

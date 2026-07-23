@@ -1,6 +1,6 @@
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { StreamableHTTPServerTransportOptions } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCMessage } from "@modelcontextprotocol/server";
+import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import type { StreamableHTTPServerTransportOptions } from "@modelcontextprotocol/node";
 import type { IncomingMessage, ServerResponse } from 'http';
 
 import type { CompressionResponse, McpTransport, TransportType } from './Transport';
@@ -24,7 +24,7 @@ function getWebStandardTransport(transport: unknown): WebStandardTransportIntern
 	return undefined;
 }
 
-export class StreamableHttpTransport extends StreamableHTTPServerTransport implements McpTransport {
+export class StreamableHttpTransport extends NodeStreamableHTTPServerTransport implements McpTransport {
 	readonly transportType: TransportType = 'streamableHttp';
 
 	private response: CompressionResponse;

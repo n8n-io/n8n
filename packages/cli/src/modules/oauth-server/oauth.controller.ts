@@ -1,7 +1,4 @@
-import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/authorize.js';
-import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
-import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
-import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/token.js';
+import { authorizationHandler, clientRegistrationHandler, revocationHandler, tokenHandler } from "@modelcontextprotocol/server-legacy/auth";
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';

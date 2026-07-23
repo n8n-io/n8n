@@ -1,4 +1,4 @@
-import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
+import type { Implementation } from "@modelcontextprotocol/server";
 import { watch, type Ref } from 'vue';
 
 import { useTelemetry, type McpAppTelemetry } from '@mcp-apps/telemetry';

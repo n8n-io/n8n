@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { McpServer } from "@modelcontextprotocol/server";
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
@@ -15,6 +15,7 @@ const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 
 function registerTools(server: McpServer, tools: ToolDefinition[]) {
 	for (const tool of tools) {
+		/* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. | Could not verify `outputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
 		server.registerTool(
 			tool.name,
 			{
@@ -84,7 +85,7 @@ export async function startHttpTransport(opts: {
 	activeConnections: Set<BrowserConnection>;
 }> {
 	const { config, host, port, authToken } = opts;
-	const sessions = new Map<string, StreamableHTTPServerTransport>();
+	const sessions = new Map<string, NodeStreamableHTTPServerTransport>();
 	const activeConnections = new Set<BrowserConnection>();
 	const allowedHosts = buildAllowedHosts(host, port);
 
@@ -123,7 +124,7 @@ export async function startHttpTransport(opts: {
 		// and our policy is "no browser origin is ever acceptable" — the manual
 		// guard above handles that. DNS-rebinding protection on the Host header
 		// still adds value when bound to loopback, so keep it enabled there.
-		const transport = new StreamableHTTPServerTransport({
+		const transport = new NodeStreamableHTTPServerTransport({
 			sessionIdGenerator: () => randomUUID(),
 			enableDnsRebindingProtection: allowedHosts !== undefined,
 			allowedHosts,

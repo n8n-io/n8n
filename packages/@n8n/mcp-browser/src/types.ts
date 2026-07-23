@@ -1,4 +1,4 @@
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from 'zod';
 
 import type { BrowserConnection as BrowserConnectionType } from './connection';
@@ -254,7 +254,7 @@ export interface WaitOptions {
 // Tool system types (re-exported from MCP SDK)
 // ---------------------------------------------------------------------------
 
-export type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+export type { CallToolResult } from '@modelcontextprotocol/server';
 
 export interface SecretsBuffer {
 	capture(credentialsKey: string, field: string, value: string): void;

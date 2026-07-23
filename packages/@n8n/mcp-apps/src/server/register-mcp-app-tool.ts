@@ -1,8 +1,4 @@
-import type {
-	McpServer,
-	RegisteredTool,
-	ToolCallback,
-} from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer, RegisteredTool, ToolCallback } from "@modelcontextprotocol/server";
 import { isRecord } from '@n8n/utils/is-record';
 import type z from 'zod';
 

@@ -1,5 +1,5 @@
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCMessage } from "@modelcontextprotocol/server";
+import { SSEServerTransport } from "@modelcontextprotocol/server-legacy/sse";
 import type { IncomingMessage, ServerResponse } from 'http';
 
 import type { CompressionResponse, McpTransport, TransportType } from './Transport';

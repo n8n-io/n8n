@@ -30,14 +30,14 @@ import { Telemetry } from '@/telemetry';
 import type { UserConnectedToMCPEventPayload } from '../mcp.types';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
-vi.mock('@modelcontextprotocol/sdk/server/streamableHttp.js', () => {
+vi.mock('@modelcontextprotocol/node', () => {
 	const StreamableHTTPServerTransport = vi.fn().mockImplementation(function (_opts) {
 		return {
 			handleRequest: mockHandleRequest,
 			close: vi.fn().mockResolvedValue(undefined),
 		};
 	});
-	return { StreamableHTTPServerTransport };
+	return { NodeStreamableHTTPServerTransport: StreamableHTTPServerTransport };
 });
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {

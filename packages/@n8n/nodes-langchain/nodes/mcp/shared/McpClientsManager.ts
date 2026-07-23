@@ -1,4 +1,4 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from "@modelcontextprotocol/client";
 import { McpClientConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 

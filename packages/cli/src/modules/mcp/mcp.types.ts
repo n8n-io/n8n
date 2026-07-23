@@ -1,4 +1,4 @@
-import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ToolCallback } from "@modelcontextprotocol/server";
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 

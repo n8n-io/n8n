@@ -1,4 +1,4 @@
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import type { JSONRPCMessage } from "@modelcontextprotocol/server";
 import type { Response } from 'express';
 import type { IncomingMessage, ServerResponse } from 'http';
 

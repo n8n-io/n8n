@@ -424,6 +424,7 @@ describe('AgentWorkflowExecutionService', () => {
 				nodes: [],
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
+			/* @mcp-codemod-error Mock object exposes v1 McpServer method name(s): tool. v2 renamed them (tool → registerTool) — code migrated to the register* names fails against this mock with "… is not a function". Rename the mock's keys to match. */
 			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
 
 			const result = await service.executeInlineForWorkflow(
@@ -502,6 +503,7 @@ describe('AgentWorkflowExecutionService', () => {
 			const { service, reconstructionService } = makeService();
 			const runtime = makeRuntime([{ type: 'finish', finishReason: 'stop' }]);
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+			/* @mcp-codemod-error Mock object exposes v1 McpServer method name(s): tool. v2 renamed them (tool → registerTool) — code migrated to the register* names fails against this mock with "… is not a function". Rename the mock's keys to match. */
 			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
 
 			const workflowContext: ExecuteAgentWorkflowContext = {

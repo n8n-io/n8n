@@ -1,4 +1,4 @@
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import type { CreateCredentialPayload, SecretsBuffer } from '@n8n/mcp-browser';
 import type { z } from 'zod';
 

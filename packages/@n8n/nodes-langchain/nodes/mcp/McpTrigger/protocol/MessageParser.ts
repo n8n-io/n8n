@@ -1,10 +1,5 @@
-import {
-	JSONRPCMessageSchema,
-	ListToolsRequestSchema,
-	CallToolRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
-
+import type { JSONRPCMessage } from "@modelcontextprotocol/server";
+import { JSONRPCMessageSchema, ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/core";
 import type { McpToolCallInfo } from './types';
 
 export class MessageParser {

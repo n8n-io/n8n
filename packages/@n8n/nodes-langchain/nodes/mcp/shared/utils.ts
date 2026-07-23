@@ -1,6 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client, SSEClientTransport, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';

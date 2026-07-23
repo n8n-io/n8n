@@ -1,6 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
-
+import type { Server } from "@modelcontextprotocol/server";
 import type { SessionStore } from './SessionStore';
 import type { McpTransport } from '../transport/Transport';
 

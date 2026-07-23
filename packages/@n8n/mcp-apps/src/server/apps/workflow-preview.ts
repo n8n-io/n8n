@@ -1,6 +1,5 @@
 import type { McpUiResourceMeta } from '@modelcontextprotocol/ext-apps';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-
+import type { McpServer } from "@modelcontextprotocol/server";
 import {
 	RESOURCE_MIME_TYPE,
 	WORKFLOW_PREVIEW_APP_URI,
@@ -34,13 +33,13 @@ function getWorkflowPreviewUiMeta(instanceOrigin?: string): McpUiResourceMeta {
 }
 
 export function registerWorkflowPreviewApp(
-	server: Pick<McpServer, 'resource'>,
+	server: Pick<McpServer, 'registerResource'>,
 	options: RegisterWorkflowPreviewAppOptions,
 ): void {
 	const { instanceOrigin, telemetry, onResourceRead } = options;
 	const uiMeta = getWorkflowPreviewUiMeta(instanceOrigin);
 
-	server.resource(
+	server.registerResource(
 		'workflow-preview',
 		WORKFLOW_PREVIEW_APP_URI,
 		{

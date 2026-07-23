@@ -41,7 +41,6 @@
     "@anthropic-ai/sandbox-runtime": "^0.0.61",
     "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
-    "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/mcp-browser": "workspace:*",
     "@napi-rs/image": "^1.12.0",
     "@vscode/ripgrep": "^1.17.1",
@@ -52,7 +51,8 @@
     "picocolors": "catalog:",
     "yargs-parser": "21.1.1",
     "zod": "catalog:",
-    "zod-to-json-schema": "catalog:"
+    "zod-to-json-schema": "catalog:",
+    "@modelcontextprotocol/server": "2.0.0-beta.5"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

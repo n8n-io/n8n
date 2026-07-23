@@ -36,8 +36,7 @@ import {
 	AgenticAuthenticationService,
 	Utility as MicrosoftRuntimeUtility,
 } from '@microsoft/agents-a365-runtime';
-
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from "@modelcontextprotocol/client";
 import { StructuredToolkit } from 'n8n-core';
 import { proxyFetch } from '@n8n/ai-utilities';
 import { connectMcpClient, getAllTools } from '../../mcp/shared/utils';

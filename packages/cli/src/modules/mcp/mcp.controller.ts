@@ -200,8 +200,8 @@ export class McpController {
 		mcpAppsEnabled: boolean,
 		body?: unknown,
 	) {
-		const { StreamableHTTPServerTransport } = await import(
-			'@modelcontextprotocol/sdk/server/streamableHttp.js'
+		const { NodeStreamableHTTPServerTransport: StreamableHTTPServerTransport } = await import(
+			'@modelcontextprotocol/node'
 		);
 		const grantedScopes = (req as AuthenticatedRequest & { mcpScopes?: string[] }).mcpScopes;
 		const server = await this.mcpService.getServer(

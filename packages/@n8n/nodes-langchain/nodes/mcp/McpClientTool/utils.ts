@@ -1,6 +1,5 @@
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { Client } from "@modelcontextprotocol/client";
 import { type IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -79,7 +78,7 @@ export const createCallTool =
 		}
 
 		try {
-			result = await client.callTool({ name, arguments: args }, CompatibilityCallToolResultSchema, {
+			result = await client.callTool({ name, arguments: args }, {
 				timeout,
 				signal: getAbortSignal?.(),
 			});

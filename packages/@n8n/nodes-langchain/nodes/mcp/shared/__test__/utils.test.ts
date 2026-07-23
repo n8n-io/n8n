@@ -1,6 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client, SSEClientTransport, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { proxyFetch } from '@n8n/ai-utilities';
 import { createResultError, createResultOk } from '@n8n/utils/result';
 import type { IExecuteFunctions, INode, NodeEgressFilter } from 'n8n-workflow';
@@ -17,9 +15,11 @@ import {
 	tryRefreshOAuth2Token,
 } from '../utils';
 
-vi.mock('@modelcontextprotocol/sdk/client/index.js');
-vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
-vi.mock('@modelcontextprotocol/sdk/client/sse.js');
+vi.mock('@modelcontextprotocol/client');
+/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
+vi.mock('@modelcontextprotocol/client');
+/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
+vi.mock('@modelcontextprotocol/client');
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {

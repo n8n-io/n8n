@@ -1,13 +1,6 @@
-/**
- * In-process MCP test server helpers.
- * Creates real MCP servers (SSE and StreamableHTTP) bound to random localhost ports
- * for use in integration tests. No mocking of SDK internals.
- */
-
-import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
+import { SSEServerTransport } from "@modelcontextprotocol/server-legacy/sse";
+import { Server as McpServer } from "@modelcontextprotocol/server";
 import http from 'http';
 
 /** 1×1 transparent PNG in base64 (smallest valid PNG). Used for image tool tests. */
@@ -26,7 +19,7 @@ export function createTestMcpServer(): McpServer {
 		{ capabilities: { tools: {} } },
 	);
 
-	server.setRequestHandler(ListToolsRequestSchema, async () => ({
+	server.setRequestHandler('tools/list', async () => ({
 		tools: [
 			{
 				name: 'echo',
@@ -61,7 +54,7 @@ export function createTestMcpServer(): McpServer {
 		],
 	}));
 
-	server.setRequestHandler(CallToolRequestSchema, async (request) => {
+	server.setRequestHandler('tools/call', async (request) => {
 		const { name, arguments: args = {} } = request.params;
 
 		if (name === 'echo') {
@@ -143,7 +136,7 @@ export async function startStreamableHttpServer(): Promise<TestServer> {
 	const httpServer = http.createServer(async (req, res) => {
 		try {
 			const mcpServer = createTestMcpServer();
-			const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+			const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 			await mcpServer.connect(transport);
 			await transport.handleRequest(req, res);
 		} catch {

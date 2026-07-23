@@ -1,11 +1,5 @@
-/**
- * Minimal MCP server for stdio transport integration tests.
- * Spawned as a child process by mcp-stdio-transport.test.ts.
- * Run with: node mcp-stdio-server.mjs
- */
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
+import { Server } from "@modelcontextprotocol/server";
 
 // 1×1 transparent PNG in base64 (smallest valid PNG)
 const TINY_PNG =
@@ -16,7 +10,7 @@ const server = new Server(
 	{ capabilities: { tools: {} } },
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+server.setRequestHandler('tools/list', async () => ({
 	tools: [
 		{
 			name: 'echo',
@@ -51,7 +45,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 	],
 }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler('tools/call', async (request) => {
 	const { name, arguments: args = {} } = request.params;
 
 	if (name === 'echo') {

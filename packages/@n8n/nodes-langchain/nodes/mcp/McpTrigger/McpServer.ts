@@ -1,14 +1,8 @@
 import type { Tool } from '@langchain/core/tools';
 import { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type {
-	ServerRequest,
-	ServerNotification,
-	JSONRPCMessage,
-} from '@modelcontextprotocol/sdk/types.js';
-import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { Server } from "@modelcontextprotocol/server";
+import type { JSONRPCMessage, ServerContext } from "@modelcontextprotocol/server";
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
@@ -582,13 +576,13 @@ export class McpServer {
 
 	private setupHandlers(server: Server): void {
 		server.setRequestHandler(
-			ListToolsRequestSchema,
-			(_, extra: RequestHandlerExtra<ServerRequest, ServerNotification>) => {
-				if (!extra.sessionId) {
+			'tools/list',
+			(_, ctx: ServerContext) => {
+				if (!ctx.sessionId) {
 					throw new OperationalError('Require a sessionId for the listing of tools');
 				}
 
-				const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
+				const tools = this.sessionManager.getTools(ctx.sessionId) ?? [];
 				return {
 					tools: tools.map((tool) => ({
 						name: tool.name,
@@ -602,22 +596,22 @@ export class McpServer {
 			},
 		);
 
-		server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+		server.setRequestHandler('tools/call', async (request, ctx) => {
 			if (!request.params?.name || !request.params?.arguments) {
 				throw new OperationalError('Require a name and arguments for the tool call');
 			}
-			if (!extra.sessionId) {
+			if (!ctx.sessionId) {
 				throw new OperationalError('Require a sessionId for the tool call');
 			}
 
-			const callId = extra.requestId ? `${extra.sessionId}_${extra.requestId}` : extra.sessionId;
+			const callId = ctx.mcpReq.id ? `${ctx.sessionId}_${ctx.mcpReq.id}` : ctx.sessionId;
 			const toolName = request.params.name;
 			const toolArguments =
 				typeof request.params.arguments === 'object' && request.params.arguments !== null
 					? request.params.arguments
 					: {};
 
-			const tools = this.sessionManager.getTools(extra.sessionId) ?? [];
+			const tools = this.sessionManager.getTools(ctx.sessionId) ?? [];
 			const requestedTool = tools.find((tool) => tool.name === toolName);
 			if (!requestedTool) {
 				throw new OperationalError('Tool not found');
@@ -634,8 +628,8 @@ export class McpServer {
 
 			try {
 				if (this.executionCoordinator.isQueueMode()) {
-					const requestId = extra.requestId?.toString() ?? '';
-					this.storePendingResponse(extra.sessionId, requestId);
+					const requestId = ctx.mcpReq.id?.toString() ?? '';
+					this.storePendingResponse(ctx.sessionId, requestId);
 
 					// Resolve handlePostMessage so webhook can return and enqueue execution.
 					// The handler continues running asynchronously, waiting for worker response.
@@ -645,7 +639,7 @@ export class McpServer {
 
 					const strategy = this.executionCoordinator.getStrategy() as QueuedExecutionStrategy;
 					const result = await strategy.executeTool(requestedTool, toolArguments, {
-						sessionId: extra.sessionId,
+						sessionId: ctx.sessionId,
 						messageId: requestId,
 					});
 
@@ -653,8 +647,8 @@ export class McpServer {
 				}
 
 				const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
-					sessionId: extra.sessionId,
-					messageId: extra.requestId?.toString(),
+					sessionId: ctx.sessionId,
+					messageId: ctx.mcpReq.id?.toString(),
 				});
 
 				if (this.resolveFunctions[callId]) {

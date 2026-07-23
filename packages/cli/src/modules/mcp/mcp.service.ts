@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from "@modelcontextprotocol/server";
 import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -224,8 +224,8 @@ export class McpService {
 		grantedScopes?: string[],
 	) {
 		const { McpServer } = await lazyImport<
-			typeof import('@modelcontextprotocol/sdk/server/mcp.js')
-		>(async () => await import('@modelcontextprotocol/sdk/server/mcp.js'));
+			typeof import('@modelcontextprotocol/server')
+		>(async () => await import('@modelcontextprotocol/server'));
 
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
 		const n8nConnectAvailable = builderEnabled
@@ -571,7 +571,7 @@ export class McpService {
 		registerIfAllowed(restoreVersionTool);
 
 		// SDK reference as MCP resource — for clients that support resources.
-		server.resource(
+		server.registerResource(
 			'workflow-sdk-reference',
 			'n8n://workflow-sdk/reference',
 			{

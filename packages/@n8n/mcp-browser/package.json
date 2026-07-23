@@ -25,7 +25,6 @@
   },
   "dependencies": {
     "@joplin/turndown-plugin-gfm": "catalog:",
-    "@modelcontextprotocol/sdk": "catalog:",
     "@mozilla/readability": "catalog:",
     "agent-browser": "catalog:",
     "jsdom": "^23.0.1",
@@ -36,7 +35,9 @@
     "turndown": "catalog:",
     "ws": "8.20.1",
     "yargs-parser": "21.1.1",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@modelcontextprotocol/node": "2.0.0-beta.5",
+    "@modelcontextprotocol/server": "2.0.0-beta.5"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

@@ -23,34 +23,26 @@ class FakeClient {
 	close = clientClose;
 }
 
-vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+vi.mock('@modelcontextprotocol/client', () => ({
 	Client: vi.fn(function () {
 		return new FakeClient();
 	}),
+    SSEClientTransport: vi.fn(function (url: URL, options: unknown) {
+    		sseCtor(url, options);
+    		return { type: 'sse', url, options };
+    	}),
+    StreamableHTTPClientTransport: vi.fn(function (url: URL, options: unknown) {
+    		streamableHttpCtor(url, options);
+    		return { type: 'streamableHttp', url, options };
+    	})
 }));
-
-vi.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
-	SSEClientTransport: vi.fn(function (url: URL, options: unknown) {
-		sseCtor(url, options);
-		return { type: 'sse', url, options };
-	}),
-}));
-
-vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+vi.mock('@modelcontextprotocol/client/stdio', () => ({
 	StdioClientTransport: vi.fn(function (options: unknown) {
 		stdioCtor(options);
 		return { type: 'stdio', options };
 	}),
 }));
-
-vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-	StreamableHTTPClientTransport: vi.fn(function (url: URL, options: unknown) {
-		streamableHttpCtor(url, options);
-		return { type: 'streamableHttp', url, options };
-	}),
-}));
-
-vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
+vi.mock('@modelcontextprotocol/core', () => ({
 	CallToolResultSchema: {},
 }));
 

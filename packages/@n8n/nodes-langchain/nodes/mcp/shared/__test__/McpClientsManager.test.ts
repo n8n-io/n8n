@@ -1,5 +1,4 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-
+import type { Client } from "@modelcontextprotocol/client";
 import { McpClientsManager } from '../McpClientsManager';
 
 type FakeClient = Client & {

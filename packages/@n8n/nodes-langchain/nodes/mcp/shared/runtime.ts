@@ -1,5 +1,4 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { Client } from "@modelcontextprotocol/client";
 import { logWrapper } from '@n8n/ai-utilities';
 import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
@@ -242,7 +241,6 @@ async function runToolCall(opts: {
 
 		const result = await client.callTool(
 			{ name: tool.name, arguments: sanitizedToolArguments },
-			CallToolResultSchema,
 			{
 				timeout,
 				signal: ctx.getExecutionCancelSignal(),

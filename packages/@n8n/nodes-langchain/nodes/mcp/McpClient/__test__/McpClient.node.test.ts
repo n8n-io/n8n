@@ -1,4 +1,4 @@
-import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import type { Client } from "@modelcontextprotocol/client";
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
@@ -105,7 +105,6 @@ describe('McpClient', () => {
 		]);
 		expect(client.callTool).toHaveBeenCalledWith(
 			{ name: 'get_weather', arguments: { location: 'Berlin' } },
-			undefined,
 			{ timeout: 10000 },
 		);
 	});
@@ -136,7 +135,6 @@ describe('McpClient', () => {
 		]);
 		expect(client.callTool).toHaveBeenCalledWith(
 			{ name: 'get_weather', arguments: { location: 'Berlin' } },
-			undefined,
 			{ timeout: 10000 },
 		);
 	});

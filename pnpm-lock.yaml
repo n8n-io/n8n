@@ -955,9 +955,21 @@ importers:
       '@daytona/sdk':
         specifier: 'catalog:'
         version: 0.187.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
+      '@modelcontextprotocol/client':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
+      '@modelcontextprotocol/core':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
+      '@modelcontextprotocol/node':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5(@modelcontextprotocol/server@2.0.0-beta.5)(hono@4.12.27)
+      '@modelcontextprotocol/server':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
+      '@modelcontextprotocol/server-legacy':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5(express@5.2.1)
       '@n8n/ai-utilities':
         specifier: workspace:*
         version: link:../ai-utilities
@@ -1155,7 +1167,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       fast-glob:
         specifier: 'catalog:'
         version: 3.3.3
@@ -1227,7 +1239,7 @@ importers:
         version: 1.25.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       csv-parse:
         specifier: 'catalog:'
         version: 6.2.1
@@ -1455,7 +1467,7 @@ importers:
         version: link:../utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       cache-manager:
         specifier: 'catalog:'
         version: 5.2.3
@@ -1571,7 +1583,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       dotenv:
         specifier: 'catalog:'
         version: 17.2.3
@@ -1719,7 +1731,7 @@ importers:
         version: link:../utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1889,9 +1901,9 @@ importers:
       '@jitsi/robotjs':
         specifier: ^0.6.21
         version: 0.6.21
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
+      '@modelcontextprotocol/server':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
       '@n8n/mcp-browser':
         specifier: workspace:*
         version: link:../mcp-browser
@@ -2763,6 +2775,9 @@ importers:
       '@modelcontextprotocol/ext-apps':
         specifier: 'catalog:'
         version: 1.3.2(@modelcontextprotocol/sdk@1.26.0(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.67)
+      '@modelcontextprotocol/sdk':
+        specifier: 'catalog:'
+        version: 1.26.0(zod@3.25.67)
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../../frontend/@n8n/design-system
@@ -2782,9 +2797,9 @@ importers:
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.114
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
+      '@modelcontextprotocol/server':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
@@ -2839,9 +2854,12 @@ importers:
       '@joplin/turndown-plugin-gfm':
         specifier: 'catalog:'
         version: 1.0.64
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
+      '@modelcontextprotocol/node':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5(@modelcontextprotocol/server@2.0.0-beta.5)(hono@4.12.27)
+      '@modelcontextprotocol/server':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
@@ -3157,9 +3175,21 @@ importers:
       '@mistralai/mistralai':
         specifier: ^1.10.0
         version: 1.10.0
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
+      '@modelcontextprotocol/client':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
+      '@modelcontextprotocol/core':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
+      '@modelcontextprotocol/node':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5(@modelcontextprotocol/server@2.0.0-beta.5)(hono@4.12.27)
+      '@modelcontextprotocol/server':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
+      '@modelcontextprotocol/server-legacy':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5(express@5.1.0)
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
@@ -3216,7 +3246,7 @@ importers:
         version: 2.5.7
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -3428,7 +3458,7 @@ importers:
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@7.0.2)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -3971,9 +4001,15 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.2.0(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.46.0(@smithy/signature-v4@5.3.5)(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
-        version: 1.26.0(zod@3.25.67)
+      '@modelcontextprotocol/node':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5(@modelcontextprotocol/server@2.0.0-beta.5)(hono@4.12.27)
+      '@modelcontextprotocol/server':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5
+      '@modelcontextprotocol/server-legacy':
+        specifier: 2.0.0-beta.5
+        version: 2.0.0-beta.5(express@5.1.0)
       '@mozilla/readability':
         specifier: 'catalog:'
         version: 0.6.0
@@ -4511,7 +4547,7 @@ importers:
         version: 6.141.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       concurrently:
         specifier: ^8.2.0
         version: 8.2.0
@@ -4734,7 +4770,7 @@ importers:
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       nock:
         specifier: 'catalog:'
         version: 14.0.14
@@ -5341,7 +5377,7 @@ importers:
         version: link:../../../@n8n/utils
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       flatted:
         specifier: 3.4.2
         version: 3.4.2
@@ -5728,7 +5764,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -6156,7 +6192,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       basic-auth:
         specifier: 'catalog:'
         version: 2.0.1
@@ -6813,7 +6849,7 @@ importers:
         version: 0.16.1
       axios:
         specifier: 1.18.0
-        version: 1.18.0(debug@4.4.3)
+        version: 1.18.0(debug@4.3.4)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -9775,6 +9811,14 @@ packages:
   '@mixmark-io/domino@2.2.0':
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
 
+  '@modelcontextprotocol/client@2.0.0-beta.5':
+    resolution: {integrity: sha512-YuuNm5f2TMoFQRje1UqVP8TJRjijCXMz4ckvoVpx1cUXuBEmykWQ2d8R536pek6UKcXT41T5nWc4qR1JFIbEmg==}
+    engines: {node: '>=20'}
+
+  '@modelcontextprotocol/core@2.0.0-beta.5':
+    resolution: {integrity: sha512-HKbY9XTbsDy1Y6r2I55TGE3JEapM0vg96e1MUmBIF9LGjos5gjhcIrTz1yvBPLg2aFKHjwhUAQfRdrCEnPxNew==}
+    engines: {node: '>=20'}
+
   '@modelcontextprotocol/ext-apps@1.3.2':
     resolution: {integrity: sha512-DGG1FxN3s8g4KV+BF64dxph8j2mtxgU56Lu/WgBjylomqRIPshW0ut47OtBN4+V8r+Qp8kKUvCOBBzPY9+GurA==}
     engines: {node: '>=20'}
@@ -9789,6 +9833,16 @@ packages:
       react-dom:
         optional: true
 
+  '@modelcontextprotocol/node@2.0.0-beta.5':
+    resolution: {integrity: sha512-flrOzx5qFLBM9I8IYRGfYUY02erFmxOvYQ9sEE6iSj/ZZpRYKorXWscM/qrfW9rwlcGLyymHhnP2AaDbMB1lIA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@modelcontextprotocol/server': ^2.0.0-beta.5
+      hono: 4.12.27
+    peerDependenciesMeta:
+      hono:
+        optional: true
+
   '@modelcontextprotocol/sdk@1.26.0':
     resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
     engines: {node: '>=18'}
@@ -9798,6 +9852,20 @@ packages:
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
+
+  '@modelcontextprotocol/server-legacy@2.0.0-beta.5':
+    resolution: {integrity: sha512-8BemN4avQnG6Fu660fZCqnPGpeyL7gg5kxUceZQh7JCt8oqzX1bwJkNV+cKS01LPAaPbl93INneD+mBtJWKWvQ==}
+    engines: {node: '>=20'}
+    deprecated: This package is a frozen copy of v1's SSE transport and OAuth Authorization Server helpers for migration purposes only. Use StreamableHTTP from @modelcontextprotocol/server and a dedicated OAuth server in production. Will not receive new features.
+    peerDependencies:
+      express: ^4.18.0 || ^5.0.0
+    peerDependenciesMeta:
+      express:
+        optional: true
+
+  '@modelcontextprotocol/server@2.0.0-beta.5':
+    resolution: {integrity: sha512-i1E5l75rQKsgY/AKAIspgMBH1vEL7dqiK7tHr0L+raYcb0SWOziqNGJXGIG6NY4AlXDWIKGJQGB7Nqfs3oUi5g==}
+    engines: {node: '>=20'}
 
   '@mongodb-js/saslprep@1.3.2':
     resolution: {integrity: sha512-QgA5AySqB27cGTXBFmnpifAi7HxoGUeezwo6p9dI03MuDB6Pp33zgclqVb6oVK3j6I9Vesg0+oojW2XxB59SGg==}
@@ -25345,7 +25413,7 @@ snapshots:
 
   '@codspeed/core@5.2.0':
     dependencies:
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
       find-up: 6.3.0
       form-data: 4.0.6
       node-gyp-build: 4.8.4
@@ -25460,7 +25528,7 @@ snapshots:
 
   '@daytona/api-client@0.187.0':
     dependencies:
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -25480,7 +25548,7 @@ snapshots:
       '@opentelemetry/sdk-node': 0.217.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-base': 2.7.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.40.0
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
       busboy: 1.6.0
       dotenv: 17.4.2
       expand-tilde: 2.0.2
@@ -25498,7 +25566,7 @@ snapshots:
 
   '@daytona/toolbox-api-client@0.187.0':
     dependencies:
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -27072,6 +27140,20 @@ snapshots:
 
   '@mixmark-io/domino@2.2.0': {}
 
+  '@modelcontextprotocol/client@2.0.0-beta.5':
+    dependencies:
+      '@modelcontextprotocol/core': 2.0.0-beta.5
+      cross-spawn: 7.0.6
+      eventsource: 3.0.6
+      eventsource-parser: 3.0.8
+      jose: 6.2.2
+      pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
+      zod: 3.25.67
+
+  '@modelcontextprotocol/core@2.0.0-beta.5':
+    dependencies:
+      zod: 3.25.67
+
   '@modelcontextprotocol/ext-apps@1.3.2(@modelcontextprotocol/sdk@1.26.0(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@3.25.67)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.26.0(zod@3.25.67)
@@ -27079,6 +27161,13 @@ snapshots:
     optionalDependencies:
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
+
+  '@modelcontextprotocol/node@2.0.0-beta.5(@modelcontextprotocol/server@2.0.0-beta.5)(hono@4.12.27)':
+    dependencies:
+      '@hono/node-server': 1.19.13(hono@4.12.27)
+      '@modelcontextprotocol/server': 2.0.0-beta.5
+    optionalDependencies:
+      hono: 4.12.27
 
   '@modelcontextprotocol/sdk@1.26.0(zod@3.25.67)':
     dependencies:
@@ -27101,6 +27190,35 @@ snapshots:
       zod-to-json-schema: 3.25.2(zod@3.25.67)
     transitivePeerDependencies:
       - supports-color
+
+  '@modelcontextprotocol/server-legacy@2.0.0-beta.5(express@5.1.0)':
+    dependencies:
+      '@modelcontextprotocol/core': 2.0.0-beta.5
+      content-type: 1.0.5
+      cors: 2.8.5
+      express-rate-limit: 8.2.2(express@5.1.0)
+      pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
+      raw-body: 3.0.0
+      zod: 3.25.67
+    optionalDependencies:
+      express: 5.1.0
+
+  '@modelcontextprotocol/server-legacy@2.0.0-beta.5(express@5.2.1)':
+    dependencies:
+      '@modelcontextprotocol/core': 2.0.0-beta.5
+      content-type: 1.0.5
+      cors: 2.8.5
+      express-rate-limit: 8.2.2(express@5.2.1)
+      pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
+      raw-body: 3.0.0
+      zod: 3.25.67
+    optionalDependencies:
+      express: 5.2.1
+
+  '@modelcontextprotocol/server@2.0.0-beta.5':
+    dependencies:
+      '@modelcontextprotocol/core': 2.0.0-beta.5
+      zod: 3.25.67
 
   '@mongodb-js/saslprep@1.3.2':
     dependencies:
@@ -27137,7 +27255,7 @@ snapshots:
 
   '@n8n/sandbox-client@0.0.4':
     dependencies:
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -28391,7 +28509,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
       axios-retry: 4.5.0(axios@1.18.0)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -28676,7 +28794,7 @@ snapshots:
       '@slack/types': 2.20.1
       '@types/node': 20.19.41
       '@types/retry': 0.12.0
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
       eventemitter3: 5.0.1
       form-data: 4.0.6
       is-electron: 2.2.2
@@ -31755,7 +31873,7 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.18.0):
     dependencies:
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
       is-retry-allowed: 2.2.0
 
   axios@1.18.0(debug@4.3.4):
@@ -39343,7 +39461,7 @@ snapshots:
 
   retry-axios@2.6.0(axios@1.18.0):
     dependencies:
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -40100,7 +40218,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.18.0(debug@4.4.3)
+      axios: 1.18.0(debug@4.3.4)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2

@@ -102,7 +102,6 @@
     "@ai-sdk/provider-utils": "catalog:",
     "@ai-sdk/xai": "catalog:",
     "@daytona/sdk": "catalog:",
-    "@modelcontextprotocol/sdk": "catalog:",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/sandbox-client": "0.0.4",
     "@n8n/utils": "workspace:*",
@@ -115,7 +114,12 @@
     "langsmith": "catalog:",
     "undici": "catalog:undici-v7",
     "yaml": "catalog:",
-    "zod-to-json-schema": "catalog:"
+    "zod-to-json-schema": "catalog:",
+    "@modelcontextprotocol/server": "2.0.0-beta.5",
+    "@modelcontextprotocol/node": "2.0.0-beta.5",
+    "@modelcontextprotocol/server-legacy": "2.0.0-beta.5",
+    "@modelcontextprotocol/client": "2.0.0-beta.5",
+    "@modelcontextprotocol/core": "2.0.0-beta.5"
   },
   "peerDependencies": {
     "@pinecone-database/pinecone": "catalog:",

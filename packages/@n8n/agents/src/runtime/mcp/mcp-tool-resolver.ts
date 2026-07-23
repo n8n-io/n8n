@@ -1,4 +1,4 @@
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from "@modelcontextprotocol/server";
 import type { JSONSchema7 } from 'json-schema';
 
 import type { McpCallToolResult, McpConnection } from './mcp-connection';

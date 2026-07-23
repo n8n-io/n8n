@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /** Don't remove the .js extensions. That's how the @modelcontextprotocol/sdk is packaged. */
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import { McpToolResolver } from './mcp-tool-resolver';
 import { wrapToolForApproval } from '../../sdk/tool';
 import type { McpServerConfig, McpToolCallSettledEvent } from '../../types/sdk/mcp';
@@ -20,19 +19,7 @@ export type McpCallToolResult = CallToolResult;
  * classes carry private members). Deriving from here sidesteps that mismatch.
  */
 async function importMcpSdk() {
-	const [
-		{ Client },
-		{ SSEClientTransport },
-		{ StdioClientTransport },
-		{ StreamableHTTPClientTransport },
-		{ CallToolResultSchema },
-	] = await Promise.all([
-		import('@modelcontextprotocol/sdk/client/index.js'),
-		import('@modelcontextprotocol/sdk/client/sse.js'),
-		import('@modelcontextprotocol/sdk/client/stdio.js'),
-		import('@modelcontextprotocol/sdk/client/streamableHttp.js'),
-		import('@modelcontextprotocol/sdk/types.js'),
-	]);
+	const [{ Client, SSEClientTransport, StreamableHTTPClientTransport }, { StdioClientTransport }, { CallToolResultSchema }] = await Promise.all([import('@modelcontextprotocol/client'), import('@modelcontextprotocol/client/stdio'), import('@modelcontextprotocol/core')]);
 	return {
 		Client,
 		SSEClientTransport,
@@ -186,11 +173,10 @@ export class McpConnection {
 		options?: { abortSignal?: AbortSignal },
 	): Promise<McpCallToolResult> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
-		const { CallToolResultSchema } = await loadMcpSdk();
+		await loadMcpSdk();
 		try {
 			const result = (await this.client.callTool(
 				{ name, arguments: args },
-				CallToolResultSchema,
 				options?.abortSignal ? { signal: options.abortSignal } : undefined,
 			)) as McpCallToolResult;
 			await this.notifyToolCallSettled({ toolName: name, success: result.isError !== true });

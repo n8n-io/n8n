@@ -1,4 +1,4 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { Client } from "@modelcontextprotocol/client";
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
@@ -18,9 +18,11 @@ import type { McpTool } from './types';
 import * as utils from './utils';
 import { buildMcpToolName } from '../McpClientTool/utils';
 
-vi.mock('@modelcontextprotocol/sdk/client/sse.js');
-vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js');
-vi.mock('@modelcontextprotocol/sdk/client/index.js');
+vi.mock('@modelcontextprotocol/client');
+/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
+vi.mock('@modelcontextprotocol/client');
+/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
+vi.mock('@modelcontextprotocol/client');
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
@@ -264,7 +266,6 @@ describe('runtime', () => {
 
 			expect(callTool).toHaveBeenCalledWith(
 				{ name: 'search', arguments: { query: 'hello' } },
-				expect.anything(),
 				expect.objectContaining({ timeout: baseConfig.timeout }),
 			);
 		});
@@ -300,7 +301,6 @@ describe('runtime', () => {
 			expect(callTool).toHaveBeenCalledWith(
 				{ name: 'search', arguments: { query: 'hello', extra: 'kept' } },
 				expect.anything(),
-				expect.anything(),
 			);
 		});
 
@@ -318,7 +318,6 @@ describe('runtime', () => {
 			await executeMcpTool(ctx, () => ({ ...baseConfig, timeout: 7777 }));
 
 			expect(callTool).toHaveBeenCalledWith(
-				expect.anything(),
 				expect.anything(),
 				expect.objectContaining({ timeout: 7777, signal: abort.signal }),
 			);

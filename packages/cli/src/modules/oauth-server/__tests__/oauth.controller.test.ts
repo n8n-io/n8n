@@ -1,4 +1,4 @@
-import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients.js';
+import type { OAuthRegisteredClientsStore } from "@modelcontextprotocol/server-legacy/auth";
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';

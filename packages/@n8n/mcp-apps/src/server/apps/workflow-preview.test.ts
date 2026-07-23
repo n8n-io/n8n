@@ -56,6 +56,7 @@ describe('registerWorkflowPreviewApp', () => {
 		captured = undefined as unknown as CapturedResource;
 		onResourceRead = vi.fn();
 		registerWorkflowPreviewApp(
+			/* @mcp-codemod-error Mock object exposes v1 McpServer method name(s): resource. v2 renamed them (resource → registerResource) — code migrated to the register* names fails against this mock with "… is not a function". Rename the mock's keys to match. */
 			{
 				resource: (
 					name: string,
@@ -120,6 +121,7 @@ describe('registerWorkflowPreviewApp', () => {
 
 	it('omits telemetry CSP domains when no instance origin is provided', async () => {
 		registerWorkflowPreviewApp(
+			/* @mcp-codemod-error Mock object exposes v1 McpServer method name(s): resource. v2 renamed them (resource → registerResource) — code migrated to the register* names fails against this mock with "… is not a function". Rename the mock's keys to match. */
 			{
 				resource: (
 					name: string,

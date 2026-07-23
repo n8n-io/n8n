@@ -1,5 +1,5 @@
 import type { App, McpUiHostContext } from '@modelcontextprotocol/ext-apps';
-import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
+import type { Implementation } from "@modelcontextprotocol/server";
 import { isRecord } from '@n8n/utils/is-record';
 import { computed, ref, shallowRef, type Ref, type ShallowRef, watch } from 'vue';
 

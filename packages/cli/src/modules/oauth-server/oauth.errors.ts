@@ -1,5 +1,4 @@
-import { ServerError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
-
+import { ServerError } from "@modelcontextprotocol/server-legacy/auth";
 import { AuthError } from '@/errors/response-errors/auth.error';
 
 // The wording references MCP because the instance MCP server is currently the

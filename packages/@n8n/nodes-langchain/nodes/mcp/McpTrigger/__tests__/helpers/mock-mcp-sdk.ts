@@ -1,4 +1,4 @@
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { Server } from "@modelcontextprotocol/server";
 import type { Mocked } from 'vitest';
 
 import type { McpTransport, TransportType } from '../../transport/Transport';

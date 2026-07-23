@@ -1,4 +1,4 @@
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from "@modelcontextprotocol/server";
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -256,7 +256,6 @@ export class McpClient implements INodeType {
 							name: tool,
 							arguments: parameters,
 						},
-						undefined,
 						{
 							timeout: options.timeout ? Number(options.timeout) : undefined,
 						},
