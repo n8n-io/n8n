@@ -39,6 +39,14 @@ const insertQb = () => ({
 	execute: vi.fn(),
 });
 
+/** A chainable update query-builder mock; `execute` is set per test. */
+const updateQb = () => ({
+	update: vi.fn().mockReturnThis(),
+	set: vi.fn().mockReturnThis(),
+	where: vi.fn().mockReturnThis(),
+	execute: vi.fn(),
+});
+
 describe('ScheduledJobRepository', () => {
 	const entityManager = mockEntityManager(ScheduledJob);
 	// Default DI instance resolves DatabaseConfig to its sqlite default (isPostgres = false).
@@ -65,6 +73,24 @@ describe('ScheduledJobRepository', () => {
 				nodeId: 'node',
 			});
 			expect(result).toBe(rows);
+		});
+	});
+
+	describe('forceDueNowByWorkflowNode', () => {
+		it('sets nextRunAt to now for the node jobs', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.forceDueNowByWorkflowNode('wf', 'node');
+
+			expect(qb.update).toHaveBeenCalledWith(ScheduledJob);
+			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
+			expect(qb.where).toHaveBeenCalledWith('"workflowId" = :workflowId AND "nodeId" = :nodeId', {
+				workflowId: 'wf',
+				nodeId: 'node',
+			});
+			expect(qb.execute).toHaveBeenCalled();
 		});
 	});
 
