@@ -10,9 +10,9 @@ export interface IResponseError extends Error {
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
-	errorWorkflow?: string;
-	timezone?: string;
-	saveManualRuns?: boolean;
+	readonly errorWorkflow?: string;
+	readonly timezone?: string;
+	readonly saveManualRuns?: boolean;
 }
 
 export type ExtendedValidationResult = ValidationResult & { fieldName?: string };
