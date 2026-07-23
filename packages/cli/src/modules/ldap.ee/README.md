@@ -106,7 +106,7 @@ curl -X POST http://localhost:5678/api/v1/settings/ldap/sync \
 
 **7. Verify disable behavior:** delete the user from LDAP (`ldapdelete`, above) and sync again — the corresponding n8n user should become disabled (not deleted).
 
-**8. Clean up.** Disable LDAP login first (Settings → LDAP, uncheck login, or `PUT /settings/ldap` with `loginEnabled: false`) — otherwise n8n is left with LDAP as its active authentication method and no LDAP server to validate logins against. Then remove the container:
+**8. Clean up.** Disable LDAP login first (Settings → LDAP, uncheck login, or `GET /settings/ldap` then `PUT /settings/ldap` with the full returned object but `loginEnabled: false`) — otherwise n8n is left with LDAP as its active authentication method and no LDAP server to validate logins against. Then remove the container:
 
 ```bash
 docker rm -f n8n-ldap-test
