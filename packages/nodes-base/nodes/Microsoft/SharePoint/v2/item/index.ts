@@ -142,7 +142,8 @@ export function buildItemFieldsPayload(mapperValue: ResourceMapperValue): IDataO
 			(part === 'Url' || part === 'Description') &&
 			mapperValue.schema?.some((field) => field.id === `${base}.Url` && field.type === 'url')
 		) {
-			const existing = fields[base];
+			// Own properties only — an inherited read must not be reused as the base.
+			const existing = Object.hasOwn(fields, base) ? fields[base] : undefined;
 			const folded: IDataObject =
 				typeof existing === 'object' && existing !== null && !Array.isArray(existing)
 					? (existing as IDataObject)

@@ -7,6 +7,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { assertPathSegment } from '../../helpers/utils';
 import { buildItemFieldsPayload, lookupItemIdByColumns } from '../../item';
 import { listRLC, untilSiteSelected } from '../../list';
 import { itemColumns } from '../../list/columns';
@@ -45,15 +46,11 @@ export async function execute(
 	siteIdCache?: Map<string, string>,
 ): Promise<IDataObject> {
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
-	const listIdOrTitle = (
-		this.getNodeParameter('list', i, '', { extractValue: true }) as string
-	).trim();
-
-	if (listIdOrTitle === '') {
-		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
-			description: 'Set the list ID or title and try again.',
-		});
-	}
+	const listIdOrTitle = assertPathSegment(
+		this.getNode(),
+		String(this.getNodeParameter('list', i, '', { extractValue: true })),
+		'List',
+	);
 
 	const mapperValue = this.getNodeParameter('columns', i) as ResourceMapperValue;
 	const matchingColumns = mapperValue.matchingColumns ?? [];
@@ -74,6 +71,8 @@ export async function execute(
 			description: 'Double-check the value(s) for the columns to match and try again',
 		});
 	}
+
+	itemId = assertPathSegment(this.getNode(), itemId, 'Item');
 
 	// The documented route updates the item's fields directly (v1 PATCHed the
 	// item itself with a { fields } wrapper — a route Graph doesn't document).

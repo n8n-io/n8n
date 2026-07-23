@@ -312,6 +312,23 @@ describe('Microsoft SharePoint v2 — Item: Update', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	it.each(['.', '..'])('rejects a List value of %j before any request', async (list) => {
+		setParams({
+			...baseParams({ value: { id: ITEM_ID }, matchingColumns: ['id'] }),
+			list,
+		});
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(`The 'List' value '${list}' is not valid`);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	it.each(['.', '..'])('rejects an item ID of %j before the PATCH', async (id) => {
+		setParams(baseParams({ value: { id }, matchingColumns: ['id'] }));
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(`The 'Item' value '${id}' is not valid`);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('surfaces a transport error per item when continueOnFail is on', async () => {
 		setParams(
 			baseParams({
@@ -372,5 +389,27 @@ describe('buildItemFieldsPayload', () => {
 		const payload = buildItemFieldsPayload(mapperValue(value));
 		expect(payload).toEqual({ Title: 'A' });
 		expect(Object.prototype).not.toHaveProperty('x');
+	});
+
+	it('does not pollute the prototype when a hyperlink split has a __proto__ base', () => {
+		// The dotted key clears every fold guard, so `fields['__proto__']` must
+		// not be reused as the folded object — that read aliases Object.prototype.
+		const schema: ResourceMapperValue['schema'] = [
+			{
+				id: '__proto__.Url',
+				displayName: 'x (URL)',
+				canBeUsedToMatch: false,
+				defaultMatch: false,
+				display: true,
+				readOnly: false,
+				required: false,
+				type: 'url',
+			},
+		];
+		const value = jsonParse<ResourceMapperValue['value']>('{"__proto__.Url": "polluted"}');
+		const payload = buildItemFieldsPayload(mapperValue(value, schema));
+		expect(payload).toEqual({});
+		expect(({} as Record<string, unknown>).Url).toBeUndefined();
+		expect(Object.prototype).not.toHaveProperty('Url');
 	});
 });
