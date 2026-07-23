@@ -7,7 +7,12 @@
  */
 
 import type { Logger } from '@n8n/backend-common';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import {
+	detectStickyLayoutWarnings,
+	parseWorkflowCodeToBuilder,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypes } from 'n8n-workflow';
 
@@ -269,6 +274,16 @@ export class ParseValidateHandler {
 
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
 			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
+
+			// Sticky overlap checks run on the laid-out JSON (positions are final
+			// only after tidy-up) so the agent can self-correct stickies that
+			// collide or accidentally wrap the same node.
+			this.collectValidationIssues(
+				detectStickyLayoutWarnings(workflowJson),
+				allWarnings,
+				'STICKY LAYOUT WARNINGS',
+				'info',
+			);
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,

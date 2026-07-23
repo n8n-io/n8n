@@ -25,6 +25,11 @@ export const AI_X_SPACING = GRID_SIZE * 3; // 48
 export const AI_Y_SPACING = GRID_SIZE * 8; // 128
 export const STICKY_BOTTOM_PADDING = GRID_SIZE * 4; // 64
 
+// Match the StickyNote node defaults
+// (packages/nodes-base/nodes/StickyNote/StickyNote.node.ts).
+export const DEFAULT_STICKY_WIDTH = 240;
+export const DEFAULT_STICKY_HEIGHT = 160;
+
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
 // BFS layout constants (used by calculateNodePositions for basic positioning)

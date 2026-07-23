@@ -3,7 +3,12 @@
  */
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
+import {
+	detectStickyLayoutWarnings,
+	parseWorkflowCodeToBuilder,
+	validateWorkflow,
+	workflow,
+} from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { ParseValidateHandler } from '../parse-validate-handler';
@@ -12,6 +17,7 @@ import { ParseValidateHandler } from '../parse-validate-handler';
 vi.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: vi.fn(),
 	validateWorkflow: vi.fn(),
+	detectStickyLayoutWarnings: vi.fn(() => []),
 	workflow: { fromJSON: vi.fn() },
 	stripImportStatements: vi.fn((code: string) => code),
 }));
@@ -19,6 +25,7 @@ vi.mock('@n8n/workflow-sdk', () => ({
 // Typed mock references
 const mockParseWorkflowCodeToBuilder = parseWorkflowCodeToBuilder as Mock;
 const mockValidateWorkflow = validateWorkflow as Mock;
+const mockDetectStickyLayoutWarnings = detectStickyLayoutWarnings as Mock;
 const mockFromJSON = workflow.fromJSON as Mock;
 
 describe('ParseValidateHandler', () => {
@@ -26,6 +33,10 @@ describe('ParseValidateHandler', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// clearAllMocks resets call history but not implementations set via
+		// mockReturnValue — restore the no-warning default so a per-test
+		// override doesn't leak into later tests.
+		mockDetectStickyLayoutWarnings.mockReturnValue([]);
 
 		handler = new ParseValidateHandler({});
 	});
@@ -142,6 +153,36 @@ describe('ParseValidateHandler', () => {
 
 			expect(result.warnings).toHaveLength(1);
 			expect(result.warnings[0].code).toBe('JSON_WARN');
+		});
+
+		it('should collect sticky layout warnings for agent self-correction', async () => {
+			const mockWorkflow = {
+				id: 'test',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+			};
+
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue(mockWorkflow),
+			};
+
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+			mockDetectStickyLayoutWarnings.mockReturnValue([
+				{ code: 'STICKY_OVERLAP', message: 'Sticky A overlaps sticky B', nodeName: 'A' },
+			]);
+
+			const result = await handler.parseAndValidate('code');
+
+			// Sticky checks run on the laid-out (tidyUp) JSON, not the pre-layout one.
+			expect(mockDetectStickyLayoutWarnings).toHaveBeenCalledWith(mockWorkflow);
+			expect(result.warnings).toHaveLength(1);
+			expect(result.warnings[0].code).toBe('STICKY_OVERLAP');
+			expect(result.warnings[0].nodeName).toBe('A');
 		});
 
 		it('should collect errors from JSON validation as warnings for agent self-correction', async () => {
