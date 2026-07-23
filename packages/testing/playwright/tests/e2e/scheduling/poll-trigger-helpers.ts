@@ -1,5 +1,6 @@
 import type { ProxyServer } from 'n8n-containers/services/proxy';
 import type { IWorkflowBase } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import type { makePollTriggerWorkflow } from './poll-trigger-workflow';
 import { expect } from '../../../fixtures/base';
@@ -11,16 +12,18 @@ type PollTriggerWorkflow = ReturnType<typeof makePollTriggerWorkflow>;
 // item, activate the workflow, and assert it produces a successful trigger-mode
 // execution. Programming the expectation before activation means the inline
 // seed poll (which every fresh activation runs) is itself the fire under test.
+// Owns the path (rather than taking a pre-built workflow) so a caller that
+// doesn't need to reuse it afterward is a single call.
 export async function expectPollTriggerFires(
 	api: ApiHelpers,
 	proxy: ProxyServer,
-	path: string,
-	wf: PollTriggerWorkflow,
-): Promise<{ workflowId: string; nodeId: string }> {
+	makeWorkflow: (path: string) => PollTriggerWorkflow,
+): Promise<{ workflowId: string; nodeId: string; path: string }> {
+	const path = `/${nanoid()}`;
 	await proxy.createGetExpectation(path, { items: [{ id: 1 }] });
 
 	const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-		wf.toJSON() as IWorkflowBase,
+		makeWorkflow(path).toJSON() as IWorkflowBase,
 	);
 
 	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
@@ -33,5 +36,5 @@ export async function expectPollTriggerFires(
 	);
 	if (!triggerNode) throw new Error('Poll trigger node not found in created workflow');
 
-	return { workflowId, nodeId: triggerNode.id };
+	return { workflowId, nodeId: triggerNode.id, path };
 }

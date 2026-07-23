@@ -1,5 +1,3 @@
-import { nanoid } from 'nanoid';
-
 import { expectPollTriggerFires } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow, makeCronPollTriggerWorkflow } from './poll-trigger-workflow';
 import { test, expect } from '../../../fixtures/base';
@@ -35,8 +33,7 @@ test.describe(
 			// This only proves the seed poll that `activatePollTrigger` runs inline
 			// on a fresh provision; it does not touch the scheduler's claim/dispatch
 			// path. See "should dispatch a scheduled tick" below for that proof.
-			const path = `/${nanoid()}`;
-			await expectPollTriggerFires(api, services.proxy, path, makePollTriggerWorkflow(path));
+			await expectPollTriggerFires(api, services.proxy, makePollTriggerWorkflow);
 		});
 
 		test('should fire a poll trigger driven by a raw cron expression', async ({
@@ -44,8 +41,7 @@ test.describe(
 			services,
 		}) => {
 			// Cron variant: exercises the `custom` mode provisioning branch.
-			const path = `/${nanoid()}`;
-			await expectPollTriggerFires(api, services.proxy, path, makeCronPollTriggerWorkflow(path));
+			await expectPollTriggerFires(api, services.proxy, makeCronPollTriggerWorkflow);
 		});
 
 		test('should dispatch a scheduled tick through materialisation and execution', async ({
@@ -59,12 +55,10 @@ test.describe(
 			// execution. `fireScheduledJobsNow` forces the job's `nextRunAt` to now
 			// so the next 1s sweep claims it — the everyMinute cron's own interval
 			// isn't itself under test here, so there's no reason to wait it out.
-			const path = `/${nanoid()}`;
-			const { workflowId, nodeId } = await expectPollTriggerFires(
+			const { workflowId, nodeId, path } = await expectPollTriggerFires(
 				api,
 				services.proxy,
-				path,
-				makePollTriggerWorkflow(path),
+				makePollTriggerWorkflow,
 			);
 
 			await services.proxy.createGetExpectation(path, { items: [{ id: 2 }] });
@@ -82,12 +76,10 @@ test.describe(
 			api,
 			services,
 		}) => {
-			const path = `/${nanoid()}`;
 			const { workflowId, nodeId } = await expectPollTriggerFires(
 				api,
 				services.proxy,
-				path,
-				makePollTriggerWorkflow(path),
+				makePollTriggerWorkflow,
 			);
 
 			expect(await api.countScheduledJobs(workflowId, nodeId)).toBe(1);

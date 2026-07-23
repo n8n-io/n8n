@@ -1,5 +1,3 @@
-import { nanoid } from 'nanoid';
-
 import { expectPollTriggerFires } from './poll-trigger-helpers';
 import { makePollTriggerWorkflow } from './poll-trigger-workflow';
 import { test } from '../../../fixtures/base';
@@ -19,8 +17,7 @@ test.describe(
 			api,
 			services,
 		}) => {
-			const path = `/${nanoid()}`;
-			await expectPollTriggerFires(api, services.proxy, path, makePollTriggerWorkflow(path));
+			await expectPollTriggerFires(api, services.proxy, makePollTriggerWorkflow);
 		});
 	},
 );
