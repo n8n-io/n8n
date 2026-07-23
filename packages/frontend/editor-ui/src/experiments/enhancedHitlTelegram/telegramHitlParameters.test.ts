@@ -3,6 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { filterTelegramHitlParameters } from './telegramHitlParameters';
 
+const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+};
+
 const chatApproval: INodeProperties = {
 	displayName: 'Approve Within Chat',
 	name: 'chatApproval',
@@ -25,8 +32,13 @@ const chatId: INodeProperties = {
 };
 
 describe('filterTelegramHitlParameters', () => {
-	it('removes chatApproval and chatApprovalOptions', () => {
-		const result = filterTelegramHitlParameters([chatApproval, chatApprovalOptions, chatId]);
+	it('removes the advanced interactivity notice, chatApproval and chatApprovalOptions', () => {
+		const result = filterTelegramHitlParameters([
+			advancedInteractivityNotice,
+			chatApproval,
+			chatApprovalOptions,
+			chatId,
+		]);
 
 		expect(result).toEqual([chatId]);
 	});
