@@ -1,0 +1,79 @@
+{
+	"name": "get-all-messages",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "test-trigger-node-id",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 20
+			},
+			"id": "test-gotify-node-id",
+			"name": "Gotify",
+			"type": "n8n-nodes-base.gotify",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"credentials": {
+				"gotifyApi": {
+					"id": "test-credentials-id",
+					"name": "Test Gotify API"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Gotify",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Gotify": [
+			{
+				"json": {
+					"id": 1,
+					"appid": 1,
+					"message": "Test message 1",
+					"title": "",
+					"priority": 1,
+					"date": "2024-01-01T00:00:00Z"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"appid": 1,
+					"message": "Test message 2",
+					"title": "",
+					"priority": 1,
+					"date": "2024-01-01T00:00:00Z"
+				}
+			}
+		]
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "test-version-id",
+	"meta": {
+		"instanceId": "test-instance-id"
+	},
+	"id": "test-workflow-id-9",
+	"tags": []
+}
