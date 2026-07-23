@@ -525,6 +525,7 @@
       "dist/nodes/Demio/Demio.node.js",
       "dist/nodes/Dhl/Dhl.node.js",
       "dist/nodes/Discord/Discord.node.js",
+      "dist/nodes/Discord/DiscordTrigger.node.js",
       "dist/nodes/Discourse/Discourse.node.js",
       "dist/nodes/Disqus/Disqus.node.js",
       "dist/nodes/Drift/Drift.node.js",
