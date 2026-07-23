@@ -43,16 +43,16 @@ referenced sub-workflows must be in one of the exported projects.
 Import a `.n8np` archive into a project.
 
 ```bash
-n8n-cli package import --file=export.n8np --conflict-policy=fail
-n8n-cli package import --file=export.n8np --project=<id> --conflict-policy=new-version
-n8n-cli package import --file=export.n8np --conflict-policy=fail --credential-missing-mode=must-preexist
-n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"credentials":{"<sourceId>":"<targetId>"}}'
+n8n-cli package import --file=export.n8np
+n8n-cli package import --file=export.n8np --project=<id> --workflow-conflict-policy=skip
+n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --credential-missing-mode=must-preexist
+n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bindings='{"credentials":{"<sourceId>":"<targetId>"}}'
 ```
 
 | Flag | Description |
 |------|-------------|
 | `--file` | Path to the `.n8np` package file. (required) |
-| `--conflict-policy` | What to do when a workflow already exists by source ID: `new-version`, `fail`, or `skip`. (required) |
+| `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
 | `--project` | Target project ID. Defaults to your personal project. |
 | `--folder` | Target folder ID within the project. Defaults to the project root. |
 | `--workflow-publishing-policy` | Whether imported workflows end up published. `preserve-published-state` (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package workflow is published too; `match-source` follows the package workflow's published flag; `publish-all` publishes every imported workflow; `unpublish-all` leaves new workflows unpublished and unpublishes updated ones. |
@@ -70,7 +70,7 @@ n8n-cli package import --file=export.n8np --conflict-policy=fail --bindings='{"c
 Requires the API key to hold the `workflow:import` scope, plus `dataTable:create`
 when the package references data tables and `--data-table-missing-mode` is
 `create`. When the import is blocked — for example by a workflow conflict under
-`--conflict-policy=fail`, or by an unresolved credential under
+`--workflow-conflict-policy=fail`, or by an unresolved credential under
 `--credential-missing-mode=must-preexist`, or by a schema-incompatible data
 table — the command exits non-zero and lists the blocking issues. With the
 default `create-stub` mode, missing credentials are stubbed instead of blocking

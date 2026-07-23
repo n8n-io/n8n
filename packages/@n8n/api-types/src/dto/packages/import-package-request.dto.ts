@@ -72,7 +72,7 @@ export class ImportPackageRequestDto extends Z.class({
 		.default('id-only'),
 	credentialMissingMode: z.enum(['must-preexist', 'create-stub']).optional().default('create-stub'),
 	bindings: bindingsSchema,
-	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']),
+	workflowConflictPolicy: z.enum(['new-version', 'fail', 'skip']).optional().default('new-version'),
 	workflowPublishingPolicy: z
 		.enum(['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'])
 		.optional()
