@@ -86,6 +86,20 @@ interface LangSmithConfig {
 	headers: Record<string, string>;
 }
 
+/** LangSmith request with 429/5xx backoff — a full-run join fires ~100 queries,
+ *  which trips the API's rate limit without pacing. Honors Retry-After. */
+async function lsFetch(url: string, init: RequestInit): Promise<Response> {
+	let delayMs = 2_000;
+	for (let attempt = 1; ; attempt++) {
+		const res = await fetch(url, init);
+		if (res.ok || attempt >= 6 || (res.status !== 429 && res.status < 500)) return res;
+		const retryAfter = Number(res.headers.get('retry-after'));
+		const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1_000 : delayMs;
+		await new Promise((resolve) => setTimeout(resolve, waitMs));
+		delayMs = Math.min(delayMs * 2, 30_000);
+	}
+}
+
 async function langsmithConfig(): Promise<LangSmithConfig> {
 	const { apiUrl, apiKey } = configFor();
 	if (!apiKey) {
@@ -105,9 +119,12 @@ async function langsmithConfig(): Promise<LangSmithConfig> {
 }
 
 async function resolveTraceProjectId(ls: LangSmithConfig, projectName: string): Promise<string> {
-	const res = await fetch(`${ls.apiUrl}/api/v1/sessions?name=${encodeURIComponent(projectName)}`, {
-		headers: ls.headers,
-	});
+	const res = await lsFetch(
+		`${ls.apiUrl}/api/v1/sessions?name=${encodeURIComponent(projectName)}`,
+		{
+			headers: ls.headers,
+		},
+	);
 	if (!res.ok) {
 		throw new Error(`LangSmith sessions lookup failed: ${res.status} ${await res.text()}`);
 	}
@@ -135,7 +152,7 @@ async function sumThreadCost(
 	projectId: string,
 	threadId: string,
 ): Promise<ThreadCost> {
-	const res = await fetch(`${ls.apiUrl}/api/v1/runs/query`, {
+	const res = await lsFetch(`${ls.apiUrl}/api/v1/runs/query`, {
 		method: 'POST',
 		headers: ls.headers,
 		body: JSON.stringify({
@@ -391,7 +408,7 @@ function loadResults(path: string): EvalResults {
 async function main(): Promise<void> {
 	const flags = parseFlags(process.argv.slice(2));
 	const traceProject = single(flags, 'trace-project') ?? 'instance-ai-evals';
-	const concurrency = Number(single(flags, 'concurrency') ?? '5');
+	const concurrency = Number(single(flags, 'concurrency') ?? '3');
 
 	const probeThread = single(flags, 'probe-thread');
 	if (probeThread) {
