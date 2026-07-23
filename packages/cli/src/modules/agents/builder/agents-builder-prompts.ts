@@ -171,7 +171,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 3. \`write_config(...)\` with the instructions, and the resolved model and
    credential — or \`model: ""\` and no \`credential\` while the model task
    is blocked.
-4. Load \`agent-builder-integrations\`, call \`list_integration_types()\`,
+4. Load \`agent-builder-external-services\`, call \`list_integration_types()\`,
    \`read_config()\`, then \`patch_config(...)\` adding the returned Slack type
    to \`/integrations/-\` with \`credentialId: ""\`.
 5. \`finish_setup({ channels: [{ integrationType: "slack" }] })\` — include
@@ -199,7 +199,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` replacing \`/model\` and \`/credential\`.
 
 ### Add an explicitly requested n8n node tool to an existing agent
-1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
+1. Load \`agent-builder-external-services\`, then call \`search_nodes\` and
    \`get_node_types\`; the explicit n8n-node request does not need
    \`resolve_integration\`.
 2. \`ask_credential\` for every required slot.
@@ -207,7 +207,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. \`patch_config(...)\` adding the node tool to \`/tools/-\`.
 
 ### Add an explicitly requested n8n node tool when credential setup is skipped
-1. Load \`agent-builder-node-tools\`, then call \`search_nodes\` and
+1. Load \`agent-builder-external-services\`, then call \`search_nodes\` and
    \`get_node_types\`.
 2. \`ask_credential(...)\` -> \`{ skipped: true }\`.
 3. \`read_config()\`.
@@ -223,10 +223,11 @@ This flow is user-initiated on an existing agent, so the credential ask is
 immediate. During an initial build, pick the best candidate as a stated
 assumption, write the draft \`/mcpServers/-\` entry with \`credential\` omitted,
 skip verification, and include the credential in the trailing \`finish_setup\`
-call; verify with the returned credential id and patch
-\`/mcpServers/<i>/credential\` after it resolves.
+call; verify with the returned credential id — on success the tool writes the
+credential into the matching entry itself; no \`read_config\`/\`patch_config\`
+follow-up for the credential.
 1. \`resolve_integration({ queries: ["notion"] })\`.
-2. When it returns \`kind: "mcp"\`, load \`agent-builder-mcp\`.
+2. When it returns \`kind: "mcp"\`, load \`agent-builder-external-services\`.
 3. For MCP candidates, select one entry from \`results[]\`. If
    multiple candidates remain, use \`ask_questions\` with their titles and
    descriptions; never choose by array order. If the user dismisses the
@@ -243,17 +244,18 @@ call; verify with the returned credential id and patch
 
 ### Ambiguous request: "Make it post somewhere"
 1. \`ask_questions(...)\` with the known destination choices.
-2. Load \`agent-builder-integrations\` to decide whether the destination is the
-   agent's chat/trigger surface.
+2. Load \`agent-builder-external-services\` to decide whether the destination is
+   the agent's chat/trigger surface.
 3. If it is a chat integration, call \`configure_channel\` with the returned
    \`integrationType\`. After \`configure_channel\` returns, stop this flow; the
    setup UI already persisted or skipped the channel, so do not read or mutate
    the config.
 4. Otherwise call \`resolve_integration({ queries: ["<selected service>"] })\`
    and follow the returned kind:
-   - \`kind: "mcp"\`: load \`agent-builder-mcp\`, verify, and wire the MCP server.
-   - \`kind: "node"\`: load \`agent-builder-node-tools\`, use the returned node
-     results with \`get_node_types\`, and ask for every required credential.
+   - \`kind: "mcp"\`: follow the skill's MCP Servers section — verify and wire
+     the MCP server.
+   - \`kind: "node"\`: follow the skill's Node Tools section, use the returned
+     node results with \`get_node_types\`, and ask for every required credential.
 5. In this non-chat branch only, \`read_config()\`, then \`patch_config(...)\` or
    \`write_config(...)\` with the resolved capability.
 

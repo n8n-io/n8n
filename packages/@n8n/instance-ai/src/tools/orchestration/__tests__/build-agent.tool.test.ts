@@ -552,6 +552,45 @@ describe('build-agent tool', () => {
 	});
 
 	describe('deferred agentId-path binding', () => {
+		it('rejects foreign agentId when the passed name contradicts the resolved agent name', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Support Triage Agent');
+
+			const result = await runTool(context, {
+				message: 'Build Ops Companion',
+				agentId: 'agent-existing',
+				name: 'Ops Companion',
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error:
+					'Agent agent-existing is named "Support Triage Agent", but name "Ops Companion" was passed. ' +
+					'To create a new agent named "Ops Companion", pass `name` only (no `agentId`). ' +
+					'To edit "Support Triage Agent", pass `agentId` only and put any rename instruction in `message`.',
+			});
+			expect(delegate.streamBuild).not.toHaveBeenCalled();
+			expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
+		});
+
+		it('allows foreign agentId when the passed name matches the resolved agent name', async () => {
+			const { context, delegate } = makeContext();
+			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Ops Companion');
+			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
+
+			await runTool(context, {
+				message: 'Add a tool',
+				agentId: 'agent-existing',
+				name: '  ops companion  ',
+			});
+
+			expect(delegate.streamBuild).toHaveBeenCalledWith(
+				'agent-existing',
+				'Add a tool',
+				expect.objectContaining({ threadId: 'ia-builder:thread-1:agent-existing' }),
+			);
+		});
+
 		it('does not persist the target when the agentId path fails before the stream settles', async () => {
 			const { context, delegate } = makeContext();
 			vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('agent:update forbidden'));

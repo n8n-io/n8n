@@ -684,6 +684,7 @@ export class AgentsBuilderToolsService {
 				agentId,
 			),
 			buildVerifyMcpServerTool({
+				agentId,
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
@@ -692,6 +693,8 @@ export class AgentsBuilderToolsService {
 					this.ssrfConfig,
 					this.ssrfProtectionService,
 				),
+				applyCredentialToMcpServer: async (serverName, credentialId) =>
+					this.applyCredentialToMcpServer(agentId, projectId, serverName, credentialId),
 			}),
 			buildSearchMcpServersTool({ mcpRegistryService: this.mcpRegistryService }),
 			buildResolveIntegrationTool({
@@ -919,5 +922,48 @@ export class AgentsBuilderToolsService {
 
 		const config = composeJsonConfig(agent);
 		return snapshotFromConfig(config);
+	}
+
+	private async applyCredentialToMcpServer(
+		agentId: string,
+		projectId: string,
+		serverName: string,
+		credentialId: string,
+	): Promise<{ applied: boolean }> {
+		const snapshot = await this.getConfigSnapshot(agentId, projectId);
+		const config = snapshot.config;
+		const servers = config?.mcpServers;
+		if (!config || !servers) {
+			return { applied: false };
+		}
+
+		const serverIndex = servers.findIndex((server) => server.name === serverName);
+		if (serverIndex === -1) {
+			return { applied: false };
+		}
+
+		if (servers[serverIndex]?.credential === credentialId) {
+			return { applied: false };
+		}
+
+		// Only one field changes, so shallow copies are enough — no deep clone.
+		const patched: AgentJsonConfig = {
+			...config,
+			mcpServers: servers.map((server, index) =>
+				index === serverIndex ? { ...server, credential: credentialId } : server,
+			),
+		};
+
+		const zodResult = parseBuilderWriteConfig(patched, snapshot.config);
+		if (!zodResult.success) {
+			throw new Error(formatZodErrors(zodResult.error)[0]?.message ?? 'Invalid MCP server config');
+		}
+
+		const configWithDefaults = applyPromptCachingBuilderDefaults(
+			applyNativeWebSearchDefaultOn(zodResult.data),
+		);
+
+		await this.agentConfigService.updateConfig(agentId, projectId, configWithDefaults);
+		return { applied: true };
 	}
 }

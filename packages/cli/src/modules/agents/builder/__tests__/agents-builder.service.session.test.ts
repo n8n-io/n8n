@@ -301,7 +301,7 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
 	});
 
-	it('includes the integrations skill', async () => {
+	it('includes the external services skill', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
@@ -309,7 +309,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(true);
+		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {

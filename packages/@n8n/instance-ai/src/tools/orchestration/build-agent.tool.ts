@@ -166,7 +166,12 @@ const buildAgentInputSchema = z.object({
 		.describe(
 			'Existing agent id to edit — use the `agentId` returned by earlier build-agent ' +
 				'results. Pass to start editing that agent or to switch the active build target; ' +
-				'omit on follow-up calls.',
+				'omit on follow-up calls. Only pass this when the user explicitly wants to change ' +
+				'that specific existing agent. NEVER pass it for a request to build/create a NEW ' +
+				'agent — even if an agent with the same or a similar name already exists in the ' +
+				'project (duplicate names are allowed). Agents the request merely references — as ' +
+				'sub-agents, delegation targets, or examples — are not the build target: mention ' +
+				'them in `message` instead.',
 		),
 	workflowContext: z
 		.array(z.object({ id: z.string(), name: z.string(), description: z.string().optional() }))
@@ -619,6 +624,29 @@ const NO_TARGET_INPUT_ERROR = 'Pass name to create a new agent or agentId to edi
 const AGENT_ID_NEEDS_PROJECT_ERROR =
 	'Cannot bind to agentId without an active project context. Start this conversation from within a project.';
 
+function buildAgentTargetNameMismatchError(
+	agentId: string,
+	realName: string,
+	passedName: string,
+): string {
+	return (
+		`Agent ${agentId} is named "${realName}", but name "${passedName}" was passed. ` +
+		`To create a new agent named "${passedName}", pass \`name\` only (no \`agentId\`). ` +
+		`To edit "${realName}", pass \`agentId\` only and put any rename instruction in \`message\`.`
+	);
+}
+
+function rejectAgentTargetNameMismatch(
+	agentId: string,
+	realName: string | undefined,
+	passedName: string | undefined,
+): TargetResolution | undefined {
+	if (!passedName || !realName || agentNamesMatch(passedName, realName)) {
+		return undefined;
+	}
+	return { ok: false, error: buildAgentTargetNameMismatchError(agentId, realName, passedName) };
+}
+
 /**
  * Resolve which agent this call should build/edit. A bound target stays
  * active by default; passing `name` or `agentId` can create a new target or
@@ -638,6 +666,8 @@ async function resolveTargetForCall(
 ): Promise<TargetResolution> {
 	if (input.agentId) {
 		if (boundTarget && input.agentId === boundTarget.agentId) {
+			const mismatch = rejectAgentTargetNameMismatch(input.agentId, boundTarget.name, input.name);
+			if (mismatch) return mismatch;
 			return { ok: true, target: boundTarget, bindAfterTurn: false };
 		}
 		if (!domainContext.projectId) {
@@ -651,6 +681,8 @@ async function resolveTargetForCall(
 		} catch {
 			name = undefined;
 		}
+		const mismatch = rejectAgentTargetNameMismatch(input.agentId, name, input.name);
+		if (mismatch) return mismatch;
 		return {
 			ok: true,
 			target: {
@@ -697,7 +729,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 		.description(
 			'Delegate agent building to the agents-module builder, running as a sub-agent. ' +
 				'Pass `name` to start a new agent or `agentId` to edit an existing one; calls ' +
-				'without either keep editing the current agent. To build ANOTHER agent in the same ' +
+				'without either keep editing the current agent. Create vs. edit follows user ' +
+				'intent, not name collisions: a request to build a NEW agent always passes `name` ' +
+				'only — never `agentId` — even when a same-named agent already exists in the ' +
+				'project. To build ANOTHER agent in the same ' +
 				'conversation, pass its `name` or `agentId` — a name matching an agent already built ' +
 				'in this conversation switches back to it; an unmatched name creates a new agent and ' +
 				'switches the active target. The builder can also publish or unpublish the target ' +
