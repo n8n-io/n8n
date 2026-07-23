@@ -22,7 +22,9 @@ export class AddInstanceCredentials1784000000053 implements ReversibleMigration 
 					.primary.comment('Stable credential use registered with the instance credential broker'),
 				column('credentialId')
 					.varchar(36)
-					.notNull.comment('Instance credential assigned to the registered credential use'),
+					.notNull.comment(
+						'Credential assigned to the registered use; repositories enforce instance usage scope',
+					),
 			)
 			.withForeignKey('credentialId', {
 				tableName: 'credentials_entity',
@@ -30,7 +32,7 @@ export class AddInstanceCredentials1784000000053 implements ReversibleMigration 
 				onDelete: 'RESTRICT',
 				name: 'FK_instance_credential_assignment_credential',
 			})
-			.withIndexOn('credentialId');
+			.withIndexOn('credentialId').withTimestamps;
 	}
 
 	async down({ escape, runQuery, schemaBuilder }: MigrationContext) {
