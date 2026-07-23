@@ -4,6 +4,8 @@ import {
 	isNonImpactful,
 	filterImpactfulChanges,
 	forcesBroad,
+	isTsconfig,
+	tsconfigForcesBroad,
 	classifyManifestChange,
 	dropDevDepOnlyDeps,
 } from './changes.js';
@@ -25,8 +27,6 @@ describe('isNonImpactful', () => {
 		'assets/logo.svg',
 		'scripts/release/build.mjs',
 		'turbo.json',
-		'tsconfig.json',
-		'packages/cli/tsconfig.build.json',
 		'biome.jsonc',
 		'packages/testing/test-impact/vitest.config.ts',
 		'.eslintrc.js',
@@ -47,6 +47,9 @@ describe('isNonImpactful', () => {
 		// Container + patches affect runtime / a dependency — never ignored
 		'docker/images/n8n/Dockerfile',
 		'patches/some-dep.patch',
+		// tsconfig can carry module-resolution keys → routed via tsconfigForcesBroad
+		'tsconfig.json',
+		'packages/cli/tsconfig.build.json',
 	])('treats %s as impactful', (file) => {
 		expect(isNonImpactful(file)).toBe(false);
 	});
@@ -93,6 +96,70 @@ describe('forcesBroad', () => {
 		'packages/nodes-base/nodes/If/If.node.ts',
 	])('does not force broad for %s', (file) => {
 		expect(forcesBroad(file)).toBe(false);
+	});
+});
+
+describe('isTsconfig', () => {
+	it.each(['tsconfig.json', 'packages/cli/tsconfig.build.json', 'a/tsconfig.go.json'])(
+		'recognises %s',
+		(file) => {
+			expect(isTsconfig(file)).toBe(true);
+		},
+	);
+
+	it.each(['tsconfig.ts', 'packages/cli/package.json', 'config.json'])(
+		'does not match %s',
+		(file) => {
+			expect(isTsconfig(file)).toBe(false);
+		},
+	);
+});
+
+describe('tsconfigForcesBroad', () => {
+	const ts = (compilerOptions = {}, extra = {}) => JSON.stringify({ compilerOptions, ...extra });
+
+	it('forces broad when compilerOptions.paths changes', () => {
+		const before = ts({ paths: { 'esprima-next': ['./x'] } });
+		const after = ts({ paths: { 'n8n-workflow': ['./src/index.ts'], 'esprima-next': ['./x'] } });
+		expect(tsconfigForcesBroad(before, after)).toBe(true);
+	});
+
+	it('forces broad when baseUrl changes', () => {
+		expect(tsconfigForcesBroad(ts({ baseUrl: '.' }), ts({ baseUrl: './src' }))).toBe(true);
+	});
+
+	it('forces broad when moduleResolution changes', () => {
+		expect(
+			tsconfigForcesBroad(ts({ moduleResolution: 'node' }), ts({ moduleResolution: 'bundler' })),
+		).toBe(true);
+	});
+
+	it('forces broad when customConditions changes', () => {
+		const before = ts({ customConditions: ['development'] });
+		const after = ts({ customConditions: ['production'] });
+		expect(tsconfigForcesBroad(before, after)).toBe(true);
+	});
+
+	it('forces broad when extends changes', () => {
+		const before = ts({}, { extends: '@n8n/typescript-config/modern/tsconfig.json' });
+		const after = ts({}, { extends: '@n8n/typescript-config/modern/tsconfig.go.json' });
+		expect(tsconfigForcesBroad(before, after)).toBe(true);
+	});
+
+	it('does NOT force broad for a resolution-neutral flag change', () => {
+		const before = ts({ strict: true, paths: { a: ['./a'] } });
+		const after = ts({ strict: false, target: 'ES2022', paths: { a: ['./a'] } });
+		expect(tsconfigForcesBroad(before, after)).toBe(false);
+	});
+
+	it('tolerates comments and trailing commas', () => {
+		const before = '{\n  // base\n  "compilerOptions": { "paths": { "a": ["./a"] } },\n}';
+		const after = '{\n  // base\n  "compilerOptions": { "paths": { "a": ["./b"] } },\n}';
+		expect(tsconfigForcesBroad(before, after)).toBe(true);
+	});
+
+	it('forces broad when content is unparseable (conservative)', () => {
+		expect(tsconfigForcesBroad('{ not json', '{ still not')).toBe(true);
 	});
 });
 
