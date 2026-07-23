@@ -1330,6 +1330,8 @@
 	"executions.ExecutionStatus": "Execution status",
 	"executions.privateCredential.tooltip": "This execution ran using end-user credentials",
 	"executions.concurrency.docsLink": "https://docs.n8n.io/hosting/scaling/concurrency-control/",
+	"executions.empty.heading": "No executions yet",
+	"executions.empty.description": "Each run of a workflow is called an execution, and you'll see them listed here",
 	"executionDetails.additionalActions": "Additional Actions",
 	"executionDetails.confirmMessage.confirmButtonText": "Yes, delete",
 	"executionDetails.confirmMessage.headline": "Delete Execution?",
