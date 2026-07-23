@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-17T15:21:33.743Z",
-	"totalViolations": 61,
+	"generated": "2026-07-23T13:36:02.478Z",
+	"totalViolations": 63,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -349,6 +349,22 @@
 				"line": 35,
 				"message": "Raw API call detected: fetch(",
 				"hash": "974d7953dd83"
+			}
+		],
+		"tests/e2e/scheduling/poll-trigger-durable.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 42,
+				"message": "Duplicate test logic: \"should fire a poll trigger driven by a raw cron expression\" has identical structure to tests/e2e/scheduling/poll-trigger-durable.spec.ts:\"should fire the activation-time seed poll and provision a durable job\"",
+				"hash": "891b95cf4334"
+			}
+		],
+		"tests/e2e/scheduling/poll-trigger-legacy.spec.ts": [
+			{
+				"rule": "duplicate-logic",
+				"line": 18,
+				"message": "Duplicate test logic: \"should fire an activated poll trigger through the legacy in-memory path\" has identical structure to tests/e2e/scheduling/poll-trigger-durable.spec.ts:\"should fire the activation-time seed poll and provision a durable job\"",
+				"hash": "a27dfb12d589"
 			}
 		],
 		"tests/infrastructure/benchmarks/kafka/queue-mode-sustained-rate.spec.ts": [
