@@ -785,7 +785,10 @@ export class CredentialsService {
 	 * fixed OAuth credential needs this dedicated path.
 	 */
 	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
-		const decryptedData = await this.decrypt(credential, true);
+		// Decrypt via the core credential so a decryption failure aborts the
+		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
+		// which would otherwise overwrite the whole credential with empty data.
+		const decryptedData = await createCredentialsFromCredentialsEntity(credential).getData();
 		delete decryptedData.oauthTokenData;
 		delete decryptedData.accountIdentifier;
 

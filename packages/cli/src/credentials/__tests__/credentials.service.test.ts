@@ -158,7 +158,8 @@ describe('CredentialsService', () => {
 				type: 'gmailOAuth2',
 			});
 
-			vi.spyOn(service, 'decrypt').mockResolvedValue({
+			// Raw (unredacted) decryption so the real token can be dropped.
+			vi.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 				clientId: 'abc',
 				oauthTokenData: { access_token: 'tok' },
 				accountIdentifier: 'user@example.com',
@@ -170,14 +171,23 @@ describe('CredentialsService', () => {
 
 			await service.clearOauthTokenData(credential);
 
-			// Uses raw (unredacted) decryption so the real token can be dropped.
-			expect(service.decrypt).toHaveBeenCalledWith(credential, true);
-
 			const passedData = createEncryptedDataSpy.mock.calls[0][0].data;
 			expect(passedData).not.toHaveProperty('oauthTokenData');
 			expect(passedData).not.toHaveProperty('accountIdentifier');
 			expect(passedData).toHaveProperty('clientId', 'abc');
 			expect(updateSpy).toHaveBeenCalledWith(credential.id, expect.anything(), passedData);
+		});
+
+		it('aborts without persisting when the credential cannot be decrypted', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-1', type: 'gmailOAuth2' });
+
+			const decryptionError = new Error('decryption failed');
+			vi.spyOn(Credentials.prototype, 'getData').mockRejectedValueOnce(decryptionError);
+			const updateSpy = vi.spyOn(service, 'update');
+
+			// Must propagate the failure rather than overwrite the credential with empty data.
+			await expect(service.clearOauthTokenData(credential)).rejects.toThrow(decryptionError);
+			expect(updateSpy).not.toHaveBeenCalled();
 		});
 	});
 
