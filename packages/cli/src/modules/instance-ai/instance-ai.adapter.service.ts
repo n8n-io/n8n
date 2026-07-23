@@ -1154,10 +1154,8 @@ export class InstanceAiAdapterService {
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
 							saveDataErrorExecution: 'all',
-							// Enforce the wait budget inside the engine too: its soft-timeout
-							// check runs synchronously between node executions, so it still
-							// stops a fast all-pinned loop whose microtask churn starves the
-							// timer-based cancellation race below.
+							// Engine-side bound: checked between node executions, so it fires
+							// even when a fast pinned loop starves the timer-based cancel below.
 							executionTimeout: Math.ceil(timeoutMs / 1000),
 						},
 					},

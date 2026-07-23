@@ -54,12 +54,7 @@ const WAIT_GATE_NODE_TYPES = new Set(['n8n-nodes-base.wait', 'n8n-nodes-base.for
 /** Shared operation name of the send-and-wait resource operations (Gmail, Slack, …). */
 const SEND_AND_WAIT_OPERATION = 'sendAndWait';
 
-/**
- * True for nodes that pause a live execution until a human responds —
- * send-and-wait operations, the Wait node, and mid-flow Form pages. Pinning
- * such a node removes the pause and replays the same canned response on every
- * arrival, so a loop through it can never terminate.
- */
+/** True for nodes that pause a live execution until a human responds. */
 export function isWaitGateNode(node: WorkflowJSON['nodes'][number]): boolean {
 	if (WAIT_GATE_NODE_TYPES.has(node.type)) return true;
 	const parameters = isRecord(node.parameters) ? node.parameters : {};
@@ -67,9 +62,8 @@ export function isWaitGateNode(node: WorkflowJSON['nodes'][number]): boolean {
 }
 
 /**
- * True when `nodeName` lies on a directed cycle — it can reach itself again by
- * following outgoing connections of any type. Disabled nodes still forward
- * data at runtime, so they stay part of the walk.
+ * True when `nodeName` can reach itself by following outgoing connections of
+ * any type. Disabled nodes still forward data, so they stay in the walk.
  */
 export function nodeCanReachItself(json: WorkflowJSON, nodeName: string): boolean {
 	const adjacency = new Map<string, string[]>();

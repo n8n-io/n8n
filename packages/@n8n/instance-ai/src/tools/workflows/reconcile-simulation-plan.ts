@@ -159,8 +159,7 @@ export async function reconcileSimulationPlan(args: {
 		}
 		return verdict;
 	});
-	// Fresh verdicts from re-classification drop `haltBranch`; re-derive it so a
-	// wait gate that stays simulated keeps halting instead of looping.
+	// Re-classification drops `haltBranch` — re-derive so a still-simulated gate keeps halting.
 	const nodeSimulationPlan = reconciledPlan && withWaitGateHaltVerdicts(reconciledPlan, workflow);
 
 	const retainedFixtureEntries = Object.entries(buildOutcome.simulationFixtures ?? {}).filter(

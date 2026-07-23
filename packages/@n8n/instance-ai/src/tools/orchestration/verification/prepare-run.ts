@@ -45,8 +45,7 @@ function buildVerificationPinData(
 		if (verdict.verdict !== 'simulate') continue;
 		simulatedNodes.push({ nodeName: verdict.nodeName, reason: verdict.reason });
 		if (verdict.haltBranch) {
-			// Zero items stop the branch at the gate — a fixture here would re-run
-			// the loop with the same canned decision forever.
+			// Zero items halt the branch at the gate; a fixture would loop forever.
 			haltedGateNames.push(verdict.nodeName);
 			merged[verdict.nodeName] = [];
 			continue;

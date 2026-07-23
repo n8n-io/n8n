@@ -218,13 +218,10 @@ export const WAIT_GATE_HALT_REASON =
 	'Send-and-wait gate on a loop — verification pauses here because continuing needs a human decision';
 
 /**
- * Simulated wait-gate nodes that can loop back into themselves are halted:
- * `haltBranch` makes verification pin them with zero items so the branch stops
- * at the gate, mirroring how a live gate pauses the execution. A fixture there
- * would replay the same canned decision on every pass and the loop would run
- * unbounded. Gates with an `execute` verdict are left alone — the real node
- * pauses and breaks the loop by itself. Runs LAST so it overrides fixtures
- * from every source (classifier, declared outputs, mocked credentials).
+ * Halt simulated wait gates that sit on a loop: pin them with zero items
+ * instead of a fixture — a pinned gate cannot pause, so its canned decision
+ * would re-run the loop forever. Live (`execute`) gates pause on their own.
+ * Runs last so it overrides fixtures from every source.
  */
 export function withWaitGateHaltVerdicts(
 	plan: NodeSimulationVerdict[],
