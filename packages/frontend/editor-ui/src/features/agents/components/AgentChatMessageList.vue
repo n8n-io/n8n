@@ -34,13 +34,18 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
-	sendToAssistant: [];
+	sendToAssistant: [executionId?: string];
 }>();
 
 const i18n = useI18n();
 const canSendToAssistant = computed(() =>
 	Boolean(props.canSendToAssistant && props.agentId && props.sessionId),
 );
+
+function onFixWithAssistant(group: DisplayGroup) {
+	const executionId = group.kind === 'toolRun' ? group.executionId : group.message.executionId;
+	emit('sendToAssistant', executionId);
+}
 
 function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
@@ -421,6 +426,9 @@ onBeforeUnmount(() => {
 						v-if="group.toolCalls.length"
 						:tool-calls="group.toolCalls"
 						:project-id="projectId"
+						:can-fix-with-assistant="canSendToAssistant"
+						:execution-id="group.executionId"
+						@fix-with-assistant="onFixWithAssistant(group)"
 					/>
 					<template v-for="tc in group.toolCalls" :key="`wait-${tc.toolCallId}`">
 						<N8nText
@@ -502,6 +510,9 @@ onBeforeUnmount(() => {
 						v-if="group.message.toolCalls?.length"
 						:tool-calls="group.message.toolCalls"
 						:project-id="projectId"
+						:can-fix-with-assistant="canSendToAssistant"
+						:execution-id="group.message.executionId"
+						@fix-with-assistant="onFixWithAssistant(group)"
 					/>
 					<template v-for="tc in group.message.toolCalls ?? []" :key="`wait-${tc.toolCallId}`">
 						<N8nText
