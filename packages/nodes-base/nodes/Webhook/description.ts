@@ -257,12 +257,12 @@ export const onlyRunIfModeProperty: INodeProperties = {
 			name: 'Conditions Match',
 			value: 'conditions',
 			description:
-				'Run only when the request matches simple conditions on its fields. Checked natively, without the expression sandbox — fastest option for busy endpoints.',
+				'Run only when the request matches simple conditions on its fields. Faster than Expressions for busy endpoints.',
 		},
 		{
 			name: 'Expression Is True',
 			value: 'expression',
-			description: 'Run only when a full expression evaluates to true',
+			description: 'Run only when an expression evaluates to true',
 		},
 	],
 	default: 'all',
