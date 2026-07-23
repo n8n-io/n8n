@@ -5,7 +5,11 @@ import type { FolderFinderService } from '@/services/folder-finder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { PackageExportBlockedError } from '../../package-export.errors';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+	PackageExportBlockedError,
+} from '../../package-export.errors';
 import { StaticWorkflowDependencyResolver } from '../static-workflow-dependency-resolver';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
 
@@ -274,6 +278,42 @@ describe('StaticWorkflowDependencyResolver', () => {
 				}),
 			),
 		).rejects.toThrow(PackageExportBlockedError);
+	});
+
+	it('throws PackageEntityNotFoundError when an auto-added sub-workflow does not exist at all', async () => {
+		// `seed` references `b`, but `b` is absent from the finder pool and the
+		// existence re-check finds nothing either, so it is genuinely deleted.
+		const { resolver } = makeResolver({
+			workflows: [makeWorkflow('seed')],
+		});
+
+		await expect(
+			resolver.resolve(
+				resolveInput({
+					topLevelWorkflowIds: ['seed'],
+					requirements: [requirement('seed', 'b')],
+				}),
+			),
+		).rejects.toBeInstanceOf(PackageEntityNotFoundError);
+	});
+
+	it('throws PackageEntityAccessDeniedError when an auto-added sub-workflow exists but is inaccessible', async () => {
+		// `b` is missing from the caller-scoped finder pool, but the existence
+		// re-check (which bypasses access control) still returns it — so the
+		// caller simply lacks access rather than the workflow being deleted.
+		const { resolver, workflowFinder } = makeResolver({
+			workflows: [makeWorkflow('seed')],
+		});
+		workflowFinder.findExistingWorkflowIds.mockResolvedValue(new Set(['b']));
+
+		await expect(
+			resolver.resolve(
+				resolveInput({
+					topLevelWorkflowIds: ['seed'],
+					requirements: [requirement('seed', 'b')],
+				}),
+			),
+		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
 	it('requests exportable workflows with the workflow:export scope and parent folder', async () => {
