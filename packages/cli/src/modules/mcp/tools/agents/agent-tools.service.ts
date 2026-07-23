@@ -825,7 +825,7 @@ export class McpAgentToolsService {
 			name: 'verify_agent_mcp_server',
 			config: {
 				description:
-					'Test an MCP server with a user-accessible credential and return its available tools before adding it to an Agent.',
+					'Test an MCP server with a user-accessible credential and return its available tools. Call before writing an mcpServers config entry; validate_agent performs no live MCP check.',
 				inputSchema: verifyMcpServerInput,
 				annotations: {
 					title: 'Verify Agent MCP Server',
