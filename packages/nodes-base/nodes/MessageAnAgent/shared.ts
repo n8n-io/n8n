@@ -309,7 +309,7 @@ export function getStructuredOutputSchema(
 		if (schemaType === 'fromJson') {
 			const rawExample = ctx.getNodeParameter('jsonSchemaExample', itemIndex, '') as unknown;
 			const exampleString =
-				typeof rawExample === 'string' ? rawExample : JSON.stringify(rawExample);
+				typeof rawExample === 'string' ? rawExample : (JSON.stringify(rawExample) ?? '');
 
 			if (!exampleString.trim()) {
 				throw new NodeOperationError(
