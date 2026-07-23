@@ -44,18 +44,12 @@ defineSlots<PaginationSlots>();
 
 const { t } = useI18n();
 
-const isPageControlled = computed(
-	() => props.currentPage !== undefined || props.page !== undefined,
-);
-
 const internalPage = ref(
 	props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage ?? 1,
 );
 const itemsPerPage = ref(props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10);
 
-const page = computed(() =>
-	isPageControlled.value ? (props.currentPage ?? props.page ?? 1) : internalPage.value,
-);
+const page = computed(() => props.currentPage ?? props.page ?? internalPage.value);
 
 watch(
 	() => props.currentPage ?? props.page,
@@ -75,7 +69,12 @@ watch(
 	},
 );
 
-// Map Element+ pagerCount (odd total page buttons) to Reka siblingCount.
+// pagerCount is odd number in Element+ (e.g., 7 means show 7 buttons total: prev + 5 pages + next)
+// siblingCount in Reka UI means pages on each side of current page
+// pagerCount 7 = 1 current + 2*siblingCount + prev + next, so siblingCount = (7-1)/2 = 3
+// But actually pagerCount includes only the page numbers, not prev/next buttons
+// pagerCount 7 means: [1] [ellipsis] [5] [6] [7] [8] [9] [ellipsis] [10]
+// So if pagerCount is 7, we want to show current + 3 on each side = siblingCount of 3
 const siblingCount = computed(() => {
 	if (props.pagerCount !== undefined) {
 		return Math.floor((props.pagerCount - 1) / 2);
@@ -89,7 +88,8 @@ const pageCount = computed(() => {
 	return Math.ceil(props.total / itemsPerPage.value);
 });
 
-// pageCount takes precedence over total (DS-323); synthesize Reka total when needed.
+// Calculate total items for Reka UI (when using pageCount, we need to synthesize total)
+// pageCount takes precedence over total per DS-323 requirement
 const totalItems = computed(() => {
 	if (props.pageCount !== undefined) {
 		return props.pageCount * itemsPerPage.value;
@@ -144,7 +144,7 @@ const handlePageUpdate = (newPage: number) => {
 		emit('next-click', newPage);
 	}
 
-	if (!isPageControlled.value) {
+	if (props.currentPage === undefined && props.page === undefined) {
 		internalPage.value = newPage;
 	}
 
