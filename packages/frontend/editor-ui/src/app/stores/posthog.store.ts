@@ -192,6 +192,10 @@ export const usePostHog = defineStore('posthog', () => {
 				distinctID: distinctId,
 				featureFlags: evaluatedFeatureFlags,
 			};
+			// Flags are server-evaluated and bootstrapped; without this, identify()/group()
+			// in the loaded callback each trigger a billed /flags refetch of values the
+			// client already has.
+			options.advanced_disable_feature_flags = true;
 		}
 
 		window.posthog?.init(config.apiKey, {

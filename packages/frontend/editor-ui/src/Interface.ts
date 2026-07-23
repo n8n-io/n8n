@@ -80,6 +80,7 @@ declare global {
 					api_host?: string;
 					autocapture?: boolean;
 					disable_session_recording?: boolean;
+					advanced_disable_feature_flags?: boolean;
 					debug?: boolean;
 					bootstrap?: {
 						distinctID?: string;
