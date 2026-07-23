@@ -1,4 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, IRequestOptions } from 'n8n-workflow';
 import { NodeOperationError, sleep } from 'n8n-workflow';
 
 import {
@@ -7,6 +7,7 @@ import {
 	slackApiRequestAllItemsWithRateLimit,
 	processThreadOptions,
 	getMessageContent,
+	getSlackUsersCached,
 } from '../../V2/GenericFunctions';
 import type { Mock, Mocked } from 'vitest';
 import type * as _importType0 from 'n8n-workflow';
@@ -978,6 +979,70 @@ describe('Slack V2 > GenericFunctions', () => {
 			);
 
 			expect(result.data).toEqual([]);
+		});
+	});
+
+	describe('getSlackUsersCached', () => {
+		const okPage = (cursor: string, users: Array<{ id: string; name: string }>) => ({
+			statusCode: 200,
+			body: { ok: true, members: users, response_metadata: { next_cursor: cursor } },
+		});
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			(sleep as Mock).mockResolvedValue(undefined);
+		});
+
+		it('serves a complete drain from cache on the second call without re-hitting Slack', async () => {
+			// Unique credential -> unique cache key, isolating this test from the module-level cache.
+			mockExecuteFunctions.getCredentials = vi.fn().mockResolvedValue({ accessToken: 'tok-hit' });
+			const request = vi.fn().mockResolvedValue(okPage('', [{ id: 'u1', name: 'alice' }]));
+			mockExecuteFunctions.helpers.requestWithAuthentication = request;
+
+			const first = await getSlackUsersCached(mockExecuteFunctions);
+			const second = await getSlackUsersCached(mockExecuteFunctions);
+
+			expect(first).toEqual([{ id: 'u1', name: 'alice' }]);
+			expect(second).toEqual(first);
+			expect(request).toHaveBeenCalledTimes(1); // second call hit the cache
+		});
+
+		it('resumes a rate-limited partial drain from its cursor instead of restarting', async () => {
+			mockExecuteFunctions.getCredentials = vi
+				.fn()
+				.mockResolvedValue({ accessToken: 'tok-resume' });
+			const rateLimited = { statusCode: 429, body: { error: 'ratelimited' }, headers: {} };
+			// Open #1: page 1 ok (cursor c1), then 429 until retries exhaust -> partial [alice], resume at c1.
+			// Open #2: resume from c1 -> page 2 ok (empty cursor) -> complete.
+			const responses = [
+				okPage('c1', [{ id: 'u1', name: 'alice' }]),
+				rateLimited,
+				rateLimited,
+				rateLimited,
+				okPage('', [{ id: 'u2', name: 'bob' }]),
+			];
+			// Capture the cursor at call time — the drain helper mutates the shared query object afterwards.
+			const seenCursors: unknown[] = [];
+			const request = vi.fn((_credentialType: string, options: IRequestOptions) => {
+				seenCursors.push(options.qs?.cursor);
+				return responses.shift();
+			});
+			mockExecuteFunctions.helpers.requestWithAuthentication =
+				request as unknown as typeof mockExecuteFunctions.helpers.requestWithAuthentication;
+
+			const first = await getSlackUsersCached(mockExecuteFunctions);
+			expect(first).toEqual([{ id: 'u1', name: 'alice' }]);
+			const callsAfterFirst = seenCursors.length;
+
+			const second = await getSlackUsersCached(mockExecuteFunctions);
+
+			// Appended (not restarted), and the resume request seeded the stored cursor.
+			expect(second).toEqual([
+				{ id: 'u1', name: 'alice' },
+				{ id: 'u2', name: 'bob' },
+			]);
+			expect(seenCursors[0]).toBeUndefined(); // open #1 started cold
+			expect(seenCursors[callsAfterFirst]).toBe('c1'); // open #2 resumed at c1
 		});
 	});
 

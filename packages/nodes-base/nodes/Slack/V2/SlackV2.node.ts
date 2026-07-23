@@ -31,6 +31,7 @@ import {
 	createSendAndWaitMessageBody,
 	processThreadOptions,
 	slackApiRequestAllItemsWithRateLimit,
+	getSlackUsersCached,
 	toMultiOptionsCsv,
 } from './GenericFunctions';
 import {
@@ -227,20 +228,9 @@ export class SlackV2 implements INodeType {
 					});
 				return { results, paginationToken: cursor };
 			},
-			async getUsers(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const qs = { limit: 200, cursor: paginationToken };
-				const { data: users, cursor } = await slackApiRequestAllItemsWithRateLimit<{
-					id: string;
-					name: string;
-				}>(this, 'members', 'GET', '/users.list', {}, qs, {
-					onFail: 'stop',
-					maxRetries: 2,
-					fallbackDelay: 30_000,
-				});
+			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				// Served from the per-credential cache;.
+				const users = await getSlackUsersCached(this);
 				const results: INodeListSearchItems[] = users
 					.map((c) => ({
 						name: c.name,
@@ -257,26 +247,18 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				return { results, paginationToken: cursor };
+				return { results };
 			},
 		},
 		loadOptions: {
 			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { data: users } = await slackApiRequestAllItemsWithRateLimit<{
-					id: string;
-					name: string;
-				}>(this, 'members', 'GET', '/users.list', {}, { limit: 200 }, { onFail: 'stop' });
-				for (const user of users) {
-					const userName = user.name;
-					const userId = user.id;
-					returnData.push({
-						name: userName,
-						value: userId,
-					});
-				}
+				const users = await getSlackUsersCached(this);
+				const returnData: INodePropertyOptions[] = users.map((user) => ({
+					name: user.name,
+					value: user.id,
+				}));
 
 				returnData.sort((a, b) => {
 					if (a.name < b.name) {

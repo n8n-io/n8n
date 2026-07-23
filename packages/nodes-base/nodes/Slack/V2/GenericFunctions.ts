@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { createHash } from 'crypto';
 import get from 'lodash/get';
 import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import type {
@@ -39,6 +40,77 @@ interface RateLimitOptions {
 
 function isDefined<T>(value: T | undefined | null | ''): value is NonNullable<T> {
 	return value !== undefined && value !== null && value !== '';
+}
+
+type SlackUser = { id: string; name: string };
+type CachedUserDirectory = {
+	users: SlackUser[];
+	cursor?: string; // resume point while the drain is incomplete
+	complete: boolean;
+	expiresAt: number;
+};
+
+// Slack's users.list has no server-side search, so both user dropdowns must drain
+// the whole directory to filter completely — which rate-limits fast at scale. Cache
+// the drained directory per credential so repeated dropdown opens don't re-hit Slack.
+// A rate-limited partial drain is kept with its cursor and resumed on the next open
+// (appending, never restarting), so a large/throttled workspace fills in over a few
+// opens instead of re-draining from page 1 every time.
+
+const USER_DIRECTORY_TTL_MS = 5 * 60 * 1000;
+const userDirectoryCache = new Map<string, CachedUserDirectory>();
+
+export async function getSlackUsersCached(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+): Promise<SlackUser[]> {
+	const authenticationMethod = context.getNodeParameter(
+		'authentication',
+		0,
+		'accessToken',
+	) as string;
+	const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
+	const credentials = await context.getCredentials(credentialType);
+	const cacheKey = createHash('sha256')
+		.update(`${credentialType}:${JSON.stringify(credentials)}`)
+		.digest('hex');
+
+	const now = Date.now();
+	const cached = userDirectoryCache.get(cacheKey);
+	const prior = cached && cached.expiresAt > now ? cached : undefined;
+	if (prior?.complete) {
+		return prior.users;
+	}
+
+	// Resume an incomplete drain from where it stopped; start cold otherwise.
+	const { data, cursor } = await slackApiRequestAllItemsWithRateLimit<SlackUser>(
+		context,
+		'members',
+		'GET',
+		'/users.list',
+		{},
+		{ limit: 200, cursor: prior?.cursor },
+		{ onFail: 'stop', maxRetries: 2, fallbackDelay: 30_000 },
+	);
+
+	const users = (prior?.users ?? []).concat(data);
+	if (!cursor && users.length > 0) {
+		// Drained to the end — cache as complete for a fresh TTL.
+		userDirectoryCache.set(cacheKey, {
+			users,
+			complete: true,
+			expiresAt: now + USER_DIRECTORY_TTL_MS,
+		});
+	} else if (cursor) {
+		// Still partial — keep progress + resume point, bounding staleness to the original start.
+		userDirectoryCache.set(cacheKey, {
+			users,
+			cursor,
+			complete: false,
+			expiresAt: prior?.expiresAt ?? now + USER_DIRECTORY_TTL_MS,
+		});
+	}
+	// else: nothing fetched (cold immediate 429, or an empty workspace) — don't cache, retry next open.
+	return users;
 }
 
 // When an expression is wrapped in surrounding text/whitespace, n8n switches to
