@@ -96,9 +96,18 @@ const LANGUAGE_PROVIDERS: ProviderRegistry = {
 		},
 	},
 	baseten: {
+		// OpenAI-compatible HTTP only. Avoid @ai-sdk/baseten: it eagerly loads
+		// @basetenlabs/performance-client (NAPI optional binaries), which pnpm
+		// deploy --no-optional strips — Alpine Docker then fails at require time.
 		build: (creds, model, fetch) => {
-			const { createBaseten } = require('@ai-sdk/baseten') as typeof import('@ai-sdk/baseten');
-			return createBaseten({ ...creds, fetch })(model);
+			const { createOpenAICompatible } =
+				require('@ai-sdk/openai-compatible') as typeof import('@ai-sdk/openai-compatible');
+			return createOpenAICompatible({
+				name: 'baseten',
+				baseURL: creds.baseURL ?? 'https://inference.baseten.co/v1',
+				apiKey: creds.apiKey,
+				fetch,
+			})(model);
 		},
 	},
 	anthropic: {
