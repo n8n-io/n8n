@@ -84,15 +84,12 @@ vi.mock('@/features/execution/executions/executions.store', () => ({
 }));
 
 // Stub heavy children not under test.
-vi.mock('./TestCaseResultCard.vue', () => ({
+vi.mock('./TestCaseRunResult.vue', () => ({
 	default: {
-		name: 'TestCaseResultCard',
-		props: ['index'],
-		template: '<div :data-test-id="`stub-result-card-${index}`" />',
+		name: 'TestCaseRunResult',
+		props: ['index', 'expanded', 'separated', 'pending'],
+		template: '<div :data-test-id="`stub-run-result-${index}`" />',
 	},
-}));
-vi.mock('../WizardSidepanel/CustomCheckModal.vue', () => ({
-	default: { name: 'CustomCheckModal', template: '<div />' },
 }));
 
 // ─── Renderer ────────────────────────────────────────────────────────────────
@@ -180,16 +177,16 @@ describe('TestCaseDetail', () => {
 		expect(getByText('$json.x > 1')).toBeInTheDocument();
 	});
 
-	it('reuses the overview result card once a run is active for the case', async () => {
+	it('shows the latest-run pane once a run is active for the case', async () => {
 		const store = setup();
 		store.setActiveRow(2, 20);
 		store.setActiveRunId('run-1');
 		const { findByTestId } = renderComponent();
 		// Keyed by the active row index (= the case's runIndex).
-		expect(await findByTestId('stub-result-card-2')).toBeInTheDocument();
+		expect(await findByTestId('stub-run-result-2')).toBeInTheDocument();
 	});
 
-	it('does not show the result card before a run is triggered', () => {
+	it('does not show the latest-run pane before a run is triggered', () => {
 		setup();
 		const { queryByTestId } = renderComponent();
 		expect(queryByTestId('tests-detail-results')).toBeNull();
