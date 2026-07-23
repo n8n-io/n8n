@@ -39,7 +39,8 @@
 							{
 								"name": "Acme",
 								"title": "Engineer",
-								"type": "work"
+								"type": "work",
+								"fullTimeEquivalent": 100000
 							}
 						]
 					},

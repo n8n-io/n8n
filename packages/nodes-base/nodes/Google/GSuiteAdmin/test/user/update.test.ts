@@ -39,6 +39,7 @@ describe('Google GSuiteAdmin Node - Update User', () => {
 						domain: '',
 						location: '',
 						symbol: '',
+						fullTimeEquivalent: 100000,
 						primary: true,
 					},
 				],
