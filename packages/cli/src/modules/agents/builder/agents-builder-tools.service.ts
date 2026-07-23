@@ -15,7 +15,6 @@ import {
 	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
 	AgentJsonConfigSchema,
-	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -137,14 +136,25 @@ function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot
 }
 
 /**
- * Draft writes (empty `model`, no `credential`) are only for agents that
- * don't have a model yet. Once the stored config has a model, require the
- * runnable schema so a builder write can't wipe it back into an unrunnable
- * draft.
+ * Once the stored config has a model, a builder write can't clear it back to
+ * a draft (`model: ""`). A missing credential does NOT reject the write —
+ * it surfaces as a `missing_credential` validation issue instead.
  */
 function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConfig | null) {
-	const schema = currentConfig?.model ? RunnableAgentJsonConfigSchema : AgentJsonConfigSchema;
-	return schema.safeParse(sanitizeAgentJsonConfig(incoming));
+	const result = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(incoming));
+	if (result.success && currentConfig?.model && !result.data.model) {
+		return {
+			success: false as const,
+			error: new z.ZodError([
+				{
+					code: z.ZodIssueCode.custom,
+					path: ['model'],
+					message: 'Model cannot be cleared once set',
+				},
+			]),
+		};
+	}
+	return result;
 }
 
 /**
