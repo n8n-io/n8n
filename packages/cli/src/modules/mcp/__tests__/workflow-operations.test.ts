@@ -396,6 +396,45 @@ describe('applyOperations', () => {
 			if (!result.success) return;
 			expect(result.addedNodeNames).toEqual([]);
 		});
+
+		test('prunes the removed node from its group', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+			};
+			const result = applyOperations(wf, [{ type: 'removeNode', nodeName: 'B' }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+			expect(result.nodeGroupsChanged).toBe(true);
+		});
+
+		test('drops a group that empties out when its last node is removed', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [
+					{ id: 'g1', name: 'Solo', nodeIds: ['b'] },
+					{ id: 'g2', name: 'Other', nodeIds: ['a'] },
+				],
+			};
+			const result = applyOperations(wf, [{ type: 'removeNode', nodeName: 'B' }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([{ id: 'g2', name: 'Other', nodeIds: ['a'] }]);
+			expect(result.nodeGroupsChanged).toBe(true);
+		});
+
+		test('leaves groups untouched when the removed node is not grouped', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+			};
+			const result = applyOperations(wf, [{ type: 'removeNode', nodeName: 'B' }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([{ id: 'g1', name: 'Group', nodeIds: ['a'] }]);
+			expect(result.nodeGroupsChanged).toBe(false);
+		});
 	});
 
 	describe('renameNode', () => {
@@ -1096,6 +1135,283 @@ describe('applyOperations', () => {
 				nodeGroups: [{ id: 'g1', name: 'Group', nodeNames: ['A'], description: 'x'.repeat(1000) }],
 			});
 			expect(parsed.success).toBe(false);
+		});
+	});
+
+	describe('addNodeGroup', () => {
+		test('adds a group resolving node names to ids, generating an id when omitted', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A', 'B'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([
+				{ id: expect.any(String), name: 'Group', nodeIds: ['a', 'b'] },
+			]);
+			expect(result.nodeGroupsChanged).toBe(true);
+		});
+
+		test('appends to existing groups without touching them', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [{ id: 'g1', name: 'Existing', nodeIds: ['a'] }],
+			};
+			const result = applyOperations(wf, [
+				{ type: 'addNodeGroup', id: 'g2', name: 'New', nodeNames: ['B'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([
+				{ id: 'g1', name: 'Existing', nodeIds: ['a'] },
+				{ id: 'g2', name: 'New', nodeIds: ['b'] },
+			]);
+		});
+
+		test('fails when a group with the same name already exists', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a'] }],
+			};
+			const result = applyOperations(wf, [
+				{ type: 'addNodeGroup', name: 'Group', nodeNames: ['B'] },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("a node group named 'Group' already exists");
+		});
+
+		test('fails when a group with the same id already exists', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [{ id: 'g1', name: 'Existing', nodeIds: ['a'] }],
+			};
+			const result = applyOperations(wf, [
+				{ type: 'addNodeGroup', id: 'g1', name: 'New', nodeNames: ['B'] },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("a node group with id 'g1' already exists");
+		});
+
+		test('fails when a node name does not exist', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', name: 'Group', nodeNames: ['Missing'] },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("node 'Missing' in group 'Group' not found");
+		});
+
+		test('dedupes duplicate node names', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A', 'A', 'B'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0].nodeIds).toEqual(['a', 'b']);
+		});
+
+		test('omits a blank description', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A'], description: '   ' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0]).not.toHaveProperty('description');
+		});
+
+		test('can group a node added earlier in the same batch', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{
+					type: 'addNode',
+					node: { id: 'c', name: 'C', type: 'n8n-nodes-base.set', typeVersion: 1 },
+				},
+				{ type: 'addNodeGroup', name: 'Group', nodeNames: ['C'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0].nodeIds).toEqual(['c']);
+		});
+
+		test('schema rejects an empty nodeNames array', () => {
+			const parsed = partialUpdateOperationSchema.safeParse({
+				type: 'addNodeGroup',
+				name: 'Group',
+				nodeNames: [],
+			});
+			expect(parsed.success).toBe(false);
+		});
+	});
+
+	describe('removeNodeGroup', () => {
+		test('removes the named group and keeps the others', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [
+					{ id: 'g1', name: 'First', nodeIds: ['a'] },
+					{ id: 'g2', name: 'Second', nodeIds: ['b'] },
+				],
+			};
+			const result = applyOperations(wf, [{ type: 'removeNodeGroup', groupName: 'First' }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([{ id: 'g2', name: 'Second', nodeIds: ['b'] }]);
+			expect(result.nodeGroupsChanged).toBe(true);
+		});
+
+		test('keeps the grouped nodes in the workflow', () => {
+			const wf = {
+				...baseWorkflow(),
+				nodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['a', 'b'] }],
+			};
+			const result = applyOperations(wf, [{ type: 'removeNodeGroup', groupName: 'Group' }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodes).toHaveLength(2);
+		});
+
+		test('fails when the group does not exist', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'removeNodeGroup', groupName: 'Missing' },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("node group 'Missing' not found");
+		});
+
+		test('can remove a group added earlier in the same batch', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'addNodeGroup', name: 'Group', nodeNames: ['A'] },
+				{ type: 'removeNodeGroup', groupName: 'Group' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups).toEqual([]);
+		});
+	});
+
+	describe('updateNodeGroup', () => {
+		const groupedWorkflow = () => ({
+			...baseWorkflow(),
+			nodeGroups: [
+				{ id: 'g1', name: 'Group', nodeIds: ['a'], description: 'Old description' },
+				{ id: 'g2', name: 'Other', nodeIds: ['b'] },
+			],
+		});
+
+		test('renames a group', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', newName: 'Renamed' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0].name).toBe('Renamed');
+			expect(result.nodeGroupsChanged).toBe(true);
+		});
+
+		test('allows a no-op rename to the same name', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', newName: 'Group' },
+			]);
+			expect(result.success).toBe(true);
+		});
+
+		test('fails when the new name collides with another group', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', newName: 'Other' },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("a node group named 'Other' already exists");
+		});
+
+		test('replaces membership resolving and deduping node names', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Other', nodeNames: ['A', 'A'] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![1].nodeIds).toEqual(['a']);
+		});
+
+		test('fails when a member node name does not exist', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', nodeNames: ['Missing'] },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("node 'Missing' in group 'Group' not found");
+		});
+
+		test('sets a new description', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', description: 'New description' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0].description).toBe('New description');
+		});
+
+		test('clears the description with an empty string', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', description: '' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0]).not.toHaveProperty('description');
+		});
+
+		test('leaves the description unchanged when omitted', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group', newName: 'Renamed' },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.workflow.nodeGroups![0].description).toBe('Old description');
+		});
+
+		test('fails when the group does not exist', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Missing', newName: 'X' },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain("node group 'Missing' not found");
+		});
+
+		test('fails when no change is specified', () => {
+			const result = applyOperations(groupedWorkflow(), [
+				{ type: 'updateNodeGroup', groupName: 'Group' },
+			]);
+			expect(result.success).toBe(false);
+			if (result.success) return;
+			expect(result.error).toContain(
+				'updateNodeGroup must specify at least one of newName, nodeNames, or description',
+			);
+		});
+
+		test('does not mutate the input workflow groups', () => {
+			const wf = groupedWorkflow();
+			applyOperations(wf, [{ type: 'updateNodeGroup', groupName: 'Group', newName: 'Renamed' }]);
+			expect(wf.nodeGroups[0].name).toBe('Group');
+		});
+	});
+
+	describe('nodeGroupsChanged', () => {
+		test('is false when no operation touches groups', () => {
+			const result = applyOperations(baseWorkflow(), [
+				{ type: 'setNodePosition', nodeName: 'A', position: [10, 10] },
+			]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.nodeGroupsChanged).toBe(false);
+		});
+
+		test('is true when setNodeGroups runs', () => {
+			const result = applyOperations(baseWorkflow(), [{ type: 'setNodeGroups', nodeGroups: [] }]);
+			expect(result.success).toBe(true);
+			if (!result.success) return;
+			expect(result.nodeGroupsChanged).toBe(true);
 		});
 	});
 
