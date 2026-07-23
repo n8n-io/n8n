@@ -501,9 +501,15 @@ describe('AgentExecutionOrchestratorService', () => {
 		await expect(
 			service.getConversationHistory({ threadId: 'thread-1', projectId, agentId }),
 		).resolves.toEqual([
-			{ id: 'execution-1:user', role: 'user', content: [{ type: 'text', text: 'Hi' }] },
+			{
+				id: 'execution-1:user',
+				executionId: 'execution-1',
+				role: 'user',
+				content: [{ type: 'text', text: 'Hi' }],
+			},
 			{
 				id: 'execution-1:assistant',
+				executionId: 'execution-1',
 				role: 'assistant',
 				content: [{ type: 'text', text: 'Hello' }],
 			},
