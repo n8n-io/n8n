@@ -188,5 +188,8 @@ export const defaultSettings: FrontendSettings = {
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,
+		filters: {
+			publishedWorkflowCount: 0,
+		},
 	},
 };

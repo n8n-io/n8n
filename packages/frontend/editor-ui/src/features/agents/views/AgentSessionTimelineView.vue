@@ -309,8 +309,8 @@ async function loadThreadDetail() {
 	try {
 		const result = await sessionsStore.getThreadDetail(
 			currentProjectId,
-			currentThreadId,
 			currentAgentId,
+			currentThreadId,
 		);
 		if (requestId !== loadThreadDetailRequestId) return;
 		thread.value = result.thread;

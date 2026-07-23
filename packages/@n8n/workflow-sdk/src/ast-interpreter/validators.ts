@@ -82,6 +82,7 @@ export const SDK_METHODS: readonly SdkMethodSpec[] = [
 	// Workflow builder methods
 	{ name: 'add', group: 'workflow', public: true },
 	{ name: 'to', group: 'workflow', public: true },
+	{ name: 'group', group: 'workflow', public: true },
 
 	// Node builder methods
 	{ name: 'input', group: 'node', public: true },

@@ -1144,7 +1144,11 @@ describe('ImportPipeline event emission', () => {
 
 			const importedPayload = importedEvents[0][1] as RelayEventMap['workflows-imported'];
 			expect(importedPayload.workflowIds).toHaveLength(2);
-			expect(importedPayload.matchedCredentialIds).toEqual([]);
+			expect(importedPayload.credentialIds).toEqual({
+				matched: [],
+				created: [],
+				updated: [],
+			});
 			expect(importedPayload.folderId).toBeNull();
 			expect(importedPayload.options.workflowConflictPolicy).toBe(WorkflowConflictPolicy.Fail);
 			expect(importedPayload.options.workflowIdPolicy).toBe(WorkflowIdPolicy.New);
@@ -1155,6 +1159,68 @@ describe('ImportPipeline event emission', () => {
 			);
 			expect(importedPayload.packageSourceId).toBeDefined();
 			expect(importedPayload.packageVersion).toBe(FORMAT_VERSION);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('records matched and created credential ids on workflows-imported', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const firstCredential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'First GitHub' }),
+			{ project: personalProject },
+		);
+		const secondCredential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'Second GitHub' }),
+			{ project: personalProject },
+		);
+		const eventService = Container.get(EventService);
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		try {
+			await importPackage({
+				user: owner,
+				credentialMissingMode: 'create-stub',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-first-cred',
+							name: 'First credential workflow',
+							credentialId: firstCredential.id,
+							credentialName: firstCredential.name,
+						}),
+						serializedWorkflowWithCredential({
+							id: 'wf-second-cred',
+							name: 'Second credential workflow',
+							credentialId: secondCredential.id,
+							credentialName: secondCredential.name,
+						}),
+						serializedWorkflowWithCredential({
+							id: 'wf-stub-cred',
+							name: 'Stub credential workflow',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+					],
+					{ sourceId: 'credential-audit-test' },
+				),
+			});
+
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflows-imported');
+			expect(importedEvents).toHaveLength(1);
+
+			const importedPayload = importedEvents[0][1] as RelayEventMap['workflows-imported'];
+			expect(importedPayload.credentialIds.matched).toEqual(
+				expect.arrayContaining([firstCredential.id, secondCredential.id]),
+			);
+			expect(importedPayload.credentialIds.matched).toHaveLength(2);
+			expect(importedPayload.credentialIds.created).toHaveLength(1);
+			expect(importedPayload.credentialIds.created[0]).toEqual(expect.any(String));
+			expect(importedPayload.credentialIds.created[0]).not.toBe('missing-cred');
+			expect(importedPayload.credentialIds.updated).toEqual([]);
 		} finally {
 			emitSpy.mockRestore();
 		}

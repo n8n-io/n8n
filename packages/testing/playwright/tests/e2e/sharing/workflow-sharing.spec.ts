@@ -21,6 +21,7 @@ test.describe(
 			await n8n.canvas.addNode('Manual Trigger');
 
 			await n8n.canvas.openShareModal();
+			await expect(n8n.workflowSharingModal.container).toBeVisible();
 			await n8n.workflowSharingModal.addUser(member.email);
 			await n8n.workflowSharingModal.save();
 

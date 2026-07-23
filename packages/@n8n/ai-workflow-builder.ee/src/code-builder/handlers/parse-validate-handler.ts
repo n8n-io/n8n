@@ -9,6 +9,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { parseWorkflowCodeToBuilder, validateWorkflow, workflow } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { INodeTypes } from 'n8n-workflow';
 
 import type { ParseAndValidateResult, ValidationWarning } from '../types';
 import { stripImportStatements } from '../utils/extract-code';
@@ -31,6 +32,13 @@ export interface ParseValidateHandlerConfig {
 	logger?: Logger;
 	/** Whether to generate pin data for new nodes. Defaults to true. */
 	generatePinData?: boolean;
+	/**
+	 * Optional node-type provider used to unlock the provider-gated validators
+	 * in `validateWorkflow` (input-index checks, AI input-type support checks,
+	 * main-output index checks, etc.). Without it those validators silently
+	 * skip — agent-built workflows then pass validation despite real defects.
+	 */
+	nodeTypesProvider?: INodeTypes;
 }
 
 /**
@@ -51,10 +59,12 @@ interface ValidationIssue {
 export class ParseValidateHandler {
 	private logger?: Logger;
 	private generatePinData: boolean;
+	private nodeTypesProvider?: INodeTypes;
 
 	constructor(config: ParseValidateHandlerConfig = {}) {
 		this.logger = config.logger;
 		this.generatePinData = config.generatePinData ?? true;
+		this.nodeTypesProvider = config.nodeTypesProvider;
 	}
 
 	/**
@@ -153,7 +163,9 @@ export class ParseValidateHandler {
 			'info',
 		);
 
-		const jsonValidation = validateWorkflow(json);
+		const jsonValidation = validateWorkflow(json, {
+			nodeTypesProvider: this.nodeTypesProvider,
+		});
 		this.collectValidationIssues(
 			jsonValidation.errors,
 			allWarnings,
@@ -224,7 +236,9 @@ export class ParseValidateHandler {
 			const json = builder.toJSON();
 
 			// Run JSON-based validation for additional checks
-			const validationResult = validateWorkflow(json);
+			const validationResult = validateWorkflow(json, {
+				nodeTypesProvider: this.nodeTypesProvider,
+			});
 
 			// Collect JSON validation errors as warnings for agent self-correction
 			this.collectValidationIssues(
@@ -247,8 +261,14 @@ export class ParseValidateHandler {
 				builder.generatePinData({ beforeWorkflow: currentWorkflow });
 			}
 
+			// Preserve IDs of groups that already exist (by name) so editing a workflow doesn't
+			// skew the diff; new groups fall back to a deterministic ID.
+			const existingGroupIdsByName = new Map(
+				(currentWorkflow?.nodeGroups ?? []).map((group) => [group.name, group.id]),
+			);
+
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
-			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true });
+			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
 
 			this.logger?.debug('Parsed workflow', {
 				id: workflowJson.id,

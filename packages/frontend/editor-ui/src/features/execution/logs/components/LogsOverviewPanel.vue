@@ -123,7 +123,13 @@ function handleSwitchView(value: 'overview' | 'details') {
 				:class="$style.emptyText"
 				data-test-id="logs-overview-empty"
 			>
-				{{ locale.baseText('logs.overview.body.empty.message') }}
+				{{
+					locale.baseText(
+						execution?.dataTooLargeToDisplay
+							? 'logs.overview.body.dataTooLarge.message'
+							: 'logs.overview.body.empty.message',
+					)
+				}}
 			</N8nText>
 			<template v-else>
 				<LogsViewExecutionSummary

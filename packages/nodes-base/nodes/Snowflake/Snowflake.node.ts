@@ -203,9 +203,13 @@ export class Snowflake implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		// Disable logging - https://docs.snowflake.com/en/developer-guide/node-js/nodejs-driver-logs#configure-the-default-logging-behavior
+		// Parse VARIANT/OBJECT/ARRAY columns with JSON.parse. The SDK keeps its XML
+		// fallback for non-JSON values, and STRICT_JSON_OUTPUT (set on the session
+		// below) renders non-finite numbers as null so the output is always valid JSON.
 		snowflake.configure({
 			logFilePath: 'STDOUT',
 			logLevel: 'OFF',
+			jsonColumnVariantParser: JSON.parse,
 		});
 
 		const authMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
@@ -237,6 +241,10 @@ export class Snowflake implements INodeType {
 		const connection = snowflake.createConnection(connectionOptions);
 
 		await connect(connection);
+
+		// Render non-finite numbers (NaN, Infinity) in VARIANT/OBJECT/ARRAY columns as
+		// null so the column output is always valid JSON for the parser above.
+		await execute(connection, 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE', []);
 
 		let returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();

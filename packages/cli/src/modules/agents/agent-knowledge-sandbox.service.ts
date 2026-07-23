@@ -3,7 +3,7 @@ import { loadDaytona } from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { Sandbox, SandboxState } from '@daytonaio/sdk';
+import type { Sandbox, SandboxState } from '@daytona/sdk';
 import { nanoid } from 'nanoid';
 import { InstanceSettings } from 'n8n-core';
 import { createHash } from 'node:crypto';
@@ -563,27 +563,20 @@ export class AgentKnowledgeSandboxService {
 			return sandboxByName;
 		}
 
-		let page = 1;
-		while (true) {
-			const listedSandboxes = await daytona.list(labels, page, SANDBOX_LIST_PAGE_SIZE);
-			for (const sandbox of listedSandboxes.items) {
-				if (!isUsableSandbox(sandbox) || !hasMatchingVolumeMount(sandbox, volumeMount)) {
-					continue;
-				}
-
-				if (sandbox.state !== SANDBOX_STATE_STARTED) {
-					await sandbox.start(timeoutSeconds);
-				}
-
-				const reusableSandbox = await this.resolveReusableSandbox(daytona, sandbox, connection);
-				this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId });
-				return reusableSandbox;
+		// list() is a cursor-paginated async iterator in the Daytona SDK; it transparently fetches
+		// subsequent pages as we iterate.
+		for await (const sandbox of daytona.list({ labels, limit: SANDBOX_LIST_PAGE_SIZE })) {
+			if (!isUsableSandbox(sandbox) || !hasMatchingVolumeMount(sandbox, volumeMount)) {
+				continue;
 			}
 
-			if (page >= listedSandboxes.totalPages) {
-				break;
+			if (sandbox.state !== SANDBOX_STATE_STARTED) {
+				await sandbox.start(timeoutSeconds);
 			}
-			page += 1;
+
+			const reusableSandbox = await this.resolveReusableSandbox(daytona, sandbox, connection);
+			this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId });
+			return reusableSandbox;
 		}
 
 		const image = connection.image;

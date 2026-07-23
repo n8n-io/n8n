@@ -32,7 +32,7 @@ describe('InstanceRiskReporter', () => {
 	});
 
 	it('should create the request client with SSRF disabled for the fixed host', () => {
-		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 30_000 });
 	});
 
 	it('should fetch versions with the instance-id header and JSON parsing', async () => {
@@ -45,7 +45,6 @@ describe('InstanceRiskReporter', () => {
 			method: 'GET',
 			headers: { 'n8n-instance-id': 'test-instance-id' },
 			json: true,
-			timeout: 30_000,
 		});
 	});
 

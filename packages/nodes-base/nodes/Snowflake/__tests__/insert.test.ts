@@ -39,7 +39,11 @@ describe('Test Snowflake, insert - parameter binding', () => {
 		workflowFiles: ['insert.workflow.json'],
 		credentials: { snowflake: snowflakeCredentials },
 		customAssertions() {
-			expect(mockExecute).toHaveBeenCalledTimes(1);
+			// One ALTER SESSION (STRICT_JSON_OUTPUT) call plus one INSERT for the single row
+			expect(mockExecute).toHaveBeenCalledTimes(2);
+			expect(mockExecute).toHaveBeenCalledWith(
+				expect.objectContaining({ sqlText: 'ALTER SESSION SET STRICT_JSON_OUTPUT = TRUE' }),
+			);
 			expect(mockExecute).toHaveBeenCalledWith(
 				expect.objectContaining({
 					sqlText: 'INSERT INTO "ORDERS" ("NAME","STATUS") VALUES (?,?)',

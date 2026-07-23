@@ -283,6 +283,82 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
+	 * Delete terminal records older than their retention window, in a single batch.
+	 * `completed` and `failed`/`partial_success` have different retention configs.
+	 *
+	 * @returns number deleted so the caller can loop until a batch comes back short.
+	 */
+	async deleteTerminalOlderThan(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		if (this.globalConfig.database.type === 'postgresdb') {
+			return await this.deleteTerminalWithPostgres(
+				completedRetentionSeconds,
+				failedRetentionSeconds,
+				batchSize,
+			);
+		}
+
+		return await this.deleteTerminalWithSqlite(
+			completedRetentionSeconds,
+			failedRetentionSeconds,
+			batchSize,
+		);
+	}
+
+	private async deleteTerminalWithPostgres(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+
+		const [row]: Array<{ count: string | number }> = await this.query(
+			`WITH deleted AS (
+				DELETE FROM ${tableName}
+				WHERE "id" IN (
+					SELECT "id" FROM ${tableName}
+					WHERE ("status" = '${Status.Completed}' AND "updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $1))
+						OR ("status" IN ('${Status.Failed}', '${Status.PartialSuccess}') AND "updatedAt" < CURRENT_TIMESTAMP(3) - make_interval(secs => $2))
+					LIMIT $3
+				)
+				RETURNING "id"
+			)
+			SELECT COUNT(*) AS "count" FROM deleted`,
+			[completedRetentionSeconds, failedRetentionSeconds, batchSize],
+		);
+
+		return Number(row.count);
+	}
+
+	private async deleteTerminalWithSqlite(
+		completedRetentionSeconds: number,
+		failedRetentionSeconds: number,
+		batchSize: number,
+	): Promise<number> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+		const completedModifier = `-${Math.round(completedRetentionSeconds)} seconds`;
+		const failedModifier = `-${Math.round(failedRetentionSeconds)} seconds`;
+
+		return await this.manager.transaction(async (tx) => {
+			await tx.query(
+				`DELETE FROM ${tableName}
+				 WHERE "id" IN (
+					SELECT "id" FROM ${tableName}
+					WHERE ("status" = '${Status.Completed}' AND "updatedAt" < STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', ?))
+						OR ("status" IN ('${Status.Failed}', '${Status.PartialSuccess}') AND "updatedAt" < STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', ?))
+					LIMIT ?
+				 )`,
+				[completedModifier, failedModifier, batchSize],
+			);
+			const [{ count }]: Array<{ count: number }> = await tx.query('SELECT changes() AS count');
+			return Number(count);
+		});
+	}
+
+	/**
 	 * Guards against transitioning a record that is no longer the in-progress row
 	 * we expect (e.g. it was already resolved or never claimed): such a transition
 	 * affects zero rows and would otherwise be lost silently.

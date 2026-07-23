@@ -9,6 +9,16 @@ import { usePostHog, type PosthogStore } from '@/app/stores/posthog.store';
 import userEvent from '@testing-library/user-event';
 import { flushPromises } from '@vue/test-utils';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const mockedGetVariant = vi.fn(() => 'control');
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: vi.fn(() => ({

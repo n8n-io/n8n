@@ -1,0 +1,196 @@
+import type { CredentialProvider } from '@n8n/agents';
+import type { AgentJsonConfig } from '@n8n/api-types';
+import { mock } from 'jest-mock-extended';
+
+import type { AgentSkillsService } from '../agent-skills.service';
+import { AgentValidationService } from '../agent-validation.service';
+import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
+
+const agentId = 'agent-1';
+const projectId = 'project-1';
+
+const runnableConfig: AgentJsonConfig = {
+	name: 'Support Agent',
+	model: 'openai/gpt-4o',
+	credential: 'openai-main',
+	instructions: 'Help users',
+	tools: [],
+	skills: [],
+};
+
+function makeAgent(config: AgentJsonConfig | null = runnableConfig, skills = {}): Agent {
+	return {
+		id: agentId,
+		projectId,
+		schema: config,
+		skills,
+	} as unknown as Agent;
+}
+
+function makeCredentialProvider(credentials: Array<{ id: string; type: string }> = []) {
+	return {
+		list: jest.fn().mockResolvedValue(credentials),
+	} as unknown as CredentialProvider;
+}
+
+function makeService() {
+	const agentRepository = mock<AgentRepository>();
+	const agentSkillsService = mock<AgentSkillsService>();
+	agentSkillsService.getMissingSkillIds.mockReturnValue([]);
+
+	return {
+		service: new AgentValidationService(agentRepository, agentSkillsService),
+		agentRepository,
+		agentSkillsService,
+	};
+}
+
+describe('AgentValidationService', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('reports missing essentials when the agent or runnable config is absent', async () => {
+		const { service, agentRepository } = makeService();
+		const credentials = makeCredentialProvider();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		await expect(service.validateAgentIsRunnable(agentId, projectId, credentials)).resolves.toEqual(
+			{
+				missing: ['agent'],
+			},
+		);
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(null));
+		await expect(service.validateAgentIsRunnable(agentId, projectId, credentials)).resolves.toEqual(
+			{
+				missing: ['instructions', 'model', 'credential'],
+			},
+		);
+	});
+
+	it('accepts a complete runnable draft with an accessible credential', async () => {
+		const { service, agentRepository } = makeService();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		await expect(
+			service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			),
+		).resolves.toEqual({ missing: [] });
+	});
+
+	it('consolidates missing optional credential-backed features', async () => {
+		const { service, agentRepository, agentSkillsService } = makeService();
+		agentSkillsService.getMissingSkillIds.mockReturnValue(['skill-1']);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					observationalMemory: {
+						observerModel: { model: 'openai/gpt-4o', credential: 'missing-observer' },
+					},
+					episodicMemory: {
+						enabled: true,
+						credential: 'missing-episodic',
+						extractorModel: { model: 'openai/gpt-4o', credential: 'missing-extractor' },
+						reflectorModel: { model: 'openai/gpt-4o', credential: 'missing-reflector' },
+					},
+				},
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: 'missing-web-search' },
+				},
+				subAgents: {
+					enabled: true,
+					modelsByDifficulty: {
+						easy: { model: 'openai/gpt-4o', credential: 'missing-easy' },
+						medium: { model: 'openai/gpt-4o', credential: 'missing-medium' },
+						hard: { model: 'openai/gpt-4o', credential: 'missing-hard' },
+					},
+				},
+				skills: [{ type: 'skill', id: 'skill-1' }],
+			} as AgentJsonConfig),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).toEqual(
+			expect.arrayContaining([
+				'memory.observationalMemory.observerModel.credential',
+				'episodicMemory.credential',
+				'memory.episodicMemory.extractorModel.credential',
+				'memory.episodicMemory.reflectorModel.credential',
+				'webSearch.credential',
+				'subAgents.modelsByDifficulty.medium.credential',
+				'skill:skill-1',
+			]),
+		);
+	});
+
+	it('flags worker model credentials that do not match the configured provider', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					observationalMemory: {
+						observerModel: { model: 'anthropic/claude-sonnet-4-6', credential: 'openai-main' },
+					},
+				},
+			}),
+		);
+
+		await expect(
+			service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+			),
+		).resolves.toEqual({
+			missing: ['memory.observationalMemory.observerModel.credential'],
+		});
+	});
+
+	it('reports malformed episodic memory credentials without skipping worker model checks', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				...runnableConfig,
+				memory: {
+					enabled: true,
+					storage: 'n8n',
+					episodicMemory: {
+						enabled: true,
+						credential: { id: 'not-a-string' } as unknown as string,
+						extractorModel: { model: 'openai/gpt-4o', credential: 'missing-extractor' },
+					},
+				},
+			}),
+		);
+
+		const result = await service.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
+		);
+
+		expect(result.missing).toEqual(
+			expect.arrayContaining([
+				'episodicMemory.credential',
+				'memory.episodicMemory.extractorModel.credential',
+			]),
+		);
+	});
+});

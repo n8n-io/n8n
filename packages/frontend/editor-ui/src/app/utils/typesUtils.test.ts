@@ -1,4 +1,10 @@
-import { isEmpty, intersection, isValidDate, formatBytes } from '@/app/utils/typesUtils';
+import {
+	isEmpty,
+	intersection,
+	isValidDate,
+	formatBytes,
+	abbreviateNumber,
+} from '@/app/utils/typesUtils';
 
 describe('Types Utils', () => {
 	describe('isEmpty', () => {
@@ -54,6 +60,23 @@ describe('Types Utils', () => {
 			[5 * 1024 * 1024, '5MB'],
 		])('formats %i bytes as %s', (input, expected) => {
 			expect(formatBytes(input)).toBe(expected);
+		});
+	});
+
+	describe('abbreviateNumber', () => {
+		test.each([
+			[0, '0'],
+			[42, '42'],
+			[999, '999'],
+			[1500, '1.5k'],
+			[12345, '12.3k'],
+			[1000000, '1M'],
+			[999999, '1M'],
+			[999999999, '1G'],
+			[-2500, '-2.5k'],
+			[1e21, '1000E'],
+		])('formats %i as %s', (input, expected) => {
+			expect(abbreviateNumber(input)).toBe(expected);
 		});
 	});
 

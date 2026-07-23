@@ -40,10 +40,18 @@ vi.mock('./tools/mouse-keyboard', () => ({
 vi.mock('./tools/browser', () => ({
 	['BrowserModule']: { create: vi.fn().mockResolvedValue(null) },
 }));
+vi.mock('@vscode/ripgrep', () => ({ rgPath: '/usr/bin/rg' }));
+vi.mock('@anthropic-ai/sandbox-runtime', () => ({
+	['SandboxManager']: {
+		initialize: vi.fn().mockResolvedValue(undefined),
+		wrapWithSandbox: vi.fn().mockImplementation(async (cmd: string) => await Promise.resolve(cmd)),
+	},
+}));
 
 import type { GatewayConfig } from './config';
 import { GatewayAuthError, GatewayClient } from './gateway-client';
 import type { GatewaySession } from './gateway-session';
+import { shellExecuteTool } from './tools/shell/shell-execute';
 import type { AffectedResource, ConfirmResourceAccess, ToolDefinition } from './tools/types';
 import { INSTANCE_RESOURCE_DECISION_KEYS } from './tools/types';
 
@@ -133,6 +141,29 @@ function makeClient(
 	return client;
 }
 
+function makeClientWithTool(
+	session: Mocked<GatewaySession>,
+	confirmResourceAccess: ConfirmResourceAccess,
+	permissionConfirmation: 'client' | 'instance',
+	tool: ToolDefinition,
+): GatewayClient {
+	const client = new GatewayClient({
+		url: 'http://localhost:5678',
+		apiKey: 'tok',
+		config: makeConfig(permissionConfirmation),
+		session,
+		confirmResourceAccess,
+	});
+
+	// Inject the tool directly so dispatchToolCall finds it without network I/O.
+	// @ts-expect-error — accessing private field for testing
+	client.allDefinitions = [tool];
+	// @ts-expect-error — accessing private field for testing
+	client.definitionMap = new Map([[tool.name, tool]]);
+
+	return client;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -202,6 +233,44 @@ describe('GatewayClient.checkPermissions', () => {
 
 			await client['dispatchToolCall']('test_tool', {});
 
+			expect(confirmResourceAccess).not.toHaveBeenCalled();
+		});
+
+		it('does not reuse a bare shell command session allow for shell_execute with explicit cwd', async () => {
+			const execute = vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+			const shellTool = { ...shellExecuteTool, execute } as ToolDefinition;
+			const session = makeSession({
+				check: vi.fn((_toolGroup, resource) => (resource === 'ls' ? 'allow' : 'ask')),
+			});
+			const confirmResourceAccess = vi.fn();
+			const client = makeClientWithTool(session, confirmResourceAccess, 'instance', shellTool);
+
+			let errorMessage = '';
+			try {
+				await client['dispatchToolCall']('shell_execute', {
+					command: 'ls',
+					cwd: '/custom/path',
+				});
+			} catch (e) {
+				errorMessage = e instanceof Error ? e.message : '';
+			}
+
+			expect(errorMessage).toMatch(/^GATEWAY_CONFIRMATION_REQUIRED::/);
+			let payload: AffectedResource & { options: string[] };
+			try {
+				payload = JSON.parse(
+					errorMessage.slice('GATEWAY_CONFIRMATION_REQUIRED::'.length),
+				) as AffectedResource & { options: string[] };
+			} catch {
+				throw new Error(`Failed to parse GATEWAY_CONFIRMATION_REQUIRED payload: ${errorMessage}`);
+			}
+			expect(payload).toMatchObject({
+				toolGroup: 'shell',
+				resource: '/custom/path: ls',
+				description: 'Execute shell command: ls in /custom/path',
+			});
+			expect(session.check).toHaveBeenCalledWith('shell', '/custom/path: ls');
+			expect(execute).not.toHaveBeenCalled();
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});
 

@@ -1,5 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
+import { MessageBox } from './messageBoxLocators';
+
 /**
  * Workflow menu on the editor header (`workflow-menu` trigger) plus the
  * teleported (Element Plus) dropdown items and confirmation surfaces it opens.
@@ -104,7 +106,7 @@ export class WorkflowMenu {
 	}
 
 	async confirmArchiveModal(): Promise<void> {
-		await this.page.locator('.btn--confirm').click();
+		await new MessageBox(this.page).confirmButton.click();
 	}
 
 	// Duplicate modal (opened by openDuplicate)

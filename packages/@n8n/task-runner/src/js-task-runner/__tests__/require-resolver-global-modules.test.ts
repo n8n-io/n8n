@@ -58,7 +58,9 @@ try {
   console.log(JSON.stringify({ success: false, error: e.message }));
 }`,
 		);
-	});
+		// `npm install` hits the registry and can exceed the default 10s hook
+		// timeout on a loaded CI runner, so give it ample headroom.
+	}, 60_000);
 
 	afterAll(() => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });

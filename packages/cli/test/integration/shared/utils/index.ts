@@ -123,6 +123,12 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 		return node;
 	});
 
+	// LoadNodesAndCredentials.getCredential() iterates all loaders and
+	// tries to check for `credentialType in loader.known.credentials`.
+	// The `in` operator throws if `known.credentials` is undefined. Set it to empty maps so
+	// the loop is safe to iterate (credentials are registered via loaded.credentials, not the loader).
+	Object.assign(loader, { known: { nodes: {}, credentials: {} } });
+
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { 'n8n-nodes-base': loader };
 	loadNodesAndCredentials.loaded.nodes = nodes;

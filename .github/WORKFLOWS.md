@@ -71,7 +71,6 @@ Complete reference for n8n's `.github/` folder.
 │  │ Schedule │───▶│  Nightly/Weekly Jobs             │    ┌────────────┐   │
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
-│                  │  ├─ test-workflows-nightly       │    └────────────┘   │
 │                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
@@ -267,7 +266,7 @@ release-publish.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
-test-workflows-nightly.yml
+test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
 
 test-e2e-vm-expressions-nightly.yml
@@ -384,7 +383,6 @@ Push to master/1.x
 | Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
-| Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |

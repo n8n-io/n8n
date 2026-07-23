@@ -9,6 +9,7 @@ import pick from 'lodash/pick';
 import { NodeOperationError, jsonParse, sleep } from 'n8n-workflow';
 import type {
 	IAdditionalCredentialOptions,
+	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
 	IN8nHttpFullResponse,
@@ -65,6 +66,7 @@ export async function requestWithAuthenticationPaginated(
 	node: INode,
 	credentialsType?: string,
 	additionalCredentialOptions?: IAdditionalCredentialOptions,
+	sanitizedRequest?: IDataObject,
 ): Promise<any[]> {
 	const responseData = [];
 	if (!requestOptions.qs) {
@@ -80,7 +82,7 @@ export async function requestWithAuthenticationPaginated(
 	const runIndex = 0;
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-		$request: requestOptions,
+		$request: sanitizedRequest ?? requestOptions,
 		$response: {} as IN8nHttpFullResponse,
 		$version: node.typeVersion,
 		$pageCount: 0,

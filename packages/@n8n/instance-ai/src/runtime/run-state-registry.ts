@@ -67,6 +67,9 @@ export interface ConfirmationData {
 	resourceDecision?: string;
 	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
 	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
 }
 
 export interface PendingConfirmation {

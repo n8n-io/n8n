@@ -249,6 +249,33 @@ export class TrustedKeyService {
 		return result.data;
 	}
 
+	async hasSingleTrustedIssuer(): Promise<boolean> {
+		const sources = await this.listAll();
+		const issuers = new Set<string>();
+
+		sources.forEach((entity) => {
+			try {
+				const parsed = TrustedKeyDataSchema.safeParse(JSON.parse(entity.data));
+				if (!parsed.success) {
+					this.logger.warn('Skipping corrupted trusted key entity', {
+						kid: entity.kid,
+						sourceId: entity.sourceId,
+						error: parsed.error.message,
+					});
+					return;
+				}
+				issuers.add(parsed.data.issuer);
+			} catch {
+				this.logger.warn('Skipping corrupted trusted key entity', {
+					kid: entity.kid,
+					sourceId: entity.sourceId,
+					error: 'invalid JSON',
+				});
+			}
+		});
+		return issuers.size === 1;
+	}
+
 	// ─── Private: source sync ──────────────────────────────────────────
 
 	private generateSourceId(source: TrustedKeySource): string {

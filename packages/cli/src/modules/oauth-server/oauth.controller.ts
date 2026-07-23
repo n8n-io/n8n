@@ -168,6 +168,8 @@ export class OAuthController {
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
+			// RFC 9207: we include the `iss` parameter on authorization responses
+			authorization_response_iss_parameter_supported: true,
 		};
 
 		if (allScopes.length > 0) {

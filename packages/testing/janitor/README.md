@@ -473,6 +473,40 @@ on the preceding line, ideally with a reason after `--`:
 await n8n.page.goto(`/workflow/${workflowId}`);
 ```
 
+#### `valid-owner-annotation`
+
+**Severity:** error
+
+Every spec must declare the team that owns it via a Playwright `owner`
+annotation, and the team must be one of the canonical owners. The owner drives
+flaky/failure-triage routing, so a missing owner means failures go nowhere and a
+misspelled one (e.g. `'Instance AI'` instead of `'instanceAI'`) routes to a team
+that doesn't exist.
+
+The canonical list (`CANONICAL_OWNERS`) lives in the rule itself, mirroring the
+"Ownership v2" register — update it there when ownership shifts. Owner is
+recognised both as the annotation literal and as an `owner` config property
+(e.g. `runMemoryBaseline({ owner })`).
+
+```typescript
+// Bad - no owner: triage can't route this spec's failures
+test.describe('My feature', () => { ... });
+
+// Bad - owner not in CANONICAL_OWNERS
+test.describe('My feature', { annotation: [{ type: 'owner', description: 'Instance AI' }] }, () => { ... });
+
+// Good - canonical owner
+test.describe('My feature', { annotation: [{ type: 'owner', description: 'instanceAI' }] }, () => { ... });
+```
+
+A spec that legitimately has no team owner can opt out of the check with a
+directive comment on the preceding line, ideally with a reason after `--`:
+
+```typescript
+// janitor-disable-next-line valid-owner-annotation -- vendor smoke, no team
+{ type: 'owner', description: 'n/a' }
+```
+
 ### Code Quality Rules
 
 #### `dead-code`

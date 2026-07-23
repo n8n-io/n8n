@@ -2,6 +2,7 @@ import { expect } from '@playwright/test';
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class DataTableDetails extends BasePage {
 	async goto(datatableId: string) {
@@ -153,7 +154,7 @@ export class DataTableDetails extends BasePage {
 
 	async deleteSelectedRows() {
 		await this.getDeleteSelectedButton().click();
-		const confirmButton = this.page.locator('.btn--confirm');
+		const confirmButton = new MessageBox(this.page).confirmButton;
 		await confirmButton.click();
 	}
 
@@ -182,7 +183,7 @@ export class DataTableDetails extends BasePage {
 			.filter({ visible: true })
 			.click();
 
-		const confirmButton = this.page.locator('.btn--confirm');
+		const confirmButton = new MessageBox(this.page).confirmButton;
 		await confirmButton.click();
 	}
 

@@ -31,7 +31,11 @@ import {
 	getActiveTabId as getActiveTabIdOp,
 	getTabCount as getTabCountOp,
 } from './operations/query';
-import { loadNodeTypes as loadNodeTypesOp } from './operations/loadNodeTypes';
+import {
+	loadNodeTypes as loadNodeTypesOp,
+	getAllNodeTypes as getAllNodeTypesOp,
+	getNodeType as getNodeTypeOp,
+} from './operations/loadNodeTypes';
 import {
 	storeVersion as storeVersionOp,
 	getStoredVersion as getStoredVersionOp,
@@ -120,6 +124,20 @@ const coordinatorApi = {
 	 */
 	async loadNodeTypes(baseUrl: string): Promise<void> {
 		await loadNodeTypesOp(state, baseUrl);
+	},
+
+	/**
+	 * Get all node types from the local database (routes to active tab's worker)
+	 */
+	async getAllNodeTypes() {
+		return await getAllNodeTypesOp(state);
+	},
+
+	/**
+	 * Get a single node type from the local database (routes to active tab's worker)
+	 */
+	async getNodeType(name: string, version: number) {
+		return await getNodeTypeOp(state, name, version);
 	},
 
 	/**

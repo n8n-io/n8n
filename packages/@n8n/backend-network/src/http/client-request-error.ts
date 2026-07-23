@@ -20,6 +20,23 @@ export function isConnectionRefusedError(error: unknown): boolean {
 }
 
 /**
+ * Whether the error originates from axios, recognized by the `isAxiosError` brand
+ * axios stamps on every error it throws.
+ *
+ * Lets callers classify axios failures without importing axios themselves, now that
+ * the axios instance lives behind this package's HTTP client.
+ *
+ * @deprecated Axios details should not be exposed outside of @n8n/backend-network
+ */
+export function isAxiosError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		(error as { isAxiosError?: unknown }).isAxiosError === true
+	);
+}
+
+/**
  * The HTTP status code carried by a request error, when the call received a response.
  */
 export function httpStatusFromError(error: unknown): number | undefined {

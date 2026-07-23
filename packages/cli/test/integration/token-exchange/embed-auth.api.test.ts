@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import { InstanceSettings } from 'n8n-core';
 
 import { EventService } from '@/events/event.service';
+import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 
 import { createOwner, createUser } from '../shared/db/users';
@@ -195,7 +196,7 @@ describe('Embed Auth API (integration)', () => {
 		// Verify auth identity linked
 		const identityRepo = Container.get(AuthIdentityRepository);
 		const identity = await identityRepo.findOneBy({
-			providerId: sub,
+			providerId: qualifiedProviderId(TEST_ISSUER, sub),
 			providerType: 'token-exchange',
 		});
 		expect(identity).toBeDefined();
@@ -212,7 +213,9 @@ describe('Embed Auth API (integration)', () => {
 
 		// Link auth identity
 		const identityRepo = Container.get(AuthIdentityRepository);
-		await identityRepo.save(AuthIdentity.create(user, sub, 'token-exchange'));
+		await identityRepo.save(
+			AuthIdentity.create(user, qualifiedProviderId(TEST_ISSUER, sub), 'token-exchange'),
+		);
 
 		const token = signEmbedToken({
 			sub,

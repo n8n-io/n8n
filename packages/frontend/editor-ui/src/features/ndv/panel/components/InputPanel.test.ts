@@ -29,7 +29,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 vi.mock('vue-router', () => {
 	return {
 		useRouter: () => ({}),
-		useRoute: () => ({ meta: {} }),
+		useRoute: () => ({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });

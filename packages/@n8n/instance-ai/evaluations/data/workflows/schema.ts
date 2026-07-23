@@ -20,10 +20,12 @@ const ExecutionScenarioSchema = z.object({
 	requires: z.string().optional(),
 });
 
-export const WorkflowTestCaseSchema = z.object({
+const workflowTestCaseObjectSchema = z.object({
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description: z.string().optional(),
-	conversation: z.array(ConversationTurnSchema).min(1),
+	// Optional only because `seedThread` derives the live turn from the trace;
+	// a refine() below requires it for every other case.
+	conversation: z.array(ConversationTurnSchema).min(1).optional(),
 	complexity: z.enum(['simple', 'medium', 'complex']),
 	tags: z.array(z.string()),
 	triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
@@ -51,6 +53,18 @@ export const WorkflowTestCaseSchema = z.object({
 			}),
 		)
 		.optional(),
+	/** Synthetic seed file (relative path), resolved + validated at case load.
+	 *  Synthetic fixtures only; real conversations use `seedThread`. */
+	seedFile: z.string().min(1).optional(),
+	/** Prose turns seeded as plain-text history (no tool calls / workflows). */
+	priorConversation: z.array(ConversationTurnSchema).min(1).optional(),
+	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
+	 *  before the last user message, live = that message). Commits only the thread
+	 *  id; workspace auto-discovered. Supplies the live turn, so `conversation` is
+	 *  optional (continues after it). */
+	seedThread: z
+		.object({ threadId: z.string().min(1), project: z.string().min(1).optional() })
+		.optional(),
 	/**
 	 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
 	 * the eval CLI's `--tier` flag and propagated to LangSmith as example
@@ -59,5 +73,16 @@ export const WorkflowTestCaseSchema = z.object({
 	 */
 	datasets: z.array(z.string()).min(1).default(['full']),
 });
+
+// At most one seeding mode, and a source for the live turn.
+export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
+	.refine((c) => [c.seedFile, c.priorConversation, c.seedThread].filter(Boolean).length <= 1, {
+		message:
+			'seedFile, priorConversation and seedThread are mutually exclusive — pick one seeding mode',
+	})
+	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
+		message:
+			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
+	});
 
 export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;

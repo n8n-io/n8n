@@ -272,10 +272,7 @@ describe('runtime filter', () => {
 	});
 
 	it('does not trigger on workflow-only tooling scripts', () => {
-		assert.equal(
-			evaluateFilter(['scripts/mutation-health/pick-next.mjs'], runtimePatterns),
-			false,
-		);
+		assert.equal(evaluateFilter(['scripts/mutation-health/pick-next.mjs'], runtimePatterns), false);
 		assert.equal(evaluateFilter(['scripts/licenses/enrich-sbom.mjs'], runtimePatterns), false);
 		assert.equal(
 			evaluateFilter(['scripts/backend-module/my-feature.service.template'], runtimePatterns),
@@ -396,7 +393,10 @@ describe('getChangedFiles (shallow clone, stale base)', () => {
 		git(['push', 'origin', 'main'], builderDir);
 
 		// Shallow checkout of the PR side, mirroring CI's depth-1 clone
-		git(['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir], originalCwd);
+		git(
+			['clone', '--depth=1', '--branch', 'pr-branch', `file://${remoteDir}`, repoDir],
+			originalCwd,
+		);
 		git(['config', 'user.email', 'test@test.local'], repoDir);
 		git(['config', 'user.name', 'test'], repoDir);
 		// Tiny step so the deepen loop has to iterate to reach the merge base

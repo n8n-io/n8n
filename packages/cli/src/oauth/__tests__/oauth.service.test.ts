@@ -152,11 +152,15 @@ describe('OauthService', () => {
 	});
 
 	describe('constructor', () => {
-		it('builds its HTTP client with the injected SSRF protection service', () => {
+		it('builds its HTTP client with the injected SSRF protection service and a default timeout', () => {
 			// Guards the intent that outbound OAuth calls run with SSRF protection
 			// enabled per the configured env vars, rather than relying on the implicit
-			// `requests()` default.
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
+			// `requests()` default, and that the shared request timeout is applied once
+			// on the client instead of being repeated per call.
+			expect(outboundHttp.requests).toHaveBeenCalledWith({
+				ssrf: ssrfProtectionService,
+				timeout: expect.any(Number),
+			});
 		});
 	});
 
@@ -4217,7 +4221,7 @@ describe('OauthService', () => {
 		});
 
 		describe('outbound request mapping and SSRF (factory migration)', () => {
-			it('maps protected-resource discovery to a GET with JSON, full response and a timeout', async () => {
+			it('maps protected-resource discovery to a GET with JSON and full response', async () => {
 				httpClientMock.get.mockResolvedValueOnce({
 					data: { authorization_servers: ['https://auth.example.com'] },
 				});
@@ -4230,7 +4234,6 @@ describe('OauthService', () => {
 						method: 'GET',
 						json: true,
 						returnFullResponse: true,
-						timeout: expect.any(Number),
 					}),
 				);
 			});

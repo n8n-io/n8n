@@ -144,6 +144,20 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+// The builder store derives the current workflow id from the route via
+// useRouteWorkflowId(). Back it by a holder wired to the workflows store in
+// beforeEach, so existing tests keep driving the id through setWorkflowId().
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
+
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		mockDocumentState = undefined;
@@ -167,6 +181,9 @@ describe('AI Builder store', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		credentialsStore = mockedStore(useCredentialsStore);
+
+		// Route the mocked useRouteWorkflowId() at this test's workflows store.
+		workflowIdHolder.current = () => workflowsStore.workflowId;
 
 		workflowsStore.setWorkflowId('test-workflow-id');
 		workflowDocumentStore = useWorkflowDocumentStore(

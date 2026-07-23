@@ -10,3 +10,8 @@ export { convertN8nRequestToAxios } from './http/axios/request';
 export { generateContentLengthHeader, isFormDataInstance } from './http/axios/utils';
 export { buildRfcStyleUserAgent, getDefaultN8nOutboundUserAgent } from './http/axios/user-agent';
 export { startServer, type LocalServer } from './http/local-server';
+export {
+	createFakeOutboundHttp,
+	type Route,
+	type MockFnFactory,
+} from './http/fake-outbound-http';

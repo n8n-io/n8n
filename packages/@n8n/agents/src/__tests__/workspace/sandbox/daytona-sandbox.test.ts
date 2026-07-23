@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest';
 
-// Mock @daytonaio/sdk so we can drive sandbox creation, token refresh, and
+// Mock @daytona/sdk so we can drive sandbox creation, token refresh, and
 // sandbox refetch behavior from Jest without touching the network.
 
 interface MockSandbox {
@@ -27,7 +27,7 @@ interface DaytonaClientLog {
 
 // All mock state, helpers, and SDK classes live inside vi.hoisted so they are
 // initialized before the (hoisted) module imports run. The Daytona SDK is
-// consumed in source via `loadDaytona()` (which `require()`s @daytonaio/sdk), so
+// consumed in source via `loadDaytona()` (which `require()`s @daytona/sdk), so
 // we mock the first-party `lazy-daytona` module rather than the package itself.
 const {
 	clientLog,

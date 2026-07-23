@@ -366,7 +366,9 @@ describe('generate-types', () => {
 		} catch {
 			// Module doesn't export functions yet - tests will fail as expected in TDD
 		}
-	});
+		// Cold module compilation can exceed the default 10s hook timeout on a
+		// loaded CI runner, so give the import ample headroom.
+	}, 30_000);
 
 	// =========================================================================
 	// Property Type Mapping Tests
@@ -5085,7 +5087,9 @@ describe('orchestrateGeneration', () => {
 
 	beforeAll(async () => {
 		mod = await import('../generate-types/generate-types');
-	});
+		// Cold module compilation can exceed the default 10s hook timeout on a
+		// loaded CI runner, so give the import ample headroom.
+	}, 30_000);
 
 	afterAll(async () => {
 		await fs.promises.rm(outputDir, { recursive: true, force: true });

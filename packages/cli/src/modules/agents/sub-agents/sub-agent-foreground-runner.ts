@@ -15,6 +15,7 @@ import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { AgentExecutionService } from '../agent-execution.service';
+import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
 import { streamAgentChunks } from '../utils/agent-stream';
@@ -210,6 +211,10 @@ export class SubAgentForegroundRunner {
 				threadMetadata: {
 					...(parentThreadId !== undefined ? { parentThreadId } : {}),
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
+				},
+				telemetry: {
+					runType: 'production',
+					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},
 			});
 		} catch (error) {

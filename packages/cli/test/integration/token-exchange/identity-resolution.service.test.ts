@@ -8,8 +8,13 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { EventService } from '@/events/event.service';
+import {
+	IdentityResolutionService,
+	qualifiedProviderId,
+} from '@/modules/token-exchange/services/identity-resolution.service';
+import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
 import type { ExternalTokenClaims } from '@/modules/token-exchange/token-exchange.schemas';
-import { IdentityResolutionService } from '@/modules/token-exchange/services/identity-resolution.service';
 
 import { createOwner, createUser } from '../shared/db/users';
 
@@ -17,6 +22,8 @@ let service: IdentityResolutionService;
 let userRepository: UserRepository;
 let authIdentityRepository: AuthIdentityRepository;
 let projectRepository: ProjectRepository;
+let trustedKeyService: TrustedKeyService;
+let eventService: EventService;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -25,6 +32,8 @@ beforeAll(async () => {
 	userRepository = Container.get(UserRepository);
 	authIdentityRepository = Container.get(AuthIdentityRepository);
 	projectRepository = Container.get(ProjectRepository);
+	trustedKeyService = Container.get(TrustedKeyService);
+	eventService = Container.get(EventService);
 });
 
 afterAll(async () => {
@@ -33,6 +42,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['AuthIdentity', 'ProjectRelation', 'Project', 'User']);
+});
+
+afterEach(() => {
+	jest.restoreAllMocks();
 });
 
 const baseClaims: ExternalTokenClaims = {
@@ -47,11 +60,16 @@ const baseClaims: ExternalTokenClaims = {
 	family_name: 'Doe',
 };
 
+/** The issuer-scoped provider id a token-exchange identity is stored under. */
+const providerIdFor = (sub: string, iss: string = baseClaims.iss) => qualifiedProviderId(iss, sub);
+
 describe('IdentityResolutionService (integration)', () => {
 	describe('Path 1 — known sub', () => {
 		it('should resolve user by auth identity and return role with scopes', async () => {
 			const user = await createUser({ email: 'known@example.com' });
-			await authIdentityRepository.save(AuthIdentity.create(user, 'ext-known', 'token-exchange'));
+			await authIdentityRepository.save(
+				AuthIdentity.create(user, providerIdFor('ext-known'), 'token-exchange'),
+			);
 
 			const result = await service.resolve({
 				...baseClaims,
@@ -73,7 +91,7 @@ describe('IdentityResolutionService (integration)', () => {
 				lastName: 'Name',
 			});
 			await authIdentityRepository.save(
-				AuthIdentity.create(user, 'ext-unchanged', 'token-exchange'),
+				AuthIdentity.create(user, providerIdFor('ext-unchanged'), 'token-exchange'),
 			);
 
 			const result = await service.resolve({
@@ -148,7 +166,7 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(result.id).toBe(user.id);
 
 			const identity = await authIdentityRepository.findOne({
-				where: { providerId: 'ext-case', providerType: 'token-exchange' },
+				where: { providerId: providerIdFor('ext-case'), providerType: 'token-exchange' },
 			});
 			expect(identity).toBeDefined();
 			expect(identity!.userId).toBe(user.id);
@@ -180,7 +198,7 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(dbUser!.password).toBe('!token-exchange-no-password');
 
 			const identity = await authIdentityRepository.findOne({
-				where: { providerId: 'ext-jit', providerType: 'token-exchange' },
+				where: { providerId: providerIdFor('ext-jit'), providerType: 'token-exchange' },
 			});
 			expect(identity).toBeDefined();
 			expect(identity!.userId).toBe(result.id);
@@ -254,7 +272,9 @@ describe('IdentityResolutionService (integration)', () => {
 	describe('profile and role sync', () => {
 		it('should allow global:owner user to log in without changing their role', async () => {
 			const owner = await createOwner();
-			await authIdentityRepository.save(AuthIdentity.create(owner, 'ext-owner', 'token-exchange'));
+			await authIdentityRepository.save(
+				AuthIdentity.create(owner, providerIdFor('ext-owner'), 'token-exchange'),
+			);
 
 			const result = await service.resolve({
 				...baseClaims,
@@ -276,7 +296,7 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should throw when claimed role is not in allowedRoles for known identity', async () => {
 			const admin = await createUser({ email: 'admin-keep@example.com', role: GLOBAL_ADMIN_ROLE });
 			await authIdentityRepository.save(
-				AuthIdentity.create(admin, 'ext-admin-keep', 'token-exchange'),
+				AuthIdentity.create(admin, providerIdFor('ext-admin-keep'), 'token-exchange'),
 			);
 
 			await expect(
@@ -309,7 +329,7 @@ describe('IdentityResolutionService (integration)', () => {
 
 			// Ensure no orphaned AuthIdentity was persisted before the role check
 			const orphanedIdentity = await authIdentityRepository.findOne({
-				where: { providerId: 'ext-admin-email', providerType: 'token-exchange' },
+				where: { providerId: providerIdFor('ext-admin-email'), providerType: 'token-exchange' },
 			});
 			expect(orphanedIdentity).toBeNull();
 		});
@@ -317,7 +337,7 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should ignore unknown role claim for existing user', async () => {
 			const user = await createUser({ email: 'unknown-role@example.com' });
 			await authIdentityRepository.save(
-				AuthIdentity.create(user, 'ext-unknown-role', 'token-exchange'),
+				AuthIdentity.create(user, providerIdFor('ext-unknown-role'), 'token-exchange'),
 			);
 
 			const result = await service.resolve({
@@ -334,7 +354,7 @@ describe('IdentityResolutionService (integration)', () => {
 		it('should ignore global:owner role claim for non-owner user', async () => {
 			const user = await createUser({ email: 'escalation@example.com' });
 			await authIdentityRepository.save(
-				AuthIdentity.create(user, 'ext-escalation', 'token-exchange'),
+				AuthIdentity.create(user, providerIdFor('ext-escalation'), 'token-exchange'),
 			);
 
 			const result = await service.resolve({
@@ -354,7 +374,7 @@ describe('IdentityResolutionService (integration)', () => {
 				role: GLOBAL_ADMIN_ROLE,
 			});
 			await authIdentityRepository.save(
-				AuthIdentity.create(admin, 'ext-downgrade', 'token-exchange'),
+				AuthIdentity.create(admin, providerIdFor('ext-downgrade'), 'token-exchange'),
 			);
 
 			const result = await service.resolve(
@@ -383,7 +403,9 @@ describe('IdentityResolutionService (integration)', () => {
 				firstName: 'Old',
 				lastName: 'Name',
 			});
-			await authIdentityRepository.save(AuthIdentity.create(user, 'ext-sync', 'token-exchange'));
+			await authIdentityRepository.save(
+				AuthIdentity.create(user, providerIdFor('ext-sync'), 'token-exchange'),
+			);
 
 			const result = await service.resolve(
 				{
@@ -409,6 +431,74 @@ describe('IdentityResolutionService (integration)', () => {
 			expect(dbUser!.lastName).toBe('Last');
 			expect(dbUser!.role.slug).toBe('global:admin');
 			expect(dbUser!.role.scopes.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe('issuer-scoped binding', () => {
+		it('binds the same subject from two issuers to separate accounts', async () => {
+			const sharedSub = 'shared-subject';
+			const issuerA = 'https://issuer-a.example.com';
+			const issuerB = 'https://issuer-b.example.com';
+
+			const userA = await service.resolve({
+				...baseClaims,
+				sub: sharedSub,
+				iss: issuerA,
+				email: 'a@example.com',
+			});
+			const userB = await service.resolve({
+				...baseClaims,
+				sub: sharedSub,
+				iss: issuerB,
+				email: 'b@example.com',
+			});
+
+			expect(userB.id).not.toBe(userA.id);
+
+			const identities = await authIdentityRepository.findBy({ providerType: 'token-exchange' });
+			expect(identities).toHaveLength(2);
+			const providerIds = identities.map((identity) => identity.providerId);
+			expect(providerIds).toContain(providerIdFor(sharedSub, issuerA));
+			expect(providerIds).toContain(providerIdFor(sharedSub, issuerB));
+		});
+
+		it('rebinds a legacy subject-only identity in place when a single issuer is trusted', async () => {
+			const user = await createUser({ email: 'legacy@example.com' });
+			// Legacy row stored under the bare subject, before issuer-scoped binding.
+			await authIdentityRepository.save(AuthIdentity.create(user, 'legacy-sub', 'token-exchange'));
+			jest.spyOn(trustedKeyService, 'hasSingleTrustedIssuer').mockResolvedValue(true);
+			const emitSpy = jest.spyOn(eventService, 'emit');
+
+			// No email claim — the rebind must work for email-less integrations.
+			const result = await service.resolve({ ...baseClaims, sub: 'legacy-sub', email: undefined });
+
+			expect(result.id).toBe(user.id);
+
+			const identities = await authIdentityRepository.findBy({ providerType: 'token-exchange' });
+			expect(identities).toHaveLength(1);
+			expect(identities[0].providerId).toBe(providerIdFor('legacy-sub'));
+
+			expect(emitSpy).toHaveBeenCalledWith(
+				'token-exchange-identity-rebound',
+				expect.objectContaining({ userId: user.id, sub: 'legacy-sub' }),
+			);
+		});
+
+		it('does not rebind a legacy subject-only identity when multiple issuers are trusted', async () => {
+			const user = await createUser({ email: 'legacy-multi@example.com' });
+			await authIdentityRepository.save(
+				AuthIdentity.create(user, 'legacy-multi-sub', 'token-exchange'),
+			);
+			jest.spyOn(trustedKeyService, 'hasSingleTrustedIssuer').mockResolvedValue(false);
+
+			// An email-less token sharing a subject cannot be safely attributed to one issuer.
+			await expect(
+				service.resolve({ ...baseClaims, sub: 'legacy-multi-sub', email: undefined }),
+			).rejects.toThrow('Email claim is required for user provisioning');
+
+			const identities = await authIdentityRepository.findBy({ providerType: 'token-exchange' });
+			expect(identities).toHaveLength(1);
+			expect(identities[0].providerId).toBe('legacy-multi-sub');
 		});
 	});
 });

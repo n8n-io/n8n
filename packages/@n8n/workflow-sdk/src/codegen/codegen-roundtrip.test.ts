@@ -2748,6 +2748,22 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(parsedJson.settings).toEqual(json.settings);
 					}
 
+					// Verify node groups survive the roundtrip. Node and group ids are
+					// regenerated deterministically on parse, so compare each group by name
+					// and the names of its member nodes rather than by raw id.
+					if (json.nodeGroups && json.nodeGroups.length > 0) {
+						const groupsByMemberName = (wf: WorkflowJSON) => {
+							const nameById = new Map(wf.nodes.map((n) => [n.id, n.name]));
+							return (wf.nodeGroups ?? [])
+								.map((g) => ({
+									name: g.name,
+									members: g.nodeIds.flatMap((id) => nameById.get(id) ?? []).sort(),
+								}))
+								.sort((a, b) => a.name.localeCompare(b.name));
+						};
+						expect(groupsByMemberName(parsedJson)).toEqual(groupsByMemberName(json));
+					}
+
 					// Filter connections from non-existent nodes (orphaned connections in original workflow)
 					const validNodeNames = new Set(
 						json.nodes.map((n) => n.name).filter((name): name is string => !!name),

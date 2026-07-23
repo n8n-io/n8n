@@ -28,7 +28,7 @@ describe('DynamicTemplatesService', () => {
 	});
 
 	it('should create the request client with SSRF disabled for the fixed host', () => {
-		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: REQUEST_TIMEOUT_MS });
 	});
 
 	describe('fetchDynamicTemplates', () => {
@@ -48,7 +48,6 @@ describe('DynamicTemplatesService', () => {
 				method: 'GET',
 				headers: { 'Content-Type': 'application/json' },
 				json: true,
-				timeout: REQUEST_TIMEOUT_MS,
 			});
 		});
 

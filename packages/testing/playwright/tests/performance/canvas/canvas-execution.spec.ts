@@ -57,7 +57,7 @@ test.use({
 
 test.describe(
 	'Canvas Execution Benchmark',
-	{ annotation: [{ type: 'owner', description: 'Canvas' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		for (const tier of TIERS) {
 			test(`executes ${tier}-tier with pinned data @tier:${tier}`, async ({

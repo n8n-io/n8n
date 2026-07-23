@@ -8,6 +8,7 @@ import type {
 } from 'n8n-workflow';
 import type http from 'node:http';
 import type https from 'node:https';
+import type { Readable } from 'node:stream';
 import type { Dispatcher } from 'undici';
 
 import { SsrfProtectionService } from '../ssrf';
@@ -21,6 +22,7 @@ import { buildNodeAgents } from './node-agents';
 import {
 	createDispatcherTransport,
 	type CustomFetch,
+	type RequestAuthorizer,
 	type TransportTimeoutOptions,
 } from './undici/transport';
 
@@ -44,7 +46,21 @@ export interface HttpTransportOptions {
 	 * otherwise hit undici's 5-minute `headersTimeout` / `bodyTimeout`.
 	 */
 	timeouts?: TransportTimeoutOptions;
+	/**
+	 * Optional per-request authorization gate (see {@link RequestAuthorizer}),
+	 * run on every dispatched request including each redirect hop. Throw to block
+	 * a target (e.g. human-in-the-loop domain gating); the SSRF policy still runs
+	 * first.
+	 */
+	authorize?: RequestAuthorizer;
 }
+
+/**
+ * An {@link IN8nHttpFullResponse} whose `body` is narrowed to the caller-supplied
+ * type `T`, so `request<T>(…, { returnFullResponse: true })` can type the body
+ * without a cast at the call site.
+ */
+export type TypedHttpFullResponse<T> = Omit<IN8nHttpFullResponse, 'body'> & { body: T };
 
 /**
  * Engine for outbound HTTP requests made on behalf of n8n: you hand it a request
@@ -59,26 +75,34 @@ export interface HttpRequestClient {
 	 * Performs an outbound HTTP request from an `IHttpRequestOptions` descriptor,
 	 * applying this client's SSRF policy, user-agent defaults and proxy routing.
 	 *
+	 * Pass a type argument to type the response body at the call site instead of
+	 * casting the result, e.g. `request<MyBody>({ url })`. The default keeps the
+	 * untyped response shape, so existing callers are unaffected.
+	 *
 	 * Error management:
 	 * - A non-2xx response **rejects** here.
 	 * - `returnFullResponse` only changes the shape of a *successful* result.
 	 * - To inspect a non-2xx status yourself instead of catching, also set `ignoreHttpStatusErrors: true`.
 	 *
-	 * @returns the full response when `options.returnFullResponse` is `true`.
+	 * @returns the full response (with `body` typed as `T`) when `options.returnFullResponse` is `true`.
 	 */
-	request(
+	request<T = IN8nHttpResponse | Readable>(
 		options: IHttpRequestOptions & { returnFullResponse: true },
-	): Promise<IN8nHttpFullResponse>;
+	): Promise<TypedHttpFullResponse<T>>;
 	/**
-	 * @returns the parsed body when `options.returnFullResponse` is unset or `false`.
+	 * @returns the parsed body (typed as `T`) when `options.returnFullResponse` is unset or `false`.
 	 */
-	request(options: IHttpRequestOptions & { returnFullResponse?: false }): Promise<IN8nHttpResponse>;
+	request<T = IN8nHttpResponse>(
+		options: IHttpRequestOptions & { returnFullResponse?: false },
+	): Promise<T>;
 	/**
 	 * Fallback for a non-literal `returnFullResponse` flag.
 	 *
 	 * @returns the parsed body, or the full response when `options.returnFullResponse` is set.
 	 */
-	request(options: IHttpRequestOptions): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
+	request<T = IN8nHttpResponse>(
+		options: IHttpRequestOptions,
+	): Promise<T | TypedHttpFullResponse<T>>;
 
 	/**
 	 * Performs a request using the deprecated `request`-style options
@@ -148,18 +172,18 @@ export class OutboundHttp {
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
 
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
-			withClientDefaults(requestOptions, options?.baseURL, options?.headers);
+			withClientDefaults(requestOptions, options?.baseURL, options?.headers, options?.timeout);
 
-		function request(
+		function request<T = IN8nHttpResponse | Readable>(
 			requestOptions: IHttpRequestOptions & { returnFullResponse: true },
-		): Promise<IN8nHttpFullResponse>;
-		function request(
+		): Promise<TypedHttpFullResponse<T>>;
+		function request<T = IN8nHttpResponse>(
 			requestOptions: IHttpRequestOptions & { returnFullResponse?: false },
-		): Promise<IN8nHttpResponse>;
-		function request(
+		): Promise<T>;
+		function request<T = IN8nHttpResponse>(
 			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpFullResponse | IN8nHttpResponse>;
-		async function request(requestOptions: IHttpRequestOptions) {
+		): Promise<T | TypedHttpFullResponse<T>>;
+		async function request(requestOptions: IHttpRequestOptions): Promise<unknown> {
 			try {
 				return await httpRequest(applyDefaults(requestOptions), ssrfBridge);
 			} catch (error) {
@@ -187,11 +211,12 @@ export class OutboundHttp {
 		const proxy = options?.proxy ?? 'env';
 		const ssrf = options?.ssrf ?? this.ssrfProtection;
 		const timeouts = options?.timeouts;
+		const authorize = options?.authorize;
 
 		// The dispatcher/fetch half is the DI-free core shared with the
 		// `@n8n/backend-network/transport` subpath. Only `getNodeAgent` stays here,
 		// because Node agent construction is not yet dependency-free.
-		const dispatcherTransport = createDispatcherTransport({ proxy, ssrf, timeouts });
+		const dispatcherTransport = createDispatcherTransport({ proxy, ssrf, timeouts, authorize });
 		const lazyNodeAgents = lazy(() => buildNodeAgents(proxy, ssrf));
 
 		return {

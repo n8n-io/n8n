@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import { In, type SelectQueryBuilder } from '@n8n/typeorm';
+import { In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -573,6 +573,22 @@ describe('WorkflowRepository', () => {
 			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
 
 			expect(result).toBe(3);
+		});
+	});
+
+	describe('getPublishedCount', () => {
+		it('should count non-archived workflows with an active version', async () => {
+			const countSpy = vi.spyOn(workflowRepository, 'count').mockResolvedValue(7);
+
+			const result = await workflowRepository.getPublishedCount();
+
+			expect(result).toBe(7);
+			expect(countSpy).toHaveBeenCalledWith({
+				where: {
+					activeVersionId: Not(IsNull()),
+					isArchived: false,
+				},
+			});
 		});
 	});
 

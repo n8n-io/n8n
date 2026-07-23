@@ -169,7 +169,7 @@ export class InfisicalProvider extends SecretsProvider {
 		this.http = this.outboundHttp.requests({
 			baseURL: this.settings.siteURL,
 			headers: () => this.buildAuthHeaders(),
-			ssrf: 'disabled', // Settings are configured by admins, so we do not enable SSRF (for now)
+			ssrf: 'disabled', // admin-configured infrastructure
 		});
 
 		this.logger.debug('Infisical provider initialized');
@@ -260,7 +260,7 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	private async fetchSecrets(): Promise<InfisicalListSecretsResponse> {
-		return (await this.http.request({
+		return await this.http.request({
 			url: '/api/v4/secrets',
 			method: 'GET',
 			qs: {
@@ -269,7 +269,7 @@ export class InfisicalProvider extends SecretsProvider {
 				secretPath: this.settings.secretPath,
 			},
 			json: true,
-		})) as InfisicalListSecretsResponse;
+		});
 	}
 
 	private dedupeSecrets(secrets: InfisicalSecret[], imports: InfisicalImport[]): InfisicalSecret[] {
@@ -304,7 +304,7 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	private async loginUniversalAuth(): Promise<void> {
-		const body = (await this.http.request({
+		const body = await this.http.request<InfisicalUniversalAuthLoginResponse>({
 			url: '/api/v1/auth/universal-auth/login',
 			method: 'POST',
 			body: {
@@ -312,7 +312,7 @@ export class InfisicalProvider extends SecretsProvider {
 				clientSecret: this.settings.clientSecret,
 			},
 			json: true,
-		})) as InfisicalUniversalAuthLoginResponse;
+		});
 
 		this.currentToken = body.accessToken;
 		this.tokenExpiresAt =

@@ -2,7 +2,11 @@ import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
-import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
+import {
+	ASK_USER_FALLBACK,
+	getSandboxWorkspaceSection,
+	UNTRUSTED_CONTENT_DOCTRINE,
+} from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
 
 interface SystemPromptOptions {
@@ -168,7 +172,8 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 		: ''
 }## Communication Style
 
-- Be concise. Ask for clarification when intent is ambiguous.
+- Be concise.
+- ${ASK_USER_FALLBACK}
 - No emojis unless the user explicitly requests them.
 - At the beginning of a normal user-visible turn, before your first tool call, write one short sentence explaining what you are about to do or what decision you need. Keep it tied to the user's goal, not the tool name. For system-generated background or checkpoint follow-up turns, follow the follow-up instructions.
 - Never let an empty assistant message or a \`[Calling tools: ...]\` placeholder be the first visible response.

@@ -35,7 +35,7 @@ function createService(
 }
 
 const expectBlocked = (result: unknown) => {
-	expect(result).toEqual({ ok: false, error: expect.any(SsrfBlockedIpError) });
+	expect(result).toEqual({ ok: false, error: expect.any(SsrfBlockedIpError) as Error });
 };
 
 const expectAllowed = (result: unknown) => {
@@ -142,7 +142,7 @@ describe('SsrfProtectionService', () => {
 			const result = await service.validateUrl('not-a-url');
 			expect(result).toEqual({
 				ok: false,
-				error: expect.objectContaining({ message: 'Invalid URL: not-a-url' }),
+				error: expect.objectContaining({ message: 'Invalid URL: not-a-url' }) as Error,
 			});
 		});
 
@@ -687,7 +687,7 @@ describe('SsrfProtectionService', () => {
 			await service.validateUrl('http://example.com/');
 
 			expect(allowed).toHaveBeenCalledWith(
-				expect.objectContaining({ phase: 'pre_flight', durationMs: expect.any(Number) }),
+				expect.objectContaining({ phase: 'pre_flight', durationMs: expect.any(Number) as number }),
 			);
 		});
 

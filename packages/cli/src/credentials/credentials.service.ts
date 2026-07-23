@@ -1007,7 +1007,7 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -1031,9 +1031,9 @@ export class CredentialsService {
 
 			if (
 				prop.typeOptions?.password &&
-				(!data[dataKey].toString().startsWith('={{') || prop.noDataExpression)
+				(!String(data[dataKey] ?? '').startsWith('={{') || prop.noDataExpression)
 			) {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;

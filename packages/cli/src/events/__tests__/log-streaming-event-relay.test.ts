@@ -75,7 +75,11 @@ describe('LogStreamingEventRelay', () => {
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
-				matchedCredentialIds: ['cred-1'],
+				credentialIds: {
+					matched: ['cred-1'],
+					created: [],
+					updated: [],
+				},
 			};
 
 			eventService.emit('workflows-imported', event);
@@ -100,6 +104,11 @@ describe('LogStreamingEventRelay', () => {
 					},
 					packageSourceId: 'source-instance-1',
 					packageVersion: '1',
+					credentialIds: {
+						matched: ['cred-1'],
+						created: [],
+						updated: [],
+					},
 				},
 			});
 		});

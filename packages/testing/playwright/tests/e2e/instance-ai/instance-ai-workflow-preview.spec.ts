@@ -6,7 +6,7 @@ test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI workflow preview @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });

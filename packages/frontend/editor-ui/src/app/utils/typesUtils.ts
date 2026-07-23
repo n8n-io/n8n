@@ -37,16 +37,23 @@ export const intersection = <T>(...arrays: T[][]): T[] => {
 	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
 };
 
-export function abbreviateNumber(num: number) {
-	const tier = (Math.log10(Math.abs(num)) / 3) | 0;
+export function abbreviateNumber(num: number): string {
+	if (!Number.isFinite(num)) return String(num);
 
-	if (tier === 0) return num;
+	const abs = Math.abs(num);
+	if (abs < 1000) return String(num);
 
-	const suffix = SI_SYMBOL[tier];
-	const scale = Math.pow(10, tier * 3);
-	const scaled = num / scale;
+	// Pick the SI tier, clamped to the largest symbol we support (avoids an "undefined" suffix).
+	let tier = Math.min(Math.floor(Math.log10(abs) / 3), SI_SYMBOL.length - 1);
+	let scaled = Number((num / Math.pow(10, tier * 3)).toFixed(1));
 
-	return Number(scaled.toFixed(1)) + suffix;
+	// Rounding can push the mantissa up to 1000 (e.g. 999999 -> "1000k"); roll over to the next tier.
+	if (Math.abs(scaled) >= 1000 && tier < SI_SYMBOL.length - 1) {
+		tier += 1;
+		scaled = Number((num / Math.pow(10, tier * 3)).toFixed(1));
+	}
+
+	return `${scaled}${SI_SYMBOL[tier]}`;
 }
 
 export function convertToDisplayDate(epochTime: number) {

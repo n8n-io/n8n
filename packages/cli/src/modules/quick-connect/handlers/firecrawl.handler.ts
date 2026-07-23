@@ -23,6 +23,7 @@ export class FirecrawlHandler implements IQuickConnectHandler {
 	constructor(outboundHttp: OutboundHttp) {
 		this.http = outboundHttp.requests({
 			ssrf: 'disabled', // Fixed third-party vendor host
+			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -32,7 +33,7 @@ export class FirecrawlHandler implements IQuickConnectHandler {
 
 	async getCredentialData({ email }: User) {
 		const secret = this.config!.backendFlowConfig.secret;
-		const response = (await this.http.request({
+		const response = await this.http.request<FirecrawlCreateUserResponse>({
 			url: `${FIRECRAWL_API_BASE_URL}/admin/integration/create-user`,
 			method: 'POST',
 			body: { email },
@@ -41,8 +42,7 @@ export class FirecrawlHandler implements IQuickConnectHandler {
 				'Content-Type': 'application/json',
 			},
 			json: true,
-			timeout: REQUEST_TIMEOUT_MS,
-		})) as FirecrawlCreateUserResponse;
+		});
 
 		return {
 			apiKey: response.apiKey,

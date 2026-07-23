@@ -34,6 +34,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 interface FormatOptions {
 	/** Optional commit SHA for the terminal heading. Truncated to 8 chars. */
@@ -446,7 +447,7 @@ function renderPerTestCaseDetails(
 	lines.push('');
 	const renderName = (tc: TestCaseAggregation): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ? `\`${slug}\`` : `\`${tc.testCase.conversation[0].text.slice(0, 70)}\``;
+		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
@@ -568,7 +569,7 @@ function renderFailureDetails(
 	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
 		const slug = fileSlug
 			? `${fileSlug}/${scenarioName}`
-			: `${tc.testCase.conversation[0].text.slice(0, 50).trim()} / ${scenarioName}`;
+			: `${caseDisplayPrompt(tc.testCase).slice(0, 50).trim()} / ${scenarioName}`;
 		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
 		for (const fr of failedRuns) {
 			const tag = fr.category ? ` [${fr.category}]` : '';
@@ -878,7 +879,7 @@ function formatTerminalPerTestCase(
 
 	const nameOf = (tc: TestCaseAggregation, max: number): string => {
 		const slug = slugByTestCase?.get(tc.testCase);
-		return slug ?? tc.testCase.conversation[0].text.slice(0, max);
+		return slug ?? caseDisplayPrompt(tc.testCase).slice(0, max);
 	};
 
 	if (totalRuns > 1) {

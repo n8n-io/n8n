@@ -80,7 +80,10 @@ export const createValidateWorkflowCodeTool = (
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
 			);
-			const handler = new ParseValidateHandler({ generatePinData: false });
+			const handler = new ParseValidateHandler({
+				generatePinData: false,
+				nodeTypesProvider: nodeTypes,
+			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 

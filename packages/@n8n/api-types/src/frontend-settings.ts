@@ -116,6 +116,9 @@ export interface FrontendSettings {
 	dynamicBanners: {
 		endpoint: string;
 		enabled: boolean;
+		filters: {
+			publishedWorkflowCount: number;
+		};
 	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;

@@ -1,9 +1,18 @@
 import { sign } from 'aws4';
 import type { IHttpRequestOptions } from 'n8n-workflow';
-import type { Mock, MockInstance } from 'vitest';
+import type { Mock } from 'vitest';
 
 import { AwsAssumeRole } from '../AwsAssumeRole.credentials';
 import type { AwsAssumeRoleCredentialsType } from '../common/aws/types';
+
+// assumeRole sends via @n8n/backend-network/transport's asCustomFetch(), not the global fetch.
+const { mockFetch } = vi.hoisted(() => ({ mockFetch: vi.fn() }));
+
+vi.mock('@n8n/backend-network/transport', () => ({
+	createDispatcherTransport: () => ({
+		asCustomFetch: () => mockFetch,
+	}),
+}));
 
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
@@ -24,7 +33,6 @@ const stsAssumeRoleResponseXml = `<?xml version="1.0"?>
 describe('AwsAssumeRole Credential', () => {
 	const aws = new AwsAssumeRole();
 	let mockSign: Mock;
-	let mockFetch: MockInstance;
 
 	const credentials: AwsAssumeRoleCredentialsType = {
 		region: 'us-east-1',
@@ -39,14 +47,12 @@ describe('AwsAssumeRole Credential', () => {
 
 	beforeEach(() => {
 		mockSign = sign as unknown as Mock;
-		mockFetch = vi
-			.spyOn(global, 'fetch')
-			.mockResolvedValue(new Response(stsAssumeRoleResponseXml, { status: 200 }));
+		mockFetch.mockReset();
+		mockFetch.mockResolvedValue(new Response(stsAssumeRoleResponseXml, { status: 200 }));
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		mockFetch.mockRestore();
 	});
 
 	it('should sign Bedrock requests with the bedrock service namespace', async () => {

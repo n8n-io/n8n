@@ -22,7 +22,7 @@ import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injecti
 vi.mock('vue-router', () => {
 	return {
 		useRouter: () => ({}),
-		useRoute: () => ({ meta: {} }),
+		useRoute: () => ({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });

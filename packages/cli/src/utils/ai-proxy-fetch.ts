@@ -1,4 +1,5 @@
-import type { CustomFetch, OutboundHttp } from '@n8n/backend-network';
+import type { CustomFetch, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 
 const DEFAULT_AI_REQUEST_TIMEOUT_MS = Time.hours.toMilliseconds;
@@ -35,6 +36,28 @@ export function createAiProxyFetch(outboundHttp: OutboundHttp): CustomFetch {
 		.transport({
 			proxy: 'env',
 			ssrf: 'disabled',
+			timeouts: {
+				headersTimeout: AI_REQUEST_TIMEOUT_MS,
+				bodyTimeout: AI_REQUEST_TIMEOUT_MS,
+			},
+		})
+		.asCustomFetch();
+}
+
+/**
+ * A proxy-aware fetch for user-configured MCP endpoints. Unlike model-provider
+ * fetches, MCP URLs are user-controlled, so follow the configured SSRF policy
+ * while preserving the long AI timeout.
+ */
+export function createAiMcpFetch(
+	outboundHttp: OutboundHttp,
+	ssrfConfig: SsrfProtectionConfig,
+	ssrfProtectionService: SsrfProtectionService,
+): CustomFetch {
+	return outboundHttp
+		.transport({
+			proxy: 'env',
+			ssrf: ssrfConfig.enabled ? ssrfProtectionService : 'disabled',
 			timeouts: {
 				headersTimeout: AI_REQUEST_TIMEOUT_MS,
 				bodyTimeout: AI_REQUEST_TIMEOUT_MS,

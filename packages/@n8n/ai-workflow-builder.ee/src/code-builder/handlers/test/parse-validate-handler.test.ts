@@ -276,6 +276,39 @@ describe('ParseValidateHandler', () => {
 			expect(mockBuilder.regenerateNodeIds).toHaveBeenCalledWith(new Map());
 		});
 
+		it('should preserve existing group IDs (matched by name) when serializing', async () => {
+			const currentWorkflow = {
+				id: 'current',
+				name: 'Current',
+				nodes: [],
+				connections: {},
+				nodeGroups: [
+					{ id: 'group-random-1', name: 'Ingestion', nodeIds: [] },
+					{ id: 'group-random-2', name: 'Processing', nodeIds: [] },
+				],
+			} as unknown as WorkflowJSON;
+
+			const mockBuilder = {
+				regenerateNodeIds: vi.fn(),
+				validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+				generatePinData: vi.fn(),
+				toJSON: vi.fn().mockReturnValue({ id: 'test', name: 'Test', nodes: [], connections: {} }),
+			};
+
+			mockParseWorkflowCodeToBuilder.mockReturnValue(mockBuilder);
+			mockValidateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
+
+			await handler.parseAndValidate('code', currentWorkflow);
+
+			expect(mockBuilder.toJSON).toHaveBeenCalledWith({
+				tidyUp: true,
+				existingGroupIdsByName: new Map([
+					['Ingestion', 'group-random-1'],
+					['Processing', 'group-random-2'],
+				]),
+			});
+		});
+
 		it('should throw on parse error', async () => {
 			mockParseWorkflowCodeToBuilder.mockImplementation(() => {
 				throw new Error('Syntax error at line 5');
@@ -528,7 +561,9 @@ describe('ParseValidateHandler', () => {
 
 			expect(result.map((w) => w.code)).toEqual(['GRAPH_ERR', 'JSON_ERR']);
 			expect(mockFromJSON).toHaveBeenCalledWith(nonEmptyJson);
-			expect(mockValidateWorkflow).toHaveBeenCalledWith(nonEmptyJson);
+			expect(mockValidateWorkflow).toHaveBeenCalledWith(nonEmptyJson, {
+				nodeTypesProvider: undefined,
+			});
 		});
 	});
 });

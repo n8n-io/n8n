@@ -155,7 +155,7 @@ export class AuthService {
 			const isPreviewMode = process.env.N8N_PREVIEW_MODE === 'true';
 			const shouldSkipAuth = (allowSkipPreviewAuth && isPreviewMode) || allowUnauthenticated;
 
-			if (req.user) next();
+			if (Object.hasOwn(req, 'user') && req.user) next();
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};

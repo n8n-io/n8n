@@ -104,6 +104,11 @@
 			"id": 9,
 			"name": "If/Switch branch wired directly to multi-input merge",
 			"success": true
+		},
+		{
+			"id": 10,
+			"name": "Node groups - linear chain with a grouped section",
+			"success": true
 		}
 	]
 }

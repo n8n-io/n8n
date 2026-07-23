@@ -4,10 +4,12 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { Compression } from '../../Compression.node';
 import { boundedGunzip } from '../../decompress/BoundedGunzip';
+import { boundedUntar } from '../../decompress/BoundedUntar';
 import { boundedUnzip } from '../../decompress/BoundedUnzip';
 import type { Mocked } from 'vitest';
 
 vi.mock('../../decompress/BoundedGunzip');
+vi.mock('../../decompress/BoundedUntar');
 vi.mock('../../decompress/BoundedUnzip');
 
 const mockBoundedUnzip = (data: Record<string, Buffer>, error?: Error) => {
@@ -15,6 +17,14 @@ const mockBoundedUnzip = (data: Record<string, Buffer>, error?: Error) => {
 		vi.mocked(boundedUnzip).mockRejectedValue(error);
 	} else {
 		vi.mocked(boundedUnzip).mockResolvedValue(data);
+	}
+};
+
+const mockBoundedUntar = (data: Record<string, Buffer>, error?: Error) => {
+	if (error) {
+		vi.mocked(boundedUntar).mockRejectedValue(error);
+	} else {
+		vi.mocked(boundedUntar).mockResolvedValue(data);
 	}
 };
 
@@ -338,7 +348,111 @@ describe('Compression Node - Decompress Operation', () => {
 		});
 	});
 
+	describe('Tar Decompression', () => {
+		const tarContents: Record<string, Buffer> = {
+			'a.txt': Buffer.from([72, 101, 108, 108, 111]),
+			'sub/b.txt': Buffer.from([87, 111, 114, 108, 100]),
+		};
+
+		const prepareBinaryDataPassthrough = () => {
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+				async (buffer, fileName) =>
+					({
+						data: buffer.toString('base64'),
+						mimeType: 'text/plain',
+						fileName: fileName ?? 'file',
+						fileExtension: 'txt',
+					}) as IBinaryData,
+			);
+		};
+
+		it('should decompress a tar file successfully', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/x-tar',
+				fileName: 'test.tar',
+				fileExtension: 'tar',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock tar data'),
+			);
+			mockBoundedUntar(tarContents);
+			prepareBinaryDataPassthrough();
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.file_0).toBeDefined();
+			expect(result[0][0].binary?.file_1).toBeDefined();
+			expect(boundedUntar).toHaveBeenCalledTimes(1);
+			expect(boundedUnzip).not.toHaveBeenCalled();
+		});
+
+		it('should route a .tar.gz file to tar extraction, not gzip', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/gzip',
+				fileName: 'archive.tar.gz',
+				fileExtension: 'gz',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock targz data'),
+			);
+			mockBoundedUntar(tarContents);
+			prepareBinaryDataPassthrough();
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.file_0).toBeDefined();
+			expect(boundedUntar).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).not.toHaveBeenCalled();
+		});
+
+		it('should decompress a .tgz file via tar extraction', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/gzip',
+				fileName: 'archive.tgz',
+				fileExtension: 'tgz',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock tgz data'),
+			);
+			mockBoundedUntar(tarContents);
+			prepareBinaryDataPassthrough();
+
+			const result = await compression.execute.call(mockExecuteFunctions);
+
+			expect(result[0][0].binary?.file_0).toBeDefined();
+			expect(boundedUntar).toHaveBeenCalledTimes(1);
+			expect(boundedGunzip).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('Error Handling', () => {
+		it('should throw NodeOperationError for an unsupported archive format', async () => {
+			const mockBinaryData: IBinaryData = {
+				data: 'base64data',
+				mimeType: 'application/x-rar-compressed',
+				fileName: 'archive.rar',
+				fileExtension: 'rar',
+			};
+
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(mockBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock rar data'),
+			);
+
+			await expect(compression.execute.call(mockExecuteFunctions)).rejects.toThrow(
+				NodeOperationError,
+			);
+		});
+
 		it('should throw error when file extension is not found', async () => {
 			const mockBinaryData: IBinaryData = {
 				data: 'base64data',

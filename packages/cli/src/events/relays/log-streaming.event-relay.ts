@@ -127,6 +127,7 @@ export class LogStreamingEventRelay extends EventRelay {
 			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
 			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
 			'token-exchange-identity-linked': (event) => this.tokenExchangeIdentityLinked(event),
+			'token-exchange-identity-rebound': (event) => this.tokenExchangeIdentityRebound(event),
 			'token-exchange-user-provisioned': (event) => this.tokenExchangeUserProvisioned(event),
 			'token-exchange-role-updated': (event) => this.tokenExchangeRoleUpdated(event),
 			'embed-login': (event) => this.embedLogin(event),
@@ -142,11 +143,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Workflow
 
 	@Redactable()
-	private workflowsImported({
-		user,
-		matchedCredentialIds: _matchedCredentialIds,
-		...rest
-	}: RelayEventMap['workflows-imported']) {
+	private workflowsImported({ user, ...rest }: RelayEventMap['workflows-imported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.imported',
 			payload: { ...user, ...rest },
@@ -1120,6 +1117,13 @@ export class LogStreamingEventRelay extends EventRelay {
 	private tokenExchangeIdentityLinked(event: RelayEventMap['token-exchange-identity-linked']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.token-exchange.identity-linked',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeIdentityRebound(event: RelayEventMap['token-exchange-identity-rebound']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.identity-rebound',
 			payload: event,
 		});
 	}

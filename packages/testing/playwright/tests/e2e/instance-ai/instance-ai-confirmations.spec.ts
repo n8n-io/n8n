@@ -153,7 +153,7 @@ async function expectApprovedExecutionComplete({
 test.describe(
 	'Instance AI confirmations @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });

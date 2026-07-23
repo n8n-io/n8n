@@ -194,6 +194,12 @@ describe('DataTableView', () => {
 		beforeEach(() => {
 			dataTableStore.dataTables = [];
 			dataTableStore.totalCount = 0;
+			dataTableStore.projectPermissions = {
+				dataTable: { create: true },
+			} as typeof dataTableStore.projectPermissions;
+			sourceControlStore.preferences = {
+				branchReadOnly: false,
+			} as typeof sourceControlStore.preferences;
 		});
 
 		it('should show empty state when no data tables exist', async () => {
@@ -201,6 +207,54 @@ describe('DataTableView', () => {
 			await waitAllPromises();
 
 			expect(getByTestId('empty-data-table-action-box')).toBeInTheDocument();
+		});
+
+		it('should enable the create button when user can create and env is not read-only', async () => {
+			const { getByTestId } = renderComponent({ pinia });
+			await waitAllPromises();
+
+			const button = getByTestId('empty-data-table-action-box').querySelector('button');
+			expect(button).not.toBeDisabled();
+		});
+
+		// Render the tooltip content inline so its text can be asserted without
+		// triggering the teleported, hover-activated popper.
+		const renderWithInlineTooltip = () =>
+			renderComponent({
+				pinia,
+				global: {
+					stubs: {
+						N8nTooltip: {
+							template: '<div><slot /><slot name="content" /></div>',
+						},
+					},
+				},
+			});
+
+		it('should disable the create button and show a read-only tooltip on a read-only environment', async () => {
+			sourceControlStore.preferences = {
+				branchReadOnly: true,
+			} as typeof sourceControlStore.preferences;
+
+			const { getByTestId } = renderWithInlineTooltip();
+			await waitAllPromises();
+
+			const box = getByTestId('empty-data-table-action-box');
+			expect(box.querySelector('button')).toBeDisabled();
+			expect(box).toHaveTextContent('readOnlyEnv.cantAdd.any');
+		});
+
+		it('should disable the create button and show a permission tooltip when user lacks create permission', async () => {
+			dataTableStore.projectPermissions = {
+				dataTable: { create: false },
+			} as typeof dataTableStore.projectPermissions;
+
+			const { getByTestId } = renderWithInlineTooltip();
+			await waitAllPromises();
+
+			const box = getByTestId('empty-data-table-action-box');
+			expect(box.querySelector('button')).toBeDisabled();
+			expect(box).toHaveTextContent('dataTable.empty.button.disabled.tooltip');
 		});
 
 		it('should show description for overview sub page', async () => {

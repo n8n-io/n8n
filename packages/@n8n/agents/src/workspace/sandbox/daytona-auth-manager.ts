@@ -1,4 +1,4 @@
-import type { Daytona, DaytonaConfig } from '@daytonaio/sdk';
+import type { Daytona, DaytonaConfig } from '@daytona/sdk';
 import { getJwtExpiry } from '@n8n/utils';
 
 import { loadDaytona } from './lazy-daytona';

@@ -7,14 +7,18 @@ import { mock } from 'vitest-mock-extended';
 import { makeSsrfBridge } from '../../../ssrf/__tests__/mock-ssrf-bridge';
 import { buildNodeAgents } from '../../node-agents';
 import {
+	buildAgentOptions,
 	buildTargetUrl,
 	createFormDataObject,
 	digestAuthAxiosConfig,
 	generateContentLengthHeader,
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
+	getRedirectLocation,
 	getUrlFromProxyConfig,
 	isIgnoreStatusErrorConfig,
+	isProxyPotentiallyActive,
+	isRedirectStatus,
 	searchForHeader,
 	setAxiosAgents,
 	tryParseUrl,
@@ -24,12 +28,12 @@ import {
 // SSRF lookup injection is exercised there; here we only assert the transport
 // policy (proxy + ssrf option) that the axios utils forward to it.
 vi.mock('../../node-agents', () => ({
-	buildNodeAgents: vi.fn((_proxy, _ssrf, opts) => ({
+	buildNodeAgents: vi.fn((_proxy, _ssrf, opts?: Record<string, unknown>) => ({
 		httpAgent: { type: 'http', ...opts },
 		httpsAgent: { type: 'https', ...opts },
 	})),
-	isSupportedProxyUrl: (value: string) =>
-		value.startsWith('http://') || value.startsWith('https://'),
+	isSupportedProxyUrl: (value: string | null | undefined) =>
+		typeof value === 'string' && (value.startsWith('http://') || value.startsWith('https://')),
 }));
 
 describe('isIgnoreStatusErrorConfig', () => {
@@ -526,5 +530,118 @@ describe('setAxiosAgents', () => {
 
 		expect(buildNodeAgents).toHaveBeenCalledWith('env', 'disabled', undefined);
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('socks5://proxy:1080'));
+	});
+});
+
+describe('isRedirectStatus', () => {
+	// Mirrors follow-redirects: any 3xx is in range (the `Location` check happens at the follow site).
+	it.each([300, 301, 302, 303, 304, 305, 307, 308, 399])(
+		'treats %i as in the 3xx range',
+		(status) => {
+			expect(isRedirectStatus(status)).toBe(true);
+		},
+	);
+
+	it.each([200, 204, 299, 400, 500])('treats %i as not a redirect', (status) => {
+		expect(isRedirectStatus(status)).toBe(false);
+	});
+});
+
+describe('getRedirectLocation', () => {
+	it('returns the Location header when present', () => {
+		const response = {
+			headers: { location: 'https://example.com/next' },
+		} as unknown as AxiosResponse;
+		expect(getRedirectLocation(response)).toBe('https://example.com/next');
+	});
+
+	it('returns undefined when the Location header is absent', () => {
+		const response = { headers: {} } as unknown as AxiosResponse;
+		expect(getRedirectLocation(response)).toBeUndefined();
+	});
+
+	it('returns undefined when the Location header is not a string', () => {
+		const response = { headers: { location: ['a', 'b'] } } as unknown as AxiosResponse;
+		expect(getRedirectLocation(response)).toBeUndefined();
+	});
+});
+
+describe('isProxyPotentiallyActive', () => {
+	const isProxyVar = (key: string) => /proxy/i.test(key);
+	const originalProxyEnv = Object.fromEntries(
+		Object.entries(process.env).filter(([key]) => isProxyVar(key)),
+	);
+
+	const stripProxyEnv = () => {
+		for (const key of Object.keys(process.env)) {
+			if (isProxyVar(key)) delete process.env[key];
+		}
+	};
+
+	beforeEach(stripProxyEnv);
+
+	afterEach(() => {
+		stripProxyEnv();
+		Object.assign(process.env, originalProxyEnv);
+	});
+
+	it('is true for an explicit proxy object regardless of the environment', () => {
+		expect(isProxyPotentiallyActive({ host: 'proxy', port: 8080 })).toBe(true);
+	});
+
+	it('is true for an explicit supported proxy URL', () => {
+		expect(isProxyPotentiallyActive('http://proxy:8080')).toBe(true);
+	});
+
+	it('falls back to the environment for an unsupported proxy URL', () => {
+		expect(isProxyPotentiallyActive('socks5://proxy:1080')).toBe(false);
+		process.env.HTTPS_PROXY = 'http://env-proxy:3128';
+		expect(isProxyPotentiallyActive('socks5://proxy:1080')).toBe(true);
+	});
+
+	it('is true when a proxy environment variable is set and no explicit proxy is given', () => {
+		process.env.HTTP_PROXY = 'http://env-proxy:3128';
+		expect(isProxyPotentiallyActive()).toBe(true);
+	});
+
+	it('ignores empty proxy environment variables', () => {
+		process.env.HTTP_PROXY = '';
+		expect(isProxyPotentiallyActive()).toBe(false);
+	});
+
+	it('falls through an empty variable to a later set one', () => {
+		process.env.HTTP_PROXY = '';
+		process.env.HTTPS_PROXY = 'http://env-proxy:3128';
+		expect(isProxyPotentiallyActive()).toBe(true);
+	});
+
+	it('is false with neither an explicit proxy nor environment configuration', () => {
+		expect(isProxyPotentiallyActive()).toBe(false);
+	});
+});
+
+describe('buildAgentOptions', () => {
+	it('sets servername from the request host', () => {
+		const options = buildAgentOptions({ method: 'GET', url: 'https://api.example.com/v1' });
+		expect(options.servername).toBe('api.example.com');
+	});
+
+	it('disables certificate validation when skipSslCertificateValidation is set', () => {
+		const options = buildAgentOptions({
+			method: 'GET',
+			url: 'https://api.example.com',
+			skipSslCertificateValidation: true,
+		});
+		expect(options.rejectUnauthorized).toBe(false);
+	});
+
+	it('passes through provided agentOptions', () => {
+		const options = buildAgentOptions({
+			method: 'GET',
+			url: 'https://api.example.com',
+			agentOptions: { keepAlive: true },
+		});
+		expect(options.keepAlive).toBe(true);
+		expect(options.servername).toBe('api.example.com');
 	});
 });

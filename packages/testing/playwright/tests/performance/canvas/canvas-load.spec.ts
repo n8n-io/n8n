@@ -18,7 +18,7 @@ test.use({
 
 test.describe(
 	'Canvas Load Benchmark',
-	{ annotation: [{ type: 'owner', description: 'Canvas' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		for (const tier of TIERS) {
 			test(`loads ${tier}-tier workflow @tier:${tier}`, async ({

@@ -80,6 +80,7 @@ export type RunObservationLogObserverResult =
 	| {
 			status: 'ran';
 			observationsWritten: number;
+			cursorAdvanced: boolean;
 			tokenCount: number;
 			skippedLines: string[];
 	  };
@@ -218,16 +219,24 @@ export async function runObservationLogObserver(
 		inserted.push(row);
 	}
 
-	await advanceObserverCursor(
-		memory,
-		observationScopeId,
-		deltaMessages[deltaMessages.length - 1],
-		now,
-	);
+	// Only advance the cursor once the delta is actually represented by
+	// persisted observations. Advancing after an empty or unparseable observe()
+	// result would mark these messages "observed" with no summary standing in
+	// for them, which permanently orphans them from loaded history.
+	const cursorAdvanced = inserted.length > 0;
+	if (cursorAdvanced) {
+		await advanceObserverCursor(
+			memory,
+			observationScopeId,
+			deltaMessages[deltaMessages.length - 1],
+			now,
+		);
+	}
 
 	return {
 		status: 'ran',
 		observationsWritten: inserted.length,
+		cursorAdvanced,
 		tokenCount,
 		skippedLines: parsed.skippedLines,
 	};

@@ -334,6 +334,22 @@ async function consumeStreamPass(args: {
 
 	for await (const chunk of activeStream) {
 		if (options.context.signal.aborted) {
+			// A stop aborts the agent stream too: it stops generating and emits a
+			// terminal finish chunk carrying the run's usage. Drain the rest of the
+			// stream (without publishing further events) so that usage is observed
+			// and the cancelled run still gets billed for the tokens it consumed.
+			usageAccumulator.observe(chunk);
+			try {
+				for await (const remaining of activeStream) {
+					usageAccumulator.observe(remaining);
+				}
+			} catch (drainError) {
+				options.context.logger.debug('Instance AI abort drain ended early', {
+					threadId: options.context.threadId,
+					runId: options.context.runId,
+					error: drainError instanceof Error ? drainError.message : String(drainError),
+				});
+			}
 			return {
 				cancelled: true,
 				hasError,

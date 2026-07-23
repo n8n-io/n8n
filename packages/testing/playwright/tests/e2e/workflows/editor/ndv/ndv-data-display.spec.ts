@@ -118,7 +118,7 @@ test.describe(
 
 				await n8n.ndv.searchOutputData('US');
 
-				await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('US');
+				await expect(n8n.ndv.outputPanel.getTableRowHighlights(1)).toContainText('US');
 
 				await n8n.ndv.execute();
 
@@ -145,7 +145,7 @@ test.describe(
 				await expect(searchInput).toBeFocused();
 				await searchInput.fill('<lib');
 
-				await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('<lib');
+				await expect(n8n.ndv.outputPanel.getTableRowHighlights(1)).toContainText('<lib');
 
 				await n8n.ndv.outputPanel.switchDisplayMode('json');
 

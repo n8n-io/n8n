@@ -17,6 +17,16 @@ import * as vueuse from '@vueuse/core';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CANVAS_NODES_GROUPING_EXPERIMENT } from '@/app/constants/experiments';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 vi.mock('@vueuse/core', async () => {
 	const actual = await vi.importActual('@vueuse/core');
 	return {

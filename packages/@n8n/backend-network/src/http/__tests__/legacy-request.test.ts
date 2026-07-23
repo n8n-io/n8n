@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpRequestConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -124,7 +125,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				})) as { statusCode: number; body: string };
 
 				expect(response.statusCode).toBe(200);
-				const forwardedHeaders = JSON.parse(response.body);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 				expect(forwardedHeaders.authorization).toBe(basicAuth);
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			},
@@ -146,7 +147,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			})) as { statusCode: number; body: string };
 
 			expect(response.statusCode).toBe(200);
-			const forwardedHeaders = JSON.parse(response.body);
+			const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 			expect(forwardedHeaders.authorization).toBeUndefined();
 			expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 		});
@@ -169,7 +170,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				})) as { statusCode: number; body: string };
 
 				expect(response.statusCode).toBe(200);
-				const forwardedHeaders = JSON.parse(response.body);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 				expect(forwardedHeaders.authorization).toBe(basicAuth);
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			},

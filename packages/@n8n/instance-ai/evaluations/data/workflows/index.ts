@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync } from 'fs';
-import { basename, join } from 'path';
+import { basename, dirname, join, resolve } from 'path';
 
 import { WorkflowTestCaseSchema } from './schema';
+import { loadConversationSeed } from '../../harness/conversation-seed';
 import type { WorkflowTestCase } from '../../types';
 
 export interface WorkflowTestCaseWithFile {
@@ -30,7 +31,21 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 		throw new Error(`Invalid test case ${filePath}:\n${issues}`);
 	}
 
-	return parsed.data as WorkflowTestCase;
+	const testCase = parsed.data as WorkflowTestCase;
+	if (testCase.seedFile) {
+		// Resolve relative to the case file and validate now, so an authoring
+		// typo fails at load time instead of per-build as an agent failure.
+		const resolved = resolve(dirname(filePath), testCase.seedFile);
+		try {
+			loadConversationSeed(resolved);
+		} catch (error) {
+			throw new Error(
+				`Invalid test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+		testCase.seedFile = resolved;
+	}
+	return testCase;
 }
 
 /** Split a comma-separated CLI value into a normalized list of substring tokens. */

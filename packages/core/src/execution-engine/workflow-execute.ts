@@ -249,21 +249,34 @@ export class WorkflowExecute {
 			const parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 
 			for (const nodeName of parentNodes) {
-				if (runData[nodeName]) {
-					startNode = workflow.getNode(nodeName);
+				const parentNode = workflow.getNode(nodeName);
+				// Skip disabled nodes: they are removed from the execution subgraph, so a
+				// disabled node can never serve as a start node.
+				if (parentNode && !parentNode.disabled && runData[nodeName]) {
+					startNode = parentNode;
 					break;
 				}
 			}
 
 			if (!startNode) {
-				throw new UserError('Connect a trigger to run this node');
+				throw new UserError("Connect a trigger and make sure it's enabled to run this node");
 			}
 
 			trigger = startNode;
 		}
 
 		// 2. Find the Subgraph
-		graph = findSubgraph({ graph: filterDisabledNodes(graph), destination, trigger });
+		const filteredGraph = filterDisabledNodes(graph);
+
+		// A disabled destination is removed by filterDisabledNodes, which would make the
+		// subgraph search below fail an internal membership assertion. Raise a clear user
+		// error instead. The trigger is always enabled here (both findTriggerForPartialExecution
+		// and the fallback above skip disabled nodes), so only the destination needs checking.
+		if (destination.disabled) {
+			throw new UserError('Cannot execute a disabled node');
+		}
+
+		graph = findSubgraph({ graph: filteredGraph, destination, trigger });
 		const filteredNodes = graph.getNodes();
 
 		// 3. Find the Start Nodes

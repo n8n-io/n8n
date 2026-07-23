@@ -503,6 +503,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.id = 'wf-1';
 			workflow.versionId = 'wfv-fresh';
 			workflow.connections = {};
+			workflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['uuid-1234'] }];
 			workflowRepository.findOneBy.mockResolvedValueOnce(workflow);
 			// First findOne: no existing history row → insert path.
 			// Second findOne: post-save verification that the row now exists.
@@ -521,6 +522,7 @@ describe('WorkflowHistoryService', () => {
 					workflowId: 'wf-1',
 					nodes: workflow.nodes,
 					connections: workflow.connections,
+					nodeGroups: workflow.nodeGroups,
 				}),
 			);
 		});

@@ -1,4 +1,5 @@
 import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
+// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- axios is the only client exposing manual per-hop redirect control + streaming the cross-host SSRF approval guard needs. To migrate: move this package off undici v6, then route via the factory's getDispatcher() + undici.request({ maxRedirections: 0 }) (see fetchUrl doc)
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Readable } from 'node:stream';
 

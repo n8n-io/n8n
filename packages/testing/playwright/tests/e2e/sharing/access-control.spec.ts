@@ -152,6 +152,7 @@ test.describe(
 
 			await n8n.navigate.toWorkflow(teamWorkflow.id);
 			await n8n.canvas.openShareModal();
+			await expect(n8n.workflowSharingModal.container).toBeVisible();
 
 			// Team project workflows cannot be shared - no user selector shown
 			await expect(n8n.workflowSharingModal.getUsersSelect()).toBeHidden();

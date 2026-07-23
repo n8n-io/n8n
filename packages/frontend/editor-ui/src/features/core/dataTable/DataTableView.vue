@@ -81,6 +81,16 @@ const currentProject = computed(() => {
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
 
+const addDataTableDisabled = computed(
+	() => readOnlyEnv.value || !dataTableStore.projectPermissions.dataTable.create,
+);
+
+const addDataTableDisabledTooltip = computed(() =>
+	readOnlyEnv.value
+		? i18n.baseText('readOnlyEnv.cantAdd.any')
+		: i18n.baseText('dataTable.empty.button.disabled.tooltip'),
+);
+
 const DATA_TABLE_SORT_MAP = {
 	lastUpdated: 'updatedAt:desc',
 	lastCreated: 'createdAt:desc',
@@ -215,12 +225,12 @@ watch(
 				:description="i18n.baseText('dataTable.empty.description')"
 				:button-text="i18n.baseText('dataTable.add.button.label')"
 				button-type="secondary"
-				:button-disabled="!dataTableStore.projectPermissions.dataTable.create"
-				:button-icon="!dataTableStore.projectPermissions.dataTable.create ? 'lock' : undefined"
+				:button-disabled="addDataTableDisabled"
+				:button-icon="addDataTableDisabled ? 'lock' : undefined"
 				@click:button="onAddModalClick"
 			>
 				<template #disabledButtonTooltip>
-					{{ i18n.baseText('dataTable.empty.button.disabled.tooltip') }}
+					{{ addDataTableDisabledTooltip }}
 				</template>
 			</N8nActionBox>
 		</template>

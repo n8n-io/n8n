@@ -92,6 +92,30 @@ describe('OutboundHttp.requests', () => {
 		});
 	});
 
+	describe('bound timeout', () => {
+		it('injects the bound timeout when the request has none', async () => {
+			const client = makeFacade().requests({ timeout: 5000 });
+
+			await client.request(REQUEST);
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ timeout: 5000 }),
+				expect.anything(),
+			);
+		});
+
+		it('leaves an explicit per-request timeout untouched', async () => {
+			const client = makeFacade().requests({ timeout: 5000 });
+
+			await client.request({ ...REQUEST, timeout: 1000 });
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ timeout: 1000 }),
+				expect.anything(),
+			);
+		});
+	});
+
 	describe('bound headers', () => {
 		it('merges default headers, with per-request headers winning per key', async () => {
 			const client = makeFacade().requests({
@@ -104,6 +128,19 @@ describe('OutboundHttp.requests', () => {
 				expect.objectContaining({
 					headers: { 'X-Vault-Namespace': 'admin', Accept: 'text/plain' },
 				}),
+				expect.anything(),
+			);
+		});
+
+		it('lets a per-request header override a default with different casing', async () => {
+			const client = makeFacade().requests({
+				headers: { 'Content-Type': 'application/json' },
+			});
+
+			await client.request({ ...REQUEST, headers: { 'content-type': 'text/plain' } });
+
+			expect(mockedHttpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ headers: { 'content-type': 'text/plain' } }),
 				expect.anything(),
 			);
 		});

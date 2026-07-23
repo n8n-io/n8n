@@ -95,3 +95,38 @@ export async function ensureWebhookIds(
 		}
 	}
 }
+
+/**
+ * For updates, preserve existing node-group IDs by group name. The sandbox SDK
+ * build has no view of the saved workflow, so toJSON() mints a fresh deterministic
+ * ID for every group — overwriting the stable ID of a group the user created in
+ * the editor. Reconciling by name here keeps it stable, mirroring ensureWebhookIds.
+ */
+export async function preserveExistingNodeGroupIds(
+	json: WorkflowJSON,
+	workflowId: string | undefined,
+	ctx: InstanceAiContext,
+): Promise<void> {
+	if (!workflowId || !json.nodeGroups?.length) return;
+
+	let existingGroupIdsByName: Map<string, string>;
+	try {
+		const existing = await ctx.workflowService.getAsWorkflowJSON(workflowId);
+		existingGroupIdsByName = new Map(
+			(existing.nodeGroups ?? []).map((group): [string, string] => [group.name, group.id]),
+		);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		throw new Error(
+			`Failed to load existing workflow ${workflowId} to preserve node-group IDs: ${message}`,
+			{ cause: error },
+		);
+	}
+
+	for (const group of json.nodeGroups) {
+		const existingId = existingGroupIdsByName.get(group.name);
+		if (existingId) {
+			group.id = existingId;
+		}
+	}
+}

@@ -1,7 +1,15 @@
 import { OperationalError, UserError } from 'n8n-workflow';
 import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType, AWSRegion } from './types';
 
-global.fetch = vi.fn();
+// `assumeRole` now sends via @n8n/backend-network/transport's asCustomFetch(),
+// not the global fetch, so we mock the transport and assert on its fetch.
+const { mockFetch } = vi.hoisted(() => ({ mockFetch: vi.fn() }));
+
+vi.mock('@n8n/backend-network/transport', () => ({
+	createDispatcherTransport: () => ({
+		asCustomFetch: () => mockFetch,
+	}),
+}));
 
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
@@ -18,14 +26,12 @@ import * as systemCredentialsUtils from './system-credentials-utils';
 import type { MockedFunction, MockInstance } from 'vitest';
 
 describe('assumeRole', () => {
-	let mockFetch: MockedFunction<typeof fetch>;
 	let mockSign: MockedFunction<typeof sign>;
 	let mockParseString: MockedFunction<typeof parseString>;
 	let consoleErrorSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockFetch = global.fetch as MockedFunction<typeof fetch>;
 		mockSign = sign as MockedFunction<typeof sign>;
 		mockParseString = parseString as MockedFunction<typeof parseString>;
 		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -845,13 +851,11 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 });
 
 describe('assumeRole region validation', () => {
-	let mockFetch: MockedFunction<typeof fetch>;
 	let mockSign: MockedFunction<typeof sign>;
 	let consoleErrorSpy: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockFetch = global.fetch as MockedFunction<typeof fetch>;
 		mockSign = sign as MockedFunction<typeof sign>;
 		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		mockSign.mockImplementation((request: any) => request as any);

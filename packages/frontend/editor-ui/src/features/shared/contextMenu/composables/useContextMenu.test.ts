@@ -1,5 +1,15 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from './useContextMenu';
+
+// Instantiates the builder store transitively, which derives the workflow id from
+// the route. This composable test runs without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 import {
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,

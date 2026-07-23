@@ -193,7 +193,7 @@ describe('ProjectRoleView', () => {
 
 		it('should create new role when form is submitted', async () => {
 			const mockCreatedRole = { ...mockExistingRole, slug: 'new-role-slug' };
-			rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
+			rolesStore.createRole.mockResolvedValueOnce(mockCreatedRole);
 
 			const { container, getByRole } = renderComponent();
 
@@ -201,7 +201,7 @@ describe('ProjectRoleView', () => {
 			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
-				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
+				expect(rolesStore.createRole).toHaveBeenCalledWith({
 					displayName: 'New Test Role',
 					description: 'A new test role',
 					scopes: defaultScopes,
@@ -221,7 +221,7 @@ describe('ProjectRoleView', () => {
 
 		it('should handle creation error', async () => {
 			const error = new Error('Creation failed');
-			rolesStore.createProjectRole.mockRejectedValueOnce(error);
+			rolesStore.createRole.mockRejectedValueOnce(error);
 
 			const { container, getByRole } = renderComponent();
 
@@ -270,7 +270,7 @@ describe('ProjectRoleView', () => {
 		it('should update existing role when form is submitted', async () => {
 			const updatedRole = { ...mockExistingRole, displayName: 'Updated Role' };
 			setupEditingRole();
-			rolesStore.updateProjectRole.mockResolvedValueOnce(updatedRole);
+			rolesStore.updateRole.mockResolvedValueOnce(updatedRole);
 
 			const { container, getByRole } = await setupEditingRoleComponent();
 
@@ -281,7 +281,7 @@ describe('ProjectRoleView', () => {
 			await userEvent.click(getByRole('button', { name: 'Save' }));
 
 			await waitFor(() => {
-				expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
+				expect(rolesStore.updateRole).toHaveBeenCalledWith('test-role', {
 					displayName: 'Updated Role',
 					description: 'A test role for testing',
 					scopes: ['workflow:read', 'workflow:create', 'credential:read'],
@@ -297,7 +297,7 @@ describe('ProjectRoleView', () => {
 		it('should handle update error', async () => {
 			const error = new Error('Update failed');
 			setupEditingRole();
-			rolesStore.updateProjectRole.mockRejectedValueOnce(error);
+			rolesStore.updateRole.mockRejectedValueOnce(error);
 
 			const { getByRole, container } = await setupEditingRoleComponent();
 
@@ -409,7 +409,7 @@ describe('ProjectRoleView', () => {
 
 			it('should call handleSubmit when save button is clicked', async () => {
 				const updatedRole = { ...mockExistingRole, displayName: 'Updated Role' };
-				rolesStore.updateProjectRole.mockResolvedValueOnce(updatedRole);
+				rolesStore.updateRole.mockResolvedValueOnce(updatedRole);
 
 				const { container, getByRole } = await setupEditingRoleComponent();
 				await waitForFormPopulation(container, 'Test Role');
@@ -418,7 +418,7 @@ describe('ProjectRoleView', () => {
 				await userEvent.click(getByRole('button', { name: 'Save' }));
 
 				await waitFor(() => {
-					expect(rolesStore.updateProjectRole).toHaveBeenCalledWith('test-role', {
+					expect(rolesStore.updateRole).toHaveBeenCalledWith('test-role', {
 						displayName: 'Updated Role',
 						description: 'A test role for testing',
 						scopes: ['workflow:read', 'workflow:create', 'credential:read'],
@@ -438,7 +438,7 @@ describe('ProjectRoleView', () => {
 
 			it('should call handleSubmit when create button is clicked', async () => {
 				const mockCreatedRole = { ...mockExistingRole, slug: 'new-role-slug' };
-				rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
+				rolesStore.createRole.mockResolvedValueOnce(mockCreatedRole);
 
 				const { container, getByRole } = renderComponent();
 
@@ -446,7 +446,7 @@ describe('ProjectRoleView', () => {
 				await userEvent.click(getByRole('button', { name: 'Create' }));
 
 				await waitFor(() => {
-					expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
+					expect(rolesStore.createRole).toHaveBeenCalledWith({
 						displayName: 'New Test Role',
 						description: '',
 						scopes: defaultScopes,
@@ -653,7 +653,7 @@ describe('ProjectRoleView', () => {
 
 	describe('Edge Cases', () => {
 		it('should handle empty description', async () => {
-			rolesStore.createProjectRole.mockResolvedValue({ ...mockExistingRole, slug: 'new-slug' });
+			rolesStore.createRole.mockResolvedValue({ ...mockExistingRole, slug: 'new-slug' });
 
 			const { container, getByRole } = renderComponent();
 
@@ -661,7 +661,7 @@ describe('ProjectRoleView', () => {
 			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
-				expect(rolesStore.createProjectRole).toHaveBeenCalledWith({
+				expect(rolesStore.createRole).toHaveBeenCalledWith({
 					displayName: 'Test Role',
 					description: '',
 					scopes: defaultScopes,
@@ -672,7 +672,7 @@ describe('ProjectRoleView', () => {
 
 		it('should update roles array after successful creation', async () => {
 			const mockCreatedRole = { ...mockExistingRole, slug: 'new-role' };
-			rolesStore.createProjectRole.mockResolvedValueOnce(mockCreatedRole);
+			rolesStore.createRole.mockResolvedValueOnce(mockCreatedRole);
 
 			const { container, getByRole } = renderComponent();
 
@@ -680,7 +680,7 @@ describe('ProjectRoleView', () => {
 			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
-				expect(rolesStore.createProjectRole).toHaveBeenCalled();
+				expect(rolesStore.createRole).toHaveBeenCalled();
 				expect(mockReplace).toHaveBeenCalledWith({
 					name: VIEWS.PROJECT_ROLE_SETTINGS,
 					params: { roleSlug: 'new-role' },
