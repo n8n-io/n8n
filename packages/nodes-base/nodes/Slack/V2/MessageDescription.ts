@@ -192,6 +192,23 @@ export const userRLC: INodeProperties = {
 	],
 };
 
+export const advancedInteractivityNotice: INodeProperties = {
+	displayName: 'Advanced Interactivity',
+	name: 'advancedInteractivityNotice',
+	type: 'notice',
+	default: '',
+	// Renders as a section-header divider (like "Options"), not a notice box.
+	typeOptions: {
+		sectionHeader: true,
+	},
+	displayOptions: {
+		show: {
+			authentication: ['accessToken', 'oAuth2'],
+			responseType: ['approval'],
+		},
+	},
+};
+
 export const captureResponderField: INodeProperties = {
 	displayName: 'Capture Who Responded',
 	name: 'captureResponder',

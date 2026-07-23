@@ -1,7 +1,11 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 /** Advanced HITL parameters on the Slack node, hidden when the experiment is off. */
-export const SLACK_HITL_PARAMETER_NAMES = new Set(['captureResponder', 'approvers']);
+export const SLACK_HITL_PARAMETER_NAMES = new Set([
+	'advancedInteractivityNotice',
+	'captureResponder',
+	'approvers',
+]);
 
 /** Removes the advanced HITL parameters from a Slack node's rendered parameter list. */
 export function filterSlackHitlParameters(parameters: INodeProperties[]): INodeProperties[] {

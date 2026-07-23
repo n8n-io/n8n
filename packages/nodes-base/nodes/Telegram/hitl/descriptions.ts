@@ -8,6 +8,21 @@ import type { INodeProperties } from 'n8n-workflow';
  */
 export const telegramHitlProperties: INodeProperties[] = [
 	{
+		displayName: 'Advanced Interactivity',
+		name: 'advancedInteractivityNotice',
+		type: 'notice',
+		default: '',
+		// Renders as a section-header divider (like "Options"), not a notice box.
+		typeOptions: {
+			sectionHeader: true,
+		},
+		displayOptions: {
+			show: {
+				responseType: ['approval'],
+			},
+		},
+	},
+	{
 		displayName: 'Approve Within Chat',
 		name: 'chatApproval',
 		type: 'boolean',

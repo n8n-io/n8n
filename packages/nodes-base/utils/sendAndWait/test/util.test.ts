@@ -1144,3 +1144,31 @@ describe('configureWaitTillDate', () => {
 		expect(() => configureWaitTillDate(mockExecuteFunctions, 'root')).toThrow(NodeOperationError);
 	});
 });
+
+describe('getSendAndWaitProperties additionalPropertiesBeforeOptions', () => {
+	const hitl: INodeProperties = {
+		displayName: 'Capture Who Responded',
+		name: 'captureResponder',
+		type: 'boolean',
+		default: false,
+	};
+	// The first "options" collection is the approval one, emitted right after "Approval Options".
+	const firstOptionsIndex = (props: INodeProperties[]) =>
+		props.findIndex((p) => p.name === 'options');
+
+	it('places additionalProperties before the Options collection when the flag is set', () => {
+		const props = getSendAndWaitProperties([], undefined, [hitl], {
+			additionalPropertiesBeforeOptions: true,
+		});
+		const hitlIndex = props.findIndex((p) => p.name === 'captureResponder');
+		expect(hitlIndex).toBeGreaterThan(-1);
+		expect(hitlIndex).toBeLessThan(firstOptionsIndex(props));
+	});
+
+	it('appends additionalProperties after Options by default (unchanged behaviour)', () => {
+		const props = getSendAndWaitProperties([], undefined, [hitl]);
+		const hitlIndex = props.findIndex((p) => p.name === 'captureResponder');
+		expect(hitlIndex).toBe(props.length - 1);
+		expect(hitlIndex).toBeGreaterThan(firstOptionsIndex(props));
+	});
+});
