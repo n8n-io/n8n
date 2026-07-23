@@ -479,7 +479,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="outline"
+								variant="subtle"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -527,14 +527,14 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					<template v-if="canConnect" #button>
 						<div :class="$style.bannerActions">
 							<N8nButton
-								variant="outline"
+								variant="subtle"
 								size="small"
 								:label="i18n.baseText('credentialEdit.credentialConfig.switchAccount')"
 								data-test-id="oauth-switch-account-button"
 								@click="$emit('oauth')"
 							/>
 							<N8nButton
-								variant="outline"
+								variant="subtle"
 								size="small"
 								:class="$style.disconnectButton"
 								:label="i18n.baseText('credentialEdit.credentialConfig.disconnect')"
@@ -724,6 +724,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 	--button--color: var(--color--danger);
 	--button--color--hover: var(--color--danger);
 	--button--color--active: var(--color--danger);
+	--button--border-color: var(--color--danger);
+	--button--border-color--hover: var(--color--danger);
+	--button--border-color--active: var(--color--danger);
 }
 
 .askAssistantButton {

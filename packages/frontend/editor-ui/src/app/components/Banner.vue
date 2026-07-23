@@ -44,12 +44,22 @@ const onClick = () => {
 
 const $style = useCssModule();
 
+// A theme's leading icon, or `undefined` when it renders without one (info).
+const icon = computed(() => {
+	const icons: Record<Theme, 'circle-check' | 'triangle-alert' | undefined> = {
+		success: 'circle-check',
+		warning: 'triangle-alert',
+		danger: 'triangle-alert',
+		info: undefined,
+	};
+	return icons[props.theme];
+});
+
 const iconClass = computed<Record<Theme, string>>(() => ({
 	success: $style.icon,
 	warning: $style.warningIcon,
 	danger: $style.dangerIcon,
-	// `info` renders without an icon; this entry is only here to satisfy the type.
-	info: $style.icon,
+	info: $style.icon, // unused (info has no icon), satisfies the type
 }));
 
 const messageClass = computed<Record<Theme, string>>(() => ({
@@ -66,11 +76,7 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 		:disable-transitions="true"
 		:class="[$style.container, theme === 'info' && $style.containerInfo]"
 	>
-		<N8nIcon
-			v-if="theme !== 'info'"
-			:icon="theme === 'success' ? 'circle-check' : 'triangle-alert'"
-			:class="iconClass[props.theme]"
-		/>
+		<N8nIcon v-if="icon" :icon="icon" :class="iconClass[props.theme]" />
 		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
@@ -131,17 +137,13 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 	border: none;
 }
 
-// `info` has no leading icon, so it drops the icon gutter and sits flush, and
-// carries a neutral (non-alerting) background.
+// `info` has no icon, so it drops the icon gutter and gets a neutral fill.
 .containerInfo {
 	padding-left: var(--spacing--sm);
 
-	// Element Plus sets the tag background AND border through
-	// `.el-tag--info.el-tag--light`, which outranks a single class — match its
-	// specificity to apply our neutral fill + border. Alpha overlays so both read
-	// against the modal in either theme (a flat grey token collapses into the
-	// surface in dark mode). The border sits past the fill in the same direction —
-	// darker than the fill in light mode, lighter in dark mode.
+	// Match Element Plus's specificity to override the tag's fill + border.
+	// Alpha overlays read against the modal in both themes; the border steps one
+	// notch past the fill (darker in light mode, lighter in dark).
 	&:global(.el-tag--info.el-tag--light) {
 		background-color: light-dark(var(--color--black-alpha-50), var(--color--white-alpha-100));
 		border: var(--border-width) solid
@@ -175,22 +177,19 @@ const messageClass = computed<Record<Theme, string>>(() => ({
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	// ElTag is inline-flex, so the row must claim the full tag width for the
-	// text side to shrink and the fixed-width action button to keep its size.
+	// ElTag is inline-flex; claim full width so the text shrinks, not the button.
 	width: 100%;
 }
 
 .content {
 	flex-grow: 1;
-	// Allow the text side to shrink/wrap so the fixed-width action button keeps
-	// its size instead of being squeezed and clipped on narrow widths.
+	// Let the text side shrink/wrap instead of clipping the fixed-width button.
 	min-width: 0;
 	min-height: 26px;
 	display: flex;
 	align-items: center;
 
-	// The inner text wrapper is itself a flex item; without min-width:0 it keeps
-	// its intrinsic width and the text overflows across the action button.
+	// Inner text wrapper is a flex item too; let it shrink so text wraps.
 	> div {
 		min-width: 0;
 	}
