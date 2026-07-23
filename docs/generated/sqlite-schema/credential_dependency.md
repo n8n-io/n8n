@@ -51,7 +51,6 @@ erDiagram
   INTEGER id
 }
 "credentials_entity" {
-  VARCHAR_16_ availability
   datetime_3_ createdAt
   TEXT data
   varchar_36_ id PK
@@ -63,6 +62,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_32_ type
   datetime_3_ updatedAt
+  VARCHAR_16_ usageScope
 }
 ```
 

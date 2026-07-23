@@ -649,7 +649,6 @@ erDiagram
   integer id
 }
 "public.credentials_entity" {
-  varchar_16_ availability
   timestamp_3__with_time_zone createdAt
   text data
   varchar_36_ id
@@ -661,6 +660,7 @@ erDiagram
   varchar_16_ resolverId FK
   varchar_128_ type
   timestamp_3__with_time_zone updatedAt
+  varchar_16_ usageScope
 }
 "public.data_table" {
   timestamp_3__with_time_zone createdAt
