@@ -131,6 +131,7 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
@@ -555,6 +556,7 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
+		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -1243,7 +1245,22 @@ export class InstanceAiService {
 	}
 
 	async routeCancelRun(threadId: string): Promise<void> {
+		const hadLiveLocalRun = this.runState.hasLiveRun(threadId);
 		await this.routeTaskControl({ threadId, action: 'cancel-thread' });
+
+		// Emit-shaped fallback for dead runs: a cancel that found nothing live
+		// locally still terminalizes crashed runs in the durable log, so every
+		// client and main converges through the normal replay path — a dead run
+		// has no run body left to emit its own run-finish. A run live in THIS
+		// process is excluded (its abort above emits the terminal fact), and a
+		// run live on a sibling is excluded by the sweeper's durable-activity
+		// grace window while the broadcast cancel reaches it.
+		if (!hadLiveLocalRun) {
+			// Settle the drain first so a run that JUST finished cannot be
+			// misread as unfinished and given a second, later terminal fact.
+			await this.eventLog.flush(threadId);
+			await this.interruptedRunSweeper.cancelUnfinishedRuns(threadId);
+		}
 	}
 
 	async routeClearThreadState(threadId: string): Promise<void> {

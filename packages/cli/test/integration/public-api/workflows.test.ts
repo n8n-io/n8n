@@ -1621,6 +1621,28 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	test.each([
+		{ key: 'binaryMode', value: 'combined' },
+		{ key: 'credentialResolverId', value: 'some-resolver-id' },
+	] as const)('should ignore $key when creating a workflow', async ({ key, value }) => {
+		const payload = {
+			...mockPostWorkflowPayload(),
+			settings: {
+				executionOrder: 'v1',
+				[key]: value,
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.settings[key]).toBeUndefined();
+
+		const workflow = await workflowRepository.findOneBy({ id: response.body.id });
+
+		expect(workflow?.settings?.[key]).toBeUndefined();
+	});
+
 	test('should create workflow with node groups', async () => {
 		const payload = {
 			name: 'grouped',
@@ -1706,6 +1728,7 @@ describe('POST /workflows', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 			},
 		};
 
@@ -2284,6 +2307,42 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test.each([
+		{ key: 'binaryMode', original: 'combined', attempted: 'separate' },
+		{
+			key: 'credentialResolverId',
+			original: 'original-resolver-id',
+			attempted: 'attempted-new-resolver-id',
+		},
+	] as const)(
+		'should ignore $key when updating a workflow',
+		async ({ key, original, attempted }) => {
+			const workflow = await createWorkflowWithHistory(
+				{ settings: { executionOrder: 'v1', [key]: original } },
+				member,
+			);
+
+			const payload = {
+				name: workflow.name,
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				settings: {
+					executionOrder: 'v1',
+					[key]: attempted,
+				},
+			};
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.settings[key]).toBe(original);
+
+			const workflowAfter = await workflowRepository.findOneBy({ id: workflow.id });
+
+			expect(workflowAfter?.settings?.[key]).toBe(original);
+		},
+	);
+
 	test('should update non-owned workflow if owner', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 
@@ -2316,6 +2375,7 @@ describe('PUT /workflows/:id', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'dynamic',
 				callerPolicy: 'workflowsFromSameOwner',
 				availableInMCP: false,
 			},

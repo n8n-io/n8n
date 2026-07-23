@@ -12,7 +12,12 @@ import type {
 	FromAIArgument,
 	INodePropertyOptions,
 } from 'n8n-workflow';
-import { isHitlToolType, NodeHelpers, traverseNodeParameters } from 'n8n-workflow';
+import {
+	isHitlToolType,
+	NodeHelpers,
+	normalizeNodeShape,
+	traverseNodeParameters,
+} from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
@@ -168,6 +173,8 @@ export function getParameterDisplayableOptions(
  * credentials that are currently displayable.
  */
 export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi): INodeUi {
+	node = normalizeNodeShape(node);
+
 	const skipKeys = [
 		'color',
 		'continueOnFail',
@@ -195,6 +202,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 	// Get the data of the node type that we can get the default values
 	// TODO: Later also has to care about the node-type-version as defaults could be different
 	const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+	const nodeParametersInput = node.parameters ?? {};
 
 	if (nodeType !== null) {
 		const isCredentialOnly = isCredentialOnlyNodeType(nodeType.name);
@@ -207,7 +215,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		// Node-Type is known so we can save the parameters correctly
 		const nodeParameters = NodeHelpers.getNodeParameters(
 			nodeType.properties,
-			node.parameters,
+			nodeParametersInput,
 			isCredentialOnly,
 			false,
 			node,
@@ -216,17 +224,23 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 		nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
 		// Add the node credentials if there are some set and if they should be displayed
-		if (node.credentials !== undefined && nodeType.credentials !== undefined) {
+		if (
+			node.credentials !== undefined &&
+			node.credentials !== null &&
+			nodeType.credentials !== undefined
+		) {
 			const saveCredentials: INodeCredentials = {};
 			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-				if (hasProxyAuth(node) || Object.keys(node.parameters).includes('genericAuthType')) {
+				if (hasProxyAuth(node) || Object.keys(nodeParametersInput).includes('genericAuthType')) {
 					saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 					continue;
 				}
 
 				const credentialTypeDescription = nodeType.credentials
 					// filter out credentials with same name in different node versions
-					.filter((c) => NodeHelpers.displayParameterPath(node.parameters, c, '', node, nodeType))
+					.filter((c) =>
+						NodeHelpers.displayParameterPath(nodeParametersInput, c, '', node, nodeType),
+					)
 					.find((c) => c.name === nodeCredentialTypeName);
 
 				if (credentialTypeDescription === undefined) {
@@ -236,7 +250,7 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 
 				if (
 					!NodeHelpers.displayParameterPath(
-						node.parameters,
+						nodeParametersInput,
 						credentialTypeDescription,
 						'',
 						node,
@@ -256,9 +270,11 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 			}
 		}
 	} else {
-		// Node-Type is not known so save the data as it is
-		nodeData.credentials = node.credentials;
-		nodeData.parameters = node.parameters;
+		// Node-Type is not known so save the data as it is (omit nulls)
+		if (node.credentials !== undefined && node.credentials !== null) {
+			nodeData.credentials = node.credentials;
+		}
+		nodeData.parameters = nodeParametersInput;
 		if (nodeData.color !== undefined) {
 			nodeData.color = node.color;
 		}
@@ -271,11 +287,11 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 	if (node.continueOnFail === true) {
 		nodeData.continueOnFail = true;
 	}
-	if (node.onError !== 'stopWorkflow') {
+	if (node.onError !== undefined && node.onError !== null && node.onError !== 'stopWorkflow') {
 		nodeData.onError = node.onError;
 	}
 	// Save the notes only if when they contain data
-	if (![undefined, ''].includes(node.notes)) {
+	if (node.notes !== undefined && node.notes !== null && node.notes !== '') {
 		nodeData.notes = node.notes;
 	}
 

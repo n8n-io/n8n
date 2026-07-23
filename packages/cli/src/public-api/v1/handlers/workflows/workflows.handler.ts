@@ -310,6 +310,17 @@ const workflowHandlers: WorkflowHandlers = {
 			// null moves the workflow to the project root, (undefined) leaves the current folder untouched
 			const resolvedParentFolderId = parentFolderId === null ? PROJECT_ROOT : parentFolderId;
 
+			// binaryMode and credentialResolverId are derived, internal settings
+			// rather than something users are expected to control programmatically;
+			// strip them so the settings merge in WorkflowService.update preserves
+			// whatever is already stored.
+			if (updateData.settings?.binaryMode !== undefined) {
+				delete updateData.settings.binaryMode;
+			}
+			if (updateData.settings?.credentialResolverId !== undefined) {
+				delete updateData.settings.credentialResolverId;
+			}
+
 			try {
 				// Credential tamper protection is enforced centrally in WorkflowService.update
 				const updatedWorkflow = await Container.get(WorkflowService).update(
