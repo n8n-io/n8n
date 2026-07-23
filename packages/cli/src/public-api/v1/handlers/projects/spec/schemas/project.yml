@@ -8,6 +8,25 @@ properties:
     readOnly: true
   name:
     type: string
+  icon:
+    type: object
+    nullable: true
+    required:
+      - type
+      - value
+    properties:
+      type:
+        type: string
+        enum:
+          - emoji
+          - icon
+      value:
+        type: string
+        minLength: 1
+  description:
+    type: string
+    maxLength: 512
+    nullable: true
   type:
     type: string
     readOnly: true
