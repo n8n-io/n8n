@@ -121,7 +121,7 @@ describe('Microsoft SharePoint v2 — Item: Get', () => {
 			// Assert the literals, so drifting ITEM_SIMPLIFY_SELECT/EXPAND fails here.
 			{
 				$select: 'id,createdDateTime,lastModifiedDateTime,webUrl',
-				$expand: 'fields(select=Title)',
+				$expand: 'fields($select=Title)',
 			},
 		);
 		expect(result).toEqual([[{ json: buildSimplified(), pairedItem: { item: 0 } }]]);

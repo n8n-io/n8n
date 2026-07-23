@@ -7,7 +7,9 @@ export const LIST_SIMPLIFY_SELECT =
 
 /** v1's item Simplify request shape — the trimmed top-level fields v2 keeps returning. */
 export const ITEM_SIMPLIFY_SELECT = 'id,createdDateTime,lastModifiedDateTime,webUrl';
-export const ITEM_SIMPLIFY_EXPAND = 'fields(select=Title)';
+// Not v1's `fields(select=Title)`: through this request stack Graph only accepts
+// the nested option $-prefixed, else it rejects the whole query as unparseable.
+export const ITEM_SIMPLIFY_EXPAND = 'fields($select=Title)';
 
 /** Match v1's simplifyItemPostReceive exactly: only these annotation keys are stripped. */
 export function simplifyItem(item: IDataObject): IDataObject {
