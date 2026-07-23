@@ -85,6 +85,17 @@ const properties: INodeProperties[] = [
 					minValue: 1,
 				},
 			},
+			{
+				displayName: 'System Instructions',
+				description: 'System instructions to guide the behavior of Gemini models',
+				name: 'systemInstruction',
+				type: 'string',
+				default: '',
+				placeholder: 'You are a helpful assistant for analyzing documents.',
+				typeOptions: {
+					rows: 2,
+				},
+			},
 		],
 	},
 ];

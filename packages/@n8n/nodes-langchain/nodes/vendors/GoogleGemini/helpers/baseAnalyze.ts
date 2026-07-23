@@ -5,7 +5,7 @@ import {
 	type INodeExecutionData,
 } from 'n8n-workflow';
 
-import type { Content, GenerateContentResponse } from './interfaces';
+import type { Content, GenerateContentResponse, SystemInstruction } from './interfaces';
 import { downloadFile, uploadFile } from './utils';
 import { apiRequest } from '../transport';
 
@@ -27,12 +27,22 @@ export async function baseAnalyze(
 	const options = this.getNodeParameter('options', i, {});
 	validateNodeParameters(
 		options,
-		{ maxOutputTokens: { type: 'number', required: false } },
+		{
+			maxOutputTokens: { type: 'number', required: false },
+			systemInstruction: { type: 'string', required: false },
+		},
 		this.getNode(),
 	);
 	const generationConfig = {
 		maxOutputTokens: options.maxOutputTokens,
 	};
+
+	let systemInstruction: SystemInstruction | undefined;
+	if (options.systemInstruction) {
+		systemInstruction = {
+			parts: [{ text: options.systemInstruction }],
+		};
+	}
 
 	let contents: Content[];
 	if (inputType === 'url') {
@@ -88,6 +98,7 @@ export async function baseAnalyze(
 	contents[0].parts.push({ text });
 
 	const body = {
+		systemInstruction,
 		contents,
 		generationConfig,
 	};
