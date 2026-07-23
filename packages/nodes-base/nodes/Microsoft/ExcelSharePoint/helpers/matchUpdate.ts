@@ -161,11 +161,18 @@ export async function executeMatchUpdate(
 			range = `${cellFrom.value}:${cellTo.column}${Number(lastRow) + appendValues.length}`;
 		}
 
+		// Fields shows whenever RAW Data output is on, regardless of data mode — so it
+		// must shape this response too (the OneDrive node silently ignores it here)
+		const patchQs: IDataObject = {};
+		if (rawData && options.fields) {
+			patchQs.$select = options.fields;
+		}
 		const responseData = await (microsoftApiRequest<ExcelResponse>).call(
 			this,
 			'PATCH',
 			`${sheetPath}/range(address='${range}')`,
 			{ values: updateSummary.updatedData },
+			patchQs,
 		);
 
 		returnData.push(

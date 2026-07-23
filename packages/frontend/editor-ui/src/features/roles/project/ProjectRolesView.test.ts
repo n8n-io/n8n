@@ -326,7 +326,7 @@ describe('ProjectRolesView', () => {
 				},
 			);
 
-			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug);
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug, undefined);
 			expect(rolesStore.roles.project).not.toContain(mockRole);
 			expect(mockShowMessage).toHaveBeenCalledWith({ title: 'Role deleted', type: 'success' });
 		});
@@ -371,7 +371,7 @@ describe('ProjectRolesView', () => {
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
 
-			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug);
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith(mockRole.slug, undefined);
 			expect(mockShowError).toHaveBeenCalledWith(error, 'Error deleting role');
 			expect(rolesStore.roles.project).toHaveLength(1);
 			expect(rolesStore.roles.project[0]).toStrictEqual(mockRole);
@@ -397,7 +397,7 @@ describe('ProjectRolesView', () => {
 			const deleteButton = getByTestId('action-delete');
 			await userEvent.click(deleteButton);
 
-			expect(rolesStore.deleteRole).toHaveBeenCalledWith('non-existent-role');
+			expect(rolesStore.deleteRole).toHaveBeenCalledWith('non-existent-role', undefined);
 			expect(mockShowMessage).toHaveBeenCalledWith({ title: 'Role deleted', type: 'success' });
 			// Store should remain unchanged since role wasn't found
 			expect(rolesStore.roles.project).toHaveLength(1);

@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-import { getDebounceTime } from '@/app/constants/durations';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved';
 

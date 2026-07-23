@@ -16,7 +16,8 @@ import {
 	workbookRLC,
 	worksheetRLC,
 } from '../../descriptions/common.descriptions';
-import { fetchCollection, resolveTableEndpoint, runPerItem } from '../../helpers/tableRead';
+import { resolveTableEndpoint } from '../../helpers/tableRead';
+import { fetchCollection, runPerItem } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	siteRLC,

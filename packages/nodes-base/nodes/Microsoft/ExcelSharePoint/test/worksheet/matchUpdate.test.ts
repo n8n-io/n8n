@@ -237,6 +237,20 @@ describe('Microsoft Excel (SharePoint) — Sheet: Update and Append-or-Update', 
 		]);
 	});
 
+	it('applies Fields to the write-back response when RAW Data output is on in autoMap mode', async () => {
+		setParams({
+			...baseParams,
+			operation: 'update',
+			options: { rawData: true, fields: 'values,address' },
+		});
+		ctx.getInputData.mockReturnValue([{ json: { Name: 'Franklin', Email: 'frank@example.com' } }]);
+		mockSheetReads();
+
+		await node.execute.call(ctx);
+
+		expect(patchCall()![3]).toEqual({ $select: 'values,address' });
+	});
+
 	it('writes raw values over the used range in RAW mode', async () => {
 		setParams({
 			...baseParams,

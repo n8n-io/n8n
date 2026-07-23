@@ -195,6 +195,10 @@ export const worksheetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	required: true,
 	default: { mode: 'list', value: '' },
+	typeOptions: {
+		// So the editor resets the chosen sheet whenever the workbook changes
+		loadOptionsDependsOn: ['workbook.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',
@@ -220,6 +224,11 @@ export const tableRLC: INodeProperties = {
 	type: 'resourceLocator',
 	required: true,
 	default: { mode: 'list', value: '' },
+	typeOptions: {
+		// Tables are listed per sheet (see getTables), so reset with the sheet —
+		// a workbook change cascades here through the sheet reset
+		loadOptionsDependsOn: ['worksheet.value'],
+	},
 	modes: [
 		{
 			displayName: 'From List',

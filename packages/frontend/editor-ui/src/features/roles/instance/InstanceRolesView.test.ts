@@ -23,12 +23,26 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: vi.fn() }),
 }));
 
+// Render the dialog only when open so presence assertions reflect the modal's visibility.
+const ElDialogStub = {
+	props: ['modelValue'],
+	template: `
+		<div v-if="modelValue" role="dialog">
+			<slot name="header" />
+			<slot />
+			<slot name="footer" />
+		</div>
+	`,
+};
+
 const renderComponent = createComponentRenderer(InstanceRolesView, {
 	global: {
 		stubs: {
 			RouterLink: {
 				template: '<router-link-stub v-bind="$attrs"><slot /></router-link-stub>',
 			},
+			ElDialog: ElDialogStub,
+			N8nSelect: true,
 		},
 	},
 });
@@ -127,5 +141,36 @@ describe('InstanceRolesView', () => {
 		expect(rolesStore.createRole).toHaveBeenCalledWith(
 			expect.objectContaining({ roleType: 'global', scopes: [] }),
 		);
+	});
+
+	it('should open the reassign modal when deleting a custom role with assigned users', async () => {
+		const customRole = { ...mockCustomRoles[0], usedByUsers: 3 };
+		rolesStore.processedInstanceRoles = [...mockSystemRoles, customRole];
+		rolesStore.roles.global = [...mockSystemRoles, customRole];
+		// The delete flow fetches the current count before deciding.
+		rolesStore.fetchRoleBySlug.mockResolvedValue({ ...customRole, usedByUsers: 3 });
+
+		const { getByTestId, getAllByTestId } = renderComponent();
+		await userEvent.click(within(getAllByTestId('action-toggle')[0]).getByRole('button'));
+		await userEvent.click(getByTestId('action-delete'));
+
+		expect(rolesStore.fetchRoleBySlug).toHaveBeenCalledWith({ slug: customRole.slug });
+		expect(getByTestId('delete-instance-role-modal')).toBeInTheDocument();
+		// No deletion happens just from opening the modal.
+		expect(rolesStore.deleteRole).not.toHaveBeenCalled();
+	});
+
+	it('should not open the reassign modal when the custom role has no assigned users', async () => {
+		const customRole = { ...mockCustomRoles[0], usedByUsers: 0 };
+		rolesStore.processedInstanceRoles = [customRole];
+		rolesStore.roles.global = [customRole];
+		rolesStore.fetchRoleBySlug.mockResolvedValue({ ...customRole, usedByUsers: 0 });
+
+		const { queryByTestId, getByTestId, getAllByTestId } = renderComponent();
+		await userEvent.click(within(getAllByTestId('action-toggle')[0]).getByRole('button'));
+		await userEvent.click(getByTestId('action-delete'));
+
+		// Falls back to the standard confirm dialog rather than the reassign modal.
+		expect(queryByTestId('delete-instance-role-modal')).not.toBeInTheDocument();
 	});
 });

@@ -14,6 +14,7 @@ import {
 	type INodeCredentialsDetails,
 	type INodeType,
 	type INodeTypeDescription,
+	type IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -244,20 +245,25 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.status).toBe('success');
 		});
 
-		it('returns a structured error when the operation is on the blacklist (sendAndWait)', async () => {
-			nodeTypes.getByNameAndVersion.mockReturnValue(mockNodeType({ description: toolDescription }));
+		it.each(['sendAndWait', 'dispatchAndWait'])(
+			'returns a structured error when operation %s is unsupported',
+			async (operation) => {
+				nodeTypes.getByNameAndVersion.mockReturnValue(
+					mockNodeType({ description: toolDescription }),
+				);
 
-			const result = await executor.executeInline({
-				nodeType: 'n8n-nodes-base.slack',
-				nodeTypeVersion: 1,
-				nodeParameters: { operation: 'sendAndWait' },
-				inputData: [],
-				projectId: 'p-1',
-			});
+				const result = await executor.executeInline({
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: { operation },
+					inputData: [],
+					projectId: 'p-1',
+				});
 
-			expect(result.status).toBe('error');
-			expect(result.error).toMatch(/not supported for agent tool execution/);
-		});
+				expect(result.status).toBe('error');
+				expect(result.error).toMatch(/not supported for agent tool execution/);
+			},
+		);
 	});
 
 	describe('resolveInlineCredentials (via executeInline)', () => {
@@ -737,6 +743,75 @@ describe('EphemeralNodeExecutor', () => {
 				'supplyData tool introspection failed',
 				expect.objectContaining({ error: 'MCP server unreachable' }),
 			);
+		});
+	});
+
+	describe('executeInline → eval instrumentation', () => {
+		it('applies the additionalData decoration and node name override when set', async () => {
+			let executedNodeName: string | undefined;
+			const execute = vi.fn().mockImplementation(async function (this: {
+				getNode(): { name: string };
+			}) {
+				executedNodeName = this.getNode().name;
+				return [[{ json: { ok: true } }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const base: Record<string, unknown> = { credentialsHelper: {} };
+			mockGetBase.mockResolvedValue(base);
+			const configureAdditionalData = vi.fn((additionalData: Record<string, unknown>) => {
+				additionalData.evalLlmMockHandler = vi.fn();
+			});
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+				nodeName: 'Slack_Tool',
+				configureAdditionalData: configureAdditionalData as unknown as (
+					additionalData: IWorkflowExecuteAdditionalData,
+				) => void,
+			});
+
+			expect(result.status).toBe('success');
+			expect(configureAdditionalData).toHaveBeenCalledTimes(1);
+			expect(configureAdditionalData).toHaveBeenCalledWith(base);
+			expect(base.evalLlmMockHandler).toBeDefined();
+			expect(executedNodeName).toBe('Slack_Tool');
+		});
+
+		it('keeps the default node name and untouched additionalData when unset', async () => {
+			let executedNodeName: string | undefined;
+			const execute = vi.fn().mockImplementation(async function (this: {
+				getNode(): { name: string };
+			}) {
+				executedNodeName = this.getNode().name;
+				return [[{ json: {} }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: toolDescription,
+				execute,
+			} as unknown as INodeType);
+
+			const base: Record<string, unknown> = {};
+			mockGetBase.mockResolvedValue(base);
+
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('success');
+			expect(executedNodeName).toBe('Target Node');
+			expect(base.evalLlmMockHandler).toBeUndefined();
 		});
 	});
 });
