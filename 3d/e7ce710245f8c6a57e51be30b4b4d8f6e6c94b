@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_016909303f0252::t_5b9098a8a7bb48 157-161
+  s_016909303f0252::t_c26cb29a70c20d 145-156,162
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.ts
+  s_016909303f0252::t_25b19ab48353f0 201-204
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.test.ts
+  s_016909303f0252::t_9c203ff24b257c 13-17
+  s_016909303f0252::t_5fc7264479ce9b 56-62
+packages/frontend/editor-ui/src/experiments/templateRecoV2/components/NodeRecommendationModal.vue
+  s_016909303f0252::t_2db6dd7d117fb5 70-73,78-80
+  s_016909303f0252::t_5cf8880aa95047 32
+  s_016909303f0252::t_4518da0a66075e 3,6
+packages/frontend/editor-ui/src/experiments/instanceAiWorkflowPreviewSuggestions/components/WorkflowPreviewSuggestions.vue
+  s_016909303f0252::t_df5cb58c0bbacb 128
+  s_016909303f0252::t_bc6dce3e190071 6
+  s_016909303f0252::t_37de7ce09595db 31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3de7ce710245f8c6a57e51be30b4b4d8f6e6c94b",
+  "prompts": {},
+  "sessions": {
+    "s_016909303f0252": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13f237f5-5620-4811-93b0-d8dad4a05b6b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}
