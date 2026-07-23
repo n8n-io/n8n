@@ -15,6 +15,7 @@ import {
 
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+import { createReasoningContentFetch } from './createReasoningContentFetch';
 
 export class LmChatDeepSeek implements INodeType {
 	description: INodeTypeDescription = {
@@ -234,6 +235,7 @@ export class LmChatDeepSeek implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			fetch: createReasoningContentFetch(),
 			fetchOptions: {
 				dispatcher: getProxyAgent(credentials.url, {
 					headersTimeout: timeout,
