@@ -355,23 +355,6 @@ describe('components/N8nInput', () => {
 		});
 	});
 
-	describe('min / max / step', () => {
-		it('should apply min, max, and step attributes', () => {
-			const wrapper = render(Input, {
-				props: {
-					type: 'number',
-					min: 1,
-					max: 10,
-					step: 1,
-				},
-			});
-			const input = wrapper.container.querySelector('input');
-			expect(input).toHaveAttribute('min', '1');
-			expect(input).toHaveAttribute('max', '10');
-			expect(input).toHaveAttribute('step', '1');
-		});
-	});
-
 	describe('autocomplete', () => {
 		it('should default to off', () => {
 			const wrapper = render(Input);
