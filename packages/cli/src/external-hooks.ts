@@ -26,6 +26,39 @@ type Repositories = {
 	Workflow: WorkflowRepository;
 };
 
+/**
+ * Identity of the user performing a workflow lifecycle operation.
+ */
+export type WorkflowLifecycleHookActor = {
+	id: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+	role?: string;
+};
+
+/**
+ * Projects the acting user onto the identity passed to workflow lifecycle hooks.
+ *
+ * @param user The user performing the lifecycle operation, if any.
+ * @returns The actor identity, or `undefined` when there is no acting user.
+ * @remarks The actor is a loose, optional part of the hook contract: a missing user is
+ * accepted on purpose, so callers without an interactive user fit without widening the interface.
+ */
+export function toWorkflowLifecycleHookActor(user?: User): WorkflowLifecycleHookActor | undefined {
+	if (!user) {
+		return undefined;
+	}
+
+	return {
+		id: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		role: user.role?.slug,
+	};
+}
+
 type ExternalHooksMap = {
 	'n8n.ready': [server: AbstractServer, config: Config];
 	'n8n.stop': never;
@@ -70,14 +103,14 @@ type ExternalHooksMap = {
 
 	'workflow.create': [createdWorkflow: IWorkflowBase];
 	'workflow.afterCreate': [createdWorkflow: IWorkflowBase];
-	'workflow.activate': [updatedWorkflow: IWorkflowBase];
-	'workflow.deactivate': [deactivatedWorkflow: IWorkflowBase];
+	'workflow.activate': [updatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
+	'workflow.deactivate': [deactivatedWorkflow: IWorkflowBase, actor?: WorkflowLifecycleHookActor];
 	'workflow.update': [updatedWorkflow: IWorkflowBase];
 	'workflow.afterUpdate': [updatedWorkflow: IWorkflowBase];
-	'workflow.delete': [workflowId: string];
-	'workflow.afterDelete': [workflowId: string];
-	'workflow.afterArchive': [workflowId: string];
-	'workflow.afterUnarchive': [workflowId: string];
+	'workflow.delete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterDelete': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterArchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
+	'workflow.afterUnarchive': [workflowId: string, actor?: WorkflowLifecycleHookActor];
 
 	'workflow.preExecute': [
 		workflow: Workflow,
