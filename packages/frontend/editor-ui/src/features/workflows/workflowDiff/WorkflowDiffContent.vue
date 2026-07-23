@@ -69,7 +69,10 @@ function getEdgeStatusClass(id: string) {
 					>
 						<template #node="{ nodeProps }">
 							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-								<template #toolbar />
+								<template v-if="$slots.nodeToolbar" #toolbar>
+									<slot name="nodeToolbar" :node-id="nodeProps.id" />
+								</template>
+								<template v-else #toolbar />
 							</Node>
 						</template>
 						<template #edge="{ edgeProps, arrowHeadMarkerId }">
@@ -112,7 +115,10 @@ function getEdgeStatusClass(id: string) {
 					>
 						<template #node="{ nodeProps }">
 							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-								<template #toolbar />
+								<template v-if="$slots.nodeToolbar" #toolbar>
+									<slot name="nodeToolbar" :node-id="nodeProps.id" />
+								</template>
+								<template v-else #toolbar />
 							</Node>
 						</template>
 						<template #edge="{ edgeProps, arrowHeadMarkerId }">
@@ -137,7 +143,17 @@ function getEdgeStatusClass(id: string) {
 
 		<WorkflowDiffAside v-if="selectedNode" :node="selectedNode" @close="emit('closeAside')">
 			<template #default="{ outputFormat }">
-				<NodeDiff v-bind="nodeDiffs" :output-format="outputFormat" />
+				<slot
+					v-if="$slots.asideNodeDiff"
+					name="asideNodeDiff"
+					:output-format="outputFormat"
+					:node="selectedNode"
+					:node-diffs="nodeDiffs"
+				/>
+				<NodeDiff v-else v-bind="nodeDiffs" :output-format="outputFormat" />
+			</template>
+			<template v-if="$slots.asideFooter" #footer>
+				<slot name="asideFooter" :node="selectedNode" />
 			</template>
 		</WorkflowDiffAside>
 	</div>

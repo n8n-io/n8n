@@ -49,7 +49,14 @@ const emit = defineEmits<{
 				@click="emit('close')"
 			></N8nIconButton>
 		</div>
-		<slot v-bind="{ outputFormat }" />
+		<div :class="$style.asideScroll">
+			<div :class="$style.asideBody">
+				<slot v-bind="{ outputFormat }" />
+			</div>
+			<div v-if="$slots.footer" :class="$style.asideFooter">
+				<slot name="footer" />
+			</div>
+		</div>
 	</N8nResizeWrapper>
 </template>
 
@@ -69,6 +76,7 @@ const emit = defineEmits<{
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .nodeTitle {
@@ -76,5 +84,23 @@ const emit = defineEmits<{
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.asideScroll {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.asideBody {
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+}
+
+.asideFooter {
+	flex-shrink: 0;
 }
 </style>

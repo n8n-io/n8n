@@ -1,8 +1,16 @@
 import type {
+	CreateSourceControlReviewCommentRequest,
+	CreateSourceControlReviewRequest,
+	CreateSourceControlSubmitReviewRequest,
 	GitCommitInfo,
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
 	SourceControlledFile,
+	SourceControlReviewComment,
+	SourceControlReviewDeployResult,
+	SourceControlReviewDetail,
+	SourceControlReviewSubmission,
+	SourceControlReviewSummary,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
@@ -60,6 +68,94 @@ export const getPreferences = async (
 
 export const getStatus = async (context: IRestApiContext): Promise<SourceControlStatus> => {
 	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/status`);
+};
+
+export const getReviews = async (
+	context: IRestApiContext,
+): Promise<SourceControlReviewSummary[]> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/reviews`);
+};
+
+export const getReviewCandidates = async (
+	context: IRestApiContext,
+): Promise<SourceControlledFile[]> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/reviews/candidates`);
+};
+
+export const createReviewRequest = async (
+	context: IRestApiContext,
+	payload: CreateSourceControlReviewRequest,
+): Promise<SourceControlReviewSummary> => {
+	return await makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/reviews`, payload);
+};
+
+export const getReview = async (
+	context: IRestApiContext,
+	prNumber: number,
+): Promise<SourceControlReviewDetail> => {
+	return await makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/reviews/${prNumber}`);
+};
+
+export const getReviewComments = async (
+	context: IRestApiContext,
+	prNumber: number,
+	filePath?: string,
+): Promise<SourceControlReviewComment[]> => {
+	const query = filePath ? `?path=${encodeURIComponent(filePath)}` : '';
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`${sourceControlApiRoot}/reviews/${prNumber}/comments${query}`,
+	);
+};
+
+export const createReviewComment = async (
+	context: IRestApiContext,
+	prNumber: number,
+	payload: CreateSourceControlReviewCommentRequest,
+): Promise<SourceControlReviewComment> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${sourceControlApiRoot}/reviews/${prNumber}/comments`,
+		payload,
+	);
+};
+
+export const deleteReviewComment = async (
+	context: IRestApiContext,
+	prNumber: number,
+	commentId: number,
+): Promise<{ deletedCommentIds: number[] }> => {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${sourceControlApiRoot}/reviews/${prNumber}/comments/${commentId}`,
+	);
+};
+
+export const submitReview = async (
+	context: IRestApiContext,
+	prNumber: number,
+	payload: CreateSourceControlSubmitReviewRequest,
+): Promise<SourceControlReviewSubmission> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${sourceControlApiRoot}/reviews/${prNumber}/submit`,
+		payload,
+	);
+};
+
+export const deployReview = async (
+	context: IRestApiContext,
+	prNumber: number,
+): Promise<SourceControlReviewDeployResult> => {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`${sourceControlApiRoot}/reviews/${prNumber}/deploy`,
+	);
 };
 
 export const getRemoteWorkflow = async (

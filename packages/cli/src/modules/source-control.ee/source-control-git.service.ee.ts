@@ -385,6 +385,22 @@ export class SourceControlGitService {
 		return await this.getBranches();
 	}
 
+	async checkout(branch: string): Promise<void> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (checkout)');
+		}
+		await this.setGitCommand();
+		await this.git.checkout(branch);
+	}
+
+	async checkoutLocalBranch(branchName: string): Promise<void> {
+		if (!this.git) {
+			throw new UnexpectedError('Git is not initialized (checkoutLocalBranch)');
+		}
+		await this.setGitCommand();
+		await this.git.checkoutLocalBranch(branchName);
+	}
+
 	async getCurrentBranch(): Promise<{ current: string; remote: string }> {
 		if (!this.git) {
 			throw new UnexpectedError('Git is not initialized (getCurrentBranch)');

@@ -1,0 +1,31 @@
+
+> n8n@2.27.0 build /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/cli
+> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data && pnpm run build:agent-library
+
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+
+> n8n@2.27.0 build:data /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/cli
+> node scripts/build.mjs
+
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+../@n8n/tournament                       |  WARN  The field "pnpm.overrides" was found in /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/@n8n/tournament/package.json. This will not take effect. You should configure "pnpm.overrides" at the root of the workspace instead.
+
+> n8n@2.27.0 build:agent-library /Users/alielkhateeb/Projects/LIGO-git-n8n-app/packages/cli
+> node scripts/bundle-agent-library.mjs
+
+[bundle-agent-library] Wrote dist/agent-library-bundle.js — 220.3 KB (0.22 MB)

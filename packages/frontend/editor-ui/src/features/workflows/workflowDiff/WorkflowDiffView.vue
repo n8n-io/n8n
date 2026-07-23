@@ -36,6 +36,7 @@ const props = withDefaults(
 		targetLabel?: string;
 		tidyUp?: boolean;
 		showBackButton?: boolean;
+		defaultSyncViews?: boolean;
 		source?: 'version_history' | 'push_pull_modal' | 'unknown';
 	}>(),
 	{
@@ -44,6 +45,7 @@ const props = withDefaults(
 		sourceLabel: 'Before',
 		targetLabel: 'After',
 		showBackButton: false,
+		defaultSyncViews: true,
 		source: 'unknown',
 	},
 );
@@ -52,6 +54,9 @@ const emit = defineEmits<{
 }>();
 
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
+if (!props.defaultSyncViews) {
+	syncIsEnabled.value = false;
+}
 
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
@@ -306,6 +311,15 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 			<template v-if="$slots.targetEmptyText" #targetEmptyText>
 				<slot name="targetEmptyText" />
 			</template>
+			<template v-if="$slots.asideFooter" #asideFooter="slotProps">
+				<slot name="asideFooter" v-bind="slotProps" />
+			</template>
+			<template v-if="$slots.asideNodeDiff" #asideNodeDiff="slotProps">
+				<slot name="asideNodeDiff" v-bind="slotProps" />
+			</template>
+			<template v-if="$slots.nodeToolbar" #nodeToolbar="slotProps">
+				<slot name="nodeToolbar" v-bind="slotProps" />
+			</template>
 		</WorkflowDiffContent>
 	</div>
 </template>
@@ -315,6 +329,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	width: 100%;
 }
 
 .tabs {

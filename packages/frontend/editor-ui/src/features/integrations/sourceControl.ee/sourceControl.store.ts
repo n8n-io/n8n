@@ -125,6 +125,48 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.getRemoteWorkflow(rootStore.restApiContext, workflowId);
 	};
 
+	const getReviews = async () => {
+		return await vcApi.getReviews(rootStore.restApiContext);
+	};
+
+	const getReviewCandidates = async () => {
+		return await vcApi.getReviewCandidates(rootStore.restApiContext);
+	};
+
+	const createReviewRequest = async (payload: Parameters<typeof vcApi.createReviewRequest>[1]) => {
+		return await vcApi.createReviewRequest(rootStore.restApiContext, payload);
+	};
+
+	const getReview = async (prNumber: number) => {
+		return await vcApi.getReview(rootStore.restApiContext, prNumber);
+	};
+
+	const getReviewComments = async (prNumber: number, filePath?: string) => {
+		return await vcApi.getReviewComments(rootStore.restApiContext, prNumber, filePath);
+	};
+
+	const createReviewComment = async (
+		prNumber: number,
+		payload: Parameters<typeof vcApi.createReviewComment>[2],
+	) => {
+		return await vcApi.createReviewComment(rootStore.restApiContext, prNumber, payload);
+	};
+
+	const deleteReviewComment = async (prNumber: number, commentId: number) => {
+		return await vcApi.deleteReviewComment(rootStore.restApiContext, prNumber, commentId);
+	};
+
+	const submitReview = async (
+		prNumber: number,
+		payload: Parameters<typeof vcApi.submitReview>[2],
+	) => {
+		return await vcApi.submitReview(rootStore.restApiContext, prNumber, payload);
+	};
+
+	const deployReview = async (prNumber: number) => {
+		return await vcApi.deployReview(rootStore.restApiContext, prNumber);
+	};
+
 	return {
 		isEnterpriseSourceControlEnabled,
 		state,
@@ -141,6 +183,15 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		getStatus,
 		getAggregatedStatus,
 		getRemoteWorkflow,
+		getReviews,
+		getReviewCandidates,
+		createReviewRequest,
+		getReview,
+		getReviewComments,
+		createReviewComment,
+		deleteReviewComment,
+		submitReview,
+		deployReview,
 		sshKeyTypesWithLabel,
 	};
 });

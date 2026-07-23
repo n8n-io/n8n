@@ -55,6 +55,7 @@ describe('SourceControlController', () => {
 			sourceControlScopedService,
 			sourceControlContextFactory,
 			eventService,
+			mock(),
 		);
 	});
 
