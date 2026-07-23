@@ -72,9 +72,8 @@ export async function execute(
 			}
 
 			if (dataMode === 'defineBelow') {
-				const fields = this.getNodeParameter('columns.value', i, [], {
-					skipValidation: typecast,
-				}) as IDataObject;
+				// Do not skip validation so the resource mapper can process binary attachments.
+				const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
 				if (typecast) {
 					coerceArrayTypeFields(fields, this.getNode().parameters.columns);
 				}
