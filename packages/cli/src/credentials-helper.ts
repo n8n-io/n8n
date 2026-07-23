@@ -5,7 +5,6 @@ import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {

@@ -97,6 +97,7 @@ describe('scheduled repositories', () => {
 		intervalSeconds: 60,
 		fireAt: null,
 		nextRunAt: secondsFromNow(-60),
+		maxAttempts: 1,
 		...overrides,
 	});
 

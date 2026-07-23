@@ -10,7 +10,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';

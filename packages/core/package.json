@@ -58,12 +58,10 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.808.0",
-    "@azure/identity": "catalog:",
-    "@azure/storage-blob": "catalog:",
     "@langchain/core": "catalog:",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-network": "workspace:*",
+    "@n8n/blob-storage": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",

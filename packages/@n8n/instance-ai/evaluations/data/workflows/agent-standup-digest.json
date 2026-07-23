@@ -1,0 +1,32 @@
+{
+	"description": "Agent-artifact case: standup-digest agent whose action is explicitly ONE reusable end-to-end tool (fetch GitHub bugs → summarize → post to Slack) — the natural shape for a workflow tool, exercising mock interception inside the agent's sub-workflow execution, with two services in one action probing cross-service mock consistency.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create an n8n agent called 'Standup Digest' for our engineering team. Give it one reusable action tool that runs the whole digest end to end: fetch the currently open issues labelled 'bug' from our acme/widgets GitHub repository, build a short summary listing each bug's title, and post that summary to the #standup Slack channel. When someone asks for the digest, the agent should run that action and then tell the user what was posted. If there are no open bugs, the posted digest must say exactly that instead of being skipped. Use OpenAI gpt-4o-mini as its model with my OpenAI credential, and use my GitHub and Slack credentials for the action. No clarifying questions needed — build it with exactly this."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["agent", "build", "github", "slack"],
+	"credentials": [{ "type": "openAiApi" }, { "type": "githubApi" }, { "type": "slackApi" }],
+	"outcomeExpectations": [
+		"A first-class n8n Agent artifact was created for this request (see the rendered agent configuration). Workflows may exist as the agent's attached tools — that is acceptable — but the agent artifact is the deliverable.",
+		"The agent has a single tool that performs the whole digest end to end — fetching the open 'bug' issues from acme/widgets and posting the summary to #standup — rather than separate fetch and post tools the model has to chain itself.",
+		"The agent's instructions cover running the digest on request, reporting what was posted, and posting an explicit 'no open bugs' digest when there are none.",
+		"The agent's configured model is an OpenAI model."
+	],
+	"executionScenarios": [
+		{
+			"name": "posts-bug-digest",
+			"description": "Three open bugs exist; one digest message listing them is posted to #standup.",
+			"dataSetup": "The user asks for the standup digest. The GitHub request for open issues labelled 'bug' in acme/widgets returns exactly three: 'Login 500 on SSO', 'Timezone off by one in scheduler', and 'CSV export truncates large files'. The Slack chat.postMessage to the #standup channel succeeds.",
+			"successCriteria": "One Slack message was posted to #standup whose text references the three fetched bug titles (see the intercepted chat.postMessage request — its content must come from the GitHub response, not be invented), and the agent's final reply confirms the digest was posted."
+		},
+		{
+			"name": "posts-empty-digest",
+			"description": "No open bugs; the digest must say so explicitly rather than being skipped.",
+			"dataSetup": "The user asks for the standup digest. The GitHub request for open issues labelled 'bug' in acme/widgets returns an empty result — zero open bug issues. The Slack chat.postMessage to the #standup channel succeeds.",
+			"successCriteria": "One Slack message was still posted to #standup and its text states there are no open bugs (it lists no issue titles), and the agent's final reply honestly reports that an empty digest was posted."
+		}
+	]
+}
