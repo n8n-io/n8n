@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { useApiKeysStore } from '../apiKeys.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { DateTime } from 'luxon';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
@@ -53,14 +54,17 @@ const testApiKey: ApiKeyWithRawValue = {
 const apiKeysStore = mockedStore(useApiKeysStore);
 const usersStore = mockedStore(useUsersStore);
 const uiStore = mockedStore(useUIStore);
+const rbacStore = mockedStore(useRBACStore);
 
 describe('ApiKeyCreateOrEditModal', () => {
 	beforeEach(() => {
 		apiKeysStore.availableScopes = ['user:create', 'user:list'];
-		// Default: current user IS the owner of the test key (no read-only).
+		// Default: current user IS the owner of the test key (no read-only)
+		// and their role allows editing keys.
 		usersStore.currentUserId = 'u1';
 		// @ts-expect-error: replacing a computed for the test
 		usersStore.currentUser = { id: 'u1' };
+		rbacStore.hasScope.mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -370,6 +374,25 @@ describe('ApiKeyCreateOrEditModal', () => {
 			expect(track).toHaveBeenCalledWith('User clicked delete API key button', {
 				is_own: false,
 			});
+		});
+	});
+
+	describe('read-only mode (role without apiKey:update)', () => {
+		test('renders an own key read-only, keeping Close + Revoke', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			apiKeysStore.apiKeys = [testApiKey];
+
+			const { getByTestId, queryByText } = renderComponent({
+				props: { mode: 'edit', activeId: '123' },
+			});
+
+			await retry(() => expect(getByTestId('api-key-label')).toBeInTheDocument());
+
+			expect(queryByText('Save')).not.toBeInTheDocument();
+			expect(getByTestId('api-key-readonly-close')).toBeInTheDocument();
+			// Revoking own keys stays available regardless of role scopes.
+			expect(getByTestId('api-key-readonly-revoke')).toBeInTheDocument();
+			expect((getByTestId('api-key-label') as unknown as HTMLInputElement).disabled).toBe(true);
 		});
 	});
 });

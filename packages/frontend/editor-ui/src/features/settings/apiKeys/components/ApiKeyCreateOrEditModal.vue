@@ -10,6 +10,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
@@ -49,6 +50,7 @@ const clipboard = useClipboard();
 const apiKeysStore = useApiKeysStore();
 const { createApiKey, updateApiKey, deleteApiKey, apiKeysById, availableScopes } = apiKeysStore;
 const { currentUser } = storeToRefs(useUsersStore());
+const rbacStore = useRBACStore();
 const documentTitle = useDocumentTitle();
 
 const label = ref('');
@@ -128,7 +130,10 @@ const currentApiKey = computed<ApiKey | null>(() =>
 
 const isReadOnly = computed(() => {
 	const apiKey = currentApiKey.value;
-	if (!apiKey?.owner || !currentUser.value) return false;
+	if (!apiKey) return false;
+	// Even own keys are view-only when the role doesn't allow editing them.
+	if (!rbacStore.hasScope('apiKey:update')) return true;
+	if (!apiKey.owner || !currentUser.value) return false;
 	return apiKey.owner.id !== currentUser.value.id;
 });
 

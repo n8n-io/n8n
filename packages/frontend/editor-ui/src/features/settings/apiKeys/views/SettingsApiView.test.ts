@@ -101,6 +101,14 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 				</div>
 			`,
 		},
+		// Reka UI tooltips don't open in jsdom either; expose the props the view
+		// passes so tests can assert the tooltip wiring without driving the popup.
+		N8nTooltip: {
+			name: 'N8nTooltip',
+			props: ['disabled', 'content'],
+			template:
+				'<div :data-tooltip-disabled="disabled" :data-tooltip-content="content"><slot /></div>',
+		},
 	};
 });
 
@@ -290,6 +298,14 @@ describe('SettingsApiView', () => {
 			apiKeysStore.totalAllCount = 1;
 		};
 
+		beforeEach(() => {
+			// Rotation requires apiKey:update; these tests exercise the expiry and
+			// ownership gates, not the scope gate.
+			rbacStore.hasScope.mockImplementation(
+				(scope: string | string[]) => scope === 'apiKey:update',
+			);
+		});
+
 		it('offers Rotate for an owned, non-expired key', () => {
 			singleOwnedKey({ expiresAt: null });
 
@@ -339,6 +355,89 @@ describe('SettingsApiView', () => {
 					data: { mode: 'new', rotatedApiKey: rotated },
 				}),
 			);
+		});
+	});
+
+	describe('restricted role (no apiKey scopes)', () => {
+		const setupKeys = () => {
+			settingsStore.isPublicApiEnabled = true;
+			cloudStore.userIsTrialing = false;
+			apiKeysStore.apiKeys = [makeKey({ id: '1', label: 'test-key-1' })];
+			apiKeysStore.mineCount = 1;
+			apiKeysStore.allCount = 1;
+			apiKeysStore.totalMineCount = 1;
+			apiKeysStore.totalAllCount = 1;
+		};
+
+		it('disables the create button and explains why for a role without apiKey:create', () => {
+			setupKeys();
+
+			renderComponent(SettingsApiView);
+
+			const createButton = screen.getByTestId('api-key-create-button');
+			expect(createButton).toBeDisabled();
+
+			const tooltip = createButton.closest('[data-tooltip-content]');
+			expect(tooltip?.getAttribute('data-tooltip-disabled')).toBe('false');
+			expect(tooltip?.getAttribute('data-tooltip-content')).toBe(
+				'Your role does not have the permission to create API keys',
+			);
+		});
+
+		it('enables the create button when the role has apiKey:create', () => {
+			rbacStore.hasScope.mockImplementation(
+				(scope: string | string[]) => scope === 'apiKey:create',
+			);
+			setupKeys();
+
+			renderComponent(SettingsApiView);
+
+			const createButton = screen.getByTestId('api-key-create-button');
+			expect(createButton).toBeEnabled();
+			// The explanatory tooltip is off while creation is allowed.
+			expect(
+				createButton.closest('[data-tooltip-content]')?.getAttribute('data-tooltip-disabled'),
+			).toBe('true');
+		});
+
+		it('offers View instead of Edit/Rotate on own keys for a role without apiKey:update', () => {
+			setupKeys();
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByTestId('api-key-view-action')).toBeInTheDocument();
+			expect(screen.queryByTestId('api-key-edit-action')).toBeNull();
+			expect(screen.queryByTestId('api-key-rotate-action')).toBeNull();
+			// Revoking own keys stays available regardless of role scopes.
+			expect(screen.getByTestId('api-key-revoke-action')).toBeInTheDocument();
+		});
+
+		it('keeps Edit and Rotate on own keys when the role has apiKey:update', () => {
+			rbacStore.hasScope.mockImplementation(
+				(scope: string | string[]) => scope === 'apiKey:update',
+			);
+			setupKeys();
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByTestId('api-key-edit-action')).toBeInTheDocument();
+			expect(screen.getByTestId('api-key-rotate-action')).toBeInTheDocument();
+			expect(screen.queryByTestId('api-key-view-action')).toBeNull();
+		});
+
+		it('disables the empty-state CTA for a role without apiKey:create', () => {
+			settingsStore.isPublicApiEnabled = true;
+			cloudStore.userIsTrialing = false;
+			apiKeysStore.apiKeys = [];
+			apiKeysStore.mineCount = 0;
+			apiKeysStore.allCount = 0;
+			apiKeysStore.totalMineCount = 0;
+			apiKeysStore.totalAllCount = 0;
+			apiKeysStore.labelFilter = '';
+
+			renderComponent(SettingsApiView);
+
+			expect(screen.getByRole('button', { name: 'Create API key' })).toBeDisabled();
 		});
 	});
 
