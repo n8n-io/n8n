@@ -4,7 +4,7 @@
  * Serializes workflows to n8n's standard JSON format.
  */
 
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, normalizeNodeShape } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { foldLegacyErrorConnections } from '../../../types/base';
@@ -159,7 +159,7 @@ function serializeNode(
 		n8nNode.extendsCredential = config.extendsCredential;
 	}
 
-	return n8nNode;
+	return normalizeNodeShape(n8nNode);
 }
 
 /**
