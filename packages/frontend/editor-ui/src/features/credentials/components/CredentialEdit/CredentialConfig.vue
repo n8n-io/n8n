@@ -437,6 +437,51 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					</template>
 				</N8nCallout>
 
+				<template v-if="canWrite">
+					<!-- Instance AI credential setup help (mimics the assistant button) -->
+					<div
+						v-if="isInstanceAiCredentialHelpAvailable"
+						:class="$style.askAssistantButton"
+						data-test-id="credential-edit-instance-ai-help-button"
+					>
+						<N8nInlineAskAssistantButton
+							:label="i18n.baseText('instanceAi.askAiAssistant')"
+							@click="onInstanceAiCredentialHelpClick"
+						/>
+						<span>
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
+							}}
+							<template
+								v-if="
+									documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite
+								"
+							>
+								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
+								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
+									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
+								</N8nLink>
+							</template>
+						</span>
+					</div>
+					<!-- Legacy assistant credential help — only while Instance AI is off -->
+					<div
+						v-else-if="isAskAssistantAvailable"
+						:class="$style.askAssistantButton"
+						data-test-id="credential-edit-ask-assistant-button"
+					>
+						<N8nInlineAskAssistantButton
+							:asked="assistantAlreadyAsked"
+							@click="onAskAssistantClick"
+						/>
+						<span>
+							{{
+								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
+							}}
+						</span>
+					</div>
+				</template>
+
 				<Banner
 					v-show="showValidationWarning"
 					theme="danger"
@@ -601,49 +646,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				</Banner>
 
 				<template v-if="canWrite">
-					<!-- Instance AI credential setup help (mimics the assistant button) -->
-					<div
-						v-if="isInstanceAiCredentialHelpAvailable"
-						:class="$style.askAssistantButton"
-						data-test-id="credential-edit-instance-ai-help-button"
-					>
-						<N8nInlineAskAssistantButton
-							:label="i18n.baseText('instanceAi.askAiAssistant')"
-							@click="onInstanceAiCredentialHelpClick"
-						/>
-						<span>
-							{{
-								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
-							}}
-							<template
-								v-if="
-									documentationUrl && credentialProperties.length && !isManagedOAuth && canWrite
-								"
-							>
-								{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.orReadThe') }}
-								<N8nLink :to="documentationUrl" size="small" @click="onDocumentationUrlClick">
-									[{{ i18n.baseText('credentialEdit.credentialConfig.assistantHelp.docs') }}]
-								</N8nLink>
-							</template>
-						</span>
-					</div>
-					<!-- Legacy assistant credential help — only while Instance AI is off -->
-					<div
-						v-else-if="isAskAssistantAvailable"
-						:class="$style.askAssistantButton"
-						data-test-id="credential-edit-ask-assistant-button"
-					>
-						<N8nInlineAskAssistantButton
-							:asked="assistantAlreadyAsked"
-							@click="onAskAssistantClick"
-						/>
-						<span>
-							{{
-								i18n.baseText('credentialEdit.credentialConfig.assistantHelp.forSetupInstructions')
-							}}
-						</span>
-					</div>
-
 					<CopyInput
 						v-if="isOAuthType && !isManagedOAuth"
 						:label="i18n.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
@@ -740,8 +742,9 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 }
 
 .docsCallout {
-	background-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
-	border-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-300));
+	// Match the neutral connect banner tint (was too dark in light mode).
+	background-color: light-dark(var(--color--black-alpha-50), var(--color--white-alpha-100));
+	border-color: light-dark(var(--color--black-alpha-100), var(--color--white-alpha-300));
 
 	a {
 		text-decoration: none;
