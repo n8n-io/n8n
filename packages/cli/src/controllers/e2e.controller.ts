@@ -265,10 +265,7 @@ export class E2EController {
 		return { count: rows.length };
 	}
 
-	/**
-	 * Force a trigger node's durable jobs due immediately, so a test can observe
-	 * a real scheduled dispatch without waiting out the job's own cron interval.
-	 */
+	/** Lets a test observe a real scheduled dispatch without waiting out the job's cron interval. */
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.body;

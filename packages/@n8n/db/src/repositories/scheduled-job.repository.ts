@@ -131,10 +131,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { id: In(ids) });
 	}
 
-	/**
-	 * Test-only: force a node's jobs due immediately, so the next sweep claims
-	 * them without waiting out their real cron interval.
-	 */
+	/** Test-only: sets `nextRunAt` to now, so the next sweep claims the job. */
 	async forceDueNowByWorkflowNode(workflowId: string, nodeId: string): Promise<void> {
 		await this.createQueryBuilder()
 			.update(ScheduledJob)
