@@ -3,7 +3,7 @@
 // Restore the real fs so the ACS handler can render its handlebars template.
 vi.unmock('node:fs');
 
-import type { SamlPreferences } from '@n8n/api-types';
+import { BLOCK_ACCESS_ASSIGNMENT, type SamlPreferences } from '@n8n/api-types';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import {
 	createTeamProject,
@@ -27,6 +27,7 @@ import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 
 import { TEMPLATES_DIR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import {
 	EC_TEST_CERTIFICATE,
@@ -975,6 +976,139 @@ describe('SAML SSO provisioning', () => {
 			relations: ['role'],
 		});
 		expect(userFromDB!.role.slug).toEqual('global:admin');
+	});
+
+	it('should deny the login and create no account when a block access rule matches', async () => {
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.groups !== undefined && $claims.groups.includes('contractors') }}",
+				role: null,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-blocked-rule@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-blocked-rule',
+			},
+			raw: { email: 'saml-blocked-rule@example.com', groups: ['contractors'] },
+		});
+
+		await expect(samlService.handleSamlLogin({} as express.Request, 'post')).rejects.toThrow(
+			ForbiddenError,
+		);
+
+		const userFromDB = await userRepository.findOne({
+			where: { email: 'saml-blocked-rule@example.com' },
+		});
+		expect(userFromDB).toBeNull();
+	});
+
+	it('should deny the login and create no account when no rule matches and the default condition is block access', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-blocked-fallback@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-blocked-fallback',
+			},
+			raw: { email: 'saml-blocked-fallback@example.com', department: 'sales' },
+		});
+
+		await expect(samlService.handleSamlLogin({} as express.Request, 'post')).rejects.toThrow(
+			ForbiddenError,
+		);
+
+		const userFromDB = await userRepository.findOne({
+			where: { email: 'saml-blocked-fallback@example.com' },
+		});
+		expect(userFromDB).toBeNull();
+	});
+
+	it('should deny an existing user without touching their account when their login resolves to block access', async () => {
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.groups !== undefined && $claims.groups.includes('contractors') }}",
+				role: null,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+
+		const existingUser = await createUser({ password: randomValidPassword() });
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: existingUser.email,
+				firstName: existingUser.firstName,
+				lastName: existingUser.lastName,
+				userPrincipalName: existingUser.email,
+			},
+			raw: { email: existingUser.email, groups: ['contractors'] },
+		});
+
+		await expect(samlService.handleSamlLogin({} as express.Request, 'post')).rejects.toThrow(
+			ForbiddenError,
+		);
+
+		// The account is kept as-is: not deactivated, role unchanged
+		const reloaded = await userRepository.findOneOrFail({
+			where: { id: existingUser.id },
+			relations: ['role'],
+		});
+		expect(reloaded.role.slug).toBe('global:member');
+		expect(reloaded.disabled).toBe(false);
+	});
+
+	it('should log in with the mapped role when a rule matches even though the default condition is block access', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.defaultInstanceRole = BLOCK_ACCESS_ASSIGNMENT;
+
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-mapped-role@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-mapped-role',
+			},
+			raw: { email: 'saml-mapped-role@example.com', department: 'it' },
+		});
+
+		const result = await samlService.handleSamlLogin({} as express.Request, 'post');
+		expect(result.authenticatedUser).toBeDefined();
+
+		const userFromDB = await userRepository.findOneOrFail({
+			where: { email: 'saml-mapped-role@example.com' },
+			relations: ['role'],
+		});
+		expect(userFromDB.role.slug).toBe('global:admin');
 	});
 
 	it('should provision project role via expression mapping', async () => {
