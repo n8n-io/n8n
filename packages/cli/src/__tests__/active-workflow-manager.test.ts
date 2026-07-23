@@ -105,8 +105,9 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		describe('if follower', () => {
+			// A follower only exists in a multi-main setup, so multi-main must be enabled.
 			beforeAll(() => {
-				Object.assign(instanceSettings, { isLeader: false, isFollower: true });
+				Object.assign(instanceSettings, { isLeader: false, isFollower: true, isMultiMain: true });
 			});
 
 			test('should return `false` for `update` or `activate`', () => {
@@ -115,6 +116,28 @@ describe('ActiveWorkflowManager', () => {
 					const result = activeWorkflowManager.shouldAddWebhooks(mode);
 					expect(result).toBe(false);
 				}
+			});
+		});
+
+		describe('if single-main (not multi-main) and not leader', () => {
+			// Regression test for https://github.com/n8n-io/n8n/issues/34038
+			// A single-main instance (e.g. queue execution mode without multi-main enabled)
+			// keeps `instanceRole` as `unset`, so `isLeader` is `false`. It must still
+			// register webhooks/triggers on `activate`/`update` because it is the sole owner.
+			beforeAll(() => {
+				Object.assign(instanceSettings, { isLeader: false, isFollower: false, isMultiMain: false });
+			});
+
+			test('should return `true` for `update` or `activate`', () => {
+				const modes = ['update', 'activate'] as WorkflowActivateMode[];
+				for (const mode of modes) {
+					const result = activeWorkflowManager.shouldAddWebhooks(mode);
+					expect(result).toBe(true);
+				}
+			});
+
+			test('should return `true` from `shouldAddNonWebhookTriggers`', () => {
+				expect(activeWorkflowManager.shouldAddNonWebhookTriggers()).toBe(true);
 			});
 		});
 
