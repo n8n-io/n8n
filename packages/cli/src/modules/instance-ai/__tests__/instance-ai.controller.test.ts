@@ -1007,6 +1007,7 @@ describe('InstanceAiController', () => {
 			expect(gatewayService.disconnectAllGateways).toHaveBeenCalled();
 			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(refreshError, {
 				component: 'settings-side-effects',
+				threadId: 'admin-settings',
 			});
 		});
 
@@ -1026,6 +1027,7 @@ describe('InstanceAiController', () => {
 			);
 			expect(instanceAiErrorReporter.report).toHaveBeenCalledWith(publishError, {
 				component: 'settings-publish',
+				threadId: 'admin-settings',
 			});
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
 			expect(browserSessionService.shutdown).toHaveBeenCalled();

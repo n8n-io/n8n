@@ -687,6 +687,7 @@ export class InstanceAiController {
 		if (publishResult.status === 'rejected') {
 			this.instanceAiErrorReporter.report(publishResult.reason, {
 				component: 'settings-publish',
+				threadId: 'admin-settings',
 			});
 		}
 
@@ -710,7 +711,9 @@ export class InstanceAiController {
 		>,
 	) {
 		const sideEffects: Array<() => Promise<void> | void> = [
-			async () => await this.moduleRegistry.refreshModuleSettings('instance-ai'),
+			async () => {
+				await this.moduleRegistry.refreshModuleSettings('instance-ai');
+			},
 		];
 		if (!settings.enabled || !settings.browserUseEnabled) {
 			sideEffects.push(async () => await this.browserSessionService.shutdown());
@@ -740,6 +743,7 @@ export class InstanceAiController {
 			if (result.status === 'rejected') {
 				this.instanceAiErrorReporter.report(result.reason, {
 					component: 'settings-side-effects',
+					threadId: 'admin-settings',
 				});
 			}
 		}
