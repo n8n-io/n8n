@@ -35,6 +35,8 @@ export type AnthropicThinkingConfig =
 			 * reasoning streams and replay metadata are available.
 			 */
 			display?: 'omitted' | 'summarized';
+			/** Reasoning effort for adaptive thinking. Defaults to 'medium'. */
+			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 	  }
 	| {
 			mode?: 'enabled';
