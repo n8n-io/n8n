@@ -4,6 +4,8 @@ import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
 	agentTaskSchema,
+	isDraftAgentConfig,
+	isDraftIntegration,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
@@ -315,7 +317,7 @@ export class AgentValidationService {
 			issues.push(agentIssue('missing_required', 'instructions'));
 		}
 
-		if (!config.model?.trim()) {
+		if (isDraftAgentConfig(config)) {
 			issues.push(agentIssue('missing_required', 'model'));
 		} else if (!AgentModelSchema.safeParse(config.model).success) {
 			issues.push(agentIssue('invalid_value', 'model'));
@@ -426,12 +428,11 @@ export class AgentValidationService {
 				id: integration.type,
 				index,
 			};
-			const credentialId = integration.credentialId?.trim();
-
-			if (!credentialId) {
+			if (isDraftIntegration(integration)) {
 				issues.push(issue('missing_credential', path, capability));
 				continue;
 			}
+			const credentialId = integration.credentialId.trim();
 
 			const credential = await this.findCredentialSafe(findCredential, credentialId);
 			if (!credential) {

@@ -15,6 +15,8 @@ import {
 	PROVIDER_CAPABILITIES,
 	resolvePromptCaching,
 	AgentJsonConfigSchema,
+	isDraftAgentConfig,
+	isDraftIntegration,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
 	type AgentJsonConfig,
@@ -142,7 +144,7 @@ function snapshotFromConfig(config: AgentJsonConfig | null): AgentConfigSnapshot
  */
 function parseBuilderWriteConfig(incoming: unknown, currentConfig: AgentJsonConfig | null) {
 	const result = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(incoming));
-	if (result.success && currentConfig?.model && !result.data.model) {
+	if (result.success && !isDraftAgentConfig(currentConfig) && isDraftAgentConfig(result.data)) {
 		return {
 			success: false as const,
 			error: new z.ZodError([
@@ -636,8 +638,8 @@ export class AgentsBuilderToolsService {
 				listIntegrationCredentialIds: async () => {
 					const agent = await this.agentsService.findById(agentId, projectId);
 					return (agent?.integrations ?? [])
-						.map((integration) => integration.credentialId)
-						.filter((credentialId) => credentialId.length > 0);
+						.filter((integration) => !isDraftIntegration(integration))
+						.map((integration) => integration.credentialId);
 				},
 			}),
 			buildAskEmbeddingCredentialTool({
@@ -667,8 +669,8 @@ export class AgentsBuilderToolsService {
 					listIntegrationCredentialIds: async () => {
 						const agent = await this.agentsService.findById(agentId, projectId);
 						return (agent?.integrations ?? [])
-							.map((integration) => integration.credentialId)
-							.filter((credentialId) => credentialId.length > 0);
+							.filter((integration) => !isDraftIntegration(integration))
+							.map((integration) => integration.credentialId);
 					},
 					listChatIntegrationTypes: () =>
 						this.agentIntegrationPersistenceService

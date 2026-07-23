@@ -1,4 +1,4 @@
-import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { isDraftAgentConfig, MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 
 function clearUnknownCredentialId(
 	credentialId: unknown,
@@ -117,9 +117,9 @@ export function sanitizeUnknownAgentCredentials(
 		return sanitized;
 	}
 
-	const model = sanitized.model;
+	const model = typeof sanitized.model === 'string' ? sanitized.model : undefined;
 	if (
-		(typeof model !== 'string' || model.trim() === '') &&
+		isDraftAgentConfig({ model }) &&
 		typeof sanitized.credential === 'string' &&
 		sanitized.credential !== ''
 	) {

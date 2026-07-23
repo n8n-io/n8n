@@ -1,6 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { isDraftAgentConfig } from './agent-config-lifecycle';
 /**
  * Regex for valid custom tool ids. Shared with the backend service layer
  * so validation stays in sync with the JSON config schema.
@@ -485,7 +486,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 });
 
 export const AgentJsonConfigSchema = AgentJsonConfigBaseSchema.superRefine((config, ctx) => {
-	if (config.credential?.trim() && !config.model?.trim()) {
+	if (config.credential?.trim() && isDraftAgentConfig(config)) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
 			path: ['credential'],
