@@ -1,28 +1,29 @@
 // ---------------------------------------------------------------------------
-// Build-cost comparison report: MCP (`claude` via --build-via-mcp) vs AIA
-// (internal builder) arms of the same suite.
+// Build-cost comparison report across eval runs ("arms") — one arm per
+// eval-results.json, any pairing: MCP vs AIA, AIA vs AIA (builder-model A/Bs),
+// MCP vs MCP (ANTHROPIC_MODEL A/Bs), or a single arm alone.
 //
-// Joins, per case:
-//   - MCP arm: per-iteration `claude` spend persisted in eval-results.json
-//     (`buildCostUsdPerRun` / `buildTurnsPerRun`).
-//   - AIA arm: per-iteration backend builder cost summed from LangSmith —
-//     each case's threadIds resolve to root runs (one per build turn) in the
+// The cost source is auto-detected per file:
+//   - `buildCostUsdPerRun` present → persisted `claude` spend
+//     (--build-via-mcp runs; attempts summed).
+//   - non-null `threadIds` → backend builder cost summed from LangSmith:
+//     each case's threads resolve to root runs (one per build turn) in the
 //     backend trace project (default `instance-ai-evals`, eval workspace),
 //     whose `total_cost` LangSmith prices cache-aware from the traced usage.
-//   - Both arms: per-iteration green verdicts (every evaluated scenario run
-//     and build expectation passed) → cost per green iteration.
+// Every arm also gets per-iteration green verdicts (every evaluated scenario
+// run and build expectation passed) → cost per green iteration.
 //
 // Usage — deliberately not wired into package.json (an experiment-time tool,
 // used rarely); invoke via tsx from packages/@n8n/instance-ai:
 //   dotenvx run -f ../../../.env.local -- pnpm tsx evaluations/cli/build-cost-report.ts \
-//     --aia-results <aia-run>/eval-results.json \
-//     --mcp-results <mcp-run>/eval-results.json \
+//     --results <mcp-run>/eval-results.json --results <aia-run>/eval-results.json \
+//     [--label mcp-opus48 --label aia-opus48] \
 //     [--trace-project instance-ai-evals] [--out build-cost-report.md]
 //
-// Either arm may be omitted to report on one arm alone. `--probe-thread <id>`
-// skips the report and prints one thread's cost — a connectivity spot-check.
-// Reads LANGSMITH_ENDPOINT / LANGSMITH_API_KEY and pins reads to the eval
-// workspace (Staging) exactly like the harness does.
+// Labels default to each run's experimentName. `--probe-thread <id>` skips the
+// report and prints one thread's cost — a connectivity spot-check. Reads
+// LANGSMITH_ENDPOINT / LANGSMITH_API_KEY and pins reads to the eval workspace
+// (Staging) exactly like the harness does.
 // ---------------------------------------------------------------------------
 
 import { jsonParse } from 'n8n-workflow';
@@ -209,7 +210,8 @@ function median(values: number[]): number | undefined {
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
-function mcpCaseCosts(results: EvalResults): CaseCost[] {
+/** Arm whose cost the harness persisted per case (`--build-via-mcp` runs). */
+function persistedSpendCosts(results: EvalResults): CaseCost[] {
 	return results.testCases.map((tc) => {
 		const { green, evaluated } = greenStats(tc);
 		const turns = (tc.buildTurnsPerRun ?? []).filter((t): t is number => t !== null);
@@ -223,7 +225,9 @@ function mcpCaseCosts(results: EvalResults): CaseCost[] {
 	});
 }
 
-async function aiaCaseCosts(
+/** Arm whose builder ran in the n8n backend (AIA): sum each case's build
+ *  threads from the LangSmith trace project. */
+async function threadJoinCosts(
 	results: EvalResults,
 	ls: LangSmithConfig,
 	projectId: string,
@@ -273,7 +277,8 @@ async function aiaCaseCosts(
 
 interface ArmSummary {
 	label: string;
-	experimentName?: string;
+	/** Where this arm's dollars came from — rendered so mixed-source tables stay honest. */
+	source: string;
 	cases: CaseCost[];
 }
 
@@ -308,9 +313,7 @@ function armTotals(arm: ArmSummary): string[] {
 function renderMarkdown(arms: ArmSummary[]): string {
 	const lines: string[] = ['# Build-cost report — builder arms compared', ''];
 	for (const arm of arms) {
-		lines.push(
-			`- **${arm.label}**: ${arm.experimentName ?? '(unnamed experiment)'} — ${armTotals(arm).join(', ')}`,
-		);
+		lines.push(`- **${arm.label}** (${arm.source}): ${armTotals(arm).join(', ')}`);
 	}
 	lines.push('');
 
@@ -347,8 +350,9 @@ function renderMarkdown(arms: ArmSummary[]): string {
 	}
 	lines.push('');
 	lines.push(
-		'_Cost sources differ by arm: MCP is `claude`-billed `total_cost_usd` (attempts summed);' +
-			' AIA is LangSmith cache-aware pricing over the build thread’s root runs._',
+		'_Cost sources are listed per arm above: persisted `claude` spend is Anthropic-billed' +
+			' `total_cost_usd` (attempts summed); thread pricing is LangSmith cache-aware pricing' +
+			' over the build thread’s root runs. Comparable at list price, not identical accountants._',
 	);
 	return lines.join('\n');
 }
@@ -357,8 +361,8 @@ function renderMarkdown(arms: ArmSummary[]): string {
 // CLI
 // ---------------------------------------------------------------------------
 
-function parseFlags(argv: string[]): Map<string, string> {
-	const flags = new Map<string, string>();
+function parseFlags(argv: string[]): Map<string, string[]> {
+	const flags = new Map<string, string[]>();
 	for (let i = 0; i < argv.length; i++) {
 		const arg = argv[i];
 		if (!arg.startsWith('--')) continue;
@@ -366,10 +370,18 @@ function parseFlags(argv: string[]): Map<string, string> {
 		if (value === undefined || value.startsWith('--')) {
 			throw new Error(`Flag ${arg} needs a value`);
 		}
-		flags.set(arg.slice(2), value);
+		const key = arg.slice(2);
+		const values = flags.get(key);
+		if (values) values.push(value);
+		else flags.set(key, [value]);
 		i++;
 	}
 	return flags;
+}
+
+/** Last occurrence wins for flags that only make sense once. */
+function single(flags: Map<string, string[]>, key: string): string | undefined {
+	return flags.get(key)?.at(-1);
 }
 
 function loadResults(path: string): EvalResults {
@@ -378,10 +390,10 @@ function loadResults(path: string): EvalResults {
 
 async function main(): Promise<void> {
 	const flags = parseFlags(process.argv.slice(2));
-	const traceProject = flags.get('trace-project') ?? 'instance-ai-evals';
-	const concurrency = Number(flags.get('concurrency') ?? '5');
+	const traceProject = single(flags, 'trace-project') ?? 'instance-ai-evals';
+	const concurrency = Number(single(flags, 'concurrency') ?? '5');
 
-	const probeThread = flags.get('probe-thread');
+	const probeThread = single(flags, 'probe-thread');
 	if (probeThread) {
 		const ls = await langsmithConfig();
 		const projectId = await resolveTraceProjectId(ls, traceProject);
@@ -392,40 +404,45 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	const aiaPath = flags.get('aia-results');
-	const mcpPath = flags.get('mcp-results');
-	if (!aiaPath && !mcpPath) {
-		throw new Error('Pass --aia-results and/or --mcp-results (or --probe-thread <id>).');
+	const resultPaths = flags.get('results') ?? [];
+	const labels = flags.get('label') ?? [];
+	if (resultPaths.length === 0) {
+		throw new Error(
+			'Pass --results <eval-results.json> (repeatable, one per arm) or --probe-thread <id>.',
+		);
 	}
 
+	// LangSmith access is resolved once, lazily — only when some arm needs the
+	// thread join (a persisted-spend-only comparison runs without credentials).
+	let ls: LangSmithConfig | undefined;
+	let projectId: string | undefined;
+
 	const arms: ArmSummary[] = [];
-	if (aiaPath) {
-		const results = loadResults(aiaPath);
-		const ls = await langsmithConfig();
-		const projectId = await resolveTraceProjectId(ls, traceProject);
-		arms.push({
-			label: 'AIA',
-			experimentName: results.experimentName ?? undefined,
-			cases: await aiaCaseCosts(results, ls, projectId, concurrency),
-		});
-	}
-	if (mcpPath) {
-		const results = loadResults(mcpPath);
-		const withCost = results.testCases.filter((tc) => tc.buildCostUsdPerRun !== undefined);
-		if (withCost.length === 0) {
-			console.warn(
-				'MCP results carry no buildCostUsdPerRun — re-run the MCP arm on a build that persists per-case spend.',
-			);
+	for (let i = 0; i < resultPaths.length; i++) {
+		const results = loadResults(resultPaths[i]);
+		const label = labels[i] ?? results.experimentName ?? `arm${String(i + 1)}`;
+		const hasPersistedSpend = results.testCases.some((tc) => tc.buildCostUsdPerRun !== undefined);
+		const hasThreads = results.testCases.some((tc) =>
+			(tc.threadIds ?? []).some((id) => id !== null),
+		);
+		if (hasPersistedSpend) {
+			arms.push({ label, source: 'persisted `claude` spend', cases: persistedSpendCosts(results) });
+		} else if (hasThreads) {
+			ls ??= await langsmithConfig();
+			projectId ??= await resolveTraceProjectId(ls, traceProject);
+			arms.push({
+				label,
+				source: 'LangSmith thread pricing',
+				cases: await threadJoinCosts(results, ls, projectId, concurrency),
+			});
+		} else {
+			console.warn(`${resultPaths[i]}: no buildCostUsdPerRun and no threadIds — pass data only.`);
+			arms.push({ label, source: 'no cost source', cases: persistedSpendCosts(results) });
 		}
-		arms.push({
-			label: 'MCP',
-			experimentName: results.experimentName ?? undefined,
-			cases: mcpCaseCosts(results),
-		});
 	}
 
 	const markdown = renderMarkdown(arms);
-	const outPath = flags.get('out') ?? 'build-cost-report.md';
+	const outPath = single(flags, 'out') ?? 'build-cost-report.md';
 	writeFileSync(outPath, markdown);
 	for (const arm of arms) console.log(`${arm.label}: ${armTotals(arm).join(', ')}`);
 	console.log(`Report written to ${outPath}`);

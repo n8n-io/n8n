@@ -445,9 +445,11 @@ How it differs from the manifest flow:
   attempts — failed attempts cost money too) land as `build_cost_usd` /
   `build_turns` row feedback in LangSmith and as `buildCostUsdPerRun` /
   `buildTurnsPerRun` per case in `eval-results.json`, alongside the run-level
-  `summary.mcpBuild` totals. For builder cost comparisons, the un-wired helper
-  `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`) joins these with
-  an AIA arm's backend-trace cost.
+  `summary.mcpBuild` totals. For builder cost comparisons across any runs
+  (MCP vs AIA, builder-model A/Bs), the un-wired helper
+  `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
+  per arm) auto-detects each arm's cost source — these persisted fields, or
+  the backend build threads priced in LangSmith.
 
 **Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
 LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
