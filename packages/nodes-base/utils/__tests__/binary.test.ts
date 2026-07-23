@@ -5,8 +5,8 @@ import {
 	prepareBinariesDataList,
 	routeBinaryProperties,
 } from '@utils/binary';
-import type { IBinaryData, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from 'n8n-workflow';
+import type { IBinaryData, IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING, jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -318,6 +318,20 @@ describe('routeBinaryProperties', () => {
 
 		expect(json).toEqual({ name: 'doc' });
 		expect(helpers.prepareBinaryData).toHaveBeenCalledWith(buffer, 'file');
+		expect(binary.file).toBe(binaryData);
+	});
+
+	it('should keep unsafe field names as own properties without touching the prototype', async () => {
+		const row = jsonParse<IDataObject>('{"id":1,"__proto__":{"polluted":true},"file":null}');
+		row.file = Buffer.from('file-bytes');
+
+		const { json, binary } = await routeBinaryProperties.call(executeFunctions, row);
+
+		expect(Object.getPrototypeOf(json)).toBe(Object.prototype);
+		expect(Object.getPrototypeOf(binary)).toBe(Object.prototype);
+		expect(({} as IDataObject).polluted).toBeUndefined();
+		expect(Object.getOwnPropertyDescriptor(json, '__proto__')?.value).toEqual({ polluted: true });
+		expect(json.id).toBe(1);
 		expect(binary.file).toBe(binaryData);
 	});
 

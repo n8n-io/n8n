@@ -17,6 +17,7 @@ import {
 	escapeSnowflakeObjectIdentifier,
 	execute,
 	getConnectionOptions,
+	prepareQueryResults,
 	type SnowflakeCredential,
 } from './GenericFunctions';
 
@@ -237,7 +238,8 @@ export class Snowflake implements INodeType {
 			snowflakeCredential = await this.getCredentials<SnowflakeCredential>('snowflake');
 		}
 
-		const connectionOptions = getConnectionOptions(snowflakeCredential, this.getNode().typeVersion);
+		const nodeVersion = this.getNode().typeVersion;
+		const connectionOptions = getConnectionOptions(snowflakeCredential, nodeVersion);
 		const connection = snowflake.createConnection(connectionOptions);
 
 		await connect(connection);
@@ -263,9 +265,11 @@ export class Snowflake implements INodeType {
 				}
 
 				const responseData = await execute(connection, query, []);
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: i } },
+				const executionData = await prepareQueryResults.call(
+					this,
+					responseData as IDataObject[] | undefined,
+					i,
+					nodeVersion,
 				);
 				returnData = returnData.concat(executionData);
 			}

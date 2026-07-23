@@ -1,7 +1,10 @@
 import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey } from 'crypto';
 import pick from 'lodash/pick';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import type snowflake from 'snowflake-sdk';
+
+import { routeBinaryProperties } from '@utils/binary';
 
 const commonConnectionFields = [
 	'account',
@@ -138,4 +141,35 @@ export async function execute(
 			complete: (error, _, rows) => (error ? reject(error) : resolve(rows)),
 		});
 	});
+}
+
+export async function prepareQueryResults(
+	this: IExecuteFunctions,
+	rows: IDataObject[] | undefined,
+	itemIndex: number,
+	nodeVersion: number,
+): Promise<INodeExecutionData[]> {
+	if (nodeVersion < 1.1) {
+		return this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(rows as IDataObject[]),
+			{ itemData: { item: itemIndex } },
+		);
+	}
+
+	const returnData: INodeExecutionData[] = [];
+	for (const row of rows ?? []) {
+		// BINARY columns arrive as Buffers; route them to the item's binary output
+		const { json, binary } = await routeBinaryProperties.call(this, row);
+		const executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(json),
+			{ itemData: { item: itemIndex } },
+		);
+		for (const entry of executionData) {
+			if (Object.keys(binary).length) {
+				entry.binary = binary;
+			}
+			returnData.push(entry);
+		}
+	}
+	return returnData;
 }

@@ -233,17 +233,17 @@ export async function routeBinaryProperties(
 	toBuffer: (value: unknown) => Buffer | undefined = (value) =>
 		Buffer.isBuffer(value) ? value : undefined,
 ): Promise<{ json: IDataObject; binary: IBinaryKeyData }> {
-	const json: IDataObject = {};
-	const binary: IBinaryKeyData = {};
+	const json = new Map<string, IDataObject[string]>();
+	const binary = new Map<string, IBinaryData>();
 
 	for (const [key, value] of Object.entries(row)) {
 		const buffer = toBuffer(value);
 		if (buffer) {
-			binary[key] = await this.helpers.prepareBinaryData(buffer, key);
+			binary.set(key, await this.helpers.prepareBinaryData(buffer, key));
 		} else {
-			json[key] = value;
+			json.set(key, deepCopy(value));
 		}
 	}
 
-	return { json: deepCopy(json), binary };
+	return { json: Object.fromEntries(json), binary: Object.fromEntries(binary) };
 }

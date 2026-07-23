@@ -450,6 +450,35 @@ async function _getResponseForOutbinds(
 	}
 }
 
+async function _getResponseForRows(
+	this: IExecuteFunctions,
+	rows: IDataObject[],
+	itemIndex: number,
+	routeBinary: boolean,
+): Promise<INodeExecutionData[]> {
+	if (!routeBinary) {
+		return this.helpers.constructExecutionMetaData(wrapData(rows), {
+			itemData: { item: itemIndex },
+		});
+	}
+
+	const returnData: INodeExecutionData[] = [];
+	for (const row of rows) {
+		// Fetched BLOB/RAW columns arrive as Buffers; route them to binary like the outBinds path
+		const { json, binary } = await routeBinaryProperties.call(this, row);
+		const executionData = this.helpers.constructExecutionMetaData(wrapData(json), {
+			itemData: { item: itemIndex },
+		});
+		for (const entry of executionData) {
+			if (Object.keys(binary).length) {
+				entry.binary = { ...(entry.binary ?? {}), ...binary };
+			}
+			returnData.push(entry);
+		}
+	}
+	return returnData;
+}
+
 /*
  * Returns true, if update sql is tried and either row does not
  * exist or could not find row with matching values.
@@ -646,9 +675,11 @@ export function configureQueryRunner(
 							if (!rowData.length) {
 								rowData = [emptyRowData];
 							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData(rowData as IDataObject[]),
-								{ itemData: { item: i } },
+							const executionData = await _getResponseForRows.call(
+								this,
+								rowData as IDataObject[],
+								i,
+								serializeDates,
 							);
 
 							returnData = returnData.concat(executionData);
@@ -707,9 +738,11 @@ export function configureQueryRunner(
 							if (!rowData.length) {
 								rowData = [emptyRowData];
 							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								wrapData(rowData as IDataObject[]),
-								{ itemData: { item: i } },
+							const executionData = await _getResponseForRows.call(
+								this,
+								rowData as IDataObject[],
+								i,
+								serializeDates,
 							);
 							returnData = returnData.concat(executionData);
 						} else {
