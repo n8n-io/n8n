@@ -1,0 +1,20 @@
+packages/nodes-base/credentials/AwsAssumeRole.credentials.ts
+  s_7f0ad5890b7630::t_99f9bb1aa1b6f2 24
+  s_7f0ad5890b7630::t_acc81a168cb642 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "23c12e82d6b4688a4fbc769969040ab616949f60",
+  "prompts": {},
+  "sessions": {
+    "s_7f0ad5890b7630": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "733b1284-2952-4b98-a97d-4e21b8231b8d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_b7645babf66668::t_3e7c714e8b07d6 5179-5208,5416-5418,5682-5684
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "f5165ea7631330a8d0b41788b2be202e6fecd2c6",
+  "prompts": {},
+  "sessions": {
+    "s_b7645babf66668": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "57f1efb4-9536-4b49-a6b5-91f2daa62b58",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

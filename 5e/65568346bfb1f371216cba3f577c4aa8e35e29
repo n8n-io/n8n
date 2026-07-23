@@ -1,0 +1,24 @@
+packages/cli/src/posthog/index.ts
+  s_62bddef00d4057::t_b1b08acff3a0f5 1,5
+  s_62bddef00d4057::t_5cbac14d07f291 179
+packages/frontend/editor-ui/src/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment.test.ts
+  s_62bddef00d4057::t_70b8a08789d038 8
+packages/frontend/editor-ui/src/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment.ts
+  s_62bddef00d4057::t_06477e27c509fc 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5e65568346bfb1f371216cba3f577c4aa8e35e29",
+  "prompts": {},
+  "sessions": {
+    "s_62bddef00d4057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6396ed9-3aa0-4d3f-8dfd-eea7869f2328",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+packages/cli/src/webhooks/__tests__/waiting-webhooks.test.ts
+  s_aaea0d696434aa::t_821dab05659e4c 382
+  h_32d8cd6a0d6aad 1
+  s_aaea0d696434aa::t_ca19e2d43de855 388-404
+  s_aaea0d696434aa::t_673334a1aa5e93 1504-1526
+  s_aaea0d696434aa::t_b5dba4551c3008 43-46,54
+  s_aaea0d696434aa::t_5e85624c042b60 482-501,509-510
+  s_aaea0d696434aa::t_d7ab2ce1c92990 407-409
+  s_aaea0d696434aa::t_717824f7e809f0 6
+  s_aaea0d696434aa::t_25786b25af378e 381,383-387,405-406,410-481,502-508,511-514
+packages/cli/src/webhooks/__tests__/waiting-forms.test.ts
+  s_aaea0d696434aa::t_fead9dc09ba65b 41
+packages/cli/src/webhooks/__tests__/telegram-interaction-webhooks.test.ts
+  s_aaea0d696434aa::t_fa69596166c5ad 30
+packages/cli/src/webhooks/__tests__/slack-interaction-webhooks.test.ts
+  s_aaea0d696434aa::t_e468ce21e30c9d 48
+packages/cli/src/webhooks/waiting-webhooks.ts
+  s_aaea0d696434aa::t_5e5b83fd590071 54
+  s_aaea0d696434aa::t_75b5e0bfed38e3 92,97
+  s_aaea0d696434aa::t_c7dede66883690 85-91,94,96,99,101-114,119-121
+  s_aaea0d696434aa::t_34e45e689fa711 2
+  s_aaea0d696434aa::t_969f9a89d748ab 262-266
+  s_aaea0d696434aa::t_c5e8cb24859960 100,115-118
+  s_aaea0d696434aa::t_46ab0f8943b70b 9,14
+  h_32d8cd6a0d6aad 93,95,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bebaf7cae965846a5069f7d5797efe1125d8d8e9",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_aaea0d696434aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b49456c-392f-4b6e-bf00-ce2ad55fa48c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

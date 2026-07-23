@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue
+  s_70e4a16a672757::t_bdf6c7bea8e71a 55-59,93-94,106-108,229-264,275-288,783-796
+  s_b6381fbb8ddc64::t_626896e5a21e72 110-112,115,117-118
+  h_9c8f56e3400786 113-114
+  s_b6381fbb8ddc64::t_ee482984b97cbd 116
+  s_b6381fbb8ddc64::t_809d0a0041ae07 7
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowHeaderDraftPublishActions.test.ts
+  s_70e4a16a672757::t_1114f6e615019a 31,77-78,217-220,486-496,498-502,535-536,559-570,572-579
+  s_70e4a16a672757::t_40de41d139ecad 523,571
+  s_70e4a16a672757::t_1ef57baf512bc4 221,581,607
+  s_70e4a16a672757::t_99465de0d4547d 25-30,156-177,193-195,458-485,497,503-522,524-534
+  s_70e4a16a672757::t_548f55dcfa8be1 586
+  s_70e4a16a672757::t_a10c87b65e1123 537-558,606
+  s_70e4a16a672757::t_498ce41e0925d7 6,580,582-585,587-605
+  s_70e4a16a672757::t_054f4386e635c2 79-80
+  s_70e4a16a672757::t_1ed0098a0aec0a 196
+  s_70e4a16a672757::t_69bc31d0031457 608
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_44a98ba2784a12::t_d446b22a984aa3 216
+  s_44a98ba2784a12::t_29c7d74109de94 437
+packages/@n8n/db/src/migrations/common/1784000000048-AddTriggerKindToWorkflowPublicationTriggerStatus.ts
+  ai_agent 1-39
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_44a98ba2784a12::t_50f198fd2246d1 224
+  s_44a98ba2784a12::t_6a70a4b32b68f9 455
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "588d2eb9769f76b9ccad33dfc9a7add6ff37c694",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_44a98ba2784a12": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "83e316a4-3906-40bf-bce2-efffe91f33e5",
+        "model": "default"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    },
+    "s_70e4a16a672757": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f79e6-9f5d-7b91-b07b-a2c76974c292",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_b6381fbb8ddc64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dd02182-97ab-4180-9c8a-8d5054fdd2f7",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/cli/src/modules/agents/agents.service.ts
+  s_5498409d12d03d::t_e498a12491b0ad 162-177
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_5498409d12d03d::t_8c6c281788f7fd 1130
+  s_5498409d12d03d::t_9c26522544d46f 513-515
+  s_5498409d12d03d::t_caa711ddd1f480 578-580
+  s_5498409d12d03d::t_a91d05013acdb4 1180-1184,1186-1191
+  ai_agent 1185
+  s_5498409d12d03d::t_c2e4bc8d894fbf 608-610
+  s_5498409d12d03d::t_394303f5c496e3 464-466
+  s_5498409d12d03d::t_3b34cb4ac08aa5 478-483,490
+  s_5498409d12d03d::t_135e1aafee1e97 1163
+  s_5498409d12d03d::t_503d5854cc0dd2 1145,1150
+  s_5498409d12d03d::t_d9bfe424afe1f5 448
+  s_5498409d12d03d::t_555055aa25014f 1108,1112-1117
+  s_5498409d12d03d::t_81aef7dcaeb6ee 1063-1065,1067-1068,1071-1075
+  s_5498409d12d03d::t_c94748b11a41a2 820,822
+  s_5498409d12d03d::t_a88ebf79c24402 541-543
+  s_5498409d12d03d::t_9a39f19f255bab 89-93
+  s_5498409d12d03d::t_0ff1134b21d0d8 370-372
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_5498409d12d03d::t_d0304234cebdfc 796-857
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_5498409d12d03d::t_dd93566e331301 70-77,79-89
+  s_5498409d12d03d::t_3386e8ff69ec7e 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e35b88cb42cb8ed905689554dc0bde5320fceda7",
+  "prompts": {},
+  "sessions": {
+    "s_5498409d12d03d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70db0817-ca21-48df-8edb-aa5562a5b07f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+pnpm-lock.yaml
+  ai_agent 4903-4905,4912-4914,4918-4920
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  ai_agent 187
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  ai_agent 3,5,18,21,37,53-55,62-78,112-146,183-200,240-245
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  ai_agent 3,29-38
+packages/frontend/editor-ui/src/features/workflow-reviews/module.descriptor.ts
+  s_8cd0fccda07fbe::t_482ee78abbc9dd 8
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  ai_agent 3,8,12,17,20,30,39-45,60-62,79-81,100-117,232-236,238-251,253-259,262-305,356-446
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.list.service.test.ts
+  s_8cd0fccda07fbe::t_91a94a142cfb0e 38-40
+  s_8cd0fccda07fbe::t_e5f666d50dfa69 65-67
+  s_8cd0fccda07fbe::t_3dfaf5dd2b24f7 3-10,20
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  ai_agent 14,20,43,50,138-200,483-607
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0b726c73052325474512122d64804be5fe9fd1e1",
+  "prompts": {},
+  "sessions": {
+    "s_8cd0fccda07fbe": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "221c458b-a4ea-4437-89f0-0e9180a35658",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

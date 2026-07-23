@@ -1,0 +1,103 @@
+packages/cli/src/public-api/v1/openapi.yml
+  s_33452312e2f130::t_08b94e664cafa1 70-73
+  s_33452312e2f130::t_06c0448853f9c7 52-53
+packages/cli/src/public-api/v1/handlers/ldap/spec/schemas/ldap-sync.update.yml
+  s_33452312e2f130::t_4978cbdcbd3625 1-13
+packages/@n8n/permissions/src/constants.ee.ts
+  s_33452312e2f130::t_63c02edbbb9b6a 95
+packages/cli/src/public-api/v1/handlers/ldap/spec/schemas/ldap-sync-history.yml
+  s_33452312e2f130::t_a345b91a996b7f 1-58
+packages/@n8n/api-types/src/dto/index.ts
+  s_33452312e2f130::t_6acbb2f50e361a 82-85
+packages/@n8n/api-types/src/dto/ldap/ldap-configuration-response.dto.ts
+  s_33452312e2f130::t_377bd2039ce2f9 1-3
+packages/cli/src/public-api/v1/handlers/ldap/ldap.handler.ts
+  s_33452312e2f130::t_a08425c817d51e 1-5,7,13-96
+  s_33452312e2f130::t_f76370225ca17a 6,8-12
+packages/cli/src/public-api/types.ts
+  s_33452312e2f130::t_c9297f1418bfd2 13-14
+  s_33452312e2f130::t_9baa0462fb1e5e 426-436
+packages/cli/src/public-api/v1/handlers/ldap/spec/paths/settings.ldap.sync.yml
+  s_33452312e2f130::t_2ddc0097c16d7e 1-66
+packages/cli/src/public-api/v1/handlers/ldap/spec/schemas/ldap-configuration.yml
+  s_33452312e2f130::t_0585019c13e50e 107-108
+  s_33452312e2f130::t_191a1352c45492 1-106,109-114
+packages/cli/test/integration/public-api/ldap.test.ts
+  s_33452312e2f130::t_f878a374f6afee 447-460,471
+  s_33452312e2f130::t_0112e160dd35fb 97,101
+  s_33452312e2f130::t_81c0754f91a9e7 222
+  s_33452312e2f130::t_26cdac5d09ecd0 357,383
+  s_33452312e2f130::t_09de90df2ef4b5 379-380,384-387
+  s_33452312e2f130::t_8a4b2368292c7c 87,90
+  s_33452312e2f130::t_f6a7f1f7f454ad 340-341,343-349
+  s_33452312e2f130::t_586a31fd7f21da 5
+  s_33452312e2f130::t_97f9d63b7a6089 2,6-9,12-13,16,31-43,53-63,69-86,88-89,91-92,94-96,98-99,102-122,124-151,155-172,174,176-181,183-184,186-187,190,192-193,195-205,207-221,223-271,275-335,337,339,352-356,358-378,381-382,388-400,402-408,410-417,433-441,443-446,462-470,472-580
+  s_33452312e2f130::t_1bca920b8da0c9 44-52
+  s_33452312e2f130::t_1cf61d06176c8d 191,194
+  s_33452312e2f130::t_846872b0af37b9 336,338,342,350-351
+  s_33452312e2f130::t_9ec47cf4816e6a 418-431,442
+  s_33452312e2f130::t_fdcd7c0b50ae22 64-68
+  s_33452312e2f130::t_b6b2a724ce7cb2 17-30
+  s_33452312e2f130::t_c1cb501f882108 93,100
+  ai_agent 123,401,409,432,461
+  s_33452312e2f130::t_89822827b15885 152-154
+  s_33452312e2f130::t_8bd79caadf7102 206
+  h_57f0ed8cf91102 10-11,14-15
+  s_33452312e2f130::t_c6336339a0114f 173,175,182,185,188-189
+  s_33452312e2f130::t_f0fe9e529c535a 1
+  s_33452312e2f130::t_460516c6b061f3 3-4
+  s_33452312e2f130::t_c7027142a8824f 272-274
+packages/cli/src/public-api/v1/handlers/ldap/ldap.mapper.ts
+  s_33452312e2f130::t_a44ba80d5bcbb3 4-7,9-39
+  s_33452312e2f130::t_f76370225ca17a 3
+  s_33452312e2f130::t_ef0ca86a20d59e 8
+  s_33452312e2f130::t_d765ced2f202f0 1-2
+packages/@n8n/api-types/src/dto/ldap/ldap-sync.dto.ts
+  s_33452312e2f130::t_b9ff7665a4dd1b 2
+  s_33452312e2f130::t_1ea8b8cf82ad85 1,3-5
+packages/@n8n/api-types/src/dto/ldap/__tests__/ldap-configuration.dto.test.ts
+  s_33452312e2f130::t_08ef7f9033ac2e 34
+  s_33452312e2f130::t_3dd5e8ad49832a 65
+  s_33452312e2f130::t_5b5b7a1bc7d289 56
+  s_33452312e2f130::t_e1e657eaf5cab0 32
+  s_33452312e2f130::t_f12324acea8de9 2
+  s_33452312e2f130::t_6faa70c310b25b 94-96,101-102
+  s_33452312e2f130::t_25b7d75f093a4f 66
+  s_33452312e2f130::t_11bca522ffa5bb 1,3-31,33,35-55,58-64,67-68,70-71,73,76-93,97-100,103-109
+  s_33452312e2f130::t_9d9c69825f3040 69,72,74-75
+  s_33452312e2f130::t_f7d39eee98fb51 57
+packages/cli/src/public-api/v1/handlers/ldap/spec/paths/settings.ldap.yml
+  s_33452312e2f130::t_b20782730d5cb5 1-30,36-55
+  s_33452312e2f130::t_434b30487b2d9f 31-32,34
+  h_57f0ed8cf91102 33,35
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_33452312e2f130::t_f8dcffcac56034 19-20
+packages/@n8n/api-types/src/dto/ldap/ldap-configuration.dto.ts
+  s_33452312e2f130::t_30c6ab614b2bab 1,3-28
+  s_33452312e2f130::t_4d15dc7a4379c1 2
+packages/cli/src/public-api/v1/handlers/ldap/spec/schemas/ldap-configuration.update.yml
+  s_33452312e2f130::t_388ee0fdd00b86 1-2,4-106,109-114
+  s_33452312e2f130::t_b8aa249d61e199 3
+  s_33452312e2f130::t_a79c6f48969c17 107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "71d5e26a0a2082a85ee65794ea555911278b00bd",
+  "prompts": {},
+  "humans": {
+    "h_57f0ed8cf91102": {
+      "author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_33452312e2f130": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b77a3f83-b3d4-4657-90ac-96a737bf7981",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
