@@ -4,6 +4,18 @@ import { DataSource, In, Repository, type SelectQueryBuilder } from '@n8n/typeor
 
 import { Agent } from '../entities/agent.entity';
 
+export type AgentSummary = Pick<
+	Agent,
+	'id' | 'name' | 'projectId' | 'activeVersionId' | 'updatedAt'
+>;
+
+export type AgentSummaryFilters = {
+	query?: string;
+	publishedOnly?: boolean;
+	excludeAgentId?: string;
+	limit?: number;
+};
+
 @Service()
 export class AgentRepository extends Repository<Agent> {
 	constructor(dataSource: DataSource) {
@@ -16,6 +28,44 @@ export class AgentRepository extends Repository<Agent> {
 			relations: { activeVersion: true },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	/**
+	 * Lean listing for search surfaces: selects only summary columns, skipping
+	 * the JSON config columns and the activeVersion join, and pushes all
+	 * filters and the limit into the query.
+	 */
+	async findSummariesByProjectIds(
+		projectIds: string[],
+		options: AgentSummaryFilters = {},
+	): Promise<AgentSummary[]> {
+		if (projectIds.length === 0) return [];
+
+		const query = this.createQueryBuilder('agent')
+			.select([
+				'agent.id',
+				'agent.name',
+				'agent.projectId',
+				'agent.activeVersionId',
+				'agent.updatedAt',
+			])
+			.where('agent.projectId IN (:...projectIds)', { projectIds })
+			.orderBy('agent.updatedAt', 'DESC');
+
+		if (options.query) {
+			query.andWhere('LOWER(agent.name) LIKE LOWER(:query)', { query: `%${options.query}%` });
+		}
+		if (options.publishedOnly) {
+			query.andWhere('agent.activeVersionId IS NOT NULL');
+		}
+		if (options.excludeAgentId) {
+			query.andWhere('agent.id != :excludeAgentId', { excludeAgentId: options.excludeAgentId });
+		}
+		if (options.limit !== undefined) {
+			query.take(options.limit);
+		}
+
+		return await query.getMany();
 	}
 
 	async findByProjectIdsPaginated(

@@ -3,7 +3,7 @@ import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import { User } from '@n8n/db';
+import { ProjectRelationRepository, User } from '@n8n/db';
 import type { Mock } from 'vitest';
 
 vi.mock('@/permissions.ee/check-access', () => ({
@@ -105,6 +105,7 @@ describe('McpAgentToolsService', () => {
 	const mcpRegistryService = mockInstance(McpRegistryService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
+	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 
 	const service = new McpAgentToolsService(
 		telemetry,
@@ -129,6 +130,7 @@ describe('McpAgentToolsService', () => {
 		mockInstance(SsrfProtectionConfig),
 		mockInstance(SsrfProtectionService),
 		urlService,
+		projectRelationRepository,
 	);
 
 	let tools: Map<string, RegisteredTool>;
@@ -682,11 +684,11 @@ describe('McpAgentToolsService', () => {
 	});
 
 	describe('search_agents', () => {
-		it('only returns agents from projects where the user has agent:list', async () => {
-			agentsService.findByUser.mockResolvedValue([
-				agentEntity({ id: 'agent-1', projectId: 'project-1' }),
-				agentEntity({ id: 'agent-2', projectId: 'project-2' }),
-			]);
+		it('only searches projects where the user has agent:list', async () => {
+			projectRelationRepository.findAllByUser.mockResolvedValue([
+				{ projectId: 'project-1' },
+				{ projectId: 'project-2' },
+			] as never);
 			userHasScopesMock.mockImplementation(
 				async (
 					_user: User,
@@ -695,33 +697,47 @@ describe('McpAgentToolsService', () => {
 					{ projectId }: { projectId: string },
 				) => projectId === 'project-1',
 			);
+			agentsService.findSummariesInProjects.mockResolvedValue([
+				agentEntity({ id: 'agent-1', projectId: 'project-1' }),
+			]);
 
 			const result = await callTool('search_agents', {});
 
+			expect(agentsService.findSummariesInProjects).toHaveBeenCalledWith(
+				['project-1'],
+				expect.any(Object),
+			);
 			expect(result.structuredContent).toMatchObject({ ok: true, count: 1 });
 			expect(result.structuredContent.data).toEqual([
 				expect.objectContaining({ id: 'agent-1', projectId: 'project-1' }),
 			]);
 		});
 
-		it('applies query, publishedOnly, excludeAgentId, and limit filters', async () => {
-			agentsService.findByProjectId.mockResolvedValue([
+		it('pushes query, publishedOnly, excludeAgentId, and limit filters into the lookup', async () => {
+			agentsService.findSummariesInProjects.mockResolvedValue([
 				agentEntity({ id: 'agent-1', name: 'Sales Helper', activeVersionId: 'v1' }),
-				agentEntity({ id: 'agent-2', name: 'Sales Draft', activeVersionId: null }),
-				agentEntity({ id: 'agent-3', name: 'Sales Excluded', activeVersionId: 'v1' }),
-				agentEntity({ id: 'agent-4', name: 'Support Bot', activeVersionId: 'v1' }),
 			]);
 
 			const result = await callTool('search_agents', {
 				projectId: 'project-1',
-				query: 'sales',
+				query: ' sales ',
 				publishedOnly: true,
 				excludeAgentId: 'agent-3',
 				limit: 10,
 			});
 
+			expect(agentsService.findSummariesInProjects).toHaveBeenCalledWith(['project-1'], {
+				query: 'sales',
+				publishedOnly: true,
+				excludeAgentId: 'agent-3',
+				limit: 10,
+			});
 			expect(result.structuredContent.data).toEqual([
-				expect.objectContaining({ id: 'agent-1', published: true }),
+				expect.objectContaining({
+					id: 'agent-1',
+					published: true,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+				}),
 			]);
 		});
 	});

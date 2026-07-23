@@ -19,7 +19,7 @@ import {
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
@@ -351,6 +351,7 @@ export class McpAgentToolsService {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	registerTools(server: McpServer, user: User): void {
@@ -409,22 +410,26 @@ export class McpAgentToolsService {
 			},
 			handler: async (input: SearchAgentsInput) =>
 				await this.run(user, 'search_agents', { projectId: input.projectId }, async () => {
-					const agents = input.projectId
-						? await this.listAgentsInProject(user, input.projectId)
-						: await this.listAgentsForUser(user);
-					const query = input.query?.trim().toLowerCase();
-					const data = agents
-						.filter((agent) => !query || agent.name.toLowerCase().includes(query))
-						.filter((agent) => !input.publishedOnly || agent.activeVersionId !== null)
-						.filter((agent) => agent.id !== input.excludeAgentId)
-						.slice(0, input.limit)
-						.map((agent) => ({
-							id: agent.id,
-							name: agent.name,
-							projectId: agent.projectId,
-							published: agent.activeVersionId !== null,
-							updatedAt: agent.updatedAt.toISOString(),
-						}));
+					let projectIds: string[];
+					if (input.projectId) {
+						await this.assertScope(user, input.projectId, 'agent:list');
+						projectIds = [input.projectId];
+					} else {
+						projectIds = await this.listProjectIdsWithAgentList(user);
+					}
+					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
+						query: input.query?.trim() || undefined,
+						publishedOnly: input.publishedOnly,
+						excludeAgentId: input.excludeAgentId,
+						limit: input.limit,
+					});
+					const data = agents.map((agent) => ({
+						id: agent.id,
+						name: agent.name,
+						projectId: agent.projectId,
+						published: agent.activeVersionId !== null,
+						updatedAt: agent.updatedAt.toISOString(),
+					}));
 					return { ok: true, data, count: data.length };
 				}),
 		};
@@ -899,21 +904,16 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private async listAgentsInProject(user: User, projectId: string) {
-		await this.assertScope(user, projectId, 'agent:list');
-		return await this.agentsService.findByProjectId(projectId);
-	}
-
-	private async listAgentsForUser(user: User) {
-		const agents = await this.agentsService.findByUser(user.id);
-		const projectIds = [...new Set(agents.map((agent) => agent.projectId))];
+	/** Projects from the user's relations where the user holds agent:list. */
+	private async listProjectIdsWithAgentList(user: User): Promise<string[]> {
+		const relations = await this.projectRelationRepository.findAllByUser(user.id);
+		const projectIds = [...new Set(relations.map((relation) => relation.projectId))];
 		const allowed = await Promise.all(
 			projectIds.map(
 				async (projectId) => await userHasScopes(user, ['agent:list'], false, { projectId }),
 			),
 		);
-		const allowedProjects = new Set(projectIds.filter((_, index) => allowed[index]));
-		return agents.filter((agent) => allowedProjects.has(agent.projectId));
+		return projectIds.filter((_, index) => allowed[index]);
 	}
 
 	private async getAgentSnapshot(user: User, agent: Agent) {
@@ -1306,12 +1306,12 @@ export class McpAgentToolsService {
 			case 'workflows':
 				return await this.attachableWorkflowsService.list(user, input.projectId, input.query);
 			case 'subagents': {
-				const query = input.query?.trim().toLowerCase();
-				return (await this.agentsService.findByProjectId(input.projectId))
-					.filter((agent) => agent.activeVersionId !== null)
-					.filter((agent) => agent.id !== input.excludeAgentId)
-					.filter((agent) => !query || agent.name.toLowerCase().includes(query))
-					.map((agent) => ({ agentId: agent.id, name: agent.name }));
+				const summaries = await this.agentsService.findSummariesInProjects([input.projectId], {
+					query: input.query?.trim() || undefined,
+					publishedOnly: true,
+					excludeAgentId: input.excludeAgentId,
+				});
+				return summaries.map((agent) => ({ agentId: agent.id, name: agent.name }));
 			}
 			case 'mcpServers':
 				return input.query

@@ -78,8 +78,8 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 	return [
 		INTRO,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
-		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 		isBuilderEnabled ? BUILDER_INSTRUCTIONS : '',
+		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',
 	]
 		.filter(Boolean)
 		.join('\n\n');

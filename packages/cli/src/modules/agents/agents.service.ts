@@ -19,7 +19,11 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
-import { AgentRepository } from './repositories/agent.repository';
+import {
+	AgentRepository,
+	type AgentSummary,
+	type AgentSummaryFilters,
+} from './repositories/agent.repository';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { EventService } from '@/events/event.service';
 
@@ -158,6 +162,17 @@ export class AgentsService {
 			where: { projectId: In(projectIds) },
 			order: { updatedAt: 'DESC' },
 		});
+	}
+
+	/**
+	 * Lean agent listing (no JSON config columns, no activeVersion join) with
+	 * filters and limit applied in the database.
+	 */
+	async findSummariesInProjects(
+		projectIds: string[],
+		options: AgentSummaryFilters = {},
+	): Promise<AgentSummary[]> {
+		return await this.agentRepository.findSummariesByProjectIds(projectIds, options);
 	}
 
 	/**
