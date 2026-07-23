@@ -604,8 +604,6 @@ describe('LiveWebhooks', () => {
 			id: 'webhook-node-1',
 			name: NODE_NAME,
 			type,
-			// The "Only Run If" mode parameters only exist (and are only kept by
-			// parameter normalization) on Webhook >= 2.2
 			typeVersion: 2.2,
 			position: [0, 0],
 			parameters,

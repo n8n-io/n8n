@@ -376,9 +376,7 @@ export const optionsProperty: INodeProperties = {
 			type: 'string',
 			default: '',
 			placeholder: "{{ $json.body.campaign_id === 'user-research-invite' }}",
-			// Deprecated in favor of the top-level "Only Run Workflow If" mode on
-			// Webhook >= 2.2. Kept for earlier Webhook versions and for the Wait
-			// node (1.x), which shares this options collection.
+			// Deprecated on Webhook >= 2.2; still used by earlier versions and the Wait node (1.x)
 			displayOptions: {
 				show: {
 					'@version': [{ _cnd: { lt: 2.2 } }],

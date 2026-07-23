@@ -277,9 +277,7 @@ export class Webhook extends Node {
 			}
 		};
 		if (node.typeVersion >= 2.2) {
-			// From 2.2 the top-level "Only Run Workflow If" mode is the only
-			// filter; the deprecated options.onlyRunIf is ignored so that the
-			// default "Always" mode truly runs every request.
+			// >= 2.2 the mode is the only filter; the deprecated options.onlyRunIf is ignored
 			const onlyRunIfMode = (node.parameters?.onlyRunIfMode as string) ?? 'all';
 			if (onlyRunIfMode === 'conditions') {
 				const rawConditions = node.parameters?.onlyRunIfConditions as FilterValue | undefined;
