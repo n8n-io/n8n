@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_8fcf85ed9f5537::t_3296c2e24b4def 280
+packages/nodes-base/nodes/Webhook/description.ts
+  s_8fcf85ed9f5537::t_7971d7f58ee10e 379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "aee9b58cf4fbd875e3ebc2e79dba0ac7aae59a53",
+  "prompts": {},
+  "sessions": {
+    "s_8fcf85ed9f5537": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_8fcf85ed9f5537",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}
