@@ -22,8 +22,11 @@ export function createWriteFileTool(filesystem: WorkspaceFilesystem): BuiltTool 
 				success: z.boolean().describe('Whether the write was successful'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.writeFile(input.path, input.content, { recursive: input.recursive });
+		.handler(async (input, ctx) => {
+			await filesystem.writeFile(input.path, input.content, {
+				recursive: input.recursive,
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

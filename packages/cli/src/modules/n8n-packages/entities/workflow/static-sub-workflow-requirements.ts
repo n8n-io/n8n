@@ -22,9 +22,9 @@ export function assertStaticSubWorkflowsIncluded(
 	const dependencyLabel = missingSubWorkflowIds.size === 1 ? 'dependency' : 'dependencies';
 
 	throw new PackageExportBlockedError(
-		`${missingSubWorkflowIds.size} sub-workflow ${dependencyLabel} not included in the package. Export aborted.`,
+		`${missingSubWorkflowIds.size} workflow ${dependencyLabel} not included in the package. Export aborted.`,
 		{
-			description: `Sub-workflow IDs not included in the package: ${displayedWorkflowIds.join(', ')}${
+			description: `Workflow IDs not included in the package: ${displayedWorkflowIds.join(', ')}${
 				omittedCount > 0 ? `, and ${omittedCount} more` : ''
 			}`,
 		},

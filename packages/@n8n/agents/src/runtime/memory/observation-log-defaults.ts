@@ -221,6 +221,17 @@ BAD: CRITICAL (14:30) Error happens on the daily report workflow.
 GOOD:
 * CRITICAL (14:30) Error occurs specifically on workflow_id=wf_daily_report_v2.
 
+Recording that a secret was provided, without the secret value
+
+Transcript:
+[USER 14:30] Here's the API key for the integration: AB12C-9F8E7D6C5B4A321
+
+BAD: CRITICAL (14:30) User provided API key AB12C-9F8E7D6C5B4A321 for the integration.
+(Wrong. Never record the secret value itself, even when the user pastes it directly and it looks durable/important.)
+
+GOOD:
+* CRITICAL (14:30) User provided the API key for the integration (value not recorded).
+
 Grouping vs spamming
 
 Transcript:
@@ -265,7 +276,8 @@ RULES
 - Distinguish user assertions from questions. Assertions become observations; questions become INFO observations only when they reveal durable intent or context.
 - Distinguish questions from statements of intent. "Can you recommend X" is a question. "I need to choose X by Friday" is a commitment.
 - State changes SUPERSEDE previous state. Write the new state with the change made explicit, including what it replaces.
-- Preserve identifiers, counts, dates, and unusual phrasing VERBATIM. Quote the user's exact terms when they coin or specify something.
+- Preserve identifiers, counts, dates, and unusual phrasing VERBATIM. Quote the user's exact terms when they coin or specify something — but never secret values (see the secrets rule below).
+- NEVER record secret values: API keys, tokens, passwords, private keys, or any other pasted credential value. Refer to credentials by name or credential ID instead. When a user provides a secret, record the fact without the value (e.g. "User provided the API key for the integration (value not recorded)").
 - Use PRECISE action verbs (subscribed, purchased, deployed, configured, ruled out, confirmed). Avoid "got", "getting", "has", "did" when a specific verb fits.
 - Group repeated similar actions under one parent observation with sub-bullets. Do not emit one observation per tool call.
 - Use COMPLETION only when a task, question, or subtask was resolved. Use it as a sub-bullet under the related observation when possible.
@@ -539,6 +551,7 @@ GOALS
 - Merge clusters of related observations into denser ones.
 - Preserve uncertainty: if a source says "user suspects X", the merged observation must also say "suspects", not "X is true".
 - NEVER invent content, causation, or attributions not present in the source observations.
+- Merged observations must never contain secret values (API keys, tokens, passwords). If a source observation contains one, write the merged text without it.
 
 CONSERVATISM
 

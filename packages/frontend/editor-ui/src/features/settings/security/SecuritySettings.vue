@@ -23,7 +23,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -32,7 +32,7 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
@@ -45,12 +45,6 @@ const isEnforceMFAEnabled = computed(
 
 const isPersonalSpacePolicyLicensed = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy],
-);
-
-const isWorkflowReviewsAvailable = computed(
-	() =>
-		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowReviews] &&
-		checkEnvFeatureFlag.value('WORKFLOW_REVIEWS'),
 );
 
 async function onUpdateMfaEnforced(value: string | number | boolean) {

@@ -15,7 +15,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { getNodeIconSize } from '@/app/utils/nodeIcon';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import { useViewStacks, type ViewStack } from '../../composables/useViewStacks';

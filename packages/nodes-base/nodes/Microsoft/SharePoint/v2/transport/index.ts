@@ -24,6 +24,18 @@ export const DEFAULT_GRAPH_BASE_URL = 'https://graph.microsoft.com';
 export const REQUIRED_PERMISSIONS: Readonly<
 	Record<string, { delegated: string; application: string }>
 > = Object.freeze({
+	'file:download': {
+		delegated: 'Sites.Read.All',
+		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'file:update': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
+	'file:upload': {
+		delegated: 'Sites.ReadWrite.All',
+		application: 'Sites.ReadWrite.All (or Sites.Selected granted with write access for this site)',
+	},
 	'list:get': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
@@ -31,6 +43,16 @@ export const REQUIRED_PERMISSIONS: Readonly<
 	'list:getAll': {
 		delegated: 'Sites.Read.All',
 		application: 'Sites.Read.All (or Sites.Selected granted for this site)',
+	},
+	'item:get': {
+		delegated: 'Sites.Read.All (or Files.Read.All for document-library items)',
+		application:
+			'Sites.Read.All (or Sites.Selected granted for this site, or Files.Read.All for document-library items)',
+	},
+	'item:delete': {
+		delegated: 'Sites.ReadWrite.All (or Files.ReadWrite.All for document-library items)',
+		application:
+			'Sites.ReadWrite.All (or Sites.Selected granted for this site, or Files.ReadWrite.All for document-library items)',
 	},
 });
 
@@ -155,7 +177,7 @@ export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-	body: IDataObject = {},
+	body: IDataObject | Buffer = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
