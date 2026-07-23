@@ -27,6 +27,7 @@ import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
+import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { RequireVersionRule } from './require-version.js';
@@ -68,6 +69,7 @@ export const rules = {
 	'missing-paired-item': MissingPairedItemRule,
 	'no-builder-hint-leakage': NoBuilderHintLeakageRule,
 	'n8n-object-validation': N8nObjectValidationRule,
+	'require-files-array': RequireFilesArrayRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 	'require-version': RequireVersionRule,
