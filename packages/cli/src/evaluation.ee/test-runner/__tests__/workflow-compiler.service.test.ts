@@ -237,7 +237,8 @@ describe('WorkflowCompilerService', () => {
 		expect(metric.parameters.metric).toBe('correctness');
 		expect(metric.parameters.prompt).toBe('You are a judge');
 		expect(metric.parameters.actualAnswer).toBe('={{ $("Agent").item.json.output }}');
-		expect(metric.parameters.expectedAnswer).toBe('={{ $json.expected }}');
+		// expectedAnswer is a dataset column → retargeted to the eval trigger.
+		expect(metric.parameters.expectedAnswer).toBe("={{ $('__eval_trigger').item.json.expected }}");
 		expect(metric.parameters.options).toEqual({ metricName: 'Answer correctness' });
 
 		const model = compiled.nodes.find((n) => n.name === '__eval_model_m-judge')!;
@@ -340,8 +341,9 @@ describe('WorkflowCompilerService', () => {
 		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-ss')!;
 		expect(metric.parameters.operation).toBe('setMetrics');
 		expect(metric.parameters.metric).toBe('stringSimilarity');
+		// actualAnswer stays on the output; expectedAnswer is a dataset column.
 		expect(metric.parameters.actualAnswer).toBe('={{ $json.output }}');
-		expect(metric.parameters.expectedAnswer).toBe('={{ $json.expected }}');
+		expect(metric.parameters.expectedAnswer).toBe("={{ $('__eval_trigger').item.json.expected }}");
 		expect(metric.parameters.options).toEqual({ metricName: 'Edit-distance score' });
 
 		// No chat-model sub-node for deterministic scorers.
@@ -368,7 +370,9 @@ describe('WorkflowCompilerService', () => {
 		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-cat')!;
 		expect(metric.parameters.metric).toBe('categorization');
 		expect(metric.parameters.actualAnswer).toBe('={{ $json.label }}');
-		expect(metric.parameters.expectedAnswer).toBe('={{ $json.expectedLabel }}');
+		expect(metric.parameters.expectedAnswer).toBe(
+			"={{ $('__eval_trigger').item.json.expectedLabel }}",
+		);
 	});
 
 	it('compiles a tools_used metric to a setMetrics node with metric=toolsUsed', () => {
@@ -390,10 +394,88 @@ describe('WorkflowCompilerService', () => {
 		const compiled = compiler.compile(baseWorkflow(), config);
 		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-tools')!;
 		expect(metric.parameters.metric).toBe('toolsUsed');
+		// A literal tool list has no `$json` base, so it is left untouched.
 		expect(metric.parameters.expectedTools).toBe('Search, Calculator');
 		expect(metric.parameters.intermediateSteps).toBe(
 			'={{ $("Agent").item.json.intermediateSteps }}',
 		);
+	});
+
+	it('retargets a helpfulness userQuery to the dataset row while leaving actualAnswer on the output', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-help',
+				name: 'Helpfulness',
+				type: 'llm_judge',
+				config: {
+					preset: 'helpfulness',
+					provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					credentialId: 'cred',
+					model: 'gpt-4o',
+					outputType: 'numeric',
+					// Authored as if $json were the dataset row (what the IAI produces);
+					// at the metric node $json is actually the end-node output.
+					inputs: { actualAnswer: '={{ $json.output }}', userQuery: '={{ $json.chatInput }}' },
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-help')!;
+		// userQuery reads a dataset column → resolved against the trigger row.
+		expect(metric.parameters.userQuery).toBe("={{ $('__eval_trigger').item.json.chatInput }}");
+		// actualAnswer is the produced answer → stays on the metric node's own input.
+		expect(metric.parameters.actualAnswer).toBe('={{ $json.output }}');
+	});
+
+	it('leaves an explicit node reference in a dataset-sourced field untouched', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-help2',
+				name: 'Helpfulness',
+				type: 'llm_judge',
+				config: {
+					preset: 'helpfulness',
+					provider: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					credentialId: 'cred',
+					model: 'gpt-4o',
+					outputType: 'numeric',
+					inputs: {
+						actualAnswer: '={{ $json.output }}',
+						// Already anchored to a specific node — no bare $json to retarget.
+						userQuery: '={{ $("Some Upstream").item.json.q }}',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-help2')!;
+		expect(metric.parameters.userQuery).toBe('={{ $("Some Upstream").item.json.q }}');
+	});
+
+	it('leaves a fixed literal dataset value untouched even when it contains "$json"', () => {
+		const config = baseConfig();
+		config.metrics = [
+			{
+				id: 'm-ss-lit',
+				name: 'Similarity',
+				type: 'string_similarity',
+				config: {
+					inputs: {
+						actualAnswer: '={{ $json.output }}',
+						// Fixed literal (no leading `=`) — `$json` here is plain text.
+						expectedAnswer: 'the $json field holds the answer',
+					},
+				},
+			},
+		];
+
+		const compiled = compiler.compile(baseWorkflow(), config);
+		const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-ss-lit')!;
+		expect(metric.parameters.expectedAnswer).toBe('the $json field holds the answer');
 	});
 
 	it('supports startNodeName != endNodeName (middle slice)', () => {

@@ -13,7 +13,7 @@ let mcpStore: MockedStore<typeof useMCPStore>;
 const renderComponent = createComponentRenderer(McpConnectClientDialog, {
 	global: {
 		stubs: {
-			MCPAccessTokenPopoverTab: {
+			McpAccessTokenTab: {
 				template: '<div data-test-id="token-tab-stub" />',
 			},
 		},

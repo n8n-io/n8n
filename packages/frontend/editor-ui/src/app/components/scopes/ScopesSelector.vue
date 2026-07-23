@@ -264,8 +264,8 @@ function toggleScope(scope: S, checked: boolean) {
 </script>
 
 <template>
-	<div :data-test-id="rootTestId">
-		<N8nInputLabel :label="baseText('label')" color="text-dark">
+	<div :class="$style.selector" :data-test-id="rootTestId">
+		<N8nInputLabel :label="baseText('label')" size="small" color="text-dark">
 			<N8nRadioGroup
 				v-model="mode"
 				orientation="vertical"
@@ -314,6 +314,7 @@ function toggleScope(scope: S, checked: boolean) {
 			<template v-if="treeExpanded">
 				<N8nInput
 					v-model="searchTerm"
+					size="small"
 					clearable
 					:placeholder="baseText('search.placeholder')"
 					:aria-label="baseText('search.placeholder')"
@@ -421,15 +422,21 @@ function toggleScope(scope: S, checked: boolean) {
 </template>
 
 <style module lang="scss">
+/* Option and checkbox labels render at 12px here, one step below the body copy. */
+.selector {
+	--radio-group-item--label--font-size: var(--font-size--2xs);
+	--checkbox--label--font-size: var(--font-size--2xs);
+}
+
 .modes {
 	display: grid;
 	grid-template-columns: 1fr;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--xs);
 }
 
 .modeCard {
-	padding: var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--xs) var(--spacing--xs);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	cursor: pointer;
@@ -437,7 +444,7 @@ function toggleScope(scope: S, checked: boolean) {
 
 .modeCardActive {
 	background: var(--color--background--light-2);
-	border-color: var(--color--foreground--shade-1);
+	border-color: var(--color--primary);
 }
 
 .customSection {
@@ -456,8 +463,8 @@ function toggleScope(scope: S, checked: boolean) {
 	border: none;
 	cursor: pointer;
 	color: var(--color--text);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--regular);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
 	text-align: left;
 
 	&:focus-visible {
@@ -469,15 +476,22 @@ function toggleScope(scope: S, checked: boolean) {
 .groups {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	max-height: 320px;
 	overflow-y: auto;
 }
 
+/* Compact rows (~24px pitch): the ghost toggle is the tallest thing in the row,
+   so cap it instead of padding the whole row. */
 .groupHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	min-height: var(--spacing--lg);
+
+	> button:first-child {
+		--button--height: var(--spacing--lg);
+		width: var(--spacing--lg);
+	}
 }
 
 .tools-tag {
@@ -555,8 +569,8 @@ function toggleScope(scope: S, checked: boolean) {
 .scopeList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) 0 var(--spacing--2xs) var(--spacing--2xl);
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) 0 var(--spacing--2xs) var(--spacing--2xl);
 }
 
 .scopeRow {

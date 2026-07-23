@@ -9,7 +9,12 @@
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
-import type { Decision } from '../utils/user-proxy/tools';
+import {
+	confirmationDecisionSchema,
+	userTurnDecisionSchema,
+	type Decision,
+	type ProxyDecisionMode,
+} from '../utils/user-proxy/tools';
 
 // ---------------------------------------------------------------------------
 // FakeAgent — programmable agent for tests
@@ -17,6 +22,7 @@ import type { Decision } from '../utils/user-proxy/tools';
 
 class FakeAgent implements UserProxyAgent {
 	readonly prompts: string[] = [];
+	readonly modes: ProxyDecisionMode[] = [];
 	private queue: Array<Decision | undefined | Error> = [];
 
 	enqueue(...decisions: Array<Decision | undefined | Error>): void {
@@ -24,8 +30,9 @@ class FakeAgent implements UserProxyAgent {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await
-	async decide(userPrompt: string): Promise<Decision | undefined> {
+	async decide(userPrompt: string, mode: ProxyDecisionMode): Promise<Decision | undefined> {
 		this.prompts.push(userPrompt);
+		this.modes.push(mode);
 		const next = this.queue.shift();
 		if (next instanceof Error) throw next;
 		return next;
@@ -217,6 +224,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect(response.answers).toEqual([{ questionId: 'q1', selectedOptions: ['#general'] }]);
 		}
 		expect(agent.callCount).toBe(1);
+		expect(agent.modes[0]).toBe('confirmation');
 	});
 
 	it('routes ask-user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
@@ -577,9 +585,9 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(response.kind).toBe('approval');
 	});
 
-	it('falls back to the permissive payload when the agent picks a between-run action', async () => {
+	it('falls back to the permissive payload when the agent picks a user-turn action', async () => {
 		const agent = new FakeAgent();
-		// declare_done is a between-run action, invalid as a confirmation response.
+		// declare_done is a user-turn action, invalid as a confirmation response.
 		agent.enqueue({ action: 'declare_done' });
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
@@ -700,6 +708,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 		}
 		expect(proxy.getMessagesSent()).toBe(1);
 		expect(agent.callCount).toBe(1);
+		expect(agent.modes[0]).toBe('user-turn');
 	});
 
 	it('invokes the agent on every follow-up — no verbatim shortcut for short scripts', async () => {
@@ -811,6 +820,37 @@ describe('UserProxyLlm.decideFollowUp', () => {
 		const third = await proxy.decideFollowUp();
 		expect(third.kind).toBe('done');
 		expect(proxy.getMessagesSent()).toBe(2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Mode-scoped decision schemas
+// ---------------------------------------------------------------------------
+
+describe('mode-scoped decision schemas', () => {
+	it('user-turn schema does not offer confirmation actions', () => {
+		expect(
+			userTurnDecisionSchema.safeParse({
+				action: 'approve_or_reject',
+				approved: false,
+				userInput: 'two changes first',
+			}).success,
+		).toBe(false);
+		expect(
+			userTurnDecisionSchema.safeParse({ action: 'send_follow_up_message', message: 'hi' }).success,
+		).toBe(true);
+		expect(userTurnDecisionSchema.safeParse({ action: 'declare_done' }).success).toBe(true);
+	});
+
+	it('confirmation schema does not offer user-turn actions', () => {
+		expect(
+			confirmationDecisionSchema.safeParse({ action: 'send_follow_up_message', message: 'hi' })
+				.success,
+		).toBe(false);
+		expect(confirmationDecisionSchema.safeParse({ action: 'declare_done' }).success).toBe(false);
+		expect(
+			confirmationDecisionSchema.safeParse({ action: 'approve_or_reject', approved: true }).success,
+		).toBe(true);
 	});
 });
 

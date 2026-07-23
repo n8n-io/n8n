@@ -13,7 +13,7 @@ import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	SDK_IMPORT_STATEMENT: "import { workflow } from '@n8n/workflow-sdk';",
 	MCP_GET_SDK_REFERENCE_TOOL: {
-		toolName: 'get_sdk_reference',
+		toolName: 'get_workflow_sdk_reference',
 		displayTitle: 'Get SDK Reference',
 	},
 }));

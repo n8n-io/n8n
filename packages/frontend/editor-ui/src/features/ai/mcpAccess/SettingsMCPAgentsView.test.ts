@@ -73,6 +73,13 @@ const createAgent = (overrides: Partial<Agent> = {}): Agent =>
 
 const agentPage = (data: Agent[] = []) => ({ data, count: data.length });
 
+const mockAgentPages = (data: Agent[] = []) => {
+	mcpStore.fetchAgentsAvailableForMCPPage.mockImplementation(async (page: number) => ({
+		...agentPage(data),
+		page,
+	}));
+};
+
 describe('SettingsMCPAgentsView', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia();
@@ -92,7 +99,7 @@ describe('SettingsMCPAgentsView', () => {
 		};
 		settingsStore.isModuleActive.mockReturnValue(true);
 
-		mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue(agentPage());
+		mockAgentPages();
 	});
 
 	afterEach(() => {
@@ -111,7 +118,7 @@ describe('SettingsMCPAgentsView', () => {
 		await nextTick();
 
 		expect(routerReplace).toHaveBeenCalledWith({ name: MCP_SETTINGS_VIEW });
-		expect(mcpStore.fetchAgentsAvailableForMCP).not.toHaveBeenCalled();
+		expect(mcpStore.fetchAgentsAvailableForMCPPage).not.toHaveBeenCalled();
 	});
 
 	it('should redirect to the MCP settings view when the agents module is inactive', async () => {
@@ -121,21 +128,19 @@ describe('SettingsMCPAgentsView', () => {
 		await nextTick();
 
 		expect(routerReplace).toHaveBeenCalledWith({ name: MCP_SETTINGS_VIEW });
-		expect(mcpStore.fetchAgentsAvailableForMCP).not.toHaveBeenCalled();
+		expect(mcpStore.fetchAgentsAvailableForMCPPage).not.toHaveBeenCalled();
 	});
 
 	describe('Agent pagination', () => {
 		beforeEach(() => {
-			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue(
-				agentPage([createAgent({ id: '1', name: 'Agent 1' })]),
-			);
+			mockAgentPages([createAgent({ id: '1', name: 'Agent 1' })]);
 		});
 
 		it('should fetch the first agent page on mount', async () => {
 			createComponent({ pinia });
 
 			await waitFor(() => {
-				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 			});
 		});
 
@@ -143,14 +148,14 @@ describe('SettingsMCPAgentsView', () => {
 			const { getByTestId } = createComponent({ pinia });
 
 			await waitFor(() => {
-				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 			});
-			mcpStore.fetchAgentsAvailableForMCP.mockClear();
+			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('agents-table-page-2'));
 
 			await waitFor(() => {
-				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalledWith(2, 10);
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(2, 10);
 			});
 		});
 
@@ -158,21 +163,21 @@ describe('SettingsMCPAgentsView', () => {
 			const { getByTestId } = createComponent({ pinia });
 
 			await waitFor(() => {
-				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 			});
-			mcpStore.fetchAgentsAvailableForMCP.mockClear();
+			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('agents-table-page-size-50'));
 
 			await waitFor(() => {
-				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalledWith(1, 50);
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(1, 50);
 			});
 		});
 	});
 
 	describe('Connect Agents button', () => {
 		it('should not show the button when there are no agents', async () => {
-			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue(agentPage());
+			mockAgentPages();
 
 			const { queryByTestId } = createComponent({ pinia });
 
@@ -182,9 +187,7 @@ describe('SettingsMCPAgentsView', () => {
 		});
 
 		it('should open the Connect Agents modal when the button is clicked', async () => {
-			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue(
-				agentPage([createAgent({ id: '1', name: 'Agent 1' })]),
-			);
+			mockAgentPages([createAgent({ id: '1', name: 'Agent 1' })]);
 
 			const { getByTestId } = createComponent({ pinia });
 
@@ -206,9 +209,7 @@ describe('SettingsMCPAgentsView', () => {
 
 	describe('Bulk agent actions', () => {
 		beforeEach(() => {
-			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue(
-				agentPage([createAgent({ id: '1', name: 'Agent 1' })]),
-			);
+			mockAgentPages([createAgent({ id: '1', name: 'Agent 1' })]);
 			mcpStore.toggleAgentsMcpAccess.mockResolvedValue({
 				updatedCount: 2,
 				unchangedCount: 0,
@@ -230,7 +231,7 @@ describe('SettingsMCPAgentsView', () => {
 			const modalCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0] as unknown as {
 				data: { onEnableMcpAccess: (agentIds: string[]) => Promise<void> };
 			};
-			mcpStore.fetchAgentsAvailableForMCP.mockClear();
+			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();
 
 			await modalCall.data.onEnableMcpAccess(['agent-1', 'agent-2']);
 
@@ -238,13 +239,13 @@ describe('SettingsMCPAgentsView', () => {
 				{ agentIds: ['agent-1', 'agent-2'] },
 				true,
 			);
-			expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+			expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 		});
 
 		it('should remove MCP access for bulk-selected agents and refresh the table', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
-			mcpStore.fetchAgentsAvailableForMCP.mockClear();
+			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('agents-table-bulk-remove'));
 
@@ -255,7 +256,7 @@ describe('SettingsMCPAgentsView', () => {
 				);
 			});
 			await waitFor(() => {
-				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalled();
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalled();
 			});
 		});
 	});
@@ -265,12 +266,12 @@ describe('SettingsMCPAgentsView', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			mcpStore.fetchAgentsAvailableForMCP.mockClear();
+			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('mcp-agents-refresh-button'));
 
 			await waitFor(() => {
-				expect(mcpStore.fetchAgentsAvailableForMCP).toHaveBeenCalled();
+				expect(mcpStore.fetchAgentsAvailableForMCPPage).toHaveBeenCalled();
 			});
 		});
 	});

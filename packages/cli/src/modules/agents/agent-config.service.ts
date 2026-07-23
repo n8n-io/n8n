@@ -99,12 +99,19 @@ export class AgentConfigService {
 
 	/**
 	 * Persist a new AgentJsonConfig (full replace).
+	 *
+	 * By default an optional field absent from `config` retains its previous
+	 * value. With `clearOmittedOptionalFields`, absence removes the field
+	 * instead — true replace semantics for callers whose clients submit the
+	 * complete config (e.g. MCP config.replace / config.patch, where an RFC
+	 * 6902 `remove` op must actually remove the field).
 	 */
 	async updateConfig(
 		agentId: string,
 		projectId: string,
 		config: unknown,
 		user?: User,
+		options?: { clearOmittedOptionalFields?: boolean },
 	): Promise<{ config: AgentJsonConfig; updatedAt: string; versionId: string | null }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
@@ -193,6 +200,10 @@ export class AgentConfigService {
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
+
+		if (options?.clearOmittedOptionalFields) {
+			clearOmittedOptionalFields(nextSchema, validatedConfig);
+		}
 
 		entity.schema = nextSchema;
 		entity.name = validatedConfig.name;
@@ -321,6 +332,26 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 	if (!isRecord(raw) || !Array.isArray(raw.tools)) return false;
 
 	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
+}
+
+/** Drop optional fields the submitted config omitted instead of retaining the previous value. */
+function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
+	const optionalFields = [
+		'credential',
+		'personalisation',
+		'memory',
+		'subAgents',
+		'tools',
+		'skills',
+		'tasks',
+		'providerTools',
+		'config',
+		'mcpServers',
+		'vectorStores',
+	] as const;
+	for (const field of optionalFields) {
+		if (submitted[field] === undefined) delete schema[field];
+	}
 }
 
 function omitLegacyAgentDescription(config: AgentJsonConfig | null): Partial<AgentJsonConfig> {

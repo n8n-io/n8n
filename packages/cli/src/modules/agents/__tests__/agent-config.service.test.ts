@@ -230,6 +230,59 @@ describe('AgentConfigService', () => {
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
 
+		it('drops stored optional fields omitted from the payload when clearOmittedOptionalFields is set', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					credential: 'stored-cred',
+					memory: { enabled: true, storage: 'n8n' },
+					tools: [{ type: 'custom', id: 'tool-1' }],
+				} as unknown as AgentJsonConfig,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			mockAccessibleCredentials(credentialsService, ['stored-cred']);
+
+			const result = await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, memory: { enabled: false, storage: 'n8n' } },
+				undefined,
+				{ clearOmittedOptionalFields: true },
+			);
+
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			// Provided fields keep their submitted value; omitted ones are removed
+			// instead of retaining the stored value.
+			expect(saved.schema?.memory).toEqual({ enabled: false, storage: 'n8n' });
+			expect(saved.schema).not.toHaveProperty('credential');
+			expect(saved.schema).not.toHaveProperty('tools');
+			expect(result.config).not.toHaveProperty('credential');
+		});
+
+		it('resolves accessible credentials via the user when one is provided', async () => {
+			const { service, agentRepository, credentialsService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'user-cred', type: 'openAiApi', name: 'user-cred' },
+			] as never);
+			const user = { id: 'user-1' } as never;
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, credential: 'user-cred' },
+				user,
+			);
+
+			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+				projectId,
+			});
+			expect(credentialsService.findAllCredentialIdsForProject).not.toHaveBeenCalled();
+			const saved = agentRepository.save.mock.calls.at(-1)?.[0] as Agent;
+			expect((saved.schema as AgentJsonConfig).credential).toBe('user-cred');
+		});
+
 		it('rewrites an id-valued workflow tool ref to the workflow name on save', async () => {
 			const { service, agentRepository, workflowRepository } = makeService();
 			const agent = makeAgent();

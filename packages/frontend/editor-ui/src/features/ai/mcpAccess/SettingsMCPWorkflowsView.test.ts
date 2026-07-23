@@ -75,7 +75,10 @@ describe('SettingsMCPWorkflowsView', () => {
 			},
 		};
 
-		mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
+		mcpStore.fetchWorkflowsAvailableForMCPPage.mockImplementation(async (page: number) => ({
+			...workflowPage(),
+			page,
+		}));
 	});
 
 	afterEach(() => {
@@ -94,21 +97,22 @@ describe('SettingsMCPWorkflowsView', () => {
 		await nextTick();
 
 		expect(routerReplace).toHaveBeenCalledWith({ name: MCP_SETTINGS_VIEW });
-		expect(mcpStore.fetchWorkflowsAvailableForMCP).not.toHaveBeenCalled();
+		expect(mcpStore.fetchWorkflowsAvailableForMCPPage).not.toHaveBeenCalled();
 	});
 
 	describe('Workflow pagination', () => {
 		beforeEach(() => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
-				workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
-			);
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockImplementation(async (page: number) => ({
+				...workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
+				page,
+			}));
 		});
 
 		it('should fetch the first workflow page on mount', async () => {
 			createComponent({ pinia });
 
 			await waitFor(() => {
-				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 			});
 		});
 
@@ -116,14 +120,14 @@ describe('SettingsMCPWorkflowsView', () => {
 			const { getByTestId } = createComponent({ pinia });
 
 			await waitFor(() => {
-				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 			});
-			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('workflows-table-page-2'));
 
 			await waitFor(() => {
-				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(2, 10);
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(2, 10);
 			});
 		});
 
@@ -131,21 +135,24 @@ describe('SettingsMCPWorkflowsView', () => {
 			const { getByTestId } = createComponent({ pinia });
 
 			await waitFor(() => {
-				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 			});
-			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('workflows-table-page-size-50'));
 
 			await waitFor(() => {
-				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 50);
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(1, 50);
 			});
 		});
 	});
 
 	describe('Connect Workflows button', () => {
 		it('should not show the button when there are no workflows', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(workflowPage());
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockImplementation(async (page: number) => ({
+				...workflowPage(),
+				page,
+			}));
 
 			const { queryByTestId } = createComponent({ pinia });
 
@@ -155,9 +162,10 @@ describe('SettingsMCPWorkflowsView', () => {
 		});
 
 		it('should open the Connect Workflows modal when the button is clicked', async () => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
-				workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
-			);
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockImplementation(async (page: number) => ({
+				...workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
+				page,
+			}));
 
 			const { getByTestId } = createComponent({ pinia });
 
@@ -179,9 +187,10 @@ describe('SettingsMCPWorkflowsView', () => {
 
 	describe('Bulk workflow actions', () => {
 		beforeEach(() => {
-			mcpStore.fetchWorkflowsAvailableForMCP.mockResolvedValue(
-				workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
-			);
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockImplementation(async (page: number) => ({
+				...workflowPage([createWorkflow({ id: '1', name: 'Workflow 1' })]),
+				page,
+			}));
 			mcpStore.toggleWorkflowsMcpAccess.mockResolvedValue({
 				updatedCount: 2,
 				unchangedCount: 0,
@@ -203,7 +212,7 @@ describe('SettingsMCPWorkflowsView', () => {
 			const modalCall = vi.mocked(uiStore.openModalWithData).mock.calls.at(-1)?.[0] as unknown as {
 				data: { onEnableMcpAccess: (workflowIds: string[]) => Promise<void> };
 			};
-			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockClear();
 
 			await modalCall.data.onEnableMcpAccess(['wf-1', 'wf-2']);
 
@@ -211,13 +220,13 @@ describe('SettingsMCPWorkflowsView', () => {
 				{ workflowIds: ['wf-1', 'wf-2'] },
 				true,
 			);
-			expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalledWith(1, 10);
+			expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalledWith(1, 10);
 		});
 
 		it('should remove MCP access for bulk-selected workflows and refresh the table', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
-			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('workflows-table-bulk-remove'));
 
@@ -228,7 +237,7 @@ describe('SettingsMCPWorkflowsView', () => {
 				);
 			});
 			await waitFor(() => {
-				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalled();
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalled();
 			});
 		});
 	});
@@ -238,12 +247,12 @@ describe('SettingsMCPWorkflowsView', () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 
-			mcpStore.fetchWorkflowsAvailableForMCP.mockClear();
+			mcpStore.fetchWorkflowsAvailableForMCPPage.mockClear();
 
 			await userEvent.click(getByTestId('mcp-workflows-refresh-button'));
 
 			await waitFor(() => {
-				expect(mcpStore.fetchWorkflowsAvailableForMCP).toHaveBeenCalled();
+				expect(mcpStore.fetchWorkflowsAvailableForMCPPage).toHaveBeenCalled();
 			});
 		});
 	});

@@ -1,12 +1,14 @@
-import { AgentJsonConfigSchema } from '@n8n/api-types';
+import { AgentJsonConfigBaseSchema } from '@n8n/api-types';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 export const AGENT_BUILDER_REFERENCE_URI = 'n8n://agents/reference';
 
 // Integrations are a published runtime surface managed only through
 // update_agent_integration, so they are never part of the editable draft
-// config the model reads and writes.
-const EditableAgentJsonConfigSchema = AgentJsonConfigSchema.omit({ integrations: true });
+// config the model reads and writes. The base schema is used because
+// AgentJsonConfigSchema's superRefine checks can't be represented in JSON
+// schema anyway (and ZodEffects has no .omit).
+const EditableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.omit({ integrations: true });
 
 export const AGENT_CONFIG_JSON_SCHEMA = zodToJsonSchema(EditableAgentJsonConfigSchema, {
 	name: 'AgentJsonConfig',
@@ -23,23 +25,16 @@ An n8n Agent is a first-class persisted resource with its own instructions, mode
 tasks, memory, integrations, and lifecycle. An AI Agent node is a node inside a workflow whose
 trigger, surrounding graph, and lifecycle are owned by that workflow.
 
-Treat an explicit artifact request as a routing instruction. When the user asks to build or create an
-"agent" or "assistant", default to an n8n Agent. When they explicitly ask for a workflow or an AI
-Agent node, use the workflow builder.
-
-Only deviate when the requested artifact is an unmistakably poor fit. A fixed trigger or schedule
-followed by enumerable, repeatable steps and fixed actions is usually a workflow. Never silently
-substitute one artifact for another: explain the mismatch and ask before building the alternative.
-
-Prefer an Agent when the model owns runtime decisions, conversations, investigation, iteration,
-proactive work, cross-session memory, or learning. Prefer a workflow when control flow is fixed and
-any LLM usage is a bounded step. Never substitute a Chat Trigger plus an AI Agent node for a
-requested n8n Agent artifact. If the intended artifact is genuinely ambiguous, clarify it before
-creating either one.
+If the request is actually a fixed trigger or schedule with enumerable, repeatable steps, it is
+probably a workflow — explain the mismatch and ask before building the alternative. Never substitute
+a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 
 ## Build sequence
 
 1. Use search_projects to identify the project, or search_agents and get_agent for an existing Agent.
+   By-ID tools (get_agent, mutate_agent, validate_agent, publish_agent, unpublish_agent,
+   revert_agent, list_agent_versions, delete_agent, update_agent_integration) take an agentId alone
+   and resolve the project from it.
 2. Use discover_agent_assets plus list_credentials, search_nodes, get_node_types, and
    explore_node_resources to ground model, tool, workflow, integration, and credential choices.
 3. For a new Agent, call create_agent with the initial config after discovering its assets. The
@@ -63,22 +58,50 @@ the Agent as a draft by default. An explicit request to publish, activate, deplo
 connect a chat integration counts as approval; otherwise ask after validation and wait for the
 answer before calling publish_agent or connecting an integration.
 
+## Version history
+
+list_agent_versions lists an Agent's published versions; get_agent with a versionId inspects one
+before acting on it. revert_agent restores the draft from a version without publishing, returning a
+fresh configHash for further mutations. publish_agent with a versionId republishes that version
+directly, leaving the draft untouched; as a (re)publication it requires the same explicit approval.
+
+In publish, unpublish, and revert responses, \`activeVersionId\` identifies the live published
+version (null when unpublished) while \`versionId\` is the draft's internal pointer — do not report
+\`versionId\` as a published version.
+
 ## mutate_agent operations
 
-- config.replace: Replace the editable Agent JSON configuration with value.config. Must not include
+Pass a single \`operation\` object whose \`type\` selects the mutation. Each operation's fields sit
+directly on that object — there is no \`value\` wrapper. For example:
+
+\`\`\`json
+{ "type": "config.patch", "patch": [{ "op": "add", "path": "/tools/-", "value": { "type": "workflow", "workflow": "My Workflow", "name": "my_tool" } }] }
+\`\`\`
+
+- config.replace: Set \`config\` to the complete editable Agent JSON configuration. Must not include
   integrations; use update_agent_integration for those.
-- config.patch: Apply value.patch as RFC 6902 operations. Supported operations are add, remove,
-  replace, move, copy, and test. Paths under /integrations are rejected; use
-  update_agent_integration for those.
-- skill.upsert: Create and attach a skill when value.skillId is absent, or replace an existing skill
-  body when it is present. Pass the complete skill body.
-- skill.delete: Delete a skill body and remove its config reference.
-- task.upsert: Create and attach a scheduled task when value.taskId is absent, or replace an existing
-  task body when present. enabled controls the task config reference.
-- task.delete: Delete a task body and remove its config reference.
-- customTool.upsert: Compile, validate, store, and attach a custom TypeScript tool. The source must
-  export default new Tool('tool_name') and may import only runtime-supported packages.
-- customTool.delete: Delete a custom tool body and remove its config reference.
+- config.patch: Set \`patch\` to an array of RFC 6902 operations (add, remove, replace, move, copy,
+  test). Paths under /integrations are rejected; use update_agent_integration for those.
+- skill.upsert: Set \`skill\` to the complete skill body. Omit \`skillId\` to create and attach a new
+  skill, or pass it to replace an existing skill body.
+- skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
+- task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
+  scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
+- task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
+- customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
+  Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder
+  chain with \`description\`, \`input\` (a Zod schema), and \`handler\`; \`output\` is optional:
+
+  \`\`\`typescript
+  import { Tool } from '@n8n/agents';
+  import { z } from 'zod';
+
+  export default new Tool('get_current_datetime')
+  	.description('Return the current date and time as an ISO 8601 string')
+  	.input(z.object({}))
+  	.handler(async () => new Date().toISOString());
+  \`\`\`
+- customTool.delete: Set \`toolId\` to the custom tool to delete; its config reference is removed.
 
 Every mutation requires baseConfigHash from get_agent or the previous successful mutation. Mutation
 responses contain only the next configHash and the affected resource ID, not the full Agent. On a
@@ -97,6 +120,13 @@ Tool references use these forms:
 - Node tool: { "type": "node", "name": "tool_name", "node": { "nodeType": "...",
   "nodeTypeVersion": 1, "nodeParameters": {}, "credentials": {} } }
 
+Creating a resource does not give the Agent access to it. For example, a data table created with
+create_data_table is only usable by the Agent once it is attached as a node tool
+(n8n-nodes-base.dataTable); discover it with search_nodes usage="agentTool" like any other node.
+
+Sub-agents are not tool entries. Configure them under the top-level \`subAgents\` field:
+{ "subAgents": { "agents": [{ "agentId": "...", "useWhen": "..." }] } }
+
 Do not guess node parameters or stable resource IDs. Discover the node definition and live resource
 options first. Never place credential secret data in Agent configuration or MCP tool arguments; use
 credential IDs returned by list_credentials.
@@ -114,6 +144,23 @@ read-only integrations field, but config.replace and config.patch cannot add, ch
 them, and they never appear in the config schema above. Manage them exclusively with
 update_agent_integration, which validates the credential and connects the live channel. Connecting
 publishes the current draft, so it needs the same explicit publication confirmation as publish_agent.
+
+## MCP servers
+
+The top-level \`mcpServers\` config array connects external MCP tool catalogs to the Agent. Discover
+registry-backed servers with discover_agent_assets kind=mcpServers, or use a URL the user provides.
+When the server requires authentication, resolve an accessible credential ID with list_credentials
+first; the same ID is passed to verification and stored in the config entry. Credentials cannot be
+created through these tools — when none exists, ask the user to create one in n8n.
+
+Before writing an entry into mcpServers, call verify_agent_mcp_server with the same name, url,
+transport, authentication, and credential. The server does not need to be attached to the Agent
+first: verification opens a temporary connection and returns the server's live tools. validate_agent
+never performs this handshake, so an unverified entry can pass validation and still fail at runtime.
+Confirm the returned tools cover the requested capability and use the list to populate toolFilter
+instead of guessing tool names. If verification fails, report the error and resolve it with the user
+instead of persisting a broken server. Only when the user cannot supply the URL or credential yet,
+persist the known fields without inventing values and skip verification.
 `;
 
 export const AGENT_BUILDER_REFERENCE = `${AGENT_BUILDER_GUIDE}

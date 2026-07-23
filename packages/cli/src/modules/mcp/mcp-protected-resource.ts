@@ -65,7 +65,8 @@ export class McpProtectedResource implements ProtectedResource {
 				scope,
 				tools.filter(
 					(tool) =>
-						(builderEnabled || !BUILDER_TOOLS.has(tool)) && (!tagsDisabled || tool !== 'list_tags'),
+						(builderEnabled || !BUILDER_TOOLS.has(tool)) &&
+						(!tagsDisabled || tool !== 'list_workflow_tags'),
 				),
 			]),
 		);
@@ -79,6 +80,17 @@ export class McpProtectedResource implements ProtectedResource {
 		}
 		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
 		return `${baseUrl}${MCP_RESOURCE_PATH}`;
+	}
+
+	/**
+	 * RFC 9728 §3.1 metadata URL for this resource: `/.well-known/
+	 * oauth-protected-resource` with the resource's path inserted after it.
+	 * Advertised in `WWW-Authenticate: resource_metadata=...` on 401s so clients
+	 * discover the metadata directly instead of guessing the well-known path.
+	 */
+	getProtectedResourceMetadataUrl(): string {
+		const url = new URL(this.getResourceUrl());
+		return `${url.origin}/.well-known/oauth-protected-resource${url.pathname}`;
 	}
 
 	/**

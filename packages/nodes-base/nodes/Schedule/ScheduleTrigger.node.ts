@@ -426,6 +426,19 @@ export class ScheduleTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				// Temporary escape hatch for the durable-scheduler rollout (preview to
+				// GA): keeps this trigger on the legacy in-memory scheduler while testing.
+				// Hidden unless N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER is enabled. Remove at GA.
+				displayName: 'Skip Durable Scheduler',
+				name: 'skipDurableScheduler',
+				type: 'boolean',
+				default: false,
+				isNodeSetting: true,
+				envFeatureFlag: 'SKIP_DURABLE_SCHEDULER',
+				description:
+					'Whether to run this trigger through the legacy in-memory scheduler instead of the durable scheduler',
+			},
 		],
 	};
 

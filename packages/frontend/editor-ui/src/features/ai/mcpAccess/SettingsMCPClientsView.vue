@@ -157,9 +157,9 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* The settings shell pads the page top (70.5px); pull the column up a step. */
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
-	margin-top: calc(-1 * var(--spacing--lg));
+	padding-top: 0;
 }
 
 /* Pin the back action to the top-left of the settings area (the shell's

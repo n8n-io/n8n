@@ -64,23 +64,12 @@ const showMcpAccessUpdatedToast = (count: number, enabled: boolean) => {
 const fetchAvailableAgents = async () => {
 	agentsLoading.value = true;
 	try {
-		const response = await mcpStore.fetchAgentsAvailableForMCP(
+		const response = await mcpStore.fetchAgentsAvailableForMCPPage(
 			agentsTableState.value.page + 1,
 			agentsTableState.value.itemsPerPage,
 		);
-		if (response.data.length === 0 && response.count > 0 && agentsTableState.value.page > 0) {
-			const maxPage = Math.max(
-				0,
-				Math.ceil(response.count / agentsTableState.value.itemsPerPage) - 1,
-			);
-			agentsTableState.value = { ...agentsTableState.value, page: maxPage };
-			const clampedResponse = await mcpStore.fetchAgentsAvailableForMCP(
-				agentsTableState.value.page + 1,
-				agentsTableState.value.itemsPerPage,
-			);
-			availableAgents.value = clampedResponse.data;
-			availableAgentsTotal.value = clampedResponse.count;
-			return;
+		if (response.page !== agentsTableState.value.page + 1) {
+			agentsTableState.value = { ...agentsTableState.value, page: response.page - 1 };
 		}
 		availableAgents.value = response.data;
 		availableAgentsTotal.value = response.count;
@@ -214,9 +203,9 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
-/* The settings shell pads the page top (70.5px); pull the column up a step. */
+/* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
-	margin-top: calc(-1 * var(--spacing--lg));
+	padding-top: 0;
 }
 
 /* Pin the back action to the top-left of the settings area (the shell's

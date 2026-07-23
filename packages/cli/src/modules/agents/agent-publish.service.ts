@@ -1,5 +1,6 @@
 import {
 	type AgentConfigValidationResponse,
+	isDraftIntegration,
 	type AgentJsonConfig,
 	type AgentSkill,
 	type AgentVersionListItemDto,
@@ -22,6 +23,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
+import type { AgentTaskSnapshot } from './entities/agent-task-snapshot.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentHistoryRepository } from './repositories/agent-history.repository';
@@ -32,6 +34,13 @@ import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 
 export interface PublishAgentOptions {
 	syncIntegrations?: boolean;
+	/**
+	 * Validate as if not-yet-connected draft integrations (`credentialId: ''`)
+	 * didn't exist. Connect-time publishes (connecting one of several
+	 * drafted channels) pass this so another channel's still-unresolved
+	 * draft doesn't block publishing the one currently being connected.
+	 */
+	ignoreDraftIntegrations?: boolean;
 }
 
 export type ValidAgentConfigValidationResponse = AgentConfigValidationResponse & {
@@ -110,7 +119,14 @@ export class AgentPublishService {
 					(await this.agentTaskRepository.findByAgentId(agentId)).map((task) => [task.id, task]),
 				);
 
-		const validation = await this.assertPublishable(agent, projectId, user, tasks, targetHistory);
+		const validation = await this.assertPublishable(
+			agent,
+			projectId,
+			user,
+			tasks,
+			targetHistory,
+			options.ignoreDraftIntegrations,
+		);
 
 		await this.agentRepository.manager.transaction(async (trx) => {
 			if (targetHistory) {
@@ -178,6 +194,7 @@ export class AgentPublishService {
 		user: User,
 		tasks: ReadonlyMap<string, AgentTask>,
 		targetHistory?: AgentHistory,
+		ignoreDraftIntegrations?: boolean,
 	): Promise<ValidAgentConfigValidationResponse> {
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
@@ -185,20 +202,34 @@ export class AgentPublishService {
 			user,
 		);
 
+		const baseIntegrations = agent.integrations ?? [];
+		const integrations = ignoreDraftIntegrations
+			? baseIntegrations.filter((integration) => !isDraftIntegration(integration))
+			: baseIntegrations;
+
 		const validation = targetHistory
 			? await this.agentValidationService.validateAgentHistoryConfiguration(
 					agent.id,
 					projectId,
 					targetHistory,
-					agent.integrations ?? [],
+					integrations,
 					credentialProvider,
 				)
-			: await this.agentValidationService.validateAgentEntityConfiguration(
-					agent,
-					projectId,
-					tasks,
-					credentialProvider,
-				);
+			: ignoreDraftIntegrations
+				? await this.agentValidationService.validateAgentEntityConfiguration(
+						agent,
+						projectId,
+						tasks,
+						credentialProvider,
+						'publish',
+						integrations,
+					)
+				: await this.agentValidationService.validateAgentEntityConfiguration(
+						agent,
+						projectId,
+						tasks,
+						credentialProvider,
+					);
 
 		requireValidValidation(validation);
 		return validation;
@@ -316,6 +347,29 @@ export class AgentPublishService {
 	 */
 	async hasPublishHistory(agentId: string): Promise<boolean> {
 		return await this.agentHistoryRepository.existsForAgent(agentId);
+	}
+
+	/**
+	 * Load one published version snapshot (schema, tools, skills) plus its
+	 * frozen task rows, for read-only inspection.
+	 */
+	async getVersion(
+		agentId: string,
+		projectId: string,
+		versionId: string,
+	): Promise<{ agent: Agent; version: AgentHistory; tasks: AgentTaskSnapshot[] }> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		if (!version) {
+			throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
+		}
+
+		const tasks = await this.agentTaskSnapshotRepository.findByVersionId(versionId);
+		return { agent, version, tasks };
 	}
 
 	async listPublishHistory(

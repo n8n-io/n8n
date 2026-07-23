@@ -1,20 +1,30 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CredentialProvider } from '@n8n/agents';
 import {
+	rejectIfDynamicSelectorUsesFromAi,
+	rejectIfEmptyInstructions,
+	rejectIfUnsupportedNativeWebSearch,
+	type AgentConfigValidationMessages,
+} from '@n8n/ai-utilities/agent-config';
+import {
 	AGENT_MODEL_PROVIDERS,
 	AgentIntegrationSchema,
+	AgentJsonConfigBaseSchema,
 	AgentJsonConfigSchema,
+	isDraftAgentConfig,
 	AgentTelegramSettingsSchema,
 	McpAuthenticationSchemaTypes,
 	agentSkillSchema,
 	agentTaskSchema,
+	sanitizeAgentJsonConfig,
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { ProjectRelationRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -36,11 +46,13 @@ import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-cha
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import { listMcpServerTools } from '@/modules/agents/json-config/mcp-client-factory';
+import { sanitizeUnknownAgentCredentials } from '@/modules/agents/json-config/sanitize-unknown-agent-credentials';
 import { filterOfferedAgentModelProviders } from '@/modules/agents/model-catalog';
 import { AgentSecureRuntime } from '@/modules/agents/runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { UrlService } from '@/services/url.service';
@@ -53,7 +65,7 @@ import {
 	AGENT_BUILDER_REFERENCE_URI,
 	AGENT_CONFIG_JSON_SCHEMA,
 } from './agent-reference';
-import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import { MCP_CREATE_AGENT_TOOL_NAME, USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
@@ -61,10 +73,38 @@ const MCP_SERVER_DISCOVERY_LIMIT = 20;
 const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
 	'Integrations are a published runtime surface, not editable config. Use update_agent_integration to connect or disconnect Slack, Telegram, or Linear.';
 
+/** LLM-facing follow-up guidance for the MCP builder surface. */
+const MCP_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
+	emptyInstructionsFollowUp: 'retrying the mutation.',
+	dynamicSelectorFollowUp:
+		'Ask the user for the concrete value and write it into nodeParameters as a literal.',
+};
+
 function integrationsField(config: unknown): unknown {
-	return typeof config === 'object' && config !== null && !Array.isArray(config)
-		? (config as Record<string, unknown>).integrations
-		: undefined;
+	return isRecord(config) ? config.integrations : undefined;
+}
+
+/**
+ * Collects the credential IDs that `sanitizeUnknownAgentCredentials` rewrote
+ * to `''` — the only change that sanitizer ever makes.
+ */
+function collectClearedCredentialIds(
+	original: unknown,
+	sanitized: unknown,
+	ids: Set<string>,
+): void {
+	if (Array.isArray(original) && Array.isArray(sanitized)) {
+		original.forEach((entry, index) => collectClearedCredentialIds(entry, sanitized[index], ids));
+		return;
+	}
+	if (!isRecord(original) || !isRecord(sanitized)) return;
+	for (const [key, value] of Object.entries(original)) {
+		if (typeof value === 'string' && value !== '' && sanitized[key] === '') {
+			ids.add(value);
+			continue;
+		}
+		collectClearedCredentialIds(value, sanitized[key], ids);
+	}
 }
 
 /**
@@ -86,8 +126,46 @@ const httpUrlSchema = z
 	.refine((value) => /^https?:\/\//i.test(value), { message: 'Must be a valid HTTP(S) URL' });
 
 const agentIdentityShape = {
-	projectId: z.string().min(1).describe('Project containing the Agent'),
 	agentId: z.string().min(1).describe('Agent ID'),
+} satisfies z.ZodRawShape;
+
+const getAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Read a published version snapshot instead of the draft, e.g. the activeVersionId. Snapshots are read-only, so the response has no configHash.',
+		),
+} satisfies z.ZodRawShape;
+
+const publishAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Republish a previously published version instead of the current draft. The draft is left untouched.',
+		),
+} satisfies z.ZodRawShape;
+
+const revertAgentInput = {
+	...agentIdentityShape,
+	versionId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Published version to restore the draft from; defaults to the currently published version',
+		),
+} satisfies z.ZodRawShape;
+
+const listAgentVersionsInput = {
+	...agentIdentityShape,
+	limit: z.number().int().min(1).max(100).optional().default(20),
+	offset: z.number().int().min(0).optional().default(0),
 } satisfies z.ZodRawShape;
 
 const searchAgentsInput = {
@@ -98,13 +176,22 @@ const searchAgentsInput = {
 	limit: z.number().int().min(1).max(100).optional().default(50),
 } satisfies z.ZodRawShape;
 
-const initialAgentConfigSchema = AgentJsonConfigSchema.omit({
+const initialAgentConfigSchema = AgentJsonConfigBaseSchema.omit({
 	name: true,
 	skills: true,
 	tasks: true,
 	// Integrations are managed only through update_agent_integration.
 	integrations: true,
 }).superRefine((config, ctx) => {
+	// Mirrors AgentJsonConfigSchema's own refinement, which is lost by
+	// deriving from the base schema (ZodEffects has no .omit).
+	if (config.credential?.trim() && isDraftAgentConfig(config)) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			path: ['credential'],
+			message: 'A credential requires a model to be set',
+		});
+	}
 	if (config.tools?.some((tool) => tool.type === 'custom')) {
 		ctx.addIssue({
 			code: z.ZodIssueCode.custom,
@@ -183,7 +270,10 @@ const discoverAssetsInput = {
 		.min(1)
 		.optional()
 		.describe('Optional filter for workflows, subagents, or MCP servers'),
-	provider: z.enum(AGENT_MODEL_PROVIDERS).optional().describe('Model provider for kind=models'),
+	provider: z
+		.enum(AGENT_MODEL_PROVIDERS)
+		.optional()
+		.describe('Model provider for kind=models; omit to get a provider summary without model lists'),
 	credentialId: z
 		.string()
 		.min(1)
@@ -266,11 +356,13 @@ export class McpAgentToolsService {
 		private readonly agentModelCatalogService: AgentModelCatalogService,
 		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly mcpRegistryService: McpRegistryService,
+		private readonly nodeTypes: NodeTypes,
 		private readonly oauthService: OauthService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly urlService: UrlService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	/**
@@ -290,6 +382,8 @@ export class McpAgentToolsService {
 		registerIfAllowed(this.validateAgentTool(user));
 		registerIfAllowed(this.publishAgentTool(user));
 		registerIfAllowed(this.unpublishAgentTool(user));
+		registerIfAllowed(this.revertAgentTool(user));
+		registerIfAllowed(this.listAgentVersionsTool(user));
 		registerIfAllowed(this.deleteAgentTool(user));
 		registerIfAllowed(this.discoverAssetsTool(user));
 		registerIfAllowed(this.verifyMcpServerTool(user));
@@ -340,35 +434,39 @@ export class McpAgentToolsService {
 			},
 			handler: async (input: SearchAgentsInput) =>
 				await this.run(user, 'search_agents', { projectId: input.projectId }, async () => {
-					const agents = input.projectId
-						? await this.listAgentsInProject(user, input.projectId)
-						: await this.listAgentsForUser(user);
-					const query = input.query?.trim().toLowerCase();
-					const data = agents
-						.filter((agent) => !query || agent.name.toLowerCase().includes(query))
-						.filter((agent) => !input.publishedOnly || agent.activeVersionId !== null)
-						.filter((agent) => agent.id !== input.excludeAgentId)
-						.slice(0, input.limit)
-						.map((agent) => ({
-							id: agent.id,
-							name: agent.name,
-							projectId: agent.projectId,
-							published: agent.activeVersionId !== null,
-							availableInMCP: agent.availableInMCP,
-							updatedAt: agent.updatedAt.toISOString(),
-						}));
+					let projectIds: string[];
+					if (input.projectId) {
+						await this.assertScope(user, input.projectId, 'agent:list');
+						projectIds = [input.projectId];
+					} else {
+						projectIds = await this.listProjectIdsWithAgentList(user);
+					}
+					const agents = await this.agentsService.findSummariesInProjects(projectIds, {
+						query: input.query?.trim() || undefined,
+						publishedOnly: input.publishedOnly,
+						excludeAgentId: input.excludeAgentId,
+						limit: input.limit,
+					});
+					const data = agents.map((agent) => ({
+						id: agent.id,
+						name: agent.name,
+						projectId: agent.projectId,
+						published: agent.activeVersionId !== null,
+						availableInMCP: agent.availableInMCP,
+						updatedAt: agent.updatedAt.toISOString(),
+					}));
 					return { ok: true, data, count: data.length };
 				}),
 		};
 	}
 
-	private getAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private getAgentTool(user: User): ToolDefinition<typeof getAgentInput> {
 		return {
 			name: 'get_agent',
 			config: {
 				description:
-					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent.',
-				inputSchema: agentIdentityShape,
+					'Read an Agent draft, sidecar resources, runnable state, and configHash. Call before mutate_agent. Pass versionId to inspect a published version snapshot instead of the draft.',
+				inputSchema: getAgentInput,
 				annotations: {
 					title: 'Get Agent',
 					readOnlyHint: true,
@@ -377,18 +475,26 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'get_agent', { projectId, agentId }, async () => {
-					await this.assertScope(user, projectId, 'agent:read');
-					await this.assertAvailableInMcp(agentId, projectId);
-					return { ok: true, ...(await this.getAgentSnapshot(user, projectId, agentId)) };
-				}),
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'get_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const agent = await this.resolveAgent(user, agentId);
+						await this.assertScope(user, agent.projectId, 'agent:read');
+						const snapshot = versionId
+							? await this.getAgentVersionSnapshot(agent.projectId, agentId, versionId)
+							: await this.getAgentSnapshot(user, agent);
+						return { ok: true, ...snapshot };
+					},
+				),
 		};
 	}
 
 	private createAgentTool(user: User): ToolDefinition<typeof createAgentInput> {
 		return {
-			name: 'create_agent',
+			name: MCP_CREATE_AGENT_TOOL_NAME,
 			config: {
 				description:
 					'Create an Agent draft, optionally with its initial model, credential, instructions, and ordinary tool configuration. Returns its n8n editor URL. Use mutate_agent afterward for skills, tasks, and custom tools.',
@@ -410,6 +516,7 @@ export class McpAgentToolsService {
 						if (!validation.valid) {
 							throw new UserError(`Invalid initial Agent config: ${validation.error}`);
 						}
+						await this.assertAccessibleCredentials(initialConfig, user, projectId);
 					}
 
 					// Agents created over MCP stay operable over MCP.
@@ -458,7 +565,7 @@ export class McpAgentToolsService {
 			name: 'mutate_agent',
 			config: {
 				description:
-					'Apply one config, skill, task, or custom-tool mutation to an Agent draft. Returns the next configHash for subsequent mutations.',
+					'Apply one config, skill, task, or custom-tool mutation to an Agent draft. The operation fields sit directly on the operation object (no value wrapper), e.g. { "type": "config.patch", "patch": [...] }. Returns the next configHash for subsequent mutations.',
 				inputSchema: mutateAgentInput,
 				annotations: {
 					title: 'Mutate Agent',
@@ -472,11 +579,12 @@ export class McpAgentToolsService {
 				await this.run(
 					user,
 					'mutate_agent',
-					{ projectId: input.projectId, agentId: input.agentId, type: input.operation.type },
+					{ agentId: input.agentId, type: input.operation.type },
 					async () => {
-						await this.assertScope(user, input.projectId, 'agent:update');
-						await this.assertAvailableInMcp(input.agentId, input.projectId);
-						const config = await this.agentConfigService.getConfig(input.agentId, input.projectId);
+						const agent = await this.resolveAgent(user, input.agentId);
+						const projectId = agent.projectId;
+						await this.assertScope(user, projectId, 'agent:update');
+						const config = this.configFromEntity(agent);
 						const configHash = getAgentConfigHash(config);
 						if (configHash !== input.baseConfigHash) {
 							return {
@@ -488,14 +596,19 @@ export class McpAgentToolsService {
 							};
 						}
 
-						const { resource, config: newConfig } = await this.applyMutation(user, input, config);
+						const { resource, config: newConfig } = await this.applyMutation(
+							user,
+							input,
+							config,
+							projectId,
+						);
 						return {
 							ok: true,
 							agentId: input.agentId,
 							operation: input.operation.type,
 							configHash: newConfig
 								? getAgentConfigHash(newConfig)
-								: await this.fetchConfigHash(input.projectId, input.agentId),
+								: await this.fetchConfigHash(projectId, input.agentId),
 							...(resource ? { resource } : {}),
 						};
 					},
@@ -518,26 +631,26 @@ export class McpAgentToolsService {
 					openWorldHint: false,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'validate_agent', { projectId, agentId }, async () => {
-					await this.assertScope(user, projectId, 'agent:read');
-					await this.assertAvailableInMcp(agentId, projectId);
+			handler: async ({ agentId }) =>
+				await this.run(user, 'validate_agent', { agentId }, async () => {
+					const agent = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, agent.projectId, 'agent:read');
 					return {
 						ok: true,
-						...(await this.validateAgent(user, projectId, agentId)),
-						url: this.getAgentUrl(projectId, agentId),
+						...(await this.validateAgent(user, agent)),
+						url: this.getAgentUrl(agent.projectId, agentId),
 					};
 				}),
 		};
 	}
 
-	private publishAgentTool(user: User): ToolDefinition<typeof agentIdentityShape> {
+	private publishAgentTool(user: User): ToolDefinition<typeof publishAgentInput> {
 		return {
 			name: 'publish_agent',
 			config: {
 				description:
-					'Publish a valid Agent draft and activate its tasks and integrations. Only call after the user explicitly requests or confirms publication; completing a build does not imply approval.',
-				inputSchema: agentIdentityShape,
+					'Publish a valid Agent draft and activate its tasks and integrations. Pass versionId to republish a previously published version instead. Only call after the user explicitly requests or confirms publication; completing a build does not imply approval.',
+				inputSchema: publishAgentInput,
 				annotations: {
 					title: 'Publish Agent',
 					readOnlyHint: false,
@@ -546,25 +659,109 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'publish_agent', { projectId, agentId }, async () => {
-					await this.assertScope(user, projectId, 'agent:publish');
-					await this.assertAvailableInMcp(agentId, projectId);
-					const validation = await this.validateAgent(user, projectId, agentId);
-					if (!validation.valid) {
-						throw new UserError(
-							`Agent is not runnable: ${[...validation.errors, ...validation.missing].join(', ')}`,
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'publish_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const agent = await this.resolveAgent(user, agentId);
+						const projectId = agent.projectId;
+						await this.assertScope(user, projectId, 'agent:publish');
+						// Republishing a snapshot skips draft validation, mirroring the
+						// REST publish endpoint: the draft is not what goes live.
+						if (!versionId) {
+							const validation = await this.validateAgent(user, agent);
+							if (!validation.valid) {
+								throw new UserError(
+									`Agent is not runnable: ${[...validation.errors, ...validation.missing].join(', ')}`,
+								);
+							}
+						}
+						const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
+							agentId,
+							projectId,
+							user,
+							versionId,
 						);
-					}
-					const { agent } = await this.agentPublishService.publishAgent(agentId, projectId, user);
-					return {
-						ok: true,
+						return {
+							ok: true,
+							agentId,
+							published: true,
+							versionId: publishedAgent.versionId,
+							activeVersionId: publishedAgent.activeVersionId,
+							url: this.getAgentUrl(projectId, agentId),
+						};
+					},
+				),
+		};
+	}
+
+	private revertAgentTool(user: User): ToolDefinition<typeof revertAgentInput> {
+		return {
+			name: 'revert_agent',
+			config: {
+				description:
+					'Restore an Agent draft from a published version, overwriting the draft config, skills, tasks, and custom tools. Does not publish. Inspect the version with get_agent first; the response returns the new configHash.',
+				inputSchema: revertAgentInput,
+				annotations: {
+					title: 'Revert Agent',
+					readOnlyHint: false,
+					destructiveHint: true,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, versionId }) =>
+				await this.run(
+					user,
+					'revert_agent',
+					{ agentId, ...(versionId ? { versionId } : {}) },
+					async () => {
+						const { projectId } = await this.resolveAgent(user, agentId);
+						await this.assertScope(user, projectId, 'agent:update');
+						const agent = versionId
+							? await this.agentPublishService.revertToVersion(agentId, projectId, versionId)
+							: await this.agentPublishService.revertToPublishedAgent(agentId, projectId);
+						return {
+							ok: true,
+							agentId,
+							versionId: agent.versionId,
+							activeVersionId: agent.activeVersionId,
+							configHash: getAgentConfigHash(this.configFromEntity(agent)),
+							url: this.getAgentUrl(projectId, agentId),
+						};
+					},
+				),
+		};
+	}
+
+	private listAgentVersionsTool(user: User): ToolDefinition<typeof listAgentVersionsInput> {
+		return {
+			name: 'list_agent_versions',
+			config: {
+				description:
+					'List the publish history of an Agent, newest first. Pass a versionId to get_agent to inspect a version before revert_agent or publish_agent.',
+				inputSchema: listAgentVersionsInput,
+				annotations: {
+					title: 'List Agent Versions',
+					readOnlyHint: true,
+					destructiveHint: false,
+					idempotentHint: true,
+					openWorldHint: false,
+				},
+			},
+			handler: async ({ agentId, limit, offset }) =>
+				await this.run(user, 'list_agent_versions', { agentId }, async () => {
+					const { projectId } = await this.resolveAgent(user, agentId);
+					await this.assertScope(user, projectId, 'agent:read');
+					const versions = await this.agentPublishService.listPublishHistory(
 						agentId,
-						published: true,
-						versionId: agent.versionId,
-						activeVersionId: agent.activeVersionId,
-						url: this.getAgentUrl(projectId, agentId),
-					};
+						projectId,
+						limit,
+						offset,
+					);
+					return { ok: true, data: versions, count: versions.length };
 				}),
 		};
 	}
@@ -583,10 +780,10 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'unpublish_agent', { projectId, agentId }, async () => {
+			handler: async ({ agentId }) =>
+				await this.run(user, 'unpublish_agent', { agentId }, async () => {
+					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:unpublish');
-					await this.assertAvailableInMcp(agentId, projectId);
 					const agent = await this.agentPublishService.unpublishAgent(agentId, projectId);
 					return {
 						ok: true,
@@ -613,10 +810,10 @@ export class McpAgentToolsService {
 					openWorldHint: true,
 				},
 			},
-			handler: async ({ projectId, agentId }) =>
-				await this.run(user, 'delete_agent', { projectId, agentId }, async () => {
+			handler: async ({ agentId }) =>
+				await this.run(user, 'delete_agent', { agentId }, async () => {
+					const { projectId } = await this.resolveAgent(user, agentId);
 					await this.assertScope(user, projectId, 'agent:delete');
-					await this.assertAvailableInMcp(agentId, projectId);
 					const deleted = await this.agentsService.delete(agentId, projectId);
 					if (!deleted) throw new UserError(`Agent "${agentId}" not found`);
 					return { ok: true, deleted: true, agentId };
@@ -661,7 +858,7 @@ export class McpAgentToolsService {
 			name: 'verify_agent_mcp_server',
 			config: {
 				description:
-					'Test an MCP server with a user-accessible credential and return its available tools before adding it to an Agent.',
+					'Test an MCP server with a user-accessible credential and return its available tools. Call before writing an mcpServers config entry; validate_agent performs no live MCP check.',
 				inputSchema: verifyMcpServerInput,
 				annotations: {
 					title: 'Verify Agent MCP Server',
@@ -701,7 +898,6 @@ export class McpAgentToolsService {
 					user,
 					'update_agent_integration',
 					{
-						projectId: input.projectId,
 						agentId: input.agentId,
 						action: input.action,
 						type: input.type,
@@ -736,25 +932,20 @@ export class McpAgentToolsService {
 		};
 	}
 
-	private async listAgentsInProject(user: User, projectId: string) {
-		await this.assertScope(user, projectId, 'agent:list');
-		return await this.agentsService.findByProjectId(projectId);
-	}
-
-	private async listAgentsForUser(user: User) {
-		const agents = await this.agentsService.findByUser(user.id);
-		const projectIds = [...new Set(agents.map((agent) => agent.projectId))];
+	/** Projects from the user's relations where the user holds agent:list. */
+	private async listProjectIdsWithAgentList(user: User): Promise<string[]> {
+		const relations = await this.projectRelationRepository.findAllByUser(user.id);
+		const projectIds = [...new Set(relations.map((relation) => relation.projectId))];
 		const allowed = await Promise.all(
 			projectIds.map(
 				async (projectId) => await userHasScopes(user, ['agent:list'], false, { projectId }),
 			),
 		);
-		const allowedProjects = new Set(projectIds.filter((_, index) => allowed[index]));
-		return agents.filter((agent) => allowedProjects.has(agent.projectId));
+		return projectIds.filter((_, index) => allowed[index]);
 	}
 
-	private async getAgentSnapshot(user: User, projectId: string, agentId: string) {
-		const agent = await this.getAgentOrThrow(agentId, projectId);
+	private async getAgentSnapshot(user: User, agent: Agent) {
+		const { id: agentId, projectId } = agent;
 		const config = this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
 		const [runnable, skills, tasks] = await Promise.all([
@@ -795,30 +986,55 @@ export class McpAgentToolsService {
 		};
 	}
 
+	/**
+	 * Read-only view of a published version snapshot. Deliberately returns no
+	 * configHash: mutations only ever apply to the draft, so a snapshot hash
+	 * must not be usable as a mutate_agent baseConfigHash.
+	 */
+	private async getAgentVersionSnapshot(projectId: string, agentId: string, versionId: string) {
+		const { agent, version, tasks } = await this.agentPublishService.getVersion(
+			agentId,
+			projectId,
+			versionId,
+		);
+		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
+		// Integrations are a read-only runtime surface, omitted from the config
+		// here for the same reason as in getAgentSnapshot.
+		const { integrations: _integrations, ...editableConfig } = version.schema;
+
+		return {
+			agent: {
+				id: agent.id,
+				name: agent.name,
+				projectId: agent.projectId,
+				published: agent.activeVersionId !== null,
+				versionId: agent.versionId,
+				activeVersionId: agent.activeVersionId,
+			},
+			version: {
+				versionId: version.versionId,
+				author: version.author,
+				createdAt: version.createdAt.toISOString(),
+				isActive: version.versionId === agent.activeVersionId,
+			},
+			config: editableConfig,
+			skills: version.skills ?? {},
+			tasks: tasks.map((task) => ({
+				id: task.taskId,
+				name: task.name,
+				objective: task.objective,
+				cronExpression: task.cronExpression,
+				enabled: task.enabled,
+			})),
+			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
+				id,
+				descriptor: tool.descriptor,
+			})),
+		};
+	}
+
 	private async fetchConfigHash(projectId: string, agentId: string) {
 		return getAgentConfigHash(await this.agentConfigService.getConfig(agentId, projectId));
-	}
-
-	private async getAgentOrThrow(agentId: string, projectId: string): Promise<Agent> {
-		const agent = await this.agentsService.findById(agentId, projectId);
-		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
-		return agent;
-	}
-
-	/**
-	 * Mirrors the per-workflow `availableInMCP` guard in `getMcpWorkflow`: MCP
-	 * tools may only operate on agents explicitly made available in MCP.
-	 * `search_agents` intentionally still sees every accessible agent so
-	 * clients can tell the user what exists.
-	 */
-	private async assertAvailableInMcp(agentId: string, projectId: string): Promise<Agent> {
-		const agent = await this.getAgentOrThrow(agentId, projectId);
-		if (!agent.availableInMCP) {
-			throw new UserError(
-				'Agent is not available in MCP. Enable MCP access from the agents list, or from the MCP settings page.',
-			);
-		}
-		return agent;
 	}
 
 	private configFromEntity(agent: Agent): AgentJsonConfig {
@@ -841,18 +1057,23 @@ export class McpAgentToolsService {
 		user: User,
 		input: MutateAgentInput,
 		config: AgentJsonConfig,
+		projectId: string,
 	): Promise<{ resource?: MutationResource; config?: AgentJsonConfig }> {
-		const { projectId, agentId, operation } = input;
+		const { agentId, operation } = input;
 		switch (operation.type) {
 			case 'config.replace': {
 				if (operation.config.integrations !== undefined) {
 					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
 				}
+				this.assertSanitizeStable(operation.config, config);
+				this.assertPassesConfigGuards(operation.config, config);
+				await this.assertAccessibleCredentials(operation.config, user, projectId);
 				const result = await this.agentConfigService.updateConfig(
 					agentId,
 					projectId,
 					operation.config,
 					user,
+					{ clearOmittedOptionalFields: true },
 				);
 				return { config: result.config };
 			}
@@ -867,11 +1088,17 @@ export class McpAgentToolsService {
 				if (integrationsChanged(config, patched)) {
 					throw new UserError(INTEGRATIONS_NOT_IN_CONFIG_MESSAGE);
 				}
+				this.assertSanitizeStable(patched, config);
+				this.assertPassesConfigGuards(patched, config);
+				await this.assertAccessibleCredentials(patched, user, projectId);
 				const result = await this.agentConfigService.updateConfig(
 					agentId,
 					projectId,
 					patched,
 					user,
+					{
+						clearOmittedOptionalFields: true,
+					},
 				);
 				return { config: result.config };
 			}
@@ -903,13 +1130,15 @@ export class McpAgentToolsService {
 						operation.task,
 					);
 					if (operation.enabled !== undefined) {
-						await this.setTaskEnabled(
+						const updated = await this.setTaskEnabled(
 							user,
 							agentId,
 							projectId,
 							operation.taskId,
 							operation.enabled,
+							config,
 						);
+						return { resource: { type: 'task', id: result.id }, config: updated };
 					}
 					return { resource: { type: 'task', id: result.id } };
 				} else {
@@ -933,12 +1162,12 @@ export class McpAgentToolsService {
 				if ((config.tools ?? []).some((tool) => tool.type === 'custom' && tool.id === built.id)) {
 					return { resource: { type: 'customTool', id: built.id }, config };
 				}
-				const result = await this.agentConfigService.updateConfig(
-					agentId,
-					projectId,
-					{ ...config, tools: [...(config.tools ?? []), { type: 'custom', id: built.id }] },
-					user,
-				);
+				const next = {
+					...config,
+					tools: [...(config.tools ?? []), { type: 'custom' as const, id: built.id }],
+				};
+				await this.assertAccessibleCredentials(next, user, projectId);
+				const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
 				return { resource: { type: 'customTool', id: built.id }, config: result.config };
 			}
 			case 'customTool.delete':
@@ -947,66 +1176,127 @@ export class McpAgentToolsService {
 		}
 	}
 
+	/**
+	 * updateConfig sanitizes configs on write, silently dropping array entries
+	 * whose `type` the schema does not recognize. Reject differences the
+	 * mutation itself introduced loudly instead of reporting a success that
+	 * persisted less than the client sent. Instability inherited unchanged from
+	 * the stored config (e.g. a legacy field persisted before the schema
+	 * dropped it) is tolerated — the write path cleans it up.
+	 */
+	private assertSanitizeStable(config: unknown, baseConfig: AgentJsonConfig): void {
+		const sanitized = sanitizeAgentJsonConfig(config);
+		if (JSON.stringify(sanitized) === JSON.stringify(config)) return;
+		if (!isRecord(config) || !isRecord(sanitized)) return;
+		const base: Record<string, unknown> = baseConfig;
+		const fields = Object.keys(config).filter((key) => {
+			const submitted = JSON.stringify(config[key]);
+			return (
+				submitted !== JSON.stringify(sanitized[key]) && submitted !== JSON.stringify(base[key])
+			);
+		});
+		if (fields.length === 0) return;
+		throw new UserError(
+			`Config contains entries the schema does not support (in: ${fields.join(', ')}); saving would silently drop them. Compare against the config schema from get_agent_builder_reference — e.g. sub-agents belong under subAgents.agents, not tools.`,
+		);
+	}
+
+	/**
+	 * Model-independent write guards shared with the in-app builder pipeline,
+	 * so a config the builder refuses cannot be persisted through MCP. Schema
+	 * failures are left for updateConfig's own validation to surface.
+	 */
+	private assertPassesConfigGuards(next: unknown, baseConfig: AgentJsonConfig): void {
+		const parsed = AgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(next));
+		if (!parsed.success) return;
+		const errors =
+			rejectIfEmptyInstructions(parsed.data, MCP_AGENT_CONFIG_MESSAGES) ??
+			rejectIfUnsupportedNativeWebSearch(parsed.data) ??
+			rejectIfDynamicSelectorUsesFromAi(
+				parsed.data,
+				baseConfig,
+				this.nodeTypes,
+				MCP_AGENT_CONFIG_MESSAGES,
+			);
+		if (errors) {
+			throw new UserError(errors.map((error) => `${error.path}: ${error.message}`).join('; '));
+		}
+	}
+
+	/**
+	 * updateConfig quietly rewrites credential references the calling user
+	 * cannot use to `''` before saving. Surfacing that here turns silent
+	 * credential loss — including references already stored on the agent by
+	 * another user — into an explicit error the client can act on.
+	 */
+	private async assertAccessibleCredentials(
+		config: unknown,
+		user: User,
+		projectId: string,
+	): Promise<void> {
+		const accessibleIds = new Set(
+			(await this.credentialProvider(user, projectId).list()).map((credential) => credential.id),
+		);
+		const sanitized = sanitizeUnknownAgentCredentials(config, accessibleIds);
+		if (JSON.stringify(sanitized) === JSON.stringify(config)) return;
+		const ids = new Set<string>();
+		collectClearedCredentialIds(config, sanitized, ids);
+		throw new UserError(
+			`Config references credentials you cannot use in this project: ${[...ids].join(', ')}. Saving would silently clear them. Use list_credentials to find an accessible credential, or remove the reference.`,
+		);
+	}
+
 	private async setTaskEnabled(
 		user: User,
 		agentId: string,
 		projectId: string,
 		taskId: string,
 		enabled: boolean,
-	): Promise<void> {
-		const config = await this.agentConfigService.getConfig(agentId, projectId);
+		config: AgentJsonConfig,
+	): Promise<AgentJsonConfig> {
 		let found = false;
-		config.tasks = (config.tasks ?? []).map((task) => {
+		const tasks = (config.tasks ?? []).map((task) => {
 			if (task.id !== taskId) return task;
 			found = true;
 			return { ...task, enabled };
 		});
 		if (!found) throw new UserError(`Task "${taskId}" is not attached to the Agent`);
-		await this.agentConfigService.updateConfig(agentId, projectId, config, user);
+		const next = { ...config, tasks };
+		await this.assertAccessibleCredentials(next, user, projectId);
+		const result = await this.agentConfigService.updateConfig(agentId, projectId, next, user);
+		return result.config;
 	}
 
-	private async validateAgent(user: User, projectId: string, agentId: string) {
-		const agent = await this.getAgentOrThrow(agentId, projectId);
+	/**
+	 * Publish-scope validation — the same pass `publishAgent` enforces — plus
+	 * the node-tool JSON-Schema checks from `validateConfig`, so validate_agent
+	 * and publish_agent cannot drift from the canonical validator.
+	 */
+	private async validateAgent(user: User, agent: Agent) {
+		const projectId = agent.projectId;
 		const config = this.configFromEntity(agent);
 		const credentialProvider = this.credentialProvider(user, projectId);
-		// Serve validateAgentIsRunnable's lazy list() from the same single query.
-		const credentialsPromise = credentialProvider.list();
-		const cachedProvider: CredentialProvider = {
-			list: async () => await credentialsPromise,
-			resolve: async (credentialId) => await credentialProvider.resolve(credentialId),
-		};
-		const [schema, runnable, tasks, credentials] = await Promise.all([
+		const [schema, configuration] = await Promise.all([
 			this.agentConfigService.validateConfig(config),
-			this.agentValidationService.validateAgentIsRunnable(agentId, projectId, cachedProvider),
-			this.agentTaskService.list(agentId),
-			credentialsPromise,
+			this.agentValidationService.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				credentialProvider,
+				'publish',
+			),
 		]);
 		const errors = schema.valid ? [] : [schema.error];
-		const missing = [...runnable.missing];
-		const taskIds = new Set(tasks.map((task) => task.id));
-		for (const task of config.tasks ?? []) {
-			if (!taskIds.has(task.id)) missing.push(`task:${task.id}`);
-		}
-		for (const tool of config.tools ?? []) {
-			if (tool.type === 'custom' && !agent.tools?.[tool.id]) missing.push(`customTool:${tool.id}`);
-		}
-		const credentialIds = new Set(credentials.map((credential) => credential.id));
-		for (const integration of agent.integrations ?? []) {
-			if (!credentialIds.has(integration.credentialId)) {
-				missing.push(`integration:${integration.type}.credential`);
-			}
-		}
-		const uniqueMissing = [...new Set(missing)];
+		const missing = [...new Set(configuration.issues.map((issue) => issue.path))];
 		return {
-			valid: errors.length === 0 && uniqueMissing.length === 0,
+			valid: errors.length === 0 && missing.length === 0,
 			errors,
-			missing: uniqueMissing,
+			missing,
 		};
 	}
 
 	private async discoverAssets(user: User, input: DiscoverAssetsInput): Promise<unknown> {
 		switch (input.kind) {
-			case 'models':
+			case 'models': {
 				if (input.provider) {
 					return await this.agentModelCatalogService.getProviderModels(
 						user,
@@ -1015,9 +1305,20 @@ export class McpAgentToolsService {
 						input.credentialId,
 					);
 				}
-				return filterOfferedAgentModelProviders(
+				// The full catalog runs to hundreds of KB — far past MCP client
+				// token limits — so without a provider return a summary instead.
+				const catalog = filterOfferedAgentModelProviders(
 					await (await import('@n8n/agents')).fetchProviderCatalog(),
 				);
+				return {
+					providers: Object.values(catalog).map((provider) => ({
+						provider: provider.id,
+						name: provider.name,
+						modelCount: Object.keys(provider.models).length,
+					})),
+					hint: 'Pass provider (and optionally credentialId) to list the models of one provider.',
+				};
+			}
 			case 'integrations':
 				return this.integrationPersistenceService.listChatIntegrations().map((integration) => ({
 					...integration,
@@ -1033,12 +1334,12 @@ export class McpAgentToolsService {
 			case 'workflows':
 				return await this.attachableWorkflowsService.list(user, input.projectId, input.query);
 			case 'subagents': {
-				const query = input.query?.trim().toLowerCase();
-				return (await this.agentsService.findByProjectId(input.projectId))
-					.filter((agent) => agent.activeVersionId !== null)
-					.filter((agent) => agent.id !== input.excludeAgentId)
-					.filter((agent) => !query || agent.name.toLowerCase().includes(query))
-					.map((agent) => ({ agentId: agent.id, name: agent.name }));
+				const summaries = await this.agentsService.findSummariesInProjects([input.projectId], {
+					query: input.query?.trim() || undefined,
+					publishedOnly: true,
+					excludeAgentId: input.excludeAgentId,
+				});
+				return summaries.map((agent) => ({ agentId: agent.id, name: agent.name }));
 			}
 			case 'mcpServers':
 				return input.query
@@ -1083,11 +1384,12 @@ export class McpAgentToolsService {
 	}
 
 	private async updateIntegration(user: User, input: UpdateIntegrationInput) {
-		await this.assertScope(user, input.projectId, 'agent:update');
-		const agent = await this.assertAvailableInMcp(input.agentId, input.projectId);
+		const agent = await this.resolveAgent(user, input.agentId);
+		const projectId = agent.projectId;
+		await this.assertScope(user, projectId, 'agent:update');
 		return input.action === 'disconnect'
 			? await this.disconnectIntegration(input, agent)
-			: await this.connectIntegration(user, input, agent);
+			: await this.connectIntegration(user, input, agent, projectId);
 	}
 
 	private async disconnectIntegration(input: UpdateIntegrationInput, agent: Agent) {
@@ -1110,7 +1412,7 @@ export class McpAgentToolsService {
 				credentialId: input.credentialId,
 			});
 		}
-		await this.integrationPersistenceService.removeCredentialIntegration(
+		const saved = await this.integrationPersistenceService.removeCredentialIntegration(
 			agent,
 			input.type,
 			input.credentialId,
@@ -1121,13 +1423,18 @@ export class McpAgentToolsService {
 			agentId: input.agentId,
 			integration: { type: input.type, credentialId: input.credentialId },
 			connected: false,
-			published: agent.activeVersionId !== null,
-			activeVersionId: agent.activeVersionId,
-			configHash: await this.fetchConfigHash(input.projectId, input.agentId),
+			published: saved.activeVersionId !== null,
+			activeVersionId: saved.activeVersionId,
+			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 	}
 
-	private async connectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
+	private async connectIntegration(
+		user: User,
+		input: UpdateIntegrationInput,
+		agent: Agent,
+		projectId: string,
+	) {
 		const candidate = {
 			type: input.type,
 			credentialId: input.credentialId,
@@ -1140,7 +1447,7 @@ export class McpAgentToolsService {
 		}
 
 		const credential = await this.requireAccessibleCredential(
-			this.credentialProvider(user, input.projectId),
+			this.credentialProvider(user, projectId),
 			input.credentialId,
 		);
 		const implementation = this.chatIntegrationRegistry.require(parsed.data.type);
@@ -1150,17 +1457,19 @@ export class McpAgentToolsService {
 			);
 		}
 
-		await this.integrationPersistenceService.saveCredentialIntegration(agent, parsed.data, {
-			broadcast: false,
-		});
+		const saved = await this.integrationPersistenceService.saveCredentialIntegration(
+			agent,
+			parsed.data,
+			{ broadcast: false },
+		);
 		const { agent: publishedAgent } = await this.agentPublishService.publishAgent(
 			input.agentId,
-			input.projectId,
+			projectId,
 			user,
 			undefined,
 			{ syncIntegrations: false },
 		);
-		await this.chatIntegrationService.connect(input.agentId, parsed.data, input.projectId);
+		await this.chatIntegrationService.connect(input.agentId, parsed.data, projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			input.agentId,
 			parsed.data,
@@ -1173,7 +1482,9 @@ export class McpAgentToolsService {
 			connected: true,
 			published: true,
 			activeVersionId: publishedAgent.activeVersionId,
-			configHash: await this.fetchConfigHash(input.projectId, input.agentId),
+			// Publishing with syncIntegrations:false touches neither schema nor
+			// integrations, so the entity saved above still hashes correctly.
+			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 	}
 
@@ -1188,6 +1499,28 @@ export class McpAgentToolsService {
 		const credential = (await credentialProvider.list()).find((item) => item.id === credentialId);
 		if (!credential) throw new UserError('Credential not found or not accessible');
 		return credential;
+	}
+
+	/**
+	 * An Agent belongs to exactly one project, so by-ID tools derive the project
+	 * from the agentId rather than making the client supply it, scoped to the
+	 * projects the user can access. Returns the loaded entity so callers don't
+	 * re-fetch the same row.
+	 *
+	 * Mirrors the per-workflow `availableInMCP` guard in `getMcpWorkflow`: MCP
+	 * tools may only operate on agents explicitly made available in MCP.
+	 * `search_agents` intentionally still sees every accessible agent so
+	 * clients can tell the user what exists.
+	 */
+	private async resolveAgent(user: User, agentId: string): Promise<Agent> {
+		const agent = await this.agentsService.findByIdForUser(agentId, user);
+		if (!agent) throw new UserError(`Agent "${agentId}" not found`);
+		if (!agent.availableInMCP) {
+			throw new UserError(
+				'Agent is not available in MCP. Enable MCP access from the agents list, or from the MCP settings page.',
+			);
+		}
+		return agent;
 	}
 
 	private async assertScope(user: User, projectId: string, scope: Scope): Promise<void> {

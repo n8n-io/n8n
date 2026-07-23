@@ -91,6 +91,24 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return { data: data.filter(isWorkflowListItem), count };
 	}
 
+	/**
+	 * Fetch a page of MCP-available workflows, clamping to the last non-empty
+	 * page when the requested one shrank away (e.g. after removing access).
+	 * Returns the effective 1-based page so callers can sync their table state.
+	 */
+	async function fetchWorkflowsAvailableForMCPPage(
+		page: number,
+		pageSize: number,
+	): Promise<{ data: WorkflowListItem[]; count: number; page: number }> {
+		const response = await fetchWorkflowsAvailableForMCP(page, pageSize);
+		if (response.data.length === 0 && response.count > 0 && page > 1) {
+			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
+			const clamped = await fetchWorkflowsAvailableForMCP(maxPage, pageSize);
+			return { ...clamped, page: maxPage };
+		}
+		return { ...response, page };
+	}
+
 	async function fetchAgentsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
@@ -102,6 +120,24 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			filter: { availableInMCP: true },
 		});
 		return { data, count };
+	}
+
+	/**
+	 * Fetch a page of MCP-available agents, clamping to the last non-empty page
+	 * when the requested one shrank away (e.g. after removing access). Returns
+	 * the effective 1-based page so callers can sync their table state.
+	 */
+	async function fetchAgentsAvailableForMCPPage(
+		page: number,
+		pageSize: number,
+	): Promise<{ data: Agent[]; count: number; page: number }> {
+		const response = await fetchAgentsAvailableForMCP(page, pageSize);
+		if (response.data.length === 0 && response.count > 0 && page > 1) {
+			const maxPage = Math.max(1, Math.ceil(response.count / pageSize));
+			const clamped = await fetchAgentsAvailableForMCP(maxPage, pageSize);
+			return { ...clamped, page: maxPage };
+		}
+		return { ...response, page };
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
@@ -361,7 +397,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		mcpManagedByEnv,
 		serverUrl,
 		fetchWorkflowsAvailableForMCP,
+		fetchWorkflowsAvailableForMCPPage,
 		fetchAgentsAvailableForMCP,
+		fetchAgentsAvailableForMCPPage,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
 		toggleWorkflowsMcpAccess,

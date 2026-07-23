@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -41,6 +42,45 @@ describe('AgentRepository', () => {
 		});
 	});
 
+	describe('findById', () => {
+		it('calls findOne with the id alone and the activeVersion relation', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+
+			const result = await repository.findById('agent-1');
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { id: 'agent-1' },
+				relations: { activeVersion: true },
+			});
+			expect(result).toBe(agent);
+		});
+	});
+
+	describe('findByIdInProjects', () => {
+		it('returns null without querying when projectIds is empty', async () => {
+			const findOne = vi.spyOn(repository, 'findOne');
+
+			const result = await repository.findByIdInProjects('agent-1', []);
+
+			expect(result).toBeNull();
+			expect(findOne).not.toHaveBeenCalled();
+		});
+
+		it('constrains the lookup to the given project ids', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+
+			const result = await repository.findByIdInProjects('agent-1', ['project-1', 'project-2']);
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { id: 'agent-1', projectId: In(['project-1', 'project-2']) },
+				relations: { activeVersion: true },
+			});
+			expect(result).toBe(agent);
+		});
+	});
+
 	describe('findByProjectId', () => {
 		it('calls find ordered by updatedAt descending with the activeVersion relation', async () => {
 			const agents = [mock<Agent>(), mock<Agent>()];
@@ -62,6 +102,68 @@ describe('AgentRepository', () => {
 			const result = await repository.findByProjectId('project-1');
 
 			expect(result).toEqual([]);
+		});
+	});
+
+	describe('findSummariesByProjectIds', () => {
+		const makeQb = () => ({
+			select: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
+			orderBy: vi.fn().mockReturnThis(),
+			take: vi.fn().mockReturnThis(),
+			getMany: vi.fn().mockResolvedValue([]),
+		});
+
+		it('returns [] without querying when projectIds is empty', async () => {
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			const result = await repository.findSummariesByProjectIds([], { limit: 10 });
+
+			expect(result).toEqual([]);
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+
+		it('selects only summary columns without the activeVersion join', async () => {
+			const mockQb = makeQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findSummariesByProjectIds(['project-1']);
+
+			expect(mockQb.select).toHaveBeenCalledWith([
+				'agent.id',
+				'agent.name',
+				'agent.projectId',
+				'agent.activeVersionId',
+				'agent.availableInMCP',
+				'agent.updatedAt',
+			]);
+			expect(mockQb.where).toHaveBeenCalledWith('agent.projectId IN (:...projectIds)', {
+				projectIds: ['project-1'],
+			});
+			expect(mockQb.andWhere).not.toHaveBeenCalled();
+			expect(mockQb.take).not.toHaveBeenCalled();
+		});
+
+		it('pushes all filters and the limit into the query', async () => {
+			const mockQb = makeQb();
+			vi.spyOn(repository, 'createQueryBuilder').mockReturnValue(mockQb as never);
+
+			await repository.findSummariesByProjectIds(['p1', 'p2'], {
+				query: 'sales',
+				publishedOnly: true,
+				excludeAgentId: 'agent-3',
+				limit: 10,
+			});
+
+			expect(mockQb.andWhere).toHaveBeenCalledWith('LOWER(agent.name) LIKE LOWER(:query)', {
+				query: '%sales%',
+			});
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.activeVersionId IS NOT NULL');
+			expect(mockQb.andWhere).toHaveBeenCalledWith('agent.id != :excludeAgentId', {
+				excludeAgentId: 'agent-3',
+			});
+			expect(mockQb.take).toHaveBeenCalledWith(10);
 		});
 	});
 

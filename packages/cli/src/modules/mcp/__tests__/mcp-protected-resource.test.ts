@@ -35,7 +35,7 @@ describe('McpProtectedResource', () => {
 
 			expect(scopeTools['workflow:read']).toContain('search_workflows');
 			expect(scopeTools['workflow:read']).toContain('search_nodes');
-			expect(scopeTools['tag:read']).toContain('list_tags');
+			expect(scopeTools['tag:read']).toContain('list_workflow_tags');
 		});
 
 		it('should drop tools this instance does not expose', () => {
@@ -53,7 +53,7 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['workflow:read']).not.toContain('search_nodes');
 			expect(scopeTools['workflow:write']).not.toContain('create_workflow_from_code');
 			expect(scopeTools['project:read']).toEqual([]);
-			// list_tags is hidden when tags are disabled
+			// list_workflow_tags is hidden when tags are disabled
 			expect(scopeTools['tag:read']).toEqual([]);
 		});
 	});
@@ -72,6 +72,30 @@ describe('McpProtectedResource', () => {
 		it('should strip a trailing slash from the base URL', () => {
 			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n/');
 			expect(resource.getResourceUrl()).toBe('https://example.com/n8n/mcp-server/http');
+		});
+	});
+
+	describe('getProtectedResourceMetadataUrl', () => {
+		it('should insert the well-known prefix before the resource path (RFC 9728)', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			expect(resource.getProtectedResourceMetadataUrl()).toBe(
+				'https://n8n.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+			);
+		});
+
+		it('should preserve a subpath in the base URL', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://example.com/n8n');
+			expect(resource.getProtectedResourceMetadataUrl()).toBe(
+				'https://example.com/.well-known/oauth-protected-resource/n8n/mcp-server/http',
+			);
+		});
+
+		it('should derive from the configured MCP base URL when set', () => {
+			urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+			mcpConfig.baseUrl = 'https://n8n-mcp.example.com';
+			expect(resource.getProtectedResourceMetadataUrl()).toBe(
+				'https://n8n-mcp.example.com/.well-known/oauth-protected-resource/mcp-server/http',
+			);
 		});
 	});
 

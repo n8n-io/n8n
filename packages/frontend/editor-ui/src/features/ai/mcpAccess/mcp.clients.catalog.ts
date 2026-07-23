@@ -39,15 +39,46 @@ export interface McpClientCategoryGroup {
  * (when the editor supports one) + manual config.
  */
 export function getMcpClientCatalog(serverUrl: string): McpClientCategoryGroup[] {
-	const claudeSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "type": "http",\n      "url": "${serverUrl}"\n    }\n  }\n}`;
+	const claudeSnippet = `{
+  "mcpServers": {
+    "n8n": {
+      "type": "http",
+      "url": "${serverUrl}"
+    }
+  }
+}`;
 	// Cursor treats a bare `url` as SSE; n8n's endpoint is streamable HTTP, so the
 	// transport must be stated explicitly.
-	const cursorSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "type": "streamable-http",\n      "url": "${serverUrl}"\n    }\n  }\n}`;
+	const cursorSnippet = `{
+  "mcpServers": {
+    "n8n": {
+      "type": "streamable-http",
+      "url": "${serverUrl}"
+    }
+  }
+}`;
 	// Codex routes HTTP MCP servers through its Rust client, which older builds only
 	// enable behind this feature flag (newer builds ignore it).
-	const codexSnippet = `[features]\nexperimental_use_rmcp_client = true\n\n[mcp_servers.n8n]\nurl = "${serverUrl}"`;
-	const geminiSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "httpUrl": "${serverUrl}"\n    }\n  }\n}`;
-	const vscodeSnippet = `{\n  "servers": {\n    "n8n": {\n      "type": "http",\n      "url": "${serverUrl}"\n    }\n  }\n}`;
+	const codexSnippet = `[features]
+experimental_use_rmcp_client = true
+
+[mcp_servers.n8n]
+url = "${serverUrl}"`;
+	const geminiSnippet = `{
+  "mcpServers": {
+    "n8n": {
+      "httpUrl": "${serverUrl}"
+    }
+  }
+}`;
+	const vscodeSnippet = `{
+  "servers": {
+    "n8n": {
+      "type": "http",
+      "url": "${serverUrl}"
+    }
+  }
+}`;
 	const windsurfSnippet = `{\n  "mcpServers": {\n    "n8n": {\n      "serverUrl": "${serverUrl}"\n    }\n  }\n}`;
 
 	// One-click deep links, exactly as each editor expects: Cursor takes base64 of
