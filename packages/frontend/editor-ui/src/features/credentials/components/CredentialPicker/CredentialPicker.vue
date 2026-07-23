@@ -27,6 +27,7 @@ const props = defineProps<{
 	projectId?: string;
 	suggestedCredentialName?: string;
 	teleported?: boolean;
+	credentialModalAppendToBody?: boolean;
 	size?: SelectSize;
 	buttonSize?: ButtonProps['size'];
 }>();
@@ -122,14 +123,21 @@ const createNewCredential = () => {
 		props.suggestedCredentialName,
 		undefined,
 		undefined,
-		{ closeOnSave: true },
+		{
+			closeOnSave: true,
+			...(props.credentialModalAppendToBody ? { appendToBody: true } : {}),
+		},
 	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
 };
 const editCredential = () => {
 	assert(props.selectedCredentialId);
-	uiStore.openExistingCredential(props.selectedCredentialId);
+	if (props.credentialModalAppendToBody) {
+		uiStore.openExistingCredential(props.selectedCredentialId, { appendToBody: true });
+	} else {
+		uiStore.openExistingCredential(props.selectedCredentialId);
+	}
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', props.selectedCredentialId);
 };

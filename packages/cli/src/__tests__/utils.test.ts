@@ -5,6 +5,7 @@ import {
 	shouldAssignExecuteMethod,
 	getAllKeyPaths,
 	isWorkflowIdValid,
+	satisfiesToolCapability,
 	setMicrosoftObservabilityDefaults,
 	containsExpression,
 	stripToolSuffix,
@@ -63,6 +64,28 @@ describe('stripToolSuffix', () => {
 	])('strips %s -> %s', (input, expected) => {
 		expect(stripToolSuffix(input)).toBe(expected);
 	});
+});
+
+describe('satisfiesToolCapability', () => {
+	const nodeWith = (usableAsTool: boolean | undefined) =>
+		({ description: { usableAsTool } }) as INodeType;
+
+	it('exempts HITL tool names from the capability requirement', () => {
+		expect(satisfiesToolCapability('n8n-nodes-base.gmailHitlTool', nodeWith(undefined))).toBe(true);
+	});
+
+	it('accepts a tool name when the resolved node declares usableAsTool', () => {
+		expect(satisfiesToolCapability('n8n-nodes-base.gmailTool', nodeWith(true))).toBe(true);
+	});
+
+	it.each([undefined, false])(
+		'rejects a tool name when the resolved node has usableAsTool: %s',
+		(usableAsTool) => {
+			expect(satisfiesToolCapability('n8n-nodes-base.gmailTool', nodeWith(usableAsTool))).toBe(
+				false,
+			);
+		},
+	);
 });
 
 describe('shouldAssignExecuteMethod', () => {

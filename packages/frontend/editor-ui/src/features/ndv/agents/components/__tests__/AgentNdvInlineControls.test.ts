@@ -43,9 +43,16 @@ const CapabilitiesStub = {
 
 const InfoPanelStub = {
 	name: 'AgentInfoPanel',
-	props: ['config', 'projectId', 'disabled', 'embedded'],
+	props: ['config', 'projectId', 'disabled', 'embedded', 'showInstructions'],
 	emits: ['update:config'],
 	template: '<div data-testid="info-panel-stub" />',
+};
+
+const MarkdownEditorStub = {
+	name: 'N8nMarkdownEditor',
+	props: ['modelValue', 'disabled'],
+	emits: ['update:modelValue'],
+	template: '<div data-testid="markdown-editor-stub" />',
 };
 
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
@@ -100,6 +107,7 @@ function mountControls(ndv: UseNdvAgentConfigReturn, props: { isReadOnly?: boole
 			stubs: {
 				AgentCapabilitiesSection: CapabilitiesStub,
 				AgentInfoPanel: InfoPanelStub,
+				MarkdownEditor: MarkdownEditorStub,
 			},
 		},
 	});
@@ -117,18 +125,6 @@ describe('AgentNdvInlineControls', () => {
 		expect(nonAgent.find('[data-test-id="agent-ndv-inline-controls"]').exists()).toBe(false);
 	});
 
-	it('schedules a name update from the name input', async () => {
-		const { value, scheduleConfigUpdate } = createNdvStub();
-		const wrapper = mountControls(value);
-
-		await wrapper
-			.find('[data-test-id="agent-ndv-inline-controls"]')
-			.find('input')
-			.setValue('Renamed');
-
-		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ name: 'Renamed' });
-	});
-
 	it('passes the local config to the panels and enables the tools + skills sections', () => {
 		const config = makeConfig();
 		const appliedSkills = [
@@ -140,6 +136,11 @@ describe('AgentNdvInlineControls', () => {
 		const infoPanel = wrapper.findComponent(InfoPanelStub);
 		expect(infoPanel.props('config')).toEqual(config);
 		expect(infoPanel.props('disabled')).toBe(false);
+		expect(infoPanel.props('showInstructions')).toBe(false);
+
+		const markdownEditor = wrapper.findComponent(MarkdownEditorStub);
+		expect(markdownEditor.props('modelValue')).toBe(config.instructions);
+		expect(markdownEditor.props('disabled')).toBe(false);
 
 		const capabilities = wrapper.findComponent(CapabilitiesStub);
 		expect(capabilities.props('sections')).toEqual(['tools', 'skills']);
@@ -150,7 +151,7 @@ describe('AgentNdvInlineControls', () => {
 		const { value, scheduleConfigUpdate, actions } = createNdvStub();
 		const wrapper = mountControls(value);
 
-		wrapper.findComponent(InfoPanelStub).vm.$emit('update:config', { instructions: 'New.' });
+		wrapper.findComponent(MarkdownEditorStub).vm.$emit('update:modelValue', 'New.');
 		expect(scheduleConfigUpdate).toHaveBeenCalledWith({ instructions: 'New.' });
 
 		wrapper.findComponent(CapabilitiesStub).vm.$emit('add-tool');
@@ -176,6 +177,7 @@ describe('AgentNdvInlineControls', () => {
 		const wrapper = mountControls(createNdvStub().value, { isReadOnly: true });
 
 		expect(wrapper.findComponent(InfoPanelStub).props('disabled')).toBe(true);
+		expect(wrapper.findComponent(MarkdownEditorStub).props('disabled')).toBe(true);
 		expect(wrapper.findComponent(CapabilitiesStub).props('disabled')).toBe(true);
 	});
 });

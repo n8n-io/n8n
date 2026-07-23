@@ -5,9 +5,7 @@
  */
 export type PublicationSkipReason =
 	/** The workflow row no longer exists. */
-	| 'workflow-not-found'
-	/** The workflow is no longer active, so there are no triggers to reconcile. */
-	| 'workflow-inactive';
+	'workflow-not-found';
 
 import type { WorkflowPublicationTriggerKind } from '@n8n/db';
 

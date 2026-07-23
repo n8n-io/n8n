@@ -43,21 +43,23 @@ ${SKILL_BODY_FORMAT_RULE}
 
 ${SKILL_BODY_TEMPLATE}
 
-## Ask first (required)
+## Fill the template with assumptions (required)
 
 Do NOT call \`create_skills\` until you have enough concrete domain detail to write
 a genuinely useful skill: a specific routing description and a body whose
 applicable sections are filled with real content (the actual steps, rules,
-examples, and edge cases). If any of that is missing, ask the user clarifying
-questions (use \`ask_questions\`, batching multiple questions into one call —
-discrete options for choices, or \`type: "text"\` for open-ended) until you can
-write it. Never create a placeholder or vague skill.
+examples, and edge cases). Derive missing domain detail from the user's
+stated goal as stated assumptions, and list them in your summary. Use
+\`ask_questions\` only when even a reasonable assumption is impossible — never
+during an initial build: mark the task \`blocked\` instead, per the Initial
+Build rules in your system prompt. Never create a placeholder or vague
+skill.
 
 ## Workflow
 
-- Gather the domain detail you need, asking clarifying questions until the
-  description and every applicable body section can be written with concrete
-  content, for every skill you plan to create.
+- Fill the domain detail you need, deriving missing detail from the goal as
+  stated assumptions so the description and every applicable body section can
+  be written with concrete content, for every skill you plan to create.
 - Write each skill's \`description\` as the routing contract and \`instructions\`
   using the template above. Put all "when to use" / "when not to use" guidance
   in the description, never in the body (the body is invisible until the skill
@@ -104,7 +106,8 @@ write it. Never create a placeholder or vague skill.
 - \`create_skills\` does not attach any skill to the target agent config.
 - A skill that is useful for every request probably belongs in instructions, not in \`skills\`.
 - A vague description creates a vague skill, even if the body is excellent.
-- Do not create placeholder or vague skills; ask for missing domain details first.
+- Do not create placeholder or vague skills; derive missing domain details from
+  the stated goal as assumptions instead.
 - Do not call \`create_skills\` once per skill when several are ready — batch them
   into one call so the whole set is stored in a single round trip.
 

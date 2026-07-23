@@ -12,6 +12,7 @@ const props = withDefaults(
 		invalid?: boolean;
 		/** Human-readable reasons behind `invalid`, shown in a tooltip on the warning icon. */
 		invalidReasons?: string[];
+		clickable?: boolean;
 	}>(),
 	{
 		disabled: false,
@@ -19,6 +20,7 @@ const props = withDefaults(
 		active: false,
 		invalid: false,
 		invalidReasons: () => [],
+		clickable: true,
 	},
 );
 
@@ -38,7 +40,11 @@ const emit = defineEmits<{
 		:class="[
 			$style.chip,
 			props.variant === 'suggestion' ? $style.suggestion : $style.default,
-			{ [$style.active]: props.active, [$style.invalid]: props.invalid },
+			{
+				[$style.active]: props.active,
+				[$style.invalid]: props.invalid,
+				[$style.nonClickable]: !props.clickable,
+			},
 		]"
 		:disabled="props.disabled"
 		@click="emit('click', $event)"
@@ -71,6 +77,7 @@ const emit = defineEmits<{
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins/_focus.scss' as focus;
 .chip {
 	display: inline-flex;
 	align-items: center;
@@ -83,6 +90,10 @@ const emit = defineEmits<{
 	box-shadow: var(--shadow--xs);
 	font-family: inherit;
 	cursor: pointer;
+
+	&:focus-visible {
+		@include focus.focus-ring-with-border;
+	}
 }
 
 .default:not(:disabled):hover {
@@ -100,6 +111,10 @@ const emit = defineEmits<{
 
 .invalidIcon {
 	flex-shrink: 0;
+}
+
+.nonClickable {
+	pointer-events: none;
 }
 
 .suggestion {

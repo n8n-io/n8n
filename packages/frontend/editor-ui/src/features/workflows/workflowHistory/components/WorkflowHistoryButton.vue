@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 
 const locale = useI18n();

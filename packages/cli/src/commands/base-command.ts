@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import {
 	inDevelopment,
 	inTest,
@@ -8,11 +9,14 @@ import {
 	ModuleRegistry,
 	ModulesConfig,
 } from '@n8n/backend-common';
+import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { DbConnection } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
+	BinaryDataBlobManager,
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
@@ -21,13 +25,9 @@ import {
 	ExecutionContextHookRegistry,
 	StorageConfig,
 } from 'n8n-core';
-import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
-import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.config';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
-import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
@@ -339,10 +339,10 @@ export abstract class BaseCommand<F = never> {
 		try {
 			const objectStoreService = await this.initObjectStoreIfConfigured();
 			if (objectStoreService) {
-				const { ObjectStoreManager } = await import(
-					'n8n-core/dist/binary-data/object-store.manager.js'
+				binaryDataService.setManager(
+					's3',
+					new BinaryDataBlobManager(new S3ByteStore(objectStoreService), this.errorReporter),
 				);
-				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
 			}
 		} catch {
 			if (isS3WriteMode || isExecutionDataS3Mode) {
@@ -354,10 +354,10 @@ export abstract class BaseCommand<F = never> {
 		try {
 			const azureBlobService = await this.initAzureStoreIfConfigured();
 			if (azureBlobService) {
-				const { AzureBlobManager } = await import(
-					'n8n-core/dist/binary-data/azure-blob.manager.js'
+				binaryDataService.setManager(
+					'azure',
+					new BinaryDataBlobManager(new AzureByteStore(azureBlobService), this.errorReporter),
 				);
-				binaryDataService.setManager('azure', new AzureBlobManager(azureBlobService));
 			}
 		} catch {
 			if (isAzureWriteMode || isExecutionDataAzureMode) {
@@ -374,13 +374,10 @@ export abstract class BaseCommand<F = never> {
 	protected async initObjectStoreIfConfigured() {
 		if (Container.get(ObjectStoreConfig).bucket.name === '') return undefined;
 
-		const { ObjectStoreService } = await import(
-			'n8n-core/dist/binary-data/object-store/object-store.service.ee.js'
-		);
+		const { ObjectStoreService } = await import('@n8n/blob-storage/object-store');
 		const objectStoreService = Container.get(ObjectStoreService);
 		await objectStoreService.init();
 
-		const { S3ByteStore } = await import('@/blob-storage/s3-byte-store.ee.js');
 		Container.get(ExecutionDataJsonStore).registerByteStore(
 			's3',
 			new S3ByteStore(objectStoreService),
@@ -392,13 +389,10 @@ export abstract class BaseCommand<F = never> {
 	protected async initAzureStoreIfConfigured() {
 		if (Container.get(AzureBlobConfig).containerName === '') return;
 
-		const { AzureBlobService } = await import(
-			'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee.js'
-		);
+		const { AzureBlobService } = await import('@n8n/blob-storage/azure-blob');
 		const azureBlobService = Container.get(AzureBlobService);
 		await azureBlobService.init();
 
-		const { AzureByteStore } = await import('@/blob-storage/azure-byte-store.ee.js');
 		Container.get(ExecutionDataJsonStore).registerByteStore(
 			'az',
 			new AzureByteStore(azureBlobService),

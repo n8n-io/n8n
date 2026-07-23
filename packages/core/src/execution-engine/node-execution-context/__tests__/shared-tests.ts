@@ -14,12 +14,14 @@ import type {
 	RelatedExecution,
 	IExecuteWorkflowInfo,
 	IExecutionContext,
+	IRun,
 } from 'n8n-workflow';
 import { UnexpectedError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
 import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import type { BaseExecuteContext } from '../base-execute-context';
 
@@ -129,6 +131,58 @@ export const describeCommonTests = (
 			fnCaptor.value();
 			expect(abortSignal.removeEventListener).toHaveBeenCalledWith('abort', fnCaptor);
 			expect(handler).toHaveBeenCalled();
+		});
+	});
+
+	describe('onExecutionFinish', () => {
+		const hooks = mock<ExecutionLifecycleHooks>();
+		const originalHooks = additionalData.hooks;
+
+		beforeEach(() => {
+			vi.mocked(hooks.addHandler).mockClear();
+			additionalData.hooks = hooks;
+		});
+
+		afterEach(() => {
+			additionalData.hooks = originalHooks;
+		});
+
+		const registeredHandler = () => {
+			const fnCaptor = captor<(run: IRun) => Promise<void>>();
+			expect(hooks.addHandler).toHaveBeenLastCalledWith('workflowExecuteAfter', fnCaptor);
+			return fnCaptor.value;
+		};
+
+		it('invokes the handler once the execution ends', async () => {
+			const handler = vi.fn();
+			context.onExecutionFinish(handler);
+
+			await registeredHandler()(mock<IRun>({ status: 'success' }));
+
+			expect(handler).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not invoke the handler when the execution pauses into the waiting state', async () => {
+			const handler = vi.fn();
+			context.onExecutionFinish(handler);
+
+			await registeredHandler()(mock<IRun>({ status: 'waiting' }));
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('contains handler errors so the lifecycle hook chain cannot fail', async () => {
+			const handler = vi.fn().mockRejectedValue(new Error('cleanup failed'));
+			context.onExecutionFinish(handler);
+
+			await expect(registeredHandler()(mock<IRun>({ status: 'success' }))).resolves.toBeUndefined();
+			expect(handler).toHaveBeenCalledTimes(1);
+		});
+
+		it('does nothing when lifecycle hooks are unavailable', () => {
+			additionalData.hooks = undefined;
+
+			expect(() => context.onExecutionFinish(vi.fn())).not.toThrow();
 		});
 	});
 

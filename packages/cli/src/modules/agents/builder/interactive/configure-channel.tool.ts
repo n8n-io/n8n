@@ -30,7 +30,7 @@ export function buildConfigureChannelTool(deps: ConfigureChannelToolDeps): Built
 				'list_integration_types and pass a returned `type` as `integrationType`; do not infer ' +
 				'channel names. Shows setup UI in chat where the user creates a new channel credential ' +
 				'or skips. The setup UI persists the connection, so use this for channel credentials ' +
-				'instead of the credentials tool or config writes. Returns { connected: boolean }; if ' +
+				'instead of the credentials tool or config writes. Returns { connected: boolean } (plus configMutated/agentId refresh metadata when connected); if ' +
 				'false, continue without the channel and do not re-prompt.',
 		)
 		.input(configureChannelInputSchema)
