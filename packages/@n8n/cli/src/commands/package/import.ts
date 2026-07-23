@@ -88,7 +88,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		variableParentPolicy: Flags.string({
 			description:
-				'Where create-stub creates missing variables for workflow/folder packages (default: project): project creates them in the target project; global creates them at global scope and needs an API key with the variable:create scope. Ignored for project packages, where placement follows the package layout',
+				'Where create-stub creates missing variables for workflow/folder packages (default: project): project creates them in the target project; global creates them at global scope. Both placements need an API key with the variable:create scope when the package has variable requirements. Ignored for project packages, where placement follows the package layout',
 			options: ['project', 'global'],
 			aliases: ['variable-parent-policy'],
 		}),
