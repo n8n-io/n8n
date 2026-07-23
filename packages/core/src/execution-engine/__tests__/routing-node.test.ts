@@ -779,6 +779,78 @@ describe('RoutingNode', () => {
 				expect(result).toEqual(testData.output);
 			});
 		}
+
+		describe('when a routed property name is an inherited object member', () => {
+			// Guard the shared prototype so a regression here cannot cascade to other tests.
+			const hadOwnCall = Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call');
+			afterEach(() => {
+				if (!hadOwnCall) {
+					delete (Object.prototype.toString as unknown as { call?: unknown }).call;
+				}
+			});
+
+			it('keeps built-in object prototypes intact', () => {
+				const nodeTypeProperties: INodeProperties = {
+					displayName: 'Value',
+					name: 'value',
+					type: 'string',
+					routing: {
+						send: {
+							property: 'toString.call',
+							type: 'body',
+							value: 'x',
+						},
+					},
+					default: '',
+				};
+				node.parameters = {};
+				nodeType.description.properties = [nodeTypeProperties];
+
+				const workflow = new Workflow({
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					active: false,
+					nodeTypes,
+				});
+
+				const executeFunctions = mock<executionContexts.ExecuteContext>();
+				Object.assign(executeFunctions, {
+					runIndex,
+					additionalData,
+					workflow,
+					node,
+					mode,
+					connectionInputData,
+					runExecutionData,
+					nodeType,
+				});
+				const routingNode = new RoutingNode(executeFunctions, nodeType);
+
+				const executeSingleFunctions = getExecuteSingleFunctions(
+					workflow,
+					runExecutionData,
+					runIndex,
+					node,
+					itemIndex,
+				);
+
+				const result = routingNode.getRequestOptionsFromParameters(
+					executeSingleFunctions,
+					nodeTypeProperties,
+					itemIndex,
+					runIndex,
+					path,
+					{},
+				);
+
+				// Prototype untouched; the value lands as an own property on the request body.
+				expect(Object.prototype.hasOwnProperty.call(Object.prototype.toString, 'call')).toBe(false);
+				expect(Object.prototype.toString.call([])).toBe('[object Array]');
+				expect((result?.options.body as { toString?: { call?: unknown } }).toString?.call).toBe(
+					'x',
+				);
+			});
+		});
 	});
 
 	describe('runNode', () => {

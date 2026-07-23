@@ -213,6 +213,9 @@ describe('builder model recommendations', () => {
 		expect(skill?.instructions).toContain('$fromAI');
 		expect(skill?.instructions).toContain('$now.toISO()');
 		expect(skill?.instructions).toContain('$today');
+		expect(skill?.instructions).toContain('sendAndWait');
+		expect(skill?.instructions).toContain('dispatchAndWait');
+		expect(skill?.instructions).toContain('requireApproval: true');
 	});
 
 	it('registers only optional builder runtime skills', () => {

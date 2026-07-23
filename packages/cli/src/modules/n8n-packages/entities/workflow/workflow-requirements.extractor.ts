@@ -1,8 +1,8 @@
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { getSubworkflowId } from 'n8n-workflow';
 
 import type { RequirementsExtractor } from '../requirements-extractor';
+import { getStaticSubworkflowId } from './static-sub-workflow-id';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
 
 @Service()
@@ -22,7 +22,7 @@ export class WorkflowRequirementsExtractor
 		};
 
 		for (const node of workflow.nodes ?? []) {
-			addRequirement(getSubworkflowId(node));
+			addRequirement(getStaticSubworkflowId(node));
 		}
 
 		addRequirement(this.getErrorWorkflowId(workflow));

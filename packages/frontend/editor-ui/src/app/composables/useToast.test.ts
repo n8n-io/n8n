@@ -4,15 +4,29 @@ import { h, defineComponent } from 'vue';
 import { useToast } from './useToast';
 import { useTelemetry } from './useTelemetry';
 import { useUIStore } from '@/app/stores/ui.store';
+import { VIEWS } from '@/app/constants';
 import { vi } from 'vitest';
 
 vi.mock('./useTelemetry');
+
+const route = vi.hoisted(() => ({
+	name: '' as string | symbol,
+	params: {} as { workflowId?: string | string[] },
+}));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRoute: () => route,
+}));
 
 describe('useToast', () => {
 	let toast: ReturnType<typeof useToast>;
 	let telemetryTrackSpy: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
+		route.name = VIEWS.WORKFLOW;
+		route.params = { workflowId: 'test-workflow-id' };
+
 		const appEl = document.createElement('div');
 		appEl.id = 'n8n-app';
 		document.body.appendChild(appEl);
@@ -121,7 +135,7 @@ describe('useToast', () => {
 					error_title: 'Error',
 					error_message: 'Error occurred',
 					caused_by_credential: false,
-					workflow_id: expect.any(String),
+					workflow_id: 'test-workflow-id',
 				});
 			});
 		});
@@ -151,7 +165,7 @@ describe('useToast', () => {
 					error_title: 'Error in node',
 					error_message: 'Node execution failed',
 					caused_by_credential: false,
-					workflow_id: expect.any(String),
+					workflow_id: 'test-workflow-id',
 				});
 			});
 		});
@@ -176,7 +190,7 @@ describe('useToast', () => {
 					error_title: 'Error',
 					error_message: 'Unknown error',
 					caused_by_credential: false,
-					workflow_id: expect.any(String),
+					workflow_id: 'test-workflow-id',
 				});
 			});
 		});
@@ -292,7 +306,7 @@ describe('useToast', () => {
 					error_title: 'Allowed error',
 					error_message: 'Allowed error tracked',
 					caused_by_credential: false,
-					workflow_id: expect.any(String),
+					workflow_id: 'test-workflow-id',
 				});
 			});
 		});

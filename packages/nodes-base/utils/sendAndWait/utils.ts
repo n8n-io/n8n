@@ -7,7 +7,12 @@ import type {
 	INodeProperties,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
+import {
+	GMAIL_NODE_TYPE,
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	updateDisplayOptions,
+} from 'n8n-workflow';
 
 import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
@@ -503,6 +508,19 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 		res.send(createConfirmationPage(subject || 'Confirm your response', message, buttonLabel));
 		return { noWebhookResponse: true };
+	}
+
+	// Advanced HITL telemetry for the Gmail node — fired only for the advanced
+	// toggles (confirmation page, or advanced email's one-click links.)
+	const advancedEmail = this.getNodeParameter('advancedEmail', false) as boolean;
+	const isConfirmationPagePost = confirmationPage && method === 'POST';
+	const isDirectLinkGet = !confirmationPage && method === 'GET' && advancedEmail;
+	if ((isConfirmationPagePost || isDirectLinkGet) && this.getNode().type === GMAIL_NODE_TYPE) {
+		this.logHitlResponse({
+			approved,
+			response_mode: isConfirmationPagePost ? 'confirmation_page' : 'direct_link',
+			advanced_email: advancedEmail,
+		});
 	}
 
 	return {

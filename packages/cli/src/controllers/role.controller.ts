@@ -1,6 +1,7 @@
 import {
 	CreateRoleDto,
 	RoleAssignmentsResponseDto,
+	RoleDeleteQueryDto,
 	RoleGetQueryDto,
 	RoleListQueryDto,
 	RoleMembersResponseDto,
@@ -132,10 +133,11 @@ export class RoleController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
+		@Query query: RoleDeleteQueryDto,
 	): Promise<RoleDTO> {
 		const role = await this.roleService.getRole(slug);
 		this.assertCanManageRoleType(req.user, role.roleType);
-		const result = await this.roleService.removeCustomRole(slug);
+		const result = await this.roleService.removeCustomRole(slug, query.reassignRoleSlug);
 		this.eventService.emit('custom-role-deleted', {
 			userId: req.user.id,
 			roleSlug: result.slug,

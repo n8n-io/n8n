@@ -1,3 +1,4 @@
+import { isQuotaExhaustedError } from '../../stream/map-chunk';
 import type { WorkspaceFileTarget } from '../workspace-files';
 import { readWorkspaceFile, writeWorkspaceFile, writeWorkspaceFileMap } from '../workspace-files';
 
@@ -233,6 +234,43 @@ describe('workspace-files', () => {
 
 		expect(writeFile).toHaveBeenCalledTimes(3);
 		expect(executeCommand).toHaveBeenCalledTimes(3);
+	});
+
+	it('keeps a classifiable quota error as cause when both write paths fail', async () => {
+		const quotaError = () =>
+			Object.assign(new Error('Have reached end of quota'), {
+				statusCode: 403,
+				errorCode: 'quota_exhausted',
+			});
+		const commandError = quotaError();
+		const writeFile = vi.fn(async () => await Promise.reject(quotaError()));
+		const executeCommand = vi.fn(async () => await Promise.reject(commandError));
+		const target: WorkspaceFileTarget = { filesystem: { writeFile }, sandbox: { executeCommand } };
+
+		const thrown: unknown = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+		}).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).cause).toBe(commandError);
+		expect(isQuotaExhaustedError(thrown)).toBe(true);
+	});
+
+	it('keeps a classifiable quota error as cause on the command-only write path', async () => {
+		const commandError = Object.assign(new Error('Have reached end of quota'), {
+			statusCode: 403,
+			errorCode: 'quota_exhausted',
+		});
+		const executeCommand = vi.fn(async () => await Promise.reject(commandError));
+		const target: WorkspaceFileTarget = { sandbox: { executeCommand } };
+
+		const thrown: unknown = await writeWorkspaceFile(target, '/tmp/a.txt', 'alpha', {
+			logger: createLogger(),
+		}).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(Error);
+		expect((thrown as Error).cause).toBe(commandError);
+		expect(isQuotaExhaustedError(thrown)).toBe(true);
 	});
 
 	it('logs successful command fallback at warn level', async () => {

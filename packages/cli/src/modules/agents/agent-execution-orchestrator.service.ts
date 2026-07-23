@@ -7,10 +7,8 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { ExternalHooks } from '@/external-hooks';
-import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
-import { Telemetry } from '@/telemetry';
-
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentRunTracingService, modelIdFromSnapshot } from './agent-run-tracing.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { ExecutionRecorder } from './execution-recorder';
 import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
@@ -19,6 +17,9 @@ import type { ToolRegistry } from './tool-registry';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
+
+import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
+import { Telemetry } from '@/telemetry';
 
 export interface AgentMemoryScope {
 	threadId: string;
@@ -159,6 +160,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly telemetry: Telemetry,
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
+		private readonly agentRunTracingService: AgentRunTracingService,
 		private readonly externalHooks: ExternalHooks,
 	) {}
 
@@ -233,6 +235,23 @@ export class AgentExecutionOrchestratorService {
 		const runType: AgentRunTelemetryType = usePublishedVersion ? 'production' : 'test';
 
 		try {
+			// A resume request carries no `source` of its own — recover it from
+			// the suspended run being resumed so tracing stays consistent across
+			// the suspend/resume cycle. Skipped entirely when tracing is disabled,
+			// since `build()` would discard the result anyway.
+			const suspendedExecution = this.agentRunTracingService.enabled
+				? await this.agentExecutionService.findLatestSuspendedRun(threadId)
+				: undefined;
+
+			const tracing = await this.agentRunTracingService.build({
+				agentId,
+				projectId,
+				threadId,
+				userId: user?.id,
+				source: suspendedExecution?.source ?? 'unknown',
+				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
+			});
+
 			const resultStream = await agentInstance.resume('stream', resumeData, {
 				runId,
 				toolCallId,
@@ -240,6 +259,7 @@ export class AgentExecutionOrchestratorService {
 					agentId,
 					userId: user?.id,
 				}),
+				...(tracing ? { telemetry: tracing } : {}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {
@@ -445,9 +465,19 @@ export class AgentExecutionOrchestratorService {
 		const recorder = new ExecutionRecorder(toolRegistry);
 
 		try {
+			const tracing = await this.agentRunTracingService.build({
+				agentId,
+				projectId,
+				threadId,
+				userId,
+				source: source ?? 'test',
+				modelId: modelIdFromSnapshot(agentInstance.snapshot.model),
+			});
+
 			const resultStream = await agentInstance.stream(message, {
 				persistence: { threadId, resourceId },
 				executionCounter: createAgentExecutionCounter(this.telemetry, { agentId, userId }),
+				...(tracing ? { telemetry: tracing } : {}),
 			});
 
 			for await (const value of streamAgentChunks(resultStream.stream)) {

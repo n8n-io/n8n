@@ -401,6 +401,18 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			);
 		});
 
+		it('should offer Files.Read.All for document-library items as an alternative on a 403 for item:get', async () => {
+			setParams({ authentication: 'microsoftOAuth2Api', resource: 'item', operation: 'get' });
+			mockRequestOAuth2.mockRejectedValue({
+				statusCode: 403,
+				error: { error: { code: 'accessDenied', message: 'Access denied' } },
+			});
+
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l/items/1'),
+			).rejects.toThrow(/Files\.Read\.All for document-library items/);
+		});
+
 		it('should set httpCode "403" so callers can catch refusals', async () => {
 			setParams({ authentication: 'microsoftOAuth2Api', resource: 'list', operation: 'get' });
 			mockRequestOAuth2.mockRejectedValue({
@@ -429,6 +441,27 @@ describe('Microsoft SharePoint v2 Transport', () => {
 			await expect(microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l')).rejects.toThrow(
 				'List not found',
 			);
+		});
+
+		it('should rewrite a Graph NotFound to name the item resource under OAuth2', async () => {
+			setParams({ authentication: 'microsoftOAuth2Api', resource: 'item', operation: 'get' });
+			mockRequestOAuth2.mockRejectedValue({
+				statusCode: 404,
+				error: { error: { code: 'itemNotFound', message: 'The provided item does not exist.' } },
+			});
+
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l/items/i'),
+			).rejects.toThrow('Item not found');
+		});
+
+		it('should name the item resource on a 404 under the Service Principal', async () => {
+			setParams({ authentication: SERVICE_PRINCIPAL_AUTH, resource: 'item', operation: 'get' });
+			mockRequestWithAuthentication.mockRejectedValue({ httpCode: '404' });
+
+			await expect(
+				microsoftApiRequest.call(ctx, 'GET', '/v1.0/sites/s/lists/l/items/i'),
+			).rejects.toThrow('Item not found');
 		});
 
 		it('should keep a static sanitized message for other Service Principal errors', async () => {
