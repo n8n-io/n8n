@@ -18,12 +18,11 @@ import {
 } from '../../descriptions/common.descriptions';
 import type { GraphTableRow } from '../../helpers/tableRead';
 import {
-	fetchCollection,
 	fetchTableColumnNames,
 	resolveTableEndpoint,
-	runPerItem,
 	rowsToObjects,
 } from '../../helpers/tableRead';
+import { fetchCollection, runPerItem } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	siteRLC,

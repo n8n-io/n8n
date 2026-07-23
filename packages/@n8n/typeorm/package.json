@@ -1,6 +1,6 @@
 {
   "name": "@n8n/typeorm",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Data-Mapper ORM for TypeScript, ES7, ES6, ES5. Supports PostgreSQL and SQLite databases.",
   "license": "MIT",
   "readmeFilename": "README.md",

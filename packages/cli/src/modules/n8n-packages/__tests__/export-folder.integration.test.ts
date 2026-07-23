@@ -392,6 +392,10 @@ describe('folder package export — with contained workflows', () => {
 					usedByWorkflows: [workflow.id],
 				},
 			],
+			// Folder packages fold node type usage too (shared WorkflowExporter path).
+			nodeTypes: [
+				{ type: 'n8n-nodes-base.httpRequest', typeVersion: 1, usedByWorkflows: [workflow.id] },
+			],
 		});
 		expect(
 			entries.find((e) => e.name === `${manifest.credentials![0].target}/credential.json`),
@@ -426,6 +430,7 @@ describe('folder package export — with contained workflows', () => {
 			},
 		]);
 		expect(manifest.requirements).toEqual({
+			nodeTypes: expect.any(Array),
 			variables: [
 				{ name: 'API_URL', value: 'https://api.example.com', usedByWorkflows: [workflow.id] },
 			],

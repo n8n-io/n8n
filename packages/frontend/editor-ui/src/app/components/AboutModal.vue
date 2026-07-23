@@ -5,7 +5,7 @@ import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { useDebugInfo } from '@/app/composables/useDebugInfo';
 import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
 import { useI18n } from '@n8n/i18n';

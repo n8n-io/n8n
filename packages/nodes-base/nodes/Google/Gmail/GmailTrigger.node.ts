@@ -17,6 +17,7 @@ import {
 	prepareQuery,
 	simplifyOutput,
 } from './GenericFunctions';
+import { simplifyMemoryNotice } from './utils/descriptions';
 import type {
 	GmailTriggerFilters,
 	GmailTriggerOptions,
@@ -113,9 +114,10 @@ export class GmailTrigger implements INodeType {
 					'Whether to return a simplified version of the response instead of the raw data',
 				builderHint: {
 					propertyHint:
-						'Set to false when the email body is needed for AI analysis, summarization, or content processing. When true, only returns snippet (preview text). When false, returns full email with {id, threadId, labelIds, headers, html, text, textAsHtml, subject, date, to, from, messageId, replyTo}.',
+						'Keep true by default. When true, returns lightweight metadata (id, threadId, labels, subject, from, to, snippet). When false, fetches and parses the full raw email (adds html, text, textAsHtml, headers, attachments), which uses much more memory and is a common cause of out-of-memory crashes. Only set false when the email body is actually required.',
 				},
 			},
+			simplifyMemoryNotice({ displayOptions: { show: { simple: [false] } } }),
 			{
 				displayName: 'Max Emails per Poll',
 				name: 'maxResults',

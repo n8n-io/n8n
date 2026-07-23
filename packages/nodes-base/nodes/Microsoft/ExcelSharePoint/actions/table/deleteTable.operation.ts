@@ -9,7 +9,8 @@ import {
 	workbookRLC,
 	worksheetRLC,
 } from '../../descriptions/common.descriptions';
-import { resolveTableEndpoint, runPerItem } from '../../helpers/tableRead';
+import { resolveTableEndpoint } from '../../helpers/tableRead';
+import { runPerItem } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [siteRLC, libraryRLC, workbookRLC, worksheetRLC, tableRLC];

@@ -245,6 +245,32 @@ describe('getProxyAgent', () => {
 			expect(Agent).toHaveBeenCalled();
 		});
 	});
+
+	describe('secure lookup', () => {
+		it('should build an Agent with the lookup on connect when no proxy is configured', () => {
+			const lookup = vi.fn();
+
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+
+			expect(Agent).toHaveBeenCalledWith(expect.objectContaining({ connect: { lookup } }));
+			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
+			expect(ProxyAgent).not.toHaveBeenCalled();
+		});
+
+		it('should not attach the lookup to a ProxyAgent when a proxy is configured', () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+			const lookup = vi.fn();
+
+			getProxyAgent('https://api.openai.com/v1', undefined, lookup);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(expect.objectContaining({ uri: proxyUrl }));
+			expect(ProxyAgent).not.toHaveBeenCalledWith(
+				expect.objectContaining({ connect: expect.anything() }),
+			);
+			expect(Agent).not.toHaveBeenCalled();
+		});
+	});
 });
 
 describe('proxyFetch', () => {

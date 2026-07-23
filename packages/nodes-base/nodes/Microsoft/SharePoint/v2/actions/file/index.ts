@@ -1,8 +1,10 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as download from './download.operation';
+import * as update from './update.operation';
 import * as upload from './upload.operation';
 
-export { upload };
+export { download, update, upload };
 
 export const description: INodeProperties[] = [
 	{
@@ -17,6 +19,18 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Download',
+				value: 'download',
+				description: 'Download a file',
+				action: 'Download file',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Rename a file and/or replace its contents',
+				action: 'Update file',
+			},
+			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file to a folder',
@@ -26,5 +40,7 @@ export const description: INodeProperties[] = [
 		default: 'upload',
 	},
 
+	...download.description,
+	...update.description,
 	...upload.description,
 ];
