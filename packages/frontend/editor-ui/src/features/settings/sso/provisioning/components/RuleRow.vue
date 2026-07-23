@@ -7,6 +7,7 @@ import type {
 	RoleMappingRuleResponse,
 	RoleMappingRuleType,
 } from '@n8n/rest-api-client/api/roleMappingRule';
+import InstanceRoleAssignmentSelect from './InstanceRoleAssignmentSelect.vue';
 import RuleMappingExpressionInput from './RuleMappingExpressionInput.vue';
 
 const props = withDefaults(
@@ -33,23 +34,13 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rolesStore = useRolesStore();
 
-const EXCLUDED_GLOBAL_ROLES = ['global:owner', 'global:chatUser'];
-
-const instanceRoleOptions = computed(() =>
-	rolesStore.roles.global
-		.filter((role) => !EXCLUDED_GLOBAL_ROLES.includes(role.slug))
-		.map((role) => ({ label: role.displayName, value: role.slug })),
-);
-
+// Instance rules assign an instance role or "Block access" via the grouped
+// dropdown (InstanceRoleAssignmentSelect); project rules pick a project role.
 const projectRoleOptions = computed(() =>
 	rolesStore.processedProjectRoles.map((role) => ({
 		label: role.displayName,
 		value: role.slug,
 	})),
-);
-
-const roleOptions = computed(() =>
-	props.type === 'project' ? projectRoleOptions.value : instanceRoleOptions.value,
 );
 
 const selectedProjectNames = computed(() => {
@@ -79,7 +70,15 @@ const selectedProjectNames = computed(() => {
 		</div>
 		<div :class="$style.cellRole">
 			<span :class="$style.label">assign</span>
+			<InstanceRoleAssignmentSelect
+				v-if="props.type !== 'project'"
+				:model-value="props.rule.role"
+				:disabled="props.disabled"
+				test-id="rule-role-select"
+				@update:model-value="emit('update', props.rule.id, { role: $event })"
+			/>
 			<N8nSelect
+				v-else
 				:model-value="props.rule.role"
 				size="small"
 				:disabled="props.disabled"
@@ -89,7 +88,7 @@ const selectedProjectNames = computed(() => {
 				@update:model-value="emit('update', props.rule.id, { role: String($event) })"
 			>
 				<N8nOption
-					v-for="option in roleOptions"
+					v-for="option in projectRoleOptions"
 					:key="option.value"
 					:label="option.label"
 					:value="option.value"

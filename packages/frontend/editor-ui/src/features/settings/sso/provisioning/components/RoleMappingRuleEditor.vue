@@ -18,6 +18,11 @@ const props = withDefaults(
 	},
 );
 
+// The default-condition role is owned by the parent provisioning form (it must
+// be shared with Mode 2, which has no rule editor) and persisted via the
+// provisioning config, so it's a two-way bound model rather than local state.
+const defaultInstanceRole = defineModel<string>('defaultInstanceRole', { required: true });
+
 const i18n = useI18n();
 const rbacStore = useRBACStore();
 const rolesStore = useRolesStore();
@@ -32,7 +37,6 @@ const teamProjectOptions = computed(() =>
 const {
 	instanceRules,
 	projectRules,
-	fallbackInstanceRole,
 	isDirty,
 	addRule,
 	updateRule,
@@ -74,13 +78,13 @@ defineExpose({ isDirty, save, discardProjectRules });
 		<RuleList
 			type="instance"
 			:rules="instanceRules"
-			:fallback-role="fallbackInstanceRole"
+			:fallback-role="defaultInstanceRole"
 			:disabled="!canEdit"
 			@reorder="(from, to) => reorder('instance', from, to)"
 			@update="updateRule"
 			@delete="deleteRule"
 			@duplicate="duplicateRule"
-			@update:fallback-role="fallbackInstanceRole = $event"
+			@update:fallback-role="defaultInstanceRole = $event"
 		/>
 		<div :class="$style.addButtonRow">
 			<N8nButton

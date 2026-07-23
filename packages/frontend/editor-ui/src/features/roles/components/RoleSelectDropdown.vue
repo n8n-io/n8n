@@ -11,6 +11,7 @@ import {
 import type {
 	SelectItemProps,
 	SelectValue,
+	SelectVariants,
 } from '@n8n/design-system/v2/components/Select/Select.types';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch } from 'vue';
@@ -35,7 +36,12 @@ const props = withDefaults(
 		canManageRoles: boolean;
 		addCustomRoleRouteName: string;
 		loading?: boolean;
+		disabled?: boolean;
 		testId?: string;
+		variant?: SelectVariants;
+		// Optional terminal (non-role) option rendered after a separator at the
+		// bottom of the list, e.g. "Block access". Selecting it emits its value.
+		terminalOption?: { value: string; label: string };
 		// Optional RoleHoverPopover overrides — defaults to project-scoped values when omitted.
 		permissionCountFn?: (role: Role) => number;
 		totalPermissions?: number;
@@ -45,7 +51,10 @@ const props = withDefaults(
 	}>(),
 	{
 		loading: false,
+		disabled: false,
 		testId: 'role-dropdown',
+		variant: 'ghost',
+		terminalOption: undefined,
 		permissionCountFn: undefined,
 		totalPermissions: undefined,
 		editRouteName: undefined,
@@ -88,6 +97,15 @@ const closeDropdown = () => {
 const selectedRole = computed(() =>
 	[...props.systemRoles, ...props.customRoles].find((role) => role.slug === props.currentRole),
 );
+
+// Trigger label: a real role's name, or the terminal option's label when selected.
+const selectedLabel = computed(() => {
+	if (selectedRole.value) return selectedRole.value.displayName;
+	if (props.terminalOption && props.currentRole === props.terminalOption.value) {
+		return props.terminalOption.label;
+	}
+	return undefined;
+});
 
 const filteredSystemRoles = computed(() => {
 	const query = searchQuery.value.toLowerCase().trim();
@@ -137,6 +155,13 @@ const roleItems = computed<RoleSelectItem[]>(() => {
 		});
 	}
 
+	if (props.terminalOption) {
+		if (items.length > 0) {
+			items.push({ type: 'separator' });
+		}
+		items.push({ value: props.terminalOption.value, label: props.terminalOption.label });
+	}
+
 	return items;
 });
 
@@ -177,9 +202,9 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 			:items="roleItems"
 			:model-value="currentRole"
 			size="small"
-			variant="ghost"
+			:variant="variant"
 			position="popper"
-			:disabled="loading"
+			:disabled="loading || disabled"
 			:content-class="$style.roleSelectContent"
 			:class="$style.roleSelect"
 			:data-test-id="testId"
@@ -187,13 +212,13 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 		>
 			<template #default>
 				<N8nTooltip
-					:content="selectedRole?.displayName"
-					:disabled="!selectedRole || dropdownOpen"
+					:content="selectedLabel"
+					:disabled="!selectedLabel || dropdownOpen"
 					placement="top"
 					as-child
 				>
 					<span :class="$style.triggerContent">
-						<span :class="$style.triggerLabel">{{ selectedRole?.displayName }}</span>
+						<span :class="$style.triggerLabel">{{ selectedLabel }}</span>
 						<N8nIcon v-if="loading" icon="spinner" spin size="small" />
 					</span>
 				</N8nTooltip>
@@ -247,6 +272,7 @@ const isUnavailableRoleItem = (item: SelectItemProps) => item.requiresUpgrade ==
 						</N8nSelect2Item>
 					</RoleHoverPopover>
 				</template>
+				<N8nSelect2Item v-else v-bind="item" :class="$style.selectItem" />
 			</template>
 
 			<template #label="{ item }">

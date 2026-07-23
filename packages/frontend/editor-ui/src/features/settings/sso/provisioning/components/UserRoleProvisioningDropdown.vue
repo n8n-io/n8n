@@ -4,6 +4,7 @@ import { N8nCallout, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
+import DefaultConditionRow from './DefaultConditionRow.vue';
 
 export type RoleAssignmentSetting = 'manual' | 'instance' | 'instance_and_project';
 export type RoleMappingMethodSetting = 'idp' | 'rules_in_n8n';
@@ -13,6 +14,9 @@ const roleAssignment = defineModel<RoleAssignmentSetting>('roleAssignment', {
 });
 const mappingMethod = defineModel<RoleMappingMethodSetting>('mappingMethod', {
 	default: 'idp',
+});
+const defaultInstanceRole = defineModel<string>('defaultInstanceRole', {
+	default: 'global:member',
 });
 
 const { authProtocol, disabled = false } = defineProps<{
@@ -111,19 +115,27 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 			</div>
 		</div>
 
-		<div v-if="showIdpInfoBox" :class="$style.infoBox">
-			<N8nCallout theme="custom" icon="info" :class="$style.callout">
-				<div>
-					{{ idpInfoText }}
-				</div>
-				<a
-					:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
-					target="_blank"
-					:class="$style.learnMoreLink"
-					>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.idp.learnMore') }}</a
-				>
-			</N8nCallout>
-		</div>
+		<template v-if="showIdpInfoBox">
+			<div :class="$style.infoBox">
+				<N8nCallout theme="custom" icon="info" :class="$style.callout">
+					<div>
+						{{ idpInfoText }}
+					</div>
+					<a
+						:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
+						target="_blank"
+						:class="$style.learnMoreLink"
+						>{{ i18n.baseText('settings.sso.settings.roleMappingMethod.idp.learnMore') }}</a
+					>
+				</N8nCallout>
+			</div>
+			<DefaultConditionRow
+				v-model="defaultInstanceRole"
+				standalone
+				:label="i18n.baseText('settings.sso.settings.roleMappingRules.defaultCondition.idp')"
+				:disabled="disabled || !canManage"
+			/>
+		</template>
 	</div>
 </template>
 <style lang="scss" module="shared" src="../../styles/sso-form.module.scss" />
