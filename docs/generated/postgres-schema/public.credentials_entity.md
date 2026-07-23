@@ -33,8 +33,8 @@
 | credentials_entity_resolverId_foreign | FOREIGN KEY | FOREIGN KEY ("resolverId") REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL |
 | credentials_entity_type_not_null | n | NOT NULL type |
 | credentials_entity_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| credentials_entity_usageScope_check | CHECK | CHECK (((usageScope)::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
-| credentials_entity_usageScope_not_null | n | NOT NULL usageScope |
+| credentials_entity_usageScope_check | CHECK | CHECK ((("usageScope")::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
+| credentials_entity_usageScope_not_null | n | NOT NULL "usageScope" |
 
 ## Indexes
 
