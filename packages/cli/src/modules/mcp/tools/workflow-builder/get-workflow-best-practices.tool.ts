@@ -15,6 +15,23 @@ import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.ty
 
 const LIST_SENTINEL = 'list';
 
+/**
+ * Grouping judgement guidance, appended to the technique list when the canvas
+ * groups feature flag is on. Covers *when* to group; the exact rules live in the
+ * SDK reference's "groups" section (see `NODE_GROUPS_REFERENCE`).
+ */
+const GROUPING_GUIDANCE = `## Grouping
+
+Organise larger workflows into named node groups — visual frames drawn on the canvas — so the result is readable the first time the user sees it.
+
+- **When to group:** workflows of roughly 6+ nodes that split into clear stages (e.g. ingest → transform → deliver). Give each stage its own group.
+- **When not to group:** small workflows (2-3 nodes); a group there is just noise.
+- **Groups vs sub-workflows:** a group is cosmetic organisation *inside* one workflow; a sub-workflow is a separately-executed, reusable unit. Group to make one canvas readable; extract a sub-workflow to reuse logic or isolate execution.
+- **Naming:** short, outcome-first titles ("Fetch new recordings", not "HTTP + Drive").
+- Groups are created collapsed by default, so the name is what the user sees first — make it descriptive.
+
+Fetch the "groups" section of the SDK reference for the exact rules before creating groups.`;
+
 const inputSchema = {
 	technique: z
 		.union([z.nativeEnum(WorkflowTechnique), z.literal(LIST_SENTINEL)])
@@ -46,7 +63,7 @@ const outputSchema = {
 		.describe('All available techniques, returned when "list" was requested.'),
 } satisfies z.ZodRawShape;
 
-function buildListResponse() {
+function buildListResponse(canvasGroupsEnabled: boolean) {
 	const availableTechniques = Object.entries(TechniqueDescription).map(([key, description]) => ({
 		technique: key,
 		description,
@@ -63,6 +80,9 @@ function buildListResponse() {
 			(t) =>
 				`- ${t.technique}${t.hasDocumentation ? '' : ' (no detailed documentation yet)'} — ${t.description}`,
 		),
+		// Grouping guidance is flag-gated and appended last, so flag-off output is
+		// unchanged.
+		...(canvasGroupsEnabled ? ['', GROUPING_GUIDANCE] : []),
 	].join('\n');
 
 	return {
@@ -104,6 +124,7 @@ function buildTechniqueResponse(technique: WorkflowTechniqueType) {
 export const createGetWorkflowBestPracticesTool = (
 	user: User,
 	telemetry: Telemetry,
+	{ canvasGroupsEnabled }: { canvasGroupsEnabled: boolean },
 ): ToolDefinition<typeof inputSchema> => ({
 	name: MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName,
 	config: {
@@ -128,7 +149,9 @@ export const createGetWorkflowBestPracticesTool = (
 
 		try {
 			const response =
-				technique === LIST_SENTINEL ? buildListResponse() : buildTechniqueResponse(technique);
+				technique === LIST_SENTINEL
+					? buildListResponse(canvasGroupsEnabled)
+					: buildTechniqueResponse(technique);
 
 			telemetryPayload.results = {
 				success: true,
