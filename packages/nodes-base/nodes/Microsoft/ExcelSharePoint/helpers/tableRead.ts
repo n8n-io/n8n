@@ -1,36 +1,10 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
-import type { AuthContext, GraphListResponse } from './interfaces';
+import type { AuthContext } from './interfaces';
 import { resolveWorkbookRoot, validatePathSegment } from './utils';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
+import { microsoftApiRequestAllItems } from '../transport';
 
 export type GraphTableRow = IDataObject & { values?: unknown[][] };
-
-export async function runPerItem(
-	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-	produce: (itemIndex: number) => Promise<IDataObject | IDataObject[]>,
-): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
-	for (let i = 0; i < items.length; i++) {
-		try {
-			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(await produce(i)),
-				{ itemData: { item: i } },
-			);
-			returnData.push.apply(returnData, executionData);
-		} catch (error) {
-			if (!this.continueOnFail()) throw error;
-			const message = error instanceof Error ? error.message : String(error);
-			const executionErrorData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray({ error: message }),
-				{ itemData: { item: i } },
-			);
-			returnData.push.apply(returnData, executionErrorData);
-		}
-	}
-	return returnData;
-}
 
 export async function resolveTableEndpoint(
 	this: IExecuteFunctions,
@@ -50,25 +24,6 @@ export async function resolveTableEndpoint(
 		this.getNodeParameter('table', itemIndex, '', { extractValue: true }) as string,
 	);
 	return `${workbookRoot}/workbook/tables/${encodeURIComponent(tableId)}`;
-}
-
-export async function fetchTableCollection<T extends IDataObject = IDataObject>(
-	this: IExecuteFunctions,
-	itemIndex: number,
-	endpoint: string,
-	qs: IDataObject,
-): Promise<T[]> {
-	if (this.getNodeParameter('returnAll', itemIndex)) {
-		return await (microsoftApiRequestAllItems<T>).call(this, endpoint, qs);
-	}
-	const response = await (microsoftApiRequest<GraphListResponse<T>>).call(
-		this,
-		'GET',
-		endpoint,
-		{},
-		{ ...qs, $top: this.getNodeParameter('limit', itemIndex) },
-	);
-	return response.value ?? [];
 }
 
 export async function fetchTableColumnNames(

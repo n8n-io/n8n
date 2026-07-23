@@ -8,6 +8,8 @@ import type {
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { SERVICE_PRINCIPAL_AUTH } from '../helpers/constants';
+import { isWorkbookFile, workbookSearchEndpoint } from '../helpers/workbookSearch';
+import type { DriveItem } from '../helpers/workbookSearch';
 import type { GraphListResponse, GraphTable, GraphWorksheet } from '../helpers/interfaces';
 import { listSearchPage } from '../helpers/listSearch';
 import { resolveSiteId, resolveWorkbookRoot, validatePathSegment } from '../helpers/utils';
@@ -15,9 +17,6 @@ import { getExcelSharePointCredentialType, microsoftApiRequest } from '../transp
 
 type Site = IDataObject & { id?: string; displayName?: string; webUrl?: string };
 type Drive = IDataObject & { id?: string; name?: string; webUrl?: string };
-type DriveItem = IDataObject & { id?: string; name?: string; webUrl?: string; file?: IDataObject };
-
-const WORKBOOK_EXTENSIONS = ['.xlsx', '.xlsm'];
 
 /**
  * Fetches one page of a Graph collection. An explicit `paginationToken` (a
@@ -76,13 +75,6 @@ function workbookToItem(item: DriveItem): INodeListSearchItems {
 		value: String(item.id),
 		url: item.webUrl,
 	};
-}
-
-function isWorkbookFile(item: DriveItem): boolean {
-	const name = String(item.name ?? '').toLowerCase();
-	return (
-		item.file !== undefined && WORKBOOK_EXTENSIONS.some((extension) => name.endsWith(extension))
-	);
 }
 
 /**
@@ -171,8 +163,7 @@ export async function searchWorkbooks(
 	);
 
 	const typed = filter?.trim() ?? '';
-	const searchText = typed === '' ? WORKBOOK_EXTENSIONS.join(' OR ') : typed;
-	const resource = `/v1.0/sites/${encodeURIComponent(siteId)}/drives/${encodeURIComponent(driveId)}/root/search(q='${encodeURIComponent(searchText.replace(/'/g, "''"))}')`;
+	const resource = workbookSearchEndpoint(siteId, driveId, typed);
 
 	let nextLink = paginationToken;
 	let workbooks: DriveItem[] = [];

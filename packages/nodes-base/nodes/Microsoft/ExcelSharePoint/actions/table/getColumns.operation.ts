@@ -16,7 +16,8 @@ import {
 	workbookRLC,
 	worksheetRLC,
 } from '../../descriptions/common.descriptions';
-import { fetchTableCollection, resolveTableEndpoint, runPerItem } from '../../helpers/tableRead';
+import { resolveTableEndpoint } from '../../helpers/tableRead';
+import { fetchCollection, runPerItem } from '../../helpers/utils';
 
 const properties: INodeProperties[] = [
 	siteRLC,
@@ -54,7 +55,7 @@ export async function execute(
 		}
 
 		const tableEndpoint = await resolveTableEndpoint.call(this, i, workbookRootCache, siteIdCache);
-		const columns = await fetchTableCollection.call(this, i, `${tableEndpoint}/columns`, qs);
+		const columns = await fetchCollection.call(this, i, `${tableEndpoint}/columns`, qs);
 
 		if (rawData) {
 			return { [this.getNodeParameter('dataProperty', i) as string]: columns };

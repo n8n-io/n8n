@@ -6,6 +6,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import * as convertTableToRange from './actions/table/convertToRange.operation';
+import * as createTable from './actions/table/create.operation';
+import * as deleteTable from './actions/table/deleteTable.operation';
 import * as getAllTables from './actions/table/getAll.operation';
 import * as getTableColumns from './actions/table/getColumns.operation';
 import * as getTableRows from './actions/table/getRows.operation';
@@ -156,6 +159,24 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				},
 				options: [
 					{
+						name: 'Convert to Range',
+						value: 'convertToRange',
+						description: 'Convert a table to a plain range of cells',
+						action: 'Convert table to range',
+					},
+					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a table from a range of cells',
+						action: 'Create table',
+					},
+					{
+						name: 'Delete',
+						value: 'deleteTable',
+						description: 'Delete table',
+						action: 'Delete table',
+					},
+					{
 						name: 'Get Columns',
 						value: 'getColumns',
 						description: "Retrieve a list of the table's columns",
@@ -182,7 +203,6 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				],
 				default: 'getAll',
 			},
-
 			...append.description,
 			...clear.description,
 			...deleteWorksheet.description,
@@ -192,6 +212,9 @@ export class MicrosoftExcelSharePoint implements INodeType {
 			...getTableColumns.description,
 			...getTableRows.description,
 			...lookupTable.description,
+			...createTable.description,
+			...convertTableToRange.description,
+			...deleteTable.description,
 			...workbook.description,
 		],
 	};
@@ -224,6 +247,18 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		}
 		if (resource === 'table' && operation === 'lookup') {
 			return [await lookupTable.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'create') {
+			return [await createTable.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'convertToRange') {
+			return [await convertTableToRange.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'deleteTable') {
+			return [await deleteTable.execute.call(this, items)];
+		}
+		if (resource === 'workbook' && operation === 'getAll') {
+			return [await workbook.getAll.execute.call(this, items)];
 		}
 
 		if (resource === 'worksheet' && operation === 'clear') {
