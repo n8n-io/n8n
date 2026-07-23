@@ -206,7 +206,7 @@ jobs:
           SANDBOX_NAME_PREFIX: evals-ci-${{ github.head_ref || inputs.branch || github.ref_name }}
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
           INSTANCE_AI_MODEL: ${{ inputs.model }}
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
@@ -386,7 +386,7 @@ jobs:
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
           # Native key for openrouter/* judge or shadow models (harness-models input);
           # judge/shadow model envs themselves arrive via GITHUB_ENV from the parse step.
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
           LANGSMITH_TRACING: 'true'
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
@@ -447,6 +447,7 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+          EVALS_OPENROUTER_KEY: ${{ secrets.EVALS_OPENROUTER_KEY }}
         run: |
           # Layer 2 — defense in depth: explicitly mask each secret's value.
           # ::add-mask:: is a single-line workflow command. Multi-line secrets
@@ -454,7 +455,8 @@ jobs:
           # a time, otherwise only the first line is registered.
           for v in "$EVALS_ANTHROPIC_KEY" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" \
-                   "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY"; do
+                   "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY" \
+                   "$EVALS_OPENROUTER_KEY"; do
             [ -z "$v" ] && continue
             while IFS= read -r line; do
               [ -n "$line" ] && echo "::add-mask::$line"
