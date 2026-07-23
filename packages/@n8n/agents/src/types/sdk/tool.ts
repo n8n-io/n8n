@@ -122,6 +122,8 @@ export interface BuiltTool {
 	readonly mcpTool?: boolean;
 	/** Name of the MCP server this tool belongs to. Set when mcpTool is true. */
 	readonly mcpServerName?: string;
+	/** Original, unprefixed tool name reported by the MCP server. */
+	readonly mcpToolName?: string;
 	/**
 	 * Provider-specific options forwarded to the AI SDK's `tool()` call.
 	 * Keyed by provider name (e.g. `anthropic`, `openai`).

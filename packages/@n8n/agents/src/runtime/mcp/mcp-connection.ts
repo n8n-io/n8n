@@ -170,10 +170,7 @@ export class McpConnection {
 		if (requireApproval === true) return true;
 
 		if (Array.isArray(requireApproval) && requireApproval.length > 0) {
-			const prefix = `${this.config.name}_`;
-			const originalName = tool.name.startsWith(prefix)
-				? tool.name.slice(prefix.length)
-				: tool.name;
+			const originalName = tool.mcpToolName ?? tool.name;
 			return requireApproval.includes(originalName);
 		}
 

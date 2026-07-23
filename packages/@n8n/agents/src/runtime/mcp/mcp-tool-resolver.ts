@@ -2,6 +2,7 @@ import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { JSONSchema7 } from 'json-schema';
 
 import type { McpCallToolResult, McpConnection } from './mcp-connection';
+import { sanitizeToolName } from '../../sdk/tool';
 import type { AgentMessage, ContentFile, ContentText } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 
@@ -18,7 +19,7 @@ export class McpToolResolver {
 	}
 
 	private resolveTool(connection: McpConnection, tool: Tool): BuiltTool {
-		const prefixedName = `${connection.name}_${tool.name}`;
+		const prefixedName = sanitizeToolName(`${connection.name}_${tool.name}`);
 		const originalName = tool.name;
 
 		const handler = async (
@@ -43,6 +44,7 @@ export class McpToolResolver {
 			toMessage,
 			mcpTool: true,
 			mcpServerName: connection.name,
+			mcpToolName: originalName,
 		};
 
 		return builtTool;

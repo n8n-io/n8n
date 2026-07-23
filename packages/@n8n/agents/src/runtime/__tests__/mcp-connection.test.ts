@@ -220,6 +220,32 @@ describe('McpConnection — tool filtering', () => {
 		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_add', 's1_subtract']);
 	});
 
+	it('normalizes the model-facing prefix while preserving the MCP server name', async () => {
+		const conn = new McpConnection({
+			name: 'Linear Prod',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			requireApproval: ['echo'],
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual([
+			'Linear_Prod_echo',
+			'Linear_Prod_add',
+			'Linear_Prod_subtract',
+		]);
+		expect(tools.every((tool) => tool.mcpServerName === 'Linear Prod')).toBe(true);
+		expect(tools).toEqual([
+			expect.objectContaining({ mcpToolName: 'echo' }),
+			expect.objectContaining({ mcpToolName: 'add' }),
+			expect.objectContaining({ mcpToolName: 'subtract' }),
+		]);
+		expect(tools[0]?.suspendSchema).toBeDefined();
+		expect(tools[1]?.suspendSchema).toBeUndefined();
+	});
+
 	it('keeps only allowed tools when allow filter is configured', async () => {
 		const conn = new McpConnection({
 			name: 's1',

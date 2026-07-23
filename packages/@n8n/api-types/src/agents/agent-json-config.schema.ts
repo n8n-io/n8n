@@ -228,10 +228,8 @@ export const McpServerConfigSchema = z
 			.string()
 			.min(1)
 			.max(64)
-			.regex(/^[a-zA-Z0-9_-]+$/)
-			.describe(
-				'Unique server name, also used as the SDK tool-name prefix (e.g. github -> github_create_issue)',
-			),
+			.refine((name) => name.trim().length > 0, 'MCP server name cannot be blank')
+			.describe('Unique display name. The SDK normalizes it when building model-facing tool names'),
 		description: z.string().max(512).optional().describe('Human-readable server description'),
 		url: z.string().describe('MCP server endpoint URL. Empty string means setup is incomplete'),
 		transport: z
