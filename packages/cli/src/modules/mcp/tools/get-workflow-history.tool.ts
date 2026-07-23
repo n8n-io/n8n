@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';

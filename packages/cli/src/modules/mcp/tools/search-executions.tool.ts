@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import { ExecutionStatusList, WorkflowExecuteModeList, type ExecutionStatus } from 'n8n-workflow';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { ExecutionService } from '@/executions/execution.service';
 import type { Telemetry } from '@/telemetry';

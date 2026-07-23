@@ -2,7 +2,7 @@
 import * as os from 'node:os';
 import * as path from 'node:path';
 import yargsParser from 'yargs-parser';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 // ---------------------------------------------------------------------------
 // Permission options — keys derive the ToolGroup union type
@@ -101,7 +101,7 @@ export type LogLevel = z.infer<typeof logLevelSchema>;
 const structuralConfigSchema = z.object({
 	logLevel: logLevelSchema,
 	allowedOrigins: z.array(z.string()).default([CLOUD_ORIGIN_PATTERN]),
-	filesystem: z.object({ dir: z.string().default('.') }).default({}),
+	filesystem: z.object({ dir: z.string().default('.') }).prefault({}),
 	computer: z
 		.object({
 			shell: z
@@ -109,14 +109,14 @@ const structuralConfigSchema = z.object({
 					timeout: z.number().int().positive().default(30_000),
 					dangerouslyDisableSandbox: z.boolean().default(false),
 				})
-				.default({}),
+				.prefault({}),
 		})
-		.default({}),
+		.prefault({}),
 	browser: z
 		.object({
 			defaultBrowser: z.string().default('chrome'),
 		})
-		.default({}),
+		.prefault({}),
 	permissionConfirmation: z.enum(['client', 'instance']).default('instance'),
 });
 

@@ -19,9 +19,19 @@ import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
 import { buildMcpToolName } from '../utils';
 
-vi.mock('@modelcontextprotocol/client');
-/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
-vi.mock('@modelcontextprotocol/client');
+// v1 automocked only the client/index.js and sse.js subpaths; in v2 both live in one
+// package, so automock Client and SSEClientTransport by hand and keep the rest (SdkError,
+// SdkErrorCode, …) real — a full-module automock would gut the error classes the timeout
+// tests assert on.
+vi.mock('@modelcontextprotocol/client', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@modelcontextprotocol/client')>();
+	const MockClient = vi.fn();
+	MockClient.prototype.connect = vi.fn();
+	MockClient.prototype.close = vi.fn();
+	MockClient.prototype.callTool = vi.fn();
+	MockClient.prototype.listTools = vi.fn();
+	return { ...actual, Client: MockClient, SSEClientTransport: vi.fn() };
+});
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {
@@ -537,7 +547,7 @@ describe('McpClientTool', () => {
 			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				isError: true,
 				toolResult: 'Weather unknown at location',
-				content: [{ text: 'Weather unknown at location' }],
+				content: [{ type: 'text', text: 'Weather unknown at location' }],
 			});
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
@@ -837,9 +847,8 @@ describe('McpClientTool', () => {
 
 			const tools = (supplyDataResult.response as StructuredToolkit).getTools();
 
-			await expect(tools[0].invoke({ input: 'foo' })).resolves.toEqual(
-				'MCP error -32001: Request timed out',
-			);
+			// v2's SdkError no longer prefixes messages with `MCP error <code>: `.
+			await expect(tools[0].invoke({ input: 'foo' })).resolves.toEqual('Request timed out');
 			expect(callToolSpy).toHaveBeenCalledWith(
 				expect.any(Object), // params // schema
 				expect.objectContaining({ timeout: 200 }),

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { BrowserConnection } from '../connection';
 import { analyzeHtmlSensitivity, type SensitivityResult } from '../sensitivity/analyze-html';

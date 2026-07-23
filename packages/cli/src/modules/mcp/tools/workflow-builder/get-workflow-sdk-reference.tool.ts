@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { Telemetry } from '@/telemetry';
 

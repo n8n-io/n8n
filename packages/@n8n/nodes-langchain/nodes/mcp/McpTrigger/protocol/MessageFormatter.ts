@@ -127,7 +127,7 @@ export class MessageFormatter {
 			);
 		}
 
-		const content = [{ type: 'text', text: lines.join('\n') }];
+		const content: McpToolResult['content'] = [{ type: 'text', text: lines.join('\n') }];
 		// Omit `isError` when nothing is left to connect, matching formatToolResult.
 		return skipped.length > 0 ? { isError: true, content } : { content };
 	}

@@ -1,6 +1,6 @@
 import { type User, WorkflowEntity } from '@n8n/db';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { Telemetry } from '@/telemetry';

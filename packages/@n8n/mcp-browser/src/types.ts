@@ -1,5 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { BrowserConnection as BrowserConnectionType } from './connection';
 import type { ConnectionLostReason } from './errors';
@@ -25,7 +25,7 @@ const browserOverrideSchema = z.object({
 
 export const configSchema = z.object({
 	defaultBrowser: browserNameSchema.default('chrome'),
-	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
+	browsers: z.partialRecord(browserNameSchema, browserOverrideSchema).default({}),
 	adapter: z.enum(['playwright', 'agent-browser']).default('agent-browser'),
 	mode: z.enum(['local', 'remote']).default('local'),
 });

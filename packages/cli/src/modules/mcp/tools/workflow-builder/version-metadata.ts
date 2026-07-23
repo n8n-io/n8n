@@ -1,6 +1,6 @@
 import type { IConnections, INode } from 'n8n-workflow';
 import { compareConnections, compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 export const MAX_VERSION_NAME_LENGTH = 80;
 export const MAX_VERSION_DESCRIPTION_LENGTH = 1000;

@@ -15,7 +15,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 const positionSchema = () =>
 	z

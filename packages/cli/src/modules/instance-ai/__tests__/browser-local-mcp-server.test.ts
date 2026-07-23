@@ -3,7 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { DomainAccessTracker } from '@n8n/instance-ai';
 import type { BrowserToolkit, ToolContext, ToolDefinition } from '@n8n/mcp-browser';
 import { mock } from 'vitest-mock-extended';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import { BrowserLocalMcpServer, type BrowserDomainGate } from '../browser/browser-local-mcp-server';
 

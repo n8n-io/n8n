@@ -1,5 +1,6 @@
 import type { McpUiResourceMeta } from '@modelcontextprotocol/ext-apps';
 import type { McpServer } from "@modelcontextprotocol/server";
+
 import {
 	RESOURCE_MIME_TYPE,
 	WORKFLOW_PREVIEW_APP_URI,

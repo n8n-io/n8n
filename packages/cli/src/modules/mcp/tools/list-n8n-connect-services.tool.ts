@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { Telemetry } from '@/telemetry';
@@ -24,17 +24,17 @@ const outputSchema = {
 		.optional()
 		.describe('Node types Connect covers (e.g. "@n8n/n8n-nodes-langchain.openAi").'),
 	supportedActions: z
-		.record(z.record(z.array(z.string())))
+		.record(z.string(), z.record(z.string(), z.array(z.string())))
 		.optional()
 		.describe(
 			'Per-node allowlist keyed by node type, then resource (or `__operation_only__` for nodes without a resource dimension). Values are supported operation names.',
 		),
 	minNodeTypeVersion: z
-		.record(z.number())
+		.record(z.string(), z.number())
 		.optional()
 		.describe('Minimum `typeVersion` per node type for Connect coverage.'),
 	hiddenNodeProperties: z
-		.record(z.array(z.string()))
+		.record(z.string(), z.array(z.string()))
 		.optional()
 		.describe('Per-node property names hidden from the user when Connect provides the credential.'),
 } satisfies z.ZodRawShape;

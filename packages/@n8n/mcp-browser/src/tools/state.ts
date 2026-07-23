@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
@@ -48,7 +48,7 @@ const browserCookiesSchema = z.discriminatedUnion('action', [
 ]);
 
 const browserCookiesOutputSchema = z.object({
-	cookies: z.array(z.record(z.unknown())).optional(),
+	cookies: z.array(z.record(z.string(), z.unknown())).optional(),
 	set: z.boolean().optional(),
 	count: z.number().optional(),
 	cleared: z.boolean().optional(),
@@ -112,7 +112,7 @@ const browserStorageSchema = z.discriminatedUnion('action', [
 ]);
 
 const browserStorageOutputSchema = z.object({
-	data: z.record(z.unknown()).optional(),
+	data: z.record(z.string(), z.unknown()).optional(),
 	set: z.boolean().optional(),
 	cleared: z.boolean().optional(),
 });

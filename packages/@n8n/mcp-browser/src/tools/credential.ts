@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { BrowserConnection } from '../connection';
 import { createConnectedTool, pageIdField } from './helpers';
@@ -103,11 +103,11 @@ export const browserCreateCredentialSchema = z
 		type: z.string().describe('n8n credential type (e.g. "anthropicApi", "googleApi")'),
 		name: z.string().describe('Display name for the new credential'),
 		data: z
-			.record(z.unknown())
+			.record(z.string(), z.unknown())
 			.optional()
 			.describe('Literal (non-secret) credential fields, may be nested'),
 		resolveData: z
-			.record(z.unknown())
+			.record(z.string(), z.unknown())
 			.optional()
 			.describe(
 				'Same nested shape as data, but leaf string values are field names from the captured buffer. All leaves must resolve.',

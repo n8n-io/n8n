@@ -1,6 +1,6 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { ProjectRepository, User } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { Telemetry } from '@/telemetry';
 

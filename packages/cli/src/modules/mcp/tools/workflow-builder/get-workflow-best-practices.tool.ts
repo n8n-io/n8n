@@ -5,7 +5,7 @@ import {
 	WorkflowTechnique,
 	type WorkflowTechniqueType,
 } from '@n8n/workflow-sdk/prompts/best-practices';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { Telemetry } from '@/telemetry';
 

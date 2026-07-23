@@ -31,6 +31,7 @@ import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.ser
 import { NodeCatalogService } from '@/node-catalog';
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
+import { toMcpSchema } from './tools/schemas';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -250,7 +251,16 @@ export class McpService {
 
 		const registerIfAllowed: RegisterToolFn = (tool) => {
 			if (allowedToolNames && !allowedToolNames.has(tool.name)) return;
-			server.registerTool(tool.name, tool.config, tool.handler);
+			const { inputSchema, outputSchema, ...config } = tool.config;
+			server.registerTool(
+				tool.name,
+				{
+					...config,
+					inputSchema: inputSchema && toMcpSchema(inputSchema),
+					outputSchema: outputSchema && toMcpSchema(outputSchema),
+				},
+				tool.handler,
+			);
 		};
 
 		// Existing tools

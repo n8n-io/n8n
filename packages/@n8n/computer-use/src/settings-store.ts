@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { GatewayConfig, PermissionMode, ToolGroup } from './config';
 import {
@@ -28,29 +28,30 @@ interface ResourcePermissions {
 	deny: string[];
 }
 
+const resourcePermissionsSchema = z.object({
+	allow: z.array(z.string()),
+	deny: z.array(z.string()),
+});
+
 const persistentSettingsSchema = z.object({
 	logLevel: logLevelSchema.optional(),
 	permissions: z
 		.object(
+			// Object.fromEntries erases per-key schema types; restore them for inference.
 			Object.fromEntries(
 				Object.keys(TOOL_GROUP_DEFINITIONS).map((key) => [key, permissionModeSchema]),
-			),
+			) as Record<ToolGroup, typeof permissionModeSchema>,
 		)
-		.partial(), //Partial<Record<ToolGroup, PermissionMode>>,
+		.partial(),
 	filesystemDir: z.string().optional(),
 	resourcePermissions: z
 		.object(
+			// Object.fromEntries erases per-key schema types; restore them for inference.
 			Object.fromEntries(
-				Object.keys(TOOL_GROUP_DEFINITIONS).map((key) => [
-					key,
-					z.object({
-						allow: z.array(z.string()),
-						deny: z.array(z.string()),
-					}),
-				]),
-			),
+				Object.keys(TOOL_GROUP_DEFINITIONS).map((key) => [key, resourcePermissionsSchema]),
+			) as Record<ToolGroup, typeof resourcePermissionsSchema>,
 		)
-		.partial(), // Partial<Record<ToolGroup, ResourcePermissions>>,
+		.partial(),
 });
 
 type PersistentSettings = z.infer<typeof persistentSettingsSchema>;

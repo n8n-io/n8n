@@ -1,5 +1,5 @@
 import type { FolderRepository, User } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { ProjectService } from '@/services/project.service.ee';
 import type { Telemetry } from '@/telemetry';

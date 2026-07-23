@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';

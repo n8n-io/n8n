@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';

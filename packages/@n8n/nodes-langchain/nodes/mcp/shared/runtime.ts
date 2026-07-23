@@ -255,7 +255,7 @@ async function runToolCall(opts: {
 
 		returnData.push({
 			json: {
-				response: result.content as IDataObject,
+				response: result.content as unknown as IDataObject,
 				...(isStructuredContent(result.structuredContent) && {
 					structuredContent: result.structuredContent,
 				}),

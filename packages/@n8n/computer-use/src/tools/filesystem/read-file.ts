@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';

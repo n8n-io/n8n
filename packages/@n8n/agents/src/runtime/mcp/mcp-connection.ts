@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 /** Don't remove the .js extensions. That's how the @modelcontextprotocol/sdk is packaged. */
 import type { CallToolResult } from "@modelcontextprotocol/server";
+
 import { McpToolResolver } from './mcp-tool-resolver';
 import { wrapToolForApproval } from '../../sdk/tool';
 import type { McpServerConfig, McpToolCallSettledEvent } from '../../types/sdk/mcp';

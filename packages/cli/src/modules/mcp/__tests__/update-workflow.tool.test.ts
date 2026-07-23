@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';

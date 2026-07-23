@@ -13,7 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import z from 'zod';
+import { z } from 'zod/v4';
 import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
@@ -290,7 +290,9 @@ describe('search-workflows MCP tool', () => {
 				resource: 'workflow', // unknown field surfaced by the data layer
 			};
 
-			const parsed = schema.parse({ data: [item], count: 1 });
+			const parsed = schema.parse({ data: [item], count: 1 }) as {
+				data: Array<Record<string, unknown>>;
+			};
 
 			expect(parsed.data[0]).toHaveProperty('resource', 'workflow');
 		});

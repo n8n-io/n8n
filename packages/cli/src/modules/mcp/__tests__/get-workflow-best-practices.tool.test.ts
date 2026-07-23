@@ -19,6 +19,16 @@ vi.mock('@n8n/ai-workflow-builder', () => ({
 	},
 }));
 
+type BestPracticesStructured = {
+	technique?: string;
+	availableTechniques?: unknown;
+	documentation?: string;
+	message?: string;
+};
+
+const structured = (result: { structuredContent?: unknown }) =>
+	result.structuredContent as BestPracticesStructured | undefined;
+
 describe('get-workflow-best-practices MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let telemetry: Mocked<Telemetry>;
@@ -44,8 +54,8 @@ describe('get-workflow-best-practices MCP tool', () => {
 		const tool = createTool();
 		const result = await tool.handler({ technique: 'list' }, {} as never);
 
-		expect(result.structuredContent?.technique).toBe('list');
-		const available = result.structuredContent?.availableTechniques as Array<{
+		expect(structured(result)?.technique).toBe('list');
+		const available = structured(result)?.availableTechniques as Array<{
 			technique: string;
 			description: string;
 			hasDocumentation: boolean;
@@ -77,8 +87,8 @@ describe('get-workflow-best-practices MCP tool', () => {
 
 		const expectedDoc = bestPracticesRegistry[WorkflowTechnique.CHATBOT]!.getDocumentation();
 
-		expect(result.structuredContent?.technique).toBe(WorkflowTechnique.CHATBOT);
-		expect(result.structuredContent?.documentation).toBe(expectedDoc);
+		expect(structured(result)?.technique).toBe(WorkflowTechnique.CHATBOT);
+		expect(structured(result)?.documentation).toBe(expectedDoc);
 		expect(result.content).toEqual([{ type: 'text', text: expectedDoc }]);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			USER_CALLED_MCP_TOOL_EVENT,
@@ -95,8 +105,8 @@ describe('get-workflow-best-practices MCP tool', () => {
 		const tool = createTool();
 		const result = await tool.handler({ technique: WorkflowTechnique.MONITORING }, {} as never);
 
-		expect(result.structuredContent?.technique).toBe(WorkflowTechnique.MONITORING);
-		expect(result.structuredContent?.documentation).toBeUndefined();
-		expect(result.structuredContent?.message).toContain('does not have detailed best-practices');
+		expect(structured(result)?.technique).toBe(WorkflowTechnique.MONITORING);
+		expect(structured(result)?.documentation).toBeUndefined();
+		expect(structured(result)?.message).toContain('does not have detailed best-practices');
 	});
 });

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 // ---------------------------------------------------------------------------
 // Input field schemas — reused across tool input definitions

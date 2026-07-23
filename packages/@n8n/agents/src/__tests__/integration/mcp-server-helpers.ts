@@ -1,6 +1,7 @@
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
-import { SSEServerTransport } from "@modelcontextprotocol/server-legacy/sse";
 import { Server as McpServer } from "@modelcontextprotocol/server";
+import type { ListToolsResult } from "@modelcontextprotocol/server";
+import { SSEServerTransport } from "@modelcontextprotocol/server-legacy/sse";
 import http from 'http';
 
 /** 1×1 transparent PNG in base64 (smallest valid PNG). Used for image tool tests. */
@@ -19,7 +20,7 @@ export function createTestMcpServer(): McpServer {
 		{ capabilities: { tools: {} } },
 	);
 
-	server.setRequestHandler('tools/list', async () => ({
+	server.setRequestHandler('tools/list', async (): Promise<ListToolsResult> => ({
 		tools: [
 			{
 				name: 'echo',

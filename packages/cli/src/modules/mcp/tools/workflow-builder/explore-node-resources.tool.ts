@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import { MCP_EXPLORE_NODE_RESOURCES_TOOL } from './constants';
 
@@ -42,7 +42,7 @@ const inputSchema = {
 		.optional()
 		.describe('Pagination token from a previous call to fetch the next page (listSearch only).'),
 	currentNodeParameters: z
-		.record(z.unknown())
+		.record(z.string(), z.unknown())
 		.optional()
 		.describe(
 			'Current node parameters for dependent lookups. Some methods require prior selections — ' +

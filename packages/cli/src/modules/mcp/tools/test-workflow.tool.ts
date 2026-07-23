@@ -11,7 +11,7 @@ import {
 	jsonStringify,
 	isTriggerNode,
 } from 'n8n-workflow';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { McpService } from '@/modules/mcp/mcp.service';
@@ -29,7 +29,7 @@ import { getMcpWorkflow } from './workflow-validation.utils';
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to test'),
 	pinData: z
-		.record(z.array(z.record(z.unknown())))
+		.record(z.string(), z.array(z.record(z.string(), z.unknown())))
 		.describe(
 			'Pin data for all workflow nodes. Use the prepare_test_pin_data tool to generate this. Keys are node names, values are arrays of items. Each item MUST be wrapped in a "json" property, e.g. [{"json": {"id": "123", "name": "test"}}]. Do NOT pass flat objects like [{"id": "123"}].',
 		),

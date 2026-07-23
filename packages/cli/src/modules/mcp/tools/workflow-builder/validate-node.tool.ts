@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { Telemetry } from '@/telemetry';
 
@@ -17,7 +17,7 @@ const nodeInputSchema = z.object({
 		.describe('Full node type, e.g. "n8n-nodes-base.set" or "@n8n/n8n-nodes-langchain.agent".'),
 	typeVersion: z.number().positive().default(1).describe('Node type version. Defaults to 1.'),
 	parameters: z
-		.record(z.unknown())
+		.record(z.string(), z.unknown())
 		.default({})
 		.describe('Node parameters object — same shape as workflow JSON.'),
 	subnodes: z

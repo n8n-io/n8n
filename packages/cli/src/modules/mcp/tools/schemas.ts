@@ -1,5 +1,8 @@
+import type { StandardSchemaWithJSON } from "@modelcontextprotocol/server";
 import type { IConnections, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
-import z from 'zod';
+import { z } from 'zod/v4';
+
+import type { ToolInputShape } from '../mcp.types';
 
 export const nodeSchema = z
 	.object({
@@ -99,13 +102,13 @@ export const workflowDetailsOutputSchema = z.object({
 			createdAt: z.string().nullable(),
 			updatedAt: z.string().nullable(),
 			settings: workflowSettingsSchema,
-			connections: z.record(z.unknown()),
+			connections: z.record(z.string(), z.unknown()),
 			nodes: z.array(nodeSchema),
 			nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the workflow'),
 			activeVersion: z
 				.object({
 					nodes: z.array(nodeSchema),
-					connections: z.record(z.unknown()),
+					connections: z.record(z.string(), z.unknown()),
 					nodeGroups: z.array(nodeGroupSchema).describe('Node groups in the active version'),
 				})
 				.nullable()
@@ -123,3 +126,20 @@ export const workflowDetailsOutputSchema = z.object({
 		.string()
 		.describe('Human-readable instructions describing how to trigger the workflow'),
 });
+
+// zod/v4 in the pinned zod 3.25.x implements Standard Schema validation but not
+// `~standard.jsonSchema` (added in zod 4.2). Wrapping the raw shape and grafting the
+// converter on satisfies the SDK's schema-object contract without bumping zod.
+export function toMcpSchema<S extends ToolInputShape>(
+	shape: S,
+): StandardSchemaWithJSON<z.input<z.ZodObject<S>>, z.output<z.ZodObject<S>>> {
+	const schema = z.object(shape);
+	const jsonSchema = (io: 'input' | 'output') =>
+		z.toJSONSchema(schema, { io }) as Record<string, unknown>;
+	return {
+		'~standard': {
+			...schema['~standard'],
+			jsonSchema: { input: () => jsonSchema('input'), output: () => jsonSchema('output') },
+		},
+	};
+}

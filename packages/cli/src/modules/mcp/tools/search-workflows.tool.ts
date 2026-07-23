@@ -1,5 +1,5 @@
 import { type User, type WorkflowEntity } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { SEARCH_WORKFLOWS_SORT_BY_VALUES } from '../mcp.types';

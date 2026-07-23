@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import { NodeStreamableHTTPServerTransport } from "@modelcontextprotocol/node";
-import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { McpServer } from "@modelcontextprotocol/server";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 
 import type { BrowserConnection } from './connection';
+import { asMcpSchema } from './mcp-schema';
 import { parseServerOptions } from './server-config';
 import { createBrowserTools } from './tools/index';
 import type { Config, ToolDefinition } from './types';
@@ -15,13 +16,12 @@ const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
 
 function registerTools(server: McpServer, tools: ToolDefinition[]) {
 	for (const tool of tools) {
-		/* @mcp-codemod-error Could not verify `inputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. | Could not verify `outputSchema` is a schema object. Raw shapes are deprecated in v2 — pass a Standard Schema object (e.g. z.object({ … })); no change is needed if it already is one. */
 		server.registerTool(
 			tool.name,
 			{
 				description: tool.description,
-				inputSchema: tool.inputSchema,
-				outputSchema: tool.outputSchema,
+				inputSchema: asMcpSchema(tool.inputSchema),
+				outputSchema: tool.outputSchema && asMcpSchema(tool.outputSchema),
 			},
 			async (args) => {
 				const result = await tool.execute(args as Record<string, unknown>, { dir: '' });

@@ -1,6 +1,6 @@
 import { EventSource } from 'eventsource';
 import * as os from 'node:os';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { z } from 'zod/v4';
 
 import type { GatewayConfig } from './config';
 import type { GatewaySession } from './gateway-session';
@@ -292,7 +292,7 @@ export class GatewayClient {
 		const tools: McpTool[] = defs.map((d) => ({
 			name: d.name,
 			description: d.description,
-			inputSchema: zodToJsonSchema(d.inputSchema) as McpTool['inputSchema'],
+			inputSchema: z.toJSONSchema(d.inputSchema) as McpTool['inputSchema'],
 			...(d.annotations ? { annotations: d.annotations } : {}),
 		}));
 		const url = `${this.options.url}/rest/instance-ai/gateway/init`;

@@ -1,14 +1,38 @@
-import type { McpServer, RegisteredTool, ToolCallback } from "@modelcontextprotocol/server";
+import type {
+	CallToolResult,
+	McpServer,
+	RegisteredTool,
+	ServerContext,
+	StandardSchemaWithJSON,
+} from "@modelcontextprotocol/server";
 import { isRecord } from '@n8n/utils/is-record';
-import type z from 'zod';
+import { z } from 'zod/v4';
 
 import { RESOURCE_URI_META_KEY } from './constants';
 
-export type McpAppToolConfig<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
+// The SDK's raw-shape overload wants classic ZodType-valued records; zod/v4's own
+// ZodRawShape is core-$ZodType-valued and too loose for it.
+type ZodShape = Record<string, z.ZodType>;
+
+// zod/v4 in the pinned zod 3.25.x implements Standard Schema validation but not
+// `~standard.jsonSchema` (added in zod 4.2). Grafting the converter on satisfies the
+// SDK's schema-object contract without bumping zod.
+function asMcpSchema<S extends z.ZodType>(schema: S): StandardSchemaWithJSON<z.input<S>, z.output<S>> {
+	const jsonSchema = (io: 'input' | 'output') => z.toJSONSchema(schema, { io }) as Record<string, unknown>;
+	return {
+		// eslint-disable-next-line @typescript-eslint/naming-convention -- Standard Schema spec key
+		'~standard': {
+			...schema['~standard'],
+			jsonSchema: { input: () => jsonSchema('input'), output: () => jsonSchema('output') },
+		},
+	};
+}
+
+export type McpAppToolConfig<InputArgs extends ZodShape = ZodShape> = {
 	title?: string;
 	description?: string;
 	inputSchema?: InputArgs;
-	outputSchema?: z.ZodRawShape;
+	outputSchema?: ZodShape;
 	annotations?: {
 		title?: string;
 		readOnlyHint?: boolean;
@@ -19,15 +43,28 @@ export type McpAppToolConfig<InputArgs extends z.ZodRawShape = z.ZodRawShape> = 
 	_meta: Record<string, unknown>;
 };
 
-export function registerMcpAppTool<InputArgs extends z.ZodRawShape = z.ZodRawShape>(
+// Narrower than the SDK's callback union (which also allows InputRequiredResult) so
+// callers' assertions stay on plain CallToolResult.
+export type McpAppToolHandler<InputArgs extends ZodShape = ZodShape> = (
+	args: z.output<z.ZodObject<InputArgs>>,
+	ctx: ServerContext,
+) => CallToolResult | Promise<CallToolResult>;
+
+export function registerMcpAppTool<InputArgs extends ZodShape = ZodShape>(
 	server: Pick<McpServer, 'registerTool'>,
 	name: string,
 	config: McpAppToolConfig<InputArgs>,
-	handler: ToolCallback<InputArgs>,
+	handler: McpAppToolHandler<InputArgs>,
 ): RegisteredTool {
+	const { inputSchema, outputSchema, ...rest } = config;
 	return server.registerTool(
 		name,
-		{ ...config, _meta: normalizeMcpAppToolMeta(config._meta) },
+		{
+			...rest,
+			inputSchema: inputSchema && asMcpSchema(z.object(inputSchema)),
+			outputSchema: outputSchema && asMcpSchema(z.object(outputSchema)),
+			_meta: normalizeMcpAppToolMeta(config._meta),
+		},
 		handler,
 	);
 }

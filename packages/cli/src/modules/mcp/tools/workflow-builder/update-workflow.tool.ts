@@ -3,7 +3,7 @@ import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/d
 import { hasGlobalScope } from '@n8n/permissions';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
@@ -213,7 +213,7 @@ function collectTouchedNodes(operations: PartialUpdateOperation[]): Map<string, 
 	return touched;
 }
 
-const inputSchema: z.ZodRawShape = {
+const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to update.'),
 	skillsUsed: z.array(z.string()).optional().describe(SKILLS_USED_PARAM_DESCRIPTION),
 	operations: z
@@ -229,7 +229,7 @@ const inputSchema: z.ZodRawShape = {
 	versionDescription: versionDescriptionInputSchema.describe(
 		'Longer description of what changed and why, shown in the version history alongside the version name.',
 	),
-};
+} satisfies z.ZodRawShape;
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
 // validates `structuredContent` against it on every response. Success returns

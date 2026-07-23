@@ -14,7 +14,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
 } from 'n8n-workflow';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import {
 	SUPPORTED_MCP_TRIGGERS,
@@ -53,7 +53,7 @@ const inputSchema = z.object({
 			}),
 			z.object({
 				type: z.literal('form'),
-				formData: z.record(z.unknown()).describe('Input data for form-based workflows'),
+				formData: z.record(z.string(), z.unknown()).describe('Input data for form-based workflows'),
 			}),
 			z.object({
 				type: z.literal('webhook'),
@@ -64,13 +64,13 @@ const inputSchema = z.object({
 							.optional()
 							.default('GET')
 							.describe('HTTP method (defaults to GET)'),
-						query: z.record(z.string()).optional().describe('Query string parameters'),
+						query: z.record(z.string(), z.string()).optional().describe('Query string parameters'),
 						body: z
-							.record(z.unknown())
+							.record(z.string(), z.unknown())
 							.optional()
 							.describe('Request body data (main webhook payload)'),
 						headers: z
-							.record(z.string())
+							.record(z.string(), z.string())
 							.optional()
 							.describe('HTTP headers (e.g., authorization, content-type)'),
 					})

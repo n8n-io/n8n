@@ -2,7 +2,7 @@ import type { Tool } from '@langchain/core/tools';
 import { McpServerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { Server } from "@modelcontextprotocol/server";
-import type { JSONRPCMessage, ServerContext } from "@modelcontextprotocol/server";
+import type { JSONRPCMessage, ListToolsResult, ServerContext } from "@modelcontextprotocol/server";
 import { randomUUID } from 'crypto';
 import type * as express from 'express';
 import type { IncomingMessage } from 'http';
@@ -577,7 +577,7 @@ export class McpServer {
 	private setupHandlers(server: Server): void {
 		server.setRequestHandler(
 			'tools/list',
-			(_, ctx: ServerContext) => {
+			(_, ctx: ServerContext): ListToolsResult => {
 				if (!ctx.sessionId) {
 					throw new OperationalError('Require a sessionId for the listing of tools');
 				}
@@ -590,7 +590,7 @@ export class McpServer {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
 						inputSchema: zodToJsonSchema(tool.schema as any, {
 							removeAdditionalStrategy: 'strict',
-						}),
+						}) as ListToolsResult['tools'][number]['inputSchema'],
 					})),
 				};
 			},

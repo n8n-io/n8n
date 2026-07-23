@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import type { TagService } from '@/services/tag.service';
 import type { Telemetry } from '@/telemetry';

@@ -1,5 +1,5 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
-import z from 'zod';
+import { z } from 'zod/v4';
 
 import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';

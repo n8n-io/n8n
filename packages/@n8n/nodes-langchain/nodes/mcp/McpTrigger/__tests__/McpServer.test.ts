@@ -571,7 +571,7 @@ describe('McpServer', () => {
 
 		type CallToolHandler = (
 			request: { params: { name: string; arguments: Record<string, unknown> } },
-			extra: { sessionId?: string; requestId?: string },
+			extra: { sessionId?: string; mcpReq?: { id?: string } },
 		) => Promise<{ isError?: boolean; content: Array<{ text: string }>; [k: string]: unknown }>;
 
 		// Capture the CallTool handler that setupHandlers registers on the server.
@@ -651,8 +651,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler();
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(result.isError).toBe(true);
@@ -668,8 +667,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler();
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: { city: 'X' } } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(tool.invoke).toHaveBeenCalledWith({ city: 'X' });
@@ -684,8 +682,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler();
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(tool.invoke).toHaveBeenCalled();
@@ -713,8 +710,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler(server);
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(server.elicitInput).not.toHaveBeenCalled();
@@ -743,8 +739,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler(server);
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(server.elicitInput).toHaveBeenCalledTimes(1);
@@ -787,8 +782,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler(server);
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(server.elicitInput).toHaveBeenCalledTimes(2);
@@ -817,8 +811,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler(server);
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(result.isError).toBe(true);
@@ -846,8 +839,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler(server);
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			expect(server.elicitInput).toHaveBeenCalled();
@@ -882,8 +874,7 @@ describe('McpServer', () => {
 			const handler = getCallToolHandler(server);
 			const result = await handler(
 				{ params: { name: 'get_weather', arguments: {} } },
-				/* @mcp-codemod-error This object looks like a v1 handler-context mock (sessionId, requestId). v2 nests the context — reshape it (requestId → mcpReq.id; sessionId stays top-level), e.g. { sendRequest: fn } → { mcpReq: { send: fn } }. Passed as-is to a migrated handler that reads ctx.mcpReq.*, the v1 shape throws "Cannot read properties of undefined". */
-				{ sessionId, requestId },
+				{ sessionId, mcpReq: { id: requestId } },
 			);
 
 			// Can't fully drive connection via elicitation, so use the text path.

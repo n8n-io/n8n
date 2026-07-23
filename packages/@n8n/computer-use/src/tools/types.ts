@@ -1,6 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import type { CreateCredentialPayload, SecretsBuffer } from '@n8n/mcp-browser';
-import type { z } from 'zod';
+import type { z } from 'zod/v4';
 
 import type { GatewayConfig, ToolGroup } from '../config';
 

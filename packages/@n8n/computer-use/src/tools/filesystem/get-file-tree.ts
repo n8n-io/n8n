@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { ToolDefinition } from '../types';
 import { buildFilesystemResource, resolveReadablePath, scanDirectory } from './fs-utils';

@@ -1,18 +1,22 @@
-import type { ToolCallback } from "@modelcontextprotocol/server";
+import type { CallToolResult, ServerContext } from "@modelcontextprotocol/server";
 import type { INode } from 'n8n-workflow';
-import type z from 'zod';
+import type { z } from 'zod/v4';
 
 import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
 
-export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
+// zod/v4's ZodRawShape is core-$ZodType-valued and too loose for the SDK's raw-shape
+// APIs; the classic ZodType record matches what the tool files actually build.
+export type ToolInputShape = Record<string, z.ZodType>;
+
+export type ToolDefinition<InputArgs extends ToolInputShape = ToolInputShape> = {
 	name: string;
 	config: {
 		description?: string;
 		inputSchema?: InputArgs;
-		outputSchema?: z.ZodRawShape;
+		outputSchema?: ToolInputShape;
 		annotations?: {
 			title?: string;
 			readOnlyHint?: boolean;
@@ -21,11 +25,17 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 			openWorldHint?: boolean;
 		};
 	};
-	handler: ToolCallback<InputArgs>;
+	// Own signature instead of the SDK's ToolCallback: registerTool accepts any narrower
+	// callback, and a plain CallToolResult return keeps test assertions free of the
+	// CallToolResult | InputRequiredResult union.
+	handler: (
+		args: z.output<z.ZodObject<InputArgs>>,
+		ctx: ServerContext,
+	) => CallToolResult | Promise<CallToolResult>;
 };
 
 /** Registers a tool on the per-request server if the granted scopes cover it. */
-export type RegisterToolFn = <InputArgs extends z.ZodRawShape>(
+export type RegisterToolFn = <InputArgs extends ToolInputShape>(
 	tool: ToolDefinition<InputArgs>,
 ) => void;
 

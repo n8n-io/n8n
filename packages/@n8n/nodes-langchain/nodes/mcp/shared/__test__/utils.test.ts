@@ -15,11 +15,23 @@ import {
 	tryRefreshOAuth2Token,
 } from '../utils';
 
-vi.mock('@modelcontextprotocol/client');
-/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
-vi.mock('@modelcontextprotocol/client');
-/* @mcp-codemod-error Multiple vi.mock calls target '@modelcontextprotocol/client' after v1 subpaths collapsed onto one module id. Only the last registration wins — earlier factories are silently discarded. Merge the factories into a single mock manually. */
-vi.mock('@modelcontextprotocol/client');
+// v1 automocked the client/index.js, streamableHttp.js and sse.js subpaths; in v2 they
+// live in one package, so automock Client and the transports by hand and keep the rest
+// of the module real.
+vi.mock('@modelcontextprotocol/client', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@modelcontextprotocol/client')>();
+	const MockClient = vi.fn();
+	MockClient.prototype.connect = vi.fn();
+	MockClient.prototype.close = vi.fn();
+	MockClient.prototype.callTool = vi.fn();
+	MockClient.prototype.listTools = vi.fn();
+	return {
+		...actual,
+		Client: MockClient,
+		SSEClientTransport: vi.fn(),
+		StreamableHTTPClientTransport: vi.fn(),
+	};
+});
 vi.mock('@n8n/ai-utilities', async () => {
 	const actual = await vi.importActual('@n8n/ai-utilities');
 	return {

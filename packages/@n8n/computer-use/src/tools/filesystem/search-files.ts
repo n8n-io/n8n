@@ -1,6 +1,6 @@
 import fastGlob from 'fast-glob';
 import * as fs from 'node:fs/promises';
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
