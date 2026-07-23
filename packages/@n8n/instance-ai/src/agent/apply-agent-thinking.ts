@@ -57,12 +57,33 @@ function isGrok45Model(modelId: ModelConfig): boolean {
 	return id.includes('grok-4.5');
 }
 
+/** GLM 5.2 on Baseten (`openai/zai-org/GLM-5.2`, `openai/zai-org/GLM-5.2-Fast`, etc.). */
+function isGlm52Model(modelId: ModelConfig): boolean {
+	const id = resolveModelIdString(modelId)?.toLowerCase() ?? '';
+	return id.includes('glm-5.2');
+}
+
 export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 	const provider = resolveModelProvider(modelId);
 
 	if (!provider || !PROVIDER_CAPABILITIES[provider]?.thinking) return;
 
+	if (provider === 'baseten') {
+		if (isGlm52Model(modelId)) {
+			// GLM 5.2 only accepts none/high/max — map our medium tier to high.
+			agent.thinking('baseten', { reasoningEffort: 'high' });
+			return;
+		}
+		agent.thinking('baseten', { reasoningEffort: 'medium' });
+		return;
+	}
+
 	if (provider === 'openai') {
+		if (isGlm52Model(modelId)) {
+			// Legacy OpenAI-compatible Baseten routing — same GLM effort mapping.
+			agent.thinking('openai', { reasoningEffort: 'high' });
+			return;
+		}
 		// Pin medium for GPT-5.6 family (sol/terra/luna) via AI SDK `reasoningEffort`.
 		agent.thinking('openai', { reasoningEffort: 'medium' });
 		return;
