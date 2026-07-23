@@ -227,6 +227,20 @@ export class ApiHelpers {
 		});
 	}
 
+	async countScheduledJobs(workflowId: string, nodeId: string): Promise<number> {
+		const response = await this.request.get('/rest/e2e/scheduled-jobs/count', {
+			params: { workflowId, nodeId },
+		});
+		const { data } = (await response.json()) as { data: { count: number } };
+		return data.count;
+	}
+
+	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
+		await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
+			data: { workflowId, nodeId },
+		});
+	}
+
 	// ===== FEATURE FLAG METHODS =====
 
 	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{

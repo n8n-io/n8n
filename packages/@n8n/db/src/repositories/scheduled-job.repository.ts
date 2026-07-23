@@ -132,6 +132,18 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
+	 * Test-only: force a node's jobs due immediately, so the next sweep claims
+	 * them without waiting out their real cron interval.
+	 */
+	async forceDueNowByWorkflowNode(workflowId: string, nodeId: string): Promise<void> {
+		await this.createQueryBuilder()
+			.update(ScheduledJob)
+			.set({ nextRunAt: () => dbNowLiteral(this.isPostgres) })
+			.where('"workflowId" = :workflowId AND "nodeId" = :nodeId', { workflowId, nodeId })
+			.execute();
+	}
+
+	/**
 	 * Insert new job rows and return one id per input job, in the same order as
 	 * `jobs`, so the caller can zip the ids back to the jobs by index.
 	 * Must run inside a transaction.
