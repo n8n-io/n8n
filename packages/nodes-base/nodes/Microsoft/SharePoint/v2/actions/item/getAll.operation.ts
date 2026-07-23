@@ -3,7 +3,12 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { returnAllOrLimit } from '../../../../../../utils/descriptions';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { ITEM_SIMPLIFY_EXPAND, ITEM_SIMPLIFY_SELECT, simplifyItem } from '../../helpers/utils';
+import {
+	assertPathSegment,
+	ITEM_SIMPLIFY_EXPAND,
+	ITEM_SIMPLIFY_SELECT,
+	simplifyItem,
+} from '../../helpers/utils';
 import { listRLC, untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
 import { microsoftApiRequestAllItems } from '../../transport';
@@ -90,14 +95,11 @@ export async function execute(
 ): Promise<IDataObject | IDataObject[]> {
 	// https://learn.microsoft.com/en-us/graph/api/listitem-list
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
-	const listIdOrTitle = (
-		this.getNodeParameter('list', i, '', { extractValue: true }) as string
-	).trim();
-	if (listIdOrTitle === '') {
-		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
-			description: 'Set the list ID or title and try again.',
-		});
-	}
+	const listIdOrTitle = assertPathSegment(
+		this.getNode(),
+		String(this.getNodeParameter('list', i, '', { extractValue: true })),
+		'List',
+	);
 
 	const filter = (this.getNodeParameter('filter', i, '') as string).trim();
 	const returnAll = this.getNodeParameter('returnAll', i);

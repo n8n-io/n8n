@@ -4,9 +4,10 @@ import type {
 	INodeProperties,
 	ResourceMapperField,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { assertPathSegment } from '../../helpers/utils';
 import { listRLC, untilSiteSelected } from '../../list';
 import { itemColumns } from '../../list/columns';
 import { resolveSiteId, siteRLC } from '../../site';
@@ -75,14 +76,11 @@ export async function execute(
 ): Promise<IDataObject | IDataObject[]> {
 	// https://learn.microsoft.com/en-us/graph/api/listitem-create
 	const siteId = await resolveSiteId.call(this, i, siteIdCache);
-	const listIdOrTitle = (
-		this.getNodeParameter('list', i, '', { extractValue: true }) as string
-	).trim();
-	if (listIdOrTitle === '') {
-		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
-			description: 'Set the list ID or title and try again.',
-		});
-	}
+	const listIdOrTitle = assertPathSegment(
+		this.getNode(),
+		String(this.getNodeParameter('list', i, '', { extractValue: true })),
+		'List',
+	);
 
 	const mappingMode = this.getNodeParameter('columns.mappingMode', i) as string;
 	const schema = this.getNodeParameter('columns.schema', i, []) as ResourceMapperField[];

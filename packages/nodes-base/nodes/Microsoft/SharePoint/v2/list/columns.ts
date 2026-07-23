@@ -5,8 +5,8 @@ import type {
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
+import { assertPathSegment } from '../helpers/utils';
 import { resolveSiteId } from '../site';
 import { microsoftApiRequest } from '../transport';
 import { untilListSelected, untilSiteSelected } from './index';
@@ -110,14 +110,11 @@ export async function getMappingColumns(
 	this: ILoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
 	const siteId = await resolveSiteId.call(this, 0);
-	const listIdOrTitle = (
-		this.getNodeParameter('list', '', { extractValue: true }) as string
-	).trim();
-	if (listIdOrTitle === '') {
-		throw new NodeOperationError(this.getNode(), "The 'List' parameter is empty", {
-			description: 'Set the list ID or title and try again.',
-		});
-	}
+	const listIdOrTitle = assertPathSegment(
+		this.getNode(),
+		String(this.getNodeParameter('list', '', { extractValue: true })),
+		'List',
+	);
 
 	// Only the contentTypes columns reply carries the `type` discriminator
 	// https://learn.microsoft.com/en-us/graph/api/resources/columndefinition
