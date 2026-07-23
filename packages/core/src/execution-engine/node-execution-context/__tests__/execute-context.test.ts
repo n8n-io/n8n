@@ -13,7 +13,12 @@ import type {
 	ICredentialDataDecryptedObject,
 	WorkflowExpression,
 } from 'n8n-workflow';
-import { UnexpectedError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	ExpressionError,
+	NodeConnectionTypes,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -688,6 +693,97 @@ describe('ExecuteContext', () => {
 				undefined,
 				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
 			);
+		});
+	});
+
+	describe('console output redaction', () => {
+		const makeContext = (mode: WorkflowExecuteMode, runData: IRunExecutionData) =>
+			new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+		const runDataWith = (production: boolean, manual: boolean) =>
+			({
+				executionData: {
+					runtimeData: { redaction: { version: 2, production, manual } },
+				},
+			}) as unknown as IRunExecutionData;
+
+		beforeEach(() => {
+			additionalData.sendDataToUI = vi.fn();
+		});
+
+		it('replaces manual console messages with the redaction marker when the manual channel redacts', () => {
+			const context = makeContext('manual', runDataWith(true, true));
+			context.sendMessageToUI('secret-payload', { secret: true });
+
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: `[Node: "${node.name}"]`,
+				messages: [CONSOLE_OUTPUT_REDACTED_MESSAGE],
+			});
+		});
+
+		it('passes manual console messages through unchanged when no channel redacts', () => {
+			const context = makeContext('manual', runDataWith(false, false));
+			context.sendMessageToUI('hello', 42);
+
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: `[Node: "${node.name}"]`,
+				messages: ['hello', 42],
+			});
+		});
+
+		it('fails closed when resolving the policy throws', () => {
+			const throwingRunData = {
+				get executionData(): never {
+					throw new Error('boom');
+				},
+			} as unknown as IRunExecutionData;
+			const context = makeContext('manual', throwingRunData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
+		describe('production stdout gating', () => {
+			let logSpy: ReturnType<typeof vi.spyOn>;
+
+			beforeEach(() => {
+				process.env.CODE_ENABLE_STDOUT = 'true';
+				logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+			});
+
+			afterEach(() => {
+				delete process.env.CODE_ENABLE_STDOUT;
+				logSpy.mockRestore();
+			});
+
+			it('replaces production console output with the marker when the production channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logNodeOutput('secret-payload');
+
+				expect(logSpy).toHaveBeenCalledWith(
+					expect.stringContaining('[Workflow'),
+					CONSOLE_OUTPUT_REDACTED_MESSAGE,
+				);
+				expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), 'secret-payload');
+			});
+
+			it('passes production console output through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logNodeOutput('hello');
+
+				expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[Workflow'), 'hello');
+			});
 		});
 	});
 });
