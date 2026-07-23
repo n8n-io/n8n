@@ -43,7 +43,7 @@ analytics pipeline reads them), the direct driver passes identity.
 | You want to… | Touch exactly |
 |---|---|
 | Add a grader / judge / check wiring | `run/case-pipeline.ts` (row-side) or `run/build-orchestrator.ts` (build-side capture) — it then runs in CI **and** dispatcher mode |
-| Add a tier | `run/tiers.ts` (one row; set `gated` for an absolute green bar) |
+| Add a tier | nothing — tiers are free-form strings in a case's `datasets` field; only a tier that should assert the absolute green bar registers in `run/tiers.ts` |
 | Add a case source | `data/source.ts` (`--source` dispatch) |
 | Add a driver | compose `createEvalSession()` + feed rows from `run/rows.ts` |
 | Change persisted output | `run/persist.ts` — and extend `__tests__/eval-results-dispatcher-contract.test.ts` |
