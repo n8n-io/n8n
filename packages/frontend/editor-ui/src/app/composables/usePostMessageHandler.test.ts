@@ -5,9 +5,11 @@ import { createTestingPinia } from '@pinia/testing';
 import { jsonParse } from 'n8n-workflow';
 import { usePostMessageControls, usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { defaultSettings } from '@/__tests__/defaults';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const mockImportWorkflowExact = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
@@ -129,13 +131,15 @@ describe('usePostMessageHandler', () => {
 	describe('setup and cleanup', () => {
 		it('should add message event listener on setup', () => {
 			const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
-			const { setup } = usePostMessageHandler({
+			const { setup, cleanup } = usePostMessageHandler({
 				currentWorkflowDocumentStore: shallowRef(null),
 			});
 
 			setup();
 
 			expect(addEventListenerSpy).toHaveBeenCalledWith('message', expect.any(Function));
+
+			cleanup();
 		});
 
 		it('should remove message event listener on cleanup', () => {
@@ -818,6 +822,90 @@ describe('usePostMessageHandler', () => {
 				data: JSON.stringify({ action: 'something' }),
 			});
 			window.dispatchEvent(messageEvent);
+
+			await new Promise((r) => setTimeout(r, 10));
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+
+			cleanup();
+		});
+	});
+
+	describe('origin filtering', () => {
+		function setAllowedOrigins(origins: string[]) {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			useSettingsStore().setSettings({
+				...defaultSettings,
+				security: {
+					blockFileAccessToN8nFiles: false,
+					postMessageAllowedOrigins: origins,
+				},
+			});
+		}
+
+		it('should process commands from any origin when no allowlist is configured', async () => {
+			setAllowedOrigins([]);
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openWorkflow',
+						workflow: { nodes: [], connections: {} },
+					}),
+					origin: 'https://external.example',
+				}),
+			);
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalled();
+			});
+
+			cleanup();
+		});
+
+		it('should process commands from an allowed origin', async () => {
+			setAllowedOrigins(['https://trusted.example']);
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openWorkflow',
+						workflow: { nodes: [], connections: {} },
+					}),
+					origin: 'https://trusted.example',
+				}),
+			);
+
+			await vi.waitFor(() => {
+				expect(mockImportWorkflowExact).toHaveBeenCalled();
+			});
+
+			cleanup();
+		});
+
+		it('should ignore commands from an origin outside the allowlist', async () => {
+			setAllowedOrigins(['https://trusted.example']);
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openWorkflow',
+						workflow: { nodes: [], connections: {} },
+					}),
+					origin: 'https://untrusted.example',
+				}),
+			);
 
 			await new Promise((r) => setTimeout(r, 10));
 			expect(mockImportWorkflowExact).not.toHaveBeenCalled();

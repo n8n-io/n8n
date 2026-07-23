@@ -164,6 +164,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	security: {
 		blockFileAccessToN8nFiles: false,
+		postMessageAllowedOrigins: [],
 	},
 	aiAssistant: {
 		enabled: false,
