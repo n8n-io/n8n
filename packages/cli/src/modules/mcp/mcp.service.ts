@@ -496,7 +496,9 @@ export class McpService {
 		);
 		registerIfAllowed(exploreNodeResourcesTool);
 
-		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes);
+		const validateTool = createValidateWorkflowCodeTool(user, this.telemetry, this.nodeTypes, {
+			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+		});
 		registerIfAllowed(validateTool);
 
 		const validateNodeTool = createValidateNodeTool(user, this.telemetry);
@@ -513,6 +515,7 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
+			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
 
 		// The preview app only accompanies the create tool, so both are gated

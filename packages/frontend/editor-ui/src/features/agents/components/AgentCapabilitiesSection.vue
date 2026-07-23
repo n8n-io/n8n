@@ -570,11 +570,7 @@ function handleChannelDisconnected(channelType: string) {
 
 <template>
 	<div>
-		<div
-			:class="[$style.section, props.disabled && $style.disabled]"
-			:inert="props.disabled || undefined"
-			data-testid="agent-capabilities-section"
-		>
+		<div :class="$style.section" data-testid="agent-capabilities-section">
 			<div v-if="showSection('channels')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.triggers.title') }}
@@ -587,6 +583,7 @@ function handleChannelDisconnected(channelType: string) {
 						:icon="channel.icon"
 						:invalid="channel.invalid"
 						:invalid-reasons="channel.invalidReasons"
+						:disabled="props.disabled"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-channel-row"
 						@click="openChannelEdit(channel.type)"
@@ -626,6 +623,7 @@ function handleChannelDisconnected(channelType: string) {
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
 							:items="toolMenuItems(tool)"
+							:disabled="props.disabled"
 							placement="bottom-start"
 							data-testid="agent-capabilities-tool-group"
 							@select="onToolMenuSelect"
@@ -634,6 +632,7 @@ function handleChannelDisconnected(channelType: string) {
 								<AgentChipButton
 									:invalid="tool.invalid"
 									:invalid-reasons="tool.invalidReasons"
+									:disabled="props.disabled"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
 								>
@@ -659,6 +658,7 @@ function handleChannelDisconnected(channelType: string) {
 							v-else-if="tool.nodeType"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -673,6 +673,7 @@ function handleChannelDisconnected(channelType: string) {
 							:icon="tool.fallbackIcon"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -682,7 +683,6 @@ function handleChannelDisconnected(channelType: string) {
 					</template>
 
 					<N8nTooltip
-						v-if="!props.disabled"
 						:disabled="!hasTools"
 						:content="i18n.baseText('agents.builder.tools.add')"
 						placement="top"
@@ -691,6 +691,7 @@ function handleChannelDisconnected(channelType: string) {
 							variant="ghost"
 							size="medium"
 							:icon-only="hasTools"
+							:disabled="props.disabled"
 							data-testid="agent-capabilities-add-tool"
 							@click="emit('add-tool')"
 						>
@@ -715,6 +716,7 @@ function handleChannelDisconnected(channelType: string) {
 						icon="sparkles"
 						:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
 						:invalid-reasons="skillIssueMessages.get(id) ?? []"
+						:disabled="props.disabled"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-skill-row"
 						@click="emit('open-skill', id)"
@@ -723,7 +725,6 @@ function handleChannelDisconnected(channelType: string) {
 					</AgentChipButton>
 
 					<N8nTooltip
-						v-if="!props.disabled"
 						:disabled="!hasSkills"
 						:content="i18n.baseText('agents.builder.skills.add')"
 						placement="top"
@@ -732,6 +733,7 @@ function handleChannelDisconnected(channelType: string) {
 							variant="ghost"
 							size="medium"
 							:icon-only="hasSkills"
+							:disabled="props.disabled"
 							data-testid="agent-capabilities-add-skill"
 							@click="emit('add-skill')"
 						>
@@ -755,6 +757,7 @@ function handleChannelDisconnected(channelType: string) {
 						icon="bot"
 						:invalid="subAgent.invalid"
 						:invalid-reasons="subAgent.invalidReasons"
+						:disabled="props.disabled"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-sub-agent-row"
 						@click="openExistingSubAgentModal(subAgent)"
@@ -792,6 +795,7 @@ function handleChannelDisconnected(channelType: string) {
 						icon="clipboard-list"
 						:invalid="task.invalid"
 						:invalid-reasons="task.invalidReasons"
+						:disabled="props.disabled"
 						:class="$style.capabilityChip"
 						data-testid="agent-capabilities-task-row"
 						@click="openTaskModal(task)"
@@ -880,11 +884,6 @@ function handleChannelDisconnected(channelType: string) {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.disabled {
-	opacity: 0.5;
-	pointer-events: none;
 }
 
 .error {
