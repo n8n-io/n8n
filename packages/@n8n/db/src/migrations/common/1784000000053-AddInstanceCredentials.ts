@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 export class AddInstanceCredentials1784000000053 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres, schemaBuilder }: MigrationContext) {
 		const tableName = escape.tableName('credentials_entity');
-		const columnName = escape.columnName('availability');
+		const columnName = escape.columnName('usageScope');
 
 		await runQuery(
 			`ALTER TABLE ${tableName} ADD COLUMN ${columnName} VARCHAR(16) NOT NULL DEFAULT 'workflow' CHECK (${columnName} IN ('workflow', 'instance'))`,
@@ -37,7 +37,7 @@ export class AddInstanceCredentials1784000000053 implements ReversibleMigration 
 		await schemaBuilder.dropTable('instance_credential_assignment');
 
 		const tableName = escape.tableName('credentials_entity');
-		const columnName = escape.columnName('availability');
+		const columnName = escape.columnName('usageScope');
 		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${columnName}`);
 	}
 }
