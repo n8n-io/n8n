@@ -6,11 +6,11 @@ export class AddInstanceCredentials1784000000053 implements ReversibleMigration 
 		const columnName = escape.columnName('usageScope');
 
 		await runQuery(
-			`ALTER TABLE ${tableName} ADD COLUMN ${columnName} VARCHAR(16) NOT NULL DEFAULT 'workflow' CHECK (${columnName} IN ('workflow', 'instance'))`,
+			`ALTER TABLE ${tableName} ADD COLUMN ${columnName} VARCHAR(16) NOT NULL DEFAULT 'project' CHECK (${columnName} IN ('project', 'instance'))`,
 		);
 		if (isPostgres) {
 			await runQuery(
-				`COMMENT ON COLUMN ${tableName}.${columnName} IS 'Where the credential may be consumed: workflow execution or an instance-level feature'`,
+				`COMMENT ON COLUMN ${tableName}.${columnName} IS 'Where the credential may be consumed: a project-owned feature or an instance-level feature'`,
 			);
 		}
 
