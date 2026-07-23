@@ -149,9 +149,60 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		).content[0];
 
 		expect(reasoningPart.type).toBe('reasoning');
+		// itemId is intentionally stripped so the @ai-sdk/openai provider sends
+		// full reasoning items with encrypted_content instead of item_reference
+		// on multi-step turns (see QUIRK comment in toAiContent).
 		expect(reasoningPart.providerOptions).toEqual({
-			openai: { itemId: 'rs_123', reasoningEncryptedContent: 'encrypted' },
+			openai: { reasoningEncryptedContent: 'encrypted' },
 		});
+	});
+
+	it('strips itemId from OpenAI reasoning providerOptions to force full reasoning items on multi-step turns', () => {
+		const providerMetadata = {
+			openai: { itemId: 'rs_456', reasoningEncryptedContent: 'encrypted-content-abc' },
+		};
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'reasoning',
+						text: 'Let me think about this...',
+						providerMetadata,
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'call_1',
+						toolName: 'build_workflow',
+						input: {},
+						state: 'pending',
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+		const assistantMsg = aiMessages[0] as {
+			role: string;
+			content: Array<{
+				type: string;
+				providerOptions?: Record<string, Record<string, unknown>>;
+			}>;
+		};
+		const reasoningPart = assistantMsg.content.find((p) => p.type === 'reasoning');
+
+		expect(reasoningPart).toBeDefined();
+		// itemId must be stripped so @ai-sdk/openai sends a full reasoning item
+		// (with encrypted_content) instead of an item_reference that the API
+		// cannot resolve on multi-step turns without previous_response_id.
+		expect(reasoningPart!.providerOptions?.openai).not.toHaveProperty('itemId');
+		// reasoningEncryptedContent must be preserved so the provider can build
+		// the full reasoning item body.
+		expect(reasoningPart!.providerOptions?.openai).toEqual({
+			reasoningEncryptedContent: 'encrypted-content-abc',
+		});
+		// providerMetadata is preserved untouched for downstream use.
+		expect((reasoningPart as any).providerMetadata).toEqual(providerMetadata);
 	});
 
 	it.each([
