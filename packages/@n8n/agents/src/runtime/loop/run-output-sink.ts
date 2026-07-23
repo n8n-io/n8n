@@ -67,6 +67,7 @@ export interface ModelCallContext {
 	aiTools: ToolSet;
 	providerOptions?: Record<string, JSONObject>;
 	outputSpec?: ReturnType<typeof Output.object>;
+	maxOutputTokens?: number;
 	aiSdkOptions: {
 		experimental_telemetry?: TelemetrySettings;
 		experimental_repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
