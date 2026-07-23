@@ -6,46 +6,10 @@ import {
 	findClassProperty,
 	findObjectProperty,
 	getStringLiteralValue,
-	getBooleanLiteralValue,
+	isSensitiveFieldName,
+	hasPasswordTypeOption,
 	createRule,
 } from '../utils/index.js';
-
-const SENSITIVE_PATTERNS = [
-	'password',
-	'secret',
-	'token',
-	'cert',
-	'passphrase',
-	'apikey',
-	'secretkey',
-	'privatekey',
-	'authkey',
-];
-
-const NON_SENSITIVE_PATTERNS = ['url', 'pub', 'id'];
-
-function isSensitiveFieldName(name: string): boolean {
-	const lowerName = name.toLowerCase();
-
-	if (NON_SENSITIVE_PATTERNS.some((pattern) => lowerName.includes(pattern))) {
-		return false;
-	}
-
-	return SENSITIVE_PATTERNS.some((pattern) => lowerName.includes(pattern));
-}
-
-function hasPasswordTypeOption(element: TSESTree.ObjectExpression): boolean {
-	const typeOptionsProperty = findObjectProperty(element, 'typeOptions');
-
-	if (typeOptionsProperty?.value.type !== TSESTree.AST_NODE_TYPES.ObjectExpression) {
-		return false;
-	}
-
-	const passwordProperty = findObjectProperty(typeOptionsProperty.value, 'password');
-	const passwordValue = passwordProperty ? getBooleanLiteralValue(passwordProperty.value) : null;
-
-	return passwordValue === true;
-}
 
 function createPasswordFix(
 	element: TSESTree.ObjectExpression,
@@ -87,7 +51,7 @@ export const CredentialPasswordFieldRule = createRule({
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Ensure credential fields with sensitive names have typeOptions.password = true',
+			description: 'Ensure fields with sensitive names have typeOptions.password = true',
 		},
 		messages: {
 			missingPasswordOption:
