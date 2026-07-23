@@ -268,6 +268,7 @@ export function createLlmCompletionMockHandler(
 		const agent = createEvalAgent('eval-llm-completion-mock', {
 			instructions: COMPLETION_MOCK_PROMPT,
 			cache: true,
+			role: 'mock',
 		}).tool(
 			new Tool('submit_agent_step')
 				.description("Submit the agent's next step: one tool call, or a final answer.")

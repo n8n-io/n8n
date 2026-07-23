@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 
 vi.mock('../../src/utils/eval-agents', () => ({
 	createEvalAgent: vi.fn(),
+	getShadowJudgeModel: vi.fn(),
 	resolveEvalModelConfig: vi.fn(() => ({
 		modelId: 'anthropic/test-model',
 		provider: 'anthropic',

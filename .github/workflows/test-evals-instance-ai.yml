@@ -63,6 +63,11 @@ on:
         required: false
         type: string
         default: ''
+      harness-models:
+        description: 'Eval-harness model overrides as space-separated k=v pairs (mock=, judge=, shadow=), provider/model format. e.g. "shadow=openrouter/moonshotai/kimi-k3". Empty = defaults.'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       branch:
@@ -97,6 +102,10 @@ on:
         description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). For experiments: anthropic/claude-sonnet-4-6, anthropic/claude-sonnet-5.'
         required: false
         default: ''
+      harness-models:
+        description: 'Eval-harness model overrides as space-separated k=v pairs: mock= (runtime mock generators, lane backends), judge= (checklist + expectations judges), shadow= (side-by-side second judge). e.g. "shadow=openrouter/moonshotai/kimi-k3".'
+        required: false
+        default: ''
 
 jobs:
   run-evals:
@@ -129,6 +138,27 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: 'pnpm build'
+
+      # Harness-model experiment knobs (TRUST eval-harness A/B): one k=v input
+      # fans out to role-scoped envs consumed by later steps. mock= must reach
+      # the lane backends (mock generators run server-side); judge=/shadow= the
+      # eval CLI. Model ids contain no spaces, so word-splitting is safe.
+      - name: Parse harness model overrides
+        if: ${{ inputs.harness-models != '' }}
+        env:
+          HARNESS_MODELS: ${{ inputs.harness-models }}
+        run: |
+          for pair in $HARNESS_MODELS; do
+            case "$pair" in
+              mock=*)   echo "N8N_INSTANCE_AI_EVAL_MOCK_MODEL=${pair#mock=}" >> "$GITHUB_ENV" ;;
+              judge=*)  echo "N8N_INSTANCE_AI_EVAL_JUDGE_MODEL=${pair#judge=}" >> "$GITHUB_ENV" ;;
+              shadow=*) echo "N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL=${pair#shadow=}" >> "$GITHUB_ENV" ;;
+              *)
+                echo "::error::Unknown harness-models entry '$pair' (expected mock=/judge=/shadow=)"
+                exit 1
+                ;;
+            esac
+          done
 
       # Cache populated by prepare-docker; on a miss (e.g. fresh PR-open runs
       # that outpace prepare-docker) the action itself falls back to a rebuild
@@ -176,6 +206,7 @@ jobs:
           SANDBOX_NAME_PREFIX: evals-ci-${{ github.head_ref || inputs.branch || github.ref_name }}
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
           INSTANCE_AI_MODEL: ${{ inputs.model }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           # Build provider-specific env args
           SANDBOX_ARGS=()
@@ -204,6 +235,14 @@ jobs:
           MODEL_ARGS=()
           if [ -n "$INSTANCE_AI_MODEL" ]; then
             MODEL_ARGS+=(-e N8N_INSTANCE_AI_MODEL="$INSTANCE_AI_MODEL")
+          fi
+          # Runtime mock generators run inside the lane backends — the mock-model
+          # override and the OpenRouter key must ride the containers, not the CLI.
+          if [ -n "$N8N_INSTANCE_AI_EVAL_MOCK_MODEL" ]; then
+            MODEL_ARGS+=(-e N8N_INSTANCE_AI_EVAL_MOCK_MODEL="$N8N_INSTANCE_AI_EVAL_MOCK_MODEL")
+          fi
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            MODEL_ARGS+=(-e OPENROUTER_API_KEY="$OPENROUTER_API_KEY")
           fi
 
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
@@ -345,6 +384,9 @@ jobs:
         working-directory: packages/@n8n/instance-ai
         env:
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          # Native key for openrouter/* judge or shadow models (harness-models input);
+          # judge/shadow model envs themselves arrive via GITHUB_ENV from the parse step.
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           LANGSMITH_TRACING: 'true'
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}

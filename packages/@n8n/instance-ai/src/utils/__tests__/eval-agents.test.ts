@@ -18,16 +18,21 @@ vi.mock('@n8n/agents', () => ({
 	Tool: vi.fn(),
 }));
 
-import { createEvalAgent, resolveEvalModelConfig } from '../eval-agents';
+import { createEvalAgent, getShadowJudgeModel, resolveEvalModelConfig } from '../eval-agents';
 
 const ORIGINAL_ENV = { ...process.env };
 const MODEL_ENV_KEYS = [
 	'N8N_INSTANCE_AI_MODEL',
+	'N8N_INSTANCE_AI_MODEL_URL',
 	'N8N_INSTANCE_AI_EVAL_MODEL',
+	'N8N_INSTANCE_AI_EVAL_MOCK_MODEL',
+	'N8N_INSTANCE_AI_EVAL_JUDGE_MODEL',
+	'N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL',
 	'N8N_INSTANCE_AI_MODEL_API_KEY',
 	'N8N_AI_ANTHROPIC_KEY',
 	'ANTHROPIC_API_KEY',
 	'OPENAI_API_KEY',
+	'OPENROUTER_API_KEY',
 	'GOOGLE_GENERATIVE_AI_API_KEY',
 	'XAI_API_KEY',
 ];
@@ -118,6 +123,92 @@ describe('eval agent model config', () => {
 			id: 'anthropic/claude-sonnet-4-6',
 			apiKey: 'env-key',
 			url: undefined,
+		});
+	});
+
+	describe('role model overrides', () => {
+		it('role env takes precedence over an explicit model for that role', () => {
+			process.env.N8N_INSTANCE_AI_EVAL_JUDGE_MODEL = 'openrouter/moonshotai/kimi-k3';
+			process.env.OPENROUTER_API_KEY = 'or-key';
+
+			const config = resolveEvalModelConfig('anthropic/claude-sonnet-4-6', 'judge');
+
+			expect(config.modelId).toBe('openrouter/moonshotai/kimi-k3');
+			expect(config.provider).toBe('openrouter');
+			expect(config.providerModelId).toBe('moonshotai/kimi-k3');
+			expect(config.apiKey).toBe('or-key');
+		});
+
+		it('falls back to the explicit model when the role env is unset', () => {
+			process.env.N8N_AI_ANTHROPIC_KEY = 'anthropic-key';
+
+			const config = resolveEvalModelConfig('anthropic/claude-sonnet-4-6', 'judge');
+
+			expect(config.modelId).toBe('anthropic/claude-sonnet-4-6');
+			expect(config.apiKey).toBe('anthropic-key');
+		});
+
+		it('mock role env wins over the shared eval model env', () => {
+			process.env.N8N_INSTANCE_AI_EVAL_MODEL = 'anthropic/claude-sonnet-4-6';
+			process.env.N8N_INSTANCE_AI_EVAL_MOCK_MODEL = 'openrouter/moonshotai/kimi-k3';
+			process.env.OPENROUTER_API_KEY = 'or-key';
+
+			const config = resolveEvalModelConfig(undefined, 'mock');
+
+			expect(config.modelId).toBe('openrouter/moonshotai/kimi-k3');
+		});
+
+		it('one role override does not move the other role', () => {
+			process.env.N8N_INSTANCE_AI_EVAL_MOCK_MODEL = 'openrouter/moonshotai/kimi-k3';
+			process.env.OPENROUTER_API_KEY = 'or-key';
+			process.env.N8N_AI_ANTHROPIC_KEY = 'anthropic-key';
+
+			const config = resolveEvalModelConfig(undefined, 'judge');
+
+			expect(config.modelId).toBe('anthropic/claude-sonnet-4-6');
+			expect(config.apiKey).toBe('anthropic-key');
+		});
+	});
+
+	describe('openrouter key and url resolution', () => {
+		it('native OPENROUTER_API_KEY beats the generic key for openrouter models only', () => {
+			process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'generic-anthropic-key';
+			process.env.OPENROUTER_API_KEY = 'or-key';
+
+			expect(resolveEvalModelConfig('openrouter/moonshotai/kimi-k3').apiKey).toBe('or-key');
+			expect(resolveEvalModelConfig('anthropic/claude-sonnet-4-6').apiKey).toBe(
+				'generic-anthropic-key',
+			);
+		});
+
+		it('falls back to the generic key when OPENROUTER_API_KEY is empty', () => {
+			process.env.N8N_INSTANCE_AI_MODEL_API_KEY = 'or-key-via-generic';
+			process.env.OPENROUTER_API_KEY = '';
+
+			expect(resolveEvalModelConfig('openrouter/moonshotai/kimi-k3').apiKey).toBe(
+				'or-key-via-generic',
+			);
+		});
+
+		it('does not apply the generic URL override to openrouter models', () => {
+			process.env.N8N_INSTANCE_AI_MODEL_URL = 'https://anthropic-proxy.example.com/v1';
+			process.env.N8N_AI_ANTHROPIC_KEY = 'anthropic-key';
+			process.env.OPENROUTER_API_KEY = 'or-key';
+
+			expect(resolveEvalModelConfig('openrouter/moonshotai/kimi-k3').url).toBeUndefined();
+			expect(resolveEvalModelConfig('anthropic/claude-sonnet-4-6').url).toBe(
+				'https://anthropic-proxy.example.com/v1',
+			);
+		});
+	});
+
+	describe('getShadowJudgeModel', () => {
+		it('returns undefined when unset or blank, the trimmed value otherwise', () => {
+			expect(getShadowJudgeModel()).toBeUndefined();
+			process.env.N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL = '  ';
+			expect(getShadowJudgeModel()).toBeUndefined();
+			process.env.N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL = ' openrouter/moonshotai/kimi-k3 ';
+			expect(getShadowJudgeModel()).toBe('openrouter/moonshotai/kimi-k3');
 		});
 	});
 });

@@ -780,6 +780,7 @@ async function callLlm(
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
 		cache: true,
+		role: 'mock',
 	})
 		.tool(
 			createQuirksLookupTool(

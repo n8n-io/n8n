@@ -278,6 +278,10 @@ export interface ExecutionScenarioResult {
 	 *  workflow failure). Rendered visibly but kept out of the pass-rate count,
 	 *  mirroring `BuildExpectationResult.incomplete`. */
 	incomplete?: boolean;
+	/** Present when the shadow judge ran for this scenario's verification. */
+	shadowJudge?: ShadowJudgeVerdict;
+	/** Primary judge usage for the verdict-producing attempt (experiment instrumentation). */
+	judgeUsage?: JudgeTokenUsage;
 }
 
 /** Verdict for one author-written build expectation. Scored as a unit in the
@@ -288,6 +292,36 @@ export interface BuildExpectationResult {
 	reason: string;
 	/** Judge returned no verdict (flaky/partial). Rendered neutrally, kept out of the count. */
 	incomplete?: boolean;
+	/** Shadow judge's verdict on the same expectation — side-by-side comparison only,
+	 *  never counted. Present only when the shadow judge env is set. */
+	shadowPass?: boolean;
+	shadowReason?: string;
+	/** Shadow judge returned no verdict for this expectation. */
+	shadowIncomplete?: boolean;
+}
+
+/** Judge token usage extracted from the verdict-producing attempt (experiment instrumentation). */
+export interface JudgeTokenUsage {
+	promptTokens?: number;
+	completionTokens?: number;
+	totalTokens?: number;
+	costUsd?: number;
+}
+
+/** Side-by-side verdict from the shadow judge (`N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL`).
+ *  Strictly observational: never feeds scores, gating, or failure attribution. */
+export interface ShadowJudgeVerdict {
+	model: string;
+	pass?: boolean;
+	reasoning?: string;
+	failureCategory?: string;
+	rootCause?: string;
+	/** Shadow verifier produced no verdict after all attempts. */
+	incomplete?: boolean;
+	latencyMs: number;
+	usage?: JudgeTokenUsage;
+	/** Shadow call failed outright (config/transport) — recorded, never thrown. */
+	error?: string;
 }
 
 export interface WorkflowTestCaseResult {

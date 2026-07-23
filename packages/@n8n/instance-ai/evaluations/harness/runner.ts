@@ -46,7 +46,11 @@ import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-js
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
-import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
+import {
+	type ShadowVerifyResult,
+	type VerifierAttemptDebug,
+	verifyChecklist,
+} from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
 import {
@@ -66,6 +70,7 @@ import type {
 	ConversationTurn,
 	ExecutionScenarioResult,
 	ExecutionScenario,
+	ShadowJudgeVerdict,
 	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
@@ -77,6 +82,7 @@ import {
 	lastAgentText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
+import { toJudgeTokenUsage } from '../utils/judge-usage';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -178,6 +184,8 @@ async function writeScenarioVerificationSnapshot(input: {
 	result: ChecklistResult | undefined;
 	verificationResults: ChecklistResult[];
 	verifierAttempts: VerifierAttemptDebug[];
+	shadow?: ShadowVerifyResult;
+	judgeInput?: unknown;
 	buildTrace?: BuildTrace;
 	logger: EvalLogger;
 }): Promise<void> {
@@ -199,6 +207,8 @@ async function writeScenarioVerificationSnapshot(input: {
 					result: input.result ?? null,
 					verificationResults: input.verificationResults,
 					verifierAttempts: input.verifierAttempts,
+					...(input.shadow ? { shadow: input.shadow } : {}),
+					...(input.judgeInput !== undefined ? { judgeInput: input.judgeInput } : {}),
 					buildTrace: input.buildTrace ?? null,
 				},
 				null,
@@ -212,6 +222,44 @@ async function writeScenarioVerificationSnapshot(input: {
 			`    [${input.scenarioName}] failed to write verifier snapshot: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
+}
+
+/** Compact the shadow verifier run into the persisted verdict shape. Scenario
+ *  checklists have exactly one llm item, so results[0] IS the verdict. */
+function toShadowJudgeVerdict(
+	shadow: ShadowVerifyResult | undefined,
+): ShadowJudgeVerdict | undefined {
+	if (!shadow) return undefined;
+	const result = shadow.results[0];
+	return {
+		model: shadow.model,
+		...(result
+			? {
+					pass: result.pass,
+					reasoning: result.reasoning,
+					failureCategory: result.failureCategory,
+					rootCause: result.rootCause,
+				}
+			: { incomplete: true }),
+		latencyMs: shadow.latencyMs,
+		usage: toJudgeTokenUsage(shadow.attempts.find((a) => a.status === 'success')?.usage),
+		...(shadow.error ? { error: shadow.error } : {}),
+	};
+}
+
+function logShadowVerdict(
+	logger: EvalLogger,
+	scenarioName: string,
+	shadowJudge: ShadowJudgeVerdict,
+	primary: ChecklistResult | undefined,
+): void {
+	const unscored = shadowJudge.incomplete === true || shadowJudge.error !== undefined;
+	const status = unscored ? 'INCOMPLETE' : shadowJudge.pass ? 'PASS' : 'FAIL';
+	const category = shadowJudge.failureCategory ? ` [${shadowJudge.failureCategory}]` : '';
+	const disagrees = !unscored && primary !== undefined && shadowJudge.pass !== primary.pass;
+	logger.info(
+		`    [${scenarioName}] shadow(${shadowJudge.model}): ${status}${category}${disagrees ? ' — DISAGREES with primary' : ''}`,
+	);
 }
 
 /**
@@ -1192,6 +1240,10 @@ async function runScenario(
 	const verifyMs = Date.now() - verifyStart;
 	const passed = verificationResults.length > 0 && verificationResults[0].pass;
 	const result = verificationResults[0];
+	const shadowJudge = toShadowJudgeVerdict(verification.shadow);
+	const judgeUsage = toJudgeTokenUsage(
+		verification.attempts.find((a) => a.status === 'success')?.usage,
+	);
 	await writeScenarioVerificationSnapshot({
 		testCaseName: testCaseName ?? `workflow-${workflowId}`,
 		scenarioName: scenario.name,
@@ -1200,6 +1252,8 @@ async function runScenario(
 		result,
 		verificationResults,
 		verifierAttempts: verification.attempts,
+		shadow: verification.shadow,
+		judgeInput: verification.judgeInput,
 		buildTrace,
 		logger,
 	});
@@ -1221,6 +1275,7 @@ async function runScenario(
 	logger.info(
 		`    [${scenario.name}] ${statusLabel}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
 	);
+	if (shadowJudge) logShadowVerdict(logger, scenario.name, shadowJudge, result);
 	if (!passed) {
 		logger.info(`    [${scenario.name}] ${reasoning}`);
 	}
@@ -1235,6 +1290,8 @@ async function runScenario(
 		failureCategory,
 		rootCause,
 		...(incomplete ? { incomplete: true } : {}),
+		...(shadowJudge ? { shadowJudge } : {}),
+		...(judgeUsage ? { judgeUsage } : {}),
 	};
 }
 
@@ -1347,6 +1404,10 @@ export async function executeAgentScenario(
 	const verifyMs = Date.now() - verifyStart;
 	const passed = verificationResults.length > 0 && verificationResults[0].pass;
 	const result = verificationResults[0];
+	const shadowJudge = toShadowJudgeVerdict(verification.shadow);
+	const judgeUsage = toJudgeTokenUsage(
+		verification.attempts.find((a) => a.status === 'success')?.usage,
+	);
 	await writeScenarioVerificationSnapshot({
 		testCaseName: testCaseName ?? `agent-${agentId}`,
 		scenarioName: scenario.name,
@@ -1355,6 +1416,8 @@ export async function executeAgentScenario(
 		result,
 		verificationResults,
 		verifierAttempts: verification.attempts,
+		shadow: verification.shadow,
+		judgeInput: verification.judgeInput,
 		buildTrace,
 		logger,
 	});
@@ -1373,6 +1436,7 @@ export async function executeAgentScenario(
 	logger.info(
 		`    [${scenario.name}] ${statusLabel}${categoryLabel} verify=${String(Math.round(verifyMs / 1000))}s`,
 	);
+	if (shadowJudge) logShadowVerdict(logger, scenario.name, shadowJudge, result);
 	if (!passed) {
 		logger.info(`    [${scenario.name}] ${reasoning}`);
 	}
@@ -1387,6 +1451,8 @@ export async function executeAgentScenario(
 		failureCategory,
 		rootCause,
 		...(incomplete ? { incomplete: true } : {}),
+		...(shadowJudge ? { shadowJudge } : {}),
+		...(judgeUsage ? { judgeUsage } : {}),
 	};
 }
 

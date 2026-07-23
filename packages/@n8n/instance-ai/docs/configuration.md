@@ -30,6 +30,30 @@ All Instance AI configuration is done via environment variables.
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | boolean | `false` | Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel and eval LLM debug reports. |
 | `N8N_INSTANCE_AI_EVAL_TIMING` | boolean | `false` | When `true`, logs a per-execution `[EvalMock][timing]` phase breakdown (hints / bypass-pin / http-mock / ai-turn) for the eval mock-execution path, to attribute mocked-execution latency. A no-op otherwise. |
 
+### Eval harness models (experiments)
+
+All eval-harness LLM calls (mock generators, judges, fixture generators) resolve their
+model as `role override → explicit call-site model → N8N_INSTANCE_AI_EVAL_MODEL →
+N8N_INSTANCE_AI_MODEL → anthropic/claude-sonnet-4-6`. With none of these set, behavior
+is unchanged. Note the process split: the runtime mock generators run inside the **n8n
+server** (set their envs on the backend / lane containers), while the judges run in the
+**eval CLI process**.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_EVAL_MODEL` | string | `anthropic/claude-sonnet-4-6` | Shared default for every eval-harness LLM call that has no role override or hardcoded call-site model. |
+| `N8N_INSTANCE_AI_EVAL_MOCK_MODEL` | string | unset | Model for the runtime mock generators only (HTTP mock responder, AI-node completion mock, MCP/web-search mocks). Server process. Deliberately excludes the hint/pin-data/seed fixture generators, which shape build inputs rather than runtime mock fidelity. |
+| `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` | string | unset | Model for the eval judges (checklist/mock-execution verifier and build-expectations judge). Eval CLI process. Takes precedence over the judges' hardcoded default. |
+| `N8N_INSTANCE_AI_EVAL_SHADOW_JUDGE_MODEL` | string | unset | Runs a second judge with this model on identical inputs, side by side. Strictly observational: verdicts are persisted (`shadowJudge` on runs, `shadow*` fields on expectation verdicts, `shadow_*` LangSmith feedback keys, `summary.shadowJudge` rollup) and never affect scores, gating, or failure attribution. Eval CLI process. |
+| `N8N_INSTANCE_AI_EVAL_PERSIST_JUDGE_INPUT` | boolean | `false` | Also write the exact judge input messages into the local per-scenario verifier snapshots, enabling offline re-judging later. Snapshots can get large — experiments only. |
+| `OPENROUTER_API_KEY` | string | unset | Native API key for `openrouter/...` models. For openrouter models it takes precedence over `N8N_INSTANCE_AI_MODEL_API_KEY`, so mixed-provider arms (e.g. Anthropic judge + OpenRouter mocks) can authenticate both. Set it on whichever process runs the openrouter role. |
+
+Model ids use `provider/model` format; OpenRouter ids nest their vendor, e.g.
+`openrouter/moonshotai/kimi-k3`. `N8N_INSTANCE_AI_MODEL_URL` is **not** applied to
+`openrouter/...` models. In CI, the `test-evals-instance-ai.yml` dispatch input
+`harness-models` (e.g. `mock=openrouter/moonshotai/kimi-k3 shadow=anthropic/claude-sonnet-4-6`)
+fans these envs out to the right process automatically.
+
 ### Memory
 
 | Variable | Type | Default | Description |

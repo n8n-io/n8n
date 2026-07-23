@@ -90,6 +90,88 @@ function computeAggregateMetrics(evaluation: MultiRunEvaluation): AggregateMetri
 	};
 }
 
+interface ShadowJudgeSummary {
+	model: string;
+	/** Scenario verdicts where both primary and shadow produced a scored verdict. */
+	scenarioVerdicts: number;
+	scenarioDisagreements: number;
+	/** Both judges failed the scenario but attributed it to different categories. */
+	categoryMismatches: number;
+	expectationVerdicts: number;
+	expectationDisagreements: number;
+	shadowIncomplete: number;
+	shadowErrors: number;
+	avgShadowLatencyMs?: number;
+}
+
+/** Roll up side-by-side judge comparison data when the shadow judge ran (else undefined). */
+export function summarizeShadowJudge(
+	evaluation: MultiRunEvaluation,
+): ShadowJudgeSummary | undefined {
+	let model: string | undefined;
+	let scenarioVerdicts = 0;
+	let scenarioDisagreements = 0;
+	let categoryMismatches = 0;
+	let expectationVerdicts = 0;
+	let expectationDisagreements = 0;
+	let shadowIncomplete = 0;
+	let shadowErrors = 0;
+	let latencyTotal = 0;
+	let latencyCount = 0;
+
+	for (const tc of evaluation.testCases) {
+		for (const sa of tc.executionScenarios) {
+			for (const sr of sa.runs) {
+				const shadow = sr?.shadowJudge;
+				if (!shadow) continue;
+				model ??= shadow.model;
+				latencyTotal += shadow.latencyMs;
+				latencyCount++;
+				if (shadow.error !== undefined) {
+					shadowErrors++;
+					continue;
+				}
+				if (shadow.incomplete === true || shadow.pass === undefined) {
+					shadowIncomplete++;
+					continue;
+				}
+				if (sr.incomplete) continue; // primary unscored — no comparison
+				scenarioVerdicts++;
+				if (shadow.pass !== sr.success) scenarioDisagreements++;
+				else if (!shadow.pass && shadow.failureCategory !== sr.failureCategory) {
+					categoryMismatches++;
+				}
+			}
+		}
+		for (const run of tc.runs) {
+			for (const verdict of run?.buildExpectationResults ?? []) {
+				const hasShadow = verdict.shadowPass !== undefined || verdict.shadowIncomplete === true;
+				if (!hasShadow) continue;
+				if (verdict.shadowIncomplete === true) {
+					shadowIncomplete++;
+					continue;
+				}
+				if (verdict.incomplete) continue;
+				expectationVerdicts++;
+				if (verdict.pass !== verdict.shadowPass) expectationDisagreements++;
+			}
+		}
+	}
+
+	if (model === undefined) return undefined;
+	return {
+		model,
+		scenarioVerdicts,
+		scenarioDisagreements,
+		categoryMismatches,
+		expectationVerdicts,
+		expectationDisagreements,
+		shadowIncomplete,
+		shadowErrors,
+		...(latencyCount > 0 ? { avgShadowLatencyMs: Math.round(latencyTotal / latencyCount) } : {}),
+	};
+}
+
 /** Pass rate of each iteration (over units = scenarios + evaluated expectations). */
 export function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 	const { totalRuns, testCases } = evaluation;
@@ -370,6 +452,8 @@ export function writeEvalResults(
 	// `claude` build spend (--build-via-mcp only) — keeps a cost record in the
 	// artifact even when LangSmith isn't configured.
 	const buildSpendSummary = summarizeMcpBuildSpend(mcpBuildSpend);
+	// Side-by-side judge comparison rollup — present only on shadow-judge runs.
+	const shadowJudgeSummary = summarizeShadowJudge(evaluation);
 
 	const report = {
 		timestamp: new Date().toISOString(),
@@ -389,6 +473,7 @@ export function writeEvalResults(
 			notVerified: verification.notVerified,
 			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 			...(buildSpendSummary ? { mcpBuild: buildSpendSummary } : {}),
+			...(shadowJudgeSummary ? { shadowJudge: shadowJudgeSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
@@ -456,6 +541,8 @@ export function writeEvalResults(
 					reasoning: sr.reasoning,
 					failureCategory: sr.failureCategory,
 					rootCause: sr.rootCause,
+					...(sr.shadowJudge ? { shadowJudge: sr.shadowJudge } : {}),
+					...(sr.judgeUsage ? { judgeUsage: sr.judgeUsage } : {}),
 					execErrors: sr.evalResult?.errors ?? sr.agentEvalResult?.errors ?? [],
 					evalResult: sr.evalResult,
 					...(sr.agentEvalResult ? { agentEvalResult: sr.agentEvalResult } : {}),
