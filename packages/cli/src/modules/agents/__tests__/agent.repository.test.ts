@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import { In } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -38,6 +39,45 @@ describe('AgentRepository', () => {
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
 
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('findById', () => {
+		it('calls findOne with the id alone and the activeVersion relation', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+
+			const result = await repository.findById('agent-1');
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { id: 'agent-1' },
+				relations: { activeVersion: true },
+			});
+			expect(result).toBe(agent);
+		});
+	});
+
+	describe('findByIdInProjects', () => {
+		it('returns null without querying when projectIds is empty', async () => {
+			const findOne = vi.spyOn(repository, 'findOne');
+
+			const result = await repository.findByIdInProjects('agent-1', []);
+
+			expect(result).toBeNull();
+			expect(findOne).not.toHaveBeenCalled();
+		});
+
+		it('constrains the lookup to the given project ids', async () => {
+			const agent = mock<Agent>({ id: 'agent-1' });
+			vi.spyOn(repository, 'findOne').mockResolvedValue(agent);
+
+			const result = await repository.findByIdInProjects('agent-1', ['project-1', 'project-2']);
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { id: 'agent-1', projectId: In(['project-1', 'project-2']) },
+				relations: { activeVersion: true },
+			});
+			expect(result).toBe(agent);
 		});
 	});
 

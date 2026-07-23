@@ -17,6 +17,11 @@ vi.mock('@n8n/agents', () => ({
 	}),
 }));
 
+const { listMcpServerToolsMock } = vi.hoisted(() => ({ listMcpServerToolsMock: vi.fn() }));
+vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
+	listMcpServerTools: listMcpServerToolsMock,
+}));
+
 import { CredentialsService } from '@/credentials/credentials.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
@@ -96,6 +101,9 @@ describe('McpAgentToolsService', () => {
 	const agentSecureRuntime = mockInstance(AgentSecureRuntime);
 	const integrationPersistenceService = mockInstance(AgentIntegrationPersistenceService);
 	const chatIntegrationService = mockInstance(ChatIntegrationService);
+	const chatIntegrationRegistry = mockInstance(ChatIntegrationRegistry);
+	const mcpRegistryService = mockInstance(McpRegistryService);
+	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
 
 	const service = new McpAgentToolsService(
@@ -111,13 +119,13 @@ describe('McpAgentToolsService', () => {
 		agentSecureRuntime,
 		integrationPersistenceService,
 		chatIntegrationService,
-		mockInstance(ChatIntegrationRegistry),
+		chatIntegrationRegistry,
 		mockInstance(AgentModelCatalogService),
 		mockInstance(AttachableWorkflowsService),
-		mockInstance(McpRegistryService),
+		mcpRegistryService,
 		mockInstance(NodeTypes),
 		mockInstance(OauthService),
-		mockInstance(OutboundHttp),
+		outboundHttp,
 		mockInstance(SsrfProtectionConfig),
 		mockInstance(SsrfProtectionService),
 		urlService,
@@ -794,6 +802,69 @@ describe('McpAgentToolsService', () => {
 		});
 	});
 
+	describe('validate_agent', () => {
+		it('reports a valid agent with its editor URL', async () => {
+			agentConfigService.validateConfig.mockResolvedValue({ valid: true, config: baseConfig });
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'valid',
+				issues: [],
+			} as never);
+
+			const result = await callTool('validate_agent', { agentId: 'agent-1' });
+
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				valid: true,
+				errors: [],
+				missing: [],
+				url: 'https://n8n.test/projects/project-1/agents/agent-1',
+			});
+		});
+
+		it('aggregates the schema error and deduplicated missing capability paths', async () => {
+			agentConfigService.validateConfig.mockResolvedValue({
+				valid: false,
+				error: 'model is required',
+			});
+			agentValidationService.validateLoadedAgentConfiguration.mockResolvedValue({
+				status: 'invalid',
+				issues: [
+					{ code: 'missing_credential', path: 'credential', capability: { kind: 'agent' } },
+					{ code: 'missing_credential', path: 'credential', capability: { kind: 'tool' } },
+					{ code: 'missing_setting', path: 'model', capability: { kind: 'agent' } },
+				],
+			} as never);
+
+			const result = await callTool('validate_agent', { agentId: 'agent-1' });
+
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				valid: false,
+				errors: ['model is required'],
+				missing: ['credential', 'model'],
+			});
+		});
+	});
+
+	describe('unpublish_agent', () => {
+		it('unpublishes the agent and reports the draft version', async () => {
+			agentPublishService.unpublishAgent.mockResolvedValue(
+				agentEntity({ versionId: 'v2', activeVersionId: null }),
+			);
+
+			const result = await callTool('unpublish_agent', { agentId: 'agent-1' });
+
+			expect(agentPublishService.unpublishAgent).toHaveBeenCalledWith('agent-1', 'project-1');
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				agentId: 'agent-1',
+				published: false,
+				versionId: 'v2',
+				activeVersionId: null,
+			});
+		});
+	});
+
 	describe('revert_agent', () => {
 		it('restores the draft from the currently published version by default', async () => {
 			agentPublishService.revertToPublishedAgent.mockResolvedValue(
@@ -891,6 +962,89 @@ describe('McpAgentToolsService', () => {
 					hint: expect.stringContaining('provider'),
 				},
 			});
+		});
+
+		it('lists MCP registry servers for kind=mcpServers without a query', async () => {
+			mcpRegistryService.list.mockResolvedValue([{ name: 'github' }] as never);
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'mcpServers',
+			});
+
+			expect(mcpRegistryService.list).toHaveBeenCalledWith(20);
+			expect(mcpRegistryService.search).not.toHaveBeenCalled();
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				kind: 'mcpServers',
+				data: [{ name: 'github' }],
+			});
+		});
+
+		it('searches the MCP registry for kind=mcpServers with a query', async () => {
+			mcpRegistryService.search.mockResolvedValue([]);
+
+			await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'mcpServers',
+				query: 'github',
+			});
+
+			expect(mcpRegistryService.search).toHaveBeenCalledWith(['github']);
+			expect(mcpRegistryService.list).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('verify_agent_mcp_server', () => {
+		const input = {
+			projectId: 'project-1',
+			name: 'srv',
+			url: 'https://mcp.test',
+			transport: 'streamableHttp',
+			authentication: 'none',
+		};
+
+		it('connects and returns the server tool list', async () => {
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => vi.fn() } as never);
+			listMcpServerToolsMock.mockResolvedValue([{ name: 'echo', description: 'Echo' }]);
+
+			const result = await callTool('verify_agent_mcp_server', input);
+
+			expect(listMcpServerToolsMock).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'srv', url: 'https://mcp.test', authentication: 'none' }),
+				expect.objectContaining({ projectId: 'project-1' }),
+			);
+			expect(result.structuredContent).toEqual({
+				ok: true,
+				tools: [{ name: 'echo', description: 'Echo' }],
+			});
+		});
+
+		it('requires a credential for authenticated servers', async () => {
+			const result = await callTool('verify_agent_mcp_server', {
+				...input,
+				authentication: 'bearerAuth',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'credential is required when authentication is not none',
+			});
+			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
+		});
+
+		it('rejects a credential the user cannot access', async () => {
+			const result = await callTool('verify_agent_mcp_server', {
+				...input,
+				authentication: 'bearerAuth',
+				credential: 'cred-x',
+			});
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'Credential not found or not accessible',
+			});
+			expect(listMcpServerToolsMock).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1067,6 +1221,88 @@ describe('McpAgentToolsService', () => {
 				{ clearOmittedOptionalFields: true },
 			);
 			expect(result.structuredContent).toMatchObject({ ok: true });
+		});
+	});
+
+	describe('update_agent_integration connect', () => {
+		const input = {
+			agentId: 'agent-1',
+			action: 'connect',
+			type: 'slack',
+			credentialId: 'cred-1',
+		};
+
+		beforeEach(() => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1', type: 'slackApi', name: 'Slack cred' },
+			] as never);
+			chatIntegrationRegistry.require.mockReturnValue({
+				credentialTypes: ['slackApi'],
+				displayLabel: 'Slack',
+			} as never);
+			integrationPersistenceService.saveCredentialIntegration.mockResolvedValue(
+				agentEntity({ integrations: [{ type: 'slack', credentialId: 'cred-1' }] }),
+			);
+			agentPublishService.publishAgent.mockResolvedValue({
+				agent: agentEntity({ activeVersionId: 'v2' }),
+			});
+		});
+
+		it('persists the integration, publishes the draft, and connects the channel', async () => {
+			const result = await callTool('update_agent_integration', input);
+
+			expect(integrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'agent-1' }),
+				{ type: 'slack', credentialId: 'cred-1' },
+				{ broadcast: false },
+			);
+			expect(agentPublishService.publishAgent).toHaveBeenCalledWith(
+				'agent-1',
+				'project-1',
+				user,
+				undefined,
+				{ syncIntegrations: false },
+			);
+			expect(chatIntegrationService.connect).toHaveBeenCalledWith(
+				'agent-1',
+				{ type: 'slack', credentialId: 'cred-1' },
+				'project-1',
+			);
+			expect(chatIntegrationService.broadcastIntegrationChange).toHaveBeenCalledWith(
+				'agent-1',
+				{ type: 'slack', credentialId: 'cred-1' },
+				'connect',
+			);
+			expect(result.structuredContent).toMatchObject({
+				ok: true,
+				connected: true,
+				published: true,
+				activeVersionId: 'v2',
+			});
+		});
+
+		it('requires settings for telegram integrations', async () => {
+			const result = await callTool('update_agent_integration', { ...input, type: 'telegram' });
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'Telegram integration settings are required',
+			});
+			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
+		});
+
+		it('rejects a credential whose type the integration does not support', async () => {
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				{ id: 'cred-1', type: 'telegramApi', name: 'Telegram cred' },
+			] as never);
+
+			const result = await callTool('update_agent_integration', input);
+
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toMatchObject({
+				error: 'Slack integrations do not support telegramApi credentials',
+			});
+			expect(integrationPersistenceService.saveCredentialIntegration).not.toHaveBeenCalled();
 		});
 	});
 

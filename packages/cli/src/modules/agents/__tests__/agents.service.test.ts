@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ProjectRelationRepository } from '@n8n/db';
+import type { ProjectRelationRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
@@ -42,6 +42,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
@@ -62,7 +63,7 @@ function makeService() {
 	const service = new AgentsService(
 		mockLogger(),
 		agentRepository,
-		mock<ProjectRelationRepository>(),
+		projectRelationRepository,
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
@@ -74,6 +75,7 @@ function makeService() {
 	return {
 		service,
 		agentRepository,
+		projectRelationRepository,
 		agentKnowledgeService,
 		runtimeCacheService,
 		testChatService,
@@ -203,6 +205,49 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
 		expect(agentRepository.remove).not.toHaveBeenCalled();
+	});
+
+	describe('findByIdForUser', () => {
+		const makeUser = (scopeSlugs: string[]): User =>
+			({ id: 'user-9', role: { scopes: scopeSlugs.map((slug) => ({ slug })) } }) as unknown as User;
+
+		it('looks the agent up directly for users with the global agent:read scope', async () => {
+			const { service, agentRepository, projectRelationRepository } = makeService();
+			const agent = makeAgent();
+			agentRepository.findById.mockResolvedValue(agent);
+
+			await expect(service.findByIdForUser(agentId, makeUser(['agent:read']))).resolves.toBe(agent);
+
+			expect(agentRepository.findById).toHaveBeenCalledWith(agentId);
+			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
+		});
+
+		it('restricts the lookup to the projects the user belongs to', async () => {
+			const { service, agentRepository, projectRelationRepository } = makeService();
+			const agent = makeAgent();
+			projectRelationRepository.findAllByUser.mockResolvedValue([
+				{ projectId: 'project-1' },
+				{ projectId: 'project-2' },
+			] as never);
+			agentRepository.findByIdInProjects.mockResolvedValue(agent);
+
+			await expect(service.findByIdForUser(agentId, makeUser([]))).resolves.toBe(agent);
+
+			expect(projectRelationRepository.findAllByUser).toHaveBeenCalledWith('user-9');
+			expect(agentRepository.findByIdInProjects).toHaveBeenCalledWith(agentId, [
+				'project-1',
+				'project-2',
+			]);
+			expect(agentRepository.findById).not.toHaveBeenCalled();
+		});
+
+		it('returns null when the agent is outside the user’s projects', async () => {
+			const { service, agentRepository, projectRelationRepository } = makeService();
+			projectRelationRepository.findAllByUser.mockResolvedValue([]);
+			agentRepository.findByIdInProjects.mockResolvedValue(null);
+
+			await expect(service.findByIdForUser(agentId, makeUser([]))).resolves.toBeNull();
+		});
 	});
 
 	describe('getCapabilitySummary', () => {
