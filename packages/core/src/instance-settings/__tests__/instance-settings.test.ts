@@ -282,6 +282,17 @@ describe('InstanceSettings', () => {
 				expect(settings.instanceId).toEqual(derivedId);
 			});
 
+			it('should keep derivedInstanceId unchanged when an override is applied', async () => {
+				const derived = settings.derivedInstanceId;
+				expect(derived).toEqual(settings.instanceId);
+
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(settings.derivedInstanceId).toEqual(derived);
+			});
+
 			it('should use the winner row when a concurrent insert is ignored', async () => {
 				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
 					// Simulate conflict only for instance.id

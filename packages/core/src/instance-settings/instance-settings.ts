@@ -60,6 +60,13 @@ export class InstanceSettings {
 	 */
 	instanceId: string;
 
+	/**
+	 * Encryption-key-derived value of `instanceId`, before any env or DB
+	 * override is applied by `initialize()`. Used as the license device
+	 * fingerprint when the override is too short for the license server.
+	 */
+	readonly derivedInstanceId: string;
+
 	hmacSignatureSecret: string;
 
 	readonly instanceType: InstanceType;
@@ -73,7 +80,8 @@ export class InstanceSettings {
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
-		this.instanceId = this.generateInstanceId();
+		this.derivedInstanceId = this.generateInstanceId();
+		this.instanceId = this.derivedInstanceId;
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
 	}
 
