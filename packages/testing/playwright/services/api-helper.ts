@@ -231,14 +231,20 @@ export class ApiHelpers {
 		const response = await this.request.get('/rest/e2e/scheduled-jobs/count', {
 			params: { workflowId, nodeId },
 		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to count scheduled jobs: ${await response.text()}`);
+		}
 		const { data } = (await response.json()) as { data: { count: number } };
 		return data.count;
 	}
 
 	async fireScheduledJobsNow(workflowId: string, nodeId: string): Promise<void> {
-		await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
+		const response = await this.request.post('/rest/e2e/scheduled-jobs/fire-now', {
 			data: { workflowId, nodeId },
 		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to fire scheduled jobs: ${await response.text()}`);
+		}
 	}
 
 	// ===== FEATURE FLAG METHODS =====
