@@ -499,11 +499,7 @@ function openExistingSubAgentModal(subAgent: {
 
 <template>
 	<div>
-		<div
-			:class="[$style.section, props.disabled && $style.disabled]"
-			:inert="props.disabled || undefined"
-			data-testid="agent-capabilities-section"
-		>
+		<div :class="$style.section" data-testid="agent-capabilities-section">
 			<div v-if="showSection('tools')" :class="$style.capabilityRow">
 				<N8nText v-if="toolRows.length > 0" bold :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tools.title') }}
@@ -518,6 +514,7 @@ function openExistingSubAgentModal(subAgent: {
 						<N8nDropdownMenu
 							v-if="tool.isGrouped"
 							:items="toolMenuItems(tool)"
+							:disabled="props.disabled"
 							placement="bottom-start"
 							data-testid="agent-capabilities-tool-group"
 							@select="onToolMenuSelect"
@@ -526,6 +523,7 @@ function openExistingSubAgentModal(subAgent: {
 								<AgentChipButton
 									:invalid="tool.invalid"
 									:invalid-reasons="tool.invalidReasons"
+									:disabled="props.disabled"
 									:class="$style.capabilityChip"
 									data-testid="agent-capabilities-tool-row"
 								>
@@ -551,6 +549,7 @@ function openExistingSubAgentModal(subAgent: {
 							v-else-if="tool.nodeType"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
@@ -565,15 +564,15 @@ function openExistingSubAgentModal(subAgent: {
 							:icon="tool.fallbackIcon"
 							:invalid="tool.invalid"
 							:invalid-reasons="tool.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-tool-row"
 							@click="emit('open-tool', tool.tool.openTarget)"
 						>
 							{{ tool.label }}
 						</AgentChipButton>
-
 						<N8nTooltip
-							v-if="!props.disabled && toolIndex === toolRows.length - 1"
+							v-if="toolIndex === toolRows.length - 1"
 							:content="i18n.baseText('agents.builder.tools.add')"
 							placement="top"
 						>
@@ -594,7 +593,6 @@ function openExistingSubAgentModal(subAgent: {
 
 					<div v-if="toolRows.length === 0" :class="$style.chipGroup">
 						<N8nTooltip
-							v-if="!props.disabled"
 							disabled
 							:content="i18n.baseText('agents.builder.tools.add')"
 							placement="top"
@@ -625,6 +623,7 @@ function openExistingSubAgentModal(subAgent: {
 							icon="sparkles"
 							:invalid="(skillIssueMessages.get(id) ?? []).length > 0"
 							:invalid-reasons="skillIssueMessages.get(id) ?? []"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-skill-row"
 							@click="emit('open-skill', id)"
@@ -633,7 +632,7 @@ function openExistingSubAgentModal(subAgent: {
 						</AgentChipButton>
 
 						<N8nTooltip
-							v-if="!props.disabled && skillIndex === skills.length - 1"
+							v-if="skillIndex === skills.length - 1"
 							:content="i18n.baseText('agents.builder.skills.add')"
 							placement="top"
 						>
@@ -654,7 +653,6 @@ function openExistingSubAgentModal(subAgent: {
 
 					<div v-if="skills.length === 0" :class="$style.chipGroup">
 						<N8nTooltip
-							v-if="!props.disabled"
 							disabled
 							:content="i18n.baseText('agents.builder.skills.add')"
 							placement="top"
@@ -688,6 +686,7 @@ function openExistingSubAgentModal(subAgent: {
 							icon="bot"
 							:invalid="subAgent.invalid"
 							:invalid-reasons="subAgent.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-sub-agent-row"
 							@click="openExistingSubAgentModal(subAgent)"
@@ -746,6 +745,7 @@ function openExistingSubAgentModal(subAgent: {
 							icon="clipboard-list"
 							:invalid="task.invalid"
 							:invalid-reasons="task.invalidReasons"
+							:disabled="props.disabled"
 							:class="$style.capabilityChip"
 							data-testid="agent-capabilities-task-row"
 							@click="openTaskModal(task)"
@@ -853,11 +853,6 @@ function openExistingSubAgentModal(subAgent: {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-}
-
-.disabled {
-	opacity: 0.5;
-	pointer-events: none;
 }
 
 .error {

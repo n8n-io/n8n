@@ -314,7 +314,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'project-1',
 			{ id: 'user-1' },
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
@@ -427,7 +427,7 @@ describe('AgentIntegrationsController integration credentials', () => {
 			'project-1',
 			{ id: 'user-1' },
 			undefined,
-			{ syncIntegrations: false },
+			{ syncIntegrations: false, ignoreDraftIntegrations: true },
 		);
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
@@ -569,6 +569,25 @@ describe('AgentIntegrationsController integration credentials', () => {
 				},
 			],
 		});
+	});
+
+	it('reports a draft integration (empty credentialId) as disconnected', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: 'agent-1',
+			projectId: 'project-1',
+			integrations: [{ type: 'slack', credentialId: '' }],
+		} as never);
+
+		const { controller } = makeController({ agentRepository });
+
+		await expect(
+			controller.integrationStatus(
+				{ params: { projectId: 'project-1' } } as never,
+				undefined as never,
+				'agent-1',
+			),
+		).resolves.toEqual({ status: 'disconnected', integrations: [] });
 	});
 
 	it('disconnects the channel before removing the persisted integration', async () => {

@@ -161,6 +161,13 @@ export class AgentValidationService {
 		tasks: ReadonlyMap<string, TaskBody>,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
+		/**
+		 * Validate against these integrations instead of `agent.integrations`.
+		 * Used by connect-time publishes to exclude not-yet-connected draft
+		 * entries (`credentialId: ''`) that would otherwise block publishing
+		 * the channel currently being connected.
+		 */
+		integrationsOverride?: AgentIntegrationConfig[],
 	): Promise<AgentConfigValidationResponse> {
 		return await this.runValidation(
 			{
@@ -169,7 +176,7 @@ export class AgentValidationService {
 				config: agent.schema as unknown as AgentJsonConfig | null,
 				skills: agent.skills ?? {},
 				customTools: agent.tools ?? {},
-				integrations: agent.integrations ?? [],
+				integrations: integrationsOverride ?? agent.integrations ?? [],
 				tasks,
 				credentialProvider,
 			},

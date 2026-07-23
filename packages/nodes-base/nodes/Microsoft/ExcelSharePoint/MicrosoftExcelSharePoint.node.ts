@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import * as appendTable from './actions/table/append.operation';
 import * as convertTableToRange from './actions/table/convertToRange.operation';
 import * as createTable from './actions/table/create.operation';
 import * as deleteTable from './actions/table/deleteTable.operation';
@@ -175,6 +176,12 @@ export class MicrosoftExcelSharePoint implements INodeType {
 				},
 				options: [
 					{
+						name: 'Append',
+						value: 'append',
+						description: 'Append rows to the end of a table',
+						action: 'Append rows to table',
+					},
+					{
 						name: 'Convert to Range',
 						value: 'convertToRange',
 						description: 'Convert a table to a plain range of cells',
@@ -230,6 +237,7 @@ export class MicrosoftExcelSharePoint implements INodeType {
 			...getTableColumns.description,
 			...getTableRows.description,
 			...lookupTable.description,
+			...appendTable.description,
 			...createTable.description,
 			...convertTableToRange.description,
 			...deleteTable.description,
@@ -271,6 +279,9 @@ export class MicrosoftExcelSharePoint implements INodeType {
 		}
 		if (resource === 'table' && operation === 'lookup') {
 			return [await lookupTable.execute.call(this, items)];
+		}
+		if (resource === 'table' && operation === 'append') {
+			return [await appendTable.execute.call(this, items)];
 		}
 		if (resource === 'table' && operation === 'create') {
 			return [await createTable.execute.call(this, items)];
