@@ -1,0 +1,39 @@
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_16323f976c7783::t_557f3dcfe73f87 221,443
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_16323f976c7783::t_93db12e14b7b21 1-6
+  s_16323f976c7783::t_d401cff131151f 83-86
+packages/@n8n/db/src/migrations/common/1784815940110-AddStoredAtToAgentExecution.ts
+  s_16323f976c7783::t_5490f0ca623611 4-10,12-15,17
+  s_16323f976c7783::t_557f3dcfe73f87 1-3,11,16,18-19
+docs/generated/postgres-schema/public.agent_execution.md
+  s_16323f976c7783::t_33a4ad89e60992 20
+  s_16323f976c7783::t_9914a5037bb3c3 72
+  s_16323f976c7783::t_31ed778d3ec7f0 40
+  s_16323f976c7783::t_662ce6806bd4d7 33
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_16323f976c7783::t_557f3dcfe73f87 229,461
+docs/generated/sqlite-schema/agent_execution.md
+  s_16323f976c7783::t_93aa36a67c0f54 9,31,42,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7f2f6eb768214494e2b3066efb691649ff671d0a",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_16323f976c7783": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e3ba1c9d-62c3-4db4-be71-8ed941f5d77c",
+        "model": "composer-2.5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
