@@ -104,10 +104,11 @@ export class PrometheusEventBusMetricsService implements PrometheusMetricsCollec
 		return {};
 	}
 
-	private buildWorkflowLabels(payload: { workflowId?: unknown; workflowName?: unknown }): Record<
-		string,
-		string
-	> {
+	private buildWorkflowLabels(payload: {
+		workflowId?: unknown;
+		workflowName?: unknown;
+		projectName?: unknown;
+	}): Record<string, string> {
 		const labels: Record<string, string> = {};
 		if (this.config.includeWorkflowIdLabel) {
 			labels.workflow_id = typeof payload.workflowId === 'string' ? payload.workflowId : 'unknown';
@@ -115,6 +116,11 @@ export class PrometheusEventBusMetricsService implements PrometheusMetricsCollec
 		if (this.config.includeWorkflowNameLabel) {
 			labels.workflow_name =
 				typeof payload.workflowName === 'string' ? payload.workflowName : 'unknown';
+		}
+		if (this.config.includeProjectNameLabel) {
+			// Empty string (not "unknown") for workflows with no project: it is a valid
+			// "not applicable" state, and keeps the label set consistent across all series.
+			labels.project_name = typeof payload.projectName === 'string' ? payload.projectName : '';
 		}
 		return labels;
 	}
