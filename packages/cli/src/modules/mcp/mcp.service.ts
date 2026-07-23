@@ -606,19 +606,21 @@ export class McpService {
 		registerIfAllowed(restoreVersionTool);
 
 		// SDK reference as MCP resource — for clients that support resources.
-		server.resource(
+		server.registerResource(
 			'workflow-sdk-reference',
 			'n8n://workflow-sdk/reference',
 			{
 				description:
 					'Required n8n Workflow SDK reference for building workflows from code. Read this before writing workflow code.',
 			},
-			async () => ({
+			() => ({
 				contents: [
 					{
 						uri: 'n8n://workflow-sdk/reference',
 						mimeType: 'text/plain',
-						text: getSdkReferenceContent(),
+						text: getSdkReferenceContent(undefined, {
+							includeGroups: featureFlags.canvasGroupsEnabled,
+						}),
 					},
 				],
 			}),
@@ -626,7 +628,9 @@ export class McpService {
 
 		// SDK reference tool — always registered alongside the MCP resource above,
 		// so all clients can access the SDK reference regardless of resource support.
-		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
+		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry, {
+			canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
+		});
 		registerIfAllowed(sdkRefTool);
 	}
 

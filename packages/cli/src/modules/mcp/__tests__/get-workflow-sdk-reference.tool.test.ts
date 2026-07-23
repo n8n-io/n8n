@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
+	NODE_GROUPS_REFERENCE,
 	WORKFLOW_PATTERNS_DETAILED,
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
@@ -52,7 +53,7 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 	});
 
 	test('accepts patterns_detailed as a tool section', async () => {
-		const tool = createGetWorkflowSdkReferenceTool(user, telemetry);
+		const tool = createGetWorkflowSdkReferenceTool(user, telemetry, { canvasGroupsEnabled: false });
 		const sectionSchema = tool.config.inputSchema?.section;
 
 		expect(tool.config.description).toContain('Required reference');
@@ -66,6 +67,79 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 
 		expect(result.structuredContent).toEqual({
 			reference: getSdkReferenceContent('patterns_detailed'),
+		});
+	});
+
+	describe('node groups (canvasGroupsEnabled)', () => {
+		describe('getSdkReferenceContent', () => {
+			test('embeds verbatim the exact shared contents with the IAI in the full reference when enabled', () => {
+				expect(getSdkReferenceContent(undefined, { includeGroups: true })).toContain(
+					NODE_GROUPS_REFERENCE,
+				);
+			});
+
+			test('returns only the group section for section="groups" when enabled', () => {
+				const content = getSdkReferenceContent('groups', { includeGroups: true });
+
+				expect(content).toContain(NODE_GROUPS_REFERENCE);
+				// Just the group section — not the rest of the reference.
+				expect(content).not.toContain('## Workflow Patterns');
+				expect(content).not.toContain('<zero_item_safety>');
+			});
+
+			test('omits the groups description when disabled, leaving today’s output unchanged', () => {
+				const withFlagOff = getSdkReferenceContent(undefined, { includeGroups: false });
+
+				expect(withFlagOff).not.toContain(NODE_GROUPS_REFERENCE);
+
+				expect(withFlagOff).toBe(getSdkReferenceContent());
+			});
+
+			test('section="groups" yields no group content when disabled', () => {
+				expect(getSdkReferenceContent('groups', { includeGroups: false })).not.toContain(
+					NODE_GROUPS_REFERENCE,
+				);
+			});
+		});
+
+		describe('createGetWorkflowSdkReferenceTool', () => {
+			describe('When canvasGroupsEnabled is true', () => {
+				test('the tool accepts section="groups"', () => {
+					const enabled = createGetWorkflowSdkReferenceTool(user, telemetry, {
+						canvasGroupsEnabled: true,
+					});
+
+					expect(enabled.config.inputSchema?.section.safeParse('groups').success).toBe(true);
+				});
+
+				test('the tool handler serves the groups reference', async () => {
+					const enabled = createGetWorkflowSdkReferenceTool(user, telemetry, {
+						canvasGroupsEnabled: true,
+					});
+
+					const enabledResult = await enabled.handler({ section: 'groups' }, {} as never);
+					expect(enabledResult.structuredContent?.reference).toContain(NODE_GROUPS_REFERENCE);
+				});
+			});
+
+			describe('When canvasGroupsEnabled is false', () => {
+				test('the tool does not accept section="groups"', () => {
+					const disabled = createGetWorkflowSdkReferenceTool(user, telemetry, {
+						canvasGroupsEnabled: false,
+					});
+
+					expect(disabled.config.inputSchema?.section.safeParse('groups').success).toBe(false);
+				});
+
+				test('the tool handler does not serve the groups reference', async () => {
+					const disabled = createGetWorkflowSdkReferenceTool(user, telemetry, {
+						canvasGroupsEnabled: false,
+					});
+
+					const disabledResult = await disabled.handler({ section: undefined }, {} as never);
+					expect(disabledResult.structuredContent?.reference).not.toContain(NODE_GROUPS_REFERENCE);
+				});
+			});
 		});
 	});
 });
