@@ -93,7 +93,7 @@
     "@types/estree": "catalog:",
     "@types/lodash": "catalog:",
     "@vitest/coverage-v8": "catalog:",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"
   },

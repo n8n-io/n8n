@@ -53,7 +53,13 @@ const scope = (input: {
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
 		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
-		variablePlan: { matched: new Array(vars.matched), missing: new Array(vars.missing) },
+		variablePlan: {
+			matched: Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),
+			missing: Array.from({ length: vars.missing }, (_, i) => ({
+				name: `missing-var-${i}`,
+				usedByWorkflows: [],
+			})),
+		},
 	};
 	return {
 		context,
@@ -69,7 +75,7 @@ const scope = (input: {
 		}),
 		variableRequest: {
 			requirements: vars.requirements === 0 ? undefined : new Array(vars.requirements),
-			missingPolicy: 'do-nothing',
+			missingMode: 'do-nothing',
 		},
 	};
 };
@@ -81,6 +87,7 @@ const request = mock<ImportPackageRequest>({
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	workflowPublishingPolicy: 'preserve-published-state',
+	missingNodeTypeMode: 'fail',
 });
 
 const manifest = mock<PackageManifest>({ sourceId: 'src-1', packageFormatVersion: '1' });

@@ -2,6 +2,7 @@ import type { WorkflowEntity } from '@n8n/db';
 
 import type { WorkflowIdConflict } from './workflow-import-match.service';
 import type {
+	WorkflowPublishingBlockedReason,
 	WorkflowPublishingOutcome,
 	WorkflowPublishingPolicy,
 } from './workflow-publishing-policy.types';
@@ -10,8 +11,8 @@ import type { ImportContext } from '../../n8n-packages.types';
 /** Apply-time context for the workflow importer: the resolved import target plus apply-only inputs. */
 export interface WorkflowImportContext extends ImportContext {
 	publishingPolicy: WorkflowPublishingPolicy;
-	/** Package workflow ids that must stay inactive because they use stubbed credentials. */
-	publishBlockedSourceWorkflowIds: ReadonlySet<string>;
+	/** Package workflow ids that must stay inactive, mapped to the reason why. */
+	publishBlocked: ReadonlyMap<string, WorkflowPublishingBlockedReason>;
 }
 
 export interface PreparedWorkflow {

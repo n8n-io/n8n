@@ -253,7 +253,7 @@ What we use for testing and writing tests:
 - **To iterate on a feature without docker rebuilds**, boot service containers
   and run `pnpm dev` locally — `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`
   then `pnpm dev`. See [Develop against running containers](packages/testing/playwright/README.md#develop-against-running-containers-avoid-docker-rebuilds).
-- **For Playwright test maintenance/cleanup**, see @packages/testing/playwright/AGENTS.md (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
+- **For Playwright test maintenance/cleanup**, see `packages/testing/playwright/AGENTS.md` (includes janitor tool for static analysis, dead code removal, architecture enforcement, and TCR workflows).
 
 ### Common Development Tasks
 

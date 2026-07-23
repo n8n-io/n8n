@@ -9,6 +9,7 @@ import {
 	AWS_REGION_SHAPE_PATTERN,
 	awsGetSignInOptionsAndUpdateRequest,
 	parseAwsUrl,
+	uriEncodeS3Pathname,
 	validateBedrockEndpointOverride,
 } from './utils';
 
@@ -1643,5 +1644,240 @@ describe('validateBedrockEndpointOverride', () => {
 				'us-fake-1' as AWSRegion,
 			),
 		).toThrow(UserError);
+	});
+});
+
+describe('uriEncodeS3Pathname', () => {
+	// Characters WHATWG URL leaves raw in a pathname but S3's SigV4 canonicalization
+	// (AWS UriEncode) percent-encodes. Inputs are built through `new URL` so each
+	// case sees exactly what awsGetSignInOptionsAndUpdateRequest sees.
+	it.each([
+		['+', '%2B'],
+		['!', '%21'],
+		["'", '%27'],
+		['(', '%28'],
+		[')', '%29'],
+		['*', '%2A'],
+		['$', '%24'],
+		['&', '%26'],
+		[',', '%2C'],
+		[';', '%3B'],
+		['=', '%3D'],
+		[':', '%3A'],
+		['@', '%40'],
+		['[', '%5B'],
+		[']', '%5D'],
+		['|', '%7C'],
+	])('percent-encodes "%s" as "%s"', (char, encoded) => {
+		const { pathname } = new URL(`https://s3.us-east-1.amazonaws.com/bucket/file${char}name.pdf`);
+		expect(uriEncodeS3Pathname(pathname)).toBe(`/bucket/file${encoded}name.pdf`);
+	});
+
+	it('leaves unreserved characters and slash separators untouched', () => {
+		expect(uriEncodeS3Pathname('/bucket/Report_Final-1.2~ok/file.pdf')).toBe(
+			'/bucket/Report_Final-1.2~ok/file.pdf',
+		);
+	});
+
+	it('keeps sequences WHATWG already encoded stable (space stays %20)', () => {
+		const { pathname } = new URL('https://s3.us-east-1.amazonaws.com/bucket/my report.pdf');
+		expect(pathname).toBe('/bucket/my%20report.pdf');
+		expect(uriEncodeS3Pathname(pathname)).toBe('/bucket/my%20report.pdf');
+	});
+
+	it('is a no-op on WHATWG-encoded pathnames without S3-delta characters (no regression for working keys)', () => {
+		for (const key of ['plain.txt', 'my report.pdf', 'résumé 中文.pdf', 'nested/deep/key.json']) {
+			const { pathname } = new URL(`https://s3.us-east-1.amazonaws.com/bucket/${key}`);
+			expect(uriEncodeS3Pathname(pathname)).toBe(pathname);
+		}
+	});
+
+	it('percent-encodes raw non-ASCII input as UTF-8', () => {
+		expect(uriEncodeS3Pathname('/bucket/résumé.pdf')).toBe('/bucket/r%C3%A9sum%C3%A9.pdf');
+	});
+
+	it('collapses an encoded slash to / — S3 keys are flat, %2F and / address the same key', () => {
+		expect(uriEncodeS3Pathname('/bucket/a%2Fb.txt')).toBe('/bucket/a/b.txt');
+		// A double-encoded slash stays an encoded literal, exactly like aws4.
+		expect(uriEncodeS3Pathname('/bucket/a%252Fb.txt')).toBe('/bucket/a%252Fb.txt');
+	});
+
+	it('treats a stray % as literal text without poisoning valid escapes around it', () => {
+		expect(uriEncodeS3Pathname('/bucket/100%')).toBe('/bucket/100%25');
+		// '100% legit' after WHATWG: stray % stays raw, space became %20
+		expect(uriEncodeS3Pathname('/bucket/100%%20legit')).toBe('/bucket/100%25%20legit');
+	});
+
+	it('keeps a malformed UTF-8 escape run as literal text', () => {
+		expect(uriEncodeS3Pathname('/bucket/%C3.pdf')).toBe('/bucket/%25C3.pdf');
+	});
+
+	it('preserves empty segments (S3 paths are not normalized)', () => {
+		expect(uriEncodeS3Pathname('//bucket//key.txt')).toBe('//bucket//key.txt');
+		expect(uriEncodeS3Pathname('/')).toBe('/');
+	});
+
+	it('is idempotent over a corpus of hostile keys', () => {
+		const keys = [
+			'/bucket/report (1)+final&v=2!.pdf',
+			"/bucket/quart'ile*star.log",
+			'/bucket/at@10:30,x;y=[z]|w.bin',
+			'/bucket/café 中文.pdf',
+			'/bucket/100%%20legit',
+			'/bucket/a%2Fb%2520c.txt',
+		];
+		for (const key of keys) {
+			const once = uriEncodeS3Pathname(key);
+			expect(uriEncodeS3Pathname(once)).toBe(once);
+		}
+	});
+
+	it('matches the legacy aws4 canonical encoding, except + which is preserved as %2B', () => {
+		// aws4's S3 canonicalization: decode each segment (+ read as space), re-encode
+		// everything but unreserved characters, then collapse %2F back to /.
+		const aws4Canonical = (pathname: string) =>
+			pathname
+				.split('/')
+				.map((piece) =>
+					encodeURIComponent(decodeURIComponent(piece.replace(/\+/g, ' '))).replace(
+						/[!'()*]/g,
+						(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+					),
+				)
+				.join('/')
+				.replace(/%2F/g, '/');
+		const plusFreeKeys = [
+			'/bucket/report (1)&v=2!.pdf',
+			"/bucket/quart'ile*star.log",
+			'/bucket/at@10:30,x;y=[z]|w.bin',
+			'/bucket/café 中文.pdf',
+			'/bucket/a%2Fb.txt',
+		];
+		for (const key of plusFreeKeys) {
+			const { pathname } = new URL(`https://s3.us-east-1.amazonaws.com${key}`);
+			expect(uriEncodeS3Pathname(pathname)).toBe(aws4Canonical(pathname));
+		}
+		// Deliberate divergence: aws4 read a path + as a space (key 'a+b' was stored
+		// as 'a b'); we keep the literal plus, matching the AWS SDK.
+		expect(uriEncodeS3Pathname('/bucket/a+b.pdf')).toBe('/bucket/a%2Bb.pdf');
+		expect(aws4Canonical('/bucket/a+b.pdf')).toBe('/bucket/a%20b.pdf');
+	});
+});
+
+describe('awsGetSignInOptionsAndUpdateRequest — S3 object-path canonicalization', () => {
+	const credentials: AwsIamCredentialsType = {
+		region: 'us-east-1',
+		customEndpoints: false,
+		accessKeyId: 'AKIA-test',
+		secretAccessKey: 'secret-test',
+		temporaryCredentials: false,
+	};
+
+	it('signs and sends the strictly encoded path for the default S3 endpoint', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			'/bucket/report (1)+final&v=2!.pdf',
+			'PUT',
+			's3',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe('/bucket/report%20%281%29%2Bfinal%26v%3D2%21.pdf');
+		// The wire URL carries the exact bytes that were signed.
+		expect(url).toBe('https://s3.us-east-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('canonicalizes virtual-hosted-style requests (bucket.s3 signs under s3)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			'/report:2026-07-22T10:00.pdf',
+			'PUT',
+			'mybucket.s3',
+			'eu-central-1',
+		);
+
+		expect(signOpts.service).toBe('s3');
+		expect(signOpts.path).toBe('/report%3A2026-07-22T10%3A00.pdf');
+		expect(url).toBe('https://mybucket.s3.eu-central-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('encodes the path but leaves query parameters to the signer (multipart shapes)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {}, qs: { query: { uploads: '' } } } as any,
+			credentials,
+			'/bucket/key (1).pdf',
+			'POST',
+			's3',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe('/bucket/key%20%281%29.pdf?uploads=');
+		expect(url).toBe('https://s3.us-east-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('canonicalizes S3 requests arriving through the uri branch (HTTP Request node)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{
+				uri: 'https://mybucket.s3.eu-west-1.amazonaws.com/exports/a+b (copy).csv',
+				headers: {},
+			} as any,
+			credentials,
+			'',
+			'GET',
+			'',
+			'us-east-1',
+		);
+
+		expect(signOpts.service).toBe('s3');
+		expect(signOpts.path).toBe('/exports/a%2Bb%20%28copy%29.csv');
+		expect(url).toBe('https://mybucket.s3.eu-west-1.amazonaws.com' + signOpts.path);
+	});
+
+	it('canonicalizes paths for a custom s3Endpoint (S3-compatible providers)', () => {
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			{ ...credentials, s3Endpoint: 'https://minio.internal:9000' },
+			'/bucket/a(1).pdf',
+			'PUT',
+			's3',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe('/bucket/a%281%29.pdf');
+		expect(url).toBe('https://minio.internal:9000' + signOpts.path);
+	});
+
+	it('leaves non-S3 service paths untouched (Lambda ARN colons stay raw)', () => {
+		const path =
+			'/2015-03-31/functions/arn:aws:lambda:us-east-1:123456789012:function:fn/invocations';
+		const { signOpts, url } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			path,
+			'POST',
+			'lambda',
+			'us-east-1',
+		);
+
+		expect(signOpts.path).toBe(path);
+		expect(url).toBe('https://lambda.us-east-1.amazonaws.com' + path);
+	});
+
+	it('does not change the signed path for keys that already worked (spaces, unicode)', () => {
+		const { signOpts } = awsGetSignInOptionsAndUpdateRequest(
+			{ headers: {} } as any,
+			credentials,
+			'/bucket/my réport 中.pdf',
+			'GET',
+			's3',
+			'us-east-1',
+		);
+
+		// Identical to the WHATWG pathname this function produced before the fix.
+		expect(signOpts.path).toBe(
+			new URL('https://s3.us-east-1.amazonaws.com/bucket/my réport 中.pdf').pathname,
+		);
 	});
 });
