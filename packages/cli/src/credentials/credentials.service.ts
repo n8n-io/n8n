@@ -1435,6 +1435,20 @@ export class CredentialsService {
 	}
 
 	/**
+	 * Whether a credential type is OAuth1 or OAuth2, including types that extend
+	 * them (e.g. `gmailOAuth2`).
+	 */
+	isOAuthCredentialType(type: string): boolean {
+		const parentTypes = this.credentialTypes.getParentTypes(type) ?? [];
+		return (
+			type === 'oAuth1Api' ||
+			type === 'oAuth2Api' ||
+			parentTypes.includes('oAuth1Api') ||
+			parentTypes.includes('oAuth2Api')
+		);
+	}
+
+	/**
 	 * Validates that OAuth credential URL fields (authUrl, accessTokenUrl, etc.) use http/https only.
 	 * No-op if the credential type is not OAuth1 or OAuth2 (including extended types).
 	 */

@@ -3123,4 +3123,25 @@ describe('CredentialsService', () => {
 			).resolves.toBeUndefined();
 		});
 	});
+
+	describe('isOAuthCredentialType', () => {
+		it('returns true for the base OAuth1/OAuth2 types', () => {
+			credentialTypes.getParentTypes.mockReturnValue([]);
+
+			expect(service.isOAuthCredentialType('oAuth1Api')).toBe(true);
+			expect(service.isOAuthCredentialType('oAuth2Api')).toBe(true);
+		});
+
+		it('returns true for a type that extends an OAuth type', () => {
+			credentialTypes.getParentTypes.calledWith('gmailOAuth2').mockReturnValue(['oAuth2Api']);
+
+			expect(service.isOAuthCredentialType('gmailOAuth2')).toBe(true);
+		});
+
+		it('returns false for a non-OAuth type', () => {
+			credentialTypes.getParentTypes.calledWith('httpBasicAuth').mockReturnValue([]);
+
+			expect(service.isOAuthCredentialType('httpBasicAuth')).toBe(false);
+		});
+	});
 });

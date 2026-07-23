@@ -364,6 +364,10 @@ export class CredentialsController {
 			throw new BadRequestError('Managed credentials cannot be updated');
 		}
 
+		if (!this.credentialsService.isOAuthCredentialType(credential.type)) {
+			throw new BadRequestError('Only OAuth credentials can be disconnected');
+		}
+
 		await this.credentialsService.clearOauthTokenData(credential);
 
 		this.logger.debug('Credential OAuth token cleared', { credentialId });

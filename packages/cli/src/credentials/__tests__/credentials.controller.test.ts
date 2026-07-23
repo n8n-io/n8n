@@ -902,6 +902,7 @@ describe('CredentialsController', () => {
 				isManaged: false,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			vi.spyOn(credentialsService, 'isOAuthCredentialType').mockReturnValue(true);
 			const clearSpy = vi
 				.spyOn(credentialsService, 'clearOauthTokenData')
 				.mockResolvedValue(undefined);
@@ -934,6 +935,22 @@ describe('CredentialsController', () => {
 				isManaged: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			const clearSpy = vi.spyOn(credentialsService, 'clearOauthTokenData');
+
+			await expect(
+				credentialsController.disconnectOauthToken(req, res, credentialId),
+			).rejects.toThrowError(BadRequestError);
+			expect(clearSpy).not.toHaveBeenCalled();
+		});
+
+		it('throws BadRequestError for non-OAuth credentials', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: credentialId,
+				type: 'httpBasicAuth',
+				isManaged: false,
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+			vi.spyOn(credentialsService, 'isOAuthCredentialType').mockReturnValue(false);
 			const clearSpy = vi.spyOn(credentialsService, 'clearOauthTokenData');
 
 			await expect(
