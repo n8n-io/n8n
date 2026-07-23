@@ -165,6 +165,7 @@ export class GoogleTasks implements INodeType {
 							showCompleted = true,
 							showDeleted = false,
 							showHidden = false,
+							showAssigned = false,
 							...options
 						} = this.getNodeParameter('additionalFields', i);
 						if (options.completedMax) {
@@ -183,6 +184,7 @@ export class GoogleTasks implements INodeType {
 						qs.showCompleted = showCompleted;
 						qs.showDeleted = showDeleted;
 						qs.showHidden = showHidden;
+						qs.showAssigned = showAssigned;
 
 						if (options.updatedMin) {
 							qs.updatedMin = options.updatedMin as string;
