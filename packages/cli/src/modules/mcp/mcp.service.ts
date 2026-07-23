@@ -277,6 +277,7 @@ export class McpService {
 				instructions: getMcpInstructions({
 					isBuilderEnabled: builderInstructionsEnabled,
 					isN8nConnectAvailable: n8nConnectAvailable,
+					canvasGroupsEnabled: featureFlags.canvasGroupsEnabled,
 				}),
 			},
 		);

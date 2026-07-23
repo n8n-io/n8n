@@ -32,10 +32,23 @@ export type McpInstructionsOptions = {
 	 * If true, the instructions will include a hint about n8n Connect coverage.
 	 */
 	isN8nConnectAvailable?: boolean;
+
+	/**
+	 * Whether canvas node groups are enabled for this user.
+	 * If true, the builder instructions point the client at the groups docs.
+	 */
+	canvasGroupsEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
-	const { isBuilderEnabled, isN8nConnectAvailable = false } = options;
+	const { isBuilderEnabled, isN8nConnectAvailable = false, canvasGroupsEnabled = false } = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
+
+	// Only appended when the flag is on; keeps the paid-per-session string short.
+	const GROUPS_HINT = canvasGroupsEnabled
+		? `
+
+Node groups: when a workflow has several distinct stages, organise it into named groups so it is readable on the canvas. Before creating groups, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} with section "groups" for the rules, and ${MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL.toolName} (technique "list") for when to group.`
+		: '';
 
 	const N8N_CONNECT_HINT = isN8nConnectAvailable
 		? `
