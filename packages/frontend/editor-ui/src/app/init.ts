@@ -8,8 +8,10 @@ import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
 import type { AuthenticationMethod } from '@n8n/api-types';
 import {
+	registerModuleCommands,
 	registerModuleModals,
 	registerModuleProjectTabs,
+	registerModulePushHandlers,
 	registerModuleResources,
 	registerModuleSettingsPages,
 } from '@/app/moduleInitializer/moduleInitializer';
@@ -225,6 +227,8 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleProjectTabs();
 	registerModuleModals();
 	registerModuleSettingsPages();
+	registerModulePushHandlers();
+	registerModuleCommands();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
