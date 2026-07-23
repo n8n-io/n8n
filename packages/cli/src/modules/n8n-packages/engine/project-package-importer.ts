@@ -181,7 +181,7 @@ export class ProjectPackageImporter {
 			variableRequest,
 			options: request,
 			projectPendingCreation,
-			subWorkflowRequirements: manifest.requirements?.workflows,
+			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		};
 	}
 
