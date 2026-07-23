@@ -451,7 +451,6 @@ defineExpose({ focus, blur, select });
 	flex-shrink: 0;
 	color: var(--color--text--shade-1);
 	opacity: 0.7;
-	translate: 0 -1px;
 
 	svg {
 		width: var(--spacing--sm);
