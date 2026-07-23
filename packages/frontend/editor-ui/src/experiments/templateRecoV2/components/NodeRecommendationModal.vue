@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { EXPERIMENT_TEMPLATE_RECO_V2_KEY, TEMPLATES_URLS } from '@/app/constants';
+import { EXPERIMENT_TEMPLATE_RECO_V2_KEY } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { computed, ref, watchEffect } from 'vue';
 import { usePersonalizedTemplatesV2Store } from '../stores/templateRecoV2.store';
@@ -28,6 +29,7 @@ const {
 	trackSeeMoreClick,
 } = usePersonalizedTemplatesV2Store();
 const nodeTypesStore = useNodeTypesStore();
+const templatesStore = useTemplatesStore();
 const locale = useI18n();
 
 const closeModal = () => {
@@ -65,14 +67,17 @@ const youtubeVideos = computed(() => {
 
 const starterLink = computed(() => {
 	const name = nodeTypes.value.get(selectedNode.value)?.displayName ?? '';
-	const encodedName = encodeURIComponent(name);
-	return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?integrations=${encodedName}&q=Simple`;
+	const params = new URLSearchParams(templatesStore.websiteTemplateRepositoryParameters);
+	params.set('integrations', name);
+	params.set('q', 'Simple');
+	return templatesStore.constructTemplateRepositoryURL(params);
 });
 
 const popularLink = computed(() => {
 	const name = nodeTypes.value.get(selectedNode.value)?.displayName ?? '';
-	const encodedName = encodeURIComponent(name);
-	return `${TEMPLATES_URLS.BASE_WEBSITE_URL}?integrations=${encodedName}`;
+	const params = new URLSearchParams(templatesStore.websiteTemplateRepositoryParameters);
+	params.set('integrations', name);
+	return templatesStore.constructTemplateRepositoryURL(params);
 });
 
 function onSelectedNodeChange(val: string) {
