@@ -13,6 +13,7 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
+export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export {
 	chatHubConversationModelSchema,
@@ -120,6 +121,7 @@ export { FAVORITE_RESOURCE_TYPES } from './schemas/favorites.schema';
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
+export { n8nIdSchema } from './schemas/id.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -521,6 +523,7 @@ export {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
 	MCP_APPS_VARIANT_ENABLED,
+	MCP_CANVAS_GROUPS_FLAG,
 	MCP_INSTANCE_SCOPES,
 	MCP_CLIENT_BRAND_MATCHERS,
 	MCP_CLIENT_TYPE_FILTERS,
@@ -539,6 +542,8 @@ export {
 	RESERVED_METRIC_KEYS,
 	ONE_TO_FIVE_METRIC_KEYS,
 	normalizeMetricScore,
+	normalizedScores,
+	averageNormalizedScore,
 	metricScaleFromConfig,
 	metricScalesFromConfig,
 	type MetricScale,

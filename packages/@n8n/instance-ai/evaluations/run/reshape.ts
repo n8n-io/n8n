@@ -211,8 +211,15 @@ const runInputsSchema = z
  * (testCaseFile, scenarioName), then reconstructs per-iteration test case
  * results. Scenarios with no matching run get a build_failure stub.
  */
+/** The two Run fields reshape reads. LangSmith's `{run: Run}` rows satisfy it,
+ *  and the direct driver builds it from plain row inputs/outputs — no
+ *  LangSmith dependency required to reshape. */
+export interface ReshapeRunRow {
+	run: Pick<Run, 'inputs' | 'outputs'>;
+}
+
 export function reshapeLangSmithRuns(
-	rows: Array<{ run: Run }>,
+	rows: ReshapeRunRow[],
 	testCasesWithFiles: WorkflowTestCaseWithFile[],
 	numIterations: number,
 	transcriptByThreadId: Map<string, TranscriptTurn[]>,
@@ -224,7 +231,7 @@ export function reshapeLangSmithRuns(
 ): WorkflowTestCaseResult[][] {
 	// Index runs by (iteration, testCaseFile, scenarioName) using the `_iteration`
 	// we injected in expandExamplesForIterations. Falls back to 0 for single-run.
-	const byKey = new Map<string, Run>();
+	const byKey = new Map<string, ReshapeRunRow['run']>();
 	for (const { run } of rows) {
 		const inputs = runInputsSchema.safeParse(run.inputs ?? {});
 		if (!inputs.success) continue;
