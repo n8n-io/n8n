@@ -84,10 +84,17 @@ describe('createRowSink', () => {
 
 describe('runEvalAndPersist crash recovery from the sink', () => {
 	interface WrittenReport {
-		testCases: Array<{ testCaseFile?: string; scenarios: Array<{ runs: unknown[] }> }>;
+		testCases: Array<{
+			testCaseFile?: string;
+			scenarios: Array<{ runs: unknown[] }>;
+			buildExpectationResultsPerRun?: unknown[];
+		}>;
 	}
 
-	async function crashWith(rows: Array<{ iteration: number }>): Promise<WrittenReport> {
+	async function crashWith(
+		rows: Array<{ iteration: number }>,
+		outputs: TargetOutput = rowOutputs(true),
+	): Promise<WrittenReport> {
 		const dir = mkdtempSync(join(tmpdir(), 'row-sink-recovery-'));
 		const rowSink = createRowSink(dir);
 		await expect(
@@ -106,7 +113,7 @@ describe('runEvalAndPersist crash recovery from the sink', () => {
 				},
 				async () => {
 					for (const { iteration } of rows) {
-						rowSink.append({ run: { inputs: rowInputs(iteration), outputs: rowOutputs(true) } });
+						rowSink.append({ run: { inputs: rowInputs(iteration), outputs } });
 					}
 					return await Promise.reject(new Error('lane meltdown'));
 				},
@@ -129,5 +136,15 @@ describe('runEvalAndPersist crash recovery from the sink', () => {
 		const report = await crashWith([]);
 
 		expect(report.testCases).toHaveLength(0);
+	});
+
+	it('recovers embedded expectation verdicts — reshape reads only the side-band map', async () => {
+		const verdicts = [{ expectation: 'sends a digest', pass: true, reason: 'ok' }];
+		const report = await crashWith([{ iteration: 0 }], {
+			...rowOutputs(true),
+			expectationResults: verdicts,
+		});
+
+		expect(report.testCases[0].buildExpectationResultsPerRun).toEqual([verdicts]);
 	});
 });

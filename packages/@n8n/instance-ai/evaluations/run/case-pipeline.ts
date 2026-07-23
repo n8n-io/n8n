@@ -335,6 +335,30 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			build.threadId && build.seededScenarioTableIdsByName
 				? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
 				: undefined;
+		// A scenario that declares seed tables must not run without them (MCP and
+		// prebuilt builds never seed data tables) — executing anyway would grade the
+		// workflow against empty tables and report the miss as a builder failure.
+		if ((scenario.seedDataTables?.length ?? 0) > 0 && !seedContext) {
+			const reason =
+				'Scenario declares seedDataTables but the build provided no seeded-table mapping ' +
+				'(MCP/prebuilt builds do not seed data tables) — refusing to run without the declared rows';
+			logger.error(`    ERROR [${scenario.name}]: ${reason}`);
+			return await attachExpectations({
+				buildSuccess: true,
+				workflowId,
+				passed: false,
+				score: 0,
+				reasoning: reason,
+				failureCategory: 'framework_issue',
+				execErrors: [reason],
+				buildDurationMs,
+				execDurationMs: 0,
+				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+				threadId: build.threadId,
+				buildTrace: build.buildTrace,
+				planRejections: build.proxyDecisionStats?.rejection ?? 0,
+			});
+		}
 		const runWorkflowScenario = async (): Promise<TargetOutput> => {
 			const execStart = Date.now();
 			const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;

@@ -90,4 +90,19 @@ describe('discoveryTestCaseSchema', () => {
 		const empty = { ...valid, expectedToolInvocations: {} };
 		expect(discoveryTestCaseSchema.safeParse(empty).success).toBe(false);
 	});
+
+	it('rejects an empty expectation list — dead config must fail at load time', () => {
+		const emptyList = { ...valid, expectedToolInvocations: { allOfToolCalls: [] } };
+		expect(discoveryTestCaseSchema.safeParse(emptyList).success).toBe(false);
+	});
+
+	it.each([
+		['connected with capabilities', { status: 'connected', capabilities: ['screenshot'] }, true],
+		['connected without capabilities', { status: 'connected' }, false],
+		['disabled', { status: 'disabled' }, true],
+		['an unknown status', { status: 'on-fire' }, false],
+	])('validates instanceState.localGateway strictly: %s', (_name, localGateway, ok) => {
+		const withGateway = { ...valid, instanceState: { localGateway } };
+		expect(discoveryTestCaseSchema.safeParse(withGateway).success).toBe(ok);
+	});
 });

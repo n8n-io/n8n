@@ -10,7 +10,7 @@ import { join } from 'path';
 
 import { aggregateResults } from './aggregator';
 import type { McpBuildSpend } from './build-orchestrator';
-import { reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
+import { parseTargetOutput, reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
 import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
 import type { CliArgs } from '../cli/args';
@@ -21,7 +21,12 @@ import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
 import { rollupCaseVerification } from '../summary';
-import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import type {
+	BuildExpectationResult,
+	MultiRunEvaluation,
+	WorkflowTestCase,
+	WorkflowTestCaseResult,
+} from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
 /**
@@ -209,12 +214,24 @@ function recoverCompleteIterations(
 			},
 		})),
 	);
+	// Rebuild the judge-verdict side band from the verdicts each row embeds —
+	// reshape reads only this map (the in-memory one died with the run), and
+	// without it recovered rows would lose their expectation units.
+	const buildExpectationsByKey = new Map<string, BuildExpectationResult[]>();
+	for (const row of renumbered) {
+		const inputs = row.run.inputs as { _iteration?: number; testCaseFile?: string };
+		const output = parseTargetOutput(row.run.outputs);
+		if (!inputs.testCaseFile || !output?.expectationResults?.length) continue;
+		const key = `${String(inputs._iteration ?? 0)}:${inputs.testCaseFile}`;
+		if (!buildExpectationsByKey.has(key))
+			buildExpectationsByKey.set(key, output.expectationResults);
+	}
 	return reshapeLangSmithRuns(
 		renumbered,
 		testCasesWithFiles,
 		complete.length,
 		new Map(),
-		new Map(),
+		buildExpectationsByKey,
 		undefined,
 		new Map(),
 	);

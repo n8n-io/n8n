@@ -8,9 +8,18 @@ import type { DiscoveryTestCase } from '../../discovery/types';
 const forbiddenToolCallSchema = z
 	.object({
 		toolName: z.string().min(1),
-		argsContainAny: z.array(z.string().min(1)).optional(),
+		argsContainAny: z.array(z.string().min(1)).min(1).optional(),
 	})
 	.strict();
+
+/** Mirrors `LocalGatewayStatus` (src/types.ts) — the annotation makes tsc flag
+ *  this schema when the source union drifts. */
+const localGatewayStatusSchema: z.ZodType<LocalGatewayStatus> = z.discriminatedUnion('status', [
+	z.object({ status: z.literal('connected'), capabilities: z.array(z.string()) }).strict(),
+	z.object({ status: z.literal('disabledGlobally') }).strict(),
+	z.object({ status: z.literal('disconnected') }).strict(),
+	z.object({ status: z.literal('disabled') }).strict(),
+]);
 
 /** Strict authoring schema for discovery cases — a typo'd key or an empty
  *  expectation must fail at load time, not pass vacuously at run time (the
@@ -22,19 +31,20 @@ export const discoveryTestCaseSchema = z
 		userMessage: z.string().min(1),
 		instanceState: z
 			.object({
-				// Opaque here (mirrors SystemPromptOptions); consumers validate usage.
-				localGateway: z.custom<LocalGatewayStatus>().optional(),
+				localGateway: localGatewayStatusSchema.optional(),
 				browserAvailable: z.boolean().optional(),
 			})
 			.strict()
 			.optional(),
 		expectedToolInvocations: z
 			.object({
-				anyOf: z.array(z.string().min(1)).optional(),
-				noneOf: z.array(z.string().min(1)).optional(),
-				anyOfToolCalls: z.array(forbiddenToolCallSchema).optional(),
-				allOfToolCalls: z.array(forbiddenToolCallSchema).optional(),
-				noneOfToolCalls: z.array(forbiddenToolCallSchema).optional(),
+				// min(1) on every list: an empty expectation array is dead config that
+				// would otherwise pass here and only surface as a run-time failure.
+				anyOf: z.array(z.string().min(1)).min(1).optional(),
+				noneOf: z.array(z.string().min(1)).min(1).optional(),
+				anyOfToolCalls: z.array(forbiddenToolCallSchema).min(1).optional(),
+				allOfToolCalls: z.array(forbiddenToolCallSchema).min(1).optional(),
+				noneOfToolCalls: z.array(forbiddenToolCallSchema).min(1).optional(),
 			})
 			.strict()
 			.refine((expectations) => Object.values(expectations).some((v) => v !== undefined), {

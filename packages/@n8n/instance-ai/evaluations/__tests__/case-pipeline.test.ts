@@ -374,6 +374,27 @@ describe('seed-table scenarios (TRUST-311 parity)', () => {
 		);
 	});
 
+	it('refuses to run a seeded scenario when the build carries no seeded-table mapping', async () => {
+		const lane = makeLane();
+		// MCP/prebuilt-shaped build: success, but no thread or table mapping —
+		// running would grade the workflow against empty tables.
+		const orchestrator = makeOrchestrator({ build: okBuild(), lane, buildDurationMs: 1 });
+		const pipeline = createCasePipeline(
+			makeDeps(orchestrator, {
+				testCaseByFileSlug: new Map([['case-a', seededCase(['happy-path'])]]),
+			}),
+		);
+
+		const output = await pipeline.runRow(rowInputs('happy-path'));
+
+		expect(lane.tracedExecute).not.toHaveBeenCalled();
+		expect(output).toMatchObject({
+			passed: false,
+			failureCategory: 'framework_issue',
+			reasoning: expect.stringContaining('no seeded-table mapping') as unknown,
+		});
+	});
+
 	it('serializes rows of a seeded case so table reseeding cannot interleave', async () => {
 		const lane = makeLane();
 		const started: string[] = [];
