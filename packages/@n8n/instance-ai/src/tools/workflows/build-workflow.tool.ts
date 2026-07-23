@@ -37,7 +37,10 @@ import {
 	reportWorkflowBuildOutcome,
 } from './workflow-build-reporting';
 import { withDeterministicRouting } from './workflow-build-routing';
-import { trackWorkflowSourceBuild } from './workflow-build-telemetry';
+import {
+	trackWaitGateVerificationPlan,
+	trackWorkflowSourceBuild,
+} from './workflow-build-telemetry';
 import {
 	bindSourceFileToExistingWorkflow,
 	getWorkflowSourceFileBinding,
@@ -765,6 +768,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							fallbackModelConfig: context.modelId,
 							logger: context.logger,
 						});
+					trackWaitGateVerificationPlan(context, {
+						haltedGateCount: (nodeSimulationPlan ?? []).filter((verdict) => verdict.haltBranch)
+							.length,
+						scriptedGateCount: waitGateScripts?.length ?? 0,
+						savedWorkflowId: saved.id,
+					});
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
