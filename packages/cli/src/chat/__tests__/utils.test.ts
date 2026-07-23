@@ -139,6 +139,32 @@ describe('getMessage', () => {
 		expect(result).toBeUndefined();
 	});
 
+	it('should return undefined without throwing when runData is undefined', () => {
+		const execution = createMockExecution({
+			data: {
+				resultData: {
+					lastNodeExecuted: 'TestNode',
+					runData: undefined,
+				},
+			},
+		});
+		expect(() => getMessage(execution)).not.toThrow();
+		expect(getMessage(execution)).toBeUndefined();
+	});
+
+	it('should return undefined without throwing when runData has no entry for lastNodeExecuted', () => {
+		const execution = createMockExecution({
+			data: {
+				resultData: {
+					lastNodeExecuted: 'TestNode',
+					runData: { OtherNode: [] },
+				},
+			},
+		});
+		expect(() => getMessage(execution)).not.toThrow();
+		expect(getMessage(execution)).toBeUndefined();
+	});
+
 	it('should return undefined when nodeExecutionData is undefined', () => {
 		const execution = createMockExecution({
 			data: {
