@@ -1,0 +1,135 @@
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_3e31ec08b26a81::t_37e1caefa4e1a7 728,770
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_3e31ec08b26a81::t_c30e8f1f64e62c 44,59,434,449,900,915,1067,1082
+  s_3e31ec08b26a81::t_72f7f956a2497f 12,28-29,31-43,45-58,60,62,402,418-419,421-433,435-448,450,452,868,877,884-885,887-899,901-914,916,918,928,1008,1017,1027,1029,1051-1052,1054-1066,1068-1081,1083,1085,1144
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_3e31ec08b26a81::t_72f7f956a2497f 12,28-29,31-43,45-58,60,62,478,494-495,497-509,511-524,526,528,538,616,635,637,659-660,662-674,676-689,691,693,752
+  s_3e31ec08b26a81::t_c30e8f1f64e62c 44,59,510,525,675,690
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_3e31ec08b26a81::t_403e59ee9fd8ad 578-580,589,600-601
+  s_3e31ec08b26a81::t_6d2ad4ecd5f214 590-592
+  s_3e31ec08b26a81::t_4e4720b65dd321 6,96,148-151,226
+  s_3e31ec08b26a81::t_48c21802402352 83,238
+  s_3e31ec08b26a81::t_e572aeb85812c1 325-349,602
+  s_3e31ec08b26a81::t_278f05a6ec3210 235-236,239,259
+  s_3e31ec08b26a81::t_e574203f5a5674 33,42-51,69-82,84-88,217,224,227-229,231-234,243-250,270,277-280,285-296,309-318
+  s_3e31ec08b26a81::t_00c481fde2cc80 30,32,213,222,323
+  s_3e31ec08b26a81::t_0d20bc036f21a8 22-23,38-40,237,240-242,256-258,260-269,271-276,281-284
+  s_3e31ec08b26a81::t_724813c1b7fbb5 31
+  s_3e31ec08b26a81::t_c221ca400383f2 251-255
+  s_3e31ec08b26a81::t_91010dc29f6a05 322
+  s_3e31ec08b26a81::t_e36c4ab0518e06 41
+  s_3e31ec08b26a81::t_8929d7e8f16f4d 324
+  s_3e31ec08b26a81::t_5164919b3e24c2 603
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_3e31ec08b26a81::t_876309f7a98d1b 31,50,132-133
+  s_3e31ec08b26a81::t_327a30f12ecb5a 644-657,659-664,666,668-670,673-676,679-681,686-704,706-746
+  s_3e31ec08b26a81::t_2c4d8e6dfc112e 705
+  s_3e31ec08b26a81::t_10278a0c7bb374 43,45,788-817
+  s_3e31ec08b26a81::t_e739d2b23a03d9 747
+packages/@n8n/agents/src/runtime/memory/memory-store.ts
+  s_3e31ec08b26a81::t_10278a0c7bb374 2-5,588-591,593,595-601,604,606,626-631,663-667
+  s_3e31ec08b26a81::t_76aba159cc9b80 468
+  s_3e31ec08b26a81::t_c7dbd7b288107f 549
+  s_3e31ec08b26a81::t_c221ca400383f2 550-554
+  s_3e31ec08b26a81::t_2621dc72924745 32,114-115,545-548,555-570
+  s_3e31ec08b26a81::t_90ef5852ba7b4b 464-465
+  s_3e31ec08b26a81::t_f6d7b15152ab74 466-467,469
+  s_3e31ec08b26a81::t_a1b4b433993abd 1
+  s_3e31ec08b26a81::t_fa30b1b8d41fe2 571-573
+  s_3e31ec08b26a81::t_5f110b6a2b0e29 574
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_3e31ec08b26a81::t_724813c1b7fbb5 205
+  s_3e31ec08b26a81::t_d27dc45a4b4d7a 204,206-211,253
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_3e31ec08b26a81::t_f82a5a6713374f 5004,5022,5026-5027,5254,5307,5396-5402
+  s_3e31ec08b26a81::t_8e28ca2ad1d15a 5311,5314-5330,5332-5347,5349-5352
+  s_3e31ec08b26a81::t_80e8556a90ba5d 5368-5371
+  s_3e31ec08b26a81::t_2fbc414bd3a309 5331,5348
+  s_3e31ec08b26a81::t_a974e6f7a1410e 5353-5367,5372-5395
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_3e31ec08b26a81::t_48c21802402352 243
+  s_3e31ec08b26a81::t_4fe464b8a65e3c 5
+  s_3e31ec08b26a81::t_1190a66059c780 240-241
+  s_3e31ec08b26a81::t_37e1caefa4e1a7 11,15-16,112,114,147,160-161,197,201,214,216,219-239,242,244-249
+  s_3e31ec08b26a81::t_4172ab086ebd2b 61,257
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_3e31ec08b26a81::t_72f7f956a2497f 12,28-29,31-43,45-58,60,62
+  s_3e31ec08b26a81::t_c30e8f1f64e62c 44,59
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_3e31ec08b26a81::t_5dd287ede531ec 474-507
+packages/@n8n/agents/src/sdk/agent.ts
+  s_3e31ec08b26a81::t_4e4720b65dd321 13,79
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_3e31ec08b26a81::t_4e4720b65dd321 267
+  s_3e31ec08b26a81::t_6e146496dd1aba 175
+  s_3e31ec08b26a81::t_d43ad592186f4b 7,126-132,176-178
+  s_3e31ec08b26a81::t_724813c1b7fbb5 268
+  s_3e31ec08b26a81::t_c3595eddbd35aa 179
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  s_3e31ec08b26a81::t_dd6cffa7d1ff05 22
+  s_3e31ec08b26a81::t_91010dc29f6a05 24
+  s_3e31ec08b26a81::t_4e4720b65dd321 21,23,26
+packages/@n8n/agents/src/sdk/__tests__/inline-sub-agent-tools.test.ts
+  s_3e31ec08b26a81::t_4e4720b65dd321 4,121
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-episodic.test.ts
+  s_3e31ec08b26a81::t_4172ab086ebd2b 107
+packages/@n8n/agents/src/index.ts
+  s_3e31ec08b26a81::t_4e4720b65dd321 299,301-302,319
+  s_3e31ec08b26a81::t_d43ad592186f4b 65
+  s_3e31ec08b26a81::t_0f8f2396e8ffd0 313
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_3e31ec08b26a81::t_557b6652361de6 167,177-182
+  s_3e31ec08b26a81::t_5296e23427d682 249-259
+  s_3e31ec08b26a81::t_efeabf2075170d 283-290,292-297,299-314,316-318
+  s_3e31ec08b26a81::t_80e8556a90ba5d 323-326
+  s_3e31ec08b26a81::t_bd30092d088ffb 1131-1151
+  s_3e31ec08b26a81::t_39a6e04e318697 291,315
+  s_3e31ec08b26a81::t_48c21802402352 211,298,332
+  s_3e31ec08b26a81::t_772eb5348da03c 195-198,207-210,212-248,260-265,281-282
+  s_3e31ec08b26a81::t_a974e6f7a1410e 319-322,327-331,333-356
+  s_3e31ec08b26a81::t_0b435a52d69032 1152-1208
+  s_3e31ec08b26a81::t_58b78920bc31a9 405
+  s_3e31ec08b26a81::t_4fb33ce7b21f69 11,13,166,169,175-176,206,359,397
+  s_3e31ec08b26a81::t_2fbc414bd3a309 199-205,266-280
+  s_3e31ec08b26a81::t_23688ebcd14dcc 1083-1130
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_3e31ec08b26a81::t_39a6e04e318697 1354,1373-1375,1377-1380
+  s_3e31ec08b26a81::t_bf6a06f65c4a56 1353,1355-1372,1376
+  s_3e31ec08b26a81::t_1065eb31ce92cb 60,134,139,1303-1308,1335,1343-1344,1381,1388-1393,1416-1424,1456-1461,1490,1498,1503-1511
+  s_3e31ec08b26a81::t_bd30092d088ffb 1634-1650
+  s_3e31ec08b26a81::t_c221ca400383f2 118
+  s_3e31ec08b26a81::t_2fbc414bd3a309 1382-1387,1394-1415
+  s_3e31ec08b26a81::t_21162e4eb1b7c5 52-53,59,61,108-117,119,135-138,140-147,186,193-198,201
+packages/@n8n/agents/docs/prompt-caching.md
+  s_3e31ec08b26a81::t_4172ab086ebd2b 69,129,192
+  s_3e31ec08b26a81::t_4e4720b65dd321 80
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_3e31ec08b26a81::t_72f7f956a2497f 12,28-29,31-43,45-58,60,62,402,418-419,421-433,435-448,450,452,462,540,559,561,583-584,586-598,600-613,615,617,997,1006,1013-1014,1016-1028,1030-1043,1045,1047,1057,1135,1144,1153,1158,1160,1182-1183,1185-1197,1199-1212,1214,1216,1275
+  s_3e31ec08b26a81::t_c30e8f1f64e62c 44,59,434,449,599,614,1029,1044,1198,1213
+  s_3e31ec08b26a81::t_b194092a4e7c14 676
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_3e31ec08b26a81::t_c30e8f1f64e62c 44,59,472,487,637,652
+  s_3e31ec08b26a81::t_72f7f956a2497f 12,28-29,31-43,45-58,60,62,440,449,456-457,459-471,473-486,488,490,500,578,587,597,599,621-622,624-636,638-651,653,655,714
+packages/@n8n/agents/src/types/index.ts
+  s_3e31ec08b26a81::t_d43ad592186f4b 96
+packages/@n8n/agents/src/__tests__/integration/memory-episodic.test.ts
+  s_3e31ec08b26a81::t_98a6257e6175c0 66-67,118,122-123,189,193,224,228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "01d698d94b24ad763e7b209f086c5157f916fe24",
+  "prompts": {},
+  "sessions": {
+    "s_3e31ec08b26a81": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f81af-e9a0-7ed0-9878-9dbf7e2960a0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

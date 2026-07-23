@@ -1,0 +1,22 @@
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_b1ae3677d6bc36::t_ead898d46fb30e 298-303,311-315,323
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_b1ae3677d6bc36::t_6d8245050b505a 214-216
+  s_b1ae3677d6bc36::t_cd397399f2d1df 50,56-61,109,125,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "c747d4e6cba3a2b99f3b364ed726e6777b3d51cf",
+  "prompts": {},
+  "sessions": {
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

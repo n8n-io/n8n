@@ -1,0 +1,34 @@
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_b1ae3677d6bc36::t_f4ecbbe076e13c 60-71,652
+  s_b1ae3677d6bc36::t_678ee6ae19ea64 32-34,38-39,46-49,51,53-57,75-76,78,82,86-87,90,99-102,107-108,112-115,118,120,122,124,127,130,134-135,140,144,148-149,161-162,174-175,187-188,202-204,207,214-215,220-221,255-256,268-269,278-279,292-293,296,307,321-323,333-335,351-352,364-365,376-379,393,485-487,634-651
+  s_b1ae3677d6bc36::t_2442ab9f315177 58-59
+packages/cli/src/workflows/workflow.service.ts
+  s_b1ae3677d6bc36::t_126a9a7ff30236 1477
+  s_b1ae3677d6bc36::t_a30fb8c1aecb49 1436
+packages/cli/test/integration/commands/start.cmd.test.ts
+  s_b1ae3677d6bc36::t_2aaa8a2e1b9acf 139
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_b1ae3677d6bc36::t_c2b79ab01d3158 124,249
+  s_b1ae3677d6bc36::t_2aaa8a2e1b9acf 126,167,194,251
+packages/cli/test/integration/workflows/workflow-publication-reconciler.test.ts
+  s_b1ae3677d6bc36::t_2aaa8a2e1b9acf 112,145,175,202,228,235,249
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_b1ae3677d6bc36::t_7b5297c542331e 134,158
+  s_b1ae3677d6bc36::t_3f3709b83b769d 36-40,42-46,48-49,51,53,57,60,62,65-66,69-71,73-74,78,80,84-86,88-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bdc1a537638d9088b06922b554b626a485ea4c00",
+  "prompts": {},
+  "sessions": {
+    "s_b1ae3677d6bc36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "14856d89-b227-4425-adeb-7f31ce9ea7b6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
