@@ -11,18 +11,6 @@ type ProviderOpts = {
 
 // All providers are mocked via vi.mock so require() inside the registry entries
 // returns these stubs instead of the real packages.
-vi.mock('@ai-sdk/baseten', () => ({
-	createBaseten: (opts?: ProviderOpts) => (model: string) => ({
-		provider: 'baseten.chat',
-		modelId: model,
-		apiKey: opts?.apiKey,
-		baseURL: opts?.baseURL,
-		fetch: opts?.fetch,
-		headers: opts?.headers,
-		specificationVersion: 'v3',
-	}),
-}));
-
 vi.mock('@ai-sdk/anthropic', () => ({
 	createAnthropic: (opts?: ProviderOpts) => (model: string) => ({
 		provider: 'anthropic',
@@ -356,14 +344,15 @@ describe('createModel', () => {
 			expect(model.apiKey).toBe('or-test');
 		});
 
-		it('should create model for baseten', () => {
+		it('should create model for baseten via openai-compatible', () => {
 			const model = createModel({
 				id: 'baseten/zai-org/GLM-5.2-Fast',
 				apiKey: 'bt-test',
 			}) as unknown as Record<string, unknown>;
-			expect(model.provider).toBe('baseten.chat');
+			expect(model.provider).toBe('baseten');
 			expect(model.modelId).toBe('zai-org/GLM-5.2-Fast');
 			expect(model.apiKey).toBe('bt-test');
+			expect(model.baseURL).toBe('https://inference.baseten.co/v1');
 		});
 
 		it('should create model for nvidia', () => {
