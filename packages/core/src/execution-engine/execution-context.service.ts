@@ -73,6 +73,48 @@ export class ExecutionContextService {
 		return deepMerge(baseContext, contextToMerge);
 	}
 
+	/**
+	 * Re-runs the sub-execution context hooks for a sub-workflow that inherited its
+	 * parent's context, so the child's own execution record reflects context
+	 * derived from the child workflow (e.g. its redaction policy) instead of only
+	 * the parent's.
+	 *
+	 * Only hooks that opted in via `runForSubExecution` run here — not every global
+	 * hook — so a hook must consciously declare that it is safe to re-run for
+	 * children. Trigger items are not re-processed: the child inherits the parent's
+	 * (already stripped) input, so hooks run with `triggerItems: null` and any items
+	 * they return are ignored. Node-specific hooks are not run.
+	 *
+	 * Returns the (re-encrypted) context, or the inherited context untouched when
+	 * no sub-execution hooks are registered.
+	 */
+	async augmentSubExecutionContext(
+		workflow: Workflow,
+		startItem: IExecuteData,
+		contextToAugment: IExecutionContext,
+	): Promise<IExecutionContext> {
+		const subExecutionHooks = this.executionContextHookRegistry.getSubExecutionHooks();
+		if (subExecutionHooks.length === 0) return contextToAugment;
+
+		let context = await this.decryptExecutionContext(contextToAugment);
+
+		for (const subExecutionHook of subExecutionHooks) {
+			const result = await subExecutionHook.execute({
+				triggerNode: startItem.node,
+				workflow,
+				triggerItems: null,
+				context,
+				options: {},
+			});
+
+			if (result.contextUpdate) {
+				context = this.mergeExecutionContexts(context, result.contextUpdate);
+			}
+		}
+
+		return await this.encryptExecutionContext(context);
+	}
+
 	// startItem is mutated to reflect any changes to trigger items made by the hooks
 	async augmentExecutionContextWithHooks(
 		workflow: Workflow,

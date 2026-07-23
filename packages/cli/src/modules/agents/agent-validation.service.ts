@@ -4,6 +4,9 @@ import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
 	agentTaskSchema,
+	findVectorStoreToolNameCollisions,
+	isDraftAgentConfig,
+	isDraftIntegration,
 	type AgentConfigValidationIssue,
 	type AgentConfigValidationIssueCode,
 	type AgentConfigValidationResponse,
@@ -20,7 +23,7 @@ import { isMcpOAuth2Authentication, NodeHelpers, type INodeParameters } from 'n8
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { NodeTypes } from '@/node-types';
 
-import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS } from './llm-provider-defaults';
 import type { AgentHistory } from './entities/agent-history.entity';
 import type { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -161,6 +164,13 @@ export class AgentValidationService {
 		tasks: ReadonlyMap<string, TaskBody>,
 		credentialProvider: CredentialProvider,
 		scope: AgentValidationScope = 'publish',
+		/**
+		 * Validate against these integrations instead of `agent.integrations`.
+		 * Used by connect-time publishes to exclude not-yet-connected draft
+		 * entries (`credentialId: ''`) that would otherwise block publishing
+		 * the channel currently being connected.
+		 */
+		integrationsOverride?: AgentIntegrationConfig[],
 	): Promise<AgentConfigValidationResponse> {
 		return await this.runValidation(
 			{
@@ -169,7 +179,7 @@ export class AgentValidationService {
 				config: agent.schema as unknown as AgentJsonConfig | null,
 				skills: agent.skills ?? {},
 				customTools: agent.tools ?? {},
-				integrations: agent.integrations ?? [],
+				integrations: integrationsOverride ?? agent.integrations ?? [],
 				tasks,
 				credentialProvider,
 			},
@@ -248,6 +258,7 @@ export class AgentValidationService {
 		const { agentsById, workflowsByName } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
+		this.collectVectorStoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
@@ -308,7 +319,7 @@ export class AgentValidationService {
 			issues.push(agentIssue('missing_required', 'instructions'));
 		}
 
-		if (!config.model?.trim()) {
+		if (isDraftAgentConfig(config)) {
 			issues.push(agentIssue('missing_required', 'model'));
 		} else if (!AgentModelSchema.safeParse(config.model).success) {
 			issues.push(agentIssue('invalid_value', 'model'));
@@ -406,6 +417,29 @@ export class AgentValidationService {
 		}
 	}
 
+	/**
+	 * A vector store registers a `search_<sanitized-name>` tool at runtime; a
+	 * collision with a configured tool name only fails once the agent is built.
+	 * The write gate (AgentConfigService.validateConfig) checks this too — this
+	 * re-check covers configs that reached the entity through other paths
+	 * (e.g. history restore).
+	 */
+	private collectVectorStoreIssues(config: AgentJsonConfig, issues: AgentConfigValidationIssue[]) {
+		const collisions = new Set(findVectorStoreToolNameCollisions(config));
+		const stores = config.vectorStores ?? [];
+		for (let index = 0; index < stores.length; index++) {
+			const store = stores[index];
+			if (!collisions.has(`search_${store.name.replace(/-/g, '_')}`)) continue;
+			issues.push(
+				issue('invalid_value', `vectorStores.${index}.name`, {
+					kind: 'vectorStore',
+					id: store.name,
+					index,
+				}),
+			);
+		}
+	}
+
 	private async collectChannelIssues(
 		integrations: AgentIntegrationConfig[],
 		findCredential: FindCredential,
@@ -419,12 +453,11 @@ export class AgentValidationService {
 				id: integration.type,
 				index,
 			};
-			const credentialId = integration.credentialId?.trim();
-
-			if (!credentialId) {
+			if (isDraftIntegration(integration)) {
 				issues.push(issue('missing_credential', path, capability));
 				continue;
 			}
+			const credentialId = integration.credentialId.trim();
 
 			const credential = await this.findCredentialSafe(findCredential, credentialId);
 			if (!credential) {

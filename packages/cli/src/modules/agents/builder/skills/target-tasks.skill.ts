@@ -53,26 +53,30 @@ ${TASK_OBJECTIVE_FORMAT_RULE}
 
 ${TASK_OBJECTIVE_TEMPLATE}
 
-## Ask first (required)
+## Fill the template with assumptions (required)
 
 Do NOT call \`create_tasks\` for a task until BOTH of these are true for it:
 
 1. You can fill EVERY section of the objective template above with concrete,
-   specific content — no placeholders, no guesses, nothing left to "refine
+   specific content — no placeholders, nothing left to "refine
    later". The objective is the ONLY message the agent receives when the task
    fires, so it must stand on its own and must not rely on the current chat.
-2. The schedule is concrete — how often and at what time it should run.
+   When the user did not specify a detail, derive it from the goal as a
+   stated assumption and list it in your summary.
+2. The schedule is concrete — how often and at what time it should run. If
+   the user did not specify a cadence, pick a sensible default and state it
+   as an assumption.
 
-If any section would be empty or a guess, ask the user clarifying questions (use
-\`ask_questions\`, batching multiple questions into one call — discrete options for
-choices, or \`type: "text"\` for open-ended) until you can complete the whole
-template and pin down the cadence for every task. Never create a placeholder or
+Use \`ask_questions\` only when even a reasonable assumption is impossible —
+never during an initial build: mark the task \`blocked\` instead, per the
+Initial Build rules in your system prompt. Never create a placeholder or
 "refine-it-later" task.
 
 ## Workflow
 
-- Gather everything the template needs (every objective section + the cadence)
-  for every task, asking clarifying questions until no section is a guess.
+- Fill everything the template needs (every objective section + the cadence)
+  for every task, deriving missing details from the goal as stated
+  assumptions instead of asking.
 - Write each objective using the exact template above, filling each section.
 - Make sure the agent already has every tool the steps need (an integration,
   node/workflow tool, or web search). If something is missing, add it to the agent

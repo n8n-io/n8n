@@ -92,6 +92,7 @@ import {
 	type ServiceProxyConfig,
 	type StreamableAgent,
 	type SuspendedRunState,
+	type SuspensionInfo,
 	type WorkflowBuildOutcome,
 	type WorkflowLoopWorkItemRecord,
 	type WorkflowSetupRoutingClaim,
@@ -130,6 +131,7 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { BROWSER_TOOL_CATEGORY, InstanceAiGatewayService } from './instance-ai-gateway.service';
@@ -195,6 +197,20 @@ import { formatPreviewSessionContext } from '../agents/builder/format-preview-co
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
+function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
+	const rawMessage = suspension?.suspendPayload.message;
+	const message = typeof rawMessage === 'string' && rawMessage ? rawMessage : undefined;
+	return {
+		status: 'suspended',
+		runId,
+		...(suspension?.requestId ? { requestId: suspension.requestId } : {}),
+		...(suspension?.toolCallId ? { pendingToolCallId: suspension.toolCallId } : {}),
+		...(suspension?.toolName ? { toolName: suspension.toolName } : {}),
+		...(message ? { message } : {}),
+	};
 }
 
 /**
@@ -332,6 +348,37 @@ export function getUserFacingErrorMessage(error: unknown): string {
 	return 'Something went wrong before I could finish that response. Please try again.';
 }
 
+/**
+ * Masked terminal failures whose real cause is unrecoverable from the error
+ * object: the ai-sdk's flush wrapper when zero steps were recorded (created
+ * without `cause`), and undici's `TypeError: terminated` when the upstream
+ * connection is killed mid-stream. When the credit wall hits at the model call
+ * instead of the token endpoint, the run dies with one of these rather than a
+ * classified quota error — see `reclassifyMaskedStreamFailure`.
+ */
+export function isMaskedStreamFailure(error: unknown): error is Error {
+	if (!(error instanceof Error)) return false;
+	if (error.name === 'AI_NoOutputGeneratedError') return true;
+	return error.name === 'TypeError' && error.message === 'terminated';
+}
+
+/**
+ * Substituted for a masked stream failure once the credit re-check confirms
+ * the user is out of credits. Carries the machine-readable quota code so the
+ * run is classified exactly like a quota error surfaced by the proxy (credits
+ * message + structured `errorCode`, not reported to Sentry), and keeps the
+ * masked original as `cause` for tracing and telemetry.
+ */
+export class QuotaExhaustedStreamError extends UserError {
+	readonly errorCode = 'quota_exhausted';
+
+	constructor(maskedError: Error) {
+		super(`AI credits exhausted (${maskedError.name}: ${maskedError.message})`, {
+			cause: maskedError,
+		});
+	}
+}
+
 function createInertAbortSignal(): AbortSignal {
 	return new AbortController().signal;
 }
@@ -359,6 +406,14 @@ type RunFinishErrorInfo = {
 };
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
+
+/**
+ * Circuit breaker for machine-started follow-up runs (verification, synthesize,
+ * replan, …). A follow-up that dies before the agent can settle its trigger
+ * (e.g. sandbox setup fails on an exhausted quota) would otherwise be re-armed
+ * by its own post-run scheduler tick, producing an unbounded error loop.
+ */
+const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
@@ -455,6 +510,14 @@ export class InstanceAiService {
 	private readonly schedulerLocks = new Map<string, Promise<void>>();
 
 	/**
+	 * Consecutive machine-started follow-up runs that errored, per thread.
+	 * Gates `startInternalFollowUpRun` so a follow-up whose run keeps failing
+	 * (its trigger left unsettled) cannot re-arm itself forever; reset by any
+	 * run that completes or suspends, i.e. proves the thread is healthy again.
+	 */
+	private readonly failedInternalFollowUpStreaks = new Map<string, number>();
+
+	/**
 	 * Checkpoint re-entries that could not fire when their parent-tagged child
 	 * settled (an orchestrator run was live, or other parent siblings were
 	 * still running). Drained from the post-run cleanup path so the checkpoint
@@ -509,6 +572,7 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly eventLog: DurableEventLog,
+		private readonly interruptedRunSweeper: InterruptedRunSweeper,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -747,6 +811,39 @@ export class InstanceAiService {
 	/** Get current credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
 		return await this.modelService.getCredits(user);
+	}
+
+	/**
+	 * When the credit wall hits at the model call (rather than the token
+	 * endpoint at sandbox start), the proxy failure surfaces as a masked
+	 * generic error. For those signatures, re-check the user's remaining
+	 * credits and substitute a quota-exhausted error so the run resolves to
+	 * the credits message instead of a generic failure. Best-effort: any
+	 * re-check failure keeps the original error, so genuinely unexplained
+	 * stream deaths stay visible.
+	 */
+	private async reclassifyMaskedStreamFailure(
+		error: unknown,
+		user: User,
+		context: { threadId: string; runId: string },
+	): Promise<unknown> {
+		if (!isMaskedStreamFailure(error)) return error;
+		try {
+			const { creditsQuota, creditsClaimed } = await this.modelService.getCredits(user);
+			// A negative quota is the unlimited sentinel (e.g. proxy disabled).
+			if (creditsQuota < 0 || creditsClaimed < creditsQuota) return error;
+		} catch (creditsError) {
+			this.logger.debug('Masked stream failure credit re-check failed; keeping original error', {
+				error: getErrorMessage(creditsError),
+				...context,
+			});
+			return error;
+		}
+		this.logger.info('Reclassified masked stream failure as quota-exhausted', {
+			maskedError: getErrorMessage(error),
+			...context,
+		});
+		return new QuotaExhaustedStreamError(error);
 	}
 
 	isEnabled(): boolean {
@@ -1164,7 +1261,22 @@ export class InstanceAiService {
 	}
 
 	async routeCancelRun(threadId: string): Promise<void> {
+		const hadLiveLocalRun = this.runState.hasLiveRun(threadId);
 		await this.routeTaskControl({ threadId, action: 'cancel-thread' });
+
+		// Emit-shaped fallback for dead runs: a cancel that found nothing live
+		// locally still terminalizes crashed runs in the durable log, so every
+		// client and main converges through the normal replay path — a dead run
+		// has no run body left to emit its own run-finish. A run live in THIS
+		// process is excluded (its abort above emits the terminal fact), and a
+		// run live on a sibling is excluded by the sweeper's durable-activity
+		// grace window while the broadcast cancel reaches it.
+		if (!hadLiveLocalRun) {
+			// Settle the drain first so a run that JUST finished cannot be
+			// misread as unfinished and given a second, later terminal fact.
+			await this.eventLog.flush(threadId);
+			await this.interruptedRunSweeper.cancelUnfinishedRuns(threadId);
+		}
 	}
 
 	async routeClearThreadState(threadId: string): Promise<void> {
@@ -1397,6 +1509,7 @@ export class InstanceAiService {
 		});
 
 		this.schedulerLocks.delete(threadId);
+		this.failedInternalFollowUpStreaks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
@@ -1978,6 +2091,11 @@ export class InstanceAiService {
 		const { searchProxyConfig, tracingProxyConfig, tokenManager, proxyBaseUrl } =
 			proxyRunConfig ?? (await this.createProxyRunConfig(user));
 
+		const modelId =
+			proxyBaseUrl && tokenManager
+				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
+				: await this.modelService.resolveAgentModelConfig(user);
+
 		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
@@ -1986,6 +2104,7 @@ export class InstanceAiService {
 			projectId: boundProjectId,
 			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
 			configEvalsEnabled,
+			modelId,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2079,11 +2198,6 @@ export class InstanceAiService {
 				status: localGatewayDisabledForUser ? 'disabled' : 'disconnected',
 			};
 		}
-
-		const modelId =
-			proxyBaseUrl && tokenManager
-				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager)
-				: await this.modelService.resolveAgentModelConfig(user);
 
 		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
@@ -2767,6 +2881,29 @@ export class InstanceAiService {
 		);
 	}
 
+	/**
+	 * Feed the follow-up circuit breaker from a run's terminal status. Errored
+	 * machine-started follow-ups (`isInternalFollowUp`) extend the streak; any
+	 * run that completes or suspends proves the thread executes again and
+	 * resets it. Cancelled runs carry no signal either way.
+	 */
+	private updateInternalFollowUpFailureStreak(
+		threadId: string,
+		status: MessageTraceFinalization['status'] | undefined,
+		isInternalFollowUp: boolean,
+	): void {
+		if (status === 'completed' || status === 'suspended') {
+			this.failedInternalFollowUpStreaks.delete(threadId);
+			return;
+		}
+		if (status === 'error' && isInternalFollowUp) {
+			this.failedInternalFollowUpStreaks.set(
+				threadId,
+				(this.failedInternalFollowUpStreaks.get(threadId) ?? 0) + 1,
+			);
+		}
+	}
+
 	private async startInternalFollowUpRun(
 		user: User,
 		threadId: string,
@@ -2779,6 +2916,16 @@ export class InstanceAiService {
 	): Promise<string> {
 		if (this.runState.hasLiveRun(threadId)) {
 			this.logger.warn('Skipping internal follow-up: active run exists', { threadId });
+			return '';
+		}
+
+		const failedStreak = this.failedInternalFollowUpStreaks.get(threadId) ?? 0;
+		if (failedStreak >= MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS) {
+			this.logger.warn('Skipping internal follow-up: consecutive follow-up runs keep failing', {
+				threadId,
+				failedStreak,
+				resumeReason: resumeReasonOverride,
+			});
 			return '';
 		}
 
@@ -3537,6 +3684,7 @@ export class InstanceAiService {
 						runId,
 						agentRunId: result.agentRunId,
 						agent,
+						orchestrationContext,
 						threadId,
 						user,
 						toolCallId: result.suspension.toolCallId,
@@ -3621,15 +3769,7 @@ export class InstanceAiService {
 				// The tree is rebuilt from in-memory events and includes the
 				// confirmation-request data that the frontend needs.
 				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
-				const suspensionOutputs = {
-					status: 'suspended',
-					runId,
-					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
-					...(result.suspension?.toolCallId
-						? { pendingToolCallId: result.suspension.toolCallId }
-						: {}),
-					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
-				};
+				const suspensionOutputs = buildSuspensionTraceOutputs(runId, result.suspension);
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
@@ -3672,9 +3812,13 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const terminalError =
+				result.status === 'errored'
+					? await this.reclassifyMaskedStreamFailure(result.error, user, { threadId, runId })
+					: undefined;
 			if (result.status === 'errored') {
 				this.instanceAiErrorReporter.report(
-					result.error ?? new Error('Instance AI stream errored'),
+					terminalError ?? new Error('Instance AI stream errored'),
 					{
 						component: 'instance-ai-stream',
 						threadId,
@@ -3688,9 +3832,9 @@ export class InstanceAiService {
 				);
 			}
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
 			const userFacingErrorCode =
-				result.status === 'errored' ? getUserFacingErrorCode(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
@@ -3731,8 +3875,8 @@ export class InstanceAiService {
 				...(result.status === 'errored'
 					? {
 							errorInfo: {
-								errorMessage: result.error
-									? getErrorMessage(result.error)
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
 									: 'Instance AI stream errored',
 								errorSource: 'stream' as const,
 							},
@@ -3817,9 +3961,13 @@ export class InstanceAiService {
 				return;
 			}
 
-			const errorMessage = getErrorMessage(error);
-			const userFacingErrorMessage = getUserFacingErrorMessage(error);
-			const userFacingErrorCode = getUserFacingErrorCode(error);
+			const terminalError = await this.reclassifyMaskedStreamFailure(error, user, {
+				threadId,
+				runId,
+			});
+			const errorMessage = getErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const errCtx: InstanceAiObservabilityContext = {
 				threadId,
@@ -3834,7 +3982,10 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
+			this.instanceAiErrorReporter.report(terminalError, {
+				component: 'instance-ai-run',
+				...errCtx,
+			});
 			await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'errored', {
 				messageGroupId,
 				correlationId: messageId,
@@ -3883,6 +4034,13 @@ export class InstanceAiService {
 					this.liveness.consumeRunTimeout(runId);
 				}
 			}
+			// Must precede the reschedule below: the next tick consults the streak
+			// before re-arming another follow-up for the same unsettled trigger.
+			this.updateInternalFollowUpFailureStreak(
+				threadId,
+				messageTraceFinalization?.status,
+				resumeReason !== undefined,
+			);
 			// Post-run planned-task wiring (only when the run is actually ending,
 			// not when it merely suspended for HITL):
 			//   1. Checkpoint deadlock fallback — if this run was a checkpoint
@@ -4369,6 +4527,7 @@ export class InstanceAiService {
 				runId: orphan.runId,
 				agentRunId: orphan.checkpointKey,
 				agent,
+				orchestrationContext: environment.orchestrationContext,
 				threadId: orphan.threadId,
 				user,
 				toolCallId: orphan.toolCallId,
@@ -4427,7 +4586,12 @@ export class InstanceAiService {
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
 	): Promise<
-		{ agent: Awaited<ReturnType<typeof createInstanceAgent>>; modelId: ModelConfig } | undefined
+		| {
+				agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+				modelId: ModelConfig;
+				orchestrationContext: OrchestrationContext;
+		  }
+		| undefined
 	> {
 		try {
 			const rebuilt = await this.buildFreshInstanceAgent(
@@ -4440,7 +4604,11 @@ export class InstanceAiService {
 				this.threadPushRef.get(threadId),
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
-			return { agent: rebuilt.agent, modelId: rebuilt.modelId };
+			return {
+				agent: rebuilt.agent,
+				modelId: rebuilt.modelId,
+				orchestrationContext: rebuilt.orchestrationContext,
+			};
 		} catch (error: unknown) {
 			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
 				threadId,
@@ -4481,6 +4649,7 @@ export class InstanceAiService {
 			checkpoint,
 			plannedBuild,
 			runHandoff,
+			orchestrationContext,
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
@@ -4534,6 +4703,10 @@ export class InstanceAiService {
 				toolCallId,
 				approved: data.approved,
 				resumeFields: Object.keys(resumeData),
+				...(data.userInput ? { userInput: data.userInput } : {}),
+				...(data.action ? { action: data.action } : {}),
+				...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+				...(data.answers ? { answers: data.answers } : {}),
 			},
 			resumeReason: 'approval',
 			metadata: {
@@ -4550,8 +4723,16 @@ export class InstanceAiService {
 		});
 		const effectiveTracing = resumeTracing ?? tracing;
 
+		// Orchestration tools (e.g. build-agent) read `context.tracing` at call
+		// time from this shared object; without the rebind the resumed sub-agent
+		// emits spans through the suspended turn's shut-down trace runtime.
+		if (orchestrationContext && effectiveTracing) {
+			orchestrationContext.tracing = effectiveTracing;
+		}
+
 		let resumeAgent = agent;
 		let resumeModelId = modelId;
+		let resumeOrchestrationContext = orchestrationContext;
 		if (data.autoSetup) {
 			const rebuilt = await this.rebuildAgentForAutoSetupResume(
 				activeUser,
@@ -4568,6 +4749,7 @@ export class InstanceAiService {
 			}
 			resumeAgent = rebuilt.agent;
 			resumeModelId = rebuilt.modelId;
+			resumeOrchestrationContext = rebuilt.orchestrationContext;
 		}
 
 		this.startProcessResumedStream(resumeAgent, resumeData, {
@@ -4582,6 +4764,7 @@ export class InstanceAiService {
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
 			tracing: effectiveTracing,
+			orchestrationContext: resumeOrchestrationContext,
 			modelId: resumeModelId,
 			checkpoint,
 			plannedBuild,
@@ -4611,6 +4794,7 @@ export class InstanceAiService {
 			abortController: AbortController;
 			snapshotStorage: DbSnapshotStorage;
 			tracing?: InstanceAiTraceContext;
+			orchestrationContext?: OrchestrationContext;
 			modelId?: ModelConfig;
 			checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 			plannedBuild?: PlannedBuildFollowUp;
@@ -4693,6 +4877,7 @@ export class InstanceAiService {
 						runId: opts.runId,
 						agentRunId: result.agentRunId,
 						agent,
+						orchestrationContext: opts.orchestrationContext,
 						threadId: opts.threadId,
 						user: opts.user,
 						toolCallId: result.suspension.toolCallId,
@@ -4774,15 +4959,7 @@ export class InstanceAiService {
 				// Persist the refreshed agent tree so repeated HITL waits
 				// survive page refresh after a resume as well.
 				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
-				const suspensionOutputs = {
-					status: 'suspended',
-					runId: opts.runId,
-					...(result.suspension?.requestId ? { requestId: result.suspension.requestId } : {}),
-					...(result.suspension?.toolCallId
-						? { pendingToolCallId: result.suspension.toolCallId }
-						: {}),
-					...(result.suspension?.toolName ? { toolName: result.suspension.toolName } : {}),
-				};
+				const suspensionOutputs = buildSuspensionTraceOutputs(opts.runId, result.suspension);
 				await this.tracing.finalizeRunTracing(opts.runId, opts.tracing, {
 					status: 'suspended',
 					outputs: suspensionOutputs,
@@ -4821,9 +4998,16 @@ export class InstanceAiService {
 
 			const outputText = await (result.text ?? Promise.resolve(''));
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
+			const terminalError =
+				result.status === 'errored'
+					? await this.reclassifyMaskedStreamFailure(result.error, opts.user, {
+							threadId: opts.threadId,
+							runId: opts.runId,
+						})
+					: undefined;
 			if (result.status === 'errored') {
 				this.instanceAiErrorReporter.report(
-					result.error ?? new Error('Instance AI resumed stream errored'),
+					terminalError ?? new Error('Instance AI resumed stream errored'),
 					{
 						component: 'instance-ai-stream',
 						threadId: opts.threadId,
@@ -4836,9 +5020,9 @@ export class InstanceAiService {
 				);
 			}
 			const userFacingErrorMessage =
-				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorMessage(terminalError) : undefined;
 			const userFacingErrorCode =
-				result.status === 'errored' ? getUserFacingErrorCode(result.error) : undefined;
+				result.status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				await this.terminalOutcome.evaluateTerminalResponse(
 					opts.threadId,
@@ -4885,8 +5069,8 @@ export class InstanceAiService {
 				...(result.status === 'errored'
 					? {
 							errorInfo: {
-								errorMessage: result.error
-									? getErrorMessage(result.error)
+								errorMessage: terminalError
+									? getErrorMessage(terminalError)
 									: 'Instance AI resumed stream errored',
 								errorSource: 'stream' as const,
 							},
@@ -4968,9 +5152,13 @@ export class InstanceAiService {
 				return;
 			}
 
-			const errorMessage = getErrorMessage(error);
-			const userFacingErrorMessage = getUserFacingErrorMessage(error);
-			const userFacingErrorCode = getUserFacingErrorCode(error);
+			const terminalError = await this.reclassifyMaskedStreamFailure(error, opts.user, {
+				threadId: opts.threadId,
+				runId: opts.runId,
+			});
+			const errorMessage = getErrorMessage(terminalError);
+			const userFacingErrorMessage = getUserFacingErrorMessage(terminalError);
+			const userFacingErrorCode = getUserFacingErrorCode(terminalError);
 
 			const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 			const errCtx: InstanceAiObservabilityContext = {
@@ -4985,7 +5173,10 @@ export class InstanceAiService {
 				error: errorMessage,
 				...buildInstanceAiObservabilityContext(errCtx),
 			});
-			this.instanceAiErrorReporter.report(error, { component: 'instance-ai-run', ...errCtx });
+			this.instanceAiErrorReporter.report(terminalError, {
+				component: 'instance-ai-run',
+				...errCtx,
+			});
 			await this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, 'errored', {
 				messageGroupId,
 				errorMessage: userFacingErrorMessage,
@@ -5029,6 +5220,13 @@ export class InstanceAiService {
 					this.liveness.consumeRunTimeout(opts.runId);
 				}
 			}
+			// Resumed runs are user-driven, so they never extend the failure
+			// streak — but a healthy one resets it before the reschedule below.
+			this.updateInternalFollowUpFailureStreak(
+				opts.threadId,
+				messageTraceFinalization?.status,
+				false,
+			);
 			// Post-run planned-task wiring — mirror the executeRun finally.
 			// Resumed ordinary-chat runs also need to drive the scheduler in case
 			// a background task settled while they were active or suspended and

@@ -29,7 +29,7 @@ on:
         description: 'LangTracer suite slug or id to pull test cases from.'
         required: false
         type: string
-        default: 'n8n-workflows'
+        default: 'baseline'
       filter:
         description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
         required: false
@@ -94,7 +94,7 @@ on:
       suite:
         description: 'LangTracer suite slug or id to pull test cases from.'
         required: false
-        default: 'n8n-workflows'
+        default: 'baseline'
       filter:
         description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
         required: false
@@ -302,7 +302,7 @@ jobs:
             --verbose
           )
           # LangTracer is the only CI case source (no disk fallback by design).
-          ARGS+=(--source langtracer --suite "${SUITE:-n8n-workflows}")
+          ARGS+=(--source langtracer --suite "${SUITE:-baseline}")
           [ -n "$FILTER" ] && ARGS+=(--filter "$FILTER")
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
           pnpm eval:instance-ai "${ARGS[@]}"

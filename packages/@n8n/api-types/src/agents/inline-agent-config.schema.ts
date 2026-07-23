@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import {
-	AgentJsonConfigSchema,
+	AgentJsonConfigBaseSchema,
 	AgentModelSchema,
 	NodeToolJsonConfigSchema,
 	WorkflowToolJsonConfigSchema,
@@ -43,7 +43,7 @@ const InlineAgentSkillBodiesSchema = z.record(InlineSkillIdSchema, agentSkillSch
  * only available on saved agents; runtime defaults apply. Skills are supported
  * as refs here, with their bodies in the sibling `skills` record.
  */
-export const InlineAgentJsonConfigSchema = AgentJsonConfigSchema.pick({
+export const InlineAgentJsonConfigSchema = AgentJsonConfigBaseSchema.pick({
 	name: true,
 	model: true,
 	credential: true,
@@ -55,7 +55,7 @@ export const InlineAgentJsonConfigSchema = AgentJsonConfigSchema.pick({
 		// Approval suspends the run for a human, which workflow executions
 		// don't support — same reason the tool variants above omit
 		// `requireApproval`.
-		mcpServers: AgentJsonConfigSchema.shape.mcpServers.refine(
+		mcpServers: AgentJsonConfigBaseSchema.shape.mcpServers.refine(
 			(servers) => (servers ?? []).every((server) => server.approval === undefined),
 			{ message: 'MCP tool approval is not available for inline agents' },
 		),

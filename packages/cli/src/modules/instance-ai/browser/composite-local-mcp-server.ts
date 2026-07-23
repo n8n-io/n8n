@@ -40,7 +40,10 @@ export class CompositeLocalMcpServer implements LocalMcpServer {
 		return this.unwrapTools(this.availableToolsByCategory.get(category)!);
 	}
 
-	async callTool(req: McpToolCallRequest): Promise<McpToolCallResult> {
+	async callTool(
+		req: McpToolCallRequest,
+		options?: { abortSignal?: AbortSignal },
+	): Promise<McpToolCallResult> {
 		const serverTool = this.availableTools.get(req.name);
 		if (!serverTool) {
 			return {
@@ -49,7 +52,7 @@ export class CompositeLocalMcpServer implements LocalMcpServer {
 			};
 		}
 
-		return await serverTool.server.callTool(req);
+		return await serverTool.server.callTool(req, options);
 	}
 
 	private unwrapTools(tools: CompositeLocalMcpServerToolMap) {

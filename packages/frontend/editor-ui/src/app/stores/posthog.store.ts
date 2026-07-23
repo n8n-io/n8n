@@ -11,7 +11,7 @@ import {
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	TELEMETRY_EVENTS,
 } from '@/app/constants';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const POSTHOG_GROUP_TYPE_INSTANCE = 'company';

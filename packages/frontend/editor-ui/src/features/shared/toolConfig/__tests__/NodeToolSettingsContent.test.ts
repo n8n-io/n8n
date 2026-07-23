@@ -161,6 +161,55 @@ describe('NodeToolSettingsContent', () => {
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
 	});
 
+	it('should hide operations listed in hiddenOperations from the parameters form', () => {
+		const nodeTypeWithWaitingOperation: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Send and Wait', value: 'sendAndWait' },
+					],
+					default: 'sendAndWait',
+					noDataExpression: true,
+				},
+			],
+		};
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithWaitingOperation);
+
+		const renderWithParameterCapture = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					ParameterInputList: {
+						template:
+							'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}</div>',
+						props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
+					},
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		const { getAllByTestId } = renderWithParameterCapture({
+			props: {
+				initialNode: createMockNode({ parameters: {} }),
+				hiddenOperations: ['sendAndWait'],
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).toContain('create');
+		expect(renderedParameters).not.toContain('sendAndWait');
+	});
+
 	it('should hide settings tab when there are no settings', () => {
 		const { queryByText } = renderComponent({
 			props: { initialNode: createMockNode() },

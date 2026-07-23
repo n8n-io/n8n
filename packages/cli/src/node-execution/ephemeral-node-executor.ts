@@ -11,6 +11,7 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	ITaskDataConnections,
+	IWorkflowExecuteAdditionalData,
 	NodeOutput,
 } from 'n8n-workflow';
 import {
@@ -21,13 +22,17 @@ import {
 	createEmptyRunExecutionData,
 	DATA_TABLE_TOOL_NODE_TYPE,
 	NodeConnectionTypes,
-	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { NodeTypes } from '@/node-types';
 import { withExpressionIsolate } from '@/utils';
 import { getBase } from '@/workflow-execute-additional-data';
+
+import {
+	isUnsupportedEphemeralNodeOperation,
+	unsupportedEphemeralNodeOperationMessage,
+} from './node-tool-operation-support';
 
 /** Minimal tool shape for constructing an in-memory single-node execution. */
 export type EphemeralWorkflowToolLike = {
@@ -36,6 +41,10 @@ export type EphemeralWorkflowToolLike = {
 	nodeTypeVersion: number;
 	nodeParameters: INodeParameters;
 	credentials?: Record<string, INodeCredentialsDetails> | null;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 };
 
 export interface InlineNodeExecutionRequest {
@@ -50,6 +59,10 @@ export interface InlineNodeExecutionRequest {
 	credentialDetails?: Record<string, INodeCredentialsDetails>;
 	inputData: INodeExecutionData[];
 	projectId: string;
+	/** Ephemeral node name override (defaults to 'Target Node'). */
+	nodeName?: string;
+	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
+	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
 }
 
 export interface NodeExecutionResult {
@@ -57,9 +70,6 @@ export interface NodeExecutionResult {
 	data: INodeExecutionData[];
 	error?: string;
 }
-
-// send and wait requires persistent workflows to handle the wait logic
-const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
 
 /**
  * Node types that must never run as an agent tool, regardless of RBAC —
@@ -255,8 +265,8 @@ export class EphemeralNodeExecutor {
 
 		const operation = nodeParameters.operation;
 
-		if (operation && typeof operation === 'string' && OPERATION_BLACKLIST.includes(operation)) {
-			throw new UserError(`The "${operation}" is not supported for agent tool execution.`, {
+		if (isUnsupportedEphemeralNodeOperation(operation)) {
+			throw new UserError(unsupportedEphemeralNodeOperationMessage(operation), {
 				extra: { nodeType, operation },
 			});
 		}
@@ -274,7 +284,7 @@ export class EphemeralNodeExecutor {
 	) {
 		const node: INode = {
 			id: uuid(),
-			name: 'Target Node',
+			name: tool.nodeName ?? 'Target Node',
 			type: tool.nodeType,
 			typeVersion: tool.nodeTypeVersion,
 			position: [0, 0],
@@ -292,6 +302,7 @@ export class EphemeralNodeExecutor {
 			// Data Table uses separate project authorization and an ephemeral workflow has no owner fallback.
 			additionalData.dataTableProjectId = tool.projectId;
 		}
+		tool.configureAdditionalData?.(additionalData);
 		const runExecutionData = createEmptyRunExecutionData();
 		const inputData: ITaskDataConnections = { main: [inputItems] };
 		const executeData: IExecuteData = { node, data: inputData, source: null };
@@ -410,6 +421,8 @@ export class EphemeralNodeExecutor {
 			nodeTypeVersion: request.nodeTypeVersion,
 			nodeParameters: request.nodeParameters,
 			credentials: mergedCredentials,
+			nodeName: request.nodeName,
+			configureAdditionalData: request.configureAdditionalData,
 		};
 
 		// Native tool nodes (toolWikipedia, toolCalculator, etc.) expose their real
