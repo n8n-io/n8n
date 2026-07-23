@@ -461,8 +461,6 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	flex-shrink: 0;
 	width: max-content;
 	min-height: var(--jumper-height, var(--height--md));
-	gap: var(--jumper-inset, var(--spacing--xs));
-	padding-inline: var(--jumper-inset, var(--spacing--xs));
 	border-radius: var(--jumper-radius, var(--radius--3xs));
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	box-shadow: inset 0 0 0 1px var(--border-color);
@@ -481,6 +479,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 .jumperPrefix {
 	flex-shrink: 0;
+	padding-inline-start: var(--jumper-inset, var(--spacing--xs));
 	color: var(--text-color--subtler);
 	white-space: nowrap;
 	translate: 0 -1px;
@@ -492,7 +491,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	width: calc(var(--jumper-digits, 1) * 1ch);
 	min-width: 1ch;
 	min-height: var(--jumper-height, var(--height--md));
-	padding: 0;
+	padding-inline: var(--jumper-inset, var(--spacing--xs));
 	border: none;
 	background: transparent;
 	text-align: start;
