@@ -2,20 +2,26 @@ import { usePushConnection } from '@/app/composables/usePushConnection';
 import {
 	testWebhookReceived,
 	builderCreditsUpdated,
+	reconcileExecutionStateOnReconnect,
 } from '@/app/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
 import { useRouter } from 'vue-router';
 import type { OnPushMessageHandler } from '@/app/stores/pushConnection.store';
 import { createPinia, setActivePinia } from 'pinia';
+import { nextTick, ref } from 'vue';
 
 const removeEventListener = vi.fn();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const addEventListener = vi.fn((_handler: OnPushMessageHandler) => removeEventListener);
+const isConnected = ref(false);
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: () => ({
 		addEventListener,
+		get isConnected() {
+			return isConnected.value;
+		},
 	}),
 }));
 
@@ -36,6 +42,7 @@ vi.mock('@/app/composables/usePushConnection/handlers', () => ({
 	workflowPartiallyActivated: vi.fn(),
 	executionFinished: vi.fn(),
 	executionRecovered: vi.fn(),
+	reconcileExecutionStateOnReconnect: vi.fn(),
 	workflowActivated: vi.fn(),
 	workflowDeactivated: vi.fn(),
 	collaboratorsChanged: vi.fn(),
@@ -57,11 +64,19 @@ describe('usePushConnection composable', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		isConnected.value = false;
 
 		setActivePinia(createPinia());
 
 		const router = useRouter();
 		pushConnection = usePushConnection({ router });
+	});
+
+	afterEach(() => {
+		// The composable is created outside a component scope in these tests, so
+		// its reconnect watcher isn't auto-disposed — stop it to prevent leaking
+		// watchers across tests that share the module-level `isConnected` ref.
+		pushConnection.terminate();
 	});
 
 	it('should register an event listener on initialize', () => {
@@ -127,5 +142,59 @@ describe('usePushConnection composable', () => {
 		// Verify that the correct handler was called.
 		expect(builderCreditsUpdated).toHaveBeenCalledTimes(1);
 		expect(builderCreditsUpdated).toHaveBeenCalledWith(testEvent);
+	});
+
+	describe('execution state reconciliation on reconnect', () => {
+		it('should not reconcile on the initial connect', async () => {
+			pushConnection.initialize();
+
+			isConnected.value = true;
+			await nextTick();
+
+			expect(reconcileExecutionStateOnReconnect).not.toHaveBeenCalled();
+		});
+
+		it('should reconcile execution state on reconnect', async () => {
+			pushConnection.initialize();
+
+			// Initial connect, then a drop and a reconnect.
+			isConnected.value = true;
+			await nextTick();
+			isConnected.value = false;
+			await nextTick();
+			isConnected.value = true;
+			await nextTick();
+
+			expect(reconcileExecutionStateOnReconnect).toHaveBeenCalledTimes(1);
+			expect(reconcileExecutionStateOnReconnect).toHaveBeenCalledWith(expect.any(Object));
+		});
+
+		it('should treat a connection already established at setup as the initial connect', async () => {
+			isConnected.value = true;
+			pushConnection.initialize();
+
+			// A drop and reconnect after an already-live connection is a reconnect.
+			isConnected.value = false;
+			await nextTick();
+			isConnected.value = true;
+			await nextTick();
+
+			expect(reconcileExecutionStateOnReconnect).toHaveBeenCalledTimes(1);
+		});
+
+		it('should stop reconciling after terminate', async () => {
+			pushConnection.initialize();
+
+			isConnected.value = true;
+			await nextTick();
+			pushConnection.terminate();
+
+			isConnected.value = false;
+			await nextTick();
+			isConnected.value = true;
+			await nextTick();
+
+			expect(reconcileExecutionStateOnReconnect).not.toHaveBeenCalled();
+		});
 	});
 });
