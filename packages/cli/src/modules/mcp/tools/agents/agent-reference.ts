@@ -23,19 +23,9 @@ An n8n Agent is a first-class persisted resource with its own instructions, mode
 tasks, memory, integrations, and lifecycle. An AI Agent node is a node inside a workflow whose
 trigger, surrounding graph, and lifecycle are owned by that workflow.
 
-Treat an explicit artifact request as a routing instruction. When the user asks to build or create an
-"agent" or "assistant", default to an n8n Agent. When they explicitly ask for a workflow or an AI
-Agent node, use the workflow builder.
-
-Only deviate when the requested artifact is an unmistakably poor fit. A fixed trigger or schedule
-followed by enumerable, repeatable steps and fixed actions is usually a workflow. Never silently
-substitute one artifact for another: explain the mismatch and ask before building the alternative.
-
-Prefer an Agent when the model owns runtime decisions, conversations, investigation, iteration,
-proactive work, cross-session memory, or learning. Prefer a workflow when control flow is fixed and
-any LLM usage is a bounded step. Never substitute a Chat Trigger plus an AI Agent node for a
-requested n8n Agent artifact. If the intended artifact is genuinely ambiguous, clarify it before
-creating either one.
+If the request is actually a fixed trigger or schedule with enumerable, repeatable steps, it is
+probably a workflow — explain the mismatch and ask before building the alternative. Never substitute
+a Chat Trigger plus an AI Agent node for a requested n8n Agent.
 
 ## Build sequence
 
