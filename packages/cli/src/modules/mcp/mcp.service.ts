@@ -515,6 +515,7 @@ export class McpService {
 			this.projectRepository,
 			dataTableOps,
 			this.aiGatewayService,
+			{ canvasGroupsEnabled: featureFlags.canvasGroupsEnabled },
 		);
 
 		// The preview app only accompanies the create tool, so both are gated
