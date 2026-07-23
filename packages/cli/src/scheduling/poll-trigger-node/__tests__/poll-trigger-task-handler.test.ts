@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
+import type { WorkflowRepository } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { TriggersAndPollers } from 'n8n-core';
 import type { INode, INodeExecutionData, IPollFunctions, IWorkflowBase } from 'n8n-workflow';
@@ -17,6 +18,7 @@ describe('PollTriggerTaskHandler', () => {
 	const nodeTypes = createNodeTypes();
 	const triggerExecutionContextFactory = mock<TriggerExecutionContextFactory>();
 	const triggersAndPollers = mock<TriggersAndPollers>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
@@ -25,6 +27,7 @@ describe('PollTriggerTaskHandler', () => {
 		rootLogger,
 		triggerExecutionContextFactory,
 		triggersAndPollers,
+		workflowRepository,
 	);
 
 	const onDispatch = vi.fn();
@@ -108,6 +111,7 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		triggersAndPollers.runPollFunction.mockResolvedValue(pollData);
+		workflowRepository.isActive.mockResolvedValue(true);
 
 		acquireIsolate = vi
 			.spyOn(WorkflowExpression.prototype, 'acquireIsolate')
@@ -164,6 +168,16 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollFunctions.__emit).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 			// The isolate is released on this path too, not just the happy path.
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		test('discards the result and reports no dispatch when the workflow was deactivated during poll()', async () => {
+			workflowRepository.isActive.mockResolvedValue(false);
+
+			await handler.execute(buildTask(), report);
+
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 	});

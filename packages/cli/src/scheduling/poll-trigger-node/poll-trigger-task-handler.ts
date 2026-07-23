@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -32,6 +33,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private logger: Logger,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
 		private readonly triggersAndPollers: TriggersAndPollers,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -61,6 +63,20 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			);
 
 			if (pollResponse !== null) {
+				// poll() can run for a while (network I/O against the polled source), so
+				// the workflow may have been deactivated while it was in flight. The
+				// legacy path guards this with `isCurrent()`; the durable path has no
+				// in-memory registration to check, so re-read the stored active state.
+				if (!(await this.workflowRepository.isActive(workflowId))) {
+					this.logger.debug('Workflow deactivated during poll; discarding the result', {
+						taskId: task.id,
+						jobId: task.jobId,
+						workflowId,
+						nodeId,
+					});
+					return report.notDispatched();
+				}
+
 				// __emit saves the cursor and starts the run without waiting on it.
 				pollFunctions.__emit(pollResponse);
 				this.logger.debug('Poll returned new data; handed off to a new execution', {
