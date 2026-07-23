@@ -19,15 +19,15 @@ import type { IUser } from './UserInterface';
 
 export class Wordpress implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Wordpress',
+		displayName: 'WordPress',
 		name: 'wordpress',
 		icon: 'file:wordpress.svg',
 		group: ['output'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Wordpress API',
+		description: 'Consume WordPress API',
 		defaults: {
-			name: 'Wordpress',
+			name: 'WordPress',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
