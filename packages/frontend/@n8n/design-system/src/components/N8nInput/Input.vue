@@ -382,11 +382,6 @@ defineExpose({ focus, blur, select });
 	cursor: default;
 }
 
-.hasPrepend,
-.hasAppend {
-	gap: 0;
-}
-
 .hasPrepend .inputWrapper {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
@@ -408,18 +403,6 @@ defineExpose({ focus, blur, select });
 	font-family: inherit;
 	font-size: var(--input--font-size, var(--font-size--md));
 	color: var(--color--text--shade-1);
-}
-
-.input[type='number'] {
-	appearance: textfield;
-	-moz-appearance: textfield;
-}
-
-.input[type='number']::-webkit-outer-spin-button,
-.input[type='number']::-webkit-inner-spin-button {
-	appearance: none;
-	-webkit-appearance: none;
-	margin: 0;
 }
 
 .input::placeholder {
@@ -501,23 +484,18 @@ defineExpose({ focus, blur, select });
 .append {
 	display: flex;
 	align-items: center;
-	align-self: stretch;
 	flex-shrink: 0;
-	padding: 0 var(--input--padding);
 	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
-	box-shadow: inset 0 0 0 1px var(--input--border-color);
-	color: var(--color--text);
-	font-size: var(--input--font-size);
-	white-space: nowrap;
+	padding: 0 var(--spacing--xs);
 }
 
 .prepend {
-	border-radius: var(--input--radius) 0 0 var(--input--radius);
-	margin-right: -1px;
+	border-right: var(--border);
+	margin-left: calc(-1 * var(--spacing--xs));
 }
 
 .append {
-	border-radius: 0 var(--input--radius) var(--input--radius) 0;
-	margin-left: -1px;
+	border-left: var(--border);
+	margin-right: calc(-1 * var(--spacing--xs));
 }
 </style>
