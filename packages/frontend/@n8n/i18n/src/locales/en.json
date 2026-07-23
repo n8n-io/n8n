@@ -1051,7 +1051,7 @@
 	"credentialEdit.credentialConfig.endUserCredential.connectSubtext": "Each user connects their own account, usable only by them.",
 	"credentialEdit.credentialConfig.endUserCredential.connectedSubtext": "This connection is only usable by you.",
 	"credentialEdit.credentialConfig.credentialType.title": "Credential type",
-	"credentialEdit.credentialConfig.credentialType.disabledTooltip": "Only project admins can change the credential type",
+	"credentialEdit.credentialConfig.credentialType.disabledTooltip": "Only users with the permission to manage end user credentials can change the credential type",
 	"credentialEdit.credentialConfig.credentialType.endUser.title": "End-user credential",
 	"credentialEdit.credentialConfig.credentialType.endUser.subtitle": "Each user's credential is used at run time and only by them.",
 	"credentialEdit.credentialConfig.credentialType.fixed.title": "Fixed credential",
