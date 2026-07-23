@@ -94,7 +94,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
 
 import {
@@ -179,7 +179,6 @@ const { fetchDependencyCounts } = useDependencies();
 const { readOnlyEnv, projectPermissions } = useWorkflowsEmptyState();
 const { hasKnownInstanceContent } = useEmptyStateDetection();
 const emptinessResolved = ref(false);
-let stopTrialIntroModalWatcher: (() => void) | undefined;
 
 // Pinia state persists across in-app navigation, so any already-known content
 // keeps the chrome instant; only a hard page load starts with unknown counts.
@@ -730,27 +729,6 @@ const showTemplateRecommendationV3 = computed(() => {
 	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
 });
 
-const stopTrialIntroModalOpenWatcher = () => {
-	stopTrialIntroModalWatcher?.();
-	stopTrialIntroModalWatcher = undefined;
-};
-
-const tryOpenTrialIntroModal = () => {
-	if (!trialIntroModalStore.shouldShowModal || uiStore.isAnyModalOpen) return;
-	if (trialIntroModalStore.openIfEligible()) {
-		stopTrialIntroModalOpenWatcher();
-	}
-};
-
-const watchForTrialIntroModalOpportunity = () => {
-	stopTrialIntroModalOpenWatcher();
-	stopTrialIntroModalWatcher = watch(
-		() => [trialIntroModalStore.shouldShowModal, uiStore.isAnyModalOpen] as const,
-		tryOpenTrialIntroModal,
-	);
-	void nextTick(tryOpenTrialIntroModal);
-};
-
 /**
  * LIFE-CYCLE HOOKS
  */
@@ -759,8 +737,6 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
 
 	void usersStore.showPersonalizationSurvey();
-
-	watchForTrialIntroModalOpportunity();
 
 	// ResourcesListLayout's own onMounted fetch can't run while chrome is
 	// deferred (it isn't mounted), so trigger it here or the skeleton never resolves.
@@ -778,7 +754,6 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-	stopTrialIntroModalOpenWatcher();
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
 	workflowListEventBus.off('folder-deleted', onFolderDeleted);

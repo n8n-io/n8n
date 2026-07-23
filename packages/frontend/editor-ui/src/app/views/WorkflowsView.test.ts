@@ -10,7 +10,6 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -23,7 +22,6 @@ import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import { useTrialIntroModalStore } from '@/experiments/trialIntroModal/stores/trialIntroModal.store';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -466,28 +464,6 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 
 			await sourceControl.pullWorkfolder(true, 'none');
-		});
-	});
-
-	describe('trial intro modal', () => {
-		it('opens once eligibility is available and the modal stack is clear', async () => {
-			const trialIntroModalStore = mockedStore(useTrialIntroModalStore);
-			const uiStore = mockedStore(useUIStore);
-			trialIntroModalStore.openIfEligible.mockReturnValue(true);
-			trialIntroModalStore.shouldShowModal = false;
-			uiStore.isAnyModalOpen = true;
-
-			renderComponent({ pinia });
-			await nextTick();
-			expect(trialIntroModalStore.openIfEligible).not.toHaveBeenCalled();
-
-			trialIntroModalStore.shouldShowModal = true;
-			await nextTick();
-			expect(trialIntroModalStore.openIfEligible).not.toHaveBeenCalled();
-
-			uiStore.isAnyModalOpen = false;
-			await nextTick();
-			expect(trialIntroModalStore.openIfEligible).toHaveBeenCalledTimes(1);
 		});
 	});
 });
