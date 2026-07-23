@@ -4,9 +4,9 @@ import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DesiredJob, Schedule } from '@n8n/scheduler';
 import { computeFirstRunAt, scheduleFingerprint } from '@n8n/scheduler';
-import { createHash } from 'node:crypto';
 import { PollJobManager } from 'n8n-core';
 import type { CronExpression, INode, TriggerTime } from 'n8n-workflow';
+import { createHash } from 'node:crypto';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { PollTriggerTaskPayload } from './poll-trigger-task';
