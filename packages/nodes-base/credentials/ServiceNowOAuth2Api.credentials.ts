@@ -11,12 +11,39 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Use custom host?',
+			name: 'useCustomHost',
+			type: 'boolean',
+			default: false,
+			description:
+				'Enable if your ServiceNow instance is hosted on a custom domain or behind a reverse-proxy',
+		},
+		{
+			displayName: 'Custom Host',
+			name: 'customHost',
+			type: 'string',
+			placeholder: 'https://sn.my-company.internal',
+			description: 'Full base-URL of the instance',
+			required: true,
+			default: '',
+			displayOptions: {
+				show: {
+					useCustomHost: [true],
+				},
+			},
+		},
+		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',
 			default: '',
 			hint: 'The subdomain can be extracted from the URL. If the URL is: https://dev99890.service-now.com the subdomain is dev99890',
 			required: true,
+			displayOptions: {
+				show: {
+					useCustomHost: [false],
+				},
+			},
 		},
 		{
 			displayName: 'Grant Type',
@@ -28,15 +55,21 @@ export class ServiceNowOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
-			default: '=https://{{$self["subdomain"]}}.service-now.com/oauth_auth.do',
 			required: true,
+			default:
+				'= {{$self.useCustomHost ? ' +
+				'$self.customHost.replace(/\\/$/, "") : ' +
+				'"https://" + $self.subdomain + ".service-now.com"}}/oauth_auth.do',
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
-			default: '=https://{{$self["subdomain"]}}.service-now.com/oauth_token.do',
 			required: true,
+			default:
+				'= {{$self.useCustomHost ? ' +
+				'$self.customHost.replace(/\\/$/, "") : ' +
+				'"https://" + $self.subdomain + ".service-now.com"}}/oauth_token.do',
 		},
 		{
 			displayName: 'Scope',
