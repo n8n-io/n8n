@@ -91,6 +91,7 @@
     "@ai-sdk/amazon-bedrock": "catalog:",
     "@ai-sdk/anthropic": "catalog:",
     "@ai-sdk/azure": "catalog:",
+    "@ai-sdk/baseten": "catalog:",
     "@ai-sdk/cohere": "catalog:",
     "@ai-sdk/deepseek": "catalog:",
     "@ai-sdk/gateway": "catalog:",

@@ -298,6 +298,7 @@ Not yet covered: an automatic "unexpected artifact" fail (a build producing an a
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | No | Generic eval-model API key override |
 | `OPENAI_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `openai/` |
 | `ANTHROPIC_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `anthropic/` |
+| `BASETEN_API_KEY` | No | Provider-specific key used automatically when `N8N_INSTANCE_AI_MODEL` starts with `baseten/` |
 | `N8N_EVAL_EMAIL` | No | n8n login email (defaults to E2E test owner) |
 | `N8N_EVAL_PASSWORD` | No | n8n login password (defaults to E2E test owner) |
 | `LANGSMITH_API_KEY` | No | Enables experiment tracking + tracing. **See caveat below.** |
@@ -849,6 +850,8 @@ Suite pass rates typically sit between 40–65%; most failures are `builder_issu
 Evals run automatically on PRs that change Instance AI code (path-filtered). The workflow boots a set of n8n lane containers, pulls the test-case suite from LangTracer (`--source langtracer --suite baseline`), and runs the CLI against the lanes. See `.github/workflows/test-evals-instance-ai.yml`.
 
 The job is **non-blocking**. Results are posted as a PR comment and uploaded as artifacts. When `LANGSMITH_API_KEY` is set via the `EVALS_LANGSMITH_API_KEY` secret, runs also land as LangSmith experiments tagged with commit SHA + branch, so you can compare against master side-by-side.
+
+For model A/B experiments, dispatch **Instance AI Evals: Experiments** (`test-evals-instance-ai.yml`) and set the `model` input. Supported experiment models include `anthropic/claude-sonnet-4-6`, `openai/gpt-5.6-sol`, `openai/gpt-5.6-terra`, `openai/gpt-5.6-luna`, `openrouter/moonshotai/kimi-k3`, `xai/grok-4.5`, `baseten/zai-org/GLM-5.2`, and `baseten/zai-org/GLM-5.2-Fast`. CI routes the matching provider key from repo secrets (`EVALS_*_KEY`; Baseten uses `EVALS_BASETEN_KEY`).
 
 ## Architecture
 

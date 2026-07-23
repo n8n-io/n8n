@@ -89,6 +89,12 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		webSearch: false,
 		providerTools: [],
 	},
+	baseten: {
+		thinking: 'reasoningEffort',
+		promptCaching: false,
+		webSearch: false,
+		providerTools: [],
+	},
 	cohere: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 	ollama: { thinking: false, promptCaching: false, webSearch: false, providerTools: [] },
 };

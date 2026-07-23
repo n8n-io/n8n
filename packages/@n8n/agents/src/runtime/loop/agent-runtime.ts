@@ -792,6 +792,7 @@ export class AgentRuntime {
 				aiTools: cached.aiTools,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
+				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 			});
 
