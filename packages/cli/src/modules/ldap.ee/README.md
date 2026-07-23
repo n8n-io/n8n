@@ -4,7 +4,7 @@
 
 You can test LDAP sync end-to-end using Docker and an LDAP server image — nothing else needs to be installed. The image lets us create and edit users freely, so we can simulate real scenarios (new hires, renamed users, deprovisioned users) without touching a real LDAP directory.
 
-**1. Start n8n**. In this exampe it will be running locally without docker and available on http://localhost:5678
+**1. Start n8n**. In this example it will be running locally without Docker and available on http://localhost:5678
 
 **2. Start a mock LDAP server in Docker:**
 
@@ -16,6 +16,8 @@ docker run -d --name n8n-ldap-test -p 11389:389 \
 ```
 
 This bootstraps `dc=n8n,dc=local` with an admin bind at `cn=admin,dc=n8n,dc=local` / `admin`. The host port is `11389` (not the standard `389`) to avoid needing elevated privileges to bind it.
+
+Wait a few seconds for the container to finish starting up before continuing.
 
 **3. Create a test user** by piping an LDIF straight into the container:
 
@@ -104,7 +106,7 @@ curl -X POST http://localhost:5678/api/v1/settings/ldap/sync \
 
 **7. Verify disable behavior:** delete the user from LDAP (`ldapdelete`, above) and sync again — the corresponding n8n user should become disabled (not deleted).
 
-**8. Clean up:**
+**8. Clean up.** Disable LDAP login first (Settings → LDAP, uncheck login, or `PUT /settings/ldap` with `loginEnabled: false`) — otherwise n8n is left with LDAP as its active authentication method and no LDAP server to validate logins against. Then remove the container:
 
 ```bash
 docker rm -f n8n-ldap-test
