@@ -15,7 +15,7 @@
 | resolverId | varchar(16) |  | true |  | [public.dynamic_credential_resolver](public.dynamic_credential_resolver.md) |  |
 | type | varchar(128) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| usageScope | varchar(16) | 'workflow'::character varying | false |  |  | Where the credential may be consumed: workflow execution or an instance-level feature |
+| usageScope | varchar(16) | 'project'::character varying | false |  |  | Where the credential may be consumed: a project-owned feature or an instance-level feature |
 
 ## Constraints
 
@@ -33,7 +33,7 @@
 | credentials_entity_resolverId_foreign | FOREIGN KEY | FOREIGN KEY ("resolverId") REFERENCES dynamic_credential_resolver(id) ON DELETE SET NULL |
 | credentials_entity_type_not_null | n | NOT NULL type |
 | credentials_entity_updatedAt_not_null | n | NOT NULL "updatedAt" |
-| credentials_entity_usageScope_check | CHECK | CHECK (((usageScope)::text = ANY ((ARRAY['workflow'::character varying, 'instance'::character varying])::text[]))) |
+| credentials_entity_usageScope_check | CHECK | CHECK (((usageScope)::text = ANY ((ARRAY['project'::character varying, 'instance'::character varying])::text[]))) |
 | credentials_entity_usageScope_not_null | n | NOT NULL usageScope |
 
 ## Indexes

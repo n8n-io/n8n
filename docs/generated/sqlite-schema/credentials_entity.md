@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), "usageScope" VARCHAR(16) NOT NULL DEFAULT 'workflow' CHECK ("usageScope" IN ('workflow', 'instance')), CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL)
+CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(128) NOT NULL, "data" text NOT NULL, "type" varchar(32) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "isManaged" boolean NOT NULL DEFAULT (0), "isGlobal" boolean NOT NULL DEFAULT (0), "isResolvable" boolean NOT NULL DEFAULT (false), "resolvableAllowFallback" boolean NOT NULL DEFAULT (false), "resolverId" varchar(16), "usageScope" VARCHAR(16) NOT NULL DEFAULT 'project' CHECK ("usageScope" IN ('project', 'instance')), CONSTRAINT "credentials_entity_resolverId_foreign" FOREIGN KEY ("resolverId") REFERENCES "dynamic_credential_resolver" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -26,13 +26,13 @@ CREATE TABLE "credentials_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name"
 | resolverId | varchar(16) |  | true |  | [dynamic_credential_resolver](dynamic_credential_resolver.md) |  |
 | type | varchar(32) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| usageScope | VARCHAR(16) | 'workflow' | false |  |  |  |
+| usageScope | VARCHAR(16) | 'project' | false |  |  |  |
 
 ## Constraints
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("usageScope" IN ('workflow', 'instance')) |
+| - | CHECK | CHECK ("usageScope" IN ('project', 'instance')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (resolverId) REFERENCES dynamic_credential_resolver (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 | sqlite_autoindex_credentials_entity_1 | PRIMARY KEY | PRIMARY KEY (id) |
