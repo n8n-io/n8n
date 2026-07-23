@@ -1,7 +1,8 @@
 import type { CreateEvaluationCollectionPayload } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { DatabaseConfig } from '@n8n/config';
+import { DbLock } from '@n8n/db';
 import type {
+	DbLockService,
 	EvaluationCollection,
 	EvaluationCollectionRepository,
 	EvaluationConfig,
@@ -112,8 +113,7 @@ describe('EvaluationCollectionService', () => {
 	let testRunnerService: Mocked<TestRunnerService>;
 	let telemetry: Mocked<Telemetry>;
 	let logger: Mocked<Logger>;
-	let databaseConfig: Mocked<DatabaseConfig>;
-	let tx: Mocked<EntityManager>;
+	let dbLockService: Mocked<DbLockService>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();
@@ -125,16 +125,12 @@ describe('EvaluationCollectionService', () => {
 		testRunnerService = mock<TestRunnerService>();
 		telemetry = mock<Telemetry>();
 		logger = mock<Logger>();
-		databaseConfig = mock<DatabaseConfig>();
-		tx = mock<EntityManager>();
-		// `.manager` isn't deep-mocked; point it at `tx` so the Postgres re-run path's
-		// `manager.transaction(cb)` runs the callback with our mock EntityManager.
-		// (`manager` is readonly on the repo type, so assign through a cast here.)
-		(collectionRepo as unknown as { manager: EntityManager }).manager = tx;
-		tx.transaction.mockImplementation(
-			(async (runInTx: (m: EntityManager) => Promise<unknown>) => await runInTx(tx)) as never,
+		dbLockService = mock<DbLockService>();
+		// The lock is exercised elsewhere; here it just runs the critical section so
+		// the rerun logic (re-check + kickoff) is what these tests observe.
+		dbLockService.withLock.mockImplementation(
+			async (_lockId, fn) => await fn(mock<EntityManager>()),
 		);
-		tx.query.mockResolvedValue([] as never); // pg_advisory_xact_lock is a no-op in tests
 
 		// Async no-op cleanup paths used by rerun rollback.
 		collectionRepo.removeRunsFromCollection.mockResolvedValue(undefined);
@@ -150,7 +146,7 @@ describe('EvaluationCollectionService', () => {
 			testRunnerService,
 			telemetry,
 			logger,
-			databaseConfig,
+			dbLockService,
 		);
 
 		evalConfigRepo.findByIdAndWorkflowId.mockResolvedValue(makeConfig());
@@ -350,30 +346,34 @@ describe('EvaluationCollectionService', () => {
 				finished: Promise.resolve(),
 			});
 
-		it('serializes re-runs with a transaction-scoped advisory lock under Postgres', async () => {
-			databaseConfig.type = 'postgresdb';
+		it('serializes the kickoff under the per-collection re-run lock', async () => {
 			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(singleCompletedRun());
 			freshRunStarts();
 
 			await service.rerunCollection(user, 'wf-1', 'col-1');
 
-			// Advisory lock (not a row lock — that deadlocks against the child insert's
-			// FK lock), keyed by the collection id, taken inside the transaction.
-			expect(tx.transaction).toHaveBeenCalledTimes(1);
-			expect(tx.query).toHaveBeenCalledWith(expect.stringContaining('pg_advisory_xact_lock'), [
-				'col-1',
-			]);
+			// One DbLockService lock, keyed by EVAL_COLLECTION_RERUN + a per-collection
+			// subKey so different collections don't block each other.
+			expect(dbLockService.withLock).toHaveBeenCalledTimes(1);
+			const [lockId, , options] = dbLockService.withLock.mock.calls[0];
+			expect(lockId).toBe(DbLock.EVAL_COLLECTION_RERUN);
+			expect(options?.subKey).toEqual(expect.any(Number));
+			// Kickoff happened inside the lock.
+			expect(testRunnerService.startTestRun).toHaveBeenCalled();
 		});
 
-		it('runs without a transaction or advisory lock under SQLite', async () => {
-			databaseConfig.type = 'sqlite';
-			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce(singleCompletedRun());
-			freshRunStarts();
+		it('re-checks in-flight runs inside the lock and bails when a wave is already running', async () => {
+			// A run already in flight — the guard runs within the lock body and rejects.
+			collectionRepo.getDetailByIdAndWorkflowId.mockResolvedValueOnce({
+				collection: makeCollection(),
+				runs: [makeTestRun({ id: 'tr-live', status: 'running' as const })],
+			});
 
-			await service.rerunCollection(user, 'wf-1', 'col-1');
+			await expect(service.rerunCollection(user, 'wf-1', 'col-1')).rejects.toThrow(BadRequestError);
 
-			expect(tx.transaction).not.toHaveBeenCalled();
-			expect(tx.query).not.toHaveBeenCalled();
+			expect(dbLockService.withLock).toHaveBeenCalledTimes(1);
+			// Guard tripped inside the lock → no fresh wave launched.
+			expect(testRunnerService.startTestRun).not.toHaveBeenCalled();
 		});
 
 		it('re-runs every version with fresh runs and unlinks the old runs', async () => {

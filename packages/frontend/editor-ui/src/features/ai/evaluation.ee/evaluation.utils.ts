@@ -285,6 +285,8 @@ export function formatMetricPercent(
 ): string {
 	const num = normalizeMetricValue(value);
 	if (num === undefined) return '–';
+	// With a resolved scale, normalize exactly (unit vs. boolean matters here) —
+	// `resolveDisplayScale`'s coarse oneToFive/normalized bucket isn't enough.
 	if (options.scale) {
 		const score = normalizeMetricScore(options.key ?? '', num, options.scale);
 		return score === null ? '–' : `${Math.round(score * 100)}%`;

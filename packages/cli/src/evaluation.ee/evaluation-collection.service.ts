@@ -10,9 +10,10 @@ import type {
 } from '@n8n/api-types';
 import { metricScalesFromConfig, normalizeMetricScore } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { DatabaseConfig } from '@n8n/config';
 import type { EvaluationConfig, TestRun, User } from '@n8n/db';
 import {
+	DbLock,
+	DbLockService,
 	EvaluationCollectionRepository,
 	EvaluationConfigRepository,
 	TestRunRepository,
@@ -31,6 +32,20 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 import { resolveConfigMetricScales, runMetricScales } from './metric-scales';
+
+/**
+ * Maps a collection id to the int32 `subKey` that scopes its re-run advisory
+ * lock (Postgres two-int lock form / SQLite mutex key), so different collections
+ * don't serialize against each other. A hash collision only over-serializes two
+ * collections — harmless — so a 32-bit key is sufficient.
+ */
+function advisoryLockSubKey(collectionId: string): number {
+	let hash = 0;
+	for (let i = 0; i < collectionId.length; i++) {
+		hash = (Math.imul(31, hash) + collectionId.charCodeAt(i)) | 0;
+	}
+	return hash;
+}
 
 /**
  * Structural (not the full entity class) so callers can pass plain-object
@@ -64,7 +79,7 @@ export class EvaluationCollectionService {
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
 		private readonly logger: Logger,
-		private readonly databaseConfig: DatabaseConfig,
+		private readonly dbLockService: DbLockService,
 	) {}
 
 	async createCollection(
@@ -313,20 +328,17 @@ export class EvaluationCollectionService {
 
 	/**
 	 * Runs `fn` under a per-collection re-run lock so two concurrent re-runs can't
-	 * each launch a wave. On Postgres this is a transaction-scoped advisory lock —
-	 * deliberately NOT a row lock: a `FOR UPDATE` on the collection row would
-	 * deadlock against the FK KEY-SHARE lock the child `test_run` inserts take on
-	 * that row. Other databases (SQLite) run `fn` directly, so the in-flight
-	 * re-check is best-effort there (single-instance deployments only).
+	 * each launch a wave. Delegates to the shared `DbLockService` — a transaction-
+	 * scoped advisory lock on Postgres, an in-process mutex on SQLite — scoped to
+	 * the collection via `subKey`. The whole in-flight re-check + kickoff runs
+	 * inside the lock on purpose: shrinking the critical section would reopen the
+	 * read-then-act race. A deliberate advisory lock, not a row lock — a
+	 * `FOR UPDATE` on the collection row would deadlock against the FK KEY-SHARE
+	 * lock the child `test_run` inserts take on that row.
 	 */
 	private async withRerunLock<T>(collectionId: string, fn: () => Promise<T>): Promise<T> {
-		if (this.databaseConfig.type !== 'postgresdb') {
-			return await fn();
-		}
-		return await this.collectionRepo.manager.transaction(async (tx) => {
-			// Advisory lock is released on commit; `hashtext` maps the id to the key.
-			await tx.query('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)', [collectionId]);
-			return await fn();
+		return await this.dbLockService.withLock(DbLock.EVAL_COLLECTION_RERUN, async () => await fn(), {
+			subKey: advisoryLockSubKey(collectionId),
 		});
 	}
 

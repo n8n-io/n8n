@@ -198,6 +198,33 @@ describe('useCompareCases', () => {
 		expect(fetchSpy.mock.calls.length).toBe(callsAtSettle);
 	});
 
+	it('polls only in-flight runs, not an already-completed one, on each tick', async () => {
+		const fetchSpy = vi.fn(async (_params: { workflowId: string; runId: string }) => []);
+		store.fetchTestCaseExecutions = fetchSpy as unknown as typeof store.fetchTestCaseExecutions;
+
+		// run-a completed, run-b still running.
+		const mixed = (): EvaluationCollectionDetail => ({
+			...detailWith(['run-a', 'run-b']),
+			runs: [run('run-a'), { ...run('run-b'), status: 'running' as const }],
+		});
+		const detail = ref<EvaluationCollectionDetail | null>(mixed());
+		const { casesLoaded } = useCompareCases(detail, ref('wf-1'));
+
+		const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
+		await flush(); // initial full load fetches both runs
+		expect(casesLoaded.value).toBe(true);
+
+		fetchSpy.mockClear();
+		detail.value = mixed(); // a poll tick while run-b is still running
+		await flush();
+
+		const fetchedRunIds = fetchSpy.mock.calls.map((c) => c[0].runId);
+		// run-a is completed and was already fetched by the initial load → skipped;
+		// run-b is still in flight → polled.
+		expect(fetchedRunIds).toContain('run-b');
+		expect(fetchedRunIds).not.toContain('run-a');
+	});
+
 	it('flags casesError when a run fetch rejects (not a real mismatch)', async () => {
 		store.fetchTestCaseExecutions = vi.fn(async ({ runId }: { runId: string }) => {
 			if (runId === 'run-b') throw new Error('network');

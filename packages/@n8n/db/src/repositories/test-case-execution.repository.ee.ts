@@ -94,8 +94,7 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 				testRun: { id: testRunId },
 				status: 'new',
 				runIndex,
-				// Seed the dataset-row input up front so the compare view can show it
-				// while the case is still pending — refined by the runner on execution.
+				// Refined by the runner on execution; seeded here (see doc comment).
 				inputs: inputs ?? null,
 			}),
 		);
