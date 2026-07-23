@@ -405,4 +405,72 @@ describe('AMQP Trigger Node', () => {
 		eventHandlers['receiver_open']({ receiver });
 		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
 	});
+
+	it('should not release credit for executions that finish while the link is down', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'b', message_id: 2 }, receiver }),
+		);
+
+		eventHandlers['disconnected']({});
+		addCreditSpy.mockClear();
+
+		// both executions finish while disconnected: slots are freed but no credit is added
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+		expect(addCreditSpy).not.toHaveBeenCalled();
+
+		// the reopened receiver grants all free slots, restoring the full window
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenCalledTimes(1);
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+	});
+
+	it('should resume releasing credit per completion after the receiver reopens', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['disconnected']({});
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		addCreditSpy.mockClear();
+
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
+	});
 });

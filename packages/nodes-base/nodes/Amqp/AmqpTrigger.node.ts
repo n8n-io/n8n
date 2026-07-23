@@ -164,8 +164,16 @@ export class AmqpTrigger implements INodeType {
 
 		let lastMsgId: string | number | Buffer | undefined = undefined;
 		let inFlightMessages = 0;
+		// rhea resets link credit when a reconnect attempt starts, so credit added
+		// between disconnect and reattach would double-count with the grant below
+		let receiverReady = true;
+
+		container.on('disconnected', () => {
+			receiverReady = false;
+		});
 
 		container.on('receiver_open', (context: EventContext) => {
+			receiverReady = true;
 			// on reconnect, executions from before the disconnect may still hold slots
 			context.receiver?.add_credit(Math.max(0, pullMessagesNumber - inFlightMessages));
 		});
@@ -187,7 +195,8 @@ export class AmqpTrigger implements INodeType {
 				setTimeout(
 					() => {
 						inFlightMessages--;
-						context.receiver?.add_credit(1);
+						// while the link is down its freed slot is granted by receiver_open instead
+						if (receiverReady) context.receiver?.add_credit(1);
 					},
 					(options.sleepTime as number) || 10,
 				);
@@ -238,6 +247,7 @@ export class AmqpTrigger implements INodeType {
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
+			container.removeAllListeners('disconnected');
 			container.removeAllListeners('receiver_open');
 			container.removeAllListeners('message');
 			connection.close();
@@ -254,6 +264,7 @@ export class AmqpTrigger implements INodeType {
 				container.removeAllListeners('message');
 
 				const timeoutHandler = setTimeout(() => {
+					container.removeAllListeners('disconnected');
 					container.removeAllListeners('receiver_open');
 					container.removeAllListeners('message');
 					connection.close();
