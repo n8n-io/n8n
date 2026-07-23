@@ -27,6 +27,7 @@ import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
@@ -278,6 +279,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<NodeTypes>(),
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
+			mock<AiGatewayService>(),
 		);
 		agentPublishService = new AgentPublishService(
 			logger,

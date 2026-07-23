@@ -1,7 +1,4 @@
 <script setup lang="ts" generic="T = string, D = never">
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nLoading from '@n8n/design-system/components/N8nLoading';
-import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import {
 	DropdownMenuCheckboxItem,
 	DropdownMenuItem,
@@ -13,6 +10,10 @@ import {
 	DropdownMenuPortal,
 } from 'reka-ui';
 import { computed, inject, nextTick, onBeforeUnmount, ref, useCssModule, watch } from 'vue';
+
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nLoading from '@n8n/design-system/components/N8nLoading';
+import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 
 import {
 	DropdownMenuPortalTargetKey,
@@ -346,10 +347,10 @@ onBeforeUnmount(() => {
 			:id="htmlId"
 			:model-value="checked"
 			:aria-selected="highlighted || undefined"
-			@pointermove.capture="handlePointerMove"
 			:disabled="disabled"
 			:data-test-id="testId"
 			:class="[$style.item, props.class, { 'is-disabled': !!disabled }]"
+			@pointermove.capture="handlePointerMove"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">

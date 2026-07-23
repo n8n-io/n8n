@@ -1,6 +1,4 @@
 <script setup lang="ts" generic="T = string, D = never">
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import {
 	DropdownMenuRoot,
 	DropdownMenuTrigger,
@@ -8,6 +6,9 @@ import {
 	DropdownMenuContent,
 } from 'reka-ui';
 import { computed, nextTick, onBeforeUnmount, provide, ref, useCssModule, watch } from 'vue';
+
+import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import { isAlign, isSide } from './DropdownMenu.typeguards';
 import {
