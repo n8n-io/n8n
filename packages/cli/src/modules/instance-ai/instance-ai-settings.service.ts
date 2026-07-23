@@ -170,41 +170,64 @@ function validateSandboxServiceCredential({
 	requireConnectionValue(type, data, 'value');
 }
 
+function validateDaytonaCredential({
+	type,
+	data,
+}: {
+	type: string;
+	data: ICredentialDataDecryptedObject;
+}): void {
+	requireHttpUrl(type, data, 'apiUrl');
+	requireConnectionValue(type, data, 'apiKey');
+}
+
+function validateSearchCredential({
+	type,
+	data,
+}: {
+	type: string;
+	data: ICredentialDataDecryptedObject;
+}): void {
+	if (type === 'searXngApi') requireHttpUrl(type, data, 'apiUrl');
+	else requireConnectionValue(type, data, 'apiKey');
+}
+
 export const INSTANCE_AI_MODEL_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	id: 'instance-ai:model',
 	credentialTypes: INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
+	validate: validateModelCredential,
 };
 
 export const INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	id: 'instance-ai:sandbox:daytona',
 	credentialTypes: ['daytonaApi'],
+	validate: validateDaytonaCredential,
 };
 
 export const INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	id: 'instance-ai:sandbox:n8n',
 	credentialTypes: ['httpHeaderAuth'],
+	validate: validateSandboxServiceCredential,
 };
 
 export const INSTANCE_AI_SEARCH_CREDENTIAL_POLICY: InstanceCredentialUse = {
 	id: 'instance-ai:search',
 	credentialTypes: INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	validate: validateSearchCredential,
 };
 
 function validateInstanceAiCredential(
 	policy: InstanceCredentialUse,
 	credential: { type: string; data: ICredentialDataDecryptedObject },
 ): void {
-	const { type, data } = credential;
 	if (policy === INSTANCE_AI_MODEL_CREDENTIAL_POLICY) {
 		validateModelCredential(credential);
 	} else if (policy === INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY) {
-		requireHttpUrl(type, data, 'apiUrl');
-		requireConnectionValue(type, data, 'apiKey');
+		validateDaytonaCredential(credential);
 	} else if (policy === INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY) {
 		validateSandboxServiceCredential(credential);
 	} else if (policy === INSTANCE_AI_SEARCH_CREDENTIAL_POLICY) {
-		if (type === 'searXngApi') requireHttpUrl(type, data, 'apiUrl');
-		else requireConnectionValue(type, data, 'apiKey');
+		validateSearchCredential(credential);
 	} else {
 		throw new UnexpectedError(`Unknown instance AI credential policy "${policy.id}"`);
 	}

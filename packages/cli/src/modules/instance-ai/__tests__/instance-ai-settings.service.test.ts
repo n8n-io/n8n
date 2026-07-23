@@ -19,7 +19,10 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialBroker } from '@/credentials/instance-credential-broker';
 
 import {
+	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
 	INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
+	INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+	INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
 	InstanceAiSettingsService,
 } from '../instance-ai-settings.service';
 
@@ -688,15 +691,23 @@ describe('InstanceAiSettingsService', () => {
 					globalConfig.deployment.type = deployment === 'cloud' ? 'cloud' : 'default';
 					aiService.isProxyEnabled.mockReturnValue(deployment === 'proxy');
 
-					await expect(
-						service.updateAdminSettings(
-							{
-								modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
-								modelName: 'gpt-5',
+					for (const update of [
+						{
+							modelConnection: { type: 'openAiApi', data: { apiKey: 'k' } },
+							modelName: 'gpt-5',
+						},
+						{
+							sandboxConnection: {
+								type: 'daytonaApi',
+								data: { apiUrl: 'https://daytona.example.com', apiKey: 'k' },
 							},
-							adminUser,
-						),
-					).rejects.toThrow(UnprocessableRequestError);
+						},
+						{ searchConnection: { type: 'braveSearchApi', data: { apiKey: 'k' } } },
+					] as const) {
+						await expect(service.updateAdminSettings(update, adminUser)).rejects.toThrow(
+							UnprocessableRequestError,
+						);
+					}
 					expect(credentialsService.runInstanceCredentialHooks).not.toHaveBeenCalled();
 				},
 			);
@@ -779,6 +790,33 @@ describe('InstanceAiSettingsService', () => {
 		it('should not offer Ollama credentials to the unsupported runtime', () => {
 			expect(INSTANCE_AI_MODEL_CREDENTIAL_POLICY.credentialTypes).not.toContain('ollamaApi');
 		});
+
+		it.each([
+			['model', INSTANCE_AI_MODEL_CREDENTIAL_POLICY, { type: 'openAiApi', data: {} }, /apiKey/],
+			[
+				'Daytona',
+				INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
+				{ type: 'daytonaApi', data: { apiUrl: 'https://daytona.example.com' } },
+				/apiKey/,
+			],
+			[
+				'n8n Sandbox',
+				INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY,
+				{ type: 'httpHeaderAuth', data: { name: 'Authorization', value: 'k' } },
+				/x-api-key/,
+			],
+			[
+				'search',
+				INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
+				{ type: 'braveSearchApi', data: {} },
+				/apiKey/,
+			],
+		] as const)(
+			'should expose PATCH validation for %s connections',
+			(_name, policy, credential, error) => {
+				expect(() => policy.validate?.(credential)).toThrow(error);
+			},
+		);
 
 		it('should clear a service credential assignment', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
