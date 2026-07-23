@@ -263,7 +263,7 @@ describe('InstanceAiSettingsService', () => {
 				expect(credentialsService.createInstanceCredential).toHaveBeenCalledWith(
 					expect.objectContaining({
 						type: 'openAiApi',
-						availability: 'instance',
+						usageScope: 'instance',
 						name: 'AI Assistant model',
 					}),
 					adminUser,

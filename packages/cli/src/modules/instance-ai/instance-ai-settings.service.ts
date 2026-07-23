@@ -746,7 +746,7 @@ export class InstanceAiSettingsService {
 			name,
 			type: connection.type,
 			data: connection.data,
-			availability: 'instance',
+			usageScope: 'instance',
 		};
 		const created = await this.credentialsService.createInstanceCredential(dto, user, ctx, {
 			skipExternalHooks: true,

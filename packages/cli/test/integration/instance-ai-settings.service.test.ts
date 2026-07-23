@@ -65,7 +65,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 
 		expect(result.modelCredentialId).toEqual(expect.any(String));
 		expect(result.modelName).toBe('gpt-5');
-		const credentials = await credentialsRepository.findBy({ availability: 'instance' });
+		const credentials = await credentialsRepository.findBy({ usageScope: 'instance' });
 		expect(credentials).toHaveLength(1);
 		expect(credentials[0].id).toBe(result.modelCredentialId);
 		await expect(
@@ -84,9 +84,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 			'settings write failed',
 		);
 
-		await expect(credentialsRepository.findBy({ availability: 'instance' })).resolves.toHaveLength(
-			0,
-		);
+		await expect(credentialsRepository.findBy({ usageScope: 'instance' })).resolves.toHaveLength(0);
 		await expect(
 			assignmentRepository.findAssignedCredentialId(INSTANCE_AI_MODEL_CREDENTIAL_POLICY.id),
 		).resolves.toBeNull();
@@ -99,7 +97,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 				name: 'AI Assistant model',
 				type: 'openAiApi',
 				data: { apiKey: 'test-key' },
-				availability: 'instance',
+				usageScope: 'instance',
 			},
 			owner,
 			{},
@@ -169,7 +167,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 				name: 'Workflow credential',
 				type: 'openAiApi',
 				data: 'workflow-encrypted',
-				availability: 'workflow',
+				usageScope: 'project',
 			}),
 		);
 
