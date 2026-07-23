@@ -31,8 +31,7 @@ export class WorkflowsPublicController {
 		@Param('workflowId') workflowId: string,
 		@Query query: ListWorkflowHistoryQueryDto,
 	): Promise<WorkflowVersionHistoryListPublicDto> {
-		let offset = query.offset;
-		let { limit } = query;
+		let { limit, offset } = query;
 
 		if (query.cursor) {
 			try {
