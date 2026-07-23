@@ -155,6 +155,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "chatHubAgent:delete",
   "chatHubAgent:list",
   "breakingChanges:list",
+  "breakingChanges:migrate",
   "apiKey:manage",
   "apiKey:list",
   "apiKey:create",

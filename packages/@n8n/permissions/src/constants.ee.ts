@@ -76,7 +76,7 @@ export const RESOURCES = {
 	mcpApiKey: ['create', 'rotate'] as const,
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
-	breakingChanges: ['list'] as const,
+	breakingChanges: ['list', 'migrate'] as const,
 	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
