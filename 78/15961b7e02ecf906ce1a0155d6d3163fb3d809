@@ -1,0 +1,25 @@
+packages/cli/src/services/__tests__/dynamic-node-parameters.service.test.ts
+  s_8598b81dafbcc2::t_bfb15acac7dd27 222-244,246-340
+  s_8598b81dafbcc2::t_1a28f3458febee 245
+  s_8598b81dafbcc2::t_3fe49988792634 2-3,7,10
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_8598b81dafbcc2::t_aaf71ccdecb4a1 1-9
+  s_8598b81dafbcc2::t_40372763beecd5 157-174,176-190
+  s_8598b81dafbcc2::t_7ec5283841c3d1 175
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7815961b7e02ecf906ce1a0155d6d3163fb3d809",
+  "prompts": {},
+  "sessions": {
+    "s_8598b81dafbcc2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c21c001-22a9-4c51-b06e-3d448465812e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
