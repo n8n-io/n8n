@@ -17,7 +17,7 @@ import type { ICredentialsResponse } from '../credentials.types';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from './oauthCallback';
+import { getTrustedOAuthOrigins, hasOAuthTokenData, waitForOAuthCallback } from './oauthCallback';
 
 /**
  * Composable for OAuth credential type detection and authorization.
@@ -206,67 +206,12 @@ export function useCredentialOAuth() {
 		return popup;
 	}
 
-	async function waitForOAuthCallback(popup: Window, signal?: AbortSignal): Promise<boolean> {
-		return await new Promise((resolve) => {
-			const oauthChannel = new BroadcastChannel('oauth-callback');
-			const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
-			let settled = false;
-
-			function settle(result: boolean) {
-				if (settled) return;
-				settled = true;
-				oauthChannel.close();
-				clearInterval(popupClosedPoll);
-				window.removeEventListener('message', onWindowMessage);
-				resolve(result);
-			}
-
-			function handleResult(result: boolean) {
-				if (settled) return;
-				popup.close();
-
-				if (result) {
-					toast.showMessage({
-						title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
-						type: 'success',
-					});
-				} else {
-					toast.showMessage({
-						title: i18n.baseText('nodeCredentials.oauth.accountConnectionFailed'),
-						type: 'error',
-					});
-				}
-
-				settle(result);
-			}
-
-			// Cross-origin embed fallback: the callback page also posts to the opener.
-			function onWindowMessage(event: MessageEvent) {
-				const result = parseOAuthCallbackMessage(event, trustedOrigins);
-				if (result === null) return;
-				handleResult(result === 'success');
-			}
-
-			signal?.addEventListener('abort', () => {
-				settle(false);
-			});
-
-			oauthChannel.addEventListener('message', (event: MessageEvent) => {
-				handleResult(event.data === 'success');
-			});
-
-			window.addEventListener('message', onWindowMessage);
-
-			// Fallback: if the popup is closed without delivering a callback (e.g. the
-			// user closes it manually), no message ever arrives. Poll for the closed
-			// popup so the promise resolves and the listeners above are cleaned up
-			// instead of leaking and hanging indefinitely.
-			const popupClosedPoll = setInterval(() => {
-				if (popup.closed) {
-					settle(false);
-				}
-			}, 500);
-		});
+	async function isConnected(credentialId: string): Promise<boolean> {
+		try {
+			return hasOAuthTokenData(await credentialsStore.getCredentialData({ id: credentialId }));
+		} catch {
+			return false;
+		}
 	}
 
 	/**
@@ -277,6 +222,11 @@ export function useCredentialOAuth() {
 		credential: ICredentialsResponse,
 		signal?: AbortSignal,
 	): Promise<boolean> {
+		// Snapshot before opening the popup: token presence can only confirm the
+		// flow for credentials that had no token yet (a reconnect's old token
+		// would read as an immediate false success).
+		const hadTokenData = await isConnected(credential.id);
+
 		const urlResult = await getOAuthAuthorizationUrl(credential);
 		if (!urlResult.ok) {
 			if (urlResult.error === 'no-url') showOAuthUrlError();
@@ -294,7 +244,30 @@ export function useCredentialOAuth() {
 			return false;
 		}
 
-		return await waitForOAuthCallback(popup, signal);
+		const outcome = await waitForOAuthCallback({
+			popup,
+			trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+			signal,
+			verifyConnected: hadTokenData ? undefined : async () => await isConnected(credential.id),
+		});
+
+		// No-op when the opener relationship was severed by the provider's COOP
+		// policy; the callback page closes itself in that case.
+		popup.close();
+
+		if (outcome === 'success') {
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.oauth.accountConnected'),
+				type: 'success',
+			});
+		} else if (outcome !== 'aborted') {
+			toast.showMessage({
+				title: i18n.baseText('nodeCredentials.oauth.accountConnectionFailed'),
+				type: 'error',
+			});
+		}
+
+		return outcome === 'success';
 	}
 
 	/**

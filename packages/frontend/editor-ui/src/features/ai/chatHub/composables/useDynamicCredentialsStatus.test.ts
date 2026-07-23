@@ -272,14 +272,15 @@ describe('useDynamicCredentialsStatus', () => {
 
 			const authorizePromise = authorize('cred-1');
 
-			// Simulate popup closing
+			// The popup reads as closed (either really closed or COOP severed the
+			// opener relationship) — the flow must keep verifying with the backend.
 			mockPopup.closed = true;
 
-			// First poll: still missing
+			// First verification: still missing
 			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
 			await vi.advanceTimersByTimeAsync(500); // popup-closed poll fires
 
-			// Second poll after 1s delay: now configured
+			// Second verification after the verify interval: now configured
 			mockFetchWorkflowExecutionStatus.mockResolvedValue(
 				createExecutionStatus({
 					credentials: [
@@ -307,7 +308,7 @@ describe('useDynamicCredentialsStatus', () => {
 					readyToExecute: true,
 				}),
 			);
-			await vi.advanceTimersByTimeAsync(1000); // pollUntilConfigured delay
+			await vi.advanceTimersByTimeAsync(2000); // verification interval
 
 			await authorizePromise;
 
@@ -318,7 +319,7 @@ describe('useDynamicCredentialsStatus', () => {
 			vi.unstubAllGlobals();
 		});
 
-		it('should stop after max attempts even if still missing', async () => {
+		it('should stop waiting at the flow timeout if never configured', async () => {
 			vi.useFakeTimers();
 
 			const workflowId = ref<string | null>('wf-1');
@@ -340,11 +341,11 @@ describe('useDynamicCredentialsStatus', () => {
 			// Popup closes
 			mockPopup.closed = true;
 
-			// All polls return missing — never becomes configured
+			// All verifications return missing — never becomes configured
 			mockFetchWorkflowExecutionStatus.mockResolvedValue(createExecutionStatus());
 
-			// Trigger popup-closed detection + all 10 poll attempts (500ms + 10 * 1000ms)
-			await vi.advanceTimersByTimeAsync(500 + 10 * 1000);
+			// Advance past the overall flow timeout
+			await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 500);
 			await authorizePromise;
 
 			// Should have stopped and set isConnecting to false
@@ -374,7 +375,8 @@ describe('useDynamicCredentialsStatus', () => {
 		});
 
 		it('should open popup with valid OAuth URL', async () => {
-			const mockOpen = vi.fn(() => ({ close: vi.fn() }));
+			const mockPopup = { closed: false, close: vi.fn() };
+			const mockOpen = vi.fn(() => mockPopup);
 			vi.stubGlobal('open', mockOpen);
 
 			mockAuthorizeDynamicCredential.mockResolvedValue('https://accounts.google.com/oauth');
@@ -386,15 +388,37 @@ describe('useDynamicCredentialsStatus', () => {
 				expect(credentials.value).toHaveLength(2);
 			});
 
-			await authorize('cred-1');
+			vi.useFakeTimers();
+			try {
+				const authorizePromise = authorize('cred-1');
+				await vi.advanceTimersByTimeAsync(0);
 
-			expect(mockOpen).toHaveBeenCalledWith(
-				'https://accounts.google.com/oauth',
-				'OAuth Authorization',
-				expect.any(String),
-			);
+				expect(mockOpen).toHaveBeenCalledWith(
+					'https://accounts.google.com/oauth',
+					'OAuth Authorization',
+					expect.any(String),
+				);
 
-			vi.unstubAllGlobals();
+				// Settle the flow: popup closes and the backend reports configured.
+				mockPopup.closed = true;
+				mockFetchWorkflowExecutionStatus.mockResolvedValue(
+					createExecutionStatus({
+						credentials: [
+							{
+								credentialId: 'cred-1',
+								credentialName: 'Google Sheets',
+								credentialType: 'googleSheetsOAuth2Api',
+								credentialStatus: 'configured',
+							},
+						],
+					}),
+				);
+				await vi.advanceTimersByTimeAsync(1000);
+				await authorizePromise;
+			} finally {
+				vi.useRealTimers();
+				vi.unstubAllGlobals();
+			}
 		});
 
 		it('should set error when authorize API fails', async () => {

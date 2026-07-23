@@ -6,6 +6,10 @@ import {
 	revokeDynamicCredential,
 } from '@/features/ai/chatHub/chat.api';
 import type { WorkflowExecutionStatus } from '@n8n/api-types';
+import {
+	getTrustedOAuthOrigins,
+	waitForOAuthCallback,
+} from '@/features/credentials/composables/oauthCallback';
 
 export interface DynamicCredentialItem {
 	credentialId: string;
@@ -116,32 +120,32 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 				'scrollbars=no,resizable=yes,status=no,titlebar=no,location=no,toolbar=no,menubar=no,width=500,height=700';
 			const oauthPopup = window.open(oauthUrl, 'OAuth Authorization', params);
 
-			// Listen for OAuth callback via BroadcastChannel
-			const oauthChannel = new BroadcastChannel('oauth-callback');
-			let settled = false;
-
-			const settle = async () => {
-				if (settled) return;
-				settled = true;
-				oauthChannel.close();
-				clearInterval(pollInterval);
-				await pollUntilConfigured(credentialId);
+			if (!oauthPopup) {
+				cred.error = 'Failed to start authorization';
 				cred.isConnecting = false;
-			};
+				return;
+			}
 
-			oauthChannel.addEventListener('message', async (event: MessageEvent) => {
-				if (event.data === 'success') {
-					if (oauthPopup) oauthPopup.close();
-					await settle();
-				}
+			const outcome = await waitForOAuthCallback({
+				popup: oauthPopup,
+				trustedOrigins: getTrustedOAuthOrigins(rootStore.urlBaseEditor),
+				verifyConnected: async () => {
+					await fetchStatus();
+					return (
+						credentials.value.find((c) => c.credentialId === credentialId)?.credentialStatus ===
+						'configured'
+					);
+				},
 			});
 
-			// Fallback: poll for popup closed (handles cross-origin dev env)
-			const pollInterval = setInterval(() => {
-				if (oauthPopup?.closed) {
-					void settle();
-				}
-			}, 500);
+			oauthPopup.close();
+
+			if (outcome === 'success') {
+				await pollUntilConfigured(credentialId);
+			} else {
+				await fetchStatus();
+			}
+			cred.isConnecting = false;
 		} catch {
 			cred.error = 'Failed to start authorization';
 			cred.isConnecting = false;
