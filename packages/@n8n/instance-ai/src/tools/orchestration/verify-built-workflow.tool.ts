@@ -136,6 +136,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				domainContext: target.domainContext,
 				workflowTaskService,
 				logger: context.logger,
+				fallbackModelConfig: context.modelId,
 			});
 
 			if (buildOutcome.nodeSimulationPlan === undefined) {
