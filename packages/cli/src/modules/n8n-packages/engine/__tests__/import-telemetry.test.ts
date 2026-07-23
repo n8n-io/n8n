@@ -87,6 +87,7 @@ const request = mock<ImportPackageRequest>({
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
 	workflowPublishingPolicy: 'preserve-published-state',
+	missingNodeTypeMode: 'fail',
 });
 
 const manifest = mock<PackageManifest>({ sourceId: 'src-1', packageFormatVersion: '1' });

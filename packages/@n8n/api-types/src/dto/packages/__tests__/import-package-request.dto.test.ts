@@ -1,4 +1,7 @@
-import { ImportPackageRequestDto } from '../import-package-request.dto';
+import {
+	ImportPackageRequestDto,
+	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
+} from '../import-package-request.dto';
 
 describe('ImportPackageRequestDto', () => {
 	it('accepts omitted routing fields and defaults credential modes', () => {
@@ -12,6 +15,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -36,6 +40,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -62,6 +67,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'new-version',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -87,6 +93,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'skip',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				missingNodeTypeMode: 'fail',
 				folderConflictPolicy: 'merge',
 				dataTableMatchingMode: 'by-id',
 				dataTableMissingMode: 'create',
@@ -273,6 +280,40 @@ describe('ImportPackageRequestDto', () => {
 					workflowIdPolicy: 'reuse',
 				}).success,
 			).toBe(false);
+		});
+	});
+
+	describe('missingNodeTypeMode', () => {
+		it('defaults to "fail" when omitted', () => {
+			const result = ImportPackageRequestDto.safeParse({ workflowConflictPolicy: 'fail' });
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.missingNodeTypeMode).toBe('fail');
+			}
+		});
+
+		it('accepts "import-anyway"', () => {
+			const result = ImportPackageRequestDto.safeParse({
+				workflowConflictPolicy: 'fail',
+				missingNodeTypeMode: 'import-anyway',
+			});
+			expect(result.success).toBe(true);
+			if (result.success) {
+				expect(result.data.missingNodeTypeMode).toBe('import-anyway');
+			}
+		});
+
+		it('rejects unsupported missingNodeTypeMode values', () => {
+			expect(
+				ImportPackageRequestDto.safeParse({
+					workflowConflictPolicy: 'fail',
+					missingNodeTypeMode: 'skip',
+				}).success,
+			).toBe(false);
+		});
+
+		it('is accepted as a multipart form field', () => {
+			expect(IMPORT_PACKAGE_REQUEST_FORM_FIELDS).toContain('missingNodeTypeMode');
 		});
 	});
 

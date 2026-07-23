@@ -14,6 +14,7 @@ interface ImportFlags {
 	conflictPolicy: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
+	missingNodeTypeMode?: string;
 	folderConflictPolicy?: string;
 	credentialMatchingMode?: string;
 	credentialMissingMode?: string;
@@ -59,6 +60,7 @@ describe('package import command', () => {
 			conflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			missingNodeTypeMode: 'import-anyway',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',
@@ -82,6 +84,7 @@ describe('package import command', () => {
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			missingNodeTypeMode: 'import-anyway',
 			folderConflictPolicy: 'merge',
 			credentialMatchingMode: 'id-only',
 			credentialMissingMode: 'create-stub',

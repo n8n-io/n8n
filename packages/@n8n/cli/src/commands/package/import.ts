@@ -41,6 +41,12 @@ export default class PackageImport extends BaseCommand {
 			options: ['new', 'source'],
 			aliases: ['workflow-id-policy'],
 		}),
+		missingNodeTypeMode: Flags.string({
+			description:
+				'What to do when a workflow uses a node type or version this instance does not have (default on the instance: fail). With import-anyway, affected workflows are imported but never published',
+			options: ['fail', 'import-anyway'],
+			aliases: ['missing-node-type-mode'],
+		}),
 		folderConflictPolicy: Flags.string({
 			description: 'What to do when a package folder already exists in the target project',
 			options: ['merge', 'fail'],
@@ -106,6 +112,7 @@ export default class PackageImport extends BaseCommand {
 						workflowConflictPolicy: flags.conflictPolicy,
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
+						missingNodeTypeMode: flags.missingNodeTypeMode,
 						folderConflictPolicy: flags.folderConflictPolicy,
 						credentialMatchingMode: flags.credentialMatchingMode,
 						credentialMissingMode: flags.credentialMissingMode,
