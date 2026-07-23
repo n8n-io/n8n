@@ -10,4 +10,3 @@ export type {
 } from './define';
 export { collectDuplicateNames, validateEntrySchemas } from './registry-checks';
 export { TELEMETRY_EVENT } from './telemetry-events';
-export { getEventValidationError } from './validate';

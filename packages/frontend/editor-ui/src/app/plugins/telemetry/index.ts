@@ -115,7 +115,7 @@ export class TelemetryService implements Telemetry {
 		const eventName = typeof event === 'string' ? event : event.name;
 
 		if (typeof event !== 'string') {
-			const validationError = event.getValidationError(properties);
+			const validationError = event.validateProperties(properties);
 			if (validationError) console.warn(validationError);
 		}
 

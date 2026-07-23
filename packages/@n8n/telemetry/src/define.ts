@@ -9,7 +9,7 @@ export type TelemetryEventInput = {
 };
 
 export type TelemetryEventDef = TelemetryEventInput & {
-	readonly getValidationError: (properties: unknown) => string | null;
+	readonly validateProperties: (properties: unknown) => string | null;
 };
 
 export type InferTelemetryProps<T extends TelemetryEventInput> = z.infer<T['properties']>;
@@ -23,7 +23,7 @@ export function defineTelemetryEvents<const T extends Record<string, TelemetryEv
 	for (const [key, event] of Object.entries(events)) {
 		result[key] = {
 			...event,
-			getValidationError: (properties: unknown) => getEventValidationError(event, properties),
+			validateProperties: (properties: unknown) => getEventValidationError(event, properties),
 		};
 	}
 	return result as { readonly [K in keyof T]: T[K] & TelemetryEventDef };
