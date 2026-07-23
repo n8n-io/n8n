@@ -23,6 +23,9 @@ export class OAuthClient extends WithTimestamps {
 	@Column({ type: String, default: 'none' })
 	tokenEndpointAuthMethod: string;
 
+	@Column({ type: Boolean, default: false })
+	isFirstParty: boolean;
+
 	@OneToMany('AuthorizationCode', 'client')
 	authorizationCodes: AuthorizationCode[];
 

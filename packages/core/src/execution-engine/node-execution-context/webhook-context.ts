@@ -20,6 +20,7 @@ import type {
 	WebhookType,
 	Workflow,
 	WorkflowExecuteMode,
+	N8nOAuth2FlowResult,
 } from 'n8n-workflow';
 import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
@@ -177,6 +178,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			throw new UnexpectedError('Cookie auth validation is not available');
 		}
 		return await this.additionalData.validateCookieAuth(cookieValue);
+	}
+
+	async beginN8nOAuth2Flow(resourceUrl: string): Promise<string> {
+		if (!this.additionalData.beginN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.beginN8nOAuth2Flow(resourceUrl);
+	}
+
+	async completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult> {
+		if (!this.additionalData.completeN8nOAuth2Flow) {
+			throw new UnexpectedError('OAuth2 flow is not available');
+		}
+		return await this.additionalData.completeN8nOAuth2Flow(code, state);
 	}
 
 	async validateN8nOAuth2Token(

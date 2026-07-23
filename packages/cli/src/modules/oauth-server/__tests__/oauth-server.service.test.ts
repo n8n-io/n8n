@@ -1,4 +1,3 @@
-import type { Mock, Mocked } from 'vitest';
 import {
 	InvalidGrantError,
 	InvalidTargetError,
@@ -7,7 +6,15 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+
+import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
+import type { McpConfig } from '@/modules/mcp/mcp.config';
+import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import type { UrlService } from '@/services/url.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
@@ -17,12 +24,6 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
-import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
-import type { McpConfig } from '@/modules/mcp/mcp.config';
-import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
-import { UserManagementMailer } from '@/user-management/email';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
@@ -37,6 +38,9 @@ let userConsentRepository: Mocked<UserConsentRepository>;
 let mailer: Mocked<UserManagementMailer>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
 
+// Shared, immutable across tests: the base URLs gate the first-party client_id guard.
+const urlServiceMock = mock<UrlService>();
+
 describe('OAuthServerService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
@@ -46,6 +50,8 @@ describe('OAuthServerService', () => {
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
 		mailer = mockInstance(UserManagementMailer);
+		urlServiceMock.getWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
+		urlServiceMock.getTestWebhookBaseUrl.mockReturnValue('https://n8n.example.com/');
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
@@ -69,6 +75,7 @@ describe('OAuthServerService', () => {
 			userConsentRepository,
 			resourceRegistry,
 			mailer,
+			urlServiceMock,
 		);
 	});
 
@@ -137,6 +144,138 @@ describe('OAuthServerService', () => {
 			});
 		});
 
+		describe('getClient — virtual first-party client', () => {
+			const FIRST_PARTY_URL = 'https://n8n.example.com/form/abc';
+			const NON_FIRST_PARTY_URL = 'https://n8n.example.com/mcp-server/http';
+			let firstPartyService: OAuthServerService;
+
+			beforeAll(() => {
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				registry.register({
+					id: 'form-abc',
+					isFirstParty: true,
+					displayName: 'My Form',
+					getResourceUrl: () => FIRST_PARTY_URL,
+					getAudiences: () => [FIRST_PARTY_URL],
+					getAllowedRedirectUris: async () => [FIRST_PARTY_URL],
+					scopes: [],
+					authorize: async () => true,
+				});
+				// A resource that exists but is not first-party (mirror of an MCP resource).
+				registry.register({
+					id: 'mcp-x',
+					getResourceUrl: () => NON_FIRST_PARTY_URL,
+					getAudiences: () => [NON_FIRST_PARTY_URL],
+					scopes: [],
+					authorize: async () => true,
+				});
+				firstPartyService = new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+				);
+			});
+
+			it('lazily upserts and returns a virtual client on a DB miss for a first-party resource', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(FIRST_PARTY_URL);
+
+				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+					{
+						id: FIRST_PARTY_URL,
+						name: 'My Form',
+						redirectUris: [FIRST_PARTY_URL],
+						grantTypes: ['authorization_code'],
+						tokenEndpointAuthMethod: 'none',
+						clientSecret: null,
+						clientSecretExpiresAt: null,
+						isFirstParty: true,
+					},
+					['id'],
+				);
+				expect(result).toEqual({
+					client_id: FIRST_PARTY_URL,
+					client_name: 'My Form',
+					redirect_uris: [FIRST_PARTY_URL],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+					response_types: ['code'],
+					logo_uri: undefined,
+					tos_uri: undefined,
+				});
+			});
+
+			it('returns undefined and does not upsert when the resolved resource is not first-party', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(NON_FIRST_PARTY_URL);
+
+				expect(result).toBeUndefined();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('returns undefined and does not upsert when no resource resolves', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(
+					'https://n8n.example.com/form/unknown',
+				);
+
+				expect(result).toBeUndefined();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+
+			it('short-circuits without consulting the resolver registry for a non-webhook client_id', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				const getByResourceUrl = vi.spyOn(registry, 'getByResourceUrl');
+				const svc = new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+				);
+
+				const result = await svc.clientsStore.getClient('https://evil.example.com/form/abc');
+
+				expect(result).toBeUndefined();
+				expect(getByResourceUrl).not.toHaveBeenCalled();
+				expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('registered-client cap excludes first-party clients', () => {
+			it('counts only non-first-party clients for the limit check', async () => {
+				oauthClientRepository.countBy.mockResolvedValue(0);
+
+				await service.isClientLimitReached();
+
+				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+			});
+
+			it('counts only non-first-party clients for the instance stats', async () => {
+				oauthClientRepository.countBy.mockResolvedValue(0);
+
+				await service.getInstanceClientStats();
+
+				expect(oauthClientRepository.countBy).toHaveBeenCalledWith({ isFirstParty: false });
+			});
+		});
+
 		describe('registerClient', () => {
 			it('should save client with all required fields', async () => {
 				const clientInfo = {
@@ -163,6 +302,7 @@ describe('OAuthServerService', () => {
 					clientSecret: null,
 					clientSecretExpiresAt: null,
 					tokenEndpointAuthMethod: 'none',
+					isFirstParty: false,
 				});
 				expect(result).toEqual(clientInfo);
 			});
@@ -194,6 +334,7 @@ describe('OAuthServerService', () => {
 					clientSecret: 'secret-123',
 					clientSecretExpiresAt: 1234567890,
 					tokenEndpointAuthMethod: 'client_secret_post',
+					isFirstParty: false,
 				});
 			});
 
@@ -1177,6 +1318,7 @@ describe('OAuthServerService', () => {
 				userConsentRepository,
 				multiRegistry,
 				mailer,
+				urlServiceMock,
 			);
 
 			expect(
@@ -1222,6 +1364,7 @@ describe('OAuthServerService', () => {
 				userConsentRepository,
 				configuredRegistry,
 				mailer,
+				urlService,
 			);
 		};
 

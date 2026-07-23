@@ -5,6 +5,9 @@
  */
 export const WORKFLOW_MCP_TRIGGER_SCOPES: string[] = [];
 
+/** Scopes advertised for per-workflow Form trigger resources. Empty, like MCP triggers. */
+export const FORM_TRIGGER_SCOPES: string[] = [];
+
 export function trimTrailingSlash(path: string): string {
 	if (path.endsWith('/')) {
 		path = path.slice(0, -1);

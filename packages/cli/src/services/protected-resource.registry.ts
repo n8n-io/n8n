@@ -65,6 +65,8 @@ export interface ProtectedResource {
 	 */
 	getAllowedRedirectUris?(): Promise<string[]>;
 
+	isFirstParty?: boolean;
+
 	/**
 	 * Determine whether the given user is authorized to access this resource.
 	 * Called during the consent flow to gate access to the resource.

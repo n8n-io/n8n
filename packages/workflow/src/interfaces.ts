@@ -154,6 +154,10 @@ export type N8nOAuth2ValidationResult =
 	| { valid: true; user: IUser }
 	| { valid: false; reason: OAuth2FailureReason };
 
+export type N8nOAuth2FlowResult =
+	| { valid: true; token: string; user: IUser }
+	| { valid: false; reason: string };
+
 export type ProjectSharingData = {
 	id: string;
 	name: string | null;
@@ -1451,6 +1455,8 @@ export interface IHookFunctions
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
+	beginN8nOAuth2Flow(resourceUrl: string): Promise<string>;
+	completeN8nOAuth2Flow(code: string, state: string): Promise<N8nOAuth2FlowResult>;
 	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;
 	/**
@@ -3554,6 +3560,8 @@ export interface IWorkflowExecuteAdditionalData {
 		runExecutionData: IRunExecutionData,
 		alias: string,
 	): Promise<IDataObject[string] | undefined>;
+	beginN8nOAuth2Flow?: (resourceUrl: string) => Promise<string>;
+	completeN8nOAuth2Flow?: (code: string, state: string) => Promise<N8nOAuth2FlowResult>;
 	validateN8nOAuth2Token?: (
 		token: string,
 		resourceUrl: string,

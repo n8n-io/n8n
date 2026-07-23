@@ -67,6 +67,7 @@ import {
 	type AuthFailureReason,
 	OAuthTokenVerifierProxy,
 } from '@/services/oauth-token-verifier-proxy.service';
+import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
@@ -534,6 +535,12 @@ export async function executeWebhook(
 				return 'invalid_token';
 		}
 	};
+
+	additionalData.beginN8nOAuth2Flow = async (resourceUrl: string) =>
+		await Container.get(OAuth2FlowProxy).begin(resourceUrl);
+
+	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
+		await Container.get(OAuth2FlowProxy).complete(code, state);
 
 	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
 		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
