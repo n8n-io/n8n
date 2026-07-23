@@ -85,6 +85,29 @@ describe('useKeybindings', () => {
 		document.body.removeChild(input);
 	});
 
+	it('should not call handler when focus is inside a dialog', async () => {
+		const handler = vi.fn();
+		const keymap = ref({ enter: handler });
+
+		useKeybindings(keymap);
+
+		// A modal dialog (e.g. N8nDialog) portals its content to the body and owns
+		// keyboard input while open, so a focused button inside it must not fire
+		// canvas shortcuts that also listen on `document`.
+		const dialog = document.createElement('div');
+		dialog.setAttribute('role', 'dialog');
+		const button = document.createElement('button');
+		dialog.appendChild(button);
+		document.body.appendChild(dialog);
+		button.focus();
+
+		const event = new KeyboardEvent('keydown', { key: 'Enter' });
+		document.dispatchEvent(event);
+
+		expect(handler).not.toHaveBeenCalled();
+		document.body.removeChild(dialog);
+	});
+
 	it('should not call handler if disabled', async () => {
 		const handler = vi.fn();
 		const keymap = ref({ a: handler });

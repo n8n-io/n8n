@@ -13,8 +13,10 @@ import {
 	N8nLogo,
 	N8nNotice,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
-import { MCP_DOCS_PAGE_URL, MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
+import { getClientBrand } from '@/features/ai/mcpAccess/clients.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
@@ -45,16 +47,30 @@ const errorMessage = computed(() => {
 });
 
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+// Known clients get their brand mark on the left tile; unknown ones fall back to the MCP glyph.
+const clientBrandIcon = computed(() => getClientBrand(clientDetails.value?.clientName ?? '').icon);
 const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
 const hasScopes = computed(() => availableScopes.value.length > 0);
+const trustRequired = computed(() => !!clientDetails.value?.redirectUri);
+const noScopesSelected = computed(() => hasScopes.value && selectedScopes.value.length === 0);
 const allowDisabled = computed(
 	() =>
 		loading.value ||
 		error.value !== null ||
 		!clientDetails.value ||
-		!redirectUriTrusted.value ||
-		(hasScopes.value && selectedScopes.value.length === 0),
+		(trustRequired.value && !redirectUriTrusted.value) ||
+		noScopesSelected.value,
 );
+// Why Allow is disabled, surfaced as a tooltip on the button.
+const allowDisabledReason = computed(() => {
+	if (noScopesSelected.value) {
+		return i18n.baseText('oauth.consentView.allowDisabled.noScopes');
+	}
+	if (trustRequired.value && !redirectUriTrusted.value) {
+		return i18n.baseText('oauth.consentView.allowDisabled.trust');
+	}
+	return null;
+});
 
 watch(
 	() => clientDetails.value?.redirectUri,
@@ -129,14 +145,32 @@ onMounted(async () => {
 	<div :class="$style.overlay">
 		<div :class="$style['consent-dialog']">
 			<header :class="$style.header">
-				<div :class="[$style.logo, $style.n8n]">
-					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
-				</div>
-				<div :class="$style.arrow">
-					<N8nIcon icon="arrow-right" size="large" color="text-light" />
-				</div>
 				<div :class="$style.logo">
-					<N8nIcon icon="mcp" size="xlarge" color="text-dark" />
+					<component :is="clientBrandIcon" v-if="clientBrandIcon" :class="$style['brand-icon']" />
+					<N8nIcon v-else icon="mcp" size="large" color="text-dark" />
+				</div>
+				<!-- Pending-connection connector: a dashed SVG line marching toward the n8n tile
+				     with a slow muted spinner badge. Decorative. -->
+				<span :class="$style.connector" aria-hidden="true">
+					<svg viewBox="0 0 64 8" preserveAspectRatio="none">
+						<line
+							:class="$style['connector-line']"
+							x1="0"
+							y1="4"
+							x2="64"
+							y2="4"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-dasharray="2 5"
+						/>
+					</svg>
+					<span :class="$style.badge">
+						<N8nIcon :class="$style['badge-spinner']" icon="loader-circle" size="large" />
+					</span>
+				</span>
+				<div :class="$style.logo">
+					<N8nLogo size="small" :collapsed="true" release-channel="stable" />
 				</div>
 			</header>
 			<!-- Success screen, show while waiting to be redirected back to client -->
@@ -177,40 +211,36 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText v-if="resourceName" color="text-base" size="small">
+					<N8nText v-if="resourceName" color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<N8nText v-else-if="hasScopes" color="text-base" size="small">
+					<N8nText v-else-if="hasScopes" color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.scopes.description', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<N8nText v-else color="text-base" size="small">
+					<N8nText v-else color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.description', {
 								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
-					<template v-if="hasScopes">
-						<ScopesSelector
-							v-model="selectedScopes"
-							:available-scopes="availableScopes"
-							:groups="MCP_SCOPE_GROUPS"
-							:scope-tools="clientDetails?.scopeTools"
-							i18n-key-prefix="oauth.consentView.scopes"
-							root-test-id="consent-scopes"
-						/>
-						<N8nText color="text-light" size="xsmall" data-test-id="consent-scopes-note">
-							{{ i18n.baseText('oauth.consentView.scopes.note') }}
-						</N8nText>
-					</template>
+					<ScopesSelector
+						v-if="hasScopes"
+						v-model="selectedScopes"
+						:available-scopes="availableScopes"
+						:groups="MCP_SCOPE_GROUPS"
+						:scope-tools="clientDetails?.scopeTools"
+						i18n-key-prefix="oauth.consentView.scopes"
+						root-test-id="consent-scopes"
+					/>
 					<ul v-else-if="!resourceName" :class="$style['permission-list']">
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
@@ -220,75 +250,68 @@ onMounted(async () => {
 						<li>{{ i18n.baseText('oauth.consentView.action.createDataTables') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.searchProjectsAndFolders') }}</li>
 					</ul>
-					<p :class="$style['docs-link']">
-						<span
-							v-n8n-html="
-								i18n.baseText('oauth.consentView.readMore', {
-									interpolate: {
-										docsUrl: MCP_DOCS_PAGE_URL,
-									},
-								})
-							"
-						></span>
-					</p>
-					<N8nCallout
-						v-if="clientDetails?.redirectUri"
-						theme="warning"
-						:class="$style['redirect-warning']"
-						data-test-id="consent-redirect-warning"
-					>
-						<div :class="$style['redirect-warning-content']">
-							<N8nText :bold="true">
-								{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
-							</N8nText>
-							<N8nText
-								:bold="true"
-								:class="$style['redirect-warning-url']"
-								data-test-id="consent-redirect-uri"
-							>
-								{{ clientDetails.redirectUri }}
-							</N8nText>
-							<N8nCheckbox
-								v-model="redirectUriTrusted"
-								:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
-							/>
-						</div>
-					</N8nCallout>
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<div :class="$style['button-group']">
-					<N8nButton
-						v-if="error"
-						variant="solid"
-						:data-test-id="'consent-close-button'"
-						:size="'large'"
-						@click="handleClose"
-					>
-						{{ i18n.baseText('generic.close') }}
-					</N8nButton>
-					<template v-else>
+				<!-- The trust acknowledgment lives inside the warning itself so it can't be missed:
+				     one block that says where access goes, shows the URL, and asks for the check. -->
+				<N8nCallout
+					v-if="!error && clientDetails?.redirectUri"
+					theme="warning"
+					data-test-id="consent-redirect-warning"
+				>
+					<div :class="$style['redirect-warning-content']">
+						<N8nText :bold="true" size="small">
+							{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
+						</N8nText>
+						<code :class="$style['redirect-warning-url']" data-test-id="consent-redirect-uri">
+							{{ clientDetails.redirectUri }}
+						</code>
+						<N8nCheckbox
+							v-model="redirectUriTrusted"
+							:class="$style['redirect-warning-confirm']"
+							:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+							data-test-id="consent-redirect-confirm"
+						/>
+					</div>
+				</N8nCallout>
+				<div :class="$style['footer-actions']">
+					<div :class="$style['button-group']">
 						<N8nButton
-							variant="subtle"
-							:data-test-id="'consent-deny-button'"
-							:size="'large'"
-							:loading="loading"
-							:disabled="loading"
-							@click="handleDeny"
-						>
-							{{ i18n.baseText('generic.deny') }}
-						</N8nButton>
-						<N8nButton
+							v-if="error"
 							variant="solid"
-							:data-test-id="'consent-allow-button'"
+							:data-test-id="'consent-close-button'"
 							:size="'large'"
-							:loading="loading"
-							:disabled="allowDisabled"
-							@click="handleAllow"
+							@click="handleClose"
 						>
-							{{ i18n.baseText('generic.allow') }}
+							{{ i18n.baseText('generic.close') }}
 						</N8nButton>
-					</template>
+						<template v-else>
+							<N8nButton
+								variant="outline"
+								:data-test-id="'consent-deny-button'"
+								:size="'large'"
+								:loading="loading"
+								:disabled="loading"
+								@click="handleDeny"
+							>
+								{{ i18n.baseText('generic.deny') }}
+							</N8nButton>
+							<N8nTooltip :disabled="!allowDisabled || !allowDisabledReason">
+								<template #content>{{ allowDisabledReason }}</template>
+								<N8nButton
+									variant="solid"
+									:data-test-id="'consent-allow-button'"
+									:size="'large'"
+									:loading="loading"
+									:disabled="allowDisabled"
+									@click="handleAllow"
+								>
+									{{ i18n.baseText('oauth.consentView.allow') }}
+								</N8nButton>
+							</N8nTooltip>
+						</template>
+					</div>
 				</div>
 			</footer>
 		</div>
@@ -298,14 +321,14 @@ onMounted(async () => {
 <style module lang="scss">
 .overlay {
 	position: fixed;
+	inset: 0;
 	display: flex;
 	justify-content: center;
-	align-items: center;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background-color: rgba(71, 69, 84, 0.75);
+	/* Top-aligned so a tall consent card scrolls within the page instead of clipping. */
+	align-items: flex-start;
+	padding: var(--spacing--xl) var(--spacing--sm);
+	overflow-y: auto;
+	background: var(--background--subtle);
 	z-index: 1000;
 }
 
@@ -313,18 +336,23 @@ onMounted(async () => {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	min-width: 500px;
-	max-width: 70%;
-	padding: var(--spacing--lg);
-	background-color: var(--color--background--light-3);
-	border: var(--border);
+	gap: var(--spacing--md);
+	width: 100%;
+	max-width: 36rem;
+	/* Settle the card a step below the top on tall windows, but don't waste
+	   vertical space in the short popup windows OAuth clients open. */
+	margin-block-start: clamp(0px, calc(10vh - var(--spacing--3xl)), var(--spacing--4xl));
+	padding: var(--spacing--xl);
+	background: var(--background--surface);
+	border: var(--border-width, 1px) solid var(--border-color--subtle);
 	border-radius: var(--radius--lg);
+	box-shadow: var(--shadow--sm);
 }
 
 .header {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacing--xs);
 }
 
@@ -332,19 +360,87 @@ onMounted(async () => {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	width: var(--spacing--2xl);
-	height: var(--spacing--2xl);
-	border: var(--border);
-	border-radius: var(--radius);
+	flex: 0 0 auto;
+	width: calc(var(--spacing--md) * 2);
+	height: calc(var(--spacing--md) * 2);
+	border: var(--border-width, 1px) solid var(--border-color--subtle);
+	border-radius: var(--radius--xs);
+	background: var(--background--surface);
+	box-shadow: var(--shadow--xs);
+	font-size: var(--font-size--xl);
+	color: var(--text-color--subtle);
+}
 
-	&.n8n > div {
-		position: relative;
-		bottom: var(--spacing--5xs);
+.brand-icon {
+	width: 1em;
+	height: 1em;
+}
+
+.connector {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--3xl);
+	height: var(--spacing--2xs);
+	color: var(--color--primary);
+
+	svg {
+		display: block;
+		width: 100%;
+		height: 100%;
+		overflow: visible;
+	}
+}
+
+/* Dashes march toward the n8n tile (right); a whole dash period (2 + 5) keeps the loop seamless. */
+.connector-line {
+	animation: mcp-connector-dash 0.8s linear infinite;
+}
+
+@keyframes mcp-connector-dash {
+	to {
+		stroke-dashoffset: -14;
+	}
+}
+
+/* Muted spinner disc centered over the connector; the surface fill lets it overlap the line. */
+.badge {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	transform: translate(-50%, -50%);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	border-radius: var(--radius--full);
+	background: var(--background--surface);
+	color: var(--color--text--tint-1);
+	line-height: 0;
+}
+
+/* Slow, calm rotation since the spinner can sit on screen while the user decides. */
+.badge-spinner {
+	transform-origin: center;
+	animation: mcp-connector-spin 2s linear infinite;
+}
+
+@keyframes mcp-connector-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.connector-line,
+	.badge-spinner {
+		animation: none;
 	}
 }
 
 .content {
-	padding: var(--spacing--lg);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
@@ -378,13 +474,11 @@ onMounted(async () => {
 	}
 }
 
-.docs-link {
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-}
-
-.redirect-warning {
-	margin-top: var(--spacing--2xs);
+.footer {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
 .redirect-warning-content {
@@ -394,23 +488,26 @@ onMounted(async () => {
 }
 
 .redirect-warning-url {
+	font-size: var(--font-size--2xs);
 	word-break: break-all;
 }
 
-.footer {
-	width: 100%;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	gap: var(--spacing--sm);
+.redirect-warning-confirm {
+	margin-top: var(--spacing--3xs);
+	margin-bottom: 0;
+}
 
-	:global(.notice) {
-		margin: 0;
-	}
+/* CTAs sit at the right; the trust checkbox anchors the left edge of the row. */
+.footer-actions {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--sm);
 
 	.button-group {
 		display: flex;
-		justify-content: center;
+		justify-content: flex-end;
 		gap: var(--spacing--2xs);
 	}
 }

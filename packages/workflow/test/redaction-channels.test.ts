@@ -1,5 +1,9 @@
 import type { WorkflowSettings } from '../src/interfaces';
-import { channelsToPolicy, policyToChannels } from '../src/redaction-channels';
+import {
+	channelsToPolicy,
+	policyToChannels,
+	redactionSettingToChannels,
+} from '../src/redaction-channels';
 
 describe('redaction-channels', () => {
 	describe('policyToChannels', () => {
@@ -37,6 +41,26 @@ describe('redaction-channels', () => {
 	describe('round-trip for invariant-respecting policies', () => {
 		it.each(['none', 'non-manual', 'all'] as const)('policy %s survives a round-trip', (policy) => {
 			expect(channelsToPolicy(policyToChannels(policy))).toBe(policy);
+		});
+	});
+
+	describe('redactionSettingToChannels', () => {
+		it('returns no redaction for an absent snapshot', () => {
+			expect(redactionSettingToChannels(undefined)).toEqual({ production: false, manual: false });
+		});
+
+		it('reads V2 per-channel booleans directly', () => {
+			expect(redactionSettingToChannels({ version: 2, production: true, manual: false })).toEqual({
+				production: true,
+				manual: false,
+			});
+		});
+
+		it('projects a V1 policy enum onto channels', () => {
+			expect(redactionSettingToChannels({ version: 1, policy: 'all' })).toEqual({
+				production: true,
+				manual: true,
+			});
 		});
 	});
 });

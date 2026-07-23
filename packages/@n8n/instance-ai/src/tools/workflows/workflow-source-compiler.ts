@@ -2,6 +2,7 @@ import { createAbortError, isAbortError } from '@n8n/agents';
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { isRecord } from '@n8n/utils/is-record';
 import { validateWorkflow, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { normalizeNodeShape } from 'n8n-workflow';
 
 import { buildCredentialHostIndex, resolveCredentialByUrl } from './credential-url-resolver';
 import { detectArrayInputCollapse } from './detect-array-input-collapse';
@@ -64,12 +65,13 @@ export function isWorkflowJsonSourceFile(filePath: string): boolean {
 	return filePath.toLowerCase().endsWith('.json');
 }
 
-function normalizeWorkflowNodeParameters(json: WorkflowJSON): void {
-	for (const node of json.nodes ?? []) {
-		if (!isRecord(node.parameters)) {
-			node.parameters = {};
-		}
-	}
+/**
+ * Normalizes compiled workflow nodes for INode persistence via
+ * {@link normalizeNodeShape}. Nested nulls (e.g. credential id) are preserved.
+ */
+function normalizeWorkflowNodes(json: WorkflowJSON): void {
+	if (!json.nodes) return;
+	json.nodes = json.nodes.map((node) => normalizeNodeShape(node));
 }
 
 function validateCompiledWorkflow(
@@ -77,7 +79,7 @@ function validateCompiledWorkflow(
 	context: InstanceAiContext,
 	compilerWarnings: ValidationWarning[] = [],
 ): ValidationWarning[] {
-	normalizeWorkflowNodeParameters(json);
+	normalizeWorkflowNodes(json);
 
 	const schemaValidation = validateWorkflow(json, {
 		nodeTypesProvider: context.nodeTypesProvider,
