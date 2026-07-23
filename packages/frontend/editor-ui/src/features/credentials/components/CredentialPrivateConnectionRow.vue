@@ -37,6 +37,9 @@ const connectedActions = computed<Array<ActionDropdownItem<string>>>(() => [
 	{
 		id: 'switchAccount',
 		label: i18n.baseText('credentials.private.row.switchAccount'),
+		// Switching accounts re-runs OAuth, which needs the connect scope. Disconnect
+		// stays available regardless — users can always clear their own connection.
+		disabled: !props.canConnect,
 	},
 	{
 		id: 'disconnect',
@@ -120,13 +123,12 @@ function onDisconnectConfirm() {
 				v-else
 				:items="connectedActions"
 				placement="bottom-end"
-				:disabled="!canConnect"
 				:extra-popper-class="$style.connectedDropdown"
 				data-test-id="node-credential-private-connected-actions"
 				@select="onActionSelect"
 			>
 				<template #activator>
-					<N8nButton size="mini" variant="outline" :disabled="!canConnect">
+					<N8nButton size="mini" variant="outline">
 						<span :class="$style.connectedBadge" />
 						<span>{{ i18n.baseText('credentials.private.row.connected') }}</span>
 						<N8nIcon icon="chevron-down" size="small" />

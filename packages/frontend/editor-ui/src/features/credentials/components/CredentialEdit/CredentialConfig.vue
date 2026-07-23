@@ -381,8 +381,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 		emit('scrollToTop');
 	}
 });
-
-console.log('youpi: ', canWrite);
 </script>
 
 <template>

@@ -596,6 +596,26 @@ describe('CredentialConfig', () => {
 			await screen.getByTestId('oauth-switch-account-button').click();
 			expect(emitted().oauth).toBeTruthy();
 		});
+
+		it('shows stale-connection actions and emits their events on auth error', async () => {
+			const { emitted } = renderComponent({
+				props: {
+					...oAuthConnectedProps,
+					authError: 'Token expired',
+				},
+			});
+
+			const switchAccount = screen.getByTestId('oauth-stale-switch-account-button');
+			const disconnect = screen.getByTestId('oauth-stale-disconnect-button');
+			expect(switchAccount).toBeInTheDocument();
+			expect(disconnect).toBeInTheDocument();
+
+			await switchAccount.click();
+			expect(emitted().oauth).toBeTruthy();
+
+			await disconnect.click();
+			expect(emitted().disconnect).toBeTruthy();
+		});
 	});
 
 	describe('Connect banner gating for private credentials', () => {
