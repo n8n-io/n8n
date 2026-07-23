@@ -2998,6 +2998,32 @@ describe('createExecutionAdapter run()', () => {
 		expect(secondRun.workflowData.settings?.executionTimeout).toBe(600);
 	});
 
+	it('omits the listed connections on the ephemeral run copy only', async () => {
+		const workflow = {
+			id: 'wf-1',
+			nodes: [],
+			connections: {
+				Revise: { main: [[{ node: 'Format', type: 'main', index: 0 }]] },
+				Format: { main: [[{ node: 'Gate', type: 'main', index: 0 }]] },
+			},
+		};
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
+
+		await adapter.run('wf-1', undefined, {
+			omitConnections: [{ source: 'Revise', target: 'Format' }],
+		});
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.connections.Revise.main).toEqual([[]]);
+		expect(runData.workflowData.connections.Format.main).toEqual([
+			[{ node: 'Gate', type: 'main', index: 0 }],
+		]);
+		// The saved workflow object is untouched.
+		expect(workflow.connections.Revise.main).toEqual([
+			[{ node: 'Format', type: 'main', index: 0 }],
+		]);
+	});
+
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',

@@ -755,15 +755,16 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				) => {
 					const setupRequests = await analyzeWorkflow(context, saved.id);
 					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
-					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
-						workflow: json,
-						mockedNodeNames: mockResult.mockedNodeNames,
-						declaredOutputFixtures: compiled.declaredOutputFixtures,
-						workflowId: saved.id,
-						outputSchemaLookup: context.outputSchemaLookup,
-						fallbackModelConfig: context.modelId,
-						logger: context.logger,
-					});
+					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
+						await planVerificationSimulation({
+							workflow: json,
+							mockedNodeNames: mockResult.mockedNodeNames,
+							declaredOutputFixtures: compiled.declaredOutputFixtures,
+							workflowId: saved.id,
+							outputSchemaLookup: context.outputSchemaLookup,
+							fallbackModelConfig: context.modelId,
+							logger: context.logger,
+						});
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
@@ -829,6 +830,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowNeedsSetup,
 						nodeSimulationPlan,
 						simulationFixtures,
+						waitGateScripts,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
