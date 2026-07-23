@@ -4,6 +4,7 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { ElDropdown } from 'element-plus';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRoute } from 'vue-router';
 
@@ -14,6 +15,7 @@ const props = defineProps<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const projectsStore = useProjectsStore();
 const route = useRoute();
 const i18n = useI18n();
 
@@ -23,6 +25,13 @@ const isDropdownVisible = ref(false);
 const workflowId = computed(() => route.params.name as string);
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+);
+const projectPermissions = computed(() => {
+	const project = projectsStore.currentProject ?? projectsStore.personalProject;
+	return getResourcePermissions(project?.scopes);
+});
+const hasUpdatePermission = computed(
+	() => workflowPermissions.value.update || projectPermissions.value.workflow.update,
 );
 
 const customDataLength = computed(() => {
@@ -50,7 +59,7 @@ function onDropdownVisibleChange(visible: boolean) {
 	>
 		<N8nButton
 			:title="i18n.baseText('executionDetails.additionalActions')"
-			:disabled="!workflowPermissions.update"
+			:disabled="!hasUpdatePermission"
 			icon="list-checks"
 			:class="{
 				[$style.highlightDataButton]: true,

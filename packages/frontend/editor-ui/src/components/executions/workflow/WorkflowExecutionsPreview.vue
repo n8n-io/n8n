@@ -10,6 +10,7 @@ import { useToast } from '@/composables/useToast';
 import { useMessage } from '@/composables/useMessage';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/constants';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/stores/projects.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
@@ -39,11 +40,16 @@ const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
+const projectsStore = useProjectsStore();
 const retryDropdownRef = ref<RetryDropdownRef | null>(null);
 const workflowId = computed(() => route.params.name as string);
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+const projectPermissions = computed(() => {
+	const project = projectsStore.currentProject ?? projectsStore.personalProject;
+	return getResourcePermissions(project?.scopes);
+});
 const executionId = computed(() => route.params.executionId as string);
 const nodeId = computed(() => route.params.nodeId as string);
 const executionUIDetails = computed<IExecutionUIData | null>(() =>
