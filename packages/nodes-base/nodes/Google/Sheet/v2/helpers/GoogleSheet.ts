@@ -524,7 +524,7 @@ export class GoogleSheet {
 			);
 		}
 
-		const columnNames = sheetDatakeyRow[0];
+		const columnNames = sheetDatakeyRow?.[0] ?? [];
 
 		const keyIndex = columnNames.indexOf(indexKey);
 
@@ -630,7 +630,7 @@ export class GoogleSheet {
 		columnNamesList: string[][],
 	) {
 		const decodedRange = this.getDecodedSheetRange(range);
-		const columnNames = columnNamesList[0];
+		const columnNames = columnNamesList?.[0] ?? [];
 		const updateData: ISheetUpdateData[] = [];
 
 		for (const item of inputData) {
@@ -827,7 +827,7 @@ export class GoogleSheet {
 			);
 		}
 
-		const columnNames = columnNamesRow ? columnNamesRow[0] : [];
+		const columnNames = columnNamesRow?.[0] ?? [];
 		const setData: string[][] = [];
 
 		inputData.forEach((item) => {

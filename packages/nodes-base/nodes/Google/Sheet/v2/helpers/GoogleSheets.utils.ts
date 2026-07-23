@@ -99,7 +99,9 @@ export function hexToRgb(hex: string) {
 export function addRowNumber(data: SheetRangeData, headerRow: number) {
 	if (data.length === 0) return data;
 	const sheetData = data.map((row, i) => [i + 1, ...row]);
-	sheetData[headerRow][0] = ROW_NUMBER;
+	if (sheetData[headerRow]) {
+		sheetData[headerRow][0] = ROW_NUMBER;
+	}
 	return sheetData;
 }
 
@@ -119,7 +121,7 @@ export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) 
 			.slice(baseLength)
 			.some((cell) => cell || typeof cell === 'number' || typeof cell === 'boolean'),
 	);
-	if (includesRowNumber) {
+	if (includesRowNumber && notEmptyRows.length > 0) {
 		notEmptyRows[0][0] = ROW_NUMBER;
 	}
 	return notEmptyRows;
@@ -135,8 +137,12 @@ export function trimLeadingEmptyRows(
 		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
 	);
 
+	if (firstNotEmptyRowIndex === -1) {
+		return [];
+	}
+
 	const returnData = data.slice(firstNotEmptyRowIndex);
-	if (includesRowNumber) {
+	if (includesRowNumber && returnData.length > 0) {
 		returnData[0][0] = rowNumbersColumnName;
 	}
 
@@ -149,7 +155,7 @@ export function removeEmptyColumns(data: SheetRangeData) {
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
 	for (let col = 0; col < longestRow; col++) {
 		const column = data.map((row) => row[col]);
-		if (column[0] !== '') {
+		if (column[0] !== '' && column[0] !== undefined) {
 			returnData.push(column);
 			continue;
 		}
@@ -158,9 +164,8 @@ export function removeEmptyColumns(data: SheetRangeData) {
 			returnData.push(column);
 		}
 	}
-	return (returnData[0] || []).map((_, i) =>
-		returnData.map((row) => (row[i] === undefined ? '' : row[i])),
-	);
+	if (!returnData.length || !returnData[0]) return [];
+	return returnData[0].map((_, i) => returnData.map((row) => (row[i] === undefined ? '' : row[i])));
 }
 
 export function prepareSheetData(
@@ -262,7 +267,7 @@ export async function autoMapInputData(
 			`${sheetName}!${headerRow}:${headerRow}`,
 			'FORMATTED_VALUE',
 		);
-		columnNames = response ? response[0] : [];
+		columnNames = response?.[0] ?? [];
 	}
 
 	if (handlingExtraData === 'insertInNewColumn') {

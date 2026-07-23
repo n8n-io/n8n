@@ -75,7 +75,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		}
 	} catch (error) {
 		if (this.continueOnFail()) {
-			operationResult.push({ json: this.getInputData(0)[0].json, error });
+			const inputData = this.getInputData(0);
+			operationResult.push({ json: inputData[0]?.json ?? {}, error });
 		} else {
 			throw error;
 		}

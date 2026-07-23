@@ -124,6 +124,15 @@ describe('Test Google Sheets, removeEmptyRows', () => {
 			[5, 3, 'g', 'h', 'i'],
 		]);
 	});
+
+	it('should return empty array when all rows are empty without throwing', () => {
+		const data = [
+			['', ''],
+			['', ''],
+		];
+		const result = removeEmptyRows(data, true);
+		expect(result).toEqual([]);
+	});
 });
 
 describe('Test Google Sheets, trimLeadingEmptyRows', () => {
@@ -161,6 +170,16 @@ describe('Test Google Sheets, trimLeadingEmptyRows', () => {
 			[3, 1, 'a', 'b', 'c'],
 			[5, 3, 'g', 'h', 'i'],
 		]);
+	});
+	it('should return empty array when all rows are empty', () => {
+		const data = [
+			['', '', '', ''],
+			['', '', '', ''],
+		];
+
+		const result = trimLeadingEmptyRows(data, true);
+
+		expect(result).toEqual([]);
 	});
 });
 
