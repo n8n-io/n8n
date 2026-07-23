@@ -20,7 +20,6 @@
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
-    "eval:build-cost-report": "tsx evaluations/cli/build-cost-report.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
     "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",

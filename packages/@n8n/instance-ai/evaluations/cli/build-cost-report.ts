@@ -12,8 +12,9 @@
 //   - Both arms: per-iteration green verdicts (every evaluated scenario run
 //     and build expectation passed) → cost per green iteration.
 //
-// Usage:
-//   dotenvx run -f ../../../.env.local -- pnpm eval:build-cost-report \
+// Usage — deliberately not wired into package.json (an experiment-time tool,
+// used rarely); invoke via tsx from packages/@n8n/instance-ai:
+//   dotenvx run -f ../../../.env.local -- pnpm tsx evaluations/cli/build-cost-report.ts \
 //     --aia-results <aia-run>/eval-results.json \
 //     --mcp-results <mcp-run>/eval-results.json \
 //     [--trace-project instance-ai-evals] [--out build-cost-report.md]
