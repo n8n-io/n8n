@@ -315,6 +315,26 @@ describe('Google GSuiteAdmin Node', () => {
 			});
 		});
 
+		it('should drop fullTimeEquivalent from organizations when unset (0)', () => {
+			const body: IDataObject = {};
+
+			mapUserExtraFields(
+				{
+					organizationUi: {
+						organizationValues: [
+							{ name: 'Acme', fullTimeEquivalent: 0 },
+							{ name: 'Globex', fullTimeEquivalent: 100000 },
+						],
+					},
+				},
+				body,
+			);
+
+			expect(body).toEqual({
+				organizations: [{ name: 'Acme' }, { name: 'Globex', fullTimeEquivalent: 100000 }],
+			});
+		});
+
 		it('should not set keys for omitted fields', () => {
 			const body: IDataObject = {};
 

@@ -104,6 +104,17 @@ export function mapUserExtraFields(fields: IDataObject, body: IDataObject): void
 			return entry;
 		});
 	}
+
+	// organizations: omit fullTimeEquivalent when unset (0) so a blank field doesn't set 0% FTE
+	if (Array.isArray(body.organizations)) {
+		body.organizations = (body.organizations as IDataObject[]).map((entry) => {
+			if (!entry.fullTimeEquivalent) {
+				const { fullTimeEquivalent, ...rest } = entry;
+				return rest;
+			}
+			return entry;
+		});
+	}
 }
 
 export async function googleApiRequestAllItems(

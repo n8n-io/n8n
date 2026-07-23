@@ -568,6 +568,14 @@ export const userExtraFields: INodeProperties[] = [
 						default: '',
 						description: 'Text string symbol of the organization',
 					},
+					{
+						displayName: 'Full-Time Equivalent',
+						name: 'fullTimeEquivalent',
+						type: 'number',
+						default: 0,
+						description:
+							'The full-time equivalent millipercent within the organization (100000 = 100%). Leave 0 to omit.',
+					},
 					primaryField,
 				],
 			},
