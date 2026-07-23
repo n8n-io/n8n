@@ -3767,3 +3767,36 @@ describe('createContext — builder delegate telemetry', () => {
 		expect(delegate.listAgents).toHaveBeenCalledTimes(1);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// createContext — run model wiring
+// ---------------------------------------------------------------------------
+
+describe('createContext — run model wiring', () => {
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	// Guards the one link of the INS-948 fix that instance-ai's own unit tests
+	// cannot see: the run's resolved (proxy-aware) model must land on the domain
+	// context, where simulation fixture/classifier LLM calls read it as their
+	// fallback on deployments without env model keys (cloud). Dropping this
+	// wiring regresses silently — every simulated node degrades back to a
+	// single empty pinned item.
+	it('copies the host-resolved modelId onto the context', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+		const modelId = {
+			id: 'anthropic/claude-opus-4-8' as const,
+			url: 'https://proxy.example.com/anthropic/v1',
+			apiKey: 'proxy-token',
+		};
+
+		const context = service.createContext(mockUser, { modelId });
+
+		expect(context.modelId).toEqual(modelId);
+	});
+
+	it('leaves modelId undefined when the host does not resolve one', () => {
+		const service = createAdapterWithGatewayMock(vi.fn());
+
+		expect(service.createContext(mockUser).modelId).toBeUndefined();
+	});
+});
