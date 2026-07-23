@@ -12,6 +12,7 @@ import {
 import { computed, useCssModule, ref, watch } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import N8nInput from '@n8n/design-system/components/N8nInput/Input.vue';
 import { useI18n } from '@n8n/design-system/composables/useI18n';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
 
@@ -170,8 +171,9 @@ const sizes: Record<PaginationSizes, string> = {
 };
 const size = computed(() => sizes[props.size]);
 
-const navButtonSize = computed(() => (props.size === 'small' ? 'xsmall' : 'medium'));
+const navButtonSize = computed(() => (props.size === 'small' ? 'small' : 'medium'));
 const navIconSize = computed(() => (props.size === 'small' ? 'small' : 'medium'));
+const jumperInputSize = computed(() => (props.size === 'small' ? 'small' : 'medium'));
 
 const pageSizeItems = computed(() =>
 	props.pageSizes.map((s) => ({ value: String(s), label: `${s} / page` })),
@@ -182,27 +184,27 @@ const totalText = computed(() => {
 	return `Total ${props.total}`;
 });
 
-const handleJumperSubmit = (input: HTMLInputElement) => {
+const commitJumperValue = () => {
 	if (props.disabled) return;
 
 	const parsed = parseInt(jumperValue.value, 10);
 	if (isNaN(parsed)) {
 		jumperValue.value = String(prevPage.value);
-		input.blur();
 		return;
 	}
 
 	const targetPage = Math.min(Math.max(parsed, 1), pageCount.value);
 	jumperValue.value = String(targetPage);
-	handlePageUpdate(targetPage);
-	input.blur();
+
+	if (targetPage !== prevPage.value) {
+		handlePageUpdate(targetPage);
+	}
 };
 
 const onJumperKeydown = (event: KeyboardEvent) => {
 	if (event.key !== 'Enter') return;
 	if (!(event.target instanceof HTMLInputElement)) return;
-
-	handleJumperSubmit(event.target);
+	event.target.blur();
 };
 
 const onJumperFocus = (event: FocusEvent) => {
@@ -211,13 +213,10 @@ const onJumperFocus = (event: FocusEvent) => {
 };
 
 const onJumperBlur = () => {
-	jumperValue.value = String(prevPage.value);
+	commitJumperValue();
 };
 
-const jumperInputStyle = computed(() => {
-	const digits = Math.max(String(jumperValue.value).length, 1);
-	return { width: `calc(${digits}ch + var(--spacing--xs))` };
-});
+const jumperDigits = computed(() => Math.max(String(jumperValue.value).length, 1));
 
 const handlePagerKeydown = (event: KeyboardEvent) => {
 	if (props.disabled) return;
@@ -260,7 +259,7 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 				v-else-if="part === 'sizes'"
 				:model-value="String(internalPageSize)"
 				:items="pageSizeItems"
-				:size="props.size === 'small' ? 'xsmall' : 'small'"
+				size="small"
 				:disabled="disabled"
 				@update:model-value="handlePageSizeUpdate"
 			/>
@@ -345,21 +344,26 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 				</PaginationList>
 			</PaginationRoot>
 
-			<div v-else-if="part === 'jumper'" :class="$style.jumper">
-				<span :class="$style.jumperAddon">{{ t('pagination.goTo') }}</span>
-				<input
+			<div
+				v-else-if="part === 'jumper'"
+				:class="$style.jumper"
+				:style="{ '--jumper-digits': jumperDigits }"
+			>
+				<N8nInput
 					v-model="jumperValue"
 					type="number"
+					:size="jumperInputSize"
+					:disabled="disabled"
 					:min="1"
 					:max="pageCount"
-					:class="$style.jumperInput"
-					:style="jumperInputStyle"
-					:disabled="disabled"
+					:step="1"
 					:aria-label="t('pagination.goToPage')"
 					@focus="onJumperFocus"
 					@blur="onJumperBlur"
 					@keydown="onJumperKeydown"
-				/>
+				>
+					<template #prefix>{{ t('pagination.goTo') }}</template>
+				</N8nInput>
 			</div>
 		</template>
 	</div>
@@ -367,7 +371,6 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/focus';
-@use '@n8n/design-system/css/mixins/input' as input-mixin;
 
 .paginationContainer {
 	display: flex;
@@ -387,27 +390,32 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 	}
 
 	.jumper {
-		@include input-mixin.size-variables('medium');
+		:global(.n8n-input__wrapper) {
+			gap: var(--spacing--xs);
+			padding-inline: var(--spacing--xs);
+		}
 	}
 }
 
 .small {
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--2xs);
 
 	.paginationItem,
 	.paginationEllipsis {
-		height: var(--height--xs);
-		min-width: var(--height--xs);
-		font-size: var(--font-size--3xs);
-		padding-top: 1px;
+		height: var(--height--sm);
+		min-width: var(--height--sm);
+		font-size: var(--font-size--2xs);
 	}
 
 	.total {
-		font-size: var(--font-size--4xs);
+		font-size: var(--font-size--3xs);
 	}
 
 	.jumper {
-		@include input-mixin.size-variables('mini');
+		:global(.n8n-input__wrapper) {
+			gap: var(--spacing--2xs);
+			padding-inline: var(--spacing--2xs);
+		}
 	}
 }
 
@@ -426,69 +434,42 @@ const handlePagerKeydown = (event: KeyboardEvent) => {
 }
 
 .jumper {
-	@include input-mixin.theme-variables(var(--border-color));
-
-	display: inline-flex;
-	align-items: stretch;
-
-	&:hover:not(:focus-within) .jumperAddon,
-	&:hover:not(:focus-within) .jumperInput:not(:disabled) {
-		box-shadow:
-			var(--input--shadow--hover),
-			inset var(--input--border--shadow--hover);
-	}
-
-	&:focus-within .jumperAddon,
-	&:focus-within .jumperInput {
-		box-shadow:
-			var(--input--shadow--focus),
-			inset var(--input--border--shadow--focus);
-	}
-}
-
-.jumperAddon {
-	display: flex;
-	align-items: center;
 	flex-shrink: 0;
-	padding: 0 var(--input--padding);
-	border-radius: var(--input--radius) 0 0 var(--input--radius);
-	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
-	box-shadow:
-		var(--input--shadow),
-		inset var(--input--border--shadow);
-	color: var(--text-color--subtler);
-	font-size: var(--input--font-size);
-	white-space: nowrap;
-	margin-right: -1px;
-}
+	width: max-content;
 
-.jumperInput {
-	height: var(--input--height);
-	padding: 0;
-	border: none;
-	border-radius: 0 var(--input--radius) var(--input--radius) 0;
-	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	box-shadow:
-		var(--input--shadow),
-		inset var(--input--border--shadow);
-	color: var(--text-color);
-	font-size: var(--input--font-size);
-	text-align: center;
-	appearance: textfield;
-	-moz-appearance: textfield;
-
-	@include focus.focus-within-ring;
-
-	&:disabled {
-		cursor: not-allowed;
-		opacity: 0.5;
+	:global(.n8n-input) {
+		width: max-content;
 	}
 
-	&::-webkit-outer-spin-button,
-	&::-webkit-inner-spin-button {
-		appearance: none;
-		-webkit-appearance: none;
-		margin: 0;
+	:global(.n8n-input__wrapper) {
+		overflow: hidden;
+	}
+
+	:global(input) {
+		flex: 0 0 auto;
+		box-sizing: content-box;
+		/* Fallback when field-sizing isn't supported */
+		width: calc(var(--jumper-digits, 1) * 1ch);
+		min-width: 1ch;
+		padding-inline: 0;
+		margin-inline: 0;
+		text-align: start;
+		appearance: textfield;
+		-moz-appearance: textfield;
+		field-sizing: content;
+
+		&::-webkit-outer-spin-button,
+		&::-webkit-inner-spin-button {
+			appearance: none;
+			-webkit-appearance: none;
+			margin: 0;
+		}
+	}
+
+	@supports (field-sizing: content) {
+		:global(input) {
+			width: auto;
+		}
 	}
 }
 
