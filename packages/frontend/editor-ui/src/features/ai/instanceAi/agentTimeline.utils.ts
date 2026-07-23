@@ -100,7 +100,8 @@ export function buildTimelineBlocks(
 					!!childrenById[entry.agentId] &&
 					isBuilderAgent(childrenById[entry.agentId]),
 			)
-			.map((entry) => entry.responseId),
+			.map((entry) => entry.responseId)
+			.filter((responseId): responseId is string => responseId !== undefined),
 	);
 
 	entries.forEach((entry, idx) => {
