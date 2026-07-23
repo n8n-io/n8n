@@ -4,6 +4,7 @@ import { getRequiredNodeCredentialSlots } from '@n8n/ai-utilities/node-catalog';
 import {
 	AgentModelSchema,
 	agentTaskSchema,
+	findVectorStoreToolNameCollisions,
 	isDraftAgentConfig,
 	isDraftIntegration,
 	type AgentConfigValidationIssue,
@@ -257,6 +258,7 @@ export class AgentValidationService {
 		const { agentsById, workflowsByName } = await this.prefetchReferenceLookups(ctx);
 
 		this.collectCoreIssues(config, issues);
+		this.collectVectorStoreIssues(config, issues);
 		await this.collectMainCredentialIssues(config, findCredential, issues);
 		this.collectSubAgentRefIssues(ctx, agentsById, issues);
 		this.collectSkillIssues(config, ctx.skills, issues);
@@ -412,6 +414,29 @@ export class AgentValidationService {
 			if (!agentTaskSchema.safeParse(task).success || !isValidCronExpression(task.cronExpression)) {
 				issues.push(issue('invalid_value', `tasks.${index}`, { kind: 'task', id: ref.id, index }));
 			}
+		}
+	}
+
+	/**
+	 * A vector store registers a `search_<sanitized-name>` tool at runtime; a
+	 * collision with a configured tool name only fails once the agent is built.
+	 * The write gate (AgentConfigService.validateConfig) checks this too — this
+	 * re-check covers configs that reached the entity through other paths
+	 * (e.g. history restore).
+	 */
+	private collectVectorStoreIssues(config: AgentJsonConfig, issues: AgentConfigValidationIssue[]) {
+		const collisions = new Set(findVectorStoreToolNameCollisions(config));
+		const stores = config.vectorStores ?? [];
+		for (let index = 0; index < stores.length; index++) {
+			const store = stores[index];
+			if (!collisions.has(`search_${store.name.replace(/-/g, '_')}`)) continue;
+			issues.push(
+				issue('invalid_value', `vectorStores.${index}.name`, {
+					kind: 'vectorStore',
+					id: store.name,
+					index,
+				}),
+			);
 		}
 	}
 
