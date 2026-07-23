@@ -328,16 +328,10 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * Project IDs for inbox queries. `null` means "all projects, unfiltered".
-	 *
-	 * `workflow:publish` is the single scope that defines review participation —
-	 * it's what `create()` and reviewer eligibility gate on, so the inbox keys off
-	 * the same scope. Users holding it globally would resolve to every project id,
-	 * which both enumerates the whole table and can blow SQLite's bound-parameter
-	 * cap on the `projectId IN (...)` filter, so for them we skip the filter entirely.
-	 *
-	 * Requesters always see the reviews they created regardless of this set (the
-	 * repository OR-matches `requesterId`), so no personal-project fallback is needed.
+	 * Project IDs for inbox queries. `null` means "all projects, unfiltered" —
+	 * correct for users with `workflow:publish` scoped globally. Requesters always
+	 * see their own reviews regardless (repository OR-matches `requesterId`), so no
+	 * personal-project fallback is needed.
 	 */
 	async resolveAccessibleProjectIds(user: User): Promise<string[] | null> {
 		if (hasGlobalScope(user, 'workflow:publish')) {

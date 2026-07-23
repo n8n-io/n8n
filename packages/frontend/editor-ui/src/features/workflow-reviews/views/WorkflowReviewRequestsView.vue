@@ -3,14 +3,12 @@ import { onMounted, onUnmounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nLoading } from '@n8n/design-system';
+import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 
-import WorkflowReviewRequestsDisclaimer from '../components/WorkflowReviewRequestsDisclaimer.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
-import WorkflowReviewRequestDetailPlaceholder from '../components/WorkflowReviewRequestDetailPlaceholder.vue';
 import { useReviewInboxStore } from '../reviewInbox.store';
 
 const store = useReviewInboxStore();
@@ -113,8 +111,38 @@ onUnmounted(() => {
 
 				<div :class="$style.mainBody">
 					<N8nLoading v-if="!probeSettled" :loading="true" :rows="3" />
-					<WorkflowReviewRequestDetailPlaceholder v-else-if="selectedItem" />
-					<WorkflowReviewRequestsDisclaimer v-else />
+					<N8nText
+						v-else-if="selectedItem"
+						color="text-light"
+						size="medium"
+						data-test-id="workflow-review-request-detail-stub"
+					>
+						{{ i18n.baseText('workflowReviews.detail.placeholder') }}
+					</N8nText>
+					<N8nText
+						v-else-if="!showSidebar"
+						color="text-light"
+						size="medium"
+						data-test-id="workflow-reviews-disclaimer"
+					>
+						{{ i18n.baseText('workflowReviews.disclaimer.body') }}
+					</N8nText>
+					<N8nText
+						v-else-if="isEmpty"
+						color="text-light"
+						size="medium"
+						data-test-id="workflow-reviews-empty-state"
+					>
+						{{ i18n.baseText('workflowReviews.emptyState.body') }}
+					</N8nText>
+					<N8nText
+						v-else
+						color="text-light"
+						size="medium"
+						data-test-id="workflow-reviews-no-selection"
+					>
+						{{ i18n.baseText('workflowReviews.noSelection.body') }}
+					</N8nText>
 				</div>
 			</div>
 		</div>
