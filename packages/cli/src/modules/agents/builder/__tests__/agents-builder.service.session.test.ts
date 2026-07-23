@@ -116,6 +116,10 @@ const agentsSdkMocks = vi.hoisted(() => {
 		return { model, options, kind: 'reflect' };
 	}
 
+	function createPlannerTodosTool(): BuiltTool {
+		return { name: 'write_todos', description: 'planner todos tool' } as BuiltTool;
+	}
+
 	return {
 		streamCalls,
 		instructionsCalls,
@@ -131,6 +135,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 		MockMemory,
 		createObservationLogObserveFn,
 		createObservationLogReflectFn,
+		createPlannerTodosTool,
 	};
 });
 
@@ -139,6 +144,7 @@ vi.mock('@n8n/agents', () => ({
 	Memory: agentsSdkMocks.MockMemory,
 	createObservationLogObserveFn: agentsSdkMocks.createObservationLogObserveFn,
 	createObservationLogReflectFn: agentsSdkMocks.createObservationLogReflectFn,
+	createPlannerTodosTool: agentsSdkMocks.createPlannerTodosTool,
 }));
 
 // Avoid a real `models.dev` catalog fetch — irrelevant to thread isolation and
@@ -295,7 +301,7 @@ describe('AgentsBuilderService session isolation', () => {
 		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
 	});
 
-	it('includes the integrations skill', async () => {
+	it('includes the external services skill', async () => {
 		const { service, user, credentialProvider } = setup();
 
 		await drain(
@@ -303,7 +309,7 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 
 		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-integrations')).toBe(true);
+		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {
