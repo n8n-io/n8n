@@ -12,6 +12,7 @@ export * from './module';
 export * from './multi-main';
 export * from './pubsub';
 export { Redactable } from './redactable';
+export * from './scheduled';
 export * from './shutdown';
 export * from './module/module-metadata';
 export type { TimedOptions } from './timed';
