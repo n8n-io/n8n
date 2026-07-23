@@ -1,28 +1,20 @@
 import type { INode, TriggerTime } from 'n8n-workflow';
 
 /**
- * Seam for provisioning poll triggers as durable scheduler jobs instead of
- * in-memory crons. The concrete implementation lives in `cli` and is bound at
- * startup; with no binding (core-only contexts, tests) `ActiveWorkflowTriggers`
- * falls through to the legacy `ScheduledTaskManager`. `isActive()` gates the seam,
- * so a bound-but-inactive implementation also uses the legacy path.
- *
- * Only activation lives here. Durable rows are DB state tied to the workflow's
- * published version, not to any one instance's in-memory triggers, so teardown is
- * driven from the cli lifecycle (deactivate/delete/republish), not this seam.
+ * Provisions a poll trigger as durable scheduler jobs instead of an in-memory
+ * cron. Optional: when unbound, or when {@link isActive} returns false, callers
+ * use the legacy in-memory path. Covers activation only; teardown is a separate
+ * concern, since durable rows outlive any one instance's in-memory triggers.
  */
 export abstract class PollJobManager {
-	/** Whether durable poll jobs should be used instead of in-memory crons. */
+	/** Whether to provision durable jobs instead of registering in-memory crons. */
 	abstract isActive(): boolean;
 
 	/**
-	 * Provision durable poll jobs for the node's poll times. Takes the structured
-	 * `pollTimes` (not pre-mapped cron strings) so the concrete implementation can
-	 * derive a definition-stable job identity, the same way the Schedule Trigger does.
-	 *
-	 * Returns whether a job was newly inserted (as opposed to only reconciling
-	 * existing ones), so the caller can run the inline first poll for a fresh
-	 * provision but skip it on a pure re-activation (e.g. takeover).
+	 * Provision durable jobs for the node's poll times. Takes the structured
+	 * `pollTimes` rather than cron strings so a definition-stable job identity can
+	 * be derived. Returns whether a job was newly inserted (rather than reconciled),
+	 * so the caller runs the inline first poll only for a fresh provision.
 	 */
 	abstract register(
 		workflowId: string,
