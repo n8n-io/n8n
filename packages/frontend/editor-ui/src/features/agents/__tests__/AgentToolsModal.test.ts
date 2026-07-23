@@ -801,14 +801,13 @@ describe('AgentToolsModal', () => {
 			});
 			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith({
 				projectId: 'p-42',
-				triggerNodeTypes: expect.arrayContaining([
+				triggerNodeTypes: [
+					'n8n-nodes-base.manualTrigger',
 					'n8n-nodes-base.executeWorkflowTrigger',
 					'@n8n/n8n-nodes-langchain.chatTrigger',
-					'n8n-nodes-base.manualTrigger',
-					'n8n-nodes-base.scheduleTrigger',
 					'n8n-nodes-base.formTrigger',
 					'n8n-nodes-base.webhook',
-				]),
+				],
 				select: ['id', 'name', 'description', 'isArchived', 'nodes'],
 			});
 		});

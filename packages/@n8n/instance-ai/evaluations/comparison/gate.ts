@@ -14,11 +14,13 @@
 // nothing to judge.
 // ---------------------------------------------------------------------------
 
+import { GATED_TIER_NAMES } from '../run/tiers';
 import type { MultiRunEvaluation, WorkflowTestCase } from '../types';
 
 // Tiers whose runs assert an absolute green bar instead of comparing to a
-// baseline. Keep this the single source of truth for "is this a gated run".
-export const GATED_TIERS = new Set(['pr']);
+// baseline — declared in run/tiers.ts, the single source of truth for
+// "is this a gated run". Tier names are otherwise free-form (`datasets`).
+export const GATED_TIERS = GATED_TIER_NAMES;
 
 export function isGatedTier(tier?: string): boolean {
 	return tier !== undefined && GATED_TIERS.has(tier);

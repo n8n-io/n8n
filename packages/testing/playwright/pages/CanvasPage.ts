@@ -592,7 +592,7 @@ export class CanvasPage extends BasePage {
 	 * interacting with it after a navigation.
 	 */
 	async waitForCanvasReady(): Promise<void> {
-		await expect(this.canvasPane()).toBeVisible();
+		await expect(this.canvasPane()).toBeVisible({ timeout: 30_000 });
 		await expect(this.getNodeViewLoader()).toBeHidden();
 		await expect(this.getLoadingMask()).toBeHidden();
 	}

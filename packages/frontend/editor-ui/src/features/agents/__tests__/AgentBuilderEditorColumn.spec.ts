@@ -72,6 +72,10 @@ vi.mock('../components/AgentCapabilitiesSection.vue', () => ({
 	default: { name: 'AgentCapabilitiesSection', template: '<div />' },
 }));
 
+vi.mock('../components/AgentChannelsSection.vue', () => ({
+	default: { name: 'AgentChannelsSection', template: '<div />' },
+}));
+
 vi.mock('../components/AgentIdentityHeader.vue', () => ({
 	default: { name: 'AgentIdentityHeader', template: '<div data-testid="agent-identity-header" />' },
 }));
@@ -165,7 +169,8 @@ async function mountColumn(
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
 			stubs: {
-				AgentCapabilitiesSection: true,
+				AgentCapabilitiesSection: false,
+				AgentChannelsSection: false,
 				AgentInfoPanel: {
 					name: 'AgentInfoPanel',
 					template:
@@ -320,23 +325,28 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as capabilities, model, then instructions', async () => {
+	it('orders the Agent tab as channels, model, instructions, then capabilities', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
+		const channels = wrapper.findComponent({ name: 'AgentChannelsSection' });
 		const model = wrapper.find('[data-testid="agent-model-panel"]');
 		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
 		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
 
+		expect(channels.exists()).toBe(true);
 		expect(model.exists()).toBe(true);
 		expect(capabilities.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
 		expect(
-			capabilities.element.compareDocumentPosition(model.element) &
-				Node.DOCUMENT_POSITION_FOLLOWING,
+			channels.element.compareDocumentPosition(model.element) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
 			model.element.compareDocumentPosition(instructions.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			instructions.element.compareDocumentPosition(capabilities.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 	});

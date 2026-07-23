@@ -1,10 +1,10 @@
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { Telemetry } from '@/app/plugins/telemetry';
+import { TelemetryService } from '@/app/plugins/telemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import merge from 'lodash/merge';
 import { createPinia, setActivePinia } from 'pinia';
 
-let telemetry: Telemetry;
+let telemetry: TelemetryService;
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 
@@ -12,7 +12,7 @@ const MOCK_VERSION_CLI = '0.0.0';
 
 describe('telemetry', () => {
 	beforeAll(() => {
-		telemetry = new Telemetry();
+		telemetry = new TelemetryService();
 		setActivePinia(createPinia());
 		settingsStore = useSettingsStore();
 		telemetry.init(
@@ -254,6 +254,54 @@ describe('telemetry', () => {
 			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
 				node_type: 'n8n-nodes-base.telegram',
 			});
+		});
+
+		it('tracks the enable event when Gmail advancedEmail is turned on', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.advancedEmail',
+				value: true,
+			});
+
+			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
+				node_type: 'n8n-nodes-base.gmail',
+			});
+		});
+
+		it('tracks the enable event when Gmail confirmationPage is turned on', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.confirmationPage',
+				value: true,
+			});
+
+			expect(trackSpy).toHaveBeenCalledWith('User enabled advanced HITL', {
+				node_type: 'n8n-nodes-base.gmail',
+			});
+		});
+
+		it('does not track the enable event when a Gmail toggle is turned off', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.confirmationPage',
+				value: false,
+			});
+
+			expect(trackSpy).not.toHaveBeenCalledWith('User enabled advanced HITL', expect.anything());
+		});
+
+		it('does not track the enable event for a non-mapped Gmail parameter', () => {
+			const trackSpy = vi.spyOn(telemetry, 'track');
+
+			telemetry.trackNodeParametersValuesChange('n8n-nodes-base.gmail', {
+				name: 'parameters.subject',
+				value: true,
+			});
+
+			expect(trackSpy).not.toHaveBeenCalledWith('User enabled advanced HITL', expect.anything());
 		});
 
 		it('does not track the enable event when the toggle is turned off', () => {
