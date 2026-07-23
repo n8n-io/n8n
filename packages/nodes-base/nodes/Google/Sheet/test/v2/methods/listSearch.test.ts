@@ -49,6 +49,7 @@ describe('Google Sheets Search Functions', () => {
 					orderBy: 'modifiedByMeTime desc,name_natural',
 					includeItemsFromAllDrives: true,
 					supportsAllDrives: true,
+					corpora: 'allDrives',
 				},
 				'https://www.googleapis.com/drive/v3/files',
 			);
@@ -85,6 +86,7 @@ describe('Google Sheets Search Functions', () => {
 					orderBy: 'modifiedByMeTime desc,name_natural',
 					includeItemsFromAllDrives: true,
 					supportsAllDrives: true,
+					corpora: 'allDrives',
 				},
 				'https://www.googleapis.com/drive/v3/files',
 			);

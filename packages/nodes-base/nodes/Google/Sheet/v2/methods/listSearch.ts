@@ -28,6 +28,7 @@ export async function spreadSheetsSearch(
 		orderBy: 'modifiedByMeTime desc,name_natural',
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
+		corpora: 'allDrives',
 	};
 
 	const res = await apiRequest.call(
